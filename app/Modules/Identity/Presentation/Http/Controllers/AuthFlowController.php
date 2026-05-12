@@ -1,23 +1,28 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Modules\Identity\Presentation\Http\Controllers;
 
+use App\Modules\Identity\Application\Contracts\ContactValueCheckerContract;
+use App\Modules\Identity\Presentation\Http\Requests\ResolveLoginRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
-class AuthFlowController extends Controller
+class AuthFlowController
 {
-    public function resolveLogin(Request $request): JsonResponse
+    public function __construct(
+        private readonly ContactValueCheckerContract $contactValueChecker,
+    ) {
+    }
+
+    public function resolveLogin(ResolveLoginRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'login' => ['required', 'string', 'min:3', 'max:255'],
-        ]);
+        $data = $request->validated();
 
         $login = trim((string) $data['login']);
         $normalizedLogin = mb_strtolower($login);
 
-        $isContact = filter_var($normalizedLogin, FILTER_VALIDATE_EMAIL) !== false
-            || preg_match('/^\+?[0-9][0-9\-\s\(\)]{8,}$/', $normalizedLogin) === 1;
+        $isContact = $this->contactValueChecker->isContact($normalizedLogin);
+
+        
 
         $knownUsers = [
             'demo' => true,

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Modules\Contact\Domain\Services\ContactValueChecker;
+use App\Modules\Identity\Application\Contracts\ContactValueCheckerContract;
 use Illuminate\Support\ServiceProvider;
 
 use App\Presentation\Theming\ThemeResolver;
@@ -14,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(ContactValueCheckerContract::class, ContactValueChecker::class);
     }
 
     /**

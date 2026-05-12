@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\AuthFlowController;
 use App\Http\Controllers\SiteController;
+use App\Modules\Identity\Presentation\Http\Controllers\AuthFlowController;
 
 Route::get('/', [SiteController::class, 'index'])->name('home');
 

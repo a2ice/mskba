@@ -7,7 +7,14 @@ $(document).on('submit', '[data-auth-flow-form]', function(event) {
 
     const form = $(this);
     const passwordField = form.find('[data-auth-password-field]');
+    const codeField = form.find('[data-auth-code-field]');
     const passwordVisible = !passwordField.is('[hidden]');
+    const codeVisible = !codeField.is('[hidden]');
+
+    if (codeVisible) {
+        submitCodeStep(form);
+        return;
+    }
 
     if (passwordVisible) {
         submitPasswordStep(form);
@@ -79,23 +86,40 @@ function submitPasswordStep(form) {
     setAuthStatus(statusNode, 'Эмуляция: пароль принят, проверка на backend будет подключена следующим шагом.', 'success');
 }
 
+function submitCodeStep(form) {
+    const codeInput = form.find('[data-auth-code-input]');
+    const statusNode = form.find('[data-auth-status]');
+
+    if (!String(codeInput.val() || '').trim()) {
+        setAuthStatus(statusNode, 'Введите одноразовый код.', 'error');
+        return;
+    }
+
+    setAuthStatus(statusNode, 'Эмуляция: код принят, проверка на backend будет подключена следующим шагом.', 'success');
+}
+
 function applyResolveResponse(form, response, requestFailed = false) {
     const status = response.status || '';
     const message = response.message || 'Не удалось обработать запрос. Попробуйте ещё раз.';
     const loginInput = form.find('[data-auth-login-input]');
     const passwordField = form.find('[data-auth-password-field]');
     const passwordInput = form.find('[data-auth-password-input]');
+    const codeField = form.find('[data-auth-code-field]');
+    const codeInput = form.find('[data-auth-code-input]');
     const submitButton = form.find('[data-auth-submit-button]');
     const statusNode = form.find('[data-auth-status]');
     const backButton = form.find('[data-auth-back]');
 
     if (status === 'password_required') {
         loginInput.prop('readonly', true);
-        passwordField.removeAttr('hidden').focus();
+        passwordField.removeAttr('hidden');
         passwordInput.prop('required', true);
+        codeField.attr('hidden', true);
+        codeInput.prop('required', false).val('');
         submitButton.text('Войти');
         backButton.removeAttr('hidden');
         setAuthStatus(statusNode, message, 'info');
+        passwordInput.trigger('focus');
         return;
     }
 
@@ -103,8 +127,12 @@ function applyResolveResponse(form, response, requestFailed = false) {
 
     if (status === 'code_sent') {
         loginInput.prop('readonly', true);
+        codeField.removeAttr('hidden');
+        codeInput.prop('required', true);
         backButton.removeAttr('hidden');
+        submitButton.text('Подтвердить код');
         setAuthStatus(statusNode, message, 'success');
+        codeInput.trigger('focus');
         return;
     }
 
@@ -123,6 +151,8 @@ function setAuthStatus(node, text, state) {
 function resetAuthFlowState(form, focusLogin = false) {
     const passwordField = form.find('[data-auth-password-field]');
     const passwordInput = form.find('[data-auth-password-input]');
+    const codeField = form.find('[data-auth-code-field]');
+    const codeInput = form.find('[data-auth-code-input]');
     const submitButton = form.find('[data-auth-submit-button]');
     const statusNode = form.find('[data-auth-status]');
     const backButton = form.find('[data-auth-back]');
@@ -131,6 +161,8 @@ function resetAuthFlowState(form, focusLogin = false) {
     loginInput.prop('readonly', false);
     passwordField.attr('hidden', true);
     passwordInput.prop('required', false).val('');
+    codeField.attr('hidden', true);
+    codeInput.prop('required', false).val('');
     submitButton.text('Продолжить');
     backButton.attr('hidden', true);
     statusNode.text('').removeAttr('data-state');
