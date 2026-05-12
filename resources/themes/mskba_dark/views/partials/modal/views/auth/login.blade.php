@@ -2,8 +2,8 @@
     @csrf
 
     <label class="auth-form__field">
-        <span>Email</span>
-        <input type="email" name="email" autocomplete="email" required>
+        <span>Логин</span>
+        <input type="text" name="login" autocomplete="login" required>
     </label>
 
     <label class="auth-form__field">
