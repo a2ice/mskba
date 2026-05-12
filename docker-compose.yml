@@ -1,8 +1,11 @@
+name: mskbanew
+
 services:
   app:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
+    container_name: mskbanew-app
     working_dir: /var/www/html
     volumes:
       - .:/var/www/html
@@ -21,6 +24,7 @@ services:
 
   node:
     image: node:22-alpine
+    container_name: mskbanew-node
     working_dir: /var/www/html
     volumes:
       - .:/var/www/html
@@ -35,6 +39,9 @@ services:
 
   db:
     image: postgres:17-alpine
+    container_name: mskbanew-db
+    ports:
+      - "5433:5432"
     environment:
       POSTGRES_DB: mskba
       POSTGRES_USER: mskba
