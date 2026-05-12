@@ -1,0 +1,52 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -lc "
+      [ -f vendor/autoload.php ] || composer install &&
+      php artisan config:clear &&
+      php artisan migrate --force &&
+      php artisan serve --host=0.0.0.0 --port=8000
+      "
+
+  node:
+    image: node:22-alpine
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    ports:
+      - "5173:5173"
+    command: >
+      sh -lc "
+      npm install &&
+      npm run dev -- --host 0.0.0.0 --port 5173
+      "
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mskba
+      POSTGRES_USER: mskba
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mskba -d mskba"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  node_modules:

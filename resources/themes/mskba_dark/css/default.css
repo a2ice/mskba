@@ -1,0 +1,243 @@
+:root {
+    --page: #10120f;
+    --page-soft: #171a16;
+    --panel: #f2efe7;
+    --panel-muted: #d8d1c2;
+    --text: #f7f3ea;
+    --muted: #c8c0b2;
+    --ink: #161713;
+    --line: rgba(255, 255, 255, 0.18);
+    --line-strong: rgba(255, 255, 255, 0.34);
+    --surface: #151914;
+    --surface-raised: #191d18;
+    --field: #2a2d28;
+    --field-border: rgba(255, 255, 255, 0.24);
+    --accent: #f08a24;
+    --accent-strong: #f65f2a;
+    --accent-hover: #ff7427;
+    --accent-text: #ff8b2f;
+    --court: #2f8c69;
+    --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-display: Oswald, "Arial Narrow", "Roboto Condensed", var(--font-ui);
+    --radius-control: 4px;
+    --radius-panel: 4px;
+    --spacing: 15px;
+    --inner-width: 1390px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+    scrollbar-gutter: stable;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    border-radius: 0;
+}
+
+h1,
+h2,
+h3,
+p {
+    margin: 0;
+}
+
+:focus-visible {
+    outline: 2px solid rgba(255, 139, 47, 0.85);
+    outline-offset: 3px;
+}
+
+.theme-shell {}
+
+.site-frame {
+    min-height: 100vh;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    color: #fff;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn--sm {
+    min-height: 40px;
+    padding: 0 18px;
+    font-size: 13px;
+}
+
+.btn--lg {
+    min-height: 50px;
+    padding: 0 22px;
+    font-size: 14px;
+}
+
+.btn--block {
+    width: 100%;
+    min-height: 50px;
+    padding: 0 22px;
+    font-size: 14px;
+}
+
+.btn--primary {
+    border-color: var(--accent-strong);
+    background: linear-gradient(180deg, var(--accent-hover), #f2611d);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.btn--primary:hover,
+.btn--primary.is-active {
+    border-color: var(--accent-hover);
+    background: linear-gradient(180deg, #ff8440, #f96a22);
+}
+
+.btn--secondary {
+    border-color: var(--line-strong);
+    background: rgba(10, 10, 10, 0.34);
+}
+
+.btn--secondary:hover,
+.btn--secondary.is-active {
+    border-color: rgba(255, 255, 255, 0.54);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.btn__icon {
+    font-size: 26px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.btn__icon--plus {
+    font-size: 31px;
+    transform: translateY(-1px);
+}
+
+.link-action {
+    display: inline-flex;
+    align-items: center;
+    color: var(--accent-strong);
+    font-weight: 800;
+    line-height: 1.35;
+    transition: color 160ms ease;
+}
+
+.link-action:hover,
+.link-action:focus-visible {
+    color: var(--accent);
+}
+
+.eyebrow {
+    margin: 0 0 14px;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.field {
+    display: grid;
+    gap: 8px;
+}
+
+.field span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.field input {
+    width: 100%;
+    min-height: 54px;
+    padding: 0 14px;
+    border: 1px solid var(--field-border);
+    border-radius: var(--radius-control);
+    background: var(--field);
+    color: var(--text);
+    outline: none;
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
+}
+
+.field input:hover {
+    border-color: rgba(255, 255, 255, 0.36);
+}
+
+.field input:focus,
+.field input:focus-visible {
+    border-color: rgba(255, 139, 47, 0.82);
+    box-shadow: 0 0 0 3px rgba(246, 95, 42, 0.14);
+    outline: none;
+}
+
+.field small {
+    color: #ffb199;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.checkbox-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.checkbox-field input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-strong);
+}
+
+.d-none {
+    display: none !important;
+}
+
+.inner {
+    width: 100%;
+    max-width: var(--inner-width);
+    padding: 0 var(--spacing);
+}
