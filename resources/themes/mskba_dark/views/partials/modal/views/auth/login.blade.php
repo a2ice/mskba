@@ -1,5 +1,7 @@
-<form method="POST" action="{{ route('auth.resolve-login') }}" class="auth-form ajax-form" data-auth-flow-form>
+<form method="POST" action="{{ route('auth.resolve-login') }}" class="auth-form ajax-form" data-auth-flow-form data-auth-verify-url="{{ route('auth.verify') }}">
     @csrf
+
+    <input type="hidden" name="challenge" data-auth-challenge-input>
 
     <label class="auth-form__field">
         <span>Логин, email или телефон</span>

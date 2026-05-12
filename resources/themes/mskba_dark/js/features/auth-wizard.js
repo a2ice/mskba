@@ -75,6 +75,8 @@ function resolveLoginStep(form) {
 }
 
 function submitPasswordStep(form) {
+    const challengeInput = form.find('[data-auth-challenge-input]');
+    const submitButton = form.find('[data-auth-submit-button]');
     const passwordInput = form.find('[data-auth-password-input]');
     const statusNode = form.find('[data-auth-status]');
 
@@ -83,10 +85,35 @@ function submitPasswordStep(form) {
         return;
     }
 
-    setAuthStatus(statusNode, 'Эмуляция: пароль принят, проверка на backend будет подключена следующим шагом.', 'success');
+    if (!String(challengeInput.val() || '').trim()) {
+        setAuthStatus(statusNode, 'Сессия входа истекла. Начните заново.', 'error');
+        return;
+    }
+
+    submitButton.prop('disabled', true);
+
+    $.ajax({
+        url: form.data('auth-verify-url'),
+        method: 'POST',
+        dataType: 'json',
+        data: {
+            _token: form.find('[name="_token"]').val(),
+            challenge: String(challengeInput.val() || '').trim(),
+            password: String(passwordInput.val() || '').trim()
+        }
+    }).done(function(response) {
+        applyVerifyResponse(form, response);
+    }).fail(function(xhr) {
+        const response = xhr.responseJSON || {};
+        applyVerifyResponse(form, response, true);
+    }).always(function() {
+        submitButton.prop('disabled', false);
+    });
 }
 
 function submitCodeStep(form) {
+    const challengeInput = form.find('[data-auth-challenge-input]');
+    const submitButton = form.find('[data-auth-submit-button]');
     const codeInput = form.find('[data-auth-code-input]');
     const statusNode = form.find('[data-auth-status]');
 
@@ -95,12 +122,49 @@ function submitCodeStep(form) {
         return;
     }
 
-    setAuthStatus(statusNode, 'Эмуляция: код принят, проверка на backend будет подключена следующим шагом.', 'success');
+    if (!String(challengeInput.val() || '').trim()) {
+        setAuthStatus(statusNode, 'Сессия входа истекла. Начните заново.', 'error');
+        return;
+    }
+
+    submitButton.prop('disabled', true);
+
+    $.ajax({
+        url: form.data('auth-verify-url'),
+        method: 'POST',
+        dataType: 'json',
+        data: {
+            _token: form.find('[name="_token"]').val(),
+            challenge: String(challengeInput.val() || '').trim(),
+            code: String(codeInput.val() || '').trim()
+        }
+    }).done(function(response) {
+        applyVerifyResponse(form, response);
+    }).fail(function(xhr) {
+        const response = xhr.responseJSON || {};
+        applyVerifyResponse(form, response, true);
+    }).always(function() {
+        submitButton.prop('disabled', false);
+    });
+}
+
+function applyVerifyResponse(form, response, requestFailed = false) {
+    const message = response.message || 'Не удалось выполнить проверку. Попробуйте ещё раз.';
+    const statusNode = form.find('[data-auth-status]');
+
+    if (requestFailed) {
+        setAuthStatus(statusNode, message, 'error');
+        return;
+    }
+
+    setAuthStatus(statusNode, message, 'success');
 }
 
 function applyResolveResponse(form, response, requestFailed = false) {
     const status = response.status || '';
     const message = response.message || 'Не удалось обработать запрос. Попробуйте ещё раз.';
+    const challenge = String(response.challenge || '').trim();
+    const challengeInput = form.find('[data-auth-challenge-input]');
     const loginInput = form.find('[data-auth-login-input]');
     const passwordField = form.find('[data-auth-password-field]');
     const passwordInput = form.find('[data-auth-password-input]');
@@ -111,6 +175,12 @@ function applyResolveResponse(form, response, requestFailed = false) {
     const backButton = form.find('[data-auth-back]');
 
     if (status === 'password_required') {
+        if (!challenge) {
+            setAuthStatus(statusNode, 'Не удалось подготовить сессию входа. Повторите попытку.', 'error');
+            return;
+        }
+
+        challengeInput.val(challenge);
         loginInput.prop('readonly', true);
         passwordField.removeAttr('hidden');
         passwordInput.prop('required', true);
@@ -126,6 +196,12 @@ function applyResolveResponse(form, response, requestFailed = false) {
     resetAuthFlowState(form);
 
     if (status === 'code_sent') {
+        if (!challenge) {
+            setAuthStatus(statusNode, 'Не удалось подготовить сессию входа. Повторите попытку.', 'error');
+            return;
+        }
+
+        challengeInput.val(challenge);
         loginInput.prop('readonly', true);
         codeField.removeAttr('hidden');
         codeInput.prop('required', true);
@@ -149,6 +225,7 @@ function setAuthStatus(node, text, state) {
 }
 
 function resetAuthFlowState(form, focusLogin = false) {
+    const challengeInput = form.find('[data-auth-challenge-input]');
     const passwordField = form.find('[data-auth-password-field]');
     const passwordInput = form.find('[data-auth-password-input]');
     const codeField = form.find('[data-auth-code-field]');
@@ -159,6 +236,7 @@ function resetAuthFlowState(form, focusLogin = false) {
     const loginInput = form.find('[data-auth-login-input]');
 
     loginInput.prop('readonly', false);
+    challengeInput.val('');
     passwordField.attr('hidden', true);
     passwordInput.prop('required', false).val('');
     codeField.attr('hidden', true);

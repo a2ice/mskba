@@ -33,4 +33,9 @@ class EloquentUserReadRepository implements UserReadRepositoryContract
             ->whereRaw('LOWER(login) = ?', [$normalizedLogin])
             ->first();
     }
+
+    public function findById(int $userId): ?User
+    {
+        return User::query()->find($userId);
+    }
 }

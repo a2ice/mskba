@@ -15,7 +15,7 @@ class ResolveLoginHandler
     }
 
     /**
-     * @return array{status:string,message:string,httpStatus:int}
+        * @return array{status:string,message:string,httpStatus:int,user_id?:int,verify_flow?:string}
      */
     public function handle(string $login): array
     {
@@ -33,6 +33,8 @@ class ResolveLoginHandler
                         'status' => 'code_sent',
                         'message' => 'Контакт найден, но не подтверждён. Мы отправили одноразовый код.',
                         'httpStatus' => 200,
+                        'user_id' => $user->id,
+                        'verify_flow' => 'code',
                     ];
                 }
             }
@@ -42,6 +44,8 @@ class ResolveLoginHandler
                     'status' => 'password_required',
                     'message' => 'Пользователь найден. Введите пароль.',
                     'httpStatus' => 200,
+                    'user_id' => $user->id,
+                    'verify_flow' => 'password',
                 ];
             }
 
@@ -49,6 +53,8 @@ class ResolveLoginHandler
                 'status' => 'code_sent',
                 'message' => 'Пароль не установлен. Мы отправили одноразовый код.',
                 'httpStatus' => 200,
+                'user_id' => $user->id,
+                'verify_flow' => 'code',
             ];
         }
 
@@ -57,6 +63,8 @@ class ResolveLoginHandler
                 'status' => 'code_sent',
                 'message' => 'Если контакт существует, мы отправили одноразовый код.',
                 'httpStatus' => 200,
+                'user_id' => 0,
+                'verify_flow' => 'code',
             ];
         }
 

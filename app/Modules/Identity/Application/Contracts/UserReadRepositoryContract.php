@@ -7,4 +7,6 @@ use App\Modules\Identity\Domain\Models\User;
 interface UserReadRepositoryContract
 {
     public function findByResolvedLogin(string $normalizedLogin, bool $isContact): ?User;
+
+    public function findById(int $userId): ?User;
 }
