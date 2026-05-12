@@ -4,4 +4,6 @@ import $ from 'jquery';
 window.$ = $;
 window.jQuery = $;
 
+import './functions.js';
+
 console.log($);

@@ -6,7 +6,7 @@
         ['label' => 'Игры', 'href' => '#tournaments', 'active' => request()->routeIs('events.index')],
         ['label' => 'Турниры', 'href' => '#tournaments', 'active' => false],
         ['label' => 'Новости', 'href' => '#news', 'active' => false],
-        ['label' => 'Комьюнити', 'href' => '#community', 'active' => false],
+        ['label' => 'Контакты', 'href' => '#contscts', 'active' => false],
     ];
     $user = auth()->user();
     $userLogin = $user?->login === null ? null : (string) $user->login;
@@ -28,19 +28,21 @@
     <div class="site-header-right header-cell">
 
         <div class="site-header-nav-wrapper header-cell">
-            <div class="nav-hamburger">
+            <div class="nav-hamburger js-handler" data-handler="toggleClass" data-params="nav-shown;body">
                 <span></span>
                 <span></span>
                 <span></span>
             </div>
 
-            <nav class="site-nav" aria-label="Основная навигация">
-                @foreach ($navItems as $item)
-                    <a href="{{ $item['href'] }}" @class(['site-nav__link', 'is-active' => $item['active']])>
-                        {{ $item['label'] }}
-                    </a>
-                @endforeach
-            </nav>
+            <div class="site-nav-wrapper">
+                <nav class="site-nav" aria-label="Основная навигация">
+                    @foreach ($navItems as $item)
+                        <a href="{{ $item['href'] }}" @class(['site-nav__link', 'is-active' => $item['active']])>
+                            {{ $item['label'] }}
+                        </a>
+                    @endforeach
+                </nav>
+            </div>
         </div>
 
         <div class="site-auth header-cell" aria-label="Пользовательская навигация">
