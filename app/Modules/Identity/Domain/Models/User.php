@@ -2,14 +2,16 @@
 
 namespace App\Modules\Identity\Domain\Models;
 
+use App\Modules\Contact\Domain\Models\Contact;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['login', 'password'])]
+#[Fillable(['login', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -19,6 +21,11 @@ class User extends Authenticatable
     protected static function newFactory(): UserFactory
     {
         return UserFactory::new();
+    }
+
+    public function contacts(): MorphMany
+    {
+        return $this->morphMany(Contact::class, 'entity', 'entity_type', 'entity_id');
     }
 
     /**

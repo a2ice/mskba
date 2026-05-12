@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Contact\Domain\Enums\ContactStatusEnum;
 use App\Modules\Identity\Application\Contracts\ContactValueCheckerContract;
 use App\Modules\Identity\Application\Contracts\UserReadRepositoryContract;
 
@@ -24,6 +25,18 @@ class ResolveLoginHandler
         $user = $this->users->findByResolvedLogin($normalizedLogin, $isContact);
 
         if ($user !== null) {
+            if ($isContact) {
+                $matchedContact = $user->contacts->first();
+
+                if ($matchedContact !== null && $matchedContact->status !== ContactStatusEnum::VERIFIED) {
+                    return [
+                        'status' => 'code_sent',
+                        'message' => 'Контакт найден, но не подтверждён. Мы отправили одноразовый код.',
+                        'httpStatus' => 200,
+                    ];
+                }
+            }
+
             if (filled($user->password)) {
                 return [
                     'status' => 'password_required',
