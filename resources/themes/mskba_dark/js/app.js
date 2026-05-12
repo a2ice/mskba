@@ -1,9 +1,7 @@
-console.log('boot');
 import $ from 'jquery';
 
 window.$ = $;
 window.jQuery = $;
 
-import './functions.js';
-
-console.log($);
+import './core/ui-handlers.js';
+import './features/auth-wizard.js';
