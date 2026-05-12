@@ -1,0 +1,130 @@
+.modal {
+	position: fixed;
+	inset: 0;
+	z-index: 120;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: clamp(16px, 3vw, 28px);
+	background: rgba(7, 10, 9, 0.74);
+	backdrop-filter: blur(4px);
+}
+
+.modal[hidden] {
+	display: none;
+}
+
+.modal__dialog {
+	position: relative;
+	width: min(560px, 100%);
+	max-height: min(86vh, 900px);
+	overflow: auto;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 16px;
+	padding: 26px 24px 22px;
+	background: linear-gradient(180deg, #101412, #0d0f0d);
+	box-shadow: 0 30px 50px rgba(0, 0, 0, 0.45);
+}
+
+.modal__close {
+	position: absolute;
+	top: 14px;
+	right: 14px;
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.08);
+	cursor: pointer;
+}
+
+.modal__close span,
+.modal__close span::before {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 14px;
+	height: 2px;
+	background: #fff;
+	content: '';
+}
+
+.modal__close span {
+	transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.modal__close span::before {
+	transform: rotate(-90deg);
+}
+
+.modal-auth__title {
+	margin: 0 0 18px;
+	color: #fff;
+	font-size: 24px;
+	line-height: 1.1;
+	font-weight: 800;
+}
+
+.tabs__panel[hidden] {
+	display: none;
+}
+
+.auth-form {
+	display: grid;
+	gap: 12px;
+}
+
+.auth-form__field {
+	display: grid;
+	gap: 6px;
+}
+
+.auth-form__field span {
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.auth-form__field input {
+	width: 100%;
+	min-height: 42px;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 10px;
+	padding: 0 12px;
+	color: #fff;
+	background: rgba(255, 255, 255, 0.05);
+	outline: none;
+}
+
+.auth-form__field input:focus {
+	border-color: var(--accent-strong);
+}
+
+.auth-form__submit {
+	margin-top: 4px;
+}
+
+.auth-form__switch {
+	margin: 4px 0 0;
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.auth-form__switch-link {
+	border: 0;
+	padding: 0;
+	color: var(--accent-strong);
+	background: transparent;
+	font-size: inherit;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.auth-form__switch-link:hover {
+	text-decoration: underline;
+}
+
+body.modal-open {
+	overflow: hidden;
+}

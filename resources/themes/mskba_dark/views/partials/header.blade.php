@@ -56,8 +56,10 @@
                 @guest
                     <button
                         type="button"
-                        @class(['btn', 'btn--primary', 'btn--sm', 'is-active' => request()->routeIs('login', 'register')])
-                        data-popup-open="auth-entry"
+                        @class(['btn', 'btn--primary', 'btn--sm', 'js-handler', 'is-active' => request()->routeIs('login', 'register')])
+                        data-handler="modal"
+                        data-modal-action="open"
+                        data-modal-target="auth-entry"
                     >
                         Войти
                     </button>

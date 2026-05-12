@@ -25,6 +25,6 @@
             @include('theme::partials.footer')
         </div>
 
-        @include('theme::partials.popup')
+        @include('theme::partials.modal')
     </body>
 </html>
