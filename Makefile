@@ -1,6 +1,6 @@
 COMPOSE := docker compose
 
-.PHONY: help build up dev demo down restart ps logs app-logs db-logs shell node-shell db-shell artisan composer npm migrate clear fresh test
+.PHONY: help build up dev demo down restart ps logs app-logs db-logs shell node-shell db-shell artisan composer npm migrate reset-db reset-db-seed clear fresh test
 
 help:
 	@printf "%s\n" \
@@ -21,6 +21,8 @@ help:
 	"make composer   - run composer, pass CMD='install'" \
 	"make npm        - run npm, pass CMD='run build'" \
 	"make migrate    - run Laravel migrations" \
+	"make reset-db   - drop all tables and re-run migrations" \
+	"make reset-db-seed - drop all tables, re-run migrations and seed" \
 	"make clear      - clear Laravel caches (optimize:clear)" \
 	"make fresh      - rebuild and start from scratch" \
 	"make test       - run Laravel tests"
@@ -63,7 +65,7 @@ node-shell:
 	$(COMPOSE) exec node sh
 
 db-shell:
-	$(COMPOSE) exec db psql -U mskba -d mskba
+	$(COMPOSE) exec db psql -U dev -d mskba
 
 artisan:
 	$(COMPOSE) exec app php artisan $(CMD)
@@ -76,6 +78,12 @@ npm:
 
 migrate:
 	$(COMPOSE) exec app php artisan migrate
+
+reset-db:
+	$(COMPOSE) exec app php artisan migrate:fresh --force
+
+reset-db-seed:
+	$(COMPOSE) exec app php artisan migrate:fresh --seed --force
 
 clear:
 	$(COMPOSE) exec app php artisan optimize:clear

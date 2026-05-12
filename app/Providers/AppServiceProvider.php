@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Modules\Contact\Domain\Services\ContactValueChecker;
 use App\Modules\Identity\Application\Contracts\ContactValueCheckerContract;
+use App\Modules\Identity\Application\Contracts\UserReadRepositoryContract;
+use App\Modules\Identity\Infrastructure\Persistence\EloquentUserReadRepository;
 use Illuminate\Support\ServiceProvider;
 
 use App\Presentation\Theming\ThemeResolver;
@@ -17,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ContactValueCheckerContract::class, ContactValueChecker::class);
+        $this->app->bind(UserReadRepositoryContract::class, EloquentUserReadRepository::class);
     }
 
     /**

@@ -44,12 +44,12 @@ services:
       - "5433:5432"
     environment:
       POSTGRES_DB: mskba
-      POSTGRES_USER: mskba
+      POSTGRES_USER: dev
       POSTGRES_PASSWORD: secret
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mskba -d mskba"]
+      test: ["CMD-SHELL", "pg_isready -U dev -d mskba"]
       interval: 5s
       timeout: 5s
       retries: 10
