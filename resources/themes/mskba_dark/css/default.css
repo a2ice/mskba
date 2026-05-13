@@ -236,8 +236,8 @@ p {
     display: none !important;
 }
 
-.inner {
+/* .inner {
     width: 100%;
     max-width: var(--inner-width);
     padding: 0 var(--spacing);
-}
+} */

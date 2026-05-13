@@ -18,32 +18,68 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'login' => 'demo',
-            'email' => 'demo@example.com',
-            'password' => 'password',
-        ]);
-
-        $withCode = User::factory()->create([
-            'login' => 'with-code',
-            'email' => 'with-code@example.com',
-            'password' => null,
+        $admin = User::factory()->create([
+            'login' => 'admin',
+            'password' => 'Asdqwe123',
+            'status' => 'confirmed',
         ]);
 
         Contact::factory()->create([
             'entity_type' => 'user',
-            'entity_id' => $withCode->id,
-            'contact_type' => ContactTypeEnum::PHONE->value,
-            'value' => '+79991234567',
+            'entity_id' => $admin->id,
+            'contact_type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'admin@mskba.ru',
             'status' => ContactStatusEnum::VERIFIED->value,
         ]);
-
-        User::factory()->create([
-            'login' => null,
-            'email' => 'email-only@example.com',
-            'password' => null,
+    
+        $unconfirmed = User::factory()->create([
+            'login' => 'unconfirmed',
+            'password' => 'Asdqwe123',
+            'status' => 'unconfirmed',
         ]);
 
-        User::factory(5)->create();
+        Contact::factory()->create([
+            'entity_type' => 'user',
+            'entity_id' => $unconfirmed->id,
+            'contact_type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'unconfirmed@mskba.ru',
+            'status' => ContactStatusEnum::UNVERIFIED->value,
+        ]);
+
+        // $withCode = User::factory()->confirmed()->create([
+        //     'login' => 'with-code',
+        //     'password' => 'password',
+        // ]);
+
+        // Contact::factory()->create([
+        //     'entity_type' => 'user',
+        //     'entity_id' => $withCode->id,
+        //     'contact_type' => ContactTypeEnum::EMAIL->value,
+        //     'value' => 'with-code@example.com',
+        //     'status' => ContactStatusEnum::VERIFIED->value,
+        // ]);
+
+        // Contact::factory()->create([
+        //     'entity_type' => 'user',
+        //     'entity_id' => $withCode->id,
+        //     'contact_type' => ContactTypeEnum::PHONE->value,
+        //     'value' => '+79991234567',
+        //     'status' => ContactStatusEnum::VERIFIED->value,
+        // ]);
+
+        // $emailOnly = User::factory()->confirmed()->create([
+        //     'login' => null,
+        //     'password' => 'password',
+        // ]);
+
+        // Contact::factory()->create([
+        //     'entity_type' => 'user',
+        //     'entity_id' => $emailOnly->id,
+        //     'contact_type' => ContactTypeEnum::EMAIL->value,
+        //     'value' => 'email-only@example.com',
+        //     'status' => ContactStatusEnum::VERIFIED->value,
+        // ]);
+
+        // User::factory(5)->confirmed()->create();
     }
 }

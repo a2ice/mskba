@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Domain\Models;
 
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['login', 'email', 'password'])]
+#[Fillable(['login', 'password', 'status'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -37,6 +38,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'status' => UserStatusEnum::class,
         ];
     }
 }

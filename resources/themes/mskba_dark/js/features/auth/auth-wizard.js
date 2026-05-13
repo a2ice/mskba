@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import { toQueryString } from '../../core/forms.js';
 
 const AUTH_MODAL_NAME = 'auth-entry';
 
@@ -54,16 +55,17 @@ function resolveLoginStep(form) {
         return;
     }
 
+    loginInput.val(loginValue);
+
     submitButton.prop('disabled', true);
 
     $.ajax({
         url: form.attr('action'),
         method: 'POST',
         dataType: 'json',
-        data: {
-            _token: form.find('[name="_token"]').val(),
+        data: toQueryString(form, {
             login: loginValue
-        }
+        })
     }).done(function(response) {
         applyResolveResponse(form, response);
     }).fail(function(xhr) {
@@ -90,17 +92,19 @@ function submitPasswordStep(form) {
         return;
     }
 
+    challengeInput.val(String(challengeInput.val() || '').trim());
+    passwordInput.val(String(passwordInput.val() || '').trim());
+
     submitButton.prop('disabled', true);
 
     $.ajax({
         url: form.data('auth-verify-url'),
         method: 'POST',
         dataType: 'json',
-        data: {
-            _token: form.find('[name="_token"]').val(),
+        data: toQueryString(form, {
             challenge: String(challengeInput.val() || '').trim(),
             password: String(passwordInput.val() || '').trim()
-        }
+        })
     }).done(function(response) {
         applyVerifyResponse(form, response);
     }).fail(function(xhr) {
@@ -127,17 +131,19 @@ function submitCodeStep(form) {
         return;
     }
 
+    challengeInput.val(String(challengeInput.val() || '').trim());
+    codeInput.val(String(codeInput.val() || '').trim());
+
     submitButton.prop('disabled', true);
 
     $.ajax({
         url: form.data('auth-verify-url'),
         method: 'POST',
         dataType: 'json',
-        data: {
-            _token: form.find('[name="_token"]').val(),
+        data: toQueryString(form, {
             challenge: String(challengeInput.val() || '').trim(),
             code: String(codeInput.val() || '').trim()
-        }
+        })
     }).done(function(response) {
         applyVerifyResponse(form, response);
     }).fail(function(xhr) {

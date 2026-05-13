@@ -59,7 +59,7 @@
                         @class(['btn', 'btn--primary', 'btn--sm', 'js-handler', 'is-active' => request()->routeIs('login', 'register')])
                         data-handler="modal"
                         data-modal-action="open"
-                        data-modal-target="auth-entry"
+                        data-modal-target="auth-entry-classic"
                     >
                         Войти
                     </button>

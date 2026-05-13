@@ -16,6 +16,10 @@ body {
     --inner-padding: 20px clamp(20px, 4vw, 56px) 12px;
 }
 
+.inner {
+    padding: var(--inner-padding);
+}
+
 .site-header {
     position: fixed;
     z-index: 30;

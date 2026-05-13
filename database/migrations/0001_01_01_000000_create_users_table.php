@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,8 +15,9 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('login')->unique()->nullable();
-            $table->string('email')->unique();
-            $table->string('password')->nullable();
+            $table->string('password');
+            $table->enum('status', array_column(UserStatusEnum::cases(), 'value'))
+                ->default(UserStatusEnum::UNCONFIRMED->value);
             $table->rememberToken();
             $table->timestamps();
         });
