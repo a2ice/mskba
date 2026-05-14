@@ -184,7 +184,8 @@ const setFormSubmitting = function(form, isSubmitting, message = '...', messageT
     setFormMessage(form, message, messageType);
 };
 
-function setFormMessage(form, message = '', messageType = 'info') {
+export function setFormMessage(formLike, message = '', messageType = 'info') {
+    const form = formLike?.jquery ? formLike : $(formLike);
     const messagePlaceholder = form.find('.form-message');
 
     if (!messagePlaceholder.length) {

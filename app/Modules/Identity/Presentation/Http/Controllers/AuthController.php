@@ -3,10 +3,12 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Modules\Identity\Application\UseCases\LoginHandler;
+use App\Modules\Identity\Application\UseCases\RegisterContactFirstHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
+use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController
 {
@@ -30,6 +32,18 @@ class AuthController
         return response()->json([
             'status' => $payload['status'],
             'message' => $payload['message'],
+        ], $payload['httpStatus']);
+    }
+
+    public function register(RegisterRequest $request, RegisterContactFirstHandler $registerHandler): JsonResponse
+    {
+        $payload = $registerHandler->handle((string) $request->validated('email'));
+
+        return response()->json([
+            'status' => $payload['status'],
+            'message' => $payload['message'],
+            'login' => $payload['login'] ?? null,
+            'next' => $payload['next'] ?? null,
         ], $payload['httpStatus']);
     }
 

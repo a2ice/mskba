@@ -32,6 +32,7 @@ class UserFactory extends Factory
         return [
             'login' => fake()->unique()->userName(),
             'password' => static::$password ??= Hash::make('password'),
+            'is_temp_password' => true,
             'status' => UserStatusEnum::UNCONFIRMED->value,
         ];
     }
@@ -40,6 +41,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => UserStatusEnum::CONFIRMED->value,
+            'is_temp_password' => false,
         ]);
     }
 

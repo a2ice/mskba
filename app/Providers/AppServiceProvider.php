@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Modules\Contact\Application\Listeners\MarkContactAsVerified;
 use App\Modules\Contact\Domain\Services\ContactValueChecker;
+use App\Modules\ContactVerification\Domain\Events\ContactVerificationCompleted;
 use App\Modules\Identity\Application\Contracts\ContactValueCheckerContract;
 use App\Modules\Identity\Application\Contracts\UserReadRepositoryContract;
 use App\Modules\Identity\Domain\Models\User;
@@ -11,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,6 +35,11 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'user' => User::class,
         ]);
+
+        Event::listen(
+            ContactVerificationCompleted::class,
+            MarkContactAsVerified::class,
+        );
 
         View::addNamespace('theme', app(ThemeResolver::class)->viewsPath());
     }

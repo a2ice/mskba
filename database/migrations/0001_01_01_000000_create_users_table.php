@@ -18,7 +18,7 @@ return new class extends Migration
             $table->id();
             $table->string('login')->unique()->nullable();
             $table->string('password');
-            $table->boolean('is_temp_password')->default(false); // Флаг, указывающий, что пароль является временным
+            $table->boolean('is_temp_password')->default(true);
             $table->enum('registration_channel', array_column(UserRegistrationChannelEnum::cases(), 'value'))
                 ->nullable(); // Канал регистрации
             $table->enum('status', array_column(UserStatusEnum::cases(), 'value'))

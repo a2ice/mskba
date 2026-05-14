@@ -23,12 +23,18 @@ $(document).on('submit', '[data-auth-classic-form]', function(event) {
     event.preventDefault();
 
     const form = $(this);
+    const kind = String(form.data('authClassicKind') || form.data('auth-classic-kind') || '').trim();
 
     forms.submitForm(form, {
         onSuccess(response) {
-            console.log('Login successful');
-            console.log(response);
-            location.reload();
+            if (kind === 'register') {
+                prepareLoginAfterRegistration(form.closest('[data-modal]'), response);
+                return;
+            }
+
+            if (kind === 'login') {
+                location.reload();
+            }
         },
         onError(jqXHR) {
             console.log('Login failed');
@@ -72,7 +78,23 @@ function resetClassicFormStates(modal) {
     });
 }
 
-function activateSection(modal, target) {
+function prepareLoginAfterRegistration(modal, response) {
+    const login = String(response.login || '').trim();
+    const message = response.message || 'Мы отправили временный пароль на email. Введите его для входа.';
+    const loginForm = modal.find('[data-auth-classic-form][data-auth-classic-kind="login"]');
+    const passwordInput = loginForm.find('input[name="password"]');
+
+    forms.resetFormState(loginForm);
+
+    if (login) {
+        loginForm.find('input[name="login"]').val(login);
+    }
+
+    forms.setFormMessage(loginForm, message, 'success');
+    activateSection(modal, 'login', ()=> passwordInput.trigger('focus'));
+}
+
+function activateSection(modal, target, callback) {
     const sections = modal.find('[data-auth-classic-section]');
     const targetSection = modal.find('[data-auth-classic-section="' + target + '"]');
 
@@ -82,4 +104,9 @@ function activateSection(modal, target) {
 
     sections.attr('hidden', true);
     targetSection.removeAttr('hidden');
+    if(typeof callback === 'function') {
+        callback(targetSection);
+    } else {
+        targetSection.find('[autofocus]').first().trigger('focus');
+    }
 }

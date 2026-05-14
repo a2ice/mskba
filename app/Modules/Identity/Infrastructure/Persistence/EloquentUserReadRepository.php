@@ -51,6 +51,9 @@ class EloquentUserReadRepository implements UserReadRepositoryContract
 
             return User::query()
                 ->whereKey($contact->entity_id)
+                ->with(['contacts' => function ($query) use ($contact) {
+                    $query->whereKey($contact->id);
+                }])
                 ->first();
         }
 

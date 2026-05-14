@@ -2,6 +2,9 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Contact\Domain\Enums\ContactStatusEnum;
+use App\Modules\ContactVerification\Application\Services\ContactVerificationManager;
+use App\Modules\ContactVerification\Domain\Enums\ContactVerificationPurposeEnum;
 use App\Modules\Identity\Application\Contracts\ContactValueCheckerContract;
 use App\Modules\Identity\Application\Contracts\UserReadRepositoryContract;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -13,6 +16,7 @@ class LoginHandler
     public function __construct(
         private readonly ContactValueCheckerContract $contactValueChecker,
         private readonly UserReadRepositoryContract $users,
+        private readonly ContactVerificationManager $contactVerificationManager,
     ) {
     }
 
@@ -24,6 +28,7 @@ class LoginHandler
         $normalizedLogin = mb_strtolower(trim($login));
         $isContact = $this->contactValueChecker->isContact($normalizedLogin);
         $user = $this->users->findByLoginOrContact($normalizedLogin, $isContact);
+        $matchedContact = $isContact ? $user?->contacts->first() : null;
 
         if ($user === null) {
             return [
@@ -33,7 +38,7 @@ class LoginHandler
             ];
         }
 
-        if ($user->status === UserStatusEnum::BLOCKED) {
+        if ($user->status === UserStatusEnum::BLOCKED || $user->status === UserStatusEnum::REMOVED) {
             return [
                 'status' => 'user_blocked',
                 'message' => 'Аккаунт заблокирован.',
@@ -41,7 +46,7 @@ class LoginHandler
             ];
         }
 
-        if ($user->status !== UserStatusEnum::CONFIRMED) {
+        if ($user->status !== UserStatusEnum::CONFIRMED && ! $user->is_temp_password) {
             return [
                 'status' => 'user_unconfirmed',
                 'message' => 'Аккаунт не подтверждён.',
@@ -61,6 +66,21 @@ class LoginHandler
         }
 
         Auth::login($user, $remember);
+
+        if (
+            $user->is_temp_password
+            && $matchedContact !== null
+            && $matchedContact->status === ContactStatusEnum::UNVERIFIED
+        ) {
+            $verification = $this->contactVerificationManager->findPendingForContact(
+                $matchedContact,
+                ContactVerificationPurposeEnum::SITE_CONTACT_FIRST,
+            );
+
+            if ($verification !== null) {
+                $this->contactVerificationManager->complete($verification);
+            }
+        }
 
         return [
             'status' => 'authenticated',

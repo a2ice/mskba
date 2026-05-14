@@ -3,7 +3,7 @@
     <section class="auth-classic__section" data-auth-classic-section="login">
         <h2 class="modal-auth__title" id="modal-title-auth-entry-classic">Вход в аккаунт</h2>
 
-        <form class="auth-form" action="{{ route('auth.login') }}" method="POST" data-auth-classic-form>
+        <form class="auth-form" action="{{ route('auth.login') }}" method="POST" data-auth-classic-form data-auth-classic-kind="login">
 
             <label class="auth-form__field">
                 <span>Логин / Email</span>
@@ -34,10 +34,10 @@
     <section class="auth-classic__section" data-auth-classic-section="register" hidden>
         <h2 class="modal-auth__title" id="modal-title-auth-entry-classic">Регистрация</h2>
 
-        <form class="auth-form" data-auth-classic-form action="{{ route('auth.register') }}" method="POST">
+        <form class="auth-form" data-auth-classic-form data-auth-classic-kind="register" action="{{ route('auth.register') }}" method="POST">
             <label class="auth-form__field">
                 <span>Email</span>
-                <input type="email" name="email" autocomplete="username" required>
+                <input type="email" name="email" autocomplete="username" required autofocus>
             </label>
 
             <div class="auth-form__message form-message"></div>
@@ -57,7 +57,7 @@
         <form class="auth-form" data-auth-classic-form>
             <label class="auth-form__field">
                 <span>Контакт (email или телефон)</span>
-                <input type="text" name="contact" autocomplete="email" required>
+                <input type="text" name="contact" autocomplete="email" required autofocus>
             </label>
 
             <div class="auth-form__message form-message"></div>

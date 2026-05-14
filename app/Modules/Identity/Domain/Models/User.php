@@ -3,6 +3,8 @@
 namespace App\Modules\Identity\Domain\Models;
 
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
+use App\Modules\Identity\Domain\Enums\UserRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['login', 'password', 'status', 'role', 'registration_channel'])]
+#[Fillable(['login', 'password', 'is_temp_password', 'status', 'role', 'registration_channel'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -38,6 +40,9 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'is_temp_password' => 'boolean',
+            'registration_channel' => UserRegistrationChannelEnum::class,
+            'role' => UserRoleEnum::class,
             'status' => UserStatusEnum::class,
         ];
     }
