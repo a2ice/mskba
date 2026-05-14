@@ -10,6 +10,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 Route::get('/', [SiteController::class, 'index'])->name('home');
 
 Route::get('/auth/login', [AccountController::class, 'login'])->name('login');
+Route::get('/auth/register', [AccountController::class, 'register'])->name('register');
 
 Route::post('/auth/login', [AuthController::class, 'login'])
 	->middleware('throttle:10,1')

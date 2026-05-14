@@ -264,6 +264,10 @@ body.nav-shown main:before {
     background-color: rgba(0,0,0,0.75);
 }
 
+.first-screen {
+    padding-top: 50px;
+}
+
 /* pages */
 .home-hero {
     position: relative;

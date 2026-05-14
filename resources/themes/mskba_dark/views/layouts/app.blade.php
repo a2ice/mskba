@@ -19,7 +19,7 @@
         <div class="site-frame">
             @include('theme::partials.header')
 
-            <main>
+            <main class="site-content">                
                 @yield('content')
             </main>
 

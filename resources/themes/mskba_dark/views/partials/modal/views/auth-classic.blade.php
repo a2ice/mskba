@@ -7,7 +7,7 @@
 
             <label class="auth-form__field">
                 <span>Логин / Email</span>
-                <input type="text" name="login" autocomplete="username" required>
+                <input type="text" name="login" autocomplete="username" required autofocus>
             </label>
 
             <label class="auth-form__field">

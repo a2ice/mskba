@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
+use App\Modules\Identity\Domain\Enums\UserRoleEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,8 +18,13 @@ return new class extends Migration
             $table->id();
             $table->string('login')->unique()->nullable();
             $table->string('password');
+            $table->boolean('is_temp_password')->default(false); // Флаг, указывающий, что пароль является временным
+            $table->enum('registration_channel', array_column(UserRegistrationChannelEnum::cases(), 'value'))
+                ->nullable(); // Канал регистрации
             $table->enum('status', array_column(UserStatusEnum::cases(), 'value'))
                 ->default(UserStatusEnum::UNCONFIRMED->value);
+            $table->enum('role', array_column(UserRoleEnum::cases(), 'value'))
+                ->default(UserRoleEnum::USER->value);
             $table->rememberToken();
             $table->timestamps();
         });

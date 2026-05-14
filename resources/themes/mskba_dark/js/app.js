@@ -15,3 +15,12 @@ if (csrfToken) {
 
 import './core/ui-handlers.js';
 import './features/auth.js';
+
+var header,
+    headerHeight = 0;
+
+$(window).on('load resize', function() {
+    header = $('.site-header');
+    headerHeight = header.outerHeight();
+    $('.first-screen').css('padding-top', headerHeight);
+});

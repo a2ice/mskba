@@ -3,17 +3,14 @@
 @section('content')
 <section class="account-hero" style="margin-top:100px">
     <div class="inner">
-        <h1>Вход в аккаунт</h1>
+        <h1>Регистрация</h1>
         @if (auth()->check())
             <p>Вы уже авторизованы как {{ auth()->user()->login }}.</p>
             <br/>
             <a href="{{ route('account') }}" class="btn btn--primary btn--sm">Перейти в личный кабинет</a>
             <a href="{{ route('auth.logout') }}" class="btn btn--secondary btn--sm">Выйти из аккаунта</a>
         @else
-            <p>Пожалуйста, войдите в свой аккаунт, чтобы получить доступ к личному кабинету и другим функциям сайта.</p>
-            <br/>
-            <a href="{{ route('login') }}" class="btn btn--primary btn--sm js-handler" data-handler="modal" data-modal-target="auth-entry-classic">Войти в аккаунт</a>
-            <a href="{{ route('auth.register') }}" class="btn btn--secondary btn--sm">Зарегистрироваться</a>
+            Форма "Полная регистрация"
         @endif
     </div>
 </section>

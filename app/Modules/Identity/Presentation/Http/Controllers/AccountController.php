@@ -18,5 +18,9 @@ class AccountController
     {
         return view($this->theme->view('pages.account.login'));
     }
-
+    
+    public function register(): View
+    {
+        return view($this->theme->view('pages.account.register'));
+    }
 }

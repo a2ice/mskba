@@ -1,8 +1,10 @@
 @extends('theme::layouts.app', ['title' => 'Аккаунт'])
 
 @section('content')
-<section class="account-hero" style="margin-top:100px">
+<section class="first-screen">
     <div class="inner">
+
+        @include('theme::partials.breadcrumbs', ['title' => 'Личный кабинет'])
 
         <h1>Личный кабинет</h1>
 

@@ -54,6 +54,15 @@ services:
       timeout: 5s
       retries: 10
 
+  adminer:
+    image: adminer
+    container_name: mskbanew-adminer
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+
 volumes:
   postgres_data:
   node_modules:

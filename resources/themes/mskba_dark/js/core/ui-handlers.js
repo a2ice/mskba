@@ -32,7 +32,7 @@ const handlers = {
 };
 
 function bindActionHandlers() {
-    $(document).on('click', '[data-handler]', function() {
+    $(document).on('click', '[data-handler]', function(e) {
         const trigger = $(this);
         const handlerName = trigger.data('handler');
         const handler = handlers[handlerName];
@@ -41,6 +41,8 @@ function bindActionHandlers() {
         if (typeof handler !== 'function') {
             return;
         }
+
+        e.preventDefault();
 
         handler(this, params);
     });
@@ -76,6 +78,7 @@ function openModal(modal) {
     modal.removeAttr('hidden').addClass('is-open');
     $('body').addClass('modal-open');
     $(document).trigger('modal:opened', [modal]);
+    modal.find('[autofocus]').first().focus();
 }
 
 function closeModal(modal) {
