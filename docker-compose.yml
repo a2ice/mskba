@@ -1,45 +1,39 @@
-name: mskbanew
+name: mskba
 
 services:
   app:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
-    container_name: mskbanew-app
+    container_name: mskba-app
     working_dir: /var/www/html
     volumes:
       - .:/var/www/html
-    ports:
-      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
     command: >
       sh -lc "
-      [ -f vendor/autoload.php ] || composer install &&
+      [ -f vendor/autoload.php ] || composer install --no-dev --optimize-autoloader &&
       php artisan config:clear &&
       php artisan migrate --force &&
-      php artisan serve --host=0.0.0.0 --port=8000
+      php-fpm
       "
 
-  node:
-    image: node:22-alpine
-    container_name: mskbanew-node
-    working_dir: /var/www/html
-    volumes:
-      - .:/var/www/html
-      - node_modules:/var/www/html/node_modules
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mskba-nginx
     ports:
-      - "5173:5173"
-    command: >
-      sh -lc "
-      npm install &&
-      npm run dev -- --host 0.0.0.0 --port 5173
-      "
+      - "8000:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
 
   db:
     image: postgres:17-alpine
-    container_name: mskbanew-db
+    container_name: mskba-db
     ports:
       - "5433:5432"
     environment:
@@ -54,22 +48,20 @@ services:
       timeout: 5s
       retries: 10
 
-  adminer:
-    image: adminer
-    container_name: mskbanew-adminer
-    restart: always
-    ports:
-      - 8080:8080
-    depends_on:
-      - db
-
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: mskbanew-mailpit
-    restart: unless-stopped
-    ports:
-      - "8026:8025"
-
+  build:
+    image: node:22-alpine
+    container_name: mskba-build
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    command: >
+      sh -lc "
+      npm ci &&
+      npm run build
+      "
+    profiles:
+      - build
 
 volumes:
   postgres_data:
