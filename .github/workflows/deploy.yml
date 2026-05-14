@@ -18,10 +18,16 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd /var/www/mskba
-            git pull origin main
-            docker compose down
-            docker compose up -d --build
-            docker compose run --rm build
+            sudo chown -R deploy:deploy .
+            git fetch origin main
+            git reset --hard origin/main
+
+            docker compose up -d --build app db nginx
+
+            sudo chown -R deploy:deploy public/build || true
+            sudo chown -R www-data:www-data storage bootstrap/cache
+            sudo chmod -R ug+rwX storage bootstrap/cache
+
             docker compose exec app php artisan optimize:clear
             docker compose exec app php artisan migrate --force
             docker compose exec app php artisan config:cache
