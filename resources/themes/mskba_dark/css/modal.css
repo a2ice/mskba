@@ -50,6 +50,11 @@
 	transform-origin: center;
 }
 
+.modal__close:hover::before,
+.modal__close:hover::after {
+	background: var(--accent-strong)
+}
+
 .modal__close::before {
 	transform: translate(-50%, -50%) rotate(45deg);
 }
@@ -65,7 +70,7 @@
 .modal-auth__title {
 	margin: 0 0 18px;
 	color: #fff;
-	font-size: 24px;
+	font-size: 20px;
 	line-height: 1.1;
 	font-weight: 800;
 }

@@ -56,13 +56,13 @@
 
         <form class="auth-form" data-auth-classic-form>
             <label class="auth-form__field">
-                <span>Контакт (email или телефон)</span>
-                <input type="text" name="contact" autocomplete="email" required autofocus>
+                <span>Email</span>
+                <input type="email" name="contact" autocomplete="email" required autofocus>
             </label>
 
             <div class="auth-form__message form-message"></div>
 
-            <button type="submit" class="btn btn--primary btn--sm auth-form__submit">Отправить инструкции</button>
+            <button type="submit" class="btn btn--primary btn--sm auth-form__submit">Получить новый пароль</button>
         </form>
 
         <p class="auth-classic__links">
