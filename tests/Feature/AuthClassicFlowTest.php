@@ -96,4 +96,18 @@ class AuthClassicFlowTest extends TestCase
         $this->assertNotNull($verification->verified_at);
         $this->assertSame(UserStatusEnum::UNCONFIRMED, $user->fresh()->status);
     }
+
+    public function test_restore_returns_temporary_not_implemented_message(): void
+    {
+        $response = $this->post(route('auth.restore'), [
+            'contact' => 'restore@example.com',
+        ]);
+
+        $response
+            ->assertStatus(501)
+            ->assertJson([
+                'status' => 'not_implemented',
+                'message' => 'Восстановление пароля пока не реализовано. Сорян, но мы работаем над этим! Прямо сейчас!!!',
+            ]);
+    }
 }
