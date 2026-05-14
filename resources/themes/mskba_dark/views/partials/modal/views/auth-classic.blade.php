@@ -54,7 +54,7 @@
     <section class="auth-classic__section" data-auth-classic-section="restore" hidden>
         <h2 class="modal-auth__title" id="modal-title-auth-entry-classic">Восстановление доступа</h2>
 
-        <form class="auth-form" data-auth-classic-form>
+        <form class="auth-form" data-auth-classic-form data-auth-classic-kind="restore" action="{{ route('auth.restore') }}" method="POST">
             <label class="auth-form__field">
                 <span>Email</span>
                 <input type="email" name="contact" autocomplete="email" required autofocus>

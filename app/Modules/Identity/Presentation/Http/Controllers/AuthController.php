@@ -47,6 +47,14 @@ class AuthController
         ], $payload['httpStatus']);
     }
 
+    public function restore(): JsonResponse
+    {
+        return response()->json([
+            'status' => 'not_implemented',
+            'message' => 'Восстановление пароля пока не реализовано. Сорян, но мы работаем над этим!',
+        ], 501);
+    }
+
     public function logout(): RedirectResponse
     {
         Auth::logout();
