@@ -205,6 +205,8 @@ body.nav-shown .nav-hamburger > span:last-child {
         width: 100%;
         height: 100%;
         padding: 100px;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(7.5px);
     }
 
     body.nav-shown .site-nav-wrapper {
@@ -287,7 +289,7 @@ body.nav-shown .nav-hamburger > span:last-child {
 }
 
 body.nav-shown main:before {
-    content: '';
+    /* content: ''; */
     position:absolute;
     top:0;
     left:0;
