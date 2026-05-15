@@ -1,0 +1,33 @@
+/* Эффект бегущей строки для логотипа */
+.logo-marquee {
+  display: inline-block;
+  position: relative;
+  width: 40px; /* подберите под ваш дизайн */
+  height: 1em;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.logo-marquee__inner {
+  display: inline-block;
+  white-space: nowrap;
+  animation: logo-marquee-move 2s linear infinite alternate-reverse;
+}
+
+@keyframes logo-marquee-move {
+  0%   { transform: translateX(-85%); }
+  100% { transform: translateX(0%); }
+}
+
+/*
+app.css: @import './logo-marquee';
+header.blade.php: добавлен HTML для логотипа с классами .logo-marquee и .logo-marquee__inner:
+<span class="brand__name">
+    MSK[
+    <span class="logo-marquee">
+        <span class="logo-marquee__inner">BASKETBALL</span>
+    </span>
+    ]
+</span>
+
+*/
