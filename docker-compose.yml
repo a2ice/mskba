@@ -59,4 +59,5 @@ services:
 
 volumes:
   postgres_data:
+    name: mskba_postgres_data
   redis_data:
