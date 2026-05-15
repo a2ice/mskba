@@ -2,7 +2,7 @@
 
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
-use App\Modules\Identity\Domain\Enums\UserRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -23,8 +23,8 @@ return new class extends Migration
                 ->nullable(); // Канал регистрации
             $table->enum('status', array_column(UserStatusEnum::cases(), 'value'))
                 ->default(UserStatusEnum::UNCONFIRMED->value);
-            $table->enum('role', array_column(UserRoleEnum::cases(), 'value'))
-                ->default(UserRoleEnum::USER->value);
+            $table->enum('system_role', array_column(UserSystemRoleEnum::cases(), 'value'))
+                ->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
