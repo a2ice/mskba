@@ -22,13 +22,13 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            docker compose up -d --build app db nginx
+            docker compose up -d --build phpfpm db redis nginx
 
             sudo chown -R deploy:deploy public/build || true
             sudo chown -R www-data:www-data storage bootstrap/cache
             sudo chmod -R ug+rwX storage bootstrap/cache
 
-            docker compose exec app php artisan optimize:clear
-            docker compose exec app php artisan migrate --force
-            docker compose exec app php artisan config:cache
-            docker compose restart app nginx
+            docker compose exec phpfpm php artisan optimize:clear
+            docker compose exec phpfpm php artisan migrate --force
+            docker compose exec phpfpm php artisan config:cache
+            docker compose restart phpfpm nginx

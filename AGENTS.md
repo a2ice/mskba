@@ -41,8 +41,10 @@
 Подробности смотри в `docs/specification.md` и `Makefile`.
 
 ```bash
-make up
+make dev
 make down
+make prod-up
+make prod-down
 make test
 make clear
 make artisan CMD='route:list'
