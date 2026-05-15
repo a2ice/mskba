@@ -21,11 +21,11 @@
             </p>
 
             <div class="home-hero__actions" aria-label="Основные действия">
-                <a class="btn btn--primary btn--lg" href="#venues">
+                <a class="btn btn--primary btn--lg js-handler" data-handler="modal" data-modal-action="open" data-modal-target="venues" href="#venues">
                     <span>Найти площадку</span>
                     <span class="btn__icon" aria-hidden="true">→</span>
                 </a>
-                <a class="btn btn--secondary btn--lg" href="#venues">
+                <a class="btn btn--secondary btn--lg js-handler" data-handler="modal" data-modal-action="open" data-modal-target="create-game" href="#venues">
                     <span>Создать игру</span>
                     <span class="btn__icon btn__icon--plus" aria-hidden="true">+</span>
                 </a>

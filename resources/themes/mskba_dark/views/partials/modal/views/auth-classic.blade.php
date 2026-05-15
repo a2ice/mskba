@@ -1,7 +1,7 @@
 <div class="modal-auth auth-classic">
 
     <section class="auth-classic__section" data-auth-classic-section="login">
-        <h2 class="modal-auth__title" id="modal-title-auth-entry-classic">Вход в аккаунт</h2>
+        <h2 class="modal-auth__title modal_title" id="modal-title-auth-entry-classic">Вход в аккаунт</h2>
 
         <form class="auth-form" action="{{ route('auth.login', [], false) }}" method="POST" data-auth-classic-form data-auth-classic-kind="login">
 
@@ -32,7 +32,7 @@
     </section>
 
     <section class="auth-classic__section" data-auth-classic-section="register" hidden>
-        <h2 class="modal-auth__title" id="modal-title-auth-entry-classic">Регистрация</h2>
+        <h2 class="modal-auth__title modal_title" id="modal-title-auth-entry-classic">Регистрация</h2>
 
         <form class="auth-form" data-auth-classic-form data-auth-classic-kind="register" action="{{ route('auth.register', [], false) }}" method="POST">
             <label class="auth-form__field">
@@ -52,7 +52,7 @@
     </section>
 
     <section class="auth-classic__section" data-auth-classic-section="restore" hidden>
-        <h2 class="modal-auth__title" id="modal-title-auth-entry-classic">Восстановление доступа</h2>
+        <h2 class="modal-auth__title modal_title" id="modal-title-auth-entry-classic">Восстановление доступа</h2>
 
         <form class="auth-form" data-auth-classic-form data-auth-classic-kind="restore" action="{{ route('auth.restore', [], false) }}" method="POST">
             <label class="auth-form__field">
