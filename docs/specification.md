@@ -10,6 +10,7 @@
 - [Документация как часть разработки](#документация-как-часть-разработки)
 - [Правила работы AI-агента](#правила-работы-ai-агента)
 - [Роли в identity-слое](#роли-в-identity-слое)
+- [Docker и окружения](#docker-и-окружения)
 - [Процесс работы с задачами](#процесс-работы-с-задачами)
 - [Git workflow](#git-workflow)
 - [Проверки качества](#проверки-качества)
@@ -23,7 +24,7 @@
 
 - Backend: Laravel, PHP 8.3+.
 - Frontend/assets: Vite, npm.
-- Docker окружение: app, nginx, PostgreSQL.
+- Docker окружение: базовый стек `phpfpm`, `nginx`, `PostgreSQL`, `Redis`; dev-надстройки задаются override-файлом.
 - Основная тема: `resources/themes/mskba_dark`.
 - Доменные части приложения находятся в `app/Modules`.
 - Внешний backlog быстрых записей ведется во внешнем файле `../backlog/todo.md`.
@@ -55,6 +56,10 @@
 
 Техническая модель системных ролей и ролей участия пользователя описана в [Identity Roles](specification/identity-roles.md).
 
+## Docker и окружения
+
+Каноническая схема окружений описана в [Docker Environment](specification/docker-environment.md). Базовый `docker-compose.yml` должен быть общим для dev и prod, а dev-only сервисы подключаются через `docker-compose.dev.yml`.
+
 ## Процесс работы с задачами
 
 Разработка ведется через задачи из `docs/tasks.md`. Для каждой задачи создается папка `docs/tasks/{NNN}` с описанием, планом, статусом и итогами. Дополнительный внешний backlog быстрых записей и важных возникающих задач ведется во внешнем файле `../backlog/todo.md`.
@@ -85,6 +90,7 @@
 
 - [Продуктовая документация](project.md)
 - [Agent Rules](specification/agent-rules.md)
+- [Docker Environment](specification/docker-environment.md)
 - [Identity Roles](specification/identity-roles.md)
 - [Правила ведения документации](specification/vedenie-dokumentatsii.md)
 - [Процесс работы с задачами](specification/protsess-raboty-s-zadachami.md)

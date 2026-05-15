@@ -1,0 +1,38 @@
+services:
+  phpfpm:
+    command: >
+      sh -lc "
+      [ -f vendor/autoload.php ] || composer install &&
+      php-fpm
+      "
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mskbanew-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  adminer:
+    image: adminer:latest
+    container_name: mskbanew-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  node:
+    image: node:22-alpine
+    container_name: mskbanew-node
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    command: >
+      sh -lc "
+      [ -x node_modules/.bin/vite ] || npm ci &&
+      tail -f /dev/null
+      "
+
+volumes:
+  node_modules:
