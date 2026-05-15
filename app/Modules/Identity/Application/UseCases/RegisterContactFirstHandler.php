@@ -11,6 +11,7 @@ use App\Modules\Identity\Application\Services\TemporaryPasswordMailer;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserProfile;
 use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use Illuminate\Support\Facades\DB;
 
@@ -45,6 +46,10 @@ class RegisterContactFirstHandler
                 'is_temp_password' => true,
                 'registration_channel' => UserRegistrationChannelEnum::SITE_CONTACT_FIRST,
                 'status' => UserStatusEnum::UNCONFIRMED,
+            ]);
+
+            UserProfile::query()->create([
+                'user_id' => $user->id,
             ]);
 
             $contact = Contact::query()->create([
