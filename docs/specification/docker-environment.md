@@ -9,6 +9,7 @@
 - [Dev-надстройка](#dev-надстройка)
 - [Именование](#именование)
 - [Команды и режимы](#команды-и-режимы)
+- [Frontend Assets](#frontend-assets)
 - [Production-подход](#production-подход)
 
 ## Назначение
@@ -73,6 +74,22 @@
 
 - `docker compose config`
 - `docker compose -f docker-compose.yml -f docker-compose.dev.yml config`
+
+## Frontend Assets
+
+Текущий production deploy не собирает frontend-ассеты на VDS. На production не запускаются `npm ci` и `npm run build`, а `node` остается dev-only сервисом.
+
+Из этого следуют правила:
+
+- если изменения затрагивают frontend-исходники (`js`, `css`, Vite entrypoints, frontend-компоненты), перед push нужно выполнить локальную сборку ассетов;
+- вместе с изменениями исходников нужно закоммитить актуальные build-артефакты из `public/build`;
+- backend-изменения, не затрагивающие frontend-ассеты, не требуют обязательной локальной asset-сборки;
+- если забыть локальную сборку и запушить только исходники, deploy может пройти успешно, но production останется со старым или неконсистентным frontend build.
+
+Рекомендуемые команды:
+
+- `make npm CMD='run build'`
+- `npm run build`
 
 ## Production-подход
 
