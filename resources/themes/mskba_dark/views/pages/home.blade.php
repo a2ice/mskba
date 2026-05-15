@@ -2,39 +2,129 @@
 
 @section('content')
 
-<section class="home-hero">
+@php
+    $currentGames = [
+        [
+            'title' => 'OPEN RUN',
+            'venue' => 'Парк Горького',
+            'time' => '19:30',
+            'players' => '8 / 10',
+            'badge' => 'Идёт',
+            'badge_variant' => 'live',
+            'image' => asset('images/home-court.png'),
+        ],
+        [
+            'title' => 'STREET GAME',
+            'venue' => 'Химки, Юбилейный пр-т',
+            'time' => '20:00',
+            'players' => '6 / 10',
+            'badge' => 'Через 20 мин',
+            'badge_variant' => 'soon',
+            'image' => asset('images/home-court.png'),
+        ],
+        [
+            'title' => '3X3 NIGHT',
+            'venue' => 'Лужники, Северное поле',
+            'time' => '21:00',
+            'players' => '4 / 6',
+            'badge' => 'Через 1 ч',
+            'badge_variant' => 'soon',
+            'image' => asset('images/home-court.png'),
+        ],
+    ];
 
-    <div class="home-hero__image">
+    $highlightItems = [
+        [
+            'title' => 'Больше площадок',
+            'description' => 'Находите и добавляйте площадки по всей Москве и области',
+            'icon' => 'pin',
+        ],
+        [
+            'title' => 'Легко собрать игру',
+            'description' => 'Создавайте игры и находите игроков любого уровня',
+            'icon' => 'group',
+        ],
+        [
+            'title' => 'Турниры и события',
+            'description' => 'Участвуйте в турнирах и следите за событиями',
+            'icon' => 'trophy',
+        ],
+        [
+            'title' => 'Проверенное сообщество',
+            'description' => 'Реальные игроки, честные рейтинги и отзывы',
+            'icon' => 'shield',
+        ],
+    ];
+
+    $liveStats = [
+        ['value' => '84', 'label' => 'игрока онлайн', 'icon' => 'group'],
+        ['value' => '12', 'label' => 'активных игр', 'icon' => 'ball'],
+        ['value' => '5', 'label' => 'турниров на неделе', 'icon' => 'trophy'],
+    ];
+@endphp
+
+<section class="home-welcome first-screen">
+    <div class="home-welcome__image">
         <img src="{{ asset('images/home-court.png') }}" role="img" aria-label="Баскетбольная площадка">
     </div>
 
-    <div class="home-hero__content">
-        <div class="home-hero__copy">
+    <div class="home-welcome__overlay"></div>
 
-            <h1>
-                Играй в баскетбол<br>
-                где и когда удобно
-            </h1>
-            <p class="home-hero__subtitle">
-                Площадки, игры и турниры —
-                всё для баскетбола в Москве и области
-            </p>
+    <div class="home-welcome__content inner">
+        <div class="home-welcome__main">
+            <div class="home-welcome__copy">
+                <p class="eyebrow home-welcome__eyebrow">
+                    Площадки • Игры • Турниры
+                </p>
 
-            <div class="home-hero__actions" aria-label="Основные действия">
-                <a class="btn btn--primary btn--lg js-handler" data-handler="modal" data-modal-action="open" data-modal-target="venues" href="#venues">
-                    <span>Найти площадку</span>
-                    <span class="btn__icon" aria-hidden="true">→</span>
-                </a>
-                <a class="btn btn--secondary btn--lg js-handler" data-handler="modal" data-modal-action="open" data-modal-target="create-game" href="#venues">
-                    <span>Создать игру</span>
-                    <span class="btn__icon btn__icon--plus" aria-hidden="true">+</span>
+                <h1 class="home-welcome__title">
+                    Играй в баскетбол<br>
+                    где и когда удобно
+                </h1>
+
+                <p class="home-welcome__subtitle">
+                    Площадки, игры и турниры<br>
+                    в Москве и области
+                </p>
+
+                <div class="home-welcome__actions" aria-label="Основные действия">
+                    <a class="btn btn--primary btn--lg home-cta js-handler" data-handler="modal" data-modal-action="open" data-modal-target="venues" href="#venues">
+                        <span class="btn__glyph home-inline-icon home-inline-icon--ball" aria-hidden="true"></span>
+                        <span class="btn__stack">
+                            <span class="btn__title">Поиграть</span>
+                            <span class="btn__subtitle">Найти игру и присоединиться</span>
+                        </span>
+                        <span class="btn__icon" aria-hidden="true">→</span>
+                    </a>
+
+                    <a class="btn btn--secondary btn--lg home-cta js-handler" data-handler="modal" data-modal-action="open" data-modal-target="create-game" href="#venues">
+                        <span class="btn__glyph btn__glyph--plus" aria-hidden="true">+</span>
+                        <span class="btn__stack">
+                            <span class="btn__title">Добавить площадку</span>
+                            <span class="btn__subtitle">Разместить площадку</span>
+                        </span>
+                        <span class="btn__icon" aria-hidden="true">→</span>
+                    </a>
+                </div>
+
+                <a class="home-welcome__how link-action" href="#highlights">
+                    <span>Как работает MSKBA</span>
+                    <span class="home-welcome__how-arrow" aria-hidden="true">→</span>
                 </a>
             </div>
 
+            @include('theme::partials.home-currently-playing', [
+                'games' => $currentGames,
+                'stats' => $liveStats,
+            ])
         </div>
     </div>
+</section>
 
-
+<section class="home-highlights-section inner" id="highlights">
+    @include('theme::partials.home-highlights', [
+        'items' => $highlightItems,
+    ])
 </section>
 
 @endsection

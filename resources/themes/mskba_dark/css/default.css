@@ -150,6 +150,43 @@ p {
     transform: translateY(-1px);
 }
 
+.btn__glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+}
+
+.btn__glyph--plus {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.btn__stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+}
+
+.btn__title {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.btn__subtitle {
+    color: rgba(255, 255, 255, 0.74);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+    text-transform: none;
+    white-space: normal;
+}
+
 .link-action {
     display: inline-flex;
     align-items: center;
