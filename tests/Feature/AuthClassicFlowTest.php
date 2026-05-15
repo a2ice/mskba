@@ -11,6 +11,7 @@ use App\Modules\ContactVerification\Domain\Models\ContactVerification;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserProfile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -39,6 +40,15 @@ class AuthClassicFlowTest extends TestCase
         $this->assertTrue($user->is_temp_password);
         $this->assertSame(UserStatusEnum::UNCONFIRMED, $user->status);
         $this->assertSame(UserRegistrationChannelEnum::SITE_CONTACT_FIRST, $user->registration_channel);
+
+        $profile = UserProfile::query()->firstOrFail();
+        $this->assertSame($user->id, $profile->user_id);
+        $this->assertNull($profile->first_name);
+        $this->assertNull($profile->last_name);
+        $this->assertNull($profile->middle_name);
+        $this->assertNull($profile->birth_date);
+        $this->assertNull($profile->gender);
+        $this->assertSame($profile->id, $user->fresh()->profile?->id);
 
         $contact = Contact::query()->firstOrFail();
         $this->assertSame('user', $contact->entity_type);
@@ -109,5 +119,20 @@ class AuthClassicFlowTest extends TestCase
                 'status' => 'not_implemented',
                 'message' => 'Восстановление пароля пока не реализовано. Сорян, но мы работаем над этим! Прямо сейчас!!!',
             ]);
+    }
+
+    public function test_user_factory_creates_related_profile(): void
+    {
+        $user = User::factory()->confirmed()->create();
+
+        $this->assertNotNull($user->fresh()->profile);
+        $this->assertDatabaseHas('user_profiles', [
+            'user_id' => $user->id,
+            'first_name' => null,
+            'last_name' => null,
+            'middle_name' => null,
+            'birth_date' => null,
+            'gender' => null,
+        ]);
     }
 }

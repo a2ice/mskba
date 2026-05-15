@@ -10,6 +10,7 @@
 - [Документация как часть разработки](#документация-как-часть-разработки)
 - [Правила работы AI-агента](#правила-работы-ai-агента)
 - [Роли в identity-слое](#роли-в-identity-слое)
+- [Профиль пользователя](#профиль-пользователя)
 - [Docker и окружения](#docker-и-окружения)
 - [Процесс работы с задачами](#процесс-работы-с-задачами)
 - [Git workflow](#git-workflow)
@@ -56,6 +57,10 @@
 
 Техническая модель системных ролей и ролей участия пользователя описана в [Identity Roles](specification/identity-roles.md).
 
+## Профиль пользователя
+
+Техническая модель базового профиля пользователя в `Identity` описана в [Identity User Profile](specification/identity-user-profile.md).
+
 ## Docker и окружения
 
 Каноническая схема окружений описана в [Docker Environment](specification/docker-environment.md). Базовый `docker-compose.yml` должен быть общим для dev и prod, а dev-only сервисы подключаются через `docker-compose.dev.yml`.
@@ -92,5 +97,6 @@
 - [Agent Rules](specification/agent-rules.md)
 - [Docker Environment](specification/docker-environment.md)
 - [Identity Roles](specification/identity-roles.md)
+- [Identity User Profile](specification/identity-user-profile.md)
 - [Правила ведения документации](specification/vedenie-dokumentatsii.md)
 - [Процесс работы с задачами](specification/protsess-raboty-s-zadachami.md)
