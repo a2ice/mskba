@@ -63,6 +63,7 @@
     ];
 @endphp
 
+
 <section class="home-welcome first-screen">
     <div class="home-welcome__image">
         <img src="{{ asset('images/home-court.png') }}" role="img" aria-label="Баскетбольная площадка">
@@ -73,13 +74,14 @@
     <div class="home-welcome__content inner">
         <div class="home-welcome__main">
             <div class="home-welcome__copy">
-                <p class="eyebrow home-welcome__eyebrow">
-                    Площадки • Игры • Турниры
+                <p class="home-welcome__eyebrow">
+                    <i class="ti ti-ball-basketball icon" aria-hidden="true"></i>
+                    <span>Площадки • Игры • Турниры</span>
                 </p>
 
                 <h1 class="home-welcome__title">
                     Играй в баскетбол<br>
-                    где и когда удобно
+                    <span class="home-welcome__title-secondline">где и когда удобно</span>
                 </h1>
 
                 <p class="home-welcome__subtitle">
@@ -89,21 +91,21 @@
 
                 <div class="home-welcome__actions" aria-label="Основные действия">
                     <a class="btn btn--primary btn--lg home-cta js-handler" data-handler="modal" data-modal-action="open" data-modal-target="venues" href="#venues">
-                        <span class="btn__glyph home-inline-icon home-inline-icon--ball" aria-hidden="true"></span>
+                        <i class="ti ti-ball-basketball icon" aria-hidden="true"></i>
                         <span class="btn__stack">
                             <span class="btn__title">Поиграть</span>
                             <span class="btn__subtitle">Найти игру и присоединиться</span>
                         </span>
-                        <span class="btn__icon" aria-hidden="true">→</span>
+                        <i class="ti ti-arrow-right icon" aria-hidden="true"></i>
                     </a>
 
                     <a class="btn btn--secondary btn--lg home-cta js-handler" data-handler="modal" data-modal-action="open" data-modal-target="create-game" href="#venues">
-                        <span class="btn__glyph btn__glyph--plus" aria-hidden="true">+</span>
+                        <i class="ti ti-plus icon" aria-hidden="true"></i>
                         <span class="btn__stack">
                             <span class="btn__title">Добавить площадку</span>
                             <span class="btn__subtitle">Разместить площадку</span>
                         </span>
-                        <span class="btn__icon" aria-hidden="true">→</span>
+                        <i class="ti ti-arrow-right icon" aria-hidden="true"></i>
                     </a>
                 </div>
 
@@ -112,11 +114,12 @@
                     <span class="home-welcome__how-arrow" aria-hidden="true">→</span>
                 </a>
             </div>
-
+            <!--
             @include('theme::partials.home-currently-playing', [
                 'games' => $currentGames,
                 'stats' => $liveStats,
             ])
+            -->
         </div>
     </div>
 </section>

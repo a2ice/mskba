@@ -14,6 +14,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>{{ $pageTitle }}</title>
         @vite($theme->viteInputs())
+        @yield('styles')
     </head>
     <body class="theme-shell {{ $routeClass }}">
         <div class="site-frame">
