@@ -90,7 +90,7 @@
                 </p>
 
                 <div class="home-welcome__actions" aria-label="Основные действия">
-                    <a class="btn btn--primary btn--lg home-cta js-handler" data-handler="modal" data-modal-action="open" data-modal-target="venues" href="#venues">
+                    <a class="btn btn--primary btn--lg home-cta js-handler has-arrow-right-hover" data-handler="modal" data-modal-action="open" data-modal-target="venues" href="#venues">
                         <i class="ti ti-ball-basketball icon" aria-hidden="true"></i>
                         <span class="btn__stack">
                             <span class="btn__title">Поиграть</span>
@@ -99,7 +99,7 @@
                         <i class="ti ti-arrow-right icon" aria-hidden="true"></i>
                     </a>
 
-                    <a class="btn btn--secondary btn--lg home-cta js-handler" data-handler="modal" data-modal-action="open" data-modal-target="create-game" href="#venues">
+                    <a class="btn btn--secondary btn--lg home-cta js-handler has-arrow-right-hover" data-handler="modal" data-modal-action="open" data-modal-target="create-game" href="#venues">
                         <i class="ti ti-plus icon" aria-hidden="true"></i>
                         <span class="btn__stack">
                             <span class="btn__title">Добавить площадку</span>
@@ -109,9 +109,9 @@
                     </a>
                 </div>
 
-                <a class="home-welcome__how link-action" href="#highlights">
-                    <span>Как работает MSKBA</span>
-                    <span class="home-welcome__how-arrow" aria-hidden="true">→</span>
+                <a class="home-welcome__how link-action has-arrow-right-hover" href="#highlights">
+                    <span>О проекте </span>
+                    <i class="ti ti-arrow-right icon" aria-hidden="true"></i>
                 </a>
             </div>
             <!--
