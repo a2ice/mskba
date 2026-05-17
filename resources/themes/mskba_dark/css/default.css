@@ -187,13 +187,6 @@ p {
     white-space: normal;
 }
 
-.has-arrow-right-hover .ti-arrow-right {
-    transition: transform 160ms ease;
-}
-.has-arrow-right-hover:hover .ti-arrow-right {
-    transform: translateX(8px);
-}
-
 .link-action {
     display: inline-flex;
     align-items: center;
@@ -280,8 +273,12 @@ p {
     display: none !important;
 }
 
-/* .inner {
-    width: 100%;
-    max-width: var(--inner-width);
-    padding: 0 var(--spacing);
-} */
+
+/* trnasitions */
+
+.has-arrow-right-hover .ti-arrow-right {
+    transition: transform 160ms ease;
+}
+.has-arrow-right-hover:hover .ti-arrow-right {
+    transform: translateX(8px);
+}
