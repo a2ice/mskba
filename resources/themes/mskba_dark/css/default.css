@@ -23,6 +23,8 @@
     --radius-panel: 4px;
     --spacing: 15px;
     --inner-width: 1390px;
+    --link-color: #fff;
+    --link-color-hover: var(--accent);
 }
 
 * {

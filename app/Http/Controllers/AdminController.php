@@ -11,7 +11,11 @@ class AdminController extends Controller
 
     public function index()
     {
-        return 'check';
         return view($this->themeResolver->view('pages.admin.index'));
+    }
+
+    public function users()
+    {
+        return view($this->themeResolver->view('pages.admin.users'));
     }
 }
