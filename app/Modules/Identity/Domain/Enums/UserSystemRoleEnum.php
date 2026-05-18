@@ -31,4 +31,9 @@ enum UserSystemRoleEnum: string
             self::USER => 20,
         };
     }
+
+    public function atLeast(UserSystemRoleEnum $other): bool
+    {
+        return $this->numericValue() >= $other->numericValue();
+    }
 }
