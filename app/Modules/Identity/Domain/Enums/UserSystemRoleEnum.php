@@ -32,8 +32,8 @@ enum UserSystemRoleEnum: string
         };
     }
 
-    public function atLeast(UserSystemRoleEnum $other): bool
+    public function atLeast(UserSystemRoleEnum $atLeastRole): bool
     {
-        return $this->numericValue() >= $other->numericValue();
+        return $this->numericValue() >= $atLeastRole->numericValue();
     }
 }
