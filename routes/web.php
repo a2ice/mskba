@@ -37,9 +37,15 @@ Route::middleware('auth')->group(function () {
 
 // admin panel grouped by auth and admin middleware
 Route::prefix('admin')
-	->middleware(['auth', 'admin'])
+	->middleware(['auth'])
 	->group(function () {
-		Route::get('/', [AdminController::class, 'index'])->name('admin.index');
+		Route::get('/', [AdminController::class, 'index'])
+			->middleware('admin:access-admin-panel')
+			->name('admin.index');
+
+		Route::get('/users', [AdminController::class, 'users'])
+			->middleware('admin:manage-users')
+			->name('admin.users');
 });
 
 

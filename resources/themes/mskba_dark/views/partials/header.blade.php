@@ -1,6 +1,8 @@
 @php
     use Illuminate\Support\Str;
 
+    $user = auth()->user();
+
     $navItems = [
         ['label' => 'Площадки', 'href' => '#tournaments', 'active' => request()->routeIs('venues.index')],
         ['label' => 'Игры', 'href' => '#tournaments', 'active' => request()->routeIs('events.index')],
@@ -8,11 +10,16 @@
         ['label' => 'Новости', 'href' => '#news', 'active' => false],
         ['label' => 'Контакты', 'href' => '#contscts', 'active' => false],
     ];
-    $user = auth()->user();
+
+    if(auth()->user()?->can('access-admin-panel')) {
+        $navItems[] = ['label' => 'Админка', 'href' => route('admin.index'), 'active' => request()->routeIs('admin.*')];
+    }
+
     $userLogin = $user?->login === null ? null : (string) $user->login;
     $userLoginLabel = $userLogin !== null && Str::length($userLogin) > 15
         ? Str::substr($userLogin, 0, 12).'...'
         : $userLogin;
+
 @endphp
 
 <header class="site-header">

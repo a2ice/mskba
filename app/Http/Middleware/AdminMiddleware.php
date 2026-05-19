@@ -7,15 +7,16 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Modules\Access\Application\Services\Authorization\AdminAccess;
 
 class AdminMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  Closure(Request): (Response)  $next
-     */
-    public function handle(Request $request, Closure $next): Response
+
+    public function __construct(
+        private AdminAccess $adminAccess,
+    ) {}
+
+    public function handle(Request $request, Closure $next, string $ability = 'access-admin-panel'): Response
     {
         $user = $request->user();
 
@@ -23,14 +24,11 @@ class AdminMiddleware
             return redirect()->route('login');
         }
 
-        if ($user->status !== UserStatusEnum::CONFIRMED) {
-            abort(403, 'Forbidden: Unconfirmed account');
-        }
-
-        if(! $user->system_role || ! $user->system_role?->atLeast(UserSystemRoleEnum::ADMIN)) {
-            abort(403, 'Forbidden: Insufficient permissions');
+        if (! $user->can($ability)) {
+            abort(403, 'Forbidden');
         }
 
         return $next($request);
+
     }
 }

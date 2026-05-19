@@ -22,13 +22,12 @@ body {
     --hero-line: rgba(255, 255, 255, 0.14);
 }
 
-a {
+a:not([class*="btn"]) {
     color: var(--link-color);
-    text-decoration: none;
-    transition: color 160ms ease;
 }
 
-a:hover {
+a:not([class*="btn"]):hover,
+a:not([class*="btn"]).current {
     color: var(--link-color-hover);
 }
 
