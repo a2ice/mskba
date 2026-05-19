@@ -32,7 +32,9 @@ Route::get('/auth/logout', [AuthController::class, 'logout'])
 
 // account middleware authorized users grouped by auth
 Route::middleware('auth')->group(function () {
-	Route::get('/account', [AccountController::class, 'index'])->name('account');
+	Route::get('/account', [AccountController::class, 'index'])
+		->name('account')
+		->defaults('breadcrumb', 'Личный кабинет');
 });
 
 // admin panel grouped by auth and admin middleware
@@ -41,11 +43,13 @@ Route::prefix('admin')
 	->group(function () {
 		Route::get('/', [AdminController::class, 'index'])
 			->middleware('admin:access-admin-panel')
-			->name('admin.index');
+			->name('admin.index')
+			->defaults('breadcrumb', 'Админка');
 
 		Route::get('/users', [AdminController::class, 'users'])
 			->middleware('admin:manage-users')
-			->name('admin.users');
+			->name('admin.users')
+			->defaults('breadcrumb', 'Пользователи');
 });
 
 
