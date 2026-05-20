@@ -1,6 +1,10 @@
 @extends('theme::layouts.admin', ['title' => 'Админка - Главная'])
 
 @section('admin_content')
-<h1>Главная</h1>
-Главная страница админки. Здесь будет общая статистика, последние действия и т.п.
+<div class="content-header">
+    <h3 class="content-header__title content-title">Дэшборд</h3>
+</div>
+<div class="content-body">
+    <p>Здесь будет общая статистика, последние действия и т.п.</p>
+</div>
 @endsection

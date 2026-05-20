@@ -1,6 +1,6 @@
 <nav class="admin-nav">
     <ul>
-        <li><a href="{{ route('admin.index') }}" class="{{ request()->routeIs('admin.index') ? 'current' : '' }}">Главная</a></li>
+        <li><a href="{{ route('admin.index') }}" class="{{ request()->routeIs('admin.index') ? 'current' : '' }}">Дэшборд</a></li>
 
         @can('manage-users')
             <li><a href="{{ route('admin.users') }}" class="{{ request()->routeIs('admin.users') ? 'current' : '' }}">Пользователи</a></li>
