@@ -25,6 +25,7 @@
     --inner-width: 1390px;
     --link-color: #fff;
     --link-color-hover: var(--accent);
+    --row-highlight: rgba(156, 203, 185, 0.1);
 }
 
 * {
@@ -76,6 +77,8 @@ p {
     min-height: 100vh;
 }
 
+
+/* buttons */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -271,8 +274,92 @@ p {
     accent-color: var(--accent-strong);
 }
 
+/* display */
 .d-none {
     display: none !important;
+}
+.d-block {
+    display: block !important;
+}
+.d-inline-block {
+    display: inline-block !important;
+}
+.d-flex {
+    display: flex !important;
+}
+.d-inline-flex {
+    display: inline-flex !important;
+}
+.d-grid {
+    display: grid !important;
+}
+
+/* badge */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: var(--radius-control);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    color: #fff
+}
+.badge--primary {
+    background: var(--accent);
+}
+.badge--secondary {
+    background: var(--text);
+}
+.badge--default {
+    background: var(--muted);
+}
+.badge--success {
+    background: var(--court);
+}
+.badge--error {
+    background: var(--accent-strong);
+}
+.badge--danger {
+    background: var(--accent-strong);
+}
+
+/* measures */
+.w-full, .w-100 {
+    width: 100% !important;
+}
+.h-full, .h-100 {
+    height: 100% !important;
+}
+
+/* table */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.table thead {
+    background: var(--surface-raised);
+    color: var(--muted);
+    font-size: 1.05rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.table th,
+.table td {
+    padding: 12px 16px;
+    border: 1px solid var(--line);
+    text-align: left;
+}
+.table tbody tr {
+    transition: background-color 160ms ease;
+}
+.table tbody tr:hover {
+    background-color: var(--surface-raised);
+}
+.table-row--highlighted {
+    background-color: var(--row-highlight);
 }
 
 

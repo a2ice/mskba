@@ -50,6 +50,11 @@ Route::prefix('admin')
 			->middleware('admin:manage-users')
 			->name('admin.users')
 			->defaults('breadcrumb', 'Пользователи');
+
+		Route::get('/users/{id}', [AdminController::class, 'user'])
+			->middleware('admin:manage-users')
+			->name('admin.users.user')
+			->defaults('breadcrumb', 'Пользователь');
 });
 
 

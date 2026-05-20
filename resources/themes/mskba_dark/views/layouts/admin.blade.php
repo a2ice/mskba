@@ -8,11 +8,11 @@
             @include('theme::partials.breadcrumbs')
         </div>
         <div class="section-content">
-            <div class="flex flex-row gap-4">
-                <aside class="col-3">
+            <div class="grid gap-8 lg:grid-cols-[150px_minmax(0,1fr)]">
+                <aside>
                     @include('theme::partials.innermenu.adminmainmenu')
                 </aside>
-                <div class="col-9">
+                <div class="min-w-0">
                     @yield('admin_content')
                 </div>
             </div>
