@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
-#[Signature('make:module {name : Bounded context name} {--force : Overwrite generated files if they already exist}')]
+#[Signature('make:module {name : Bounded context name} {--m|model : Create the main Eloquent model} {--force : Overwrite generated files if they already exist}')]
 #[Description('Create a bounded context module structure in app/Modules')]
 class MakeModuleCommand extends Command
 {
@@ -20,6 +20,8 @@ class MakeModuleCommand extends Command
         $rawName = (string) $this->argument('name');
         $moduleName = Str::studly(str_replace(['-', '_', '/', '\\'], ' ', $rawName));
 
+        $ifCreateModel = $this->option('model');
+
         if ($moduleName === '' || ! preg_match('/^[A-Z][A-Za-z0-9]*$/', $moduleName)) {
             $this->error('Module name must contain only letters, digits, dashes, underscores, or spaces.');
 
@@ -27,8 +29,9 @@ class MakeModuleCommand extends Command
         }
 
         $modulePath = app_path("Modules/{$moduleName}");
+        $moduleExists = File::exists($modulePath);
 
-        if (File::exists($modulePath) && ! $this->option('force')) {
+        if ($moduleExists && ! $this->option('force')) {
             $this->error("Module [{$moduleName}] already exists. Use --force to add missing files.");
 
             return self::FAILURE;
@@ -38,7 +41,9 @@ class MakeModuleCommand extends Command
             $path = "{$modulePath}/{$directory}";
 
             File::ensureDirectoryExists($path);
-            $this->writeFile("{$path}/.gitkeep", '');
+            if($path !== "{$modulePath}/Domain/Models" && !$ifCreateModel) {
+                $this->writeFile("{$path}/.gitkeep", '');
+            }
         }
 
         $this->writeFile(
@@ -46,7 +51,16 @@ class MakeModuleCommand extends Command
             $this->readme($moduleName),
         );
 
-        $this->info("Module [{$moduleName}] created at app/Modules/{$moduleName}.");
+        if ($ifCreateModel) {
+            $this->writeFile(
+                "{$modulePath}/Domain/Models/{$moduleName}.php",
+                $this->model($moduleName),
+            );
+        }
+
+        $action = $moduleExists ? 'updated' : 'created';
+
+        $this->info("Module [{$moduleName}] {$action} at app/Modules/{$moduleName}.");
 
         return self::SUCCESS;
     }
@@ -57,22 +71,19 @@ class MakeModuleCommand extends Command
     private function directories(): array
     {
         return [
-            'Application/Commands',
             'Application/DTO',
-            'Application/Queries',
             'Application/Services',
-            'Domain/Entities',
+            'Application/UseCases',
             'Domain/Enums',
             'Domain/Events',
             'Domain/Exceptions',
-            'Domain/Repositories',
+            'Domain/Models',
             'Domain/ValueObjects',
-            'Infrastructure/Persistence',
+            'Infrastructure/ACL',
             'Infrastructure/Providers',
             'Presentation/Http/Controllers',
             'Presentation/Http/Requests',
             'Presentation/Http/Resources',
-            'Presentation/routes',
             'Tests/Feature',
             'Tests/Unit',
         ];
@@ -96,12 +107,33 @@ Bounded context module.
 
 ## Structure
 
-- `Domain`: business rules, entities, value objects, repository contracts.
-- `Application`: use cases, commands, queries, DTOs, application services.
-- `Infrastructure`: persistence, integrations, service providers.
-- `Presentation`: HTTP controllers, requests, resources, routes.
+- `Domain`: business models, enums, events, exceptions, value objects.
+- `Application`: use cases, DTOs, application services.
+- `Infrastructure`: ACL, integrations, service providers.
+- `Presentation`: HTTP controllers, requests, resources.
 - `Tests`: module-level feature and unit tests.
 
 MARKDOWN;
+    }
+
+    private function model(string $moduleName): string
+    {
+        $table = Str::snake(Str::pluralStudly($moduleName));
+
+        return <<<PHP
+<?php
+
+namespace App\Modules\\{$moduleName}\Domain\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class {$moduleName} extends Model
+{
+    protected \$table = '{$table}';
+
+    protected \$guarded = [];
+}
+
+PHP;
     }
 }

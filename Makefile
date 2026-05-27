@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := help
+ .DEFAULT_GOAL := help
 
 PHP := php
 COMPOSER := composer
@@ -27,6 +27,8 @@ help:
 	@echo "  make logs            Tail Laravel logs with Pail"
 	@echo "  make shell           Open Tinker"
 	@echo "  make module name=... Create bounded context module"
+	@echo "  make module name=... model=1 Create module with main model"
+	@echo "  make module name=... force=1 Update existing module"
 
 install:
 	$(COMPOSER) install
@@ -93,4 +95,4 @@ module:
 ifndef name
 	$(error Usage: make module name=Billing)
 endif
-	$(ARTISAN) make:module $(name)
+	$(ARTISAN) make:module $(name) $(if $(model),--model,) $(if $(force),--force,)
