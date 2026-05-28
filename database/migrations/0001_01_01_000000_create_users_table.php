@@ -1,5 +1,8 @@
 <?php
 
+use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -13,19 +16,28 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('username')->unique()->nullable();
+            $table->string('password')->nullable();
+            $table->boolean('is_temporary_password')->nullable();
+            $table->enum('registration_channel', array_column(UserRegistrationChannelEnum::cases(), 'value'))->nullable();
+            $table->enum('system_role', array_column(UserSystemRoleEnum::cases(), 'value'))->nullable();
+            $table->enum('status', array_column(UserStatusEnum::cases(), 'value'))
+                ->default(UserStatusEnum::UNCONFIRMED->value);
+
+            /* $table->string('name');
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->string('password'); */
+
             $table->rememberToken();
             $table->timestamps();
         });
 
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
+        /* Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
-        });
+        }); */
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();

@@ -4,8 +4,9 @@ PHP := php
 COMPOSER := composer
 NPM := npm
 ARTISAN := $(PHP) artisan
+DOCKER_COMPOSE := docker compose
 
-.PHONY: help install update dev serve vite build test lint format migrate fresh seed cache-clear optimize-clear queue logs shell module
+.PHONY: help install update dev serve vite build test lint format migrate fresh seed cache-clear optimize-clear queue logs shell up down restart db-up db-down db-restart db-logs module delete-module
 
 help:
 	@echo "Available commands:"
@@ -26,9 +27,16 @@ help:
 	@echo "  make queue           Run queue worker"
 	@echo "  make logs            Tail Laravel logs with Pail"
 	@echo "  make shell           Open Tinker"
+	@echo "  make db-up           Start PostgreSQL"
+	@echo "  make db-down         Stop PostgreSQL"
+	@echo "  make db-restart      Restart PostgreSQL"
+	@echo "  make db-logs         Tail PostgreSQL logs"
 	@echo "  make module name=... Create bounded context module"
 	@echo "  make module name=... model=1 Create module with main model"
+	@echo "  make module name=... model=Account Create module with named model"
+	@echo "  make module name=... model=Account migration=1 Create model with migration"
 	@echo "  make module name=... force=1 Update existing module"
+	@echo "  make delete-module name=... force=1 Delete bounded context module"
 
 install:
 	$(COMPOSER) install
@@ -68,6 +76,9 @@ migrate:
 	$(ARTISAN) migrate
 
 fresh:
+	$(ARTISAN) migrate:fresh
+
+fresh-seed:
 	$(ARTISAN) migrate:fresh --seed
 
 seed:
@@ -91,8 +102,35 @@ logs:
 shell:
 	$(ARTISAN) tinker
 
+up:
+	$(DOCKER_COMPOSE) up -d
+
+down:
+	$(DOCKER_COMPOSE) down
+
+restart:
+	$(DOCKER_COMPOSE) restart
+
+db-up:
+	$(DOCKER_COMPOSE) up -d postgres
+
+db-down:
+	$(DOCKER_COMPOSE) down
+
+db-restart:
+	$(DOCKER_COMPOSE) restart postgres
+
+db-logs:
+	$(DOCKER_COMPOSE) logs -f postgres
+
 module:
 ifndef name
 	$(error Usage: make module name=Billing)
 endif
-	$(ARTISAN) make:module $(name) $(if $(model),--model,) $(if $(force),--force,)
+	$(ARTISAN) make:module $(name) $(if $(model),$(if $(filter 1 true yes,$(model)),--model,--model=$(model)),) $(if $(migration),--migration,) $(if $(force),--force,)
+
+delete-module:
+ifndef name
+	$(error Usage: make delete-module name=Billing force=1)
+endif
+	$(ARTISAN) delete:module $(name) $(if $(force),--force,)

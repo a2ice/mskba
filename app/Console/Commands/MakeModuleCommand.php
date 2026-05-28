@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
-#[Signature('make:module {name : Bounded context name} {--m|model : Create the main Eloquent model} {--force : Overwrite generated files if they already exist}')]
+#[Signature('make:module {name : Bounded context name} {--m|model= : Create the main Eloquent model. Pass a value to set model name} {--migration : Create a migration for the generated model} {--force : Overwrite generated files if they already exist}')]
 #[Description('Create a bounded context module structure in app/Modules')]
 class MakeModuleCommand extends Command
 {
@@ -20,10 +20,31 @@ class MakeModuleCommand extends Command
         $rawName = (string) $this->argument('name');
         $moduleName = Str::studly(str_replace(['-', '_', '/', '\\'], ' ', $rawName));
 
-        $ifCreateModel = $this->option('model');
-
         if ($moduleName === '' || ! preg_match('/^[A-Z][A-Za-z0-9]*$/', $moduleName)) {
             $this->error('Module name must contain only letters, digits, dashes, underscores, or spaces.');
+
+            return self::FAILURE;
+        }
+
+        $modelName = $this->modelName($moduleName);
+
+        if ($modelName !== null && ! preg_match('/^[A-Z][A-Za-z0-9]*$/', $modelName)) {
+            $this->error('Model name must contain only letters, digits, dashes, underscores, or spaces.');
+
+            return self::FAILURE;
+        }
+
+        if ($this->option('migration') && $modelName === null) {
+            $this->error('The --migration option requires --model.');
+
+            return self::FAILURE;
+        }
+
+        $tableName = $modelName === null ? null : $this->tableName($modelName);
+        $migrationPath = $tableName === null ? null : $this->migrationPath($tableName);
+
+        if ($this->option('migration') && $migrationPath !== null && File::exists($migrationPath) && ! $this->option('force')) {
+            $this->error("Migration for table [{$tableName}] already exists. Use --force to overwrite it.");
 
             return self::FAILURE;
         }
@@ -41,7 +62,8 @@ class MakeModuleCommand extends Command
             $path = "{$modulePath}/{$directory}";
 
             File::ensureDirectoryExists($path);
-            if($path !== "{$modulePath}/Domain/Models" && !$ifCreateModel) {
+
+            if ($directory !== 'Domain/Models' || $modelName === null) {
                 $this->writeFile("{$path}/.gitkeep", '');
             }
         }
@@ -51,10 +73,17 @@ class MakeModuleCommand extends Command
             $this->readme($moduleName),
         );
 
-        if ($ifCreateModel) {
+        if ($modelName !== null) {
             $this->writeFile(
-                "{$modulePath}/Domain/Models/{$moduleName}.php",
-                $this->model($moduleName),
+                "{$modulePath}/Domain/Models/{$modelName}.php",
+                $this->model($moduleName, $modelName, $tableName),
+            );
+        }
+
+        if ($this->option('migration') && $tableName !== null && $migrationPath !== null) {
+            $this->writeFile(
+                $migrationPath,
+                $this->migration($tableName),
             );
         }
 
@@ -98,6 +127,23 @@ class MakeModuleCommand extends Command
         File::put($path, $contents);
     }
 
+    private function modelName(string $moduleName): ?string
+    {
+        $hasModelOption = $this->input->hasParameterOption(['--model', '-m'], true);
+
+        if (! $hasModelOption) {
+            return null;
+        }
+
+        $model = $this->option('model');
+
+        if ($model === null || $model === '' || $model === true || $model === '1' || $model === 'true') {
+            return $moduleName;
+        }
+
+        return Str::studly(str_replace(['-', '_', '/', '\\'], ' ', (string) $model));
+    }
+
     private function readme(string $moduleName): string
     {
         return <<<MARKDOWN
@@ -116,9 +162,27 @@ Bounded context module.
 MARKDOWN;
     }
 
-    private function model(string $moduleName): string
+    private function tableName(string $modelName): string
     {
-        $table = Str::snake(Str::pluralStudly($moduleName));
+        return Str::snake(Str::pluralStudly($modelName));
+    }
+
+    private function migrationPath(string $tableName): string
+    {
+        $existingMigrations = File::glob(database_path("migrations/*_create_{$tableName}_table.php"));
+
+        if ($existingMigrations !== []) {
+            sort($existingMigrations);
+
+            return (string) end($existingMigrations);
+        }
+
+        return database_path('migrations/'.date('Y_m_d_His')."_create_{$tableName}_table.php");
+    }
+
+    private function model(string $moduleName, string $modelName, string $tableName): string
+    {
+        $table = $tableName;
 
         return <<<PHP
 <?php
@@ -126,13 +190,59 @@ MARKDOWN;
 namespace App\Modules\\{$moduleName}\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 
-class {$moduleName} extends Model
+#[Fillable([])]
+#[Hidden([])]
+class {$modelName} extends Model
 {
-    protected \$table = '{$table}';
+    // protected \$table = '{$table}';
 
-    protected \$guarded = [];
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [];
+    }
 }
+
+PHP;
+    }
+
+    private function migration(string $tableName): string
+    {
+        return <<<PHP
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('{$tableName}', function (Blueprint \$table): void {
+            \$table->id();
+            \$table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('{$tableName}');
+    }
+};
 
 PHP;
     }
