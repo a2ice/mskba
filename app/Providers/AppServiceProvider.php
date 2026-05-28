@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +13,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Bind the ThemeResolver as a singleton in the service container
+        $this->app->singleton(ThemeResolver::class, function () {
+            return new ThemeResolver(config('themes'));
+        });
     }
 
     /**
@@ -19,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register the theme's view namespace
+        View::addNamespace('theme', app(ThemeResolver::class)->viewsPath());
     }
 }
