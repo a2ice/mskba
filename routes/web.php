@@ -34,4 +34,5 @@ Route::middleware('auth')->group(function () {
 
 	// Profile route
 	Route::get('/account', [AccountController::class, 'index'])->name('account');
+	Route::get('/account/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
 });
