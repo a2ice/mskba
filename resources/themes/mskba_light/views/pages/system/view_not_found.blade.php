@@ -9,7 +9,7 @@
 
             <div class="section-content">
                 <p>К сожалению, запрошенная страница '{{ $page }}' не найдена. Возможно, она была удалена или перемещена.</p>
-                <a href="{{ route('welcome') }}" class="btn btn-primary">Вернуться на главную</a>
+                <a href="javascript:history.back()" class="btn btn-primary">Назад</a>
             </div>
         </div>
     </section>

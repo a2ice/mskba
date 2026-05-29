@@ -4,16 +4,13 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Presentation\Theming\ThemeResolver;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
-use App\Modules\Identity\Domain\Models\User;
 
 class AccountController extends Controller
 {
     public function index(): View
     {
-        /** @var User|null $user */
-        $user = Auth::user();
+        $user = request()->user();
 
         if(!$user) {
             abort(403, 'Unauthorized');

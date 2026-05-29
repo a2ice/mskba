@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 
+use App\Presentation\Theming\ThemeResolver;
+
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
-use App\Presentation\Theming\ThemeResolver;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 
 $themeResolver = app(ThemeResolver::class);
 
@@ -28,7 +30,8 @@ Route::post('/auth/logout', [AuthController::class, 'logout'])
     ->name('auth.logout');
 
 Route::prefix('venues')->group(function () use ($themeResolver) {
-	Route::get('/', fn () => $themeResolver->page('venues.index'))->name('venues');
+	Route::get('/', [VenueController::class, 'index'])->name('venues');
+	Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 
 // Group routes for authenticated users
