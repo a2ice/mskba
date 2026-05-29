@@ -3,16 +3,36 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Identity\Application\UseCases\AuthHandler;
-use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
     public function index(): View
     {
-        return view('theme::pages.profile');
+        $user = Auth::user();
+
+        if(!$user) {
+            abort(403, 'Unauthorized');
+        }
+
+        $user->load('profile', 'participationRoles');
+
+        if($user->participationRoles) {
+            $participationRoleLabels = $user->participationRoles
+                ->map(fn ($participationRole) => $participationRole->role->label())
+                ->join(', ');
+            $user->participation_role_labels = $participationRoleLabels;
+        }
+
+        $data = ['user' => $user];
+
+        return ThemeResolver::page('profile', $data);
+    }
+
+    public function contracts(): View
+    {
+        return ThemeResolver::page('profile.contracts');
     }
 }

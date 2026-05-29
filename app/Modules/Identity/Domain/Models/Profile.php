@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 #[Fillable([
     'user_id',
@@ -30,6 +31,13 @@ class Profile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected function age(): Attribute
+    {
+        return Attribute::get(
+            fn () => $this->birth_date?->age
+        );
     }
 
     /**

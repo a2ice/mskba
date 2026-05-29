@@ -3,6 +3,9 @@
 namespace Database\Seeders;
 
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -101,11 +104,30 @@ class DatabaseSeeder extends Seeder
                 'gender' => $gender,
                 'birth_date' => fake()->date(),
             ]);
+
+            collect(UserParticipationRoleEnum::cases())
+                ->shuffle()
+                ->take(rand(0, 3))
+                ->each(function (UserParticipationRoleEnum $role) use ($user): void {
+                    $status = rand(0, 1) ? UserParticipationRoleStatusEnum::ACTIVE->value : UserParticipationRoleStatusEnum::INACTIVE->value;
+
+                    $user->participationRoles()->create([
+                        'role' => $role->value,
+                        'status' => $status,
+                        'assigned_at' => fake()->dateTimeBetween('-1 year', 'now'),
+                        'expires_at' => fake()->dateTimeBetween('now', '+1 year'),
+                        'assigned_by' => null,
+                        'assigner' => UserParticipationRoleAssignerEnum::SEEDER->value,
+                        'comment' => fake()->sentence(),
+                    ]);
+                });
+
         }
 
         // create regular users with profiles
         User::factory(10)
             ->has(Profile::factory())
             ->create();
+
     }
 }

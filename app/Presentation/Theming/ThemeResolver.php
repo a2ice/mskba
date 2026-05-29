@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Presentation\Theming;
+use Illuminate\View\View;
 
 class ThemeResolver
 {
@@ -31,6 +32,18 @@ class ThemeResolver
     public function view(string $name): string
     {
         return 'theme::'.$name;
+    }
+
+    public static function page(string $name, array $data = []): View
+    {
+        $view = 'theme::pages.'.$name;
+        $viewExists = view()->exists($view);
+        if (!$viewExists) {
+            $view = 'theme::pages.system.view_not_found';
+            $data['page'] = $name;
+            $data['view_error'] = "View for page '$name' not found.";
+        }
+        return view($view, $data);
     }
 
     public function viteInputs(): array
