@@ -11,6 +11,9 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -128,6 +131,64 @@ class DatabaseSeeder extends Seeder
         User::factory(10)
             ->has(Profile::factory())
             ->create();
+
+        $venues = [
+            [
+                'name' => 'Баскетбольный зал МСКБА',
+                'alias' => 'mskba-basketball-hall',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Основной зал для игр и тренировок.',
+            ],
+            [
+                'name' => 'Школа N 2107',
+                'alias' => 'school-2107',
+                'type' => VenueTypeEnum::SCHOOL->value,
+                'description' => 'Школьная площадка для матчей районного уровня.',
+            ],
+            [
+                'name' => 'Спорткомплекс Олимп',
+                'alias' => 'olimp-sports-complex',
+                'type' => VenueTypeEnum::SPORTS_COMPLEX->value,
+                'description' => 'Универсальный спорткомплекс с баскетбольной разметкой.',
+            ],
+            [
+                'name' => 'Арена Север',
+                'alias' => 'arena-sever',
+                'type' => VenueTypeEnum::ARENA->value,
+                'description' => 'Арена для турниров и финальных игр.',
+            ],
+            [
+                'name' => 'Университетский зал МГУ',
+                'alias' => 'msu-university-hall',
+                'type' => VenueTypeEnum::UNIVERSITY->value,
+                'description' => 'Зал для студенческих соревнований.',
+            ],
+            [
+                'name' => 'Площадка Парк Победы',
+                'alias' => 'park-pobedy-court',
+                'type' => VenueTypeEnum::STREET_COURT->value,
+                'description' => 'Открытая площадка для 3x3 и любительских игр.',
+            ],
+            [
+                'name' => 'ФОК Динамо',
+                'alias' => 'dinamo-sports-complex',
+                'type' => VenueTypeEnum::SPORTS_COMPLEX->value,
+                'description' => 'Физкультурно-оздоровительный комплекс для регулярных матчей.',
+            ],
+            [
+                'name' => 'Школьный зал Лицей',
+                'alias' => 'lyceum-school-hall',
+                'type' => VenueTypeEnum::SCHOOL->value,
+                'description' => 'Компактный школьный зал для тренировок.',
+            ],
+        ];
+
+        foreach ($venues as $venue) {
+            Venue::factory()->create([
+                ...$venue,
+                'status' => rand(0, 1) ? VenueStatusEnum::CONFIRMED->value : VenueStatusEnum::UNCONFIRMED->value,
+            ]);
+        }
 
     }
 }

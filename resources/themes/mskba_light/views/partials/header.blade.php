@@ -7,6 +7,13 @@
                     <a href="{{ route('welcome') }}" class="nav-link">Главная</a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('venues') }}" class="nav-link">Площадки</a>
+                </li>
+            </ul>
+        </nav>
+        <nav class="account-nav">
+            <ul class="nav">
+                <li class="nav-item">
                     <a href="{{ route('account') }}" class="nav-link">
                         {{ $user ? $user->username : 'Аккаунт' }}
                     </a>

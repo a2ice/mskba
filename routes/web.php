@@ -4,17 +4,20 @@ use Illuminate\Support\Facades\Route;
 
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
+use App\Presentation\Theming\ThemeResolver;
 
-Route::get('/', function () {
-    return view('theme::pages.welcome');
+$themeResolver = app(ThemeResolver::class);
+
+Route::get('/', function () use ($themeResolver) {
+    return $themeResolver->page('welcome');
 })->name('welcome');
 
-Route::get('/login', function () {
-    return view('theme::pages.auth.login');
+Route::get('/login', function () use ($themeResolver) {
+    return $themeResolver->page('auth.login');
 })->name('login');
 
-Route::get('/register', function () {
-    return view('theme::pages.auth.register');
+Route::get('/register', function () use ($themeResolver) {
+    return $themeResolver->page('auth.register');
 })->name('register');
 
 Route::post('/auth/login', [AuthController::class, 'login'])
@@ -24,15 +27,18 @@ Route::post('/auth/login', [AuthController::class, 'login'])
 Route::post('/auth/logout', [AuthController::class, 'logout'])
     ->name('auth.logout');
 
+Route::prefix('venues')->group(function () use ($themeResolver) {
+	Route::get('/', fn () => $themeResolver->page('venues.index'))->name('venues');
+});
 
 // Group routes for authenticated users
-Route::middleware('auth')->group(function () {
+Route::middleware('auth')->group(function () use ($themeResolver) {
 	// Dashboard route
-	Route::get('/dashboard', function () {
-		return view('theme::pages.dashboard');
-	})->name('dashboard');
+	Route::get('/dashboard', fn () => $themeResolver->page('dashboard'))->name('dashboard');
 
-	// Profile route
-	Route::get('/account', [AccountController::class, 'index'])->name('account');
-	Route::get('/account/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
+	// Account routes
+	Route::prefix('account')->group(function () {
+		Route::get('/', [AccountController::class, 'index'])->name('account');
+		Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
+	});
 });
