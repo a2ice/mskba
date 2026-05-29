@@ -7,8 +7,8 @@
                     <a href="{{ route('welcome') }}" class="nav-link">Главная</a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('profile') }}" class="nav-link">
-                        {{ $user ? $user->username : 'Профиль' }}
+                    <a href="{{ route('account') }}" class="nav-link">
+                        {{ $user ? $user->username : 'Аккаунт' }}
                     </a>
                 </li>
             </ul>

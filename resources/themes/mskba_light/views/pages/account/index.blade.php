@@ -1,10 +1,10 @@
-@extends('theme::layouts.app', ['title' => 'Профиль'])
+@extends('theme::layouts.app', ['title' => 'Аккаунт'])
 
 @section('content')
-    <section id="profile" class="profile-section py-5">
+    <section id="account" class="account-section py-5">
         <div class="container">
             <div class="section-heading">
-                <h1 class="mb-4">Профиль пользователя</h1>
+                <h1 class="mb-4">Аккаунт</h1>
             </div>
 
             <div class="section-content">

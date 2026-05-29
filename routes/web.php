@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
-use App\Modules\Identity\Presentation\Http\Controllers\ProfileController;
+use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 
 Route::get('/', function () {
     return view('theme::pages.welcome');
@@ -33,5 +33,5 @@ Route::middleware('auth')->group(function () {
 	})->name('dashboard');
 
 	// Profile route
-	Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+	Route::get('/account', [AccountController::class, 'index'])->name('account');
 });

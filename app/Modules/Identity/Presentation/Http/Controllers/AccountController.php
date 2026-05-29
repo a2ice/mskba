@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use App\Modules\Identity\Domain\Models\User;
 
-class ProfileController extends Controller
+class AccountController extends Controller
 {
     public function index(): View
     {
@@ -30,11 +30,11 @@ class ProfileController extends Controller
 
         $data = ['user' => $user];
 
-        return ThemeResolver::page('profile', $data);
+        return ThemeResolver::page('account.index', $data);
     }
 
     public function contracts(): View
     {
-        return ThemeResolver::page('profile.contracts');
+        return ThemeResolver::page('account.contracts');
     }
 }
