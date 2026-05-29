@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -75,10 +76,36 @@ class DatabaseSeeder extends Seeder
             'last_name' => 'Пользователь',
         ]);
 
+        $count = 10;
+
+        for ($i = 0; $i < $count; $i++) {
+            $index = $i + 1;
+
+            $is_temporary_password = (bool) rand(0, 1);
+            $status = rand(0, 1) ? UserStatusEnum::CONFIRMED->value : UserStatusEnum::UNCONFIRMED->value;
+
+            $user = User::factory()->create([
+                'username' => 'user_'.$index,
+                'password' => 'Asdqwe12#',
+                'is_temporary_password' => $is_temporary_password,
+                'registration_channel' => UserRegistrationChannelEnum::SEED->value,
+                'system_role' => UserSystemRoleEnum::USER->value,
+                'status' => $status,
+            ]);
+
+            $gender = rand(0, 2) ? UserGenderEnum::MALE->value : UserGenderEnum::FEMALE->value;
+
+            $user->profile()->create([
+                'first_name' => fake()->firstName(),
+                'last_name' => fake()->lastName(),
+                'gender' => $gender,
+                'birth_date' => fake()->date(),
+            ]);
+        }
+
         // create regular users with profiles
         User::factory(10)
             ->has(Profile::factory())
             ->create();
-
     }
 }
