@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use App\Modules\Identity\Domain\Models\User;
 
 class ProfileController extends Controller
 {
     public function index(): View
     {
+        /** @var User|null $user */
         $user = Auth::user();
 
         if(!$user) {
