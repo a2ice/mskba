@@ -2,6 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Enums\ContractSubjectTypeEnum;
+use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -11,6 +14,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -190,5 +194,57 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        $contractUsers = User::query()
+            ->whereIn('username', ['user_1', 'user_2', 'admin'])
+            ->get();
+
+        $contractVenues = Venue::query()
+            ->orderBy('id')
+            ->take(4)
+            ->get();
+
+        $contractUsers->each(function (User $user) use ($contractVenues): void {
+            
+            $contractVenues
+                ->shuffle()
+                ->take(rand(1, 3))
+                ->each(function (Venue $venue) use ($user): void {
+                    $subject_type = rand(0, 1) ? ContractSubjectTypeEnum::VENUE->value : ContractSubjectTypeEnum::EVENT->value;
+
+                    Contract::query()->create([
+                        'user_id' => $user->id,
+                        'subject_type' => $subject_type,
+                        'subject_id' => $venue->id,
+                        'permission' => VenuePermissionEnum::VIEW->value,
+                        'status' => ContractStatusEnum::ACTIVE->value,
+                        'starts_at' => fake()->dateTimeBetween('-1 month', 'now'),
+                        'expires_at' => fake()->dateTimeBetween('+1 month', '+1 year'),
+                    ]);
+
+                    if (rand(0, 1)) {
+                        Contract::query()->create([
+                            'user_id' => $user->id,
+                            'subject_type' => $subject_type,
+                            'subject_id' => $venue->id,
+                            'permission' => VenuePermissionEnum::EDIT->value,
+                            'status' => ContractStatusEnum::ACTIVE->value,
+                            'starts_at' => fake()->dateTimeBetween('-1 month', 'now'),
+                            'expires_at' => fake()->dateTimeBetween('+1 month', '+1 year'),
+                        ]);
+                    }
+
+                    if (rand(0, 1)) {
+                        Contract::query()->create([
+                            'user_id' => $user->id,
+                            'subject_type' => $subject_type,
+                            'subject_id' => $venue->id,
+                            'permission' => VenuePermissionEnum::EDIT_SCHEDULE->value,
+                            'status' => ContractStatusEnum::ACTIVE->value,
+                            'starts_at' => fake()->dateTimeBetween('-1 month', 'now'),
+                            'expires_at' => fake()->dateTimeBetween('+1 month', '+1 year'),
+                        ]);
+                    }
+                });
+        });
     }
 }

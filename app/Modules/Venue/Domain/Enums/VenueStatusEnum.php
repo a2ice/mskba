@@ -18,4 +18,9 @@ enum VenueStatusEnum: string
             self::REMOVED => 'Удалён',
         };
     }
+
+    public function isPubliclyVisible(): bool
+    {
+        return $this === self::CONFIRMED;
+    }
 }

@@ -10,6 +10,8 @@ final readonly class VenueListItemDTO
         public string $alias,
         public string $status,
         public ?string $description,
+        public bool $canView,
         public bool $canEdit,
+        public bool $canEditSchedule,
     ) {}
 }

@@ -9,7 +9,7 @@
 
             <div class="section-content">
                 @foreach ($venues as $venue)
-                    <div class="venue-item">
+                    <div class="venue-item mb-5">
                         <h5>
                             <a href="{{ route('venues.show', $venue->alias) }}">
                                 {{ $venue->name }}
@@ -20,6 +20,7 @@
                         @if ($venue->canEdit)
                             <a href="{{ route('venues.edit', $venue->id) }}" class="btn btn-primary">Редактировать</a>
                         @endif
+                    <hr>
                     </div>
                 @endforeach
             </div>

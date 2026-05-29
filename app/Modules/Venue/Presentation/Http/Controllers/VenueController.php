@@ -3,9 +3,9 @@
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Venue\Application\UseCases\ListVenues;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\View\View;
-use App\Modules\Venue\Application\UseCases\ListVenues;
 
 class VenueController extends Controller
 {

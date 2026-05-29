@@ -32,6 +32,7 @@ Route::post('/auth/logout', [AuthController::class, 'logout'])
 Route::prefix('venues')->group(function () use ($themeResolver) {
 	Route::get('/', [VenueController::class, 'index'])->name('venues');
 	Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
+	Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
 });
 
 // Group routes for authenticated users
