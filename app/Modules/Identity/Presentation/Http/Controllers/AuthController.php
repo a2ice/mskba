@@ -19,15 +19,23 @@ class AuthController extends Controller
             remember: $request->boolean('remember'),
         );
 
+        $redirectedFrom = url()->previous();
+        $redirectTo = url('/');
+
+         // Prevent open redirect vulnerabilities
+        if ($redirectedFrom && str_starts_with($redirectedFrom, url('/'))) {
+            $redirectTo = $redirectedFrom;
+        }
+
         if ($result->status === 'error') {
             return back()->withInput($request->only('login', 'remember'))->withErrors(['login' => $result->message]);
         }
 
         if ($result->status === 'warning') {
-            return redirect()->intended('/')->with('warning', $result->message);
+            return redirect()->intended($redirectTo)->with('warning', $result->message);
         }
 
-        return redirect()->intended('/')->with('success', $result->message);
+        return redirect()->intended($redirectTo)->with('success', $result->message);
     }
 
     public function logout(AuthHandler $authHandler): RedirectResponse

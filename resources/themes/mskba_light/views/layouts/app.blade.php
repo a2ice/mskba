@@ -3,6 +3,8 @@
     $pageTitle = isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA');
 
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
+
+    $user = auth()->user();
 @endphp
 
 <!DOCTYPE html>
