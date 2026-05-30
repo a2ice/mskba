@@ -34,10 +34,6 @@
                 <span class="fw-bold">{{ $user->profile->middle_name }}</span>
             </li>
             <li class="list-unstyled mb-2">
-                Отчество:
-                <span class="fw-bold">{{ $user->profile->middle_name }}</span>
-            </li>
-            <li class="list-unstyled mb-2">
                 Пол:
                 <span class="fw-bold">{{ $user->profile->gender->label() }}</span>
             </li>

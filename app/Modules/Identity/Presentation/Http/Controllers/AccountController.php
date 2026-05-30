@@ -47,6 +47,16 @@ class AccountController extends Controller
         return ThemeResolver::page('account.index', $data);
     }
 
+    public function settings(): Response
+    {
+        return ThemeResolver::page('account.settings');
+    }
+
+    public function contacts(): Response
+    {
+        return ThemeResolver::page('account.contacts');
+    }
+
     public function contracts(ListAccountContracts $listAccountContracts): Response
     {
         try {

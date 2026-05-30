@@ -29,25 +29,25 @@
                     </thead>
                     <tbody>
                         @foreach ($contracts as $contract)
-                    <tr>
-                        <td>{{ $contract->id }}</td>
-                        <td>
-                            <a href="{{ route('account.contracts.show', $contract->id) }}">{{ $contract->number ?? '—' }}</a>
-                        </td>
-                        <td>{{ $contract->status }}</td>
-                        <td>{{ $contract->startsAt ?? '—' }}</td>
-                        <td>{{ $contract->expiresAt ?? '—' }}</td>
-                        <td>
-                            @forelse ($contract->venues as $venue)
-                                <div>
-                                    <a href="{{ route('venues.show', $venue['alias']) }}">{{ $venue['name'] }}</a>
-                                    <code>{{ $venue['permissions'] }}</code>
-                                </div>
-                            @empty
-                                —
-                            @endforelse
-                        </td>
-                    </tr>
+                            <tr>
+                                <td>{{ $contract->id }}</td>
+                                <td>
+                                    <a href="{{ route('account.contracts.show', $contract->id) }}">{{ $contract->number ?? '—' }}</a>
+                                </td>
+                                <td>{{ $contract->status }}</td>
+                                <td>{{ $contract->startsAt ?? '—' }}</td>
+                                <td>{{ $contract->expiresAt ?? '—' }}</td>
+                                <td>
+                                    @forelse ($contract->venues as $venue)
+                                        <div>
+                                            <a href="{{ route('venues.show', $venue['alias']) }}">{{ $venue['name'] }}</a>
+                                            <code>{{ $venue['permissions'] }}</code>
+                                        </div>
+                                    @empty
+                                        —
+                                    @endforelse
+                                </td>
+                            </tr>
                         @endforeach
                     </tbody>
                 </table>

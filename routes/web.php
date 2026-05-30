@@ -43,6 +43,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 	// Account routes
 	Route::prefix('account')->group(function () {
 		Route::get('/', [AccountController::class, 'index'])->name('account');
+		Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
+		Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
 		Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
 		Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
 		Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');

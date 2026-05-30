@@ -24,19 +24,18 @@ final class AccountMenu implements MenuHandler
 
         if ($user) {
 
-            $items = [
-                [
-                    'label' => 'Профиль',
-                    'url' => route('account'),
-                    'active' => request()->routeIs('account'),
-                    'visible' => true,
-                ],
-                [
-                    'label' => 'Контакты',
-                    'url' => route('account'),
-                    'active' => false,
-                    'visible' => true,
-                ],
+            $items[] = [
+                'label' => 'Настройки',
+                'url' => route('account.settings'),
+                'active' => request()->routeIs('account.settings'),
+                'visible' => true,
+            ];
+
+            $items[] = [
+                'label' => 'Контакты',
+                'url' => route('account.contacts'),
+                'active' => request()->routeIs('account.contacts'),
+                'visible' => true,
             ];
 
             if($user->isConfirmed()) {
