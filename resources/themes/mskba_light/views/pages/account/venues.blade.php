@@ -1,4 +1,7 @@
-@php $venues = isset($venues) ? $venues : null; @endphp
+@php 
+    $venues = isset($venues) ? $venues : null;
+    $user = isset($user) ? $user : auth()->user();
+@endphp
 
 @extends('theme::layouts.account', ['title' => 'Мои площадки'])
 
@@ -31,5 +34,9 @@
                 </div>
             @endforeach 
         @endif
+
+        @can('add_venue', $user)
+            <a href="#" class="btn btn-success">Добавить площадку</a>
+        @endcan
     @endif
 @endsection
