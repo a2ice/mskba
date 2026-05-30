@@ -2,6 +2,7 @@
 
 namespace App\Presentation\Theming;
 use Illuminate\View\View;
+use Illuminate\Http\Response;
 
 class ThemeResolver
 {
@@ -34,8 +35,9 @@ class ThemeResolver
         return 'theme::'.$name;
     }
 
-    public static function page(string $name, array $data = []): View
+    public static function page(string $name, array $data = []): Response
     {
+        $statusCode = isset($data['error']['code']) ? $data['error']['code'] : 200;
         $view = 'theme::pages.'.$name;
         $viewExists = view()->exists($view);
         if (!$viewExists) {
@@ -43,7 +45,7 @@ class ThemeResolver
             $data['page'] = $name;
             $data['view_error'] = "View for page '$name' not found.";
         }
-        return view($view, $data);
+        return response()->view($view, $data, $statusCode ?? 200);
     }
 
     public function viteInputs(): array

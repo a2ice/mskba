@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Presentation\Navigation\ConfigMenuResolver;
+use App\Presentation\Navigation\MenuResolver;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -17,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ThemeResolver::class, function () {
             return new ThemeResolver(config('themes'));
         });
+
+        $this->app->singleton(MenuResolver::class, ConfigMenuResolver::class);
     }
 
     /**

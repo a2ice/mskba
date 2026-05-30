@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 
 final class VenueAccessResolver
@@ -17,17 +18,17 @@ final class VenueAccessResolver
             return true;
         }
 
-        return $user !== null && $this->contracts->canView($user, $venue);
+        return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::VIEW);
     }
 
     public function canEdit(?User $user, Venue $venue): bool
     {
-        return $user !== null && $this->contracts->canEdit($user, $venue);
+        return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::EDIT);
     }
 
     public function canEditSchedule(?User $user, Venue $venue): bool
     {
-        return $user !== null && $this->contracts->canEditSchedule($user, $venue);
+        return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::EDIT_SCHEDULE);
     }
 
     /**
@@ -35,7 +36,15 @@ final class VenueAccessResolver
      */
     public function contractViewableVenueIdsFor(?User $user): array
     {
-        return $user === null ? [] : $this->contracts->viewableVenueIdsFor($user);
+        return $user === null ? [] : $this->contracts->allowedVenueIdsFor($user, VenuePermissionEnum::VIEW);
+    }
+
+    /**
+     * @return array<int>
+     */
+    public function contractedVenueIdsFor(?User $user): array
+    {
+        return $user === null ? [] : $this->contracts->contractedVenueIdsFor($user);
     }
 
     /**
@@ -43,7 +52,7 @@ final class VenueAccessResolver
      */
     public function contractEditableVenueIdsFor(?User $user): array
     {
-        return $user === null ? [] : $this->contracts->editableVenueIdsFor($user);
+        return $user === null ? [] : $this->contracts->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT);
     }
 
     /**
@@ -51,6 +60,6 @@ final class VenueAccessResolver
      */
     public function contractScheduleEditableVenueIdsFor(?User $user): array
     {
-        return $user === null ? [] : $this->contracts->scheduleEditableVenueIdsFor($user);
+        return $user === null ? [] : $this->contracts->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT_SCHEDULE);
     }
 }

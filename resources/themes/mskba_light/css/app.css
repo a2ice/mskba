@@ -2,6 +2,7 @@
 @import 'bootstrap';
 @import '../../../css/default.css';
 @import 'user';
+@import 'menu';
 
 @source '../views/**/*.blade.php';
 @source '../../../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';

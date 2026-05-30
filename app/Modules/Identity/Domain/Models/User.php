@@ -43,6 +43,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function isBlocked(): bool
+    {
+        return $this->status === UserStatusEnum::BLOCKED;
+    }
+
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class);

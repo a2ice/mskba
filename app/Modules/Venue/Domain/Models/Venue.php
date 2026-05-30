@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'alias', 'type', 'status', 'description'])]
 #[Hidden([])]
@@ -20,6 +21,11 @@ class Venue extends Model
     protected static function newFactory(): VenueFactory
     {
         return VenueFactory::new();
+    }
+
+    public function venueContracts(): HasMany
+    {
+        return $this->hasMany(VenueContract::class);
     }
 
     /**

@@ -8,38 +8,42 @@ use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 
+use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
+
 final class ListVenues
 {
     public function __construct(
-        private readonly VenueAccessResolver $access,
+        private readonly VenueAccessResolver $accessResolver,
+        private readonly ListVenuesBuilder $listVenuesBuilder,
     ) {}
 
     public function handle(?User $user): array
     {
-        $contractViewableVenueIds = $this->access->contractViewableVenueIdsFor($user);
-        $contractEditableVenueIds = $this->access->contractEditableVenueIdsFor($user);
-        $contractScheduleEditableVenueIds = $this->access->contractScheduleEditableVenueIdsFor($user);
+        $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
+        $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
+        $contractScheduleEditableVenueIds = $this->accessResolver->contractScheduleEditableVenueIdsFor($user);
 
-        return Venue::query()
-            ->where(function ($query) use ($contractViewableVenueIds): void {
-                $query->where('status', VenueStatusEnum::CONFIRMED->value);
-
-                if ($contractViewableVenueIds !== []) {
-                    $query->orWhereIn('id', $contractViewableVenueIds);
-                }
-            })
-            ->orderBy('id', 'asc')
-            ->get()
-            ->map(fn (Venue $venue) => new VenueListItemDTO(
+        $result = $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds): void {
+            $query->where('status', VenueStatusEnum::CONFIRMED->value)
+                ->orWhereIn('id', $contractViewableVenueIds);
+        })
+        ->get()
+        ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds) {
+            return new VenueListItemDTO(
                 id: $venue->id,
                 name: $venue->name,
                 alias: $venue->alias,
+                type: $venue->type->label(),
                 status: $venue->status->label(),
                 description: $venue->description,
-                canView: true,
+                canView: in_array($venue->id, $contractViewableVenueIds, true),
                 canEdit: in_array($venue->id, $contractEditableVenueIds, true),
                 canEditSchedule: in_array($venue->id, $contractScheduleEditableVenueIds, true),
-            ))
-            ->all();
+            );
+        })
+        ->all();
+
+        return $result;
+
     }
 }

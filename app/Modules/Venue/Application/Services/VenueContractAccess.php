@@ -2,82 +2,71 @@
 
 namespace App\Modules\Venue\Application\Services;
 
-use App\Modules\Contract\Application\Contracts\ContractAccessInterface;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueContract;
+use Illuminate\Database\Eloquent\Builder;
 
 final class VenueContractAccess
 {
-    private const SUBJECT_TYPE = 'venue';
-
-    public function __construct(
-        private readonly ContractAccessInterface $contracts,
-    ) {}
-
-    public function canView(User $user, Venue $venue): bool
+    public function allows(User $user, Venue $venue, VenuePermissionEnum $permission): bool
     {
-        return $this->contracts->allows(
-            user: $user,
-            subjectType: self::SUBJECT_TYPE,
-            subjectId: $venue->id,
-            permission: VenuePermissionEnum::VIEW->value,
-        );
-    }
-
-    public function canEdit(User $user, Venue $venue): bool
-    {
-        return $this->contracts->allows(
-            user: $user,
-            subjectType: self::SUBJECT_TYPE,
-            subjectId: $venue->id,
-            permission: VenuePermissionEnum::EDIT->value,
-        );
-    }
-
-    public function canEditSchedule(User $user, Venue $venue): bool
-    {
-        return $this->contracts->allows(
-            user: $user,
-            subjectType: self::SUBJECT_TYPE,
-            subjectId: $venue->id,
-            permission: VenuePermissionEnum::EDIT_SCHEDULE->value,
-        );
+        return $this->baseQuery($user, $permission)
+            ->where('venue_id', $venue->id)
+            ->exists();
     }
 
     /**
      * @return array<int>
      */
-    public function viewableVenueIdsFor(User $user): array
+    public function allowedVenueIdsFor(User $user, VenuePermissionEnum $permission): array
     {
-        return $this->contracts->allowedSubjectIds(
-            user: $user,
-            subjectType: self::SUBJECT_TYPE,
-            permission: VenuePermissionEnum::VIEW->value,
-        );
+        return $this->baseQuery($user, $permission)
+            ->distinct()
+            ->pluck('venue_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
     }
 
     /**
      * @return array<int>
      */
-    public function editableVenueIdsFor(User $user): array
+    public function contractedVenueIdsFor(User $user): array
     {
-        return $this->contracts->allowedSubjectIds(
-            user: $user,
-            subjectType: self::SUBJECT_TYPE,
-            permission: VenuePermissionEnum::EDIT->value,
-        );
+        return $this->baseContractQuery($user)
+            ->distinct()
+            ->pluck('venue_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
     }
 
-    /**
-     * @return array<int>
-     */
-    public function scheduleEditableVenueIdsFor(User $user): array
+    private function baseContractQuery(User $user): Builder
     {
-        return $this->contracts->allowedSubjectIds(
-            user: $user,
-            subjectType: self::SUBJECT_TYPE,
-            permission: VenuePermissionEnum::EDIT_SCHEDULE->value,
-        );
+        $now = now();
+
+        return VenueContract::query()
+            ->whereHas('contract', function (Builder $query) use ($user, $now): void {
+                $query
+                    ->where('user_id', $user->id)
+                    ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(function (Builder $query) use ($now): void {
+                        $query
+                            ->whereNull('starts_at')
+                            ->orWhere('starts_at', '<=', $now);
+                    })
+                    ->where(function (Builder $query) use ($now): void {
+                        $query
+                            ->whereNull('expires_at')
+                            ->orWhere('expires_at', '>', $now);
+                    });
+            });
+    }
+
+    private function baseQuery(User $user, VenuePermissionEnum $permission): Builder
+    {
+        return $this->baseContractQuery($user)
+            ->whereHas('permissions', fn (Builder $query) => $query->where('permission', $permission->value));
     }
 }
