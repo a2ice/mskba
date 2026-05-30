@@ -43,6 +43,21 @@ class User extends Authenticatable
         ];
     }
 
+    public function hasSystemRole(UserSystemRoleEnum|string $role): bool
+    {
+        return $this->system_role === $role;
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->participationRoles()->where('role', $role)->exists();
+    }
+
+    public function isConfirmed(): bool
+    {
+        return $this->status === UserStatusEnum::CONFIRMED;
+    }
+
     public function isBlocked(): bool
     {
         return $this->status === UserStatusEnum::BLOCKED;
