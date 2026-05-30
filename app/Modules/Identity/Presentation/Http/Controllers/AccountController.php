@@ -3,17 +3,16 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-
-use App\Presentation\Theming\ThemeResolver;
-use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
-
-
 use App\Modules\Contract\Application\UseCases\ListAccountContracts;
 use App\Modules\Contract\Application\UseCases\ShowAccountContract;
+use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
+use App\Modules\Venue\Application\UseCases\CreateAccountVenue;
 use App\Modules\Venue\Application\UseCases\ListAccountVenues;
 use App\Modules\Venue\Application\UseCases\ShowVenue;
-
-use Illuminate\View\View;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 
 class AccountController extends Controller
@@ -114,6 +113,34 @@ class AccountController extends Controller
         ]);
     }
 
+    public function createVenue(): Response
+    {
+        try {
+            $user = $this->accountCheckForPresentationService->handle(request()->user());
+        } catch (\Exception $e) {
+            return ThemeResolver::page('account.venue-create', ['error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        abort_unless($user->can('add_venue'), 403);
+
+        return ThemeResolver::page('account.venue-create', [
+            'types' => VenueTypeEnum::cases(),
+        ]);
+    }
+
+    public function storeVenue(CreateVenueRequest $request, CreateAccountVenue $createAccountVenue): RedirectResponse
+    {
+        $user = $this->accountCheckForPresentationService->handle($request->user());
+        $venue = $createAccountVenue->handle($user, $request->validated());
+
+        return redirect()
+            ->route('account.venues.show', $venue->alias)
+            ->with('status', 'Площадка добавлена и ожидает подтверждения.');
+    }
+
     public function showVenue(string $alias, ShowVenue $showVenue): Response
     {
         try {
@@ -137,5 +164,13 @@ class AccountController extends Controller
         return ThemeResolver::page('account.venue', [
             'venue' => $venue,
         ]);
+    }
+
+    public function editVenue(string $alias): Response
+    {
+        return ThemeResolver::page('account.venue', ['error' => [
+            'message' => 'Редактирование площадки будет реализовано отдельно.',
+            'code' => 501,
+        ]]);
     }
 }

@@ -1,0 +1,66 @@
+@php $types = isset($types) ? $types : []; @endphp
+
+@extends('theme::layouts.account', ['title' => 'Добавить площадку'])
+
+@section('account-content')
+    @if(isset($error))
+        <div class="alert alert-danger">
+            {{ $error['message'] }}
+        </div>
+    @endif
+
+    <form method="POST" action="{{ route('account.venues.store') }}">
+        @csrf
+
+        <div class="mb-3">
+            <label for="venueName" class="form-label">Название</label>
+            <input
+                id="venueName"
+                type="text"
+                name="name"
+                class="form-control @error('name') is-invalid @enderror"
+                value="{{ old('name') }}"
+                required
+            >
+            @error('name')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="mb-3">
+            <label for="venueType" class="form-label">Тип площадки</label>
+            <select
+                id="venueType"
+                name="type"
+                class="form-select @error('type') is-invalid @enderror"
+                required
+            >
+                <option value="">Выберите тип</option>
+                @foreach ($types as $type)
+                    <option value="{{ $type->value }}" @selected(old('type') === $type->value)>
+                        {{ $type->label() }}
+                    </option>
+                @endforeach
+            </select>
+            @error('type')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="mb-3">
+            <label for="venueDescription" class="form-label">Описание</label>
+            <textarea
+                id="venueDescription"
+                name="description"
+                class="form-control @error('description') is-invalid @enderror"
+                rows="5"
+            >{{ old('description') }}</textarea>
+            @error('description')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <button type="submit" class="btn btn-success">Добавить</button>
+        <a href="{{ route('account.venues') }}" class="btn btn-link">Отмена</a>
+    </form>
+@endsection

@@ -22,11 +22,13 @@ final class ListAccountVenues
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
         $contractScheduleEditableVenueIds = $this->accessResolver->contractScheduleEditableVenueIdsFor($user);
 
-        return $this->listVenuesBuilder->build(function ($query) use ($contractedVenueIds): void {
-            $query->whereIn('id', $contractedVenueIds);
+        return $this->listVenuesBuilder->build(function ($query) use ($contractedVenueIds, $user): void {
+            $query
+                ->whereIn('id', $contractedVenueIds)
+                ->when($user !== null, fn ($query) => $query->orWhere('created_by_user_id', $user->id));
         })
             ->get()
-            ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds) {
+            ->map(function (Venue $venue) use ($user, $contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds) {
                 return new VenueListItemDTO(
                     id: $venue->id,
                     name: $venue->name,
@@ -34,11 +36,16 @@ final class ListAccountVenues
                     type: $venue->type->label(),
                     status: $venue->status->label(),
                     description: $venue->description,
-                    canView: in_array($venue->id, $contractViewableVenueIds, true),
-                    canEdit: in_array($venue->id, $contractEditableVenueIds, true),
+                    canView: $this->isOwnedByCurrentUser($venue, $user) || in_array($venue->id, $contractViewableVenueIds, true),
+                    canEdit: $this->isOwnedByCurrentUser($venue, $user) || in_array($venue->id, $contractEditableVenueIds, true),
                     canEditSchedule: in_array($venue->id, $contractScheduleEditableVenueIds, true),
                 );
             })
             ->all();
+    }
+
+    private function isOwnedByCurrentUser(Venue $venue, ?User $user): bool
+    {
+        return $user !== null && $venue->created_by_user_id === $user->id;
     }
 }

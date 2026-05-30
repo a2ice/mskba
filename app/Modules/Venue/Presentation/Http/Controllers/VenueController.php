@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Modules\Venue\Application\UseCases\ListVenues;
 use App\Modules\Venue\Application\UseCases\ShowVenue;
 use App\Presentation\Theming\ThemeResolver;
-use Illuminate\View\View;
 use Illuminate\Http\Response;
 
 class VenueController extends Controller
@@ -33,5 +32,13 @@ class VenueController extends Controller
         }
 
         return ThemeResolver::page('venues.show', ['venue' => $venue]);
+    }
+
+    public function edit(string $alias): Response
+    {
+        return ThemeResolver::page('venues.show', ['error' => [
+            'message' => 'Редактирование площадки будет реализовано отдельно.',
+            'code' => 501,
+        ]]);
     }
 }

@@ -18,11 +18,19 @@ final class VenueAccessResolver
             return true;
         }
 
+        if ($this->isCreator($user, $venue)) {
+            return true;
+        }
+
         return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::VIEW);
     }
 
     public function canEdit(?User $user, Venue $venue): bool
     {
+        if ($this->isCreator($user, $venue)) {
+            return true;
+        }
+
         return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::EDIT);
     }
 
@@ -61,5 +69,10 @@ final class VenueAccessResolver
     public function contractScheduleEditableVenueIdsFor(?User $user): array
     {
         return $user === null ? [] : $this->contracts->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT_SCHEDULE);
+    }
+
+    private function isCreator(?User $user, Venue $venue): bool
+    {
+        return $user !== null && $venue->created_by_user_id === $user->id;
     }
 }

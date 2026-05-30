@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Modules\Venue\Application\UseCases;
+
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Domain\Models\Venue;
+use Illuminate\Support\Str;
+
+final class CreateAccountVenue
+{
+    /**
+     * @param  array{name: string, type: string, description?: string|null}  $data
+     */
+    public function handle(User $user, array $data): Venue
+    {
+        return Venue::query()->create([
+            'created_by_user_id' => $user->id,
+            'name' => $data['name'],
+            'alias' => $this->makeUniqueAlias($data['name']),
+            'type' => VenueTypeEnum::from($data['type'])->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+            'description' => $data['description'] ?? null,
+        ]);
+    }
+
+    private function makeUniqueAlias(string $name): string
+    {
+        $baseAlias = Str::slug($name);
+
+        if ($baseAlias === '') {
+            $baseAlias = 'venue';
+        }
+
+        $alias = $baseAlias;
+        $counter = 2;
+
+        while (Venue::query()->where('alias', $alias)->exists()) {
+            $alias = "{$baseAlias}-{$counter}";
+            $counter++;
+        }
+
+        return $alias;
+    }
+}

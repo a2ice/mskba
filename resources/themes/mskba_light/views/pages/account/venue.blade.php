@@ -11,6 +11,12 @@
         </div>
     @endif
 
+    @if(session('status'))
+        <div class="alert alert-success">
+            {{ session('status') }}
+        </div>
+    @endif
+
     @if($venue !== null)
         <ul class="list-unstyled mb-4">
             <li class="mb-3">
@@ -28,10 +34,10 @@
         </ul>
 
         <div class="d-flex gap-2">
-            <a href="{{ route('venues') }}" class="btn btn-outline-secondary">К списку</a>
+            <a href="{{ route('account.venues') }}" class="btn btn-outline-secondary">К списку</a>
 
             @if ($venue->canEdit)
-                <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
+                <a href="{{ route('account.venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
             @endif
 
             @if ($venue->canEditSchedule)

@@ -26,7 +26,7 @@ Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('guest', 'throttle:5,1')
     ->name('auth.login');
 
-Route::post('/auth/logout', [AuthController::class, 'logout'])
+Route::get('/auth/logout', [AuthController::class, 'logout'])
     ->name('auth.logout');
 
 Route::prefix('venues')->group(function () use ($themeResolver) {
@@ -48,6 +48,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 		Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
 		Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
 		Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');
+		Route::get('/venues/create', [AccountController::class, 'createVenue'])->name('account.venues.create');
+		Route::post('/venues', [AccountController::class, 'storeVenue'])->name('account.venues.store');
 		Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
 		Route::get('/venues/{alias}/edit', [AccountController::class, 'editVenue'])->name('account.venues.edit');
 	});

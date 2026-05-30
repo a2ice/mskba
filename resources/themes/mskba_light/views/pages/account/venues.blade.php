@@ -36,7 +36,7 @@
         @endif
 
         @can('add_venue', $user)
-            <a href="#" class="btn btn-success">Добавить площадку</a>
+            <a href="{{ route('account.venues.create') }}" class="btn btn-success">Добавить площадку</a>
         @endcan
     @endif
 @endsection
