@@ -3,17 +3,23 @@
 namespace App\Modules\Contract\Application\UseCases;
 
 use App\Modules\Contract\Application\DTO\AccountContractDetailsDTO;
+use App\Modules\Contract\Domain\Enums\ContractPartyTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractTypesEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Identity\Domain\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Modules\Contract\Domain\Enums\ContractTypesEnum;
 
-final class ShowAccountContract
+final class ShowAccountContractHandler
 {
     public function handle(string $number, User $user): AccountContractDetailsDTO
     {
         $contract = Contract::query()
-            ->where('user_id', $user->id)
+            ->whereHas('parties', function (Builder $query) use ($user): void {
+                $query
+                    ->where('party_type', ContractPartyTypeEnum::USER->value)
+                    ->where('party_id', $user->id);
+            })
             ->where(function ($query) use ($number): void {
                 $query->where('number', $number);
 
@@ -25,7 +31,7 @@ final class ShowAccountContract
             ->first();
 
         if ($contract === null) {
-            throw (new ModelNotFoundException())->setModel(Contract::class, [$number]);
+            throw (new ModelNotFoundException)->setModel(Contract::class, [$number]);
         }
 
         return new AccountContractDetailsDTO(

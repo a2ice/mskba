@@ -3,13 +3,31 @@
 namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Identity\Application\DTO\LoginResponseDTO;
+use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 
 class AuthHandler
 {
+    public function __construct(
+        private readonly CreateUserAccountHandler $createUser,
+    ) {}
+
+    public function register(string $username, string $password): User
+    {
+        return $this->createUser->handle(
+            username: $username,
+            password: $password,
+            registrationChannel: UserRegistrationChannelEnum::SITE_FULL_REGISTRATION,
+            systemRole: UserSystemRoleEnum::USER,
+            status: UserStatusEnum::UNCONFIRMED,
+            isTemporaryPassword: false,
+        );
+    }
+
     public function login(string $login, string $password, bool $remember): LoginResponseDTO
     {
         $user = User::where('username', $login)->first();

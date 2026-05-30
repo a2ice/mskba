@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['username', 'password', 'is_temporary_password', 'status', 'system_role', 'registration_channel'])]
+#[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'status', 'system_role', 'registration_channel'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -37,6 +37,7 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'is_temporary_password' => 'boolean',
+            'password_updated_at' => 'datetime',
             'registration_channel' => UserRegistrationChannelEnum::class,
             'system_role' => UserSystemRoleEnum::class,
             'status' => UserStatusEnum::class,

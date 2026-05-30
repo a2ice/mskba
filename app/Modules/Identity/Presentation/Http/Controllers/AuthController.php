@@ -5,10 +5,25 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
+use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
 use Illuminate\Http\RedirectResponse;
 
 class AuthController extends Controller
 {
+    public function register(RegisterRequest $request, AuthHandler $authHandler): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $authHandler->register(
+            username: $validated['username'],
+            password: $validated['password'],
+        );
+
+        return redirect()
+            ->route('login')
+            ->with('success', 'Регистрация завершена. Теперь можно войти.');
+    }
+
     public function login(LoginRequest $request, AuthHandler $authHandler): RedirectResponse
     {
         $validated = $request->validated();
@@ -22,7 +37,7 @@ class AuthController extends Controller
         $redirectedFrom = url()->previous();
         $redirectTo = url('/');
 
-         // Prevent open redirect vulnerabilities
+        // Prevent open redirect vulnerabilities
         if ($redirectedFrom && str_starts_with($redirectedFrom, url('/'))) {
             $redirectTo = $redirectedFrom;
         }

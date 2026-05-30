@@ -26,7 +26,12 @@ Route::post('/auth/login', [AuthController::class, 'login'])
     ->middleware('guest', 'throttle:5,1')
     ->name('auth.login');
 
-Route::get('/auth/logout', [AuthController::class, 'logout'])
+Route::post('/auth/register', [AuthController::class, 'register'])
+    ->middleware('guest', 'throttle:5,1')
+    ->name('auth.register');
+
+Route::post('/auth/logout', [AuthController::class, 'logout'])
+    ->middleware('auth')
     ->name('auth.logout');
 
 Route::prefix('venues')->group(function () use ($themeResolver) {

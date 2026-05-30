@@ -3,10 +3,12 @@
 namespace App\Modules\Contract\Application\UseCases;
 
 use App\Modules\Contract\Application\DTO\AccountContractListItemDTO;
+use App\Modules\Contract\Domain\Enums\ContractPartyTypeEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Identity\Domain\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
-final class ListAccountContracts
+final class ListAccountContractsHandler
 {
     /**
      * @return array<AccountContractListItemDTO>
@@ -14,7 +16,11 @@ final class ListAccountContracts
     public function handle(User $user): array
     {
         return Contract::query()
-            ->where('user_id', $user->id)
+            ->whereHas('parties', function (Builder $query) use ($user): void {
+                $query
+                    ->where('party_type', ContractPartyTypeEnum::USER->value)
+                    ->where('party_id', $user->id);
+            })
             ->with(['venueContracts.venue', 'venueContracts.permissions'])
             ->orderBy('id')
             ->get()

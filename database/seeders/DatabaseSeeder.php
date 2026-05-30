@@ -2,8 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Modules\Contract\Domain\Enums\ContractPartyRoleEnum;
+use App\Modules\Contract\Domain\Enums\ContractPartyTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Identity\Application\UseCases\CreateUserAccountHandler;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -11,8 +14,6 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
-
-use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -31,61 +32,59 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $createUser = app(CreateUserAccountHandler::class);
+
         // create super admin user
-        $superadmin = User::factory()->create([
-            'username' => 'superadmin',
-            'password' => 'superadmin_password',
-            'is_temporary_password' => false,
-            'registration_channel' => UserRegistrationChannelEnum::SEED->value,
-            'system_role' => UserSystemRoleEnum::SUPERADMIN->value,
-            'status' => UserStatusEnum::CONFIRMED->value,
-        ]);
-        $superadmin->profile()->create([
-            'first_name' => 'Супер',
-            'last_name' => 'Админ',
-        ]);
+        $createUser->handle(
+            username: 'superadmin',
+            password: 'Superadmin1!',
+            registrationChannel: UserRegistrationChannelEnum::SEED,
+            systemRole: UserSystemRoleEnum::SUPERADMIN,
+            status: UserStatusEnum::CONFIRMED,
+            profile: [
+                'first_name' => 'Супер',
+                'last_name' => 'Админ',
+            ],
+        );
 
         // create admin user
-        $admin = User::factory()->create([
-            'username' => 'admin',
-            'password' => 'admin_password',
-            'is_temporary_password' => false,
-            'registration_channel' => UserRegistrationChannelEnum::SEED->value,
-            'system_role' => UserSystemRoleEnum::ADMIN->value,
-            'status' => UserStatusEnum::CONFIRMED->value,
-        ]);
-        $admin->profile()->create([
-            'first_name' => 'Админ',
-            'last_name' => 'Пользователь',
-        ]);
+        $createUser->handle(
+            username: 'admin',
+            password: 'Adminuser1!',
+            registrationChannel: UserRegistrationChannelEnum::SEED,
+            systemRole: UserSystemRoleEnum::ADMIN,
+            status: UserStatusEnum::CONFIRMED,
+            profile: [
+                'first_name' => 'Админ',
+                'last_name' => 'Пользователь',
+            ],
+        );
 
         // create moderator user
-        $moderator = User::factory()->create([
-            'username' => 'moderator',
-            'password' => 'moderator_password',
-            'is_temporary_password' => false,
-            'registration_channel' => UserRegistrationChannelEnum::SEED->value,
-            'system_role' => UserSystemRoleEnum::MODERATOR->value,
-            'status' => UserStatusEnum::CONFIRMED->value,
-        ]);
-        $moderator->profile()->create([
-            'first_name' => 'Модератор',
-            'last_name' => 'Пользователь',
-        ]);
+        $createUser->handle(
+            username: 'moderator',
+            password: 'Moderator1!',
+            registrationChannel: UserRegistrationChannelEnum::SEED,
+            systemRole: UserSystemRoleEnum::MODERATOR,
+            status: UserStatusEnum::CONFIRMED,
+            profile: [
+                'first_name' => 'Модератор',
+                'last_name' => 'Пользователь',
+            ],
+        );
 
         // create editor user
-        $editor = User::factory()->create([
-            'username' => 'editor',
-            'password' => 'editor_password',
-            'is_temporary_password' => false,
-            'registration_channel' => UserRegistrationChannelEnum::SEED->value,
-            'system_role' => UserSystemRoleEnum::EDITOR->value,
-            'status' => UserStatusEnum::CONFIRMED->value,
-        ]);
-        $editor->profile()->create([
-            'first_name' => 'Редактор',
-            'last_name' => 'Пользователь',
-        ]);
+        $createUser->handle(
+            username: 'editor',
+            password: 'Editoruser1!',
+            registrationChannel: UserRegistrationChannelEnum::SEED,
+            systemRole: UserSystemRoleEnum::EDITOR,
+            status: UserStatusEnum::CONFIRMED,
+            profile: [
+                'first_name' => 'Редактор',
+                'last_name' => 'Пользователь',
+            ],
+        );
 
         $count = 10;
 
@@ -95,23 +94,22 @@ class DatabaseSeeder extends Seeder
             $is_temporary_password = (bool) rand(0, 1);
             $status = rand(0, 1) ? UserStatusEnum::CONFIRMED->value : UserStatusEnum::UNCONFIRMED->value;
 
-            $user = User::factory()->create([
-                'username' => 'user_'.$index,
-                'password' => 'Asdqwe12#',
-                'is_temporary_password' => $is_temporary_password,
-                'registration_channel' => UserRegistrationChannelEnum::SEED->value,
-                'system_role' => UserSystemRoleEnum::USER->value,
-                'status' => $status,
-            ]);
-
             $gender = rand(0, 2) ? UserGenderEnum::MALE->value : UserGenderEnum::FEMALE->value;
 
-            $user->profile()->create([
-                'first_name' => fake()->firstName(),
-                'last_name' => fake()->lastName(),
-                'gender' => $gender,
-                'birth_date' => fake()->date(),
-            ]);
+            $user = $createUser->handle(
+                username: 'user_'.$index,
+                password: 'Asdqwe12#',
+                registrationChannel: UserRegistrationChannelEnum::SEED,
+                systemRole: UserSystemRoleEnum::USER,
+                status: UserStatusEnum::from($status),
+                isTemporaryPassword: $is_temporary_password,
+                profile: [
+                    'first_name' => fake()->firstName(),
+                    'last_name' => fake()->lastName(),
+                    'gender' => $gender,
+                    'birth_date' => fake()->date(),
+                ],
+            );
 
             collect(UserParticipationRoleEnum::cases())
                 ->shuffle()
@@ -133,9 +131,23 @@ class DatabaseSeeder extends Seeder
         }
 
         // create regular users with profiles
-        User::factory(10)
-            ->has(Profile::factory())
-            ->create();
+        for ($i = 0; $i < 10; $i++) {
+            $createUser->handle(
+                username: fake()->unique()->userName(),
+                password: 'Asdqwe12#',
+                registrationChannel: UserRegistrationChannelEnum::SEED,
+                systemRole: UserSystemRoleEnum::USER,
+                status: UserStatusEnum::UNCONFIRMED,
+                isTemporaryPassword: false,
+                profile: [
+                    'first_name' => fake()->firstName(),
+                    'last_name' => fake()->lastName(),
+                    'middle_name' => rand(0, 1) ? fake()->firstName() : null,
+                    'gender' => fake()->optional()->randomElement(UserGenderEnum::cases())?->value,
+                    'birth_date' => fake()->optional()->date(),
+                ],
+            );
+        }
 
         $venues = [
             [
@@ -211,13 +223,18 @@ class DatabaseSeeder extends Seeder
                 ->values()
                 ->each(function (Venue $venue, int $index) use ($user): void {
                     $contract = Contract::query()->create([
-                        'user_id' => $user->id,
                         'number' => 'SEED-'.$user->id.'-'.$venue->id,
                         'name' => 'Контракт '.$user->username.' - '.$venue->name,
                         'status' => ContractStatusEnum::ACTIVE->value,
                         'starts_at' => fake()->dateTimeBetween('-1 month', 'now'),
                         'expires_at' => fake()->dateTimeBetween('+1 month', '+1 year'),
                         'assigner' => UserParticipationRoleAssignerEnum::SEEDER->value,
+                    ]);
+
+                    $contract->parties()->create([
+                        'party_type' => ContractPartyTypeEnum::USER->value,
+                        'party_id' => $user->id,
+                        'role' => ContractPartyRoleEnum::HOLDER->value,
                     ]);
 
                     $venueContract = VenueContract::query()->create([

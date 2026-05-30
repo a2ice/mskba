@@ -9,7 +9,7 @@ use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
 
-final class ShowVenue
+final class ShowVenueHandler
 {
     public function __construct(
         private readonly VenueAccessResolver $access,
@@ -22,10 +22,10 @@ final class ShowVenue
             ->first();
 
         if ($venue === null) {
-            throw new VenueNotFoundException();
+            throw new VenueNotFoundException;
         }
         if (! $this->access->canView($user, $venue)) {
-            throw new VenueAccessDeniedException();
+            throw new VenueAccessDeniedException;
         }
 
         return new VenueDetailsDTO(

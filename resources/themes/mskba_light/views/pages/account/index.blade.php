@@ -23,23 +23,23 @@
             </li>
             <li class="list-unstyled mb-2">
                 Имя:
-                <span class="fw-bold">{{ $user->profile->first_name }}</span>
+                <span class="fw-bold">{{ $user->profile?->first_name }}</span>
             </li>
             <li class="list-unstyled mb-2">
                 Фамилия:
-                <span class="fw-bold">{{ $user->profile->last_name }}</span>
+                <span class="fw-bold">{{ $user->profile?->last_name }}</span>
             </li>
             <li class="list-unstyled mb-2">
                 Отчество:
-                <span class="fw-bold">{{ $user->profile->middle_name }}</span>
+                <span class="fw-bold">{{ $user->profile?->middle_name }}</span>
             </li>
             <li class="list-unstyled mb-2">
                 Пол:
-                <span class="fw-bold">{{ $user->profile->gender->label() }}</span>
+                <span class="fw-bold">{{ $user->profile?->gender?->label() }}</span>
             </li>
             <li class="list-unstyled mb-2">
                 Возраст:
-                <span class="fw-bold">{{ $user->profile->age }}</span>
+                <span class="fw-bold">{{ $user->profile?->age }}</span>
             </li>
             <li class="list-unstyled mb-2">
                 Роль:

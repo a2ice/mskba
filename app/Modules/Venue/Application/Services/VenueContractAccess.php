@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Application\Services;
 
+use App\Modules\Contract\Domain\Enums\ContractPartyTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
@@ -49,8 +50,12 @@ final class VenueContractAccess
         return VenueContract::query()
             ->whereHas('contract', function (Builder $query) use ($user, $now): void {
                 $query
-                    ->where('user_id', $user->id)
                     ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->whereHas('parties', function (Builder $query) use ($user): void {
+                        $query
+                            ->where('party_type', ContractPartyTypeEnum::USER->value)
+                            ->where('party_id', $user->id);
+                    })
                     ->where(function (Builder $query) use ($now): void {
                         $query
                             ->whereNull('starts_at')

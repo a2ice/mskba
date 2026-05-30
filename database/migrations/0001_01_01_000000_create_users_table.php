@@ -18,6 +18,7 @@ return new class extends Migration
             $table->id();
             $table->string('username')->unique()->nullable();
             $table->string('password')->nullable();
+            $table->timestamp('password_updated_at')->nullable();
             $table->boolean('is_temporary_password')->nullable();
             $table->enum('registration_channel', array_column(UserRegistrationChannelEnum::cases(), 'value'))->nullable();
             $table->enum('system_role', array_column(UserSystemRoleEnum::cases(), 'value'))->nullable();

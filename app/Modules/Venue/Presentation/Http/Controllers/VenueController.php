@@ -3,14 +3,14 @@
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Venue\Application\UseCases\ListVenues;
-use App\Modules\Venue\Application\UseCases\ShowVenue;
+use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
+use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Response;
 
 class VenueController extends Controller
 {
-    public function index(ListVenues $useCase): Response
+    public function index(ListVenuesHandler $useCase): Response
     {
         $user = request()->user();
         $venues = $useCase->handle($user);
@@ -18,7 +18,7 @@ class VenueController extends Controller
         return ThemeResolver::page('venues.index', ['venues' => $venues]);
     }
 
-    public function show(string $alias, ShowVenue $useCase): Response
+    public function show(string $alias, ShowVenueHandler $useCase): Response
     {
         $user = request()->user();
 

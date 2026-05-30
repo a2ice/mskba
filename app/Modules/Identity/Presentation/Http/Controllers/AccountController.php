@@ -3,12 +3,12 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Contract\Application\UseCases\ListAccountContracts;
-use App\Modules\Contract\Application\UseCases\ShowAccountContract;
+use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
+use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
-use App\Modules\Venue\Application\UseCases\CreateAccountVenue;
-use App\Modules\Venue\Application\UseCases\ListAccountVenues;
-use App\Modules\Venue\Application\UseCases\ShowVenue;
+use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
+use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
+use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
@@ -56,7 +56,7 @@ class AccountController extends Controller
         return ThemeResolver::page('account.contacts');
     }
 
-    public function contracts(ListAccountContracts $listAccountContracts): Response
+    public function contracts(ListAccountContractsHandler $listAccountContracts): Response
     {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -72,7 +72,7 @@ class AccountController extends Controller
         ]);
     }
 
-    public function contract(string $number, ShowAccountContract $showAccountContract): Response
+    public function contract(string $number, ShowAccountContractHandler $showAccountContract): Response
     {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -97,7 +97,7 @@ class AccountController extends Controller
         ]);
     }
 
-    public function venues(ListAccountVenues $listAccountVenues): Response
+    public function venues(ListAccountVenuesHandler $listAccountVenues): Response
     {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -131,7 +131,7 @@ class AccountController extends Controller
         ]);
     }
 
-    public function storeVenue(CreateVenueRequest $request, CreateAccountVenue $createAccountVenue): RedirectResponse
+    public function storeVenue(CreateVenueRequest $request, CreateAccountVenueHandler $createAccountVenue): RedirectResponse
     {
         $user = $this->accountCheckForPresentationService->handle($request->user());
         $venue = $createAccountVenue->handle($user, $request->validated());
@@ -141,7 +141,7 @@ class AccountController extends Controller
             ->with('status', 'Площадка добавлена и ожидает подтверждения.');
     }
 
-    public function showVenue(string $alias, ShowVenue $showVenue): Response
+    public function showVenue(string $alias, ShowVenueHandler $showVenue): Response
     {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());

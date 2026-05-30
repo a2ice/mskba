@@ -8,7 +8,7 @@ use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Support\Str;
 
-final class CreateAccountVenue
+final class CreateAccountVenueHandler
 {
     /**
      * @param  array{name: string, type: string, description?: string|null}  $data
