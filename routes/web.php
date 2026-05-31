@@ -61,7 +61,9 @@ Route::prefix('auth')->group(function () {
 
 
 Route::prefix('venues')->group(function () {
-	Route::get('/', [VenueController::class, 'index'])->name('venues');
+	Route::get('/', [VenueController::class, 'index'])
+		->name('venues')
+		->defaults('breadcrumb', 'Площадки');
 	Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 	Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
 });

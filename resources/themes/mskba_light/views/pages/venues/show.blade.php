@@ -1,6 +1,6 @@
 @php
     if(isset($venue)) {
-        $title = "Площадка: {$venue->name}";
+        $title = "{$venue->name}";
     } else {
         $title = 'Ошибка';
         $error_message = isset($error['message']) ? $error['message'] : 'Неизвестная ошибка';
@@ -13,8 +13,11 @@
 ])
 
 @section('content')
-    <section id="venue" class="venue-section py-5">
-        <div class="container">
+    <section id="venue" class="venue-section first-screen">
+        <div class="inner">        
+            <div class="mb-3">
+                @include('theme::partials.breadcrumbs')
+            </div>
 
             @if(!empty($venue))
 
@@ -45,14 +48,14 @@
                         </ul>
 
                         <div class="d-flex gap-2">
-                            <a href="{{ route('venues') }}" class="btn btn-outline-secondary">К списку</a>
+                            <a href="{{ route('venues') }}" class="btn btn--primary">К списку</a>
 
                             @if ($venue->canEdit)
                                 <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
                             @endif
 
                             @if ($venue->canEditSchedule)
-                                <a href="#" class="btn btn-outline-primary">Расписание</a>
+                                <a href="#" class="btn btn--secondary btn--sm site-auth__button">Расписание</a>
                             @endif
                         </div>
                     </div>
