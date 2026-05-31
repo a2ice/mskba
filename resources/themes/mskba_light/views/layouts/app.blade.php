@@ -5,6 +5,8 @@
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
 
     $user = auth()->user();
+
+    $userLoginLabel = $user ? $user->username : 'Войти';
 @endphp
 
 <!DOCTYPE html>
@@ -18,18 +20,18 @@
         @vite($theme->viteInputs())
         @yield('styles')
     </head>
-    <body class="{{ $routeClass }}">
-        <header class="site-frame">
+    <body class="theme-shell {{ $routeClass }}">
+        <div class="site-frame">
             @include('theme::partials.header')
-        </header>
 
-            <main class="site-content">
+            <main class="site-content">          
                 @yield('content')
             </main>
 
-        <footer class="site-footer">
-            @include('theme::partials.footer')
-        </footer>
+            <footer class="site-footer">
+                @include('theme::partials.footer')
+            </footer>
+        </div>
 
         @include('theme::partials.modal')
     </body>

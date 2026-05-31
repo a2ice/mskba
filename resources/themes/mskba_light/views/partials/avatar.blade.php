@@ -1,12 +1,17 @@
 @php
-    $user = isset($user) ? $user : auth()->user();
-    $displayName = $user?->profile?->first_name
-        ? trim($user->profile->first_name . ($user->profile?->last_name ? ' ' . $user->profile->last_name : ''))
-        : $user->username;
+    $user = !empty($user) ? $user : auth()->user();
+    $displayName = '';
+    if($user) {
+        if($user?->profile?->first_name) {
+            $displayName = trim($user->profile->first_name . ($user->profile?->last_name ? ' ' . $user->profile->last_name : ''));
+        } else {
+            $displayName = $user->username;
+        }
+    }
 @endphp
 
-<div class="partial-wrapper partial-avatar">
-    <div class="avatar-wrapper text-center mb-3">
+<div class="partial-wrapper partial-avatar text-center">
+    <div class="avatar-wrapper mb-3">
         @if ($user?->profile?->avatar_url)
             <img src="{{ $user?->profile?->avatar_url }}" alt="Аватар" class="rounded-circle avatar-lg">
         @else

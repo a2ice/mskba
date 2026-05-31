@@ -3,23 +3,23 @@
         ->resolve($page ?? 'main');
 @endphp
 
-<div class="partial-wrapper partial-main-menu">
-    @if ($menuItems !== [])
-        <nav class="site-nav">
-            <ul class="main-menu-nav nav">
+<div class="partial-wrapper partial-main-menu site-header-nav-wrapper header-cell">
+    <div class="nav-hamburger js-handler" data-handler="toggleClass" data-params="nav-shown;body">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+
+    <div class="site-nav-wrapper">
+        @if ($menuItems !== [])
+            <nav class="site-nav" aria-label="Основная навигация">
                 @foreach ($menuItems as $item)
                     @continue(! $item['visible'])
-
-                    @if (isset($item['divider']) && $item['divider'])
-                        <li class="nav-divider"></li>
-                    @endif
-                    <li class="nav-item {{ $item['active'] ? 'active' : '' }}">
-                        <a href="{{ $item['url'] }}" class="nav-link {{ $item['active'] ? 'active' : '' }}">
-                            {{ $item['label'] }}
-                        </a>
-                    </li>
+                    <a href="{{ $item['url'] }}" class="nav-link {{ $item['active'] ? 'active' : '' }}">
+                        {{ $item['label'] }}
+                    </a>
                 @endforeach
-            </ul>
-        </nav>
-    @endif
+            </nav>
+        @endif
+    </div>
 </div>

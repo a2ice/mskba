@@ -1,11 +1,11 @@
 .avatar-wrapper {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     text-align: center;
-    line-height: 120px;
+    line-height: 150px;
     border-radius: 50%;
     margin: 0 auto;
-    background: var(--background-placeholder);
+    background: var(--accent-light);
     overflow: hidden;
 }
 .avatar-wrapper img {

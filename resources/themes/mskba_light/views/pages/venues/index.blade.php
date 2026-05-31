@@ -1,6 +1,6 @@
-@extends('theme::layouts.account', ['title' => 'Мои площадки'])
+@extends('theme::layouts.app', ['title' => 'Площадки'])
 
-@section('account-content')
+@section('content')
      @if ($venues === [])
         <div class="alert alert-info">
             Площадки пока не назначены.

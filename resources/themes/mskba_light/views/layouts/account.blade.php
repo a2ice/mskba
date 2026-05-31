@@ -5,8 +5,13 @@
 @extends('theme::layouts.app', ['title' => $title])
 
 @section('content')
-    <section id="account" class="account-section">
-        <div class="container">
+    <section id="account" class="account-section first-screen">
+        <div class="inner">
+
+            <div class="mb-3">
+                @include('theme::partials.breadcrumbs')
+            </div>
+
             <div class="section-heading">
                 <h1 class="mb-4">{{ $title }}</h1>
             </div>

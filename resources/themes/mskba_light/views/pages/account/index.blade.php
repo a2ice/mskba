@@ -1,5 +1,3 @@
-@php $user = isset($user) ? $user : null; @endphp
-
 @extends('theme::layouts.account', ['title' => 'Аккаунт'])
 
 @section('account-content')

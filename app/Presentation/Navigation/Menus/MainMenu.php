@@ -17,9 +17,9 @@ final class MainMenu implements MenuHandler
 
         $items = [
             [
-                'label' => 'Главная',
-                'url' => $this->routeUrl('welcome'),
-                'active' => $this->isActiveRoute('welcome'),
+                'label' => 'Площадки',
+                'url' => $this->routeUrl('venues'),
+                'active' => $this->isActiveRoute('venues, venues.*'),
                 'visible' => true,
             ],
             [
@@ -29,9 +29,21 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
-                'label' => 'Площадки',
-                'url' => $this->routeUrl('venues'),
-                'active' => $this->isActiveRoute('venues, venues.*'),
+                'label' => 'Турниры',
+                'url' => $this->routeUrl('/#tournaments'),
+                'active' => $this->isActiveRoute('tournaments, tournaments.*'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Новости',
+                'url' => $this->routeUrl('/#news'),
+                'active' => $this->isActiveRoute('news, news.*'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Контакты',
+                'url' => $this->routeUrl('/#contacts'),
+                'active' => $this->isActiveRoute('contacts, contacts.*'),
                 'visible' => true,
             ],
         ];

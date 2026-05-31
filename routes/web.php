@@ -22,19 +22,45 @@ Route::get('/register', function () use ($themeResolver) {
     return $themeResolver->page('auth.register');
 })->name('register');
 
-Route::post('/auth/login', [AuthController::class, 'login'])
-    ->middleware('guest', 'throttle:5,1')
-    ->name('auth.login');
+Route::prefix('auth')->group(function () {
+	Route::post('/login', [AuthController::class, 'login'])
+		->middleware('guest', 'throttle:5,1')
+		->name('auth.login');
 
-Route::post('/auth/register', [AuthController::class, 'register'])
-    ->middleware('guest', 'throttle:5,1')
-    ->name('auth.register');
+	Route::post('/register', [AuthController::class, 'register'])
+		->middleware('guest', 'throttle:5,1')
+		->name('auth.register');
 
-Route::post('/auth/logout', [AuthController::class, 'logout'])
-    ->middleware('auth')
-    ->name('auth.logout');
+	Route::post('/restore', [AuthController::class, 'restore'])
+		->middleware('throttle:5,1')
+		->name('auth.restore');
 
-Route::prefix('venues')->group(function () use ($themeResolver) {
+	Route::post('/logout', [AuthController::class, 'logout'])
+		->middleware('auth')
+		->name('auth.logout');
+
+	Route::get('/logout', [AuthController::class, 'logout'])
+		->middleware('auth')
+		->name('logout');
+
+	Route::post('/confirm', [AuthController::class, 'confirm'])
+		->middleware('auth', 'throttle:5,1')
+		->name('auth.confirm');
+
+	/* trashed routes starts here DONT TOUCH SO FAR */
+	Route::post('/resolve-login', [AuthController::class, 'resolveLogin'])
+		->middleware('throttle:10,1')
+		->name('auth.resolve-login');
+
+	Route::post('/verify', [AuthController::class, 'verify'])
+		->middleware('throttle:10,1')
+		->name('auth.verify');
+	/* trashed routes ends here */
+
+});
+
+
+Route::prefix('venues')->group(function () {
 	Route::get('/', [VenueController::class, 'index'])->name('venues');
 	Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 	Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
@@ -42,6 +68,7 @@ Route::prefix('venues')->group(function () use ($themeResolver) {
 
 // Group routes for authenticated users
 Route::middleware('auth')->group(function () use ($themeResolver) {
+
 	// Dashboard route
 	Route::get('/dashboard', fn () => $themeResolver->page('dashboard'))->name('dashboard');
 

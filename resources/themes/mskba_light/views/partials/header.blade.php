@@ -1,10 +1,23 @@
-<div class="partial-wrapper partial-header">
-    <div class="container d-flex justify-content-between align-items-center py-3">        
+<header class="site-header partial-wrapper partial-header">
+
+    <div class="site-header-left header-cell">
         @include('theme::partials.logo')
+    </div>
+
+    <div class="site-header-right header-cell">
 
         @include('theme::partials.menu.main')
 
-        @include('theme::partials.menu.account-nav')
-        
+        <div class="site-auth header-cell" aria-label="Пользовательская навигация">
+
+            @include('theme::partials.header-search')
+
+            <div class="header-cell">
+                @include('theme::partials.menu.account-nav')
+            </div>
+
+        </div>
+
     </div>
-</div>
+
+</header>
