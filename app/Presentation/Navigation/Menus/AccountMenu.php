@@ -3,9 +3,11 @@
 namespace App\Presentation\Navigation\Menus;
 
 use App\Presentation\Navigation\MenuHandler;
+use App\Presentation\Navigation\Menus\MenuHelper;
 
 final class AccountMenu implements MenuHandler
 {
+    use MenuHelper;
     /**
      * @return array<int, array{label: string, url: string, active: bool, visible: bool}>
      */
@@ -16,8 +18,8 @@ final class AccountMenu implements MenuHandler
         $items = [
             [
                 'label' => 'Профиль',
-                'url' => route('account'),
-                'active' => request()->routeIs('account'),
+                'url' => $this->routeUrl('account'),
+                'active' => $this->isActiveRoute('account'),
                 'visible' => true,
             ],
         ];
@@ -26,31 +28,31 @@ final class AccountMenu implements MenuHandler
 
             $items[] = [
                 'label' => 'Настройки',
-                'url' => route('account.settings'),
-                'active' => request()->routeIs('account.settings'),
+                'url' => $this->routeUrl('account.settings'),
+                'active' => $this->isActiveRoute('account.settings'),
                 'visible' => true,
             ];
 
             $items[] = [
                 'label' => 'Контакты',
-                'url' => route('account.contacts'),
-                'active' => request()->routeIs('account.contacts'),
+                'url' => $this->routeUrl('account.contacts'),
+                'active' => $this->isActiveRoute('account.contacts'),
                 'visible' => true,
             ];
 
             if($user->isConfirmed()) {
                 $items[] = [
                     'label' => 'Контракты',
-                    'url' => route('account.contracts'),
-                    'active' => request()->routeIs('account.contracts'),
+                    'url' => $this->routeUrl('account.contracts'),
+                    'active' => $this->isActiveRoute('account.contracts'),
                     'visible' => true,
                 ];
 
                 if ($user->hasRole('venue_related')) {
                     $items[] = [
                         'label' => 'Мои площадки',
-                        'url' => route('account.venues'),
-                        'active' => request()->routeIs('account.venues', 'account.venues.*'),
+                        'url' => $this->routeUrl('account.venues'),
+                        'active' => $this->isActiveRoute('account.venues, account.venues.*'),
                         'visible' => true,
                     ];
                 }
@@ -58,7 +60,7 @@ final class AccountMenu implements MenuHandler
 
             $items[] = [
                 'label' => 'Выйти',
-                'url' => route('auth.logout'),
+                'url' => $this->routeUrl('auth.logout'),
                 'active' => false,
                 'visible' => true,
                 'divider' => true,

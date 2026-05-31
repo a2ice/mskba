@@ -5,8 +5,8 @@
         : $user->username;
 @endphp
 
-<div class="partial-wrapper partial-avatar text-center">
-    <div class="avatar-wrapper mb-3">
+<div class="partial-wrapper partial-avatar">
+    <div class="avatar-wrapper text-center mb-3">
         @if ($user?->profile?->avatar_url)
             <img src="{{ $user?->profile?->avatar_url }}" alt="Аватар" class="rounded-circle avatar-lg">
         @else
