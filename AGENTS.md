@@ -4,9 +4,9 @@
 
 ## С чего начать
 
-1. Работай из корня репозитория: `/Users/dmitrylosev/Projects/mskbanew/site`.
+1. Работай из корня репозитория: `/Users/dmitrylosev/Projects/mskbabrandnew/site`.
 2. Перед изменениями проверь текущую ветку и статус git.
-3. Если работа относится к задаче из `docs/tasks.md`, следуй процессу из `docs/specification/protsess-raboty-s-zadachami.md`.
+3. Если работа относится к задаче из `docs/tasks.md`, следуй процессу из `docs/specification/task-workflow.md`.
 4. Перед планированием или реализацией изучи релевантные разделы:
    - `../backlog/todo.md` - внешний backlog с важными задачами и заметками, появляющимися по ходу работы.
    - `docs/project.md` - продуктовая картина, пользователи, сценарии, бизнес-процессы.

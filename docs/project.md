@@ -43,7 +43,7 @@
 - какие разделы и действия ему доступны;
 - какие ограничения и правила для него действуют.
 
-Подробнее: [Роли пользователей](project/roli-polzovatelei.md).
+Подробнее: [Роли пользователей](project/user-roles.md).
 
 ## Ключевые пользовательские сценарии
 
@@ -61,7 +61,7 @@
 
 Система содержит базовый пользовательский flow регистрации и входа. Авторизация доступна через отдельные страницы и модальные представления темы.
 
-Подробнее: [Регистрация и вход](project/registratsiya-i-vhod.md).
+Подробнее: [Регистрация и вход](project/registration-and-login.md).
 
 ## Личный кабинет
 
@@ -100,6 +100,6 @@
 ## Связанные документы
 
 - [Техническая спецификация](specification.md)
-- [Роли пользователей](project/roli-polzovatelei.md)
-- [Правила ведения документации](specification/vedenie-dokumentatsii.md)
-- [Процесс работы с задачами](specification/protsess-raboty-s-zadachami.md)
+- [Роли пользователей](project/user-roles.md)
+- [Правила ведения документации](specification/documentation-guidelines.md)
+- [Процесс работы с задачами](specification/task-workflow.md)

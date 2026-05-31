@@ -55,10 +55,10 @@ docs/project/{alias}.md
 docs/specification/{alias}.md
 ```
 
-`alias` - человекочитаемый транслит от названия темы в нижнем регистре. Слова разделяются дефисами.
+`alias` - короткое человекочитаемое название темы на английском языке в нижнем регистре. Слова разделяются дефисами.
 
 Примеры:
 
-- `registratsiya-i-vhod.md`
-- `protsess-raboty-s-zadachami.md`
-- `vedenie-dokumentatsii.md`
+- `registration-and-login.md`
+- `task-workflow.md`
+- `documentation-guidelines.md`

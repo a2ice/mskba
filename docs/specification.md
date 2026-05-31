@@ -51,7 +51,7 @@
 
 Технические решения, паттерны, правила разработки и процессные инструкции описываются в `docs/specification.md` и, при необходимости, в `docs/specification/{alias}.md`.
 
-Подробнее: [Правила ведения документации](specification/vedenie-dokumentatsii.md).
+Подробнее: [Правила ведения документации](specification/documentation-guidelines.md).
 
 ## Правила работы AI-агента
 
@@ -97,7 +97,7 @@ Partial `theme::partials.breadcrumbs` строит цепочку навигац
 
 Разработка ведется через задачи из `docs/tasks.md`. Для каждой задачи создается папка `docs/tasks/{NNN}` с описанием, планом, статусом и итогами. Дополнительный внешний backlog быстрых записей и важных возникающих задач ведется во внешнем файле `../backlog/todo.md`.
 
-Подробнее: [Процесс работы с задачами](specification/protsess-raboty-s-zadachami.md).
+Подробнее: [Процесс работы с задачами](specification/task-workflow.md).
 
 ## Git workflow
 
@@ -126,5 +126,5 @@ Partial `theme::partials.breadcrumbs` строит цепочку навигац
 - [Docker Environment](specification/docker-environment.md)
 - [Identity Roles](specification/identity-roles.md)
 - [Identity User Profile](specification/identity-user-profile.md)
-- [Правила ведения документации](specification/vedenie-dokumentatsii.md)
-- [Процесс работы с задачами](specification/protsess-raboty-s-zadachami.md)
+- [Правила ведения документации](specification/documentation-guidelines.md)
+- [Процесс работы с задачами](specification/task-workflow.md)

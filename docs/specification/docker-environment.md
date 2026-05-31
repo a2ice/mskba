@@ -50,7 +50,7 @@
 
 ## Именование
 
-- Docker project name: `mskbanew`
+- Docker project name: `mskbabrandnew`
 - PHP-FPM сервис называется `phpfpm`, а не `app`
 - upstream в nginx должен ссылаться на `phpfpm:9000`
 
