@@ -6,6 +6,8 @@ namespace App\Modules\Identity\Domain\Models;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
+use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
 use App\Modules\Identity\Infrastructure\Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -44,6 +46,29 @@ class User extends Authenticatable
         ];
     }
 
+    public function profile(): HasOne
+    {
+        return $this->hasOne(Profile::class);
+    }
+
+    public function createProfile(array $data): Profile
+    {
+        if ($this->profile()->exists()) {
+            throw new UserProfileAlreadyExistsException;
+        }
+
+        if ($this->isBlocked()) {
+            throw new UserCannotBeChangedException;
+        }
+
+        return $this->profile()->create($data);
+    }
+
+    public function participationRoles(): HasMany
+    {
+        return $this->hasMany(UserParticipationRole::class);
+    }
+
     public function hasSystemRole(UserSystemRoleEnum|string $role): bool
     {
         return $this->system_role === $role;
@@ -62,15 +87,5 @@ class User extends Authenticatable
     public function isBlocked(): bool
     {
         return $this->status === UserStatusEnum::BLOCKED;
-    }
-
-    public function profile(): HasOne
-    {
-        return $this->hasOne(Profile::class);
-    }
-
-    public function participationRoles(): HasMany
-    {
-        return $this->hasMany(UserParticipationRole::class);
     }
 }

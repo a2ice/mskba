@@ -4,17 +4,18 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\UseCases\AuthHandler;
+use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
 use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
 use Illuminate\Http\RedirectResponse;
 
 class AuthController extends Controller
 {
-    public function register(RegisterRequest $request, AuthHandler $authHandler): RedirectResponse
+    public function register(RegisterRequest $request, RegisterUserHandler $registerUser): RedirectResponse
     {
         $validated = $request->validated();
 
-        $authHandler->register(
+        $registerUser->handle(
             username: $validated['username'],
             password: $validated['password'],
         );

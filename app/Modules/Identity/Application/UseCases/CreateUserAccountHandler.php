@@ -38,7 +38,7 @@ final class CreateUserAccountHandler
                 'status' => $status,
             ]);
 
-            $user->profile()->create($profile);
+            $user->createProfile($profile);
 
             return $user->load('profile');
         });
