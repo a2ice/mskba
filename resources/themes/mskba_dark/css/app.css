@@ -45,6 +45,8 @@ body {
     --link-color-hover: var(--accent);
     --row-highlight: rgba(156, 203, 185, 0.1);
 
+    --text-header: rgba(255, 255, 255, 0.72);
+
     --header-gap: clamp(18px, 3vw, 36px);
     --inner-padding: 20px clamp(20px, 4vw, 56px) 12px;
     --hero-panel: rgba(20, 14, 11, 0.68);
@@ -80,6 +82,12 @@ a:not([class*="btn"]).current {
     padding: var(--inner-padding);
     background: linear-gradient(180deg, rgba(0, 0, 0, 0.74), rgba(0, 0, 0, 0));
     transition: all .3s ease;
+    color: var(--text-header);
+    font-size: 13px;
+}
+
+.site-header a {
+    color: inherit;
 }
 
 body.header-scrolled .site-header {
@@ -132,6 +140,7 @@ body.header-scrolled .brand__name {
     font-weight: 500;
     line-height: 1.15;
     text-transform: uppercase;
+    margin-top: 1px;
 }
 
 @media (max-width: 990px) {
