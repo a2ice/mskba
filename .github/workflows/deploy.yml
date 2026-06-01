@@ -72,6 +72,7 @@ jobs:
 
             rm -rf public/build
             $COMPOSE --profile build run -T --rm node </dev/null
+            test -f public/build/manifest.json
             $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor node_modules public/build </dev/null || true
 
             $COMPOSE run -T --rm phpfpm sh -lc "mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && rm -f bootstrap/cache/*.php" </dev/null
