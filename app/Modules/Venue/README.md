@@ -1,11 +1,19 @@
 # Venue
 
-Bounded context module.
+Модуль ограниченного контекста для баскетбольных площадок и доступа к ним.
 
-## Structure
+## Ответственность
 
-- `Domain`: business models, enums, events, exceptions, value objects.
-- `Application`: use cases, DTOs, application services.
-- `Infrastructure`: ACL, integrations, service providers.
-- `Presentation`: HTTP controllers, requests, resources.
-- `Tests`: module-level feature and unit tests.
+- Публичный список площадок и просмотр площадки.
+- Список площадок в личном кабинете.
+- Создание площадки подтвержденным пользователем с ролью участия `venue_related`.
+- Проверка доступа к площадке для создателя и по контрактным разрешениям.
+- Модели связи площадок с контрактами, используемые модулем `Contract`.
+
+## Структура
+
+- `Domain`: бизнес-модели, enum, события, исключения, value object.
+- `Application`: use case, DTO, application-сервисы и builders.
+- `Infrastructure`: ACL, интеграции, service provider, factory.
+- `Presentation`: HTTP-контроллеры, request-классы, resource-классы.
+- `Tests`: feature- и unit-тесты модуля.

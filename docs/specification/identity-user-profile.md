@@ -14,36 +14,38 @@
 
 ## Базовая модель
 
-Профиль пользователя вынесен в отдельную модель `UserProfile` и таблицу `user_profiles`.
+Профиль пользователя вынесен в модель `Profile` и таблицу `profiles`.
 
-Первая итерация профиля хранит минимальный базовый набор персональных данных, которые могут быть заполнены позже.
+Первая итерация профиля хранит минимальный набор персональных данных, которые могут быть заполнены позже.
 
 ## Связь с пользователем
 
-- `User` -> `hasOne(UserProfile)`
-- `UserProfile` -> `belongsTo(User)`
+- `User` -> `hasOne(Profile)`
+- `Profile` -> `belongsTo(User)`
 
-На уровне базы действует ограничение `1-to-1` через уникальный `user_profiles.user_id`.
+На уровне базы действует ограничение `1-to-1` через уникальный `profiles.user_id`.
 
 ## Поля профиля
 
 Базовый набор полей:
 
-- `first_name` - nullable
-- `last_name` - nullable
-- `middle_name` - nullable
-- `birth_date` - nullable
-- `gender` - nullable enum `UserGenderEnum`
+- `first_name` - nullable;
+- `last_name` - nullable;
+- `middle_name` - nullable;
+- `birth_date` - nullable;
+- `gender` - nullable enum `UserGenderEnum`.
 
 Для `gender` на текущем этапе используются значения:
 
-- `male`
-- `female`
+- `male`;
+- `female`.
+
+Модель `Profile` также содержит accessor `age`, вычисляемый из `birth_date`.
 
 ## Создание профиля
 
-При регистрации пользователя по flow `RegisterContactFirstHandler` профиль создается сразу после создания `User` в той же транзакции.
+При регистрации пользователя `RegisterUserHandler` вызывает `CreateUserAccountHandler`, а тот создает `User` и связанный `Profile` в одной транзакции.
 
-На первом этапе профиль создается с пустыми nullable-полями.
+На первом этапе профиль создается с пустыми nullable-полями, если дополнительные данные профиля не переданы.
 
 `UserFactory` тоже создает связанный профиль автоматически, чтобы тестовая и development-модель пользователя соответствовала реальной бизнес-логике регистрации.
