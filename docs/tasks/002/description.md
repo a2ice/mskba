@@ -40,6 +40,36 @@
 - `php artisan route:list`;
 - ручная проверка ключевых страниц: `/`, `/login`, `/register`, `/venues`, `/account`.
 
+## Выполнение
+
+Ветка: `refactor/002`.
+
+Выполненные изменения:
+
+- директории тем переименованы через временную директорию, чтобы не потерять старую `mskba_dark`;
+- текущая проработанная `resources/themes/mskba_light` стала `resources/themes/mskba_dark`;
+- текущая минимальная `resources/themes/mskba_dark` стала `resources/themes/blank`;
+- `config/themes.php` обновлен: активная тема по умолчанию `mskba_dark`, доступные темы `mskba_dark` и `blank`;
+- `vite.config.js` обновлен: Vite entrypoints теперь указывают на `mskba_dark` и `blank`;
+- `docs/project.md` и `docs/specification.md` обновлены под новое фактическое состояние тем;
+- frontend assets пересобраны через `npm run build`; `public/build` игнорируется `.gitignore`, поэтому build-артефакты не входят в коммит.
+
+## Результат
+
+- `mskba_dark` теперь является основной темой проекта.
+- `blank` теперь является минимальной темой-заготовкой.
+- В основной теме есть страницы auth/account/venues и fallback `pages/system/view_not_found`.
+- Страница `dashboard` по-прежнему отсутствует и должна решаться отдельной задачей, если экран нужен.
+
+## Выполненные проверки
+
+- `rg "mskba_light|mskba_dark"` - выполнено для контроля ссылок;
+- `npm run build` - пройден;
+- `php artisan route:list` - пройден, показал 28 маршрутов;
+- `php artisan optimize:clear` - пройден;
+- `php artisan tinker` view-check - пройден: ключевые views auth/account/venues и fallback `pages.system.view_not_found` существуют в активной теме;
+- HTTP-проверка через локальный `php artisan serve` - пройдена: `/`, `/login`, `/register`, `/venues` вернули `200`, `/account` вернул `302` на `/login` для гостя.
+
 ## Статус
 
-Задача создана, к выполнению не приступали.
+Реализация и проверки выполнены.

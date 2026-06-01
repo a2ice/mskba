@@ -7,8 +7,8 @@ return [
         'mskba_dark' => [
             'name' => 'MSKBA Dark',
         ],
-        'mskba_light' => [
-            'name' => 'MSKBA Light',
+        'blank' => [
+            'name' => 'Blank',
         ],
     ],
 ];

@@ -11,8 +11,8 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/themes/mskba_dark/css/app.css',
                 'resources/themes/mskba_dark/js/app.js',
-                'resources/themes/mskba_light/css/app.css',
-                'resources/themes/mskba_light/js/app.js',
+                'resources/themes/blank/css/app.css',
+                'resources/themes/blank/js/app.js',
             ],
             refresh: true,
             fonts: [
