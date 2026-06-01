@@ -17,9 +17,41 @@
 
 Поле `system_role` nullable. `null` означает, что у пользователя нет специальной системной роли.
 
+Текущие системные роли:
+
+- `superadmin`;
+- `admin`;
+- `user`;
+- `moderator`;
+- `editor`;
+- `system`.
+
+`UserSystemRoleEnum` содержит `numericValue()` и `atLeast()`, чтобы сравнивать уровень системной роли.
+
 ## Роли участия пользователя
 
-Роли участия вынесены в отдельную модель `UserParticipationRole` и таблицу `user_participation_roles`.
+Роли участия вынесены в модель `UserParticipationRole` и таблицу `user_participation_roles`.
+
+Текущие роли участия:
+
+- `player`;
+- `coach`;
+- `referee`;
+- `statistician`;
+- `media`;
+- `venue_related`.
+
+Статусы роли участия:
+
+- `active`;
+- `inactive`.
+
+Источники назначения роли:
+
+- `user`;
+- `flow`;
+- `seeder`;
+- `other`.
 
 Роль участия включает:
 
@@ -28,11 +60,13 @@
 - дату назначения;
 - период действия;
 - источник назначения;
+- пользователя, назначившего роль, если он есть;
 - комментарий.
 
 ## Связь и ограничения
 
 - `User` -> `hasMany(UserParticipationRole)`
 - `UserParticipationRole` -> `belongsTo(User)`
-- `UserParticipationRole.assigned_by` на текущем этапе хранит `users.id`, если роль назначена пользователем
+- `UserParticipationRole.assignedByUser()` -> `belongsTo(User, assigned_by)`
+- `UserParticipationRole.assigned_by` хранит `users.id`, если роль назначена пользователем
 - действует ограничение `unique(user_id, role)` для глобального набора ролей участия без контекстных оверрайдов

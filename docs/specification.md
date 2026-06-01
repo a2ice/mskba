@@ -12,6 +12,8 @@
 - [Роли в identity-слое](#роли-в-identity-слое)
 - [Профиль пользователя](#профиль-пользователя)
 - [Площадки](#площадки)
+- [Контракты](#контракты)
+- [Темы и представления](#темы-и-представления)
 - [Breadcrumbs](#breadcrumbs)
 - [Docker и окружения](#docker-и-окружения)
 - [Процесс работы с задачами](#процесс-работы-с-задачами)
@@ -27,9 +29,10 @@
 
 - Backend: Laravel, PHP 8.3+.
 - Frontend/assets: Vite, npm.
-- Docker окружение: базовый стек `phpfpm`, `nginx`, `PostgreSQL`, `Redis`; dev-надстройки задаются override-файлом.
-- Основная тема: `resources/themes/mskba_dark`.
+- Docker окружение: текущий `docker-compose.yml` содержит `postgres` и `adminer`.
 - Доменные части приложения находятся в `app/Modules`.
+- Текущие доменные модули: `Identity`, `Venue`, `Contract`.
+- Основная проработанная тема сейчас физически лежит в `resources/themes/mskba_light`, но целевое имя для нее - `mskba_dark`.
 - Внешний backlog быстрых записей ведется во внешнем файле `../backlog/todo.md`.
 
 ## Архитектурные принципы
@@ -38,10 +41,11 @@
 - Держать контроллеры тонкими.
 - Выносить пользовательские сценарии и бизнес-действия в use case или application-сервисы.
 - Держать доменные правила в доменном слое.
-- Общие низкоуровневые value object и классификаторы, которые не принадлежат одному bounded context, размещать в `App\Modules\Shared`.
-- Именовать классы value object с суффиксом `VO`, например `EmailVO`, `PasswordVO`, `ContactVO`.
+- Именовать классы value object с суффиксом `VO`, например `PasswordVO`.
 - Не смешивать продуктовую логику с Blade-шаблонами и JS темы.
 - Не добавлять абстракции без практической необходимости.
+
+Если общий модуль `App\Modules\Shared` понадобится для низкоуровневых value object или классификаторов, его нужно вводить отдельной задачей. В текущей кодовой базе такого модуля нет.
 
 ## Документация как часть разработки
 
@@ -69,29 +73,98 @@
 
 Предметная область площадок находится в `App\Modules\Venue`. Базовая доменная модель `Venue` хранится в таблице `venues`.
 
+Текущие поля площадки:
+
+- `created_by_user_id`;
+- `name`;
+- `alias`;
+- `type`;
+- `status`;
+- `description`;
+- timestamps.
+
 Текущие классификаторы площадок:
 
-- `VenueStatusEnum` - жизненный статус записи: `unconfirmed`, `confirmed`, `blocked`;
-- `VenueTypeEnum` - тип площадки;
-- `VenueFeatureEnum` - доступные удобства площадки, которые сохраняются в JSON-поле `features` как массив enum values.
+- `VenueStatusEnum` - жизненный статус записи: `unconfirmed`, `confirmed`, `blocked`, `removed`;
+- `VenueTypeEnum` - тип площадки.
 
-Поле `created_by` в `venues` является nullable foreign key на `users.id`. Отдельный Eloquent relation-метод к создателю пока не вводится, потому что на текущем этапе достаточно ссылочной целостности на уровне схемы.
+`Venue` имеет relation `creator()` к `User` по `created_by_user_id`.
 
-Будущая связь с предметной областью `Address` должна добавляться после появления таблицы `addresses`. Целевой вариант: nullable `address_id` в `venues` с уникальным индексом и foreign key на `addresses.id`, чтобы сохранить связь Venue 1-to-1 Address и не создавать псевдосвязь без ссылочной целостности.
+Публично видимы площадки со статусом `confirmed`. Дополнительно пользователь может видеть площадки через договорный доступ.
+
+`VenueFeatureEnum`, JSON-поле `features`, нормализованные адреса, `Address` и `Metro` в текущей кодовой базе отсутствуют.
+
+## Контракты
+
+Предметная область контрактов находится в `App\Modules\Contract`.
+
+Текущие модели:
+
+- `Contract`;
+- `ContractParty`.
+
+Связанные модели площадок:
+
+- `VenueContract`;
+- `VenueContractPermission`.
+
+Текущие таблицы:
+
+- `contracts`;
+- `contract_parties`;
+- `venue_contracts`;
+- `venue_contract_permissions`.
+
+В текущей реализации контракт используется как механизм доступа пользователя к площадкам. Права площадки хранятся в `venue_contract_permissions` как значения:
+
+- `view`;
+- `edit`;
+- `edit.schedule`.
+
+`contract_parties` уже задает более общую модель участников контракта через `party_type`, `party_id` и `role`, но универсальный ACL между любыми доменными сущностями пока не реализован. Его нужно описывать как направление развития, а не как готовую часть системы.
+
+В таблице `contracts` есть поле `assigned_by`, но в модели `Contract` сейчас нет relation/accessor `assignedByUser`. Этот слой нельзя описывать как готовый без изменения кода.
+
+## Темы и представления
+
+Текущая конфигурация тем находится в `config/themes.php`.
+
+Сейчас есть две директории:
+
+- `resources/themes/mskba_light` - фактически основная проработанная тема с большинством страниц пользовательской части;
+- `resources/themes/mskba_dark` - минимальная тема-заготовка.
+
+Целевое состояние для отдельной технической задачи:
+
+- текущую `mskba_light` переименовать в `mskba_dark`;
+- текущую `mskba_dark` переименовать в `blank`;
+- активной темой по умолчанию сделать новый `mskba_dark`.
+
+`ThemeResolver` выбирает активную тему из `APP_THEME`, регистрирует namespace `theme` и подключает Vite inputs активной темы.
+
+Метод `ThemeResolver::page()` использует fallback `theme::pages.system.view_not_found`, если запрошенной страницы нет. Такой fallback должен существовать в активной теме, иначе отсутствующая страница приведет к ошибке рендера вместо аккуратного view.
+
+Маршрут `/dashboard` сейчас есть, но view `pages/dashboard.blade.php` отсутствует в обеих текущих темах.
 
 ## Breadcrumbs
 
-Partial `theme::partials.breadcrumbs` строит цепочку навигации по имени текущего маршрута. Человекочитаемое название страницы для breadcrumbs нужно задавать рядом с маршрутом через `->defaults('breadcrumb', 'Название')`.
+Partial `theme::partials.breadcrumbs` строит цепочку навигации через `App\Presentation\Breadcrumbs\BreadcrumbsResolver`.
 
-Для подразделов с route-name в формате `section.page` partial автоматически ищет родительский маршрут `section.index`. Например, маршрут `admin.users` использует `admin.index` как родительский пункт и отображается как `Главная / Админка / Пользователи`, если оба маршрута имеют `breadcrumb`-метаданные.
+Resolver может использовать:
 
-Главная страница раздела должна называться по соглашению `section.index`. Например, для раздела `admin` основным маршрутом является `admin.index`, а дочерние страницы называются `admin.users`, `admin.settings` и так далее. Это соглашение нужно соблюдать для новых разделов, чтобы breadcrumbs могли автоматически определить родительский пункт.
+- имя текущего маршрута;
+- `breadcrumb` defaults маршрута;
+- заголовок страницы, если он передан в partial.
 
-Если странице нужна нестандартная цепочка, в partial можно явно передать массив `breadcrumbs`.
+В текущих маршрутах `breadcrumb` default явно задан только для маршрута `venues`.
+
+Соглашение вида `section.index` полезно для новых разделов, но текущие route names не везде ему следуют (`venues`, `account`). Поэтому документация не должна утверждать, что все текущие breadcrumbs уже построены по этому соглашению.
 
 ## Docker и окружения
 
-Каноническая схема окружений описана в [Docker Environment](specification/docker-environment.md). Базовый `docker-compose.yml` должен быть общим для dev и prod, а dev-only сервисы подключаются через `docker-compose.dev.yml`.
+Текущая Docker-схема описана в [Docker Environment](specification/docker-environment.md).
+
+В текущем compose есть только `postgres` и `adminer`. Сервисы `phpfpm`, `nginx`, `redis`, `mailpit`, `node`, dev override и production compose-сценарий не реализованы.
 
 ## Процесс работы с задачами
 
@@ -113,9 +186,11 @@ Partial `theme::partials.breadcrumbs` строит цепочку навигац
 Минимальные проверки выбираются по затронутой области:
 
 - PHP/backend: `composer test` или `make test`.
-- Frontend/assets: `npm run build` или `make npm CMD='run build'`.
-- Маршруты: `php artisan route:list` или `make artisan CMD='route:list'`.
-- Кеши Laravel: `php artisan optimize:clear` или `make clear`.
+- Frontend/assets: `npm run build` или `make build`.
+- Стиль PHP: `make lint` или `make format`.
+- Маршруты: `php artisan route:list`.
+- Кеши Laravel: `php artisan optimize:clear` или `make optimize-clear`.
+- Документация: `git diff --check`.
 
 Если проверку невозможно выполнить, это нужно явно зафиксировать в описании задачи и в итоговом сообщении.
 

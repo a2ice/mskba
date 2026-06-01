@@ -1,11 +1,19 @@
 # Identity
 
-Bounded context module.
+Модуль ограниченного контекста для пользователей, аутентификации, профиля и ролей.
 
-## Structure
+## Ответственность
 
-- `Domain`: business models, enums, events, exceptions, value objects.
-- `Application`: use cases, DTOs, application services.
-- `Infrastructure`: ACL, integrations, service providers.
-- `Presentation`: HTTP controllers, requests, resources.
-- `Tests`: module-level feature and unit tests.
+- Регистрация, вход и выход пользователя.
+- Создание аккаунта через `CreateUserAccountHandler`.
+- Базовый профиль пользователя в таблице `profiles`.
+- Системные роли и роли участия.
+- Проверки пользователя перед отображением страниц личного кабинета.
+
+## Структура
+
+- `Domain`: бизнес-модели, enum, события, исключения, value object.
+- `Application`: use case, DTO и application-сервисы.
+- `Infrastructure`: ACL, интеграции, service provider, factory.
+- `Presentation`: HTTP-контроллеры, request-классы, resource-классы.
+- `Tests`: feature- и unit-тесты модуля.
