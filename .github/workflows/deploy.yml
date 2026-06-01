@@ -55,31 +55,29 @@ jobs:
             HOST_UID="$(id -u)"
             HOST_GID="$(id -g)"
 
-            mkdir -p "$HOME/mskba-db-backups" bootstrap/cache public/build
+            mkdir -p bootstrap/cache public/build
 
             $COMPOSE build phpfpm
             $COMPOSE up -d db redis
 
-            $COMPOSE run --rm phpfpm composer install \
+            $COMPOSE run -T --rm phpfpm composer install \
               --no-dev \
               --prefer-dist \
               --no-interaction \
-              --optimize-autoloader
+              --optimize-autoloader \
+              </dev/null
 
             rm -rf public/build
-            $COMPOSE --profile build run --rm node
-            $COMPOSE run --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor node_modules public/build || true
+            $COMPOSE --profile build run -T --rm node </dev/null
+            $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor node_modules public/build </dev/null || true
 
-            BACKUP_FILE="$HOME/mskba-db-backups/pre-migrate-$(date +%Y%m%d%H%M%S).sql"
-            $COMPOSE exec -T db sh -lc 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$BACKUP_FILE"
+            $COMPOSE run -T --rm phpfpm sh -lc "mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && rm -f bootstrap/cache/*.php" </dev/null
+            $COMPOSE run -T --rm phpfpm php artisan migrate --force </dev/null
+            $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
+            $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
+            $COMPOSE run -T --rm phpfpm chown -R www-data:www-data storage bootstrap/cache </dev/null
+            $COMPOSE run -T --rm phpfpm chmod -R ug+rwX storage bootstrap/cache </dev/null
 
-            $COMPOSE run --rm phpfpm sh -lc "mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache"
-            $COMPOSE run --rm phpfpm php artisan optimize:clear
-            $COMPOSE run --rm phpfpm php artisan migrate --force
-            $COMPOSE run --rm phpfpm php artisan config:cache
-            $COMPOSE run --rm phpfpm chown -R www-data:www-data storage bootstrap/cache
-            $COMPOSE run --rm phpfpm chmod -R ug+rwX storage bootstrap/cache
-
-            $COMPOSE up -d phpfpm nginx
+            $COMPOSE up -d --force-recreate phpfpm nginx
 
             $COMPOSE restart phpfpm nginx

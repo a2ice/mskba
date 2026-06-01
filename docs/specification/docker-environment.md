@@ -91,7 +91,7 @@ Workflow:
 - push в `main`;
 - ручной запуск через `workflow_dispatch`.
 
-Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, делает SQL backup в `~/mskba-db-backups` перед миграциями, запускает миграции и кеширует Laravel config до подъема `nginx`.
+Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`.
 
 Workflow не использует `sudo`. Права на `storage` и `bootstrap/cache` выставляются через PHP container.
 

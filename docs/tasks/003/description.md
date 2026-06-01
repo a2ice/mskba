@@ -384,8 +384,8 @@ Deploy script:
 7. Поднимает `db` и `redis`.
 8. Устанавливает Composer-зависимости.
 9. Собирает Vite assets через Node container.
-10. Делает SQL backup в `~/mskba-db-backups`.
-11. Запускает `optimize:clear`, `migrate --force`, `config:cache` через one-off `phpfpm` container.
+10. Удаляет файловый config cache старого приложения.
+11. Запускает `migrate --force`, `optimize:clear`, `config:cache` через one-off `phpfpm` container.
 12. Поднимает `phpfpm` и `nginx`.
 13. Выставляет права на `storage` и `bootstrap/cache`.
 14. Перезапускает `phpfpm` и `nginx`.
@@ -414,10 +414,13 @@ Deploy script:
 - `nginx -t` для `docker/nginx/default.conf` через контейнер `nginx:1.27-alpine` с тестовым host alias `phpfpm` - пройден;
 - `npm run build` - пройден;
 - `php artisan route:list` - пройден, показал 28 маршрутов;
+- ручной deploy на VDS - пройден;
+- production migrations на новой БД `mskbabrandnew` - пройдены;
+- `https://mskba.ru/` - вернул `200`;
 - `git diff --check` - пройден.
 
 ## Текущий статус
 
-Выполнен предварительный аудит локальной конфигурации, старого deploy и VDS. Добавлены production Docker runtime и GitHub Actions workflow.
+Выполнен предварительный аудит локальной конфигурации, старого deploy и VDS. Добавлены production Docker runtime и GitHub Actions workflow. Первый deploy новой версии выполнен вручную на VDS.
 
-Workflow готов к первому боевому deploy. Серверный `.env` уже обновлен на новую БД, а старый volume `mskba_postgres_data` остается на сервере и не используется новым production compose.
+Workflow обновлен по результатам ручного deploy и готов к следующим автоматическим deploy из `main`. Серверный `.env` уже обновлен на новую БД, а старый volume `mskba_postgres_data` остается на сервере и не используется новым production compose.
