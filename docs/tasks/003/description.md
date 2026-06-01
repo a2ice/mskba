@@ -370,7 +370,7 @@ Production services:
 
 Workflow запускается:
 
-- при push в `main`;
+- при push в `main`, кроме изменений только в `docs/**` или `README.md`;
 - вручную через `workflow_dispatch`.
 
 Deploy script:

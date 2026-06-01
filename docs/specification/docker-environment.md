@@ -88,7 +88,7 @@ Workflow:
 
 Триггеры:
 
-- push в `main`;
+- push в `main`, кроме изменений только в `docs/**` или `README.md`;
 - ручной запуск через `workflow_dispatch`.
 
 Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`.
