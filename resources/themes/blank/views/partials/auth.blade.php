@@ -7,7 +7,7 @@
                 <span>Вы вошли как {{ auth()->user()->username }}.</span>
                 <form method="POST" action="{{ route('auth.logout') }}">
                     @csrf
-                    <button type="submit" class="btn btn-outline-secondary btn-sm">Выйти</button>
+                    <button type="submit" class="btn btn-outline-light btn-sm">Выйти</button>
                 </form>
             </div>
         @else

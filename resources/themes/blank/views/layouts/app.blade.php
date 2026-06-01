@@ -3,10 +3,6 @@
     $pageTitle = isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA');
 
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
-
-    $user = auth()->user();
-
-    $userLoginLabel = $user ? $user->username : 'Войти';
 @endphp
 
 <!DOCTYPE html>
@@ -20,18 +16,18 @@
         @vite($theme->viteInputs())
         @yield('styles')
     </head>
-    <body class="theme-shell {{ $routeClass }}">
-        <div class="site-frame">
+    <body class="{{ $routeClass }}">
+        <header class="site-frame">
             @include('theme::partials.header')
+        </header>
 
-            <main class="site-content">          
+            <main class="site-content">
                 @yield('content')
             </main>
 
-            <footer class="site-footer">
-                @include('theme::partials.footer')
-            </footer>
-        </div>
+        <footer class="site-footer">
+            @include('theme::partials.footer')
+        </footer>
 
         @include('theme::partials.modal')
     </body>
