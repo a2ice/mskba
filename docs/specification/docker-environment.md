@@ -93,7 +93,7 @@ Workflow:
 
 Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`.
 
-Workflow не использует `sudo`. Права на `storage` и `bootstrap/cache` выставляются через PHP container.
+Workflow не использует `sudo`. Права на `storage` и `bootstrap/cache` выставляются через PHP container как `deploy:www-data` с `ug+rwX`, чтобы и Git checkout, и PHP-FPM могли работать с этими директориями.
 
 Перед изменением кода workflow выполняет preflight:
 

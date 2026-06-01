@@ -387,7 +387,7 @@ Deploy script:
 10. Удаляет файловый config cache старого приложения.
 11. Запускает `migrate --force`, `optimize:clear`, `config:cache` через one-off `phpfpm` container.
 12. Поднимает `phpfpm` и `nginx`.
-13. Выставляет права на `storage` и `bootstrap/cache`.
+13. Выставляет права на `storage` и `bootstrap/cache` как `deploy:www-data` с `ug+rwX`.
 14. Перезапускает `phpfpm` и `nginx`.
 
 ## Нерешенный production-вопрос
@@ -416,6 +416,7 @@ Deploy script:
 - `php artisan route:list` - пройден, показал 28 маршрутов;
 - ручной deploy на VDS - пройден;
 - production migrations на новой БД `mskbabrandnew` - пройдены;
+- server checkout `git reset --hard origin/main` после deploy - пройден после корректировки прав `storage` и `bootstrap/cache`;
 - `https://mskba.ru/` - вернул `200`;
 - `git diff --check` - пройден.
 

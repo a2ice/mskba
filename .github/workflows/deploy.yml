@@ -75,7 +75,7 @@ jobs:
             $COMPOSE run -T --rm phpfpm php artisan migrate --force </dev/null
             $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
-            $COMPOSE run -T --rm phpfpm chown -R www-data:www-data storage bootstrap/cache </dev/null
+            $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:www-data" storage bootstrap/cache </dev/null
             $COMPOSE run -T --rm phpfpm chmod -R ug+rwX storage bootstrap/cache </dev/null
 
             $COMPOSE up -d --force-recreate phpfpm nginx
