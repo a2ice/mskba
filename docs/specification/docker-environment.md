@@ -7,6 +7,8 @@
 - [Назначение](#назначение)
 - [Текущее состояние](#текущее-состояние)
 - [Сервисы](#сервисы)
+- [Production runtime](#production-runtime)
+- [GitHub Actions deploy](#github-actions-deploy)
 - [Команды Makefile](#команды-makefile)
 - [Что не реализовано](#что-не-реализовано)
 - [Будущее развитие](#будущее-развитие)
@@ -17,7 +19,7 @@
 
 ## Текущее состояние
 
-В проекте есть один файл Docker Compose:
+Для локальной разработки в проекте есть основной Docker Compose:
 
 ```text
 docker-compose.yml
@@ -31,9 +33,15 @@ mskbabrandnew
 
 Файл `docker-compose.dev.yml` в текущей версии отсутствует.
 
+Для production-деплоя добавлен отдельный compose-файл:
+
+```text
+docker-compose.prod.yml
+```
+
 ## Сервисы
 
-Текущий `docker-compose.yml` содержит:
+Локальный `docker-compose.yml` содержит:
 
 - `postgres` - PostgreSQL 17 Alpine, база `mskbabrandnew`, пользователь `mskbabrandnew`;
 - `adminer` - web-интерфейс для работы с PostgreSQL.
@@ -41,6 +49,58 @@ mskbabrandnew
 Текущий volume:
 
 - `postgres-data` - данные PostgreSQL.
+
+## Production runtime
+
+Production runtime описан отдельно в `docker-compose.prod.yml`, чтобы не ломать локальный DB-only сценарий.
+
+Production compose project name временно оставлен `mskbanew`. Это сделано для совместимости с текущей VDS-конфигурацией, где уже существуют контейнеры и Docker labels старого проекта.
+
+Production services:
+
+- `phpfpm` - PHP-FPM runtime приложения;
+- `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
+- `db` - PostgreSQL 17, использует новый volume `mskbabrandnew_postgres_data`;
+- `redis` - Redis 7 для будущего runtime/cache/queue сценария;
+- `node` - build-only сервис с profile `build` для `npm ci && npm run build`.
+
+Production Dockerfile:
+
+```text
+docker/app/Dockerfile
+```
+
+Nginx-конфигурация:
+
+```text
+docker/nginx/default.conf
+```
+
+Порты `db` и `redis` не должны быть публичными в production. В текущем production compose `db` по умолчанию пробрасывается только на `127.0.0.1:5433`, а `redis` наружу не пробрасывается.
+
+## GitHub Actions deploy
+
+Workflow:
+
+```text
+.github/workflows/deploy.yml
+```
+
+Триггеры:
+
+- push в `main`;
+- ручной запуск через `workflow_dispatch`.
+
+Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, делает SQL backup в `~/mskba-db-backups` перед миграциями, запускает миграции и кеширует Laravel config до подъема `nginx`.
+
+Workflow не использует `sudo`. Права на `storage` и `bootstrap/cache` выставляются через PHP container.
+
+Перед изменением кода workflow выполняет preflight:
+
+- останавливается, если на production `APP_DEBUG=true`;
+- останавливается, если `.env` указывает на старую базу `DB_DATABASE=mskba`, найдены признаки legacy schema старого проекта (`contacts`, `contact_verifications`, `user_profiles`) и явно не задано `ALLOW_LEGACY_DB_DEPLOY=1`.
+
+Такой guard нужен потому, что текущая VDS-БД старого проекта не совпадает с миграциями новой кодовой базы. Целевой путь для первого deploy новой версии - новая база `mskbabrandnew` на отдельном volume `mskbabrandnew_postgres_data`.
 
 ## Команды Makefile
 
@@ -81,18 +141,17 @@ mskbabrandnew
 
 В текущей Docker-схеме нет:
 
-- `phpfpm`;
-- `nginx`;
-- `redis`;
 - `mailpit`;
-- `node`;
 - отдельного dev override;
-- отдельного production compose-файла.
+- Makefile-команд для production compose.
 
 Команды `make prod-up`, `make prod-down`, `make config`, `make dev-config`, `make npm` и `make artisan` отсутствуют.
 
 ## Будущее развитие
 
-Если проекту нужен полноценный Docker runtime для Laravel, его нужно проектировать отдельной задачей. В такой задаче можно будет вернуться к сервисам `phpfpm`, `nginx`, `redis`, dev-only сервисам и production-сценарию.
+Следующие вопросы остаются отдельными задачами:
 
-До появления такой задачи документация не должна описывать эти сервисы как уже существующие.
+- импорт данных из старой production-БД, если он понадобится;
+- проверка host-level Nginx/HTTPS на VDS;
+- переименование production compose project/container names с `mskbanew` на `mskba`;
+- добавление dev override, если понадобится полноценный Docker dev runtime.

@@ -1,0 +1,73 @@
+name: mskbanew
+
+services:
+  phpfpm:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: mskbanew-phpfpm
+    working_dir: /var/www/html
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["php-fpm"]
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mskbanew-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-8000}:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - phpfpm
+
+  db:
+    image: postgres:17-alpine
+    container_name: mskbanew-db
+    restart: unless-stopped
+    ports:
+      - "${DB_FORWARD_PORT:-127.0.0.1:5433}:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-mskbabrandnew}
+      POSTGRES_USER: ${DB_USERNAME:-mskbabrandnew}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-mskbabrandnew} -d ${DB_DATABASE:-mskbabrandnew}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mskbanew-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  node:
+    image: node:22-alpine
+    container_name: mskbanew-node
+    working_dir: /var/www/html
+    profiles:
+      - build
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    command: ["sh", "-lc", "npm ci && npm run build"]
+
+volumes:
+  postgres_data:
+    name: mskbabrandnew_postgres_data
+  redis_data:
+  node_modules:

@@ -1,0 +1,85 @@
+name: Deploy to production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd /var/www/mskba
+
+            if [ ! -f .env ]; then
+              echo ".env is missing on production server" >&2
+              exit 1
+            fi
+
+            if grep -q '^APP_DEBUG=true$' .env; then
+              echo "APP_DEBUG=true is not allowed for production deploy" >&2
+              exit 1
+            fi
+
+            TARGET_DB_DATABASE="$(sed -n 's/^DB_DATABASE=//p' .env | tail -1 | tr -d '\"')"
+
+            if [ "$TARGET_DB_DATABASE" = "mskba" ] && ! grep -q '^ALLOW_LEGACY_DB_DEPLOY=1$' .env && docker compose ps db >/dev/null 2>&1; then
+              LEGACY_TABLES="$(docker compose exec -T db sh -lc 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -Atc "select tablename from pg_tables where schemaname = '\''public'\'' order by tablename;"' || true)"
+
+              if printf '%s\n' "$LEGACY_TABLES" | grep -Eq '^(contacts|contact_verifications|user_profiles)$'; then
+                echo "Production database has legacy mskbanew schema. Resolve DB migration/reset strategy before deploy." >&2
+                exit 1
+              fi
+            fi
+
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
+
+            COMPOSE="docker compose -f docker-compose.prod.yml"
+            HOST_UID="$(id -u)"
+            HOST_GID="$(id -g)"
+
+            mkdir -p "$HOME/mskba-db-backups" bootstrap/cache public/build
+
+            $COMPOSE build phpfpm
+            $COMPOSE up -d db redis
+
+            $COMPOSE run --rm phpfpm composer install \
+              --no-dev \
+              --prefer-dist \
+              --no-interaction \
+              --optimize-autoloader
+
+            rm -rf public/build
+            $COMPOSE --profile build run --rm node
+            $COMPOSE run --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor node_modules public/build || true
+
+            BACKUP_FILE="$HOME/mskba-db-backups/pre-migrate-$(date +%Y%m%d%H%M%S).sql"
+            $COMPOSE exec -T db sh -lc 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > "$BACKUP_FILE"
+
+            $COMPOSE run --rm phpfpm sh -lc "mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache"
+            $COMPOSE run --rm phpfpm php artisan optimize:clear
+            $COMPOSE run --rm phpfpm php artisan migrate --force
+            $COMPOSE run --rm phpfpm php artisan config:cache
+            $COMPOSE run --rm phpfpm chown -R www-data:www-data storage bootstrap/cache
+            $COMPOSE run --rm phpfpm chmod -R ug+rwX storage bootstrap/cache
+
+            $COMPOSE up -d phpfpm nginx
+
+            $COMPOSE restart phpfpm nginx
