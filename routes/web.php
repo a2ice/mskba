@@ -59,6 +59,13 @@ Route::prefix('auth')->group(function () {
 
 });
 
+Route::prefix('admin')->group(function () use ($themeResolver) {
+
+	Route::get('/dashboard', function () use ($themeResolver) {
+		return $themeResolver->page('admin.dashboard');
+	})->middleware('auth', 'can:access-admin-panel')->name('admin.dashboard');
+});
+
 
 Route::prefix('venues')->group(function () {
 	Route::get('/', [VenueController::class, 'index'])

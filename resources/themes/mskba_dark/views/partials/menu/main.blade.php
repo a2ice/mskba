@@ -1,6 +1,6 @@
 @php
     $menuItems = app(\App\Presentation\Navigation\MenuResolver::class)
-        ->resolve($page ?? 'main');
+        ->resolve($menu ?? 'main');
 @endphp
 
 <div class="partial-wrapper partial-main-menu site-header-nav-wrapper header-cell">
@@ -15,6 +15,7 @@
             <nav class="site-nav" aria-label="Основная навигация">
                 @foreach ($menuItems as $item)
                     @continue(! $item['visible'])
+                    
                     @php
                         $children = $item['children'] ?? [];
                         $visibleChildren = array_values(array_filter($children, fn (array $child): bool => $child['visible']));
@@ -28,6 +29,11 @@
 
                             <div class="site-nav__dropdown" role="menu">
                                 @foreach ($visibleChildren as $child)
+
+                                    @if (!empty($child['divider']))
+                                        <span class="nav-divider"></span>
+                                    @endif
+
                                     <a
                                         href="{{ $child['url'] }}"
                                         @class(['site-nav__dropdown-link', 'is-active' => $child['active']])

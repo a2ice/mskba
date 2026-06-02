@@ -74,6 +74,13 @@ class User extends Authenticatable
         return $this->system_role === $role;
     }
 
+    public function isAdmin(bool $isConfirmed = true): bool
+    {
+        $numericRoleValue = $this->system_role->numericValue();
+        
+        return $numericRoleValue >= UserSystemRoleEnum::ADMIN->numericValue() && (!$isConfirmed || $this->isConfirmed());
+    }
+
     public function hasRole(string $role): bool
     {
         return $this->participationRoles()->where('role', $role)->exists();

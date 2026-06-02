@@ -1,9 +1,7 @@
 <?php
 
-use App\Providers\AppServiceProvider;
-use App\Modules\Venue\Infrastructure\Providers\VenueAccessServiceProvider;
-
 return [
-    AppServiceProvider::class,
-    VenueAccessServiceProvider::class,
+    App\Providers\AppServiceProvider::class,
+    App\Providers\AccessServiceProvider::class,
+    App\Modules\Venue\Infrastructure\Providers\VenueAccessServiceProvider::class,
 ];

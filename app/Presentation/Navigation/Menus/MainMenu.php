@@ -35,6 +35,17 @@ final class MainMenu implements MenuHandler
             ],
         ];
 
+        if($user->isAdmin()) {
+            $moreItems[] = [
+                'divider' => true,
+                'label' => 'Админка',
+                'url' => $this->routeUrl('admin.dashboard'),
+                'active' => $this->isActiveRoute('admin.*'),
+                'visible' => true,
+            ];
+            
+        }
+
         $items = [
             [
                 'label' => 'Площадки',

@@ -20,6 +20,6 @@ class VenueAccessServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::define('add_venue', fn ($user) => $user->hasRole('venue_related') && $user->isConfirmed());
+        Gate::define('venue-create-venue', fn ($user) => $user->hasRole('venue_related') && $user->isConfirmed());
     }
 }

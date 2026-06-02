@@ -2,6 +2,7 @@
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css');
 @import 'bootstrap';
 @import './default';
+@import './menu';
 @import './modal';
 @import './user';
 
@@ -103,11 +104,14 @@ body.header-scrolled .site-header {
     height: 25vw;
     background: linear-gradient(135deg, rgba(236, 127, 18, 0.25) 0%, rgba(236, 127, 18, 0) 70%);
     transform: translate(-15%, -15%);
+    z-index: -5;
+    display: none;
     /* content: ""; */
 }
 
 .site-header-left {
     position: relative;
+    z-index: 1;
 }
 
 .site-header-right {
@@ -690,6 +694,10 @@ body.nav-shown .nav-hamburger > span:last-child {
     line-height: 1;
 }
 
+.site-content {
+    position: relative;
+    z-index: 2;
+}
 
 .section-header {
     gap: 18px;
