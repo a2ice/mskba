@@ -29,9 +29,9 @@ body {
     --surface-raised: #191d18;
     --field: #2a2d28;
     --field-border: rgba(255, 255, 255, 0.24);
-    --accent: #f08a24;
+    --accent: #ec7f12;
     --accent-light: rgba(240, 138, 36, 0.24);
-    --accent-strong: #f65f2a;
+    --accent-strong: #e2590f;
     --accent-hover: #ff7427;
     --accent-text: #ff8b2f;
     --court: #2f8c69;
@@ -106,14 +106,14 @@ body.header-scrolled .site-header {
 .brand {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 5px;
     min-width: 0;
 }
 
 .brand__mark {
     display: block;
     width: auto;
-    height: clamp(40px, 3.2vw, 50px);
+    height: clamp(50px, 3.2vw, 75px);
     flex: 0 0 auto;
 }
 
@@ -143,11 +143,11 @@ body.header-scrolled .brand__name {
 
 .brand__descriptor {
     color: rgba(255, 255, 255, 0.72);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
-    line-height: 1.15;
+    line-height: 1.35;
     text-transform: uppercase;
-    margin-top: 1px;
+    margin-top: 2px;
 }
 
 @media (max-width: 990px) {
@@ -185,7 +185,7 @@ body.header-scrolled .brand__name {
 }
 
 .site-nav__link:hover {
-    color: var(--accent);
+    color: var(--accent-strong);
 }
 
 .site-nav__link.is-active {
@@ -348,7 +348,7 @@ body.nav-shown .nav-hamburger > span:last-child {
 }
 
 .first-screen {
-    padding-top: 50px;
+    padding-top: 65px;
 }
 
 .page-breadcrumbs {
