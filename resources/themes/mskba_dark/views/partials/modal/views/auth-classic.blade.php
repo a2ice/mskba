@@ -36,8 +36,18 @@
 
         <form class="auth-form" data-auth-classic-form data-auth-classic-kind="register" action="{{ route('auth.register', [], false) }}" method="POST">
             <label class="auth-form__field">
-                <span>Email</span>
-                <input type="email" name="email" autocomplete="username" required autofocus>
+                <span>Логин</span>
+                <input type="text" name="username" autocomplete="username" required autofocus>
+            </label>
+
+            <label class="auth-form__field">
+                <span>Пароль</span>
+                <input type="password" name="password" autocomplete="new-password" required>
+            </label>
+
+            <label class="auth-form__field">
+                <span>Подтверждение пароля</span>
+                <input type="password" name="password_confirmation" autocomplete="new-password" required>
             </label>
 
             <div class="auth-form__message form-message"></div>

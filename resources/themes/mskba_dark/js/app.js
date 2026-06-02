@@ -7,12 +7,13 @@ const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
 $.ajaxSetup({
     headers: {
+        'Accept': 'application/json',
         'X-CSRF-TOKEN': csrfToken,
     },
 });
 
 import './core/ui-handlers.js';
-// import './features/auth.js';
+import './features/auth.js';
 
 var header,
     headerHeight = 0;

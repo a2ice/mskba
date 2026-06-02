@@ -6,6 +6,8 @@ use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
 use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use App\Modules\Identity\Domain\ValueObjects\UsernameVO;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 class RegisterRequest extends FormRequest
@@ -78,6 +80,18 @@ class RegisterRequest extends FormRequest
                 'username' => trim((string) $this->input('username')),
             ]);
         }
+    }
+
+    protected function failedValidation(Validator $validator): void
+    {
+        if ($this->expectsJson() || $this->ajax() || $this->wantsJson()) {
+            throw new HttpResponseException(response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422));
+        }
+
+        parent::failedValidation($validator);
     }
 
     private function domainUsernameRule(): \Closure

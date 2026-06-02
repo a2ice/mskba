@@ -102,6 +102,9 @@ export function submitForm(formLike, options = {}) {
         url,
         method,
         dataType,
+        headers: {
+            Accept: 'application/json'
+        },
         data
     });
 
