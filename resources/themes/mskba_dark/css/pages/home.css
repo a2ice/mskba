@@ -93,9 +93,14 @@
 .home-welcome__actions {
     display: flex;
     align-items: stretch;
-    gap: 18px;
+    gap: 15px;
     flex-wrap: wrap;
-    margin-top: 34px;
+    margin-top: 34px;    
+}
+
+.home-welcome__actions .btn__title {
+    font-size: 16px;
+    font-weight: 800;
 }
 
 .home-welcome__actions .ti {
@@ -106,7 +111,7 @@
     /* min-height: 88px; */
     justify-content: flex-start;
     padding: 18px 24px;
-    gap: 16px;
+    gap: 10px;
     min-width: 0;
 }
 
@@ -120,9 +125,21 @@
 }
 
 .home-welcome__how {
-    margin-top: 46px;
+    margin-top: 30px;
     gap: 12px;
     color: rgba(255, 255, 255, 0.86);
+    font-weight: 500;
+    line-height: 1.4;
+    position:relative;
+}
+.home-welcome__how::after {
+    /* dashed */
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    width: 100%;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.5);
 }
 
 .home-welcome__how-arrow {
