@@ -110,6 +110,13 @@ body.header-scrolled .site-header {
     min-width: 0;
 }
 
+.brand__mark {
+    display: block;
+    width: auto;
+    height: clamp(40px, 3.2vw, 50px);
+    flex: 0 0 auto;
+}
+
 .brand__text {
     display: flex;
     align-items: flex-start;
