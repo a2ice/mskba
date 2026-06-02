@@ -24,7 +24,7 @@
                             </div>
                         </div>
                         <div class="card mb-4">
-                            <div class="card-body">
+                            <div class="card-body">                               
                                 @include('theme::partials.menu.sidebar', ['page' => 'account'])
                             </div>
                         </div>
@@ -32,7 +32,9 @@
                     <div class="col-md-9">
                         <div class="card mb-4">
                             <div class="card-body">
-                                @yield('account-content')
+                                 <div class="p-3">
+                                    @yield('account-content')
+                                </div>
                             </div>
                         </div>
                     </div>

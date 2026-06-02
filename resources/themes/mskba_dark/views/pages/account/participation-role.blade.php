@@ -1,3 +1,7 @@
+@php
+    use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+@endphp
+
 @extends('theme::layouts.account', ['title' => $title ?? 'Роль участника'])
 
 @section('account-content')
@@ -9,7 +13,7 @@
 
     @if(isset($participationRole))
         <div class="mb-4">
-            <h2 class="h3 mb-3">{{ $role->label() }}</h2>
+            <h3 class="h3 mb-3">{{ $role->label() }}</h3>
 
             <ul class="list-unstyled mb-0">
                 <li class="list-unstyled mb-2">
@@ -39,7 +43,7 @@
             </ul>
         </div>
 
-        @if($role === \App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum::PLAYER)
+        @if($role === UserParticipationRoleEnum::PLAYER)
             <div>
                 <h3 class="h4 mb-3">Профиль игрока</h3>
 
