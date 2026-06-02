@@ -49,21 +49,15 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
-                'label' => 'Турниры',
-                'url' => $this->routeUrl('/#tournaments'),
-                'active' => $this->isActiveRoute('tournaments, tournaments.*'),
+                'label' => 'Тренировки',
+                'url' => $this->routeUrl('/#training'),
+                'active' => $this->isActiveRoute('training, training.*'),
                 'visible' => true,
             ],
             [
                 'label' => 'Команды',
                 'url' => $this->routeUrl('/#teams'),
                 'active' => $this->isActiveRoute('teams, teams.*'),
-                'visible' => true,
-            ],
-            [
-                'label' => 'Тренировки',
-                'url' => $this->routeUrl('/#training'),
-                'active' => $this->isActiveRoute('training, training.*'),
                 'visible' => true,
             ],
             [

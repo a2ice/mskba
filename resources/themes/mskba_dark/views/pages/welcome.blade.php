@@ -75,7 +75,7 @@
         <div class="home-welcome__main">
             <div class="home-welcome__copy">
                 <p class="home-welcome__eyebrow">
-                    <i class="ti ti-ball-basketball icon" aria-hidden="true"></i>
+                    <span class="home-welcome__eyebrow-dot" aria-hidden="true"></span>
                     <span>Сегодня доступно 37 игр</span>
                 </p>
 
