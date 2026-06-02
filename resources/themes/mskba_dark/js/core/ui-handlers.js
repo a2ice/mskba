@@ -29,6 +29,7 @@ const handlers = {
         }
 
         modal.data('modalInitialSection', modalSection);
+        $('body').removeClass('nav-shown');
         openModal(modal);
     },
 

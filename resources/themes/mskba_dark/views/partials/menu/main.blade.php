@@ -46,5 +46,33 @@
                 @endforeach
             </nav>
         @endif
+
+        <div class="site-nav__mobile-auth" aria-label="Навигация аккаунта">
+            @guest
+                <button
+                    type="button"
+                    class="btn btn--secondary btn--sm site-nav__mobile-auth-button js-handler"
+                    data-handler="modal"
+                    data-modal-action="open"
+                    data-modal-target="auth-entry-classic"
+                >
+                    Войти
+                </button>
+                <button
+                    type="button"
+                    class="btn btn--primary btn--sm site-nav__mobile-auth-button js-handler"
+                    data-handler="modal"
+                    data-modal-action="open"
+                    data-modal-target="auth-entry-classic"
+                    data-modal-section="register"
+                >
+                    Регистрация
+                </button>
+            @else
+                <a href="{{ route('account') }}" class="btn btn--secondary btn--sm site-nav__mobile-auth-button">
+                    {{ $userLoginLabel ?? 'Аккаунт' }}
+                </a>
+            @endguest
+        </div>
     </div>
 </div>
