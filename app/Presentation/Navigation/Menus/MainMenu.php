@@ -14,6 +14,7 @@ final class MainMenu implements MenuHandler
     public function items(): array
     {
         $user = request()->user();
+
         $moreItems = [
             [
                 'label' => 'Новости',
@@ -35,7 +36,7 @@ final class MainMenu implements MenuHandler
             ],
         ];
 
-        if($user->isAdmin()) {
+        if($user?->isAdmin()) {
             $moreItems[] = [
                 'divider' => true,
                 'label' => 'Админка',
@@ -43,7 +44,7 @@ final class MainMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.*'),
                 'visible' => true,
             ];
-            
+
         }
 
         $items = [
