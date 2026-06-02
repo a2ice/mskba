@@ -9,7 +9,7 @@ enum PlayerPositionEnum: string
     case SMALL_FORWARD = 'small_forward';
     case POWER_FORWARD = 'power_forward';
     case CENTER = 'center';
-    case COMBO_GUARD = 'combo_guard';
+    // case COMBO_GUARD = 'combo_guard';
     case FORWARD = 'forward';
 
     public function label(): string
@@ -20,7 +20,7 @@ enum PlayerPositionEnum: string
             self::SMALL_FORWARD => 'Легкий форвард',
             self::POWER_FORWARD => 'Тяжелый форвард',
             self::CENTER => 'Центровой',
-            self::COMBO_GUARD => 'Комбо-гард',
+            // self::COMBO_GUARD => 'Комбо-гард',
             self::FORWARD => 'Форвард',
         };
     }

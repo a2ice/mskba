@@ -83,7 +83,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 
 	// Account routes
 	Route::prefix('account')->group(function () {
-		Route::get('/', [AccountController::class, 'index'])->name('account');
+		Route::get('/', [AccountController::class, 'index'])
+			->name('account')
+			->defaults('breadcrumb', 'Аккаунт');
 		Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
 			->name('account.participation-role');
 		Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
