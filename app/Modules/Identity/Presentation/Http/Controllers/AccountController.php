@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
 use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
@@ -54,6 +55,37 @@ class AccountController extends Controller
     public function contacts(): Response
     {
         return ThemeResolver::page('account.contacts');
+    }
+
+    public function participationRole(string $role): Response
+    {
+        $roleEnum = UserParticipationRoleEnum::tryFrom($role);
+
+        abort_if($roleEnum === null, 404);
+
+        try {
+            $user = $this->accountCheckForPresentationService->handle(request()->user());
+        } catch (\Exception $e) {
+            return ThemeResolver::page('account.participation-role', ['error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        $user->loadMissing('playerProfile');
+
+        $participationRole = $user->participationRoles()
+            ->where('role', $roleEnum->value)
+            ->first();
+
+        abort_if($participationRole === null, 404);
+
+        return ThemeResolver::page('account.participation-role', [
+            'user' => $user,
+            'participationRole' => $participationRole,
+            'role' => $roleEnum,
+            'title' => $roleEnum->label(),
+        ]);
     }
 
     public function contracts(ListAccountContractsHandler $listAccountContracts): Response

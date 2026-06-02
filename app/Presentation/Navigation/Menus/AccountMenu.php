@@ -4,12 +4,13 @@ namespace App\Presentation\Navigation\Menus;
 
 use App\Presentation\Navigation\MenuHandler;
 use App\Presentation\Navigation\Menus\MenuHelper;
+use Illuminate\Support\Collection;
 
 final class AccountMenu implements MenuHandler
 {
     use MenuHelper;
     /**
-     * @return array<int, array{label: string, url: string, active: bool, visible: bool}>
+     * @return array<int, array{label: string, url: string, active: bool, visible: bool, divider?: bool}>
      */
     public function items(): array
     {
@@ -25,6 +26,11 @@ final class AccountMenu implements MenuHandler
         ];
 
         if ($user) {
+            $user->loadMissing('participationRoles');
+
+            foreach ($this->participationRoleItems($user->participationRoles) as $item) {
+                $items[] = $item;
+            }
 
             $items[] = [
                 'label' => 'Настройки',
@@ -68,5 +74,27 @@ final class AccountMenu implements MenuHandler
         }
 
         return $items;
+    }
+
+    /**
+     * @param Collection<int, \App\Modules\Identity\Domain\Models\UserParticipationRole> $participationRoles
+     * @return array<int, array{label: string, url: string, active: bool, visible: bool}>
+     */
+    private function participationRoleItems(Collection $participationRoles): array
+    {
+        return $participationRoles
+            ->map(function ($participationRole) {
+                $role = $participationRole->role;
+
+                return [
+                    'label' => $role->label(),
+                    'url' => route('account.participation-role', ['role' => $role->value]),
+                    'active' => request()->routeIs('account.participation-role')
+                        && request()->route('role') === $role->value,
+                    'visible' => true,
+                ];
+            })
+            ->values()
+            ->all();
     }
 }
