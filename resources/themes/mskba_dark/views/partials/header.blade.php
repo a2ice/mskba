@@ -1,5 +1,7 @@
 <header class="site-header partial-wrapper partial-header">
 
+    <div class="light-overlay"></div>
+
     <div class="site-header-left header-cell">
         @include('theme::partials.logo')
     </div>
