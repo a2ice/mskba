@@ -8,15 +8,6 @@ on:
       - "docs/**"
       - "README.md"
   workflow_dispatch:
-    inputs:
-      deploy_mode:
-        description: "Deploy mode"
-        required: true
-        default: "full"
-        type: choice
-        options:
-          - full
-          - light
 
 concurrency:
   group: production
@@ -37,9 +28,6 @@ jobs:
             set -euo pipefail
 
             cd /var/www/mskba
-
-            DEPLOY_MODE="${{ github.event_name == 'workflow_dispatch' && inputs.deploy_mode || 'light' }}"
-            GITHUB_BEFORE="${{ github.event.before }}"
 
             if [ ! -f .env ]; then
               echo ".env is missing on production server" >&2
@@ -62,31 +50,7 @@ jobs:
               fi
             fi
 
-            CURRENT_HEAD="$(git rev-parse HEAD 2>/dev/null || true)"
-
             git fetch origin main
-
-            DEPLOY_SHA="$(git rev-parse origin/main)"
-            BASE_SHA="$CURRENT_HEAD"
-
-            if [ -n "$GITHUB_BEFORE" ] && [ "$GITHUB_BEFORE" != "0000000000000000000000000000000000000000" ]; then
-              BASE_SHA="$GITHUB_BEFORE"
-            fi
-
-            if [ -n "$BASE_SHA" ] && git rev-parse --verify "$BASE_SHA^{commit}" >/dev/null 2>&1; then
-              CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$DEPLOY_SHA")"
-            else
-              CHANGED_FILES="$(git diff --name-only "$DEPLOY_SHA~1" "$DEPLOY_SHA" 2>/dev/null || true)"
-            fi
-
-            echo "Deploy mode: $DEPLOY_MODE"
-
-            if [ "$DEPLOY_MODE" = "light" ] && printf '%s\n' "$CHANGED_FILES" | grep -Eq '^(docker/|docker-compose\.prod\.yml|composer\.(json|lock)|package(-lock)?\.json|vite\.config\.[^/]+|resources/(css|js)/|resources/themes/[^/]+/(css|js)/)'; then
-              echo "Light deploy cannot safely handle Docker, dependency, or frontend asset source changes. Run the workflow manually with deploy_mode=full." >&2
-              printf '%s\n' "$CHANGED_FILES" >&2
-              exit 1
-            fi
-
             git reset --hard origin/main
             git clean -fd
 
@@ -96,10 +60,7 @@ jobs:
 
             mkdir -p bootstrap/cache public/build
 
-            if [ "$DEPLOY_MODE" = "full" ]; then
-              $COMPOSE build phpfpm
-            fi
-
+            $COMPOSE build phpfpm
             $COMPOSE up -d db redis
 
             $COMPOSE run -T --rm phpfpm composer install \
@@ -109,13 +70,8 @@ jobs:
               --optimize-autoloader \
               </dev/null
 
-            if [ "$DEPLOY_MODE" = "full" ]; then
-              rm -rf public/build
-              $COMPOSE --profile build run -T --rm node </dev/null
-              $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor node_modules public/build </dev/null || true
-            fi
-
             test -f public/build/manifest.json
+            $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor public/build </dev/null || true
 
             $COMPOSE run -T --rm phpfpm sh -lc "mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && rm -f bootstrap/cache/*.php" </dev/null
             $COMPOSE run -T --rm phpfpm php artisan migrate --force </dev/null
@@ -124,10 +80,6 @@ jobs:
             $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:www-data" storage bootstrap/cache </dev/null
             $COMPOSE run -T --rm phpfpm chmod -R ug+rwX storage bootstrap/cache </dev/null
 
-            if [ "$DEPLOY_MODE" = "full" ]; then
-              $COMPOSE up -d --force-recreate phpfpm nginx
-            else
-              $COMPOSE up -d phpfpm nginx
-            fi
+            $COMPOSE up -d --force-recreate phpfpm nginx
 
             $COMPOSE restart phpfpm nginx
