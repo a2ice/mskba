@@ -65,10 +65,8 @@ jobs:
             CURRENT_HEAD="$(git rev-parse HEAD 2>/dev/null || true)"
 
             git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
 
-            DEPLOY_SHA="$(git rev-parse HEAD)"
+            DEPLOY_SHA="$(git rev-parse origin/main)"
             BASE_SHA="$CURRENT_HEAD"
 
             if [ -n "$GITHUB_BEFORE" ] && [ "$GITHUB_BEFORE" != "0000000000000000000000000000000000000000" ]; then
@@ -88,6 +86,9 @@ jobs:
               printf '%s\n' "$CHANGED_FILES" >&2
               exit 1
             fi
+
+            git reset --hard origin/main
+            git clean -fd
 
             COMPOSE="docker compose -f docker-compose.prod.yml"
             HOST_UID="$(id -u)"
