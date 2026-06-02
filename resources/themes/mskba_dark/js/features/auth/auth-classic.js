@@ -50,7 +50,8 @@ $(document).on('modal:opened', function(_event, modal) {
     }
 
     resetClassicModalState(modal);
-    activateSection(modal, DEFAULT_SECTION);
+    activateSection(modal, getInitialSection(modal));
+    modal.removeData('modalInitialSection');
 });
 
 $(document).on('modal:closed', function(_event, modal) {
@@ -63,6 +64,12 @@ $(document).on('modal:closed', function(_event, modal) {
 
 function isClassicAuthModal(modal) {
     return modal.data('modal') === CLASSIC_MODAL;
+}
+
+function getInitialSection(modal) {
+    const initialSection = String(modal.data('modalInitialSection') || '').trim();
+
+    return initialSection || DEFAULT_SECTION;
 }
 
 function resetClassicModalState(modal) {

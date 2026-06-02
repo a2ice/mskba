@@ -10,6 +10,16 @@
             >
                 Войти
             </button>
+            <button
+                type="button"
+                @class(['btn', 'btn--primary', 'btn--sm', 'site-auth__button', 'site-auth__button--register', 'js-handler', 'is-active' => request()->routeIs('register')])
+                data-handler="modal"
+                data-modal-action="open"
+                data-modal-target="auth-entry-classic"
+                data-modal-section="register"
+            >
+                Регистрация
+            </button>
         @else
             <a href="{{ route('account') }}" @class(['btn', 'btn--secondary', 'btn--sm', 'site-auth__button', 'is-active' => request()->routeIs('account')])>
                 {{ $userLoginLabel ?? 'Аккаунт' }}

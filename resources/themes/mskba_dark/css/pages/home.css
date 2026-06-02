@@ -81,7 +81,7 @@
 }
 
 .home-welcome__subtitle {
-    max-width: 400px;
+    max-width: 500px;
     margin-top: clamp(15px, 4vw, 20px);
     color: rgba(255, 255, 255, 0.88);
     font-size: clamp(16px, 1.65vw, 24px);

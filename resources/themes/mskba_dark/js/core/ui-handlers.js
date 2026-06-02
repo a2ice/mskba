@@ -16,6 +16,7 @@ const handlers = {
         const triggerElement = $(trigger);
         const action = triggerElement.data('modalAction') || triggerElement.data('modal-action') || 'open';
         const modalTarget = triggerElement.data('modalTarget') || triggerElement.data('modal-target');
+        const modalSection = triggerElement.data('modalSection') || triggerElement.data('modal-section') || '';
         const modal = modalTarget ? $('[data-modal="' + modalTarget + '"]') : triggerElement.closest('[data-modal]');
 
         if (!modal.length) {
@@ -27,6 +28,7 @@ const handlers = {
             return;
         }
 
+        modal.data('modalInitialSection', modalSection);
         openModal(modal);
     },
 

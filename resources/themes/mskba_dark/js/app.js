@@ -21,7 +21,7 @@ var header,
 // Adjust first screen padding on load and resize to prevent content from being hidden behind the fixed header
 function paddingFirstScreen() {
     header = $('.site-header');
-    headerHeight = header.outerHeight() + 100;
+    headerHeight = header.outerHeight();
     $('.first-screen').css('padding-top', headerHeight);
 }
 

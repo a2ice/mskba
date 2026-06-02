@@ -5,7 +5,7 @@ namespace App\Presentation\Navigation;
 final class ConfigMenuResolver implements MenuResolver
 {
     /**
-     * @return array<int, array{label: string, url: string, active: bool, visible: bool}>
+     * @return array<int, array{label: string, url: string|null, active: bool, visible: bool, children?: array<int, array{label: string, url: string|null, active: bool, visible: bool}>}>
      */
     public function resolve(string $page): array
     {
