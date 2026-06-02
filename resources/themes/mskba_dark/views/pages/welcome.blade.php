@@ -106,7 +106,7 @@
                     </a>
                 </div>
 
-                <a class="home-welcome__how link-action has-arrow-right-hover" href="#highlights">
+                <a class="home-welcome__how link-action has-arrow-right-hover mb-5" href="#highlights">
                     <span>О проекте </span>
                     <i class="ti ti-arrow-right icon" aria-hidden="true"></i>
                 </a>
