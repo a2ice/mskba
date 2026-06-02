@@ -11,6 +11,7 @@
 - [Правила работы AI-агента](#правила-работы-ai-агента)
 - [Роли в identity-слое](#роли-в-identity-слое)
 - [Профиль пользователя](#профиль-пользователя)
+- [Профили участия пользователя](#профили-участия-пользователя)
 - [Площадки](#площадки)
 - [Контракты](#контракты)
 - [Темы и представления](#темы-и-представления)
@@ -69,6 +70,10 @@
 ## Профиль пользователя
 
 Техническая модель базового профиля пользователя в `Identity` описана в [Identity User Profile](specification/identity-user-profile.md).
+
+## Профили участия пользователя
+
+Техническая модель предметных профилей участия пользователя в `Identity` описана в [Identity Participation Profiles](specification/identity-participation-profiles.md).
 
 ## Площадки
 
@@ -202,5 +207,6 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Docker Environment](specification/docker-environment.md)
 - [Identity Roles](specification/identity-roles.md)
 - [Identity User Profile](specification/identity-user-profile.md)
+- [Identity Participation Profiles](specification/identity-participation-profiles.md)
 - [Правила ведения документации](specification/documentation-guidelines.md)
 - [Процесс работы с задачами](specification/task-workflow.md)

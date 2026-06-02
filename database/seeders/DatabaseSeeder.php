@@ -7,6 +7,7 @@ use App\Modules\Contract\Domain\Enums\ContractPartyTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Identity\Application\UseCases\CreateUserAccountHandler;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -127,6 +128,31 @@ class DatabaseSeeder extends Seeder
                         'comment' => fake()->sentence(),
                     ]);
                 });
+
+            if ($index <= 6) {
+                $user->participationRoles()->updateOrCreate(
+                    ['role' => UserParticipationRoleEnum::PLAYER->value],
+                    [
+                        'status' => UserParticipationRoleStatusEnum::ACTIVE->value,
+                        'assigned_at' => fake()->dateTimeBetween('-1 year', 'now'),
+                        'expires_at' => null,
+                        'assigned_by' => null,
+                        'assigner' => UserParticipationRoleAssignerEnum::SEEDER->value,
+                        'comment' => 'Демо-профиль игрока.',
+                    ],
+                );
+
+                $user->playerProfile()->create([
+                    'height_cm' => fake()->numberBetween(170, 205),
+                    'weight_kg' => fake()->randomFloat(1, 65, 110),
+                    'position' => fake()->randomElement(PlayerPositionEnum::cases())->value,
+                    'experience_started_year' => fake()->numberBetween(2008, now()->year - 1),
+                    'comment' => fake()->sentence(),
+                    'extra' => [
+                        'preferred_format' => fake()->randomElement(['3x3', '5x5', 'training']),
+                    ],
+                ]);
+            }
 
         }
 

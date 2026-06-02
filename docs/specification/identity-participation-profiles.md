@@ -1,0 +1,67 @@
+# Identity Participation Profiles
+
+## Оглавление
+
+- [Назначение](#назначение)
+- [Граница модели](#граница-модели)
+- [PlayerProfile](#playerprofile)
+- [Связь с ролями участия](#связь-с-ролями-участия)
+- [Развитие модели](#развитие-модели)
+
+## Назначение
+
+Документ фиксирует техническую модель предметных профилей участия пользователя внутри `Identity`.
+
+Профили участия описывают пользователя в конкретной предметной роли: игрок, тренер, судья и другие роли из `UserParticipationRoleEnum`.
+
+## Граница модели
+
+`UserParticipationRole` хранит факт роли пользователя, ее статус, назначение и срок действия.
+
+Профили участия хранят предметные данные конкретной роли и развиваются отдельно от записи роли.
+
+Текущие профили участия размещаются внутри `Identity`, чтобы не вводить отдельный модуль и межмодульный ACL раньше практической необходимости:
+
+- `App\Modules\Identity\Domain\Models\Participation`;
+- `App\Modules\Identity\Domain\Enums\Participation`;
+- `App\Modules\Identity\Application\UseCases\Participation` для будущих процессов.
+
+## PlayerProfile
+
+Профиль игрока представлен моделью `PlayerProfile` и таблицей `player_profiles`.
+
+Связи:
+
+- `User` -> `hasOne(PlayerProfile)`;
+- `PlayerProfile` -> `belongsTo(User)`.
+
+На уровне базы действует ограничение `1-to-1` через уникальный `player_profiles.user_id`.
+
+Поля:
+
+- `user_id` - связанный пользователь;
+- `height_cm` - рост в сантиметрах, nullable;
+- `weight_kg` - вес в килограммах с точностью до 0.1, nullable;
+- `position` - nullable enum `PlayerPositionEnum`;
+- `experience_started_year` - год начала баскетбольного стажа, nullable;
+- `comment` - свободный комментарий, nullable;
+- `extra` - JSON для будущих расширений, nullable.
+
+`PlayerProfile` содержит accessor `experience_years`, вычисляемый из `experience_started_year`.
+
+## Связь с ролями участия
+
+Наличие `PlayerProfile` не заменяет роль `player` в `UserParticipationRole`.
+
+Роль `player` отвечает за факт допуска пользователя к участию как игрока. `PlayerProfile` отвечает за предметные характеристики игрока.
+
+Инварианты создания, активации и изменения профилей участия должны размещаться в application use case или доменных методах соответствующих моделей.
+
+## Развитие модели
+
+Для следующих ролей участия ожидаются отдельные профили, например:
+
+- `CoachProfile` для тренера;
+- `RefereeProfile` для судьи.
+
+Если профили участия и процессы вокруг них станут самостоятельной крупной предметной областью, namespace `Identity\...\Participation` может быть вынесен в отдельный модуль.

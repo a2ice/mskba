@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
+use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
 use App\Modules\Identity\Infrastructure\Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -49,6 +50,11 @@ class User extends Authenticatable
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class);
+    }
+
+    public function playerProfile(): HasOne
+    {
+        return $this->hasOne(PlayerProfile::class);
     }
 
     public function createProfile(array $data): Profile
