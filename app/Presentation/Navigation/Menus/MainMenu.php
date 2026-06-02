@@ -35,7 +35,7 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
-                'label' => 'Сообщества',
+                'label' => 'Инфо',
                 'url' => $this->routeUrl('/#communities'),
                 'active' => $this->isActiveRoute('communities, communities.*'),
                 'visible' => true,
