@@ -74,9 +74,9 @@
     <div class="home-welcome__content inner">
         <div class="home-welcome__main">
             <div class="home-welcome__copy">
-                <p class="home-welcome__eyebrow d-none">
+                <p class="home-welcome__eyebrow">
                     <i class="ti ti-ball-basketball icon" aria-hidden="true"></i>
-                    <span>Площадки • Игры • Турниры</span>
+                    <span>Сегодня доступно 37 игр</span>
                 </p>
 
                 <h1 class="home-welcome__title">
@@ -85,8 +85,8 @@
                 </h1>
 
                 <p class="home-welcome__subtitle">
-                    Площадки, игры и турниры<br>
-                    в Москве и области
+                    Площадки, игры, турниры, тренировки 
+                    и самые важные баскетбольные события Москвы и области
                 </p>
 
                 <div class="home-welcome__actions" aria-label="Основные действия">
