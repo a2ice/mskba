@@ -5,7 +5,9 @@
     left: 0;
     width: 100%;
     min-height: max(820px, 100vh);
-    padding-bottom: 56px;
+    display: flex;
+    align-items: center;
+    padding: 56px 0;
     overflow: hidden;
 }
 
@@ -498,8 +500,8 @@
 
 @media screen and (max-width: 1180px) {
     .home-welcome {
-        min-height: auto;
-        padding-bottom: 40px;
+        min-height: 100vh;
+        padding: 40px 0;
     }
 
     .home-welcome__main {

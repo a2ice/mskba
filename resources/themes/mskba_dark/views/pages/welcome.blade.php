@@ -64,7 +64,7 @@
 @endphp
 
 
-<section class="home-welcome first-screen">
+<section class="home-welcome">
     <div class="home-welcome__image">
         <img src="{{ asset('images/home-court.png') }}" role="img" aria-label="Баскетбольная площадка">
     </div>
@@ -74,7 +74,7 @@
     <div class="home-welcome__content inner">
         <div class="home-welcome__main">
             <div class="home-welcome__copy">
-                <p class="home-welcome__eyebrow">
+                <p class="home-welcome__eyebrow d-none">
                     <i class="ti ti-ball-basketball icon" aria-hidden="true"></i>
                     <span>Площадки • Игры • Турниры</span>
                 </p>
