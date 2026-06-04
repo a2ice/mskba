@@ -13,10 +13,10 @@
                     <li class="nav-divider"></li>
                 @endif
                 <li class="nav-item {{ $item['active'] ? 'active' : '' }}">
-                    <a href="{{ $item['url'] }}" class="nav-link {{ $item['active'] ? 'active' : '' }}">
+                    <a href="{{ $item['url'] }}" class="nav-link text-nowrap {{ $item['active'] ? 'active' : '' }}">
                         {{ $item['label'] }}
                         @if(($item['badge'] ?? 0) > 0)
-                            <span class="badge bg-warning text-dark ms-2">{{ $item['badge'] }}</span>
+                            <span class="badge sidebar__notification-badge text-dark ms-2" data-notification-count>{{ $item['badge'] }}</span>
                         @endif
                     </a>
                 </li>

@@ -36,7 +36,7 @@ final class AccountMenu implements MenuHandler
             }
 
             $items[] = [
-                'label' => 'Центр уведомлений',
+                'label' => 'Уведомления',
                 'url' => $this->routeUrl('account.notifications'),
                 'active' => $this->isActiveRoute('account.notifications'),
                 'visible' => true,

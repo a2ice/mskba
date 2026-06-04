@@ -17,6 +17,12 @@ final class MainMenu implements MenuHandler
 
         $moreItems = [
             [
+                'label' => 'FAQ',
+                'url' => $this->routeUrl('faq.index'),
+                'active' => $this->isActiveRoute('faq.*'),
+                'visible' => true,
+            ],
+            [
                 'label' => 'Новости',
                 'url' => $this->routeUrl('/#news'),
                 'active' => $this->isActiveRoute('news, news.*'),
