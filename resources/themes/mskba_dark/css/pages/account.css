@@ -48,3 +48,44 @@
 .field {
     max-width: 345px;
 }
+
+.account-notification-item__badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.account-notification-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 25px;
+    height: 25px;
+    border: 1px solid rgba(255, 132, 64, 0.58);
+    border-radius: 50%;
+    background: rgba(236, 127, 18, 0.14);
+    color: var(--accent-hover);
+}
+
+.account-notification-badge i {
+    font-size: 15px;
+    line-height: 1;
+}
+
+.account-notification-badge--status.is-new {
+    border-color: rgba(255, 116, 39, 0.82);
+    background: linear-gradient(180deg, var(--accent-hover), var(--accent-strong));
+    color: #fff;
+}
+
+.account-notification-badge--status.is-read {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(247, 243, 234, 0.72);
+}
+
+.account-notification-badge--type {
+    border-color: rgba(240, 138, 36, 0.44);
+    background: rgba(10, 10, 10, 0.34);
+    color: var(--accent-text);
+}

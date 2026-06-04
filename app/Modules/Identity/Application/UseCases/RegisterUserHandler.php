@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Application\UseCases;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Events\UserRegistered;
 use App\Modules\Identity\Domain\Models\User;
 
 final class RegisterUserHandler
@@ -15,7 +16,7 @@ final class RegisterUserHandler
 
     public function handle(string $username, string $password): User
     {
-        return $this->createUserAccount->handle(
+        $user = $this->createUserAccount->handle(
             username: $username,
             password: $password,
             registrationChannel: UserRegistrationChannelEnum::SITE_FULL_REGISTRATION,
@@ -23,5 +24,9 @@ final class RegisterUserHandler
             status: UserStatusEnum::UNCONFIRMED,
             isTemporaryPassword: false,
         );
+
+        event(new UserRegistered((int) $user->id));
+
+        return $user;
     }
 }

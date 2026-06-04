@@ -5,6 +5,7 @@ namespace App\Modules\Contact\Application\UseCases;
 use App\Modules\Contact\Application\DTO\ConfirmContactVerificationDTO;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
+use App\Modules\Contact\Domain\Events\UserContactConfirmed;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contact\Domain\Models\ContactVerification;
 use Illuminate\Support\Facades\DB;
@@ -83,6 +84,15 @@ class ConfirmContactVerificationHandler
 
         if ($result instanceof ContactVerificationException) {
             throw $result;
+        }
+
+        $contact->refresh();
+
+        if ($contact->contactable_type === 'user') {
+            event(new UserContactConfirmed(
+                userId: (int) $contact->contactable_id,
+                contactId: (int) $contact->id,
+            ));
         }
 
         return $result;

@@ -3,8 +3,8 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
 use App\Modules\Contact\Application\Exceptions\ContactDeletionException;
+use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
 use App\Modules\Contact\Application\UseCases\ConfirmContactVerificationHandler;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
@@ -19,6 +19,11 @@ use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
 use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
+use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
+use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsReadHandler;
+use App\Modules\Notification\Application\UseCases\MarkUserNotificationAsReadHandler;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
@@ -69,6 +74,50 @@ class AccountController extends Controller
             'message' => 'Настройки аккаунта будут реализованы отдельно.',
             'code' => 501,
         ]]);
+    }
+
+    public function notifications(
+        ListUserNotificationsHandler $listUserNotifications,
+        CountNewUserNotificationsHandler $countNewUserNotifications,
+    ): Response {
+        try {
+            $user = $this->accountCheckForPresentationService->handle(request()->user());
+        } catch (\Exception $e) {
+            return ThemeResolver::page('account.notifications', ['user' => null, 'error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        return ThemeResolver::page('account.notifications', [
+            'notifications' => $listUserNotifications->handle($user),
+            'newNotificationsCount' => $countNewUserNotifications->handle($user),
+        ]);
+    }
+
+    public function readNotification(
+        UserNotification $notification,
+        MarkUserNotificationAsReadHandler $markUserNotificationAsRead,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+        $markUserNotificationAsRead->handle($user, $notification);
+
+        return redirect()
+            ->route('account.notifications')
+            ->with('status', 'Уведомление прочитано.');
+    }
+
+    public function readAllNotifications(
+        MarkAllUserNotificationsAsReadHandler $markAllUserNotificationsAsRead,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+        $updatedCount = $markAllUserNotificationsAsRead->handle($user);
+
+        return redirect()
+            ->route('account.notifications')
+            ->with('status', $updatedCount > 0
+                ? 'Все новые уведомления отмечены как прочитанные.'
+                : 'Новых уведомлений нет.');
     }
 
     public function contacts(): Response
