@@ -18,7 +18,12 @@ use App\Modules\Contact\Presentation\Http\Requests\CreateAccountContactRequest;
 use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
 use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
+use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
+use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsReadHandler;
@@ -66,6 +71,54 @@ class AccountController extends Controller
         $data = ['user' => $user];
 
         return ThemeResolver::page('account.index', $data);
+    }
+
+    public function confirmation(AccountConfirmationWizardService $wizard): Response
+    {
+        try {
+            $user = $this->accountCheckForPresentationService->handle(request()->user());
+        } catch (\Exception $e) {
+            return ThemeResolver::page('account.confirmation', ['user' => null, 'error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        $user->loadMissing('profile', 'participationRoles');
+
+        return ThemeResolver::page('account.confirmation', [
+            'user' => $user,
+            'steps' => $wizard->steps($user),
+            'currentParticipationRole' => $wizard->primaryParticipationRole($user),
+            'participationRoles' => UserParticipationRoleEnum::cases(),
+            'genders' => UserGenderEnum::cases(),
+            'rolesRequiringProfileDetails' => collect(UserParticipationRoleEnum::cases())
+                ->filter(fn (UserParticipationRoleEnum $role): bool => $wizard->roleRequiresBirthDateAndGender($role))
+                ->map(fn (UserParticipationRoleEnum $role): string => $role->value)
+                ->values()
+                ->all(),
+        ]);
+    }
+
+    public function completeConfirmation(
+        CompleteAccountConfirmationWizardRequest $request,
+        CompleteAccountConfirmationWizardHandler $completeAccountConfirmationWizard,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle($request->user());
+
+        $updatedUser = $completeAccountConfirmationWizard->handle(
+            $user,
+            $request->role(),
+            $request->firstName(),
+            $request->lastName(),
+            $request->middleName(),
+            $request->birthDate(),
+            $request->gender(),
+        );
+
+        return redirect()
+            ->route($updatedUser->status === UserStatusEnum::CONFIRMED ? 'account' : 'account.confirmation')
+            ->with('status', 'Аккаунт подтвержден.');
     }
 
     public function settings(): Response

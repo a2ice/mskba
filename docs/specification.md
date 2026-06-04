@@ -11,6 +11,7 @@
 - [Правила работы AI-агента](#правила-работы-ai-агента)
 - [Роли в identity-слое](#роли-в-identity-слое)
 - [Профиль пользователя](#профиль-пользователя)
+- [Подтверждение аккаунта](#подтверждение-аккаунта)
 - [Профили участия пользователя](#профили-участия-пользователя)
 - [Контакты](#контакты)
 - [Уведомления](#уведомления)
@@ -72,6 +73,10 @@
 ## Профиль пользователя
 
 Техническая модель базового профиля пользователя в `Identity` описана в [Identity User Profile](specification/identity-user-profile.md).
+
+## Подтверждение аккаунта
+
+Техническая модель wizard подтверждения аккаунта описана в [Identity Account Confirmation](specification/identity-account-confirmation.md).
 
 ## Профили участия пользователя
 
@@ -219,6 +224,7 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Docker Environment](specification/docker-environment.md)
 - [Identity Roles](specification/identity-roles.md)
 - [Identity User Profile](specification/identity-user-profile.md)
+- [Identity Account Confirmation](specification/identity-account-confirmation.md)
 - [Identity Participation Profiles](specification/identity-participation-profiles.md)
 - [Contact](specification/contact.md)
 - [Notification](specification/notification.md)
