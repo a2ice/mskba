@@ -22,6 +22,15 @@ Route::get('/register', function () use ($themeResolver) {
     return $themeResolver->page('auth.register');
 })->name('register');
 
+Route::prefix('faq')->group(function () use ($themeResolver) {
+	Route::get('/', fn () => $themeResolver->page('faq.index'))
+		->name('faq.index')
+		->defaults('breadcrumb', 'FAQ');
+	Route::get('/welcome', fn () => $themeResolver->page('faq.welcome'))
+		->name('faq.welcome')
+		->defaults('breadcrumb', 'Первые шаги');
+});
+
 Route::prefix('auth')->group(function () {
 	Route::post('/login', [AuthController::class, 'login'])
 		->middleware('guest', 'throttle:5,1')

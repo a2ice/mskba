@@ -526,10 +526,8 @@ body.nav-shown .nav-hamburger > span:last-child {
     backdrop-filter: blur(10px);
 }
 
-.site-auth__notification-badge {
-    position: absolute;
-    top: -7px;
-    right: -7px;
+.site-auth__notification-badge,
+.sidebar__notification-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -545,6 +543,16 @@ body.nav-shown .nav-hamburger > span:last-child {
     line-height: 1;
     letter-spacing: 0;
     box-shadow: 0 0 0 1px rgba(255, 196, 0, 0.35);
+}
+
+.site-auth__notification-badge {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+}
+
+.sidebar__notification-badge {
+    transform: translate(-3px, -2px);
 }
 
 .site-auth__button--register {

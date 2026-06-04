@@ -20,9 +20,9 @@ final class CreateWelcomeNotification
             userId: $event->userId,
             type: UserNotificationTypeEnum::SYSTEM,
             title: 'Добро пожаловать в MSKBA',
-            body: 'Аккаунт создан. В личном кабинете можно заполнить профиль, добавить контакты и перейти к настройкам.',
-            actionUrl: route('account'),
-            actionText: 'Перейти в личный кабинет',
+            body: 'Аккаунт создан. Теперь для полноценной работы вам необходимо подтвердить аккаунт',
+            actionUrl: route('faq.welcome'),
+            actionText: 'Подробнее о первых шагах',
             payload: [
                 'source' => UserNotificationSourceEnum::IDENTITY_REGISTRATION->value,
             ],
