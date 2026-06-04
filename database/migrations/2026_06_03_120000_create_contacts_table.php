@@ -20,8 +20,8 @@ return new class extends Migration
             $table->timestamp('verified_at')->nullable();
             $table->json('meta')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
-            // unique index to prevent duplicate contacts of the same type for the same contactable
             $table->unique(['contactable_type', 'contactable_id', 'type', 'value']);
         });
     }

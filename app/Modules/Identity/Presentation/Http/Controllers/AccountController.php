@@ -4,9 +4,11 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
+use App\Modules\Contact\Application\Exceptions\ContactDeletionException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
 use App\Modules\Contact\Application\UseCases\ConfirmContactVerificationHandler;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
+use App\Modules\Contact\Application\UseCases\DeleteContactHandler;
 use App\Modules\Contact\Application\UseCases\StartContactVerificationHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
@@ -167,6 +169,28 @@ class AccountController extends Controller
         return redirect()
             ->route('account.contacts')
             ->with('status', 'Контакт подтвержден.');
+    }
+
+    public function destroyContact(Contact $contact, DeleteContactHandler $deleteContact): RedirectResponse
+    {
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+
+        abort_unless(
+            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            404,
+        );
+
+        try {
+            $deleteContact->handle($contact);
+        } catch (ContactDeletionException $e) {
+            return redirect()
+                ->route('account.contacts')
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('account.contacts')
+            ->with('status', 'Контакт удален.');
     }
 
     public function participationRole(string $role): Response

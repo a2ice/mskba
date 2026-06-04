@@ -82,6 +82,42 @@ class ContactRelationsTest extends TestCase
         ]);
     }
 
+    public function test_second_account_contact_is_not_primary(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'second_account_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $this->actingAs($user)->post(route('account.contacts.store'), [
+            'type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'first-account-contact@example.test',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('account.contacts.store'), [
+            'type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'second-account-contact@example.test',
+        ]);
+
+        $response->assertRedirect(route('account.contacts'));
+        $this->assertDatabaseHas('contacts', [
+            'contactable_type' => 'user',
+            'contactable_id' => $user->id,
+            'value' => 'first-account-contact@example.test',
+            'is_primary' => true,
+        ]);
+        $this->assertDatabaseHas('contacts', [
+            'contactable_type' => 'user',
+            'contactable_id' => $user->id,
+            'value' => 'second-account-contact@example.test',
+            'is_primary' => false,
+        ]);
+        $this->assertSame(1, $user->contacts()->where('is_primary', true)->count());
+    }
+
     public function test_user_can_start_email_contact_verification(): void
     {
         Mail::fake();
@@ -452,5 +488,158 @@ class ContactRelationsTest extends TestCase
             'attempts_count' => 0,
         ]);
         $this->assertNull($contact->fresh()->verified_at);
+    }
+
+    public function test_user_can_delete_non_primary_contact(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'delete_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'primary-delete@example.test',
+            'is_primary' => true,
+        ]);
+
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'secondary-delete@example.test',
+            'is_primary' => false,
+            'is_public' => true,
+            'verified_at' => now(),
+        ]);
+
+        $pendingVerification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => Hash::make('123456'),
+            'sent_to' => 'secondary-delete@example.test',
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->delete(route('account.contacts.destroy', $contact));
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('status', 'Контакт удален.');
+        $this->assertSoftDeleted('contacts', [
+            'id' => $contact->id,
+        ]);
+        $deletedContact = $user->contacts()->withTrashed()->find($contact->id);
+        $this->assertTrue($deletedContact->trashed());
+        $this->assertNull($deletedContact->verified_at);
+        $this->assertFalse($deletedContact->is_public);
+        $this->assertDatabaseHas('contact_verifications', [
+            'id' => $pendingVerification->id,
+            'status' => ContactVerificationStatusEnum::CANCELLED->value,
+        ]);
+        $this->assertSame(1, $user->contacts()->count());
+    }
+
+    public function test_user_cannot_delete_primary_contact(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'delete_primary_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'primary-delete-denied@example.test',
+            'is_primary' => true,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->delete(route('account.contacts.destroy', $contact));
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('error', 'Нельзя удалить основной контакт.');
+        $this->assertNotSoftDeleted('contacts', [
+            'id' => $contact->id,
+        ]);
+    }
+
+    public function test_user_cannot_delete_another_users_contact(): void
+    {
+        $owner = User::factory()->create([
+            'username' => 'delete_owner',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $intruder = User::factory()->create([
+            'username' => 'delete_intruder',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $contact = $owner->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'delete-owner@example.test',
+            'is_primary' => false,
+        ]);
+
+        $response = $this->actingAs($intruder)
+            ->delete(route('account.contacts.destroy', $contact));
+
+        $response->assertNotFound();
+        $this->assertNotSoftDeleted('contacts', [
+            'id' => $contact->id,
+        ]);
+    }
+
+    public function test_user_restores_same_contact_value_after_soft_delete(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'readd_deleted_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'readd-primary@example.test',
+            'is_primary' => true,
+        ]);
+
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'readd-deleted@example.test',
+            'is_primary' => false,
+            'verified_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('account.contacts.destroy', $contact));
+
+        $response = $this->actingAs($user)->post(route('account.contacts.store'), [
+            'type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'readd-deleted@example.test',
+        ]);
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('status', 'Контакт добавлен.');
+        $this->assertDatabaseHas('contacts', [
+            'id' => $contact->id,
+            'value' => 'readd-deleted@example.test',
+            'verified_at' => null,
+            'deleted_at' => null,
+        ]);
+        $this->assertSame(2, $user->contacts()->count());
+        $this->assertSame(0, $user->contacts()->onlyTrashed()->count());
     }
 }

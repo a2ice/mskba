@@ -310,6 +310,24 @@ p {
     display: inline-grid !important;
 }
 
+.align-center {
+    align-items: center !important;
+}
+.align-start {
+    align-items: flex-start !important;
+}
+.align-end {
+    align-items: flex-end !important;
+}
+.justify-center {
+    justify-content: center !important;
+}
+.justify-start {
+    justify-content: flex-start !important;
+}
+.justify-end {
+    justify-content: flex-end !important;
+}
 
 
 
@@ -465,4 +483,33 @@ p {
 }
 .has-arrow-right-hover:hover .ti-arrow-right {
     transform: translateX(8px);
+}
+
+/* fonts */
+.fs-the-biggest {
+    font-size: 200%;
+}
+.fs-even-bigger {
+    font-size: 150%;
+} 
+.fs-bigger {
+    font-size: 125%;
+}
+.fs-lil-bigger {
+    font-size: 112.5%;
+}
+.fs-normal {
+    font-size: 100%;
+}
+.fs-lil-smaller {
+    font-size: 87.5%;
+}
+.fs-smaller {
+    font-size: 75%;
+}
+.fs-even-smaller {
+    font-size: 62.5%;
+}
+.fs-the-smallest {
+    font-size: 50%;
 }

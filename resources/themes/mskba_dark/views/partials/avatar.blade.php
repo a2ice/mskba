@@ -32,5 +32,5 @@
         @endif
     </div>
     <h5 class="card-title">{{ $displayName }}</h5>
-    <p class="card-text">{{ $primaryEmail }}</p>
+    <p class="card-text fs-smaller">{{ $primaryEmail }}</p>
 </div>

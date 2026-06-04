@@ -6,30 +6,49 @@ use App\Modules\Contact\Application\DTO\CreateContactDTO;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Contact\Domain\ValueObjects\ContactValue;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class CreateContactForUserHandler
 {
     public function handle(User $user, CreateContactDTO $contactData): Contact
     {
-        $contacts = $user->contacts();
-        $value = new ContactValue($contactData->type, $contactData->value);
+        return DB::transaction(function () use ($user, $contactData): Contact {
+            $lockedUser = User::query()
+                ->whereKey($user->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($contacts
-            ->where('type', $contactData->type)
-            ->where('value', $value->value())
-            ->exists()) {
-            throw new InvalidArgumentException("Контакт {$value->value()} уже добавлен.");
-        }
+            $value = new ContactValue($contactData->type, $contactData->value);
+            $hasActiveContacts = $lockedUser->contacts()->exists();
+            $existingContact = $lockedUser->contacts()
+                ->withTrashed()
+                ->where('type', $contactData->type)
+                ->where('value', $value->value())
+                ->first();
 
-        // if the user has no contacts yet, set the new contact as primary
-        $is_primary = ! $contacts->exists();
+            if ($existingContact?->trashed() === false) {
+                throw new InvalidArgumentException("Контакт {$value->value()} уже добавлен.");
+            }
 
-        return $contacts->create([
-            'type' => $contactData->type,
-            'value' => $value->value(),
-            'label' => $contactData->label,
-            'is_primary' => $is_primary,
-        ]);
+            if ($existingContact?->trashed()) {
+                $existingContact->restore();
+                $existingContact->update([
+                    'label' => $contactData->label,
+                    'is_primary' => ! $hasActiveContacts,
+                    'is_public' => false,
+                ]);
+
+                return $existingContact->refresh();
+            }
+
+            // if the user has no contacts yet, set the new contact as primary
+            return $lockedUser->contacts()->create([
+                'type' => $contactData->type,
+                'value' => $value->value(),
+                'label' => $contactData->label,
+                'is_primary' => ! $hasActiveContacts,
+            ]);
+        });
     }
 }

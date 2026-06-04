@@ -91,6 +91,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 		Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
 		Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
 		Route::post('/contacts', [AccountController::class, 'storeContact'])->name('account.contacts.store');
+		Route::delete('/contacts/{contact}', [AccountController::class, 'destroyContact'])
+			->name('account.contacts.destroy');
 		Route::post('/contacts/{contact}/verification', [AccountController::class, 'startContactVerification'])
 			->middleware('throttle:10,1')
 			->name('account.contacts.verification.store');

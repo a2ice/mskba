@@ -51,7 +51,7 @@
                                 $pendingVerification = $contact->verifications->first();
                                 $hasActivePendingVerification = $pendingVerification?->expires_at?->isFuture() ?? false;
                             @endphp
-                            <li class="account-contact-item d-flex flex-wrap gap-3">
+                            <li class="account-contact-item d-flex flex-wrap gap-3 align-center mb-3">
                                 <div>
                                     <span class="fw-bold">{{ $contact->type->label() }}:</span>
                                     <span>{{ $contact->value }}</span>
@@ -67,6 +67,13 @@
                                         <span>Публичный</span>
                                     @endif
                                     <span class="{{ $contact->is_verified ? 'text-success' : 'text-danger' }}">{{ $contact->is_verified ? 'Подтвержден' : 'Не подтвержден' }}</span>
+                                </div>
+                                <div class="account-contact-item__actions">
+                                    <form method="POST" action="{{ route('account.contacts.destroy', $contact) }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn--secondary btn--sm">Удалить</button>
+                                    </form>
                                 </div>
                                 @if(! $contact->is_verified && $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
                                     <div class="account-contact-verification w-100">
@@ -114,6 +121,9 @@
                                             </form>
                                         </div>
                                     </div>
+                                @endif
+                                @if(!$loop->last) 
+                                    <hr class="w-100 mt-3 mb-0">
                                 @endif
                             </li>
                         @endforeach
