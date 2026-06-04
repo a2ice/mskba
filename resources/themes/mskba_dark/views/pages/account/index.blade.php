@@ -1,4 +1,4 @@
-@extends('theme::layouts.account', ['title' => 'Аккаунт'])
+@extends('theme::layouts.account', ['title' => 'Профиль'])
 
 @section('account-content')
 
@@ -49,7 +49,7 @@
             </li>
             <li class="list-unstyled mb-2">
                 Email:
-                <span class="fw-bold">{{ $user->email }}</span>
+                <span class="fw-bold">{{ $user->email }}</span> ({{ $user->primaryEmail() ? ($user->primaryEmail()->is_verified ? 'Подтвержден' : 'Не подтвержден') : 'Не указан' }})
             </li>
             <li class="list-unstyled mb-2">
                 Дата регистрации:

@@ -61,6 +61,10 @@ p {
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
     color: var(--text);
+    padding:10px;
+}
+.card-body {
+    background: var(--surface);
 }
 
 
@@ -129,6 +133,16 @@ p {
 .btn--secondary.is-active {
     border-color: rgba(255, 255, 255, 0.54);
     background: rgba(255, 255, 255, 0.08);
+}
+
+.btn--secondary-bordered {
+    border-color: var(--accent-strong);
+    background: transparent;
+}
+
+.btn--secondary-bordered:hover,
+.btn--secondary-bordered.is-active {
+    border-color: var(--accent-hover);
 }
 
 .btn__icon {

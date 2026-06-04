@@ -2,8 +2,8 @@
 
 @section('content')
     
-    <section id="login" class="login-section py-5">
-        <div class="container">
+    <section id="login" class="login-section first-screen px-1">
+        <div class="inner">
             <div class="section-heading">
                 <h1 class="mb-4">Авторизация</h1>
             </div>
@@ -14,7 +14,7 @@
                         <span>Вы вошли как {{ auth()->user()->username }}.</span>
                         <form method="POST" action="{{ route('auth.logout') }}">
                             @csrf
-                            <button type="submit" class="btn btn-outline-secondary btn-sm">Выйти</button>
+                            <button type="submit" class="btn btn--secondary-bordered btn--sm">Выйти</button>
                         </form>
                     </div>
                 @else
@@ -43,7 +43,7 @@
                                 <input type="checkbox" class="form-check-input" id="rememberMe" name="remember">
                                 <label class="form-check-label" for="rememberMe">Запомнить меня</label>
                             </div>
-                            <button type="submit" class="btn btn-primary">Войти</button>
+                            <button type="submit" class="btn btn--secondary-bordered btn--sm">Войти</button>
                         </form>
 
                         <hr>

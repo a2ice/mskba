@@ -14,6 +14,7 @@ $.ajaxSetup({
 
 import './core/ui-handlers.js';
 import './features/auth.js';
+import './features/countdown.js';
 
 var header,
     headerHeight = 0;

@@ -1,8 +1,8 @@
 @extends('theme::layouts.app', ['title' => 'Регистрация'])
 
 @section('content')
-    <section id="register" class="register-section py-5">
-        <div class="container">
+    <section id="register" class="register-section first-screen px-1">
+        <div class="inner">
             <div class="section-heading">
                 <h1 class="mb-4">Регистрация</h1>
             </div>
@@ -73,7 +73,7 @@
                                 >
                             </div>
 
-                            <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+                            <button type="submit" class="btn btn--secondary-bordered btn--sm">Зарегистрироваться</button>
                         </form>
 
                         <hr>

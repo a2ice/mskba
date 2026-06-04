@@ -18,6 +18,9 @@
     };
 
     $avatarUrl = $user?->profile?->avatar_url ?? $placeholderUrl;
+    $primaryEmail = $user?->contacts
+        ?->first(fn ($contact) => $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL && $contact->is_primary)
+        ?->value;
 @endphp
 
 <div class="partial-wrapper partial-avatar text-center">
@@ -29,5 +32,5 @@
         @endif
     </div>
     <h5 class="card-title">{{ $displayName }}</h5>
-    <p class="card-text">{{ $user?->contacts?->primary_email }}</p>
+    <p class="card-text">{{ $primaryEmail }}</p>
 </div>

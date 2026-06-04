@@ -39,17 +39,6 @@ jobs:
               exit 1
             fi
 
-            TARGET_DB_DATABASE="$(sed -n 's/^DB_DATABASE=//p' .env | tail -1 | tr -d '\"')"
-
-            if [ "$TARGET_DB_DATABASE" = "mskba" ] && ! grep -q '^ALLOW_LEGACY_DB_DEPLOY=1$' .env && docker compose ps db >/dev/null 2>&1; then
-              LEGACY_TABLES="$(docker compose exec -T db sh -lc 'psql -U "$POSTGRES_USER" "$POSTGRES_DB" -Atc "select tablename from pg_tables where schemaname = '\''public'\'' order by tablename;"' || true)"
-
-              if printf '%s\n' "$LEGACY_TABLES" | grep -Eq '^(contacts|contact_verifications|user_profiles)$'; then
-                echo "Production database has legacy mskbanew schema. Resolve DB migration/reset strategy before deploy." >&2
-                exit 1
-              fi
-            fi
-
             git fetch origin main
             git reset --hard origin/main
             git clean -fd

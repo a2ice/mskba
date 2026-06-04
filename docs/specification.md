@@ -12,6 +12,7 @@
 - [Роли в identity-слое](#роли-в-identity-слое)
 - [Профиль пользователя](#профиль-пользователя)
 - [Профили участия пользователя](#профили-участия-пользователя)
+- [Контакты](#контакты)
 - [Площадки](#площадки)
 - [Контракты](#контракты)
 - [Темы и представления](#темы-и-представления)
@@ -32,7 +33,7 @@
 - Frontend/assets: Vite, npm.
 - Docker окружение: локальный `docker-compose.yml` содержит `postgres` и `adminer`; production runtime вынесен в `docker-compose.prod.yml`.
 - Доменные части приложения находятся в `app/Modules`.
-- Текущие доменные модули: `Identity`, `Venue`, `Contract`.
+- Текущие доменные модули: `Identity`, `Contact`, `Venue`, `Contract`.
 - Основная тема находится в `resources/themes/mskba_dark`.
 - Минимальная тема-заготовка находится в `resources/themes/blank`.
 - Внешний backlog быстрых записей ведется во внешнем файле `../backlog/todo.md`.
@@ -74,6 +75,12 @@
 ## Профили участия пользователя
 
 Техническая модель предметных профилей участия пользователя в `Identity` описана в [Identity Participation Profiles](specification/identity-participation-profiles.md).
+
+## Контакты
+
+Техническая модель контактных каналов и подтверждений описана в [Contact](specification/contact.md).
+
+Контакты вынесены в отдельный доменный модуль `App\Modules\Contact`, потому что один и тот же механизм нужен пользователям, площадкам и будущим сущностям проекта.
 
 ## Площадки
 
@@ -168,9 +175,7 @@ Resolver может использовать:
 
 Локальный compose остается DB-only: `postgres` и `adminer`.
 
-Production compose добавлен отдельно и содержит `phpfpm`, `nginx`, `db`, `redis` и build-only сервис `node`. Production compose project name временно оставлен `mskbanew` для совместимости с текущей VDS-конфигурацией.
-
-Старую production-БД нельзя обновлять миграциями новой версии: на VDS найдены таблицы старой схемы `contacts`, `contact_verifications`, `user_profiles`, которые не соответствуют текущей кодовой базе. Первый production deploy новой версии должен использовать новую БД `mskbabrandnew` на отдельном PostgreSQL volume, а старую БД нужно оставить как источник для возможного будущего импорта.
+Production compose добавлен отдельно и содержит `phpfpm`, `nginx`, `db`, `redis` и build-only сервис `node`. Старую версию проекта можно полностью удалять вместе с БД, контейнерами, volume и другими артефактами, если они мешают новой production-схеме.
 
 ## Процесс работы с задачами
 
@@ -208,5 +213,6 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Identity Roles](specification/identity-roles.md)
 - [Identity User Profile](specification/identity-user-profile.md)
 - [Identity Participation Profiles](specification/identity-participation-profiles.md)
+- [Contact](specification/contact.md)
 - [Правила ведения документации](specification/documentation-guidelines.md)
 - [Процесс работы с задачами](specification/task-workflow.md)

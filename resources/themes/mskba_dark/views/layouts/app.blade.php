@@ -4,6 +4,10 @@
 
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
 
+    $isMainPage = Route::currentRouteName() === 'welcome';
+
+    $routeClass .= $isMainPage ? ' main' : '';
+
     $user = auth()->user();
 
     $userLoginLabel = $user ? $user->username : 'Войти';

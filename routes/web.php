@@ -90,6 +90,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 			->name('account.participation-role');
 		Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
 		Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
+		Route::post('/contacts', [AccountController::class, 'storeContact'])->name('account.contacts.store');
+		Route::post('/contacts/{contact}/verification', [AccountController::class, 'startContactVerification'])
+			->middleware('throttle:10,1')
+			->name('account.contacts.verification.store');
 		Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
 		Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
 		Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');

@@ -1,8 +1,7 @@
 .avatar-wrapper {
     width: 150px;
-    height: 150px;
+    max-width: 100%;
     text-align: center;
-    line-height: 150px;
     border-radius: 50%;
     margin: 0 auto;
     background: var(--accent-light);

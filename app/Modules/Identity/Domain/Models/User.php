@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Domain\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -73,6 +75,21 @@ class User extends Authenticatable
     public function participationRoles(): HasMany
     {
         return $this->hasMany(UserParticipationRole::class);
+    }
+
+    public function contacts(): MorphMany
+    {
+        return $this->morphMany(Contact::class, 'contactable');
+    }
+
+    public function primaryEmail(): ?Contact
+    {
+        $contact = $this->contacts()
+            ->where('type', 'email')
+            ->where('is_primary', true)
+            ->first();//dd($contact);
+
+        return $contact;
     }
 
     public function hasSystemRole(UserSystemRoleEnum|string $role): bool

@@ -33,16 +33,16 @@ final class AccountMenu implements MenuHandler
             }
 
             $items[] = [
-                'label' => 'Настройки',
-                'url' => $this->routeUrl('account.settings'),
-                'active' => $this->isActiveRoute('account.settings'),
+                'label' => 'Контакты',
+                'url' => $this->routeUrl('account.contacts'),
+                'active' => $this->isActiveRoute('account.contacts'),
                 'visible' => true,
             ];
 
             $items[] = [
-                'label' => 'Контакты',
-                'url' => $this->routeUrl('account.contacts'),
-                'active' => $this->isActiveRoute('account.contacts'),
+                'label' => 'Настройки',
+                'url' => $this->routeUrl('account.settings'),
+                'active' => $this->isActiveRoute('account.settings'),
                 'visible' => true,
             ];
 

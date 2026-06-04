@@ -44,17 +44,23 @@ docker-compose.prod.yml
 Локальный `docker-compose.yml` содержит:
 
 - `postgres` - PostgreSQL 17 Alpine, база `mskbabrandnew`, пользователь `mskbabrandnew`;
-- `adminer` - web-интерфейс для работы с PostgreSQL.
+- `adminer` - web-интерфейс для работы с PostgreSQL;
+- `mailpit` - локальный SMTP/Web UI для просмотра исходящей почты.
 
 Текущий volume:
 
 - `postgres-data` - данные PostgreSQL.
 
+Mailpit:
+
+- SMTP: `127.0.0.1:1025`;
+- Web UI: `http://localhost:8025`.
+
 ## Production runtime
 
 Production runtime описан отдельно в `docker-compose.prod.yml`, чтобы не ломать локальный DB-only сценарий.
 
-Production compose project name временно оставлен `mskbanew`. Это сделано для совместимости с текущей VDS-конфигурацией, где уже существуют контейнеры и Docker labels старого проекта.
+Production compose project name временно оставлен `mskbanew`. Старую версию проекта можно полностью удалять вместе с БД, контейнерами, volume и другими артефактами, если они мешают новой production-схеме.
 
 Production services:
 
@@ -98,9 +104,8 @@ Workflow не использует `sudo`. Права на `storage` и `bootstr
 Перед изменением кода workflow выполняет preflight:
 
 - останавливается, если на production `APP_DEBUG=true`;
-- останавливается, если `.env` указывает на старую базу `DB_DATABASE=mskba`, найдены признаки legacy schema старого проекта (`contacts`, `contact_verifications`, `user_profiles`) и явно не задано `ALLOW_LEGACY_DB_DEPLOY=1`.
 
-Такой guard нужен потому, что текущая VDS-БД старого проекта не совпадает с миграциями новой кодовой базы. Целевой путь для первого deploy новой версии - новая база `mskbabrandnew` на отдельном volume `mskbabrandnew_postgres_data`.
+Workflow не содержит отдельного guard для старой схемы проекта. Если старая production-БД или другие старые артефакты мешают деплою новой версии, их можно удалить и поднять целевую схему заново.
 
 ## Команды Makefile
 

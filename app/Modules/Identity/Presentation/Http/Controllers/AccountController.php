@@ -3,6 +3,12 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
+use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
+use App\Modules\Contact\Application\UseCases\StartContactVerificationHandler;
+use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Contact\Presentation\Http\Requests\CreateAccountContactRequest;
 use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
 use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
@@ -42,6 +48,8 @@ class AccountController extends Controller
             $user->participation_role_labels = $participationRoleLabels;
         }
 
+        $user->email = $user->primaryEmail()?->value;
+
         $data = ['user' => $user];
 
         return ThemeResolver::page('account.index', $data);
@@ -54,7 +62,66 @@ class AccountController extends Controller
 
     public function contacts(): Response
     {
-        return ThemeResolver::page('account.contacts');
+        try {
+            $user = $this->accountCheckForPresentationService->handle(request()->user());
+        } catch (\Exception $e) {
+            return ThemeResolver::page('account.contacts', ['error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        $user->load(['contacts' => fn ($query) => $query
+            ->orderByDesc('is_primary')
+            ->orderBy('type')
+            ->orderBy('created_at')]);
+
+        return ThemeResolver::page('account.contacts', [
+            'user' => $user,
+            'contactTypes' => ContactTypeEnum::cases(),
+        ]);
+    }
+
+    public function storeContact(
+        CreateAccountContactRequest $request,
+        CreateContactForUserHandler $createContactForUser,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle($request->user());
+
+        $createContactForUser->handle($user, $request->toDTO());
+
+        return redirect()
+            ->route('account.contacts')
+            ->with('status', 'Контакт добавлен.');
+    }
+
+    public function startContactVerification(
+        Contact $contact,
+        StartContactVerificationHandler $startContactVerification,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+
+        abort_unless(
+            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            404,
+        );
+
+        try {
+            $startContactVerification->handle($contact);
+        } catch (ContactVerificationCooldownException $e) {
+            return redirect()
+                ->route('account.contacts')
+                ->with('info', $e->getMessage())
+                ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('account.contacts')
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('account.contacts')
+            ->with('status', 'Код подтверждения отправлен.');
     }
 
     public function participationRole(string $role): Response
