@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -243,5 +244,213 @@ class ContactRelationsTest extends TestCase
         $response->assertSessionHas('error', 'Для этого типа контакта подтверждение пока не реализовано.');
         $this->assertDatabaseCount('contact_verifications', 0);
         Mail::assertNothingSent();
+    }
+
+    public function test_user_can_confirm_email_contact_verification_with_code(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'confirm_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'confirm@example.test',
+        ]);
+
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => Hash::make('123456'),
+            'sent_to' => 'confirm@example.test',
+            'attempts_count' => 0,
+            'max_attempts' => 5,
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('account.contacts.verification.confirm', $contact), [
+                'code' => '123456',
+            ]);
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('status', 'Контакт подтвержден.');
+        $this->assertDatabaseHas('contact_verifications', [
+            'id' => $verification->id,
+            'status' => ContactVerificationStatusEnum::CONFIRMED->value,
+            'attempts_count' => 0,
+        ]);
+        $this->assertNotNull($verification->fresh()->verified_at);
+        $this->assertNotNull($contact->fresh()->verified_at);
+    }
+
+    public function test_wrong_contact_verification_code_increments_attempts(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'wrong_code_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'wrong-code@example.test',
+        ]);
+
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => Hash::make('123456'),
+            'sent_to' => 'wrong-code@example.test',
+            'attempts_count' => 0,
+            'max_attempts' => 5,
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('account.contacts.verification.confirm', $contact), [
+                'code' => '654321',
+            ]);
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('error', 'Неверный код. Осталось попыток: 4.');
+        $this->assertDatabaseHas('contact_verifications', [
+            'id' => $verification->id,
+            'status' => ContactVerificationStatusEnum::PENDING->value,
+            'attempts_count' => 1,
+        ]);
+        $this->assertNull($contact->fresh()->verified_at);
+    }
+
+    public function test_wrong_contact_verification_code_marks_failed_after_max_attempts(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'failed_code_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'failed-code@example.test',
+        ]);
+
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => Hash::make('123456'),
+            'sent_to' => 'failed-code@example.test',
+            'attempts_count' => 4,
+            'max_attempts' => 5,
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('account.contacts.verification.confirm', $contact), [
+                'code' => '654321',
+            ]);
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('error', 'Неверный код. Лимит попыток исчерпан. Запросите новый код.');
+        $this->assertDatabaseHas('contact_verifications', [
+            'id' => $verification->id,
+            'status' => ContactVerificationStatusEnum::FAILED->value,
+            'attempts_count' => 5,
+        ]);
+        $this->assertNotNull($verification->fresh()->failed_at);
+        $this->assertNull($contact->fresh()->verified_at);
+    }
+
+    public function test_expired_contact_verification_code_marks_expired(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'expired_code_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'expired-code@example.test',
+        ]);
+
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => Hash::make('123456'),
+            'sent_to' => 'expired-code@example.test',
+            'attempts_count' => 0,
+            'max_attempts' => 5,
+            'expires_at' => now()->subMinute(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->post(route('account.contacts.verification.confirm', $contact), [
+                'code' => '123456',
+            ]);
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('error', 'Срок действия кода истек. Запросите новый код.');
+        $this->assertDatabaseHas('contact_verifications', [
+            'id' => $verification->id,
+            'status' => ContactVerificationStatusEnum::EXPIRED->value,
+        ]);
+        $this->assertNull($contact->fresh()->verified_at);
+    }
+
+    public function test_user_cannot_confirm_another_users_contact(): void
+    {
+        $owner = User::factory()->create([
+            'username' => 'confirm_owner',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $intruder = User::factory()->create([
+            'username' => 'confirm_intruder',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $contact = $owner->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'confirm-owner@example.test',
+        ]);
+
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => Hash::make('123456'),
+            'sent_to' => 'confirm-owner@example.test',
+            'attempts_count' => 0,
+            'max_attempts' => 5,
+            'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $response = $this->actingAs($intruder)
+            ->post(route('account.contacts.verification.confirm', $contact), [
+                'code' => '123456',
+            ]);
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('contact_verifications', [
+            'id' => $verification->id,
+            'status' => ContactVerificationStatusEnum::PENDING->value,
+            'attempts_count' => 0,
+        ]);
+        $this->assertNull($contact->fresh()->verified_at);
     }
 }

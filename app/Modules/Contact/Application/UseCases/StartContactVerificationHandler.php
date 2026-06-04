@@ -15,7 +15,7 @@ class StartContactVerificationHandler
 
     public function handle(Contact $contact): ContactVerification
     {
-        if ($contact->isVerified()) {
+        if ($contact->hasBeenVerified()) {
             throw new LogicException('Контакт уже подтвержден.');
         }
 

@@ -218,19 +218,23 @@ p {
 
 .field {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 
-.field span {
+.field span,
+.field label {
     color: var(--muted);
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 600;
     text-transform: uppercase;
+    margin-bottom: 0;
 }
 
-.field input {
+.field input,
+.form-control,
+.form-select {
     width: 100%;
-    min-height: 54px;
+    min-height: 35px;
     padding: 0 14px;
     border: 1px solid var(--field-border);
     border-radius: var(--radius-control);
@@ -243,15 +247,23 @@ p {
         box-shadow 160ms ease;
 }
 
+.form-control:hover,
+.form-select:hover,
 .field input:hover {
     border-color: rgba(255, 255, 255, 0.36);
 }
 
+.form-control:focus,
+.form-control:focus-visible,
+.form-select:focus,
+.form-select:focus-visible,
 .field input:focus,
 .field input:focus-visible {
     border-color: rgba(255, 139, 47, 0.82);
     box-shadow: 0 0 0 3px rgba(246, 95, 42, 0.14);
     outline: none;
+    background-color: inherit;
+    color: var(--text);
 }
 
 .field small {

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 #[Fillable([
     'contactable_type',
@@ -31,9 +32,16 @@ class Contact extends Model
         return $this->hasMany(ContactVerification::class);
     }
 
-    public function isVerified(): bool
+    public function hasBeenVerified(): bool
     {
         return $this->verified_at !== null;
+    }
+
+    protected function isVerified(): Attribute
+    {
+        return Attribute::get(
+            fn (): bool => $this->hasBeenVerified(),
+        );
     }
 
     /**

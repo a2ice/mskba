@@ -21,7 +21,8 @@ return new class extends Migration
             $table->json('meta')->nullable();
             $table->timestamps();
 
-            $table->index(['contactable_type', 'contactable_id', 'type']);
+            // unique index to prevent duplicate contacts of the same type for the same contactable
+            $table->unique(['contactable_type', 'contactable_id', 'type', 'value']);
         });
     }
 

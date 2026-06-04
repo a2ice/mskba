@@ -4,8 +4,10 @@ namespace App\Modules\Contact\Presentation\Http\Requests;
 
 use App\Modules\Contact\Application\DTO\CreateContactDTO;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\ValueObjects\ContactValue;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 
 class CreateAccountContactRequest extends FormRequest
 {
@@ -29,12 +31,16 @@ class CreateAccountContactRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
-            if ($this->input('type') !== ContactTypeEnum::EMAIL->value) {
+            $type = ContactTypeEnum::tryFrom((string) $this->input('type'));
+
+            if ($type === null) {
                 return;
             }
 
-            if (! filter_var($this->input('value'), FILTER_VALIDATE_EMAIL)) {
-                $validator->errors()->add('value', 'Укажите корректный email.');
+            try {
+                new ContactValue($type, (string) $this->input('value'));
+            } catch (InvalidArgumentException $e) {
+                $validator->errors()->add('value', $e->getMessage());
             }
         });
     }
@@ -45,7 +51,7 @@ class CreateAccountContactRequest extends FormRequest
 
         return new CreateContactDTO(
             type: ContactTypeEnum::from($data['type']),
-            value: $data['value'],
+            value: (new ContactValue(ContactTypeEnum::from($data['type']), $data['value']))->value(),
             label: $data['label'] ?? null,
         );
     }

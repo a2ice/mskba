@@ -7,6 +7,7 @@
 @import './user';
 
 @import './pages/home';
+@import './pages/account';
 
 html {}
 body {
@@ -63,6 +64,15 @@ a:not([class*="btn"]):hover,
 a:not([class*="btn"]).active,
 a:not([class*="btn"]).current {
     color: var(--link-color-hover);
+}
+
+.fc-link {
+    color: var(--accent)!important;
+}
+.fc-link:hover,
+.fc-link.active,
+.fc-link.current {
+    color: var(--accent-hover)!important;
 }
 
 .inner {

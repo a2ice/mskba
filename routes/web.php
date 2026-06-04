@@ -94,6 +94,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 		Route::post('/contacts/{contact}/verification', [AccountController::class, 'startContactVerification'])
 			->middleware('throttle:10,1')
 			->name('account.contacts.verification.store');
+		Route::post('/contacts/{contact}/verification/confirm', [AccountController::class, 'confirmContactVerification'])
+			->middleware('throttle:20,1')
+			->name('account.contacts.verification.confirm');
 		Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
 		Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
 		Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');

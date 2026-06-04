@@ -49,7 +49,18 @@
             </li>
             <li class="list-unstyled mb-2">
                 Email:
-                <span class="fw-bold">{{ $user->email }}</span> ({{ $user->primaryEmail() ? ($user->primaryEmail()->is_verified ? 'Подтвержден' : 'Не подтвержден') : 'Не указан' }})
+                @if ( $user->primaryEmail() )
+                    <span class="fw-bold">{{ $user->primaryEmail()->value }}</span>
+                    @if ($user->primaryEmail()->is_verified)
+                        <span class="badge bg-success">Подтвержден</span>
+                    @else
+                        <span class="badge bg-warning text-dark">Не подтвержден</span>
+                    @endif
+
+                @else 
+                    <a href="{{ route('account.contacts') }}" class="fc-link">Добавить контакт</a>
+                @endif
+                
             </li>
             <li class="list-unstyled mb-2">
                 Дата регистрации:

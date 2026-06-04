@@ -4,10 +4,14 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
+use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
+use App\Modules\Contact\Application\UseCases\ConfirmContactVerificationHandler;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
 use App\Modules\Contact\Application\UseCases\StartContactVerificationHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Contact\Presentation\Http\Requests\ConfirmContactVerificationRequest;
 use App\Modules\Contact\Presentation\Http\Requests\CreateAccountContactRequest;
 use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
 use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
@@ -21,6 +25,8 @@ use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use InvalidArgumentException;
+use LogicException;
 
 class AccountController extends Controller
 {
@@ -33,7 +39,7 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.index', ['error' => [
+            return ThemeResolver::page('account.index', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -57,7 +63,10 @@ class AccountController extends Controller
 
     public function settings(): Response
     {
-        return ThemeResolver::page('account.settings');
+        return ThemeResolver::page('account.settings', ['user' => null, 'error' => [
+            'message' => 'Настройки аккаунта будут реализованы отдельно.',
+            'code' => 501,
+        ]]);
     }
 
     public function contacts(): Response
@@ -65,13 +74,16 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.contacts', ['error' => [
+            return ThemeResolver::page('account.contacts', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
         }
 
         $user->load(['contacts' => fn ($query) => $query
+            ->with(['verifications' => fn ($verificationQuery) => $verificationQuery
+                ->where('status', ContactVerificationStatusEnum::PENDING->value)
+                ->latest()])
             ->orderByDesc('is_primary')
             ->orderBy('type')
             ->orderBy('created_at')]);
@@ -88,7 +100,14 @@ class AccountController extends Controller
     ): RedirectResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
 
-        $createContactForUser->handle($user, $request->toDTO());
+        try {
+            $createContactForUser->handle($user, $request->toDTO());
+        } catch (InvalidArgumentException $e) {
+            return redirect()
+                ->route('account.contacts')
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()
             ->route('account.contacts')
@@ -124,6 +143,32 @@ class AccountController extends Controller
             ->with('status', 'Код подтверждения отправлен.');
     }
 
+    public function confirmContactVerification(
+        ConfirmContactVerificationRequest $request,
+        Contact $contact,
+        ConfirmContactVerificationHandler $confirmContactVerification,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle($request->user());
+
+        abort_unless(
+            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            404,
+        );
+
+        try {
+            $confirmContactVerification->handle($contact, $request->toDTO());
+        } catch (ContactVerificationException|LogicException $e) {
+            return redirect()
+                ->route('account.contacts')
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('account.contacts')
+            ->with('status', 'Контакт подтвержден.');
+    }
+
     public function participationRole(string $role): Response
     {
         $roleEnum = UserParticipationRoleEnum::tryFrom($role);
@@ -133,7 +178,7 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.participation-role', ['error' => [
+            return ThemeResolver::page('account.participation-role', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -160,7 +205,7 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.contracts', ['error' => [
+            return ThemeResolver::page('account.contracts', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -176,7 +221,7 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.contract', ['error' => [
+            return ThemeResolver::page('account.contract', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -185,7 +230,7 @@ class AccountController extends Controller
         try {
             $contract = $showAccountContract->handle($number, $user);
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.contract', ['error' => [
+            return ThemeResolver::page('account.contract', ['contract' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -201,7 +246,7 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.venues', ['error' => [
+            return ThemeResolver::page('account.venues', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -217,7 +262,7 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.venue-create', ['error' => [
+            return ThemeResolver::page('account.venue-create', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -245,7 +290,7 @@ class AccountController extends Controller
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.venue', ['error' => [
+            return ThemeResolver::page('account.venue', ['user' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -254,7 +299,7 @@ class AccountController extends Controller
         try {
             $venue = $showVenue->handle($alias, $user);
         } catch (\Exception $e) {
-            return ThemeResolver::page('account.venue', ['error' => [
+            return ThemeResolver::page('account.venue', ['venue' => null, 'error' => [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode() ?: 500,
             ]]);
@@ -267,7 +312,7 @@ class AccountController extends Controller
 
     public function editVenue(string $alias): Response
     {
-        return ThemeResolver::page('account.venue', ['error' => [
+        return ThemeResolver::page('account.venue', ['venue' => null, 'error' => [
             'message' => 'Редактирование площадки будет реализовано отдельно.',
             'code' => 501,
         ]]);

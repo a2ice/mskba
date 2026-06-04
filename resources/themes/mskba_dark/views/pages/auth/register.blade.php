@@ -27,7 +27,7 @@
                         <form method="POST" action="{{ route('auth.register') }}">
                             @csrf
 
-                            <div class="form-group mb-3">
+                            <div class="form-group field mb-3">
                                 <label for="registerUsername">Логин</label>
                                 <input
                                     id="registerUsername"
@@ -44,7 +44,7 @@
                                 @enderror
                             </div>
 
-                            <div class="form-group mb-3">
+                            <div class="form-group field mb-3">
                                 <label for="registerPassword">Пароль</label>
                                 <input
                                     id="registerPassword"
@@ -60,7 +60,7 @@
                                 @enderror
                             </div>
 
-                            <div class="form-group mb-3">
+                            <div class="form-group field mb-3">
                                 <label for="registerPasswordConfirmation">Подтверждение пароля</label>
                                 <input
                                     id="registerPasswordConfirmation"
