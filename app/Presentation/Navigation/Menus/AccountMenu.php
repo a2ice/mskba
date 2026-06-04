@@ -2,15 +2,17 @@
 
 namespace App\Presentation\Navigation\Menus;
 
+use App\Modules\Identity\Domain\Models\UserParticipationRole;
+use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Presentation\Navigation\MenuHandler;
-use App\Presentation\Navigation\Menus\MenuHelper;
 use Illuminate\Support\Collection;
 
 final class AccountMenu implements MenuHandler
 {
     use MenuHelper;
+
     /**
-     * @return array<int, array{label: string, url: string, active: bool, visible: bool, divider?: bool}>
+     * @return array<int, array{label: string, url: string, active: bool, visible: bool, divider?: bool, badge?: int}>
      */
     public function items(): array
     {
@@ -27,10 +29,19 @@ final class AccountMenu implements MenuHandler
 
         if ($user) {
             $user->loadMissing('participationRoles');
+            $newNotificationsCount = app(CountNewUserNotificationsHandler::class)->handle($user);
 
             foreach ($this->participationRoleItems($user->participationRoles) as $item) {
                 $items[] = $item;
             }
+
+            $items[] = [
+                'label' => 'Центр уведомлений',
+                'url' => $this->routeUrl('account.notifications'),
+                'active' => $this->isActiveRoute('account.notifications'),
+                'visible' => true,
+                'badge' => $newNotificationsCount,
+            ];
 
             $items[] = [
                 'label' => 'Контакты',
@@ -46,7 +57,7 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
 
-            if($user->isConfirmed()) {
+            if ($user->isConfirmed()) {
                 $items[] = [
                     'label' => 'Контракты',
                     'url' => $this->routeUrl('account.contracts'),
@@ -77,7 +88,7 @@ final class AccountMenu implements MenuHandler
     }
 
     /**
-     * @param Collection<int, \App\Modules\Identity\Domain\Models\UserParticipationRole> $participationRoles
+     * @param  Collection<int, UserParticipationRole>  $participationRoles
      * @return array<int, array{label: string, url: string, active: bool, visible: bool}>
      */
     private function participationRoleItems(Collection $participationRoles): array

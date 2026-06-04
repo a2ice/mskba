@@ -89,6 +89,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 		Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
 			->name('account.participation-role');
 		Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
+		Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications');
+		Route::patch('/notifications/read-all', [AccountController::class, 'readAllNotifications'])
+			->name('account.notifications.read-all');
+		Route::patch('/notifications/{notification}/read', [AccountController::class, 'readNotification'])
+			->name('account.notifications.read');
 		Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
 		Route::post('/contacts', [AccountController::class, 'storeContact'])->name('account.contacts.store');
 		Route::delete('/contacts/{contact}', [AccountController::class, 'destroyContact'])
