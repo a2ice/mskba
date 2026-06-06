@@ -69,7 +69,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 
                         <div class="d-flex flex-wrap gap-2">
                             @if($notification->action_url)
-                                <a href="{{ $notification->action_url }}" class="btn btn--secondary btn--sm">Открыть</a>
+                                <a href="{{ $notification->action_url }}" class="btn btn--secondary btn--sm">{{ $notification->action_text ?: 'Открыть' }}</a>
                             @endif
 
                             @if($notification->isNew())

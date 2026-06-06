@@ -8,7 +8,6 @@ use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationChannelEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\Models\Contact;
-use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -25,9 +24,20 @@ class UserNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registration_creates_welcome_notification(): void
+    public function test_first_login_creates_welcome_notification(): void
     {
-        $user = app(RegisterUserHandler::class)->handle('notification_user', 'Password1!');
+        $user = User::factory()->create([
+            'username' => 'notification_user',
+            'password' => 'Password1!',
+            'registration_channel' => UserRegistrationChannelEnum::SITE_FULL_REGISTRATION,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this->post(route('auth.login'), [
+            'login' => 'notification_user',
+            'password' => 'Password1!',
+        ]);
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $user->id,
@@ -44,6 +54,37 @@ class UserNotificationTest extends TestCase
             UserNotificationSourceEnum::IDENTITY_REGISTRATION->value,
             $notification->payload['source'] ?? null,
         );
+        $this->assertSame('Подробнее о первых шагах', $notification->action_text);
+
+        $this->assertNotNull($user->refresh()->first_logged_in_at);
+    }
+
+    public function test_welcome_notification_is_created_only_on_first_login(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'second_login_notification_user',
+            'password' => 'Password1!',
+            'registration_channel' => UserRegistrationChannelEnum::SITE_FULL_REGISTRATION,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this->post(route('auth.login'), [
+            'login' => 'second_login_notification_user',
+            'password' => 'Password1!',
+        ]);
+
+        $this->post(route('auth.logout'));
+
+        $this->post(route('auth.login'), [
+            'login' => 'second_login_notification_user',
+            'password' => 'Password1!',
+        ]);
+
+        $this->assertSame(1, UserNotification::query()
+            ->where('user_id', $user->id)
+            ->where('title', 'Добро пожаловать в MSKBA')
+            ->count());
     }
 
     public function test_confirming_user_contact_creates_notification(): void

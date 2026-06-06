@@ -1,19 +1,22 @@
  .DEFAULT_GOAL := help
 
-PHP := php
-COMPOSER := composer
+PHP := docker compose exec phpfpm php
+COMPOSER := docker compose exec phpfpm composer
 NPM := npm
 ARTISAN := $(PHP) artisan
 DOCKER_COMPOSE := docker compose
 
-.PHONY: help install update dev serve vite build test lint format migrate fresh seed cache-clear optimize-clear queue logs shell up down restart db-up db-down db-restart db-logs module delete-module
+.PHONY: help install update dev serve vite build test lint format migrate fresh fresh-seed seed cache-clear optimize-clear queue queue-restart logs shell up rebuild down restart ps db-up db-down db-restart db-logs module delete-module
 
 help:
 	@echo "Available commands:"
-	@echo "  make install         Install PHP and Node dependencies, prepare app"
+	@echo "  make up              Build and start Docker stack"
+	@echo "  make rebuild         Rebuild and recreate Docker stack"
+	@echo "  make down            Stop Docker stack"
+	@echo "  make restart         Restart Docker stack"
+	@echo "  make ps              Show Docker services"
+	@echo "  make install         Install dependencies, prepare app"
 	@echo "  make update          Update Composer and npm dependencies"
-	@echo "  make dev             Run Laravel dev stack"
-	@echo "  make serve           Run Laravel HTTP server"
 	@echo "  make vite            Run Vite dev server"
 	@echo "  make build           Build frontend assets"
 	@echo "  make test            Run tests"
@@ -24,11 +27,12 @@ help:
 	@echo "  make seed            Run database seeders"
 	@echo "  make cache-clear     Clear Laravel caches"
 	@echo "  make optimize-clear  Clear cached bootstrap files"
-	@echo "  make queue           Run queue worker"
+	@echo "  make queue           Tail queue worker logs"
+	@echo "  make queue-restart   Restart queue worker container"
 	@echo "  make logs            Tail Laravel logs with Pail"
 	@echo "  make shell           Open Tinker"
-	@echo "  make db-up           Start PostgreSQL"
-	@echo "  make db-down         Stop PostgreSQL"
+	@echo "  make db-up           Start database service"
+	@echo "  make db-down         Stop Docker stack"
 	@echo "  make db-restart      Restart PostgreSQL"
 	@echo "  make db-logs         Tail PostgreSQL logs"
 	@echo "  make module name=... Create bounded context module"
@@ -39,10 +43,10 @@ help:
 	@echo "  make delete-module name=... force=1 Delete bounded context module"
 
 install:
+	$(DOCKER_COMPOSE) up -d --build
 	$(COMPOSER) install
 	@test -f .env || cp .env.example .env
 	$(ARTISAN) key:generate
-	@test -f database/database.sqlite || touch database/database.sqlite
 	$(ARTISAN) migrate
 	$(NPM) install
 	$(NPM) run build
@@ -51,11 +55,9 @@ update:
 	$(COMPOSER) update
 	$(NPM) update
 
-dev:
-	$(COMPOSER) run dev
+dev: up vite
 
-serve:
-	$(ARTISAN) serve --host=127.0.0.1 --port=8000
+serve: up
 
 vite:
 	$(NPM) run dev
@@ -67,19 +69,23 @@ test:
 	$(COMPOSER) test
 
 lint:
-	./vendor/bin/pint --test
+	$(DOCKER_COMPOSE) exec phpfpm ./vendor/bin/pint --test
 
 format:
-	./vendor/bin/pint
+	$(DOCKER_COMPOSE) exec phpfpm ./vendor/bin/pint
 
 migrate:
 	$(ARTISAN) migrate
 
 fresh:
 	$(ARTISAN) migrate:fresh
+	$(ARTISAN) cache:clear
+	$(DOCKER_COMPOSE) restart queue
 
 fresh-seed:
 	$(ARTISAN) migrate:fresh --seed
+	$(ARTISAN) cache:clear
+	$(DOCKER_COMPOSE) restart queue
 
 seed:
 	$(ARTISAN) db:seed
@@ -94,7 +100,10 @@ optimize-clear:
 	$(ARTISAN) optimize:clear
 
 queue:
-	$(ARTISAN) queue:work
+	$(DOCKER_COMPOSE) logs -f queue
+
+queue-restart:
+	$(DOCKER_COMPOSE) restart queue
 
 logs:
 	$(ARTISAN) pail
@@ -103,7 +112,10 @@ shell:
 	$(ARTISAN) tinker
 
 up:
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER_COMPOSE) up -d --build
+
+rebuild:
+	$(DOCKER_COMPOSE) up -d --build --force-recreate
 
 down:
 	$(DOCKER_COMPOSE) down
@@ -111,17 +123,20 @@ down:
 restart:
 	$(DOCKER_COMPOSE) restart
 
+ps:
+	$(DOCKER_COMPOSE) ps
+
 db-up:
-	$(DOCKER_COMPOSE) up -d postgres
+	$(DOCKER_COMPOSE) up -d db
 
 db-down:
 	$(DOCKER_COMPOSE) down
 
 db-restart:
-	$(DOCKER_COMPOSE) restart postgres
+	$(DOCKER_COMPOSE) restart db
 
 db-logs:
-	$(DOCKER_COMPOSE) logs -f postgres
+	$(DOCKER_COMPOSE) logs -f db
 
 module:
 ifndef name

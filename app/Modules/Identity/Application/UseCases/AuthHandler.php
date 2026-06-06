@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Identity\Application\DTO\LoginResponseDTO;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Events\UserFirstLogin;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -40,6 +41,15 @@ class AuthHandler
 
         Auth::login($user, $remember);
         request()->session()->regenerate();
+
+        $firstLoginMarked = User::query()
+            ->whereKey($user->id)
+            ->whereNull('first_logged_in_at')
+            ->update(['first_logged_in_at' => now()]);
+
+        if ($firstLoginMarked === 1) {
+            event(new UserFirstLogin((int) $user->id));
+        }
 
         if ($user->is_temporary_password) {
             return new LoginResponseDTO(

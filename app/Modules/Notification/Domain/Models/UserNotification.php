@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'title',
     'body',
     'action_url',
+    'action_text',
     'payload',
     'read_at',
 ])]
