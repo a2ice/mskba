@@ -49,7 +49,7 @@ jobs:
 
             mkdir -p bootstrap/cache public/build
 
-            $COMPOSE build phpfpm
+            $COMPOSE build phpfpm queue
             $COMPOSE up -d db redis
 
             $COMPOSE run -T --rm phpfpm composer install \
@@ -69,6 +69,6 @@ jobs:
             $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:www-data" storage bootstrap/cache </dev/null
             $COMPOSE run -T --rm phpfpm chmod -R ug+rwX storage bootstrap/cache </dev/null
 
-            $COMPOSE up -d --force-recreate phpfpm nginx
+            $COMPOSE up -d --force-recreate phpfpm nginx queue
 
-            $COMPOSE restart phpfpm nginx
+            $COMPOSE restart phpfpm nginx queue

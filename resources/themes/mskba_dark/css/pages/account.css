@@ -49,6 +49,24 @@
     max-width: 345px;
 }
 
+.account-confirmation-step[hidden] {
+    display: none;
+}
+
+.account-confirmation-wizard__progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent-text);
+    font-weight: 800;
+}
+
+.account-confirmation-wizard__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .account-notification-item__badges {
     display: inline-flex;
     align-items: center;

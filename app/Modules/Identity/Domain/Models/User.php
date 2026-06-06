@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'status', 'system_role', 'registration_channel'])]
+#[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'first_logged_in_at', 'status', 'system_role', 'registration_channel'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -43,6 +43,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_temporary_password' => 'boolean',
             'password_updated_at' => 'datetime',
+            'first_logged_in_at' => 'datetime',
             'registration_channel' => UserRegistrationChannelEnum::class,
             'system_role' => UserSystemRoleEnum::class,
             'status' => UserStatusEnum::class,
@@ -87,7 +88,7 @@ class User extends Authenticatable
         $contact = $this->contacts()
             ->where('type', 'email')
             ->where('is_primary', true)
-            ->first();//dd($contact);
+            ->first(); // dd($contact);
 
         return $contact;
     }
@@ -100,8 +101,8 @@ class User extends Authenticatable
     public function isAdmin(bool $isConfirmed = true): bool
     {
         $numericRoleValue = $this->system_role->numericValue();
-        
-        return $numericRoleValue >= UserSystemRoleEnum::ADMIN->numericValue() && (!$isConfirmed || $this->isConfirmed());
+
+        return $numericRoleValue >= UserSystemRoleEnum::ADMIN->numericValue() && (! $isConfirmed || $this->isConfirmed());
     }
 
     public function hasRole(string $role): bool

@@ -95,6 +95,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 		Route::get('/', [AccountController::class, 'index'])
 			->name('account')
 			->defaults('breadcrumb', 'Аккаунт');
+		Route::get('/confirmation', [AccountController::class, 'confirmation'])
+			->name('account.confirmation')
+			->defaults('breadcrumb', 'Подтверждение аккаунта');
+		Route::post('/confirmation', [AccountController::class, 'completeConfirmation'])
+			->name('account.confirmation.complete');
 		Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
 			->name('account.participation-role');
 		Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');

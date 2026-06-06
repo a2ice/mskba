@@ -67,5 +67,39 @@
                 <span class="fw-bold">{{ $user->created_at->format('d.m.Y H:i') }}</span>
             </li>
         </ul>
+
+        @if($user->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED)
+        @php
+            if($user->primaryEmail()) {
+                if($user->primaryEmail()->is_verified) {
+                    $confirmationCondition = 'Все необходимые условия выполнены. Подтвердите аккаунт, чтобы получить доступ ко всем функциям платформы.';
+                    $confirmationConditionActionBtn = '
+                        <a href="' . route('account.confirmation') . '" class="btn btn--primary btn--sm">
+                            Подтвердить аккаунт
+                        </a>
+                    ';
+                } else {
+                    $confirmationCondition = 'Подтвердите контакт, чтобы получить возможность подтвердить аккаунт и получить доступ ко всем функциям платформы.';
+                    $confirmationConditionActionBtn = '
+                        <a href="' . route('account.contacts') . '" class="btn btn--secondary btn--sm">
+                            Перейти к контактам
+                        </a>
+                    ';
+                }
+            } else {
+                $confirmationCondition = 'Добавьте и подтвердите контакт, чтобы получить возможность подтвердить аккаунт и получить доступ ко всем функциям платформы.';
+                $confirmationConditionActionBtn = '
+                    <a href="' . route('account.contacts') . '" class="btn btn--secondary btn--sm">
+                        Перейти к контактам
+                    </a>
+                ';
+            }
+        @endphp
+            <hr>
+            <p class="mb-4">{{ $confirmationCondition }}</p>
+            <div class="mt-4">
+                {!! $confirmationConditionActionBtn !!}
+            </div>
+        @endif
     @endif
 @endsection

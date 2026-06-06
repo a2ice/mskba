@@ -25,7 +25,7 @@ final class RegisterUserHandler
             isTemporaryPassword: false,
         );
 
-        event(new UserRegistered((int) $user->id));
+        // event(new UserRegistered((int) $user->id));
 
         return $user;
     }

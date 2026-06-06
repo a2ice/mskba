@@ -1,0 +1,151 @@
+<?php
+
+namespace Tests\Feature\Identity;
+
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class AccountConfirmationWizardTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_unconfirmed_user_sees_confirmation_button_on_account_page(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+
+        $response = $this->actingAs($user)->get(route('account'));
+
+        $response->assertOk();
+        $response->assertSee('Подтвердить аккаунт');
+        $response->assertSee(route('account.confirmation'), false);
+    }
+
+    public function test_confirmed_user_does_not_see_confirmation_button_on_account_page(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::CONFIRMED);
+        $user->createProfile([]);
+
+        $response = $this->actingAs($user)->get(route('account'));
+
+        $response->assertOk();
+        $response->assertDontSee('Подтвердить аккаунт');
+    }
+
+    public function test_confirmation_wizard_shows_role_and_name_steps_for_user_without_role(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+
+        $response = $this->actingAs($user)->get(route('account.confirmation'));
+
+        $response->assertOk();
+        $response->assertSee('Выберите роль участия');
+        $response->assertSee('Представьтесь, пожалуйста');
+        $response->assertSee('(Н)');
+        $response->assertSee('data-role-dependent="true"', false);
+        $response->assertSee('data-step-key="birth_date_and_gender"', false);
+        $response->assertSee('hidden', false);
+    }
+
+    public function test_player_role_adds_birth_date_and_gender_step(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+        $this->assignRole($user, UserParticipationRoleEnum::PLAYER);
+
+        $response = $this->actingAs($user)->get(route('account.confirmation'));
+
+        $response->assertOk();
+        $response->assertSee('Заполните дату рождения и пол');
+    }
+
+    public function test_required_steps_confirm_player_account(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+
+        $this->actingAs($user)->post(route('account.confirmation.complete'), [
+            'role' => UserParticipationRoleEnum::PLAYER->value,
+            'birth_date' => '1995-05-20',
+            'gender' => UserGenderEnum::MALE->value,
+            'first_name' => 'Иван',
+            'last_name' => 'Игроков',
+        ])->assertRedirect(route('account'));
+
+        $this->assertDatabaseHas('user_participation_roles', [
+            'user_id' => $user->id,
+            'role' => UserParticipationRoleEnum::PLAYER->value,
+        ]);
+
+        $this->assertSame(UserStatusEnum::CONFIRMED, $user->refresh()->status);
+        $this->assertDatabaseHas('profiles', [
+            'user_id' => $user->id,
+            'first_name' => 'Иван',
+            'last_name' => 'Игроков',
+            'gender' => UserGenderEnum::MALE->value,
+        ]);
+    }
+
+    public function test_player_confirmation_requires_birth_date_and_gender_on_final_submit(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+
+        $response = $this->actingAs($user)->post(route('account.confirmation.complete'), [
+            'role' => UserParticipationRoleEnum::PLAYER->value,
+            'first_name' => 'Иван',
+            'last_name' => 'Игроков',
+        ]);
+
+        $response->assertSessionHasErrors(['birth_date', 'gender']);
+        $this->assertSame(UserStatusEnum::UNCONFIRMED, $user->refresh()->status);
+    }
+
+    public function test_non_player_role_can_be_confirmed_without_birth_date_and_gender(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+
+        $this->actingAs($user)->post(route('account.confirmation.complete'), [
+            'role' => UserParticipationRoleEnum::REFEREE->value,
+        ])->assertRedirect(route('account'));
+
+        $this->assertSame(UserStatusEnum::CONFIRMED, $user->refresh()->status);
+        $this->assertDatabaseHas('profiles', [
+            'user_id' => $user->id,
+            'first_name' => null,
+            'last_name' => null,
+        ]);
+    }
+
+    private function makeUser(UserStatusEnum $status): User
+    {
+        return User::factory()->create([
+            'username' => fake()->unique()->userName(),
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => $status,
+        ]);
+    }
+
+    private function assignRole(User $user, UserParticipationRoleEnum $role): void
+    {
+        $user->participationRoles()->create([
+            'role' => $role,
+            'status' => UserParticipationRoleStatusEnum::ACTIVE,
+            'assigned_at' => now(),
+            'assigned_by' => $user->id,
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
+        ]);
+    }
+}

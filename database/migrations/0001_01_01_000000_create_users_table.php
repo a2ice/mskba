@@ -24,6 +24,7 @@ return new class extends Migration
             $table->enum('system_role', array_column(UserSystemRoleEnum::cases(), 'value'))->nullable();
             $table->enum('status', array_column(UserStatusEnum::cases(), 'value'))
                 ->default(UserStatusEnum::UNCONFIRMED->value);
+            $table->timestamp('first_logged_in_at')->nullable();
 
             /* $table->string('name');
             $table->string('email')->unique();
