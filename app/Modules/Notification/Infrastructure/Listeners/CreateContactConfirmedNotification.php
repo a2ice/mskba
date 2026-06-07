@@ -20,9 +20,8 @@ final class CreateContactConfirmedNotification
             userId: $event->userId,
             type: UserNotificationTypeEnum::PROFILE,
             title: 'Контакт подтвержден',
-            body: 'Вы подтвердили контакт. Теперь вам доступны базовые возможности.',
-            actionUrl: route('faq/initial-setup'),
-            actionText: 'Подробнее',
+            body: 'Вы подтвердили контакт. Теперь можно продолжить заполнение и подтверждение профиля.',
+            actionUrl: route('account'),
             payload: [
                 'source' => UserNotificationSourceEnum::CONTACT_CONFIRMATION->value,
                 'contact_id' => $event->contactId,
