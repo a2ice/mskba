@@ -7,6 +7,7 @@ use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
 use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
@@ -73,9 +74,12 @@ class User extends Authenticatable
         return $this->profile()->create($data);
     }
 
-    public function participationRoles(): HasMany
+    public function participationRoles(bool $isActive = true): HasMany
     {
-        return $this->hasMany(UserParticipationRole::class);
+        return $this->hasMany(UserParticipationRole::class)
+            ->when($isActive, function ($query) {
+                $query->where('status', UserParticipationRoleStatusEnum::ACTIVE);
+            });
     }
 
     public function contacts(): MorphMany
@@ -105,9 +109,19 @@ class User extends Authenticatable
         return $numericRoleValue >= UserSystemRoleEnum::ADMIN->numericValue() && (! $isConfirmed || $this->isConfirmed());
     }
 
-    public function hasRole(string $role): bool
+    public function hasRole(string $role, bool $isActive = true): bool
     {
-        return $this->participationRoles()->where('role', $role)->exists();
+        return $this->participationRoles()
+            ->where('role', $role)
+            ->when($isActive, function ($query) {
+                $query->where('status', UserParticipationRoleStatusEnum::ACTIVE);
+            })
+            ->exists();
+    }
+
+    public function hasActiveRole(string $role): bool
+    {
+        return $this->participationRoles()->where('role', $role)->where('status', UserParticipationRoleStatusEnum::ACTIVE)->exists();
     }
 
     public function isConfirmed(): bool
