@@ -30,6 +30,8 @@ final readonly class UsernameVO
             throw new InvalidIdentityValueException('Логин может содержать латинские буквы, цифры, точку, дефис и подчёркивание, но должен начинаться и заканчиваться буквой или цифрой.');
         }
 
+        $value = mb_strtolower($value);
+
         return new self($value);
     }
 }
