@@ -75,11 +75,21 @@ class RegisterRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->has('username')) {
-            $this->merge([
-                'username' => trim((string) $this->input('username')),
-            ]);
+        if (! $this->has('username')) {
+            return;
         }
+
+        $username = trim((string) $this->input('username'));
+
+        try {
+            $username = UsernameVO::fromString($username)->value;
+        } catch (InvalidIdentityValueException) {
+            // Оставляем trim-значение, чтобы domainUsernameRule отдал нормальную ошибку.
+        }
+
+        $this->merge([
+            'username' => $username,
+        ]);
     }
 
     protected function failedValidation(Validator $validator): void
