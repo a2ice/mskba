@@ -16,15 +16,16 @@
             </div>
         @else
             <div class="table-responsive">
-                <table class="table table-striped align-middle">
+                <table class="table table-striped table-dark align-middle fs-smaller">
                     <thead>
                         <tr>
                             <th>ID</th>
                             <th>Номер</th>
                             <th>Статус</th>
+                            <th>Контракт</th>
                             <th>Начало</th>
                             <th>Окончание</th>
-                            <th>Площадки</th>
+                            <th>Область</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -35,13 +36,24 @@
                                     <a href="{{ route('account.contracts.show', $contract->id) }}">{{ $contract->number ?? '—' }}</a>
                                 </td>
                                 <td>{{ $contract->status }}</td>
+                                <td>
+                                    {{ $contract->accessLevelLabel ?? '—' }}
+                                    @if($contract->accessLevel)
+                                        <br><code>{{ $contract->accessLevel }}</code>
+                                    @endif
+                                </td>
                                 <td>{{ $contract->startsAt ?? '—' }}</td>
                                 <td>{{ $contract->expiresAt ?? '—' }}</td>
                                 <td>
-                                    @forelse ($contract->venues as $venue)
+                                    @forelse ($contract->scopes as $scope)
                                         <div>
-                                            <a href="{{ route('venues.show', $venue['alias']) }}">{{ $venue['name'] }}</a>
-                                            <code>{{ $venue['permissions'] }}</code>
+                                            <span class="text-muted">{{ $scope['type_label'] }}</span><br>
+                                            @if($scope['url'])
+                                                <a href="{{ $scope['url'] }}">{{ $scope['name'] }}</a>
+                                            @else
+                                                {{ $scope['name'] }}
+                                            @endif
+                                            <br><code>{{ $scope['permissions'] }}</code>
                                         </div>
                                     @empty
                                         —

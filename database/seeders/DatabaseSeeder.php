@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Modules\Contract\Domain\Enums\ContractPartyRoleEnum;
-use App\Modules\Contract\Domain\Enums\ContractPartyTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Identity\Application\UseCases\CreateUserAccountHandler;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
@@ -20,7 +21,6 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
-use App\Modules\Venue\Domain\Models\VenueContract;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -226,15 +226,27 @@ class DatabaseSeeder extends Seeder
             ],
         ];
 
+        $venueOwner = User::query()
+            ->where('username', 'admin')
+            ->firstOrFail();
+
         foreach ($venues as $venue) {
-            Venue::factory()->create([
+            $createdVenue = Venue::factory()->create([
                 ...$venue,
+                'created_by_user_id' => $venueOwner->id,
                 'status' => rand(0, 1) ? VenueStatusEnum::CONFIRMED->value : VenueStatusEnum::UNCONFIRMED->value,
             ]);
+
+            $this->createVenueMembership(
+                user: $venueOwner,
+                venue: $createdVenue,
+                accessLevel: VenueMembershipAccessLevelEnum::OWNER,
+                numberSuffix: 'OWNER-'.$createdVenue->id,
+            );
         }
 
         $contractUsers = User::query()
-            ->whereIn('username', ['user_1', 'user_2', 'admin'])
+            ->whereIn('username', ['user_1', 'user_2', 'user_3'])
             ->get();
 
         $contractVenues = Venue::query()
@@ -248,42 +260,64 @@ class DatabaseSeeder extends Seeder
                 ->take(rand(1, 3))
                 ->values()
                 ->each(function (Venue $venue, int $index) use ($user): void {
-                    $contract = Contract::query()->create([
-                        'number' => 'SEED-'.$user->id.'-'.$venue->id,
-                        'name' => 'Контракт '.$user->username.' - '.$venue->name,
-                        'status' => ContractStatusEnum::ACTIVE->value,
-                        'starts_at' => fake()->dateTimeBetween('-1 month', 'now'),
-                        'expires_at' => fake()->dateTimeBetween('+1 month', '+1 year'),
-                        'assigner' => UserParticipationRoleAssignerEnum::SEEDER->value,
-                    ]);
+                    $accessLevel = match ($index) {
+                        0 => VenueMembershipAccessLevelEnum::ADMIN,
+                        1 => VenueMembershipAccessLevelEnum::MANAGER,
+                        default => fake()->randomElement([
+                            VenueMembershipAccessLevelEnum::STAFF,
+                            VenueMembershipAccessLevelEnum::AGENT,
+                        ]),
+                    };
 
-                    $contract->parties()->create([
-                        'party_type' => ContractPartyTypeEnum::USER->value,
-                        'party_id' => $user->id,
-                        'role' => ContractPartyRoleEnum::HOLDER->value,
-                    ]);
+                    $permissions = collect($accessLevel->defaultPermissions());
 
-                    $venueContract = VenueContract::query()->create([
-                        'contract_id' => $contract->id,
-                        'venue_id' => $venue->id,
-                    ]);
-
-                    $venueContract->permissions()->create([
-                        'permission' => VenuePermissionEnum::VIEW->value,
-                    ]);
-
-                    if ($index === 0 || rand(0, 1)) {
-                        $venueContract->permissions()->create([
-                            'permission' => VenuePermissionEnum::EDIT->value,
-                        ]);
+                    if ($accessLevel === VenueMembershipAccessLevelEnum::ADMIN && rand(0, 1) === 1) {
+                        $permissions = $permissions->reject(fn (VenuePermissionEnum $permission) => $permission === VenuePermissionEnum::EDIT_SCHEDULE);
                     }
 
-                    if ($index === 0 || rand(0, 1)) {
-                        $venueContract->permissions()->create([
-                            'permission' => VenuePermissionEnum::EDIT_SCHEDULE->value,
-                        ]);
-                    }
+                    $this->createVenueMembership(
+                        user: $user,
+                        venue: $venue,
+                        accessLevel: $accessLevel,
+                        numberSuffix: $user->id.'-'.$venue->id,
+                        permissions: $permissions->all(),
+                    );
                 });
         });
+    }
+
+    /**
+     * @param array<VenuePermissionEnum>|null $permissions
+     */
+    private function createVenueMembership(
+        User $user,
+        Venue $venue,
+        VenueMembershipAccessLevelEnum $accessLevel,
+        string $numberSuffix,
+        ?array $permissions = null,
+    ): Contract {
+        $contract = Contract::query()->create([
+            'family' => ContractFamilyEnum::MEMBERSHIP->value,
+            'number' => 'SEED-VENUE-'.$numberSuffix,
+            'name' => $accessLevel->label().' - '.$venue->name,
+            'status' => ContractStatusEnum::ACTIVE->value,
+            'starts_at' => fake()->dateTimeBetween('-1 month', 'now'),
+            'expires_at' => null,
+            'assigner' => UserParticipationRoleAssignerEnum::SEEDER->value,
+        ]);
+
+        $contract->membership()->create([
+            'scope_type' => ContractMembershipScopeTypeEnum::VENUE->value,
+            'scope_id' => $venue->id,
+            'user_id' => $user->id,
+            'access_level' => $accessLevel->value,
+        ]);
+
+        collect($permissions ?? $accessLevel->defaultPermissions())
+            ->each(fn (VenuePermissionEnum $permission) => $contract->permissions()->create([
+                'permission' => $permission->value,
+            ]));
+
+        return $contract;
     }
 }

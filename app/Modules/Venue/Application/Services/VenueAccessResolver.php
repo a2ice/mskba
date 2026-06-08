@@ -9,7 +9,7 @@ use App\Modules\Venue\Domain\Models\Venue;
 final class VenueAccessResolver
 {
     public function __construct(
-        private readonly VenueContractAccess $contracts,
+        private readonly VenueMembershipAccess $memberships,
     ) {}
 
     public function canView(?User $user, Venue $venue): bool
@@ -18,25 +18,29 @@ final class VenueAccessResolver
             return true;
         }
 
-        if ($this->isCreator($user, $venue)) {
+        if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::VIEW)) {
             return true;
         }
 
-        return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::VIEW);
+        return $this->isBootstrapCreator($user, $venue);
     }
 
     public function canEdit(?User $user, Venue $venue): bool
     {
-        if ($this->isCreator($user, $venue)) {
+        if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT)) {
             return true;
         }
 
-        return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::EDIT);
+        return $this->isBootstrapCreator($user, $venue);
     }
 
     public function canEditSchedule(?User $user, Venue $venue): bool
     {
-        return $user !== null && $this->contracts->allows($user, $venue, VenuePermissionEnum::EDIT_SCHEDULE);
+        if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT_SCHEDULE)) {
+            return true;
+        }
+
+        return $this->isBootstrapCreator($user, $venue);
     }
 
     /**
@@ -44,7 +48,7 @@ final class VenueAccessResolver
      */
     public function contractViewableVenueIdsFor(?User $user): array
     {
-        return $user === null ? [] : $this->contracts->allowedVenueIdsFor($user, VenuePermissionEnum::VIEW);
+        return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::VIEW);
     }
 
     /**
@@ -52,7 +56,15 @@ final class VenueAccessResolver
      */
     public function contractedVenueIdsFor(?User $user): array
     {
-        return $user === null ? [] : $this->contracts->contractedVenueIdsFor($user);
+        return $user === null ? [] : $this->memberships->contractedVenueIdsFor($user);
+    }
+
+    /**
+     * @return array<int>
+     */
+    public function bootstrapOwnedVenueIdsFor(?User $user): array
+    {
+        return $user === null ? [] : $this->memberships->bootstrapOwnedVenueIdsFor($user);
     }
 
     /**
@@ -60,7 +72,7 @@ final class VenueAccessResolver
      */
     public function contractEditableVenueIdsFor(?User $user): array
     {
-        return $user === null ? [] : $this->contracts->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT);
+        return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT);
     }
 
     /**
@@ -68,11 +80,13 @@ final class VenueAccessResolver
      */
     public function contractScheduleEditableVenueIdsFor(?User $user): array
     {
-        return $user === null ? [] : $this->contracts->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT_SCHEDULE);
+        return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT_SCHEDULE);
     }
 
-    private function isCreator(?User $user, Venue $venue): bool
+    private function isBootstrapCreator(?User $user, Venue $venue): bool
     {
-        return $user !== null && $venue->created_by_user_id === $user->id;
+        return $user !== null
+            && $venue->created_by_user_id === $user->id
+            && ! $this->memberships->hasActiveOwner($venue);
     }
 }

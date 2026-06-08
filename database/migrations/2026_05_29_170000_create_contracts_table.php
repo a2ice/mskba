@@ -1,10 +1,11 @@
 <?php
 
+use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 
 return new class extends Migration
 {
@@ -12,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('contracts', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->enum('family', array_column(ContractFamilyEnum::cases(), 'value'))
+                ->default(ContractFamilyEnum::MEMBERSHIP->value);
             $table->string('number')->unique()->nullable();
             $table->string('name')->nullable();
             $table->enum('status', array_column(ContractStatusEnum::cases(), 'value'))
@@ -26,30 +28,54 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('venue_contracts', function (Blueprint $table): void {
+        Schema::create('contract_memberships', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('contract_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('venue_id')->constrained()->cascadeOnDelete();
+            $table->string('scope_type');
+            $table->unsignedBigInteger('scope_id');
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('access_level');
             $table->timestamps();
 
-            $table->unique(['contract_id', 'venue_id']);
-            $table->index('venue_id');
+            $table->unique('contract_id');
+            $table->index(['scope_type', 'scope_id']);
+            $table->index(['user_id', 'scope_type']);
+            $table->index(['scope_type', 'access_level']);
         });
 
-        Schema::create('venue_contract_permissions', function (Blueprint $table): void {
+        Schema::create('contract_relations', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('venue_contract_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('contract_id')->constrained()->cascadeOnDelete();
+            $table->string('relation_type');
+            $table->string('left_type');
+            $table->unsignedBigInteger('left_id');
+            $table->string('left_role');
+            $table->string('right_type');
+            $table->unsignedBigInteger('right_id');
+            $table->string('right_role');
+            $table->timestamps();
+
+            $table->unique('contract_id');
+            $table->index(['relation_type']);
+            $table->index(['left_type', 'left_id']);
+            $table->index(['right_type', 'right_id']);
+        });
+
+        Schema::create('contract_permissions', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('contract_id')->constrained()->cascadeOnDelete();
             $table->string('permission');
             $table->timestamps();
 
-            $table->unique(['venue_contract_id', 'permission']);
+            $table->unique(['contract_id', 'permission']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('venue_contract_permissions');
-        Schema::dropIfExists('venue_contracts');
+        Schema::dropIfExists('contract_permissions');
+        Schema::dropIfExists('contract_relations');
+        Schema::dropIfExists('contract_memberships');
         Schema::dropIfExists('contracts');
     }
 };

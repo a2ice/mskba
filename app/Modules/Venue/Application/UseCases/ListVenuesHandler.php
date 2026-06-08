@@ -21,13 +21,17 @@ final class ListVenuesHandler
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
         $contractScheduleEditableVenueIds = $this->accessResolver->contractScheduleEditableVenueIdsFor($user);
+        $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
 
-        return $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds): void {
+        return $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds): void {
             $query->where('status', VenueStatusEnum::CONFIRMED->value)
-                ->orWhereIn('id', $contractViewableVenueIds);
+                ->orWhereIn('id', $contractViewableVenueIds)
+                ->orWhereIn('id', $bootstrapOwnedVenueIds);
         })
             ->get()
-            ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds) {
+            ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds) {
+                $isBootstrapOwned = in_array($venue->id, $bootstrapOwnedVenueIds, true);
+
                 return new VenueListItemDTO(
                     id: $venue->id,
                     name: $venue->name,
@@ -35,9 +39,9 @@ final class ListVenuesHandler
                     type: $venue->type->label(),
                     status: $venue->status->label(),
                     description: $venue->description,
-                    canView: in_array($venue->id, $contractViewableVenueIds, true),
-                    canEdit: in_array($venue->id, $contractEditableVenueIds, true),
-                    canEditSchedule: in_array($venue->id, $contractScheduleEditableVenueIds, true),
+                    canView: $venue->status === VenueStatusEnum::CONFIRMED || $isBootstrapOwned || in_array($venue->id, $contractViewableVenueIds, true),
+                    canEdit: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
+                    canEditSchedule: $isBootstrapOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true),
                 );
             })
             ->all();

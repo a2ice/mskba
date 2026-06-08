@@ -2,13 +2,17 @@
 
 namespace App\Modules\Contract\Domain\Models;
 
+use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
-use App\Modules\Venue\Domain\Models\VenueContract;
+use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
+    'family',
     'number',
     'name',
     'status',
@@ -21,14 +25,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Contract extends Model
 {
-    public function parties(): HasMany
+    public function membership(): HasOne
     {
-        return $this->hasMany(ContractParty::class);
+        return $this->hasOne(ContractMembership::class);
     }
 
-    public function venueContracts(): HasMany
+    public function relation(): HasOne
     {
-        return $this->hasMany(VenueContract::class);
+        return $this->hasOne(ContractRelation::class);
+    }
+
+    public function permissions(): HasMany
+    {
+        return $this->hasMany(ContractPermission::class);
+    }
+
+    public function assignedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
     }
 
     /**
@@ -37,6 +51,7 @@ class Contract extends Model
     protected function casts(): array
     {
         return [
+            'family' => ContractFamilyEnum::class,
             'status' => ContractStatusEnum::class,
             'starts_at' => 'datetime',
             'expires_at' => 'datetime',

@@ -3,6 +3,8 @@
 namespace App\Modules\Venue\Domain\Models;
 
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -27,9 +29,11 @@ class Venue extends Model
         return VenueFactory::new();
     }
 
-    public function venueContracts(): HasMany
+    public function memberships(): HasMany
     {
-        return $this->hasMany(VenueContract::class);
+        return $this
+            ->hasMany(ContractMembership::class, 'scope_id')
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value);
     }
 
     public function creator(): BelongsTo
@@ -40,6 +44,11 @@ class Venue extends Model
     public function contacts(): MorphMany
     {
         return $this->morphMany(Contact::class, 'contactable');
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'alias';
     }
 
     /**

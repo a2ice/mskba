@@ -1,0 +1,224 @@
+# Contracts
+
+Техническая концепция контрактов и контекстных прав доступа.
+
+## Назначение
+
+Контракт в проекте должен описывать подтвержденную или ожидающую подтверждения связь между сущностями системы. Это не только договор на оказание услуг: контракт может фиксировать членство пользователя в команде, управление площадкой, участие команды в событии, бронирование площадки событием или партнерство двух организаций.
+
+## Текущее состояние
+
+В текущей кодовой базе контракт уже используется для доступа пользователя к площадкам.
+
+Существующие таблицы:
+
+- `contracts`;
+- `contract_memberships`;
+- `contract_relations`;
+- `contract_permissions`.
+
+Существующие модели:
+
+- `Contract`;
+- `ContractMembership`;
+- `ContractRelation`;
+- `ContractPermission`.
+
+Существующие права площадки:
+
+- `view`;
+- `edit`;
+- `edit.schedule`.
+
+`VenueAccessResolver` сейчас использует два источника доступа:
+
+- `venues.created_by_user_id` как creator shortcut;
+- membership permissions через `VenueMembershipAccess`.
+
+## Ограничение holder/provider/customer
+
+В старой схеме был enum `ContractPartyRoleEnum` со значениями:
+
+- `holder`;
+- `provider`;
+- `customer`.
+
+Эти значения подходят для сервисного или коммерческого договора, но не являются универсальной моделью для всех контрактных связей.
+
+Проблемные примеры:
+
+- игрок в команде не является естественным `holder/provider/customer`;
+- сотрудник компании не является естественным `customer/provider`;
+- пользователь, управляющий площадкой, скорее имеет access level `manager` или `admin`, чем роль стороны `customer`;
+- команда, открывающая другой команде видимость данных, лучше описывается ролями `grantor/grantee`.
+
+Поэтому `holder/provider/customer` нельзя использовать как основу универсального ACL. Текущая чистая схема не использует `contract_parties`; если такие значения понадобятся позже, их область должна быть ограничена relation type, где действительно есть заказчик и исполнитель, например `service`.
+
+## Два семейства контрактов
+
+Текущая модель делит контракты на два семейства:
+
+- `membership_contract`;
+- `relation_contract`.
+
+### Membership contract
+
+`membership_contract` описывает связь пользователя с предметной сущностью, в рамках которой пользователь получает роль, уровень доступа или рабочее участие.
+
+Примеры:
+
+- `venue -> user`;
+- `event -> user`;
+- `team -> user`;
+- `company -> user`.
+
+Базовые поля:
+
+- `contract_id`;
+- `scope_type`;
+- `scope_id`;
+- `user_id`;
+- `access_level`.
+
+`scope_type` используется как нейтральное название, потому что `venue` и `event` не всегда корректно называть организациями.
+
+Стартовые уровни для `venue` membership:
+
+- `owner`;
+- `admin`;
+- `manager`;
+- `staff`;
+- `agent`.
+
+`player` не входит в стартовый набор для `venue` membership. Игровое участие пользователя должно моделироваться через событие, команду, тренировку, бронирование или отдельную заявку.
+
+### Relation contract
+
+`relation_contract` описывает связь сущности с сущностью.
+
+Примеры:
+
+- `event -> venue`;
+- `team -> venue`;
+- `team -> team`;
+- `company -> event`;
+- `venue -> team`.
+
+Базовые поля:
+
+- `contract_id`;
+- `relation_type`;
+- `left_type`;
+- `left_id`;
+- `left_role`;
+- `right_type`;
+- `right_id`;
+- `right_role`.
+
+`relation_type` должен описывать смысл связи, а не только пару типов сущностей.
+
+Возможные relation types:
+
+- `booking`;
+- `rental`;
+- `partnership`;
+- `affiliation`;
+- `participation`;
+- `hosting`;
+- `home_base`;
+- `visibility_share`;
+- `management`;
+- `representation`;
+- `sponsorship`;
+- `service`;
+- `invitation`.
+
+Роли сторон задаются policy конкретного `relation_type`:
+
+- `booking`: `requester` / `provider`;
+- `partnership`: `partner` / `partner`;
+- `visibility_share`: `grantor` / `grantee`;
+- `affiliation`: `parent` / `child`;
+- `participation`: `participant` / `host`;
+- `home_base`: `team` / `venue`;
+- `service`: `customer` / `provider`.
+
+## Access levels
+
+Access level отвечает на вопрос: какой уровень доступа или участия получает конкретная сторона в рамках конкретного контракта.
+
+Access levels не должны быть одним глобальным enum на всю систему. Они зависят от `scope_type` или `relation_type`.
+
+Примеры:
+
+- `venue` membership: `owner`, `admin`, `manager`, `staff`, `agent`;
+- `team` membership: `owner`, `admin`, `coach`, `captain`, `player`, `candidate`;
+- `company` membership: `owner`, `admin`, `hr`, `manager`, `employee`, `contractor`;
+- `event` membership: `organizer`, `manager`, `staff`, `participant`, `guest`.
+
+## Templates и фактические permissions
+
+Каждый access level имеет шаблонный набор permissions. Шаблон используется как preset при выдаче контракта.
+
+При создании конкретного контракта система должна сохранять фактический набор permissions, выбранный выдающей стороной.
+
+Причина:
+
+- старший участник может выдать младшему уровень `admin`, но снять часть permissions;
+- изменение шаблона в будущем не должно автоматически расширять права уже выданных контрактов;
+- аудит должен показывать фактические права, выданные конкретным контрактом.
+
+Формула:
+
+```text
+access level template
+ -> preselected permissions in UI
+ -> issuer removes/adds allowed permissions
+ -> saved contract permissions snapshot
+ -> effective permissions for access checks
+```
+
+В текущей реализации используется snapshot-модель:
+
+- `access_level` хранит название выданного уровня;
+- `contract_permissions` хранит фактические permissions;
+- effective permissions берутся из сохраненного набора, а не вычисляются каждый раз из текущего шаблона.
+
+## Venue transition
+
+Сейчас `venues.created_by_user_id` является не только audit field, но и bootstrap-источником доступа в `VenueAccessResolver`.
+
+Целевое состояние:
+
+- `created_by_user_id` остается полем происхождения записи;
+- владение площадкой задается `membership_contract` со `scope_type = venue` и `access_level = owner`;
+- проверка доступа идет через effective permissions;
+- если у площадки еще нет действующего owner membership contract, создатель получает полный управленческий доступ как bootstrap-owner;
+- после появления действующего owner membership contract права управления определяются контрактами, а не фактом создания записи;
+- creator fallback удаляется после backfill и проверки owner contracts либо остается только как явно ограниченное bootstrap-правило для сущностей без владельца.
+
+Переходный порядок:
+
+1. Добавить новую модель membership contracts. Выполнено.
+2. Создать owner membership contracts для существующих площадок по `created_by_user_id`. В чистой схеме это делает seeder; для реальной базы нужен отдельный backfill-процесс.
+3. Сохранить creator fallback только для площадок без действующего owner membership contract. Выполнено.
+4. Перевести списки и карточки площадок на contract effective permissions. Выполнено для `venue` membership.
+5. Удалить creator fallback отдельным шагом, когда данные и тесты подтверждают корректность. Не выполнено, оставлено как будущий этап.
+
+## Проверка доступа
+
+Целевая проверка доступа к площадке:
+
+```text
+User wants action on Venue
+ -> public visibility for public view
+ -> find active venue membership contract
+ -> check starts_at/expires_at
+ -> read saved contract permissions
+ -> check required permission
+ -> bootstrap creator fallback only if the Venue has no active owner membership contract
+```
+
+## Связанная задача
+
+- [009 - Рефакторинг контрактов: membership/relation contracts и контекстные права доступа](../tasks/009/description.md)

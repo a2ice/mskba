@@ -21,14 +21,17 @@ final class ListAccountVenuesHandler
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
         $contractScheduleEditableVenueIds = $this->accessResolver->contractScheduleEditableVenueIdsFor($user);
+        $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
 
-        return $this->listVenuesBuilder->build(function ($query) use ($contractedVenueIds, $user): void {
+        return $this->listVenuesBuilder->build(function ($query) use ($contractedVenueIds, $bootstrapOwnedVenueIds): void {
             $query
                 ->whereIn('id', $contractedVenueIds)
-                ->when($user !== null, fn ($query) => $query->orWhere('created_by_user_id', $user->id));
+                ->orWhereIn('id', $bootstrapOwnedVenueIds);
         })
             ->get()
-            ->map(function (Venue $venue) use ($user, $contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds) {
+            ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds) {
+                $isBootstrapOwned = in_array($venue->id, $bootstrapOwnedVenueIds, true);
+
                 return new VenueListItemDTO(
                     id: $venue->id,
                     name: $venue->name,
@@ -36,16 +39,11 @@ final class ListAccountVenuesHandler
                     type: $venue->type->label(),
                     status: $venue->status->label(),
                     description: $venue->description,
-                    canView: $this->isOwnedByCurrentUser($venue, $user) || in_array($venue->id, $contractViewableVenueIds, true),
-                    canEdit: $this->isOwnedByCurrentUser($venue, $user) || in_array($venue->id, $contractEditableVenueIds, true),
-                    canEditSchedule: in_array($venue->id, $contractScheduleEditableVenueIds, true),
+                    canView: $isBootstrapOwned || in_array($venue->id, $contractViewableVenueIds, true),
+                    canEdit: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
+                    canEditSchedule: $isBootstrapOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true),
                 );
             })
             ->all();
-    }
-
-    private function isOwnedByCurrentUser(Venue $venue, ?User $user): bool
-    {
-        return $user !== null && $venue->created_by_user_id === $user->id;
     }
 }

@@ -17,6 +17,7 @@
 - [Уведомления](#уведомления)
 - [Площадки](#площадки)
 - [Контракты](#контракты)
+- [Целевая модель контрактов](#целевая-модель-контрактов)
 - [Темы и представления](#темы-и-представления)
 - [Breadcrumbs](#breadcrumbs)
 - [Docker и окружения](#docker-и-окружения)
@@ -126,29 +127,49 @@
 Текущие модели:
 
 - `Contract`;
-- `ContractParty`.
-
-Связанные модели площадок:
-
-- `VenueContract`;
-- `VenueContractPermission`.
+- `ContractMembership`;
+- `ContractRelation`;
+- `ContractPermission`.
 
 Текущие таблицы:
 
 - `contracts`;
-- `contract_parties`;
-- `venue_contracts`;
-- `venue_contract_permissions`.
+- `contract_memberships`;
+- `contract_relations`;
+- `contract_permissions`.
 
-В текущей реализации контракт используется как механизм доступа пользователя к площадкам. Права площадки хранятся в `venue_contract_permissions` как значения:
+В текущей реализации первым production-scope является `membership_contract` для связи `venue -> user`. Фактические права контракта хранятся в `contract_permissions` как snapshot выданных permissions:
 
 - `view`;
 - `edit`;
 - `edit.schedule`.
 
-`contract_parties` уже задает более общую модель участников контракта через `party_type`, `party_id` и `role`, но универсальный ACL между любыми доменными сущностями пока не реализован. Его нужно описывать как направление развития, а не как готовую часть системы.
+`contract_relations` закладывает схему для будущих связей сущность-сущность, но relation-contract ACL для событий, команд, компаний и других доменов пока не реализован. Его нужно описывать как направление развития, а не как готовую часть системы.
 
-В таблице `contracts` есть поле `assigned_by`, но в модели `Contract` сейчас нет relation/accessor `assignedByUser`. Этот слой нельзя описывать как готовый без изменения кода.
+В таблице `contracts` есть поле `assigned_by`, а модель `Contract` содержит relation `assignedByUser()`.
+
+## Целевая модель контрактов
+
+Целевая техническая модель контрактов описана в [Contracts](specification/contracts.md).
+
+Контракты разделяются на два семейства:
+
+- `membership_contract` - связь пользователя с предметной сущностью (`venue -> user`, `team -> user`, `event -> user`, `company -> user`);
+- `relation_contract` - связь сущности с сущностью (`event -> venue`, `team -> venue`, `team -> team` и похожие).
+
+Старая модель `holder/provider/customer` удалена из текущей схемы и не является универсальной ACL-моделью. Такие значения допустимы только как контекстные роли отдельных relation types, например сервисного договора. Для остальных связей роли сторон и access levels должны определяться policy конкретного `scope_type` или `relation_type`.
+
+Для `venue` membership стартовые access levels:
+
+- `owner`;
+- `admin`;
+- `manager`;
+- `staff`;
+- `agent`.
+
+Шаблон access level используется как preset при выдаче контракта, но в конкретном контракте должен сохраняться фактический snapshot permissions. Это позволяет старшей роли снять часть прав при выдаче `admin` или другого уровня и не расширять старые контракты автоматически при изменении шаблона.
+
+`venues.created_by_user_id` в целевой модели является audit/source field, а не источником владения. Право владельца площадки должно задаваться `membership_contract` со `scope_type = venue` и `access_level = owner`. Пока у площадки нет действующего owner membership contract, создатель может получать полный управленческий доступ как bootstrap-owner. После появления owner membership contract управление должно определяться контрактами, а creator fallback больше не должен давать полную власть над этой площадкой.
 
 ## Темы и представления
 
@@ -228,5 +249,6 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Identity Participation Profiles](specification/identity-participation-profiles.md)
 - [Contact](specification/contact.md)
 - [Notification](specification/notification.md)
+- [Contracts](specification/contracts.md)
 - [Правила ведения документации](specification/documentation-guidelines.md)
 - [Процесс работы с задачами](specification/task-workflow.md)

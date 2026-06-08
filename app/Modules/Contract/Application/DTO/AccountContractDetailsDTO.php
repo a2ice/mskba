@@ -12,12 +12,14 @@ final readonly class AccountContractDetailsDTO
         public ?string $name,
         public ?string $type,
         public string $status,
+        public ?string $accessLevel,
+        public ?string $accessLevelLabel,
         public ?string $startsAt,
         public ?string $expiresAt,
         public ?string $description,
         public string $permissions,
         public ?string $assignedBy,
         public ?User $assignedByUser,
-        public array $venues,
+        public array $scopes,
     ) {}
 }

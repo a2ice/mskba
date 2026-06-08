@@ -8,8 +8,10 @@ final readonly class AccountContractListItemDTO
         public int $id,
         public ?string $number,
         public string $status,
+        public ?string $accessLevel,
+        public ?string $accessLevelLabel,
         public ?string $startsAt,
         public ?string $expiresAt,
-        public array $venues,
+        public array $scopes,
     ) {}
 }

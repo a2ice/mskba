@@ -27,8 +27,29 @@
                 <span class="fw-bold">{{ $contract->status }}</span>
             </li>
             <li class="mb-3">
+                Уровень доступа:
+                <span class="fw-bold">{{ $contract->accessLevelLabel ?? '—' }}</span>
+                @if($contract->accessLevel)
+                    <code>{{ $contract->accessLevel }}</code>
+                @endif
+            </li>
+            <li class="mb-3">
                 Название:
                 <span class="fw-bold">{{ $contract->name ?? '—' }}</span>
+            </li>
+            <li class="mb-3">
+                Область:
+                @forelse($contract->scopes as $scope)
+                    <span class="fw-bold">{{ $scope['type_label'] }}</span>
+                    @if($scope['url'])
+                        <a href="{{ $scope['url'] }}">{{ $scope['name'] }}</a>
+                    @else
+                        <span>{{ $scope['name'] }}</span>
+                    @endif
+                    <code>{{ $scope['type'] }}:{{ $scope['id'] }}</code>
+                @empty
+                    <span class="fw-bold">—</span>
+                @endforelse
             </li>
             <li class="mb-3">
                 Права:

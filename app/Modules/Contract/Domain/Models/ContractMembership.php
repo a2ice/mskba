@@ -2,23 +2,29 @@
 
 namespace App\Modules\Contract\Domain\Models;
 
-use App\Modules\Contract\Domain\Enums\ContractPartyRoleEnum;
-use App\Modules\Contract\Domain\Enums\ContractPartyTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'contract_id',
-    'party_type',
-    'party_id',
-    'role',
+    'scope_type',
+    'scope_id',
+    'user_id',
+    'access_level',
 ])]
-class ContractParty extends Model
+class ContractMembership extends Model
 {
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /**
@@ -27,8 +33,7 @@ class ContractParty extends Model
     protected function casts(): array
     {
         return [
-            'party_type' => ContractPartyTypeEnum::class,
-            'role' => ContractPartyRoleEnum::class,
+            'scope_type' => ContractMembershipScopeTypeEnum::class,
         ];
     }
 }
