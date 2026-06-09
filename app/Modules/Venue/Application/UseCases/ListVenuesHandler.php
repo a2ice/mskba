@@ -39,6 +39,7 @@ final class ListVenuesHandler
                     type: $venue->type->label(),
                     status: $venue->status->label(),
                     description: $venue->description,
+                    rawAddress: $venue->raw_address,
                     canView: $venue->status === VenueStatusEnum::CONFIRMED || $isBootstrapOwned || in_array($venue->id, $contractViewableVenueIds, true),
                     canEdit: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
                     canEditSchedule: $isBootstrapOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true),

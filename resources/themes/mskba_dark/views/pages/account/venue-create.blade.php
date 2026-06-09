@@ -70,6 +70,20 @@
             @enderror
         </div>
 
+        <div class="mb-3">
+            <label for="venueRawAddress" class="form-label">Адрес</label>
+            <textarea
+                id="venueRawAddress"
+                name="raw_address"
+                class="form-control @error('raw_address') is-invalid @enderror"
+                rows="3"
+                placeholder="Например: Москва, ул. Летниковская, 12"
+            >{{ old('raw_address') }}</textarea>
+            @error('raw_address')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        </div>
+
         <button type="submit" class="btn btn-success">Добавить</button>
         <a href="{{ route('account.venues') }}" class="btn btn-link">Отмена</a>
     </form>

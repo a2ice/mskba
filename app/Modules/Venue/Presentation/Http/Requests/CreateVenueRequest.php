@@ -22,6 +22,7 @@ class CreateVenueRequest extends FormRequest
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'description' => ['nullable', 'string', 'max:5000'],
+            'raw_address' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
@@ -34,6 +35,7 @@ class CreateVenueRequest extends FormRequest
             'name' => 'название',
             'type' => 'тип площадки',
             'description' => 'описание',
+            'raw_address' => 'адрес',
         ];
     }
 }

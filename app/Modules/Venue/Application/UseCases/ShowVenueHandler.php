@@ -35,6 +35,7 @@ final class ShowVenueHandler
             type: $venue->type->label(),
             status: $venue->status->label(),
             description: $venue->description,
+            rawAddress: $venue->raw_address,
             canEdit: $this->access->canEdit($user, $venue),
             canEditSchedule: $this->access->canEditSchedule($user, $venue),
         );

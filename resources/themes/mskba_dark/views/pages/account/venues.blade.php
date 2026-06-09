@@ -37,6 +37,9 @@
                     </h5>
                     <p>Статус: {{ $venue->status }}</p>
                     <p>Описание: {{ $venue->description }}</p>
+                    @if($venue->rawAddress)
+                        <p>Адрес: {{ $venue->rawAddress }}</p>
+                    @endif
                     @if ($venue->canEdit)
                         <a href="{{ route('account.venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
                     @endif

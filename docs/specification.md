@@ -14,6 +14,7 @@
 - [Подтверждение аккаунта](#подтверждение-аккаунта)
 - [Профили участия пользователя](#профили-участия-пользователя)
 - [Контакты](#контакты)
+- [Локации](#локации)
 - [Уведомления](#уведомления)
 - [Площадки](#площадки)
 - [Контракты](#контракты)
@@ -36,7 +37,7 @@
 - Frontend/assets: Vite, npm.
 - Docker окружение: общие сервисы описаны в `compose.yaml`; local/dev настройки находятся в `compose.override.yaml`; VDS/prod настройки находятся в `compose.prod.yaml`.
 - Доменные части приложения находятся в `app/Modules`.
-- Текущие доменные модули: `Identity`, `Contact`, `Notification`, `Venue`, `Contract`.
+- Текущие доменные модули: `Identity`, `Contact`, `Location`, `Notification`, `Venue`, `Contract`.
 - Основная тема находится в `resources/themes/mskba_dark`.
 - Минимальная тема-заготовка находится в `resources/themes/blank`.
 - Внешний backlog быстрых записей ведется во внешнем файле `../backlog/todo.md`.
@@ -89,6 +90,12 @@
 
 Контакты вынесены в отдельный доменный модуль `App\Modules\Contact`, потому что один и тот же механизм нужен пользователям, площадкам и будущим сущностям проекта.
 
+## Локации
+
+Техническая модель физических локаций, адресов и метро описана в [Location](specification/location.md).
+
+Локации вынесены в отдельный доменный модуль `App\Modules\Location`, потому что адреса и метро нужны площадкам, будущим событиям, тренировкам, командам и другим сущностям с физическим местом.
+
 ## Уведомления
 
 Техническая модель пользовательских in-app уведомлений описана в [Notification](specification/notification.md).
@@ -102,11 +109,13 @@
 Текущие поля площадки:
 
 - `created_by_user_id`;
+- `location_id`;
 - `name`;
 - `alias`;
 - `type`;
 - `status`;
 - `description`;
+- `raw_address`;
 - timestamps.
 
 Текущие классификаторы площадок:
@@ -114,11 +123,13 @@
 - `VenueStatusEnum` - жизненный статус записи: `unconfirmed`, `confirmed`, `blocked`, `removed`;
 - `VenueTypeEnum` - тип площадки.
 
-`Venue` имеет relation `creator()` к `User` по `created_by_user_id`.
+`Venue` имеет relation `creator()` к `User` по `created_by_user_id` и relation `location()` к `Location` по `location_id`.
 
 Публично видимы площадки со статусом `confirmed`. Дополнительно пользователь может видеть площадки через договорный доступ.
 
-`VenueFeatureEnum`, JSON-поле `features`, нормализованные адреса, `Address` и `Metro` в текущей кодовой базе отсутствуют.
+Если структурированная локация еще не создана, площадка может хранить fallback-адрес в `raw_address`.
+
+`VenueFeatureEnum` и JSON-поле `features` в текущей кодовой базе отсутствуют.
 
 ## Контракты
 
@@ -254,6 +265,7 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Identity Account Confirmation](specification/identity-account-confirmation.md)
 - [Identity Participation Profiles](specification/identity-participation-profiles.md)
 - [Contact](specification/contact.md)
+- [Location](specification/location.md)
 - [Notification](specification/notification.md)
 - [Contracts](specification/contracts.md)
 - [Правила ведения документации](specification/documentation-guidelines.md)

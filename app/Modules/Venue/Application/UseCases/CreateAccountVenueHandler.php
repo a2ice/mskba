@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 final class CreateAccountVenueHandler
 {
     /**
-     * @param  array{name: string, type: string, description?: string|null}  $data
+     * @param  array{name: string, type: string, description?: string|null, raw_address?: string|null}  $data
      */
     public function handle(User $user, array $data): Venue
     {
@@ -22,6 +22,7 @@ final class CreateAccountVenueHandler
             'type' => VenueTypeEnum::from($data['type'])->value,
             'status' => VenueStatusEnum::UNCONFIRMED->value,
             'description' => $data['description'] ?? null,
+            'raw_address' => $data['raw_address'] ?? null,
         ]);
     }
 
