@@ -108,7 +108,7 @@ body:not(.main) .site-header {
     color: inherit;
 }
 
-body .site-header {
+body:not(.main) .site-header {
     /* background: linear-gradient(180deg, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.75)); */
     --header-bg-alpha: 1;
     background: rgba(0, 0, 0, 1);
