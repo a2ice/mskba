@@ -19,23 +19,33 @@ final class AccountConfirmationWizardService
         $role = $this->primaryParticipationRole($user);
         $profile = $user->profile;
 
-        $steps = collect([
-            new AccountConfirmationStepDTO(
+        $steps = collect();
+
+        if ($role === null) {
+            $steps->push(new AccountConfirmationStepDTO(
                 key: 'participation_role',
                 title: 'Выберите роль участия',
                 description: 'Укажите, как вы участвуете в проекте: игрок, тренер, судья, представитель площадки или другая роль.',
                 required: true,
-                completed: $role !== null,
-            ),
-        ]);
+                completed: false,
+            ));
+        }
 
         if ($role !== null && $this->roleRequiresBirthDateAndGender($role)) {
             $steps->push(new AccountConfirmationStepDTO(
-                key: 'birth_date_and_gender',
-                title: 'Заполните дату рождения и пол',
-                description: 'Для выбранной роли эти данные нужны как часть базового профиля.',
+                key: 'birth_date',
+                title: 'Заполните дату рождения',
+                description: 'Для выбранной роли дата рождения нужна как часть базового профиля.',
                 required: true,
-                completed: $profile?->birth_date !== null && $profile?->gender !== null,
+                completed: $profile?->birth_date !== null,
+            ));
+
+            $steps->push(new AccountConfirmationStepDTO(
+                key: 'gender',
+                title: 'Укажите пол',
+                description: 'Для выбранной роли пол нужен как часть базового профиля.',
+                required: true,
+                completed: $profile?->gender !== null,
             ));
         }
 

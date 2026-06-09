@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Identity;
 
+use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -21,6 +22,7 @@ class AccountConfirmationWizardTest extends TestCase
     {
         $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
         $user->createProfile([]);
+        $this->addVerifiedPrimaryEmail($user);
 
         $response = $this->actingAs($user)->get(route('account'));
 
@@ -52,11 +54,12 @@ class AccountConfirmationWizardTest extends TestCase
         $response->assertSee('Представьтесь, пожалуйста');
         $response->assertSee('(Н)');
         $response->assertSee('data-role-dependent="true"', false);
-        $response->assertSee('data-step-key="birth_date_and_gender"', false);
+        $response->assertSee('data-step-key="birth_date"', false);
+        $response->assertSee('data-step-key="gender"', false);
         $response->assertSee('hidden', false);
     }
 
-    public function test_player_role_adds_birth_date_and_gender_step(): void
+    public function test_existing_player_role_starts_wizard_from_birth_date_step(): void
     {
         $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
         $user->createProfile([]);
@@ -65,7 +68,31 @@ class AccountConfirmationWizardTest extends TestCase
         $response = $this->actingAs($user)->get(route('account.confirmation'));
 
         $response->assertOk();
-        $response->assertSee('Заполните дату рождения и пол');
+        $response->assertDontSee('data-step-key="participation_role"', false);
+        $response->assertDontSee('Выберите роль участия');
+        $response->assertSee('Заполните дату рождения');
+        $response->assertSee('Укажите пол');
+        $response->assertSee('data-step-key="birth_date"', false);
+        $response->assertSee('data-step-key="gender"', false);
+        $response->assertSee('data-existing-role="player"', false);
+        $response->assertSee('data-existing-role-label="Игрок"', false);
+    }
+
+    public function test_existing_non_player_role_starts_wizard_from_name_step(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+        $this->assignRole($user, UserParticipationRoleEnum::REFEREE);
+
+        $response = $this->actingAs($user)->get(route('account.confirmation'));
+
+        $response->assertOk();
+        $response->assertDontSee('data-step-key="participation_role"', false);
+        $response->assertDontSee('data-step-key="birth_date"', false);
+        $response->assertDontSee('data-step-key="gender"', false);
+        $response->assertSee('Представьтесь, пожалуйста');
+        $response->assertSee('data-existing-role="referee"', false);
+        $response->assertSee('data-existing-role-label="Судья"', false);
     }
 
     public function test_required_steps_confirm_player_account(): void
@@ -146,6 +173,17 @@ class AccountConfirmationWizardTest extends TestCase
             'assigned_at' => now(),
             'assigned_by' => $user->id,
             'assigner' => UserParticipationRoleAssignerEnum::USER,
+        ]);
+    }
+
+    private function addVerifiedPrimaryEmail(User $user): void
+    {
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => fake()->unique()->safeEmail(),
+            'is_primary' => true,
+            'is_public' => false,
+            'verified_at' => now(),
         ]);
     }
 }
