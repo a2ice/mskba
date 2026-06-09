@@ -34,7 +34,7 @@
 
 - Backend: Laravel, PHP 8.3+.
 - Frontend/assets: Vite, npm.
-- Docker окружение: локальный `docker-compose.yml` содержит `postgres` и `adminer`; production runtime вынесен в `docker-compose.prod.yml`.
+- Docker окружение: общие сервисы описаны в `compose.yaml`; local/dev настройки находятся в `compose.override.yaml`; VDS/prod настройки находятся в `compose.prod.yaml`.
 - Доменные части приложения находятся в `app/Modules`.
 - Текущие доменные модули: `Identity`, `Contact`, `Notification`, `Venue`, `Contract`.
 - Основная тема находится в `resources/themes/mskba_dark`.

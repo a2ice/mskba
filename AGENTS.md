@@ -45,10 +45,10 @@
 ```bash
 make dev
 make down
-make prod-up
-make prod-down
+make ENV=prod up
+make ENV=prod down
 make test
-make clear
+make cache-clear
 make artisan CMD='route:list'
 make npm CMD='run build'
 ```

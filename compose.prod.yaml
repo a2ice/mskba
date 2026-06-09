@@ -1,0 +1,35 @@
+name: mskbanew
+
+services:
+  phpfpm:
+    container_name: mskbanew-phpfpm
+
+  nginx:
+    container_name: mskbanew-nginx
+
+  queue:
+    container_name: mskbanew-queue
+
+  db:
+    container_name: mskbanew-db
+    ports:
+      - "${DB_FORWARD_PORT:-127.0.0.1:5433}:5432"
+
+  redis:
+    container_name: mskbanew-redis
+
+  node:
+    image: node:22-alpine
+    container_name: mskbanew-node
+    working_dir: /var/www/html
+    profiles:
+      - build
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    command: ["sh", "-lc", "npm ci && npm run build"]
+
+volumes:
+  postgres_data:
+    name: mskbabrandnew_postgres_data
+  node_modules:

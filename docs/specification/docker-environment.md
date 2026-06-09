@@ -19,37 +19,56 @@
 
 ## Текущее состояние
 
-Для локальной разработки в проекте есть основной Docker Compose:
+Docker Compose разделен на базовый файл и environment overrides:
 
 ```text
-docker-compose.yml
+compose.yaml
+compose.override.yaml
+compose.prod.yaml
 ```
 
-Docker project name:
+`compose.yaml` содержит общие сервисы runtime.
+
+`compose.override.yaml` содержит local/dev настройки и используется с базовым файлом для локальной разработки.
+
+`compose.prod.yaml` содержит VDS/prod настройки и используется с базовым файлом для публичного dev/staging runtime на VDS.
+
+Docker project names:
 
 ```text
-mskbabrandnew
-```
-
-Файл `docker-compose.dev.yml` в текущей версии отсутствует.
-
-Для production-деплоя добавлен отдельный compose-файл:
-
-```text
-docker-compose.prod.yml
+dev: mskbabrandnew
+prod/VDS: mskbanew
 ```
 
 ## Сервисы
 
-Локальный `docker-compose.yml` содержит:
+Базовый `compose.yaml` содержит общие runtime-сервисы:
 
-- `postgres` - PostgreSQL 17 Alpine, база `mskbabrandnew`, пользователь `mskbabrandnew`;
-- `adminer` - web-интерфейс для работы с PostgreSQL;
+- `phpfpm` - PHP-FPM runtime приложения;
+- `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
+- `queue` - Laravel queue worker;
+- `db` - PostgreSQL 17 Alpine, база `mskbabrandnew`, пользователь `mskbabrandnew`;
+- `redis` - Redis 7 для runtime/cache/queue сценариев.
+
+Dev override `compose.override.yaml` добавляет:
+
+- container names `mskbabrandnew-*`;
+- `MAIL_HOST=mailpit` для `phpfpm` и `queue`;
+- публичные dev-порты для `db` и `redis`;
+- `adminer` - web-интерфейс для PostgreSQL;
 - `mailpit` - локальный SMTP/Web UI для просмотра исходящей почты.
 
-Текущий volume:
+Prod override `compose.prod.yaml` добавляет:
 
-- `postgres-data` - данные PostgreSQL.
+- container names `mskbanew-*`;
+- bind DB port только на `${DB_FORWARD_PORT:-127.0.0.1:5433}`;
+- build-only сервис `node` с profile `build`.
+
+Текущие volumes:
+
+- `postgres_data` - данные PostgreSQL.
+- `redis_data` - данные Redis.
+- `node_modules` - node dependencies для production build profile.
 
 Mailpit:
 
@@ -58,11 +77,11 @@ Mailpit:
 
 ## Production runtime
 
-Production runtime описан отдельно в `docker-compose.prod.yml`, чтобы не ломать локальный DB-only сценарий.
+Production/VDS runtime собирается из `compose.yaml` и `compose.prod.yaml`, чтобы общие сервисы не дублировались между окружениями.
 
 Production compose project name временно оставлен `mskbanew`. Старую версию проекта можно полностью удалять вместе с БД, контейнерами, volume и другими артефактами, если они мешают новой production-схеме.
 
-Production services:
+Production/VDS services:
 
 - `phpfpm` - PHP-FPM runtime приложения;
 - `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
@@ -99,6 +118,12 @@ Workflow:
 
 Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`.
 
+Deploy workflow использует:
+
+```bash
+docker compose -f compose.yaml -f compose.prod.yaml
+```
+
 Workflow не использует `sudo`. Права на `storage` и `bootstrap/cache` выставляются через PHP container как `deploy:www-data` с `ug+rwX`, чтобы и Git checkout, и PHP-FPM могли работать с этими директориями.
 
 Перед изменением кода workflow выполняет preflight:
@@ -109,48 +134,68 @@ Workflow не содержит отдельного guard для старой с
 
 ## Команды Makefile
 
-С Docker связаны следующие команды:
+Makefile использует единый интерфейс команд для local/dev и production compose.
+
+По умолчанию команды работают с локальной комбинацией `compose.yaml` + `compose.override.yaml`:
+
+```bash
+make ps
+make migrate
+make artisan CMD='route:list'
+```
+
+Production/VDS-режим включается параметром `ENV=prod`. В этом режиме Makefile использует `compose.yaml` + `compose.prod.yaml`:
+
+```bash
+make ENV=prod ps
+make ENV=prod migrate
+make ENV=prod artisan CMD='route:list'
+```
+
+Для production-миграций `make ENV=prod migrate` автоматически добавляет Laravel-флаг `--force`.
+
+Команды `fresh` и `fresh-seed` удаляют таблицы и данные. Сейчас VDS используется как публичный dev/staging runtime без production-пользователей, поэтому команды доступны с тем же интерфейсом, что и локально:
+
+```bash
+make ENV=prod fresh
+make ENV=prod fresh-seed
+```
+
+Перед запуском проекта в реальное использование для destructive-команд нужно вернуть дополнительный production guard или выделить отдельное окружение `staging`.
+
+Основные команды:
 
 - `make up` - запустить compose-сервисы в detached-режиме;
+- `make rebuild` - пересобрать и пересоздать compose-сервисы;
 - `make down` - остановить compose-сервисы;
 - `make restart` - перезапустить compose-сервисы;
-- `make db-up` - запустить сервис `postgres`;
+- `make ps` - показать состояние compose-сервисов;
+- `make config` - вывести итоговый Docker Compose config;
+- `make migrate` - выполнить миграции;
+- `make fresh` - пересоздать БД;
+- `make fresh-seed` - пересоздать БД и выполнить сидеры;
+- `make seed` - выполнить сидеры;
+- `make cache-clear` - очистить Laravel caches;
+- `make optimize-clear` - выполнить `artisan optimize:clear`;
+- `make queue` - смотреть логи queue worker;
+- `make queue-restart` - перезапустить queue worker;
+- `make logs` - открыть Laravel Pail;
+- `make shell` - открыть Tinker;
+- `make artisan CMD='...'` - выполнить произвольную artisan-команду;
+- `make npm CMD='...'` - выполнить произвольную npm-команду;
+- `make db-up` - запустить сервис `db`;
 - `make db-down` - остановить compose-сервисы;
-- `make db-restart` - перезапустить `postgres`;
-- `make db-logs` - смотреть логи `postgres`.
-
-Общие команды проекта, не завязанные на Docker runtime:
-
-- `make install`
-- `make update`
-- `make dev`
-- `make serve`
-- `make vite`
-- `make build`
-- `make test`
-- `make lint`
-- `make format`
-- `make migrate`
-- `make fresh`
-- `make fresh-seed`
-- `make seed`
-- `make cache-clear`
-- `make optimize-clear`
-- `make queue`
-- `make logs`
-- `make shell`
-- `make module`
-- `make delete-module`
+- `make db-restart` - перезапустить `db`;
+- `make db-logs` - смотреть логи `db`.
 
 ## Что не реализовано
 
 В текущей Docker-схеме нет:
 
-- `mailpit`;
-- отдельного dev override;
-- Makefile-команд для production compose.
+- отдельного `staging` override;
+- отдельного guard для destructive-команд на будущем production с реальными пользователями.
 
-Команды `make prod-up`, `make prod-down`, `make config`, `make dev-config`, `make npm` и `make artisan` отсутствуют.
+Отдельные команды вида `make prod-up` не используются: production/VDS выбирается через `ENV=prod`, чтобы dev и VDS имели одинаковые имена команд.
 
 ## Будущее развитие
 
@@ -159,4 +204,4 @@ Workflow не содержит отдельного guard для старой с
 - импорт данных из старой production-БД, если он понадобится;
 - проверка host-level Nginx/HTTPS на VDS;
 - переименование production compose project/container names с `mskbanew` на `mskba`;
-- добавление dev override, если понадобится полноценный Docker dev runtime.
+- выделение отдельного `staging` окружения, если VDS runtime нужно будет отделить от будущего production.
