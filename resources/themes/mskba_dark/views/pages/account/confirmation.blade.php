@@ -37,6 +37,8 @@
                 action="{{ route('account.confirmation.complete') }}"
                 class="account-confirmation-wizard"
                 data-account-confirmation-wizard
+                data-existing-role="{{ $currentRole?->value }}"
+                data-existing-role-label="{{ $currentRole?->label() }}"
                 data-role-details-required="{{ implode(',', $rolesRequiringProfileDetails) }}"
             >
                 @csrf
@@ -47,26 +49,21 @@
                     <span data-wizard-progress-total>1</span>
                 </div>
 
-                <section
-                    class="account-confirmation-step"
-                    data-wizard-step
-                    data-step-key="participation_role"
-                    data-required="true"
-                >
-                    <div class="mb-3">
-                        <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
-                            Выберите роль участия
-                        </h4>
-                        <p class="mb-0">Укажите, как вы участвуете в проекте: игрок, тренер, судья, представитель площадки или другая роль.</p>
-                    </div>
+                @unless($currentRole)
+                    <section
+                        class="account-confirmation-step"
+                        data-wizard-step
+                        data-step-key="participation_role"
+                        data-required="true"
+                    >
+                        <div class="mb-3">
+                            <h4 class="h5 mb-2 align-items-center d-flex">
+                                <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
+                                Выберите роль участия
+                            </h4>
+                            <p class="mb-0">Укажите, как вы участвуете в проекте: игрок, тренер, судья, представитель площадки или другая роль.</p>
+                        </div>
 
-                    @if($currentRole)
-                        <p class="mb-0">
-                            Текущая роль:
-                            <span class="fw-bold">{{ $currentRole->label() }}</span>
-                        </p>
-                    @else
                         <div class="field">
                             <label for="confirmationRole" class="form-label">Роль участия</label>
                             <select id="confirmationRole" name="role" class="form-select @error('role') is-invalid @enderror" required data-wizard-role>
@@ -81,28 +78,28 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                    @endif
-                </section>
+                    </section>
+                @endunless
 
-                <section
-                    class="account-confirmation-step"
-                    data-wizard-step
-                    data-step-key="birth_date_and_gender"
-                    data-required="true"
-                    data-role-dependent="true"
-                    data-existing-role="{{ $currentRole?->value }}"
-                    @unless($showRoleDetailsStep) hidden @endunless
-                >
-                    <div class="mb-3">
-                        <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
-                            Заполните дату рождения и пол
-                        </h4>
-                        <p class="mb-0">Для выбранной роли эти данные нужны как часть базового профиля.</p>
-                    </div>
-
-                    <div class="field">
+                @if(!$currentRole || $showRoleDetailsStep)
+                    <section
+                        class="account-confirmation-step"
+                        data-wizard-step
+                        data-step-key="birth_date"
+                        data-required="true"
+                        data-role-dependent="true"
+                        @unless($showRoleDetailsStep) hidden @endunless
+                    >
                         <div class="mb-3">
+                            <h4 class="h5 mb-2 align-items-center d-flex">
+                                <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
+                                Заполните дату рождения
+                            </h4>
+                            <p class="mb-0">Для выбранной роли дата рождения нужна как часть базового профиля.</p>
+                            <div class="account-confirmation-step-summary mt-3" data-wizard-summary hidden></div>
+                        </div>
+
+                        <div class="field">
                             <label for="confirmationBirthDate" class="form-label">Дата рождения</label>
                             <input
                                 id="confirmationBirthDate"
@@ -116,8 +113,26 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+                    </section>
 
+                    <section
+                        class="account-confirmation-step"
+                        data-wizard-step
+                        data-step-key="gender"
+                        data-required="true"
+                        data-role-dependent="true"
+                        @unless($showRoleDetailsStep) hidden @endunless
+                    >
                         <div class="mb-3">
+                            <h4 class="h5 mb-2 align-items-center d-flex">
+                                <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
+                                Укажите пол
+                            </h4>
+                            <p class="mb-0">Для выбранной роли пол нужен как часть базового профиля.</p>
+                            <div class="account-confirmation-step-summary mt-3" data-wizard-summary hidden></div>
+                        </div>
+
+                        <div class="field">
                             <label for="confirmationGender" class="form-label">Пол</label>
                             <select id="confirmationGender" name="gender" class="form-select @error('gender') is-invalid @enderror" data-role-required-field>
                                 <option value="">Выберите пол</option>
@@ -131,8 +146,8 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                    </div>
-                </section>
+                    </section>
+                @endif
 
                 <section
                     class="account-confirmation-step"
@@ -142,10 +157,11 @@
                 >
                     <div class="mb-3">
                         <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--secondary me-2" title="Можно пропустить" data-tooltip-variant="title">*</span>
+                            <span class="badge badge--primary me-2" title="Можно пропустить" data-tooltip-variant="title">*</span>
                             Представьтесь, пожалуйста
                         </h4>
                         <p class="mb-0">Можно указать имя и фамилию, чтобы профиль был понятен другим участникам проекта.</p>
+                        <div class="account-confirmation-step-summary mt-3" data-wizard-summary hidden></div>
                     </div>
 
                     <div class="field">

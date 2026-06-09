@@ -67,6 +67,41 @@
     gap: 10px;
 }
 
+.account-confirmation-step-summary {
+    max-width: 560px;
+    border-left: 2px solid rgba(255, 139, 47, 0.74);
+    padding-left: 12px;
+    color: rgba(249, 246, 239, 0.82);
+}
+
+.account-confirmation-step-summary__list {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 6px 12px;
+    margin: 0;
+}
+
+.account-confirmation-step-summary__list dt,
+.account-confirmation-step-summary__list dd {
+    margin: 0;
+}
+
+.account-confirmation-step-summary__list dt {
+    color: rgba(249, 246, 239, 0.64);
+    font-weight: 700;
+}
+
+.account-confirmation-step-summary__list dd {
+    min-width: 0;
+    font-weight: 800;
+}
+
+@media (width <= 560px) {
+    .account-confirmation-step-summary__list {
+        grid-template-columns: 1fr;
+    }
+}
+
 .account-notification-item__badges {
     display: inline-flex;
     align-items: center;

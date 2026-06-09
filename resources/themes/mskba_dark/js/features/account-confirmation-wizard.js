@@ -13,12 +13,34 @@ function setupAccountConfirmationWizard() {
         const $submit = $wizard.find('[data-wizard-submit]');
         const $current = $wizard.find('[data-wizard-progress-current]');
         const $total = $wizard.find('[data-wizard-progress-total]');
+        const existingRole = String($wizard.data('existing-role') || '');
+        const existingRoleLabel = String($wizard.data('existing-role-label') || '');
         let currentIndex = 0;
 
         function selectedRole() {
-            const existingRole = $wizard.find('[data-role-dependent]').data('existing-role');
-
             return existingRole || $roleInput.val() || '';
+        }
+
+        function selectedRoleLabel() {
+            if (existingRoleLabel) {
+                return existingRoleLabel;
+            }
+
+            return selectedOptionLabel($roleInput);
+        }
+
+        function selectedGenderLabel() {
+            return selectedOptionLabel($wizard.find('[name="gender"]'));
+        }
+
+        function selectedOptionLabel($input) {
+            const value = $input.val();
+
+            if (!value) {
+                return '';
+            }
+
+            return $input.find('option:selected').text().trim();
         }
 
         function roleRequiresDetails() {
@@ -64,6 +86,7 @@ function setupAccountConfirmationWizard() {
             $back.prop('disabled', currentIndex === 0);
             $next.prop('hidden', currentIndex === total - 1);
             $submit.prop('hidden', currentIndex !== total - 1);
+            syncStepSummary($step);
         }
 
         function currentStepIsValid() {
@@ -80,8 +103,82 @@ function setupAccountConfirmationWizard() {
             return true;
         }
 
+        function syncCurrentSummary() {
+            const $step = visibleSteps().eq(currentIndex);
+
+            if ($step.length) {
+                syncStepSummary($step);
+            }
+        }
+
+        function syncStepSummary($step) {
+            const $summary = $step.find('[data-wizard-summary]');
+
+            if (!$summary.length) {
+                return;
+            }
+
+            const items = summaryItems($step.data('step-key'));
+
+            if (items.length === 0) {
+                $summary.attr('hidden', true).empty();
+                return;
+            }
+
+            const $list = $('<dl>', { class: 'account-confirmation-step-summary__list' });
+
+            for (const item of items) {
+                $list
+                    .append($('<dt>').text(item.label))
+                    .append($('<dd>').text(item.value));
+            }
+
+            $summary.empty().append($list).removeAttr('hidden');
+        }
+
+        function summaryItems(stepKey) {
+            const items = [];
+            const roleLabel = selectedRoleLabel();
+
+            if (roleLabel) {
+                items.push({ label: 'Роль участия', value: roleLabel });
+            }
+
+            if (['gender', 'name'].includes(stepKey) && roleRequiresDetails()) {
+                const birthDate = $wizard.find('[name="birth_date"]').val();
+
+                if (birthDate) {
+                    items.push({ label: 'Дата рождения', value: formatDate(birthDate) });
+                }
+            }
+
+            if (stepKey === 'name' && roleRequiresDetails()) {
+                const genderLabel = selectedGenderLabel();
+
+                if (genderLabel) {
+                    items.push({ label: 'Пол', value: genderLabel });
+                }
+            }
+
+            return items;
+        }
+
+        function formatDate(value) {
+            const parts = String(value).split('-');
+
+            if (parts.length !== 3) {
+                return value;
+            }
+
+            return `${parts[2]}.${parts[1]}.${parts[0]}`;
+        }
+
         $roleInput.on('change', function() {
             showStep(currentIndex);
+        });
+
+        $wizard.on('input change', 'input, select, textarea', function() {
+            syncCurrentSummary();
         });
 
         $back.on('click', function() {
