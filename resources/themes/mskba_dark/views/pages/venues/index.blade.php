@@ -39,7 +39,7 @@
 
 @section('section-sidebar')
     <div class="section-sidebar-block">
-        @include('theme::partials.menu.sidebar', ['page' => 'venues'])
+        @include('theme::partials.menu.sidebar', ['page' => 'venues', 'sidebarTitle' => 'Площадки'])
     </div>
 
     <div class="section-sidebar-block">

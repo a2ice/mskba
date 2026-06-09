@@ -18,7 +18,7 @@
 
 @section('section-sidebar')
     <div class="section-sidebar-block">
-        @include('theme::partials.menu.sidebar', ['page' => 'venues'])
+        @include('theme::partials.menu.sidebar', ['page' => 'venues', 'sidebarTitle' => 'Площадки'])
     </div>
 
     <div class="section-sidebar-block">
@@ -36,10 +36,6 @@
 @section('section-content')
     @if(!empty($venue))
         <ul class="list-unstyled mb-4">
-            <li class="mb-3">
-                Alias:
-                <span class="fw-bold">{{ $venue->alias }}</span>
-            </li>
             <li class="mb-3">
                 Тип:
                 <span class="fw-bold">{{ $venue->type }}</span>

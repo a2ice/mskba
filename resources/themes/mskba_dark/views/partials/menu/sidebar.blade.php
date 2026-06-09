@@ -4,6 +4,9 @@
 @endphp
 
 <div class="partial-wrapper partial-sidebar-menu">
+    @if(isset($sidebarTitle) && $sidebarTitle)
+        <h2 class="section-sidebar-block__title">{{ $sidebarTitle }}</h2>
+    @endif
     @if ($menuItems !== [])
         <ul class="sidebar-nav nav flex-column">
             @foreach ($menuItems as $item)
