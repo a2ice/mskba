@@ -6,6 +6,7 @@ use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueFactory;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['created_by_user_id', 'name', 'alias', 'type', 'status', 'description'])]
+#[Fillable(['created_by_user_id', 'location_id', 'name', 'alias', 'type', 'status', 'description', 'raw_address'])]
 #[Hidden([])]
 class Venue extends Model
 {
@@ -39,6 +40,11 @@ class Venue extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 
     public function contacts(): MorphMany

@@ -30,6 +30,7 @@ class VenueFactory extends Factory
             'type' => fake()->randomElement(VenueTypeEnum::cases())->value,
             'status' => VenueStatusEnum::UNCONFIRMED->value,
             'description' => fake()->optional()->sentence(),
+            'raw_address' => fake()->optional()->address(),
         ];
     }
 }

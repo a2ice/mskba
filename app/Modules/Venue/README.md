@@ -10,6 +10,8 @@
 - Проверка доступа к площадке по membership-contract permissions.
 - Bootstrap-доступ создателя только для площадок без действующего owner membership contract.
 - `created_by_user_id` остается audit/source field.
+- Связь площадки со структурированной `Location` через `location_id`.
+- Fallback-адрес площадки в `raw_address`, если структурированная локация еще не заведена.
 
 ## Структура
 

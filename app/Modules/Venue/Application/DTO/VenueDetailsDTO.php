@@ -11,6 +11,7 @@ final readonly class VenueDetailsDTO
         public string $type,
         public string $status,
         public ?string $description,
+        public ?string $rawAddress,
         public bool $canEdit,
         public bool $canEditSchedule,
     ) {}

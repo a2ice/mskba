@@ -52,6 +52,10 @@
                 Описание:
                 <span class="fw-bold">{{ $venue->description ?? '—' }}</span>
             </li>
+            <li class="mb-3">
+                Адрес:
+                <span class="fw-bold">{{ $venue->rawAddress ?? '—' }}</span>
+            </li>
         </ul>
 
         <div class="d-flex flex-wrap gap-2">

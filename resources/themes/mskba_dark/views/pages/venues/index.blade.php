@@ -40,6 +40,9 @@
                     </h2>
                     <p class="mb-2">Статус: {{ $venue->status }}</p>
                     <p class="mb-3">Описание: {{ $venue->description }}</p>
+                    @if($venue->rawAddress)
+                        <p class="mb-3">Адрес: {{ $venue->rawAddress }}</p>
+                    @endif
                     @if ($venue->canEdit)
                         <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--primary btn--sm">Редактировать</a>
                     @endif

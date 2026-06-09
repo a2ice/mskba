@@ -11,6 +11,7 @@ final readonly class VenueListItemDTO
         public string $status,
         public string $type,
         public ?string $description,
+        public ?string $rawAddress,
         public bool $canView,
         public bool $canEdit,
         public bool $canEditSchedule,
