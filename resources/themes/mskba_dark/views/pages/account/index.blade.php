@@ -39,7 +39,7 @@
                 Возраст:
                 <span class="fw-bold">{{ $user->profile?->age }}</span>
             </li>
-            <li class="list-unstyled mb-2">
+            <li class="list-unstyled mb-2 d-none">
                 <span title="Системная роль определяет уровень доступа и разрешения пользователя в рамках платформы. Роли в проекте отражают конкретные функции и обязанности пользователя в рамках отдельных проектов, в которых он участвует.">Роль:</span>
                 <span class="fw-bold">{{ $user->system_role->label() }}</span>
             </li>

@@ -390,12 +390,45 @@
 }
 
 .home-highlight {
+    position: relative;
     display: flex;
     align-items: flex-start;
     gap: 18px;
     min-width: 0;
-    padding: 26px 22px;
+    padding: 18px 18px 18px 24px;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(11, 11, 11, 0.88);
+    isolation: isolate;
+    overflow: hidden;
+    transition: border-color 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.home-highlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top left, rgba(74, 10, 22, 0.96) 0%, rgba(26, 7, 11, 0.98) 42%, rgba(7, 7, 7, 0.98) 100%);
+    clip-path: circle(0% at 100% 100%);
+    opacity: 0;
+    transition: clip-path 0.55s ease, opacity 0.4s ease;
+    z-index: 0;
+}
+
+.home-highlight > * {
+    position: relative;
+    z-index: 1;
+}
+
+.home-highlight:hover,
+.home-highlight:focus-within {
+    border-color: rgba(246, 95, 42, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(246, 95, 42, 0.08);
+}
+
+.home-highlight:hover::before,
+.home-highlight:focus-within::before {
+    clip-path: circle(165% at 100% 100%);
+    opacity: 1;
 }
 
 .home-highlight:last-child {
@@ -403,12 +436,24 @@
 }
 
 .home-highlight__icon {
-    width: 52px;
-    height: 52px;
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
     border-radius: 16px;
     border: 1px solid rgba(246, 95, 42, 0.32);
     background: rgba(246, 95, 42, 0.06);
     color: var(--accent-strong);
+    transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease, transform 0.35s ease;
+}
+
+.home-highlight__icon i {
+    font-size: 20px;
+    line-height: 1;
 }
 
 .home-highlight__content {
@@ -417,16 +462,31 @@
 
 .home-highlight__title {
     color: #fff;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     line-height: 1.2;
+    transition: color 0.35s ease;
 }
 
 .home-highlight__description {
     margin-top: 10px;
     color: rgba(255, 255, 255, 0.72);
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1.45;
+    transition: color 0.35s ease;
+}
+
+.home-highlight:hover .home-highlight__icon,
+.home-highlight:focus-within .home-highlight__icon {
+    background: rgba(246, 95, 42, 0.14);
+    border-color: rgba(246, 95, 42, 0.5);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.home-highlight:hover .home-highlight__description,
+.home-highlight:focus-within .home-highlight__description {
+    color: rgba(255, 255, 255, 0.82);
 }
 
 .home-inline-icon {
@@ -434,8 +494,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     flex: 0 0 auto;
 }
 
