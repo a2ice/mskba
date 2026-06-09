@@ -1,5 +1,9 @@
 @extends('theme::layouts.app', ['title' => 'Регистрация'])
 
+@php
+    use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+@endphp
+
 @section('content')
     <section id="register" class="register-section first-screen px-1">
         <div class="inner">
@@ -71,6 +75,25 @@
                                     required
                                     autocomplete="new-password"
                                 >
+                            </div>
+
+                            <div class="form-group field mb-3">
+                                <label for="registerRole">Роль на проекте</label>
+                                <select
+                                    id="registerRole"
+                                    name="role"
+                                    class="form-select @error('role') is-invalid @enderror"
+                                >
+                                    <option value="">Выбрать позже</option>
+                                    @foreach(UserParticipationRoleEnum::cases() as $role)
+                                        <option value="{{ $role->value }}" @selected(old('role') === $role->value)>
+                                            {{ $role->label() }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('role')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <button type="submit" class="btn btn--secondary-bordered btn--sm">Зарегистрироваться</button>

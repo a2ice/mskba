@@ -142,7 +142,7 @@
                 >
                     <div class="mb-3">
                         <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--secondary me-2" title="Можно пропустить">(Н)</span>
+                            <span class="badge badge--secondary me-2" title="Можно пропустить">*</span>
                             Представьтесь, пожалуйста
                         </h4>
                         <p class="mb-0">Можно указать имя и фамилию, чтобы профиль был понятен другим участникам проекта.</p>

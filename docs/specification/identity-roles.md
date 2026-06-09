@@ -54,6 +54,8 @@
 - `seeder`;
 - `other`.
 
+В flow регистрации выбор роли участия необязателен. Если форма регистрации передает валидную роль из `UserParticipationRoleEnum` в поле `role` или совместимом alias `participantRole`, `RegisterUserHandler` создает связанную активную запись `UserParticipationRole` с `assigner = user`, `assigned_by = users.id` созданного пользователя и комментарием о выборе при регистрации.
+
 Роль участия включает:
 
 - предметную роль пользователя;

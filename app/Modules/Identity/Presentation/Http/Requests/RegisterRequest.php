@@ -2,11 +2,12 @@
 
 namespace App\Modules\Identity\Presentation\Http\Requests;
 
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
 use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use App\Modules\Identity\Domain\ValueObjects\UsernameVO;
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
@@ -39,7 +40,21 @@ class RegisterRequest extends FormRequest
                 'confirmed',
                 $this->domainPasswordRule(),
             ],
+            'role' => [
+                'nullable',
+                'string',
+                Rule::enum(UserParticipationRoleEnum::class),
+            ],
         ];
+    }
+
+    public function participantRole(): ?UserParticipationRoleEnum
+    {
+        $role = $this->validated('role');
+
+        return is_string($role)
+            ? UserParticipationRoleEnum::tryFrom($role)
+            : null;
     }
 
     /**
@@ -58,6 +73,8 @@ class RegisterRequest extends FormRequest
             'password.min' => 'Пароль должен быть не менее :min символов.',
             'password.max' => 'Пароль не должен превышать :max символов.',
             'password.confirmed' => 'Пароль и подтверждение пароля не совпадают.',
+            'role.string' => 'Роль участия должна быть строкой.',
+            'role.enum' => 'Выберите доступную роль участия.',
         ];
     }
 
@@ -70,11 +87,18 @@ class RegisterRequest extends FormRequest
             'username' => 'логин',
             'password' => 'пароль',
             'password_confirmation' => 'подтверждение пароля',
+            'role' => 'роль участия',
         ];
     }
 
     protected function prepareForValidation(): void
     {
+        if (! $this->filled('role') && $this->has('participantRole')) {
+            $this->merge([
+                'role' => $this->input('participantRole'),
+            ]);
+        }
+
         if (! $this->has('username')) {
             return;
         }

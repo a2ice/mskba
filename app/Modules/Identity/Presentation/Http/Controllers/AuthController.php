@@ -12,7 +12,6 @@ use Illuminate\Http\RedirectResponse;
 
 class AuthController extends Controller
 {
-
     public function login(LoginRequest $request, AuthHandler $authHandler): RedirectResponse|JsonResponse
     {
         $validated = $request->validated();
@@ -66,6 +65,7 @@ class AuthController extends Controller
         $user = $registerUser->handle(
             username: $validated['username'],
             password: $validated['password'],
+            participantRole: $request->participantRole(),
         );
 
         if ($this->shouldReturnJson($request)) {
@@ -84,7 +84,7 @@ class AuthController extends Controller
     public function restore(): void
     {
         $message = 'В данный момент мы работаем над восстановлением доступа. Пожалуйста, обратитесь в поддержку для получения помощи.';
-        
+
         if (request()->expectsJson() || request()->ajax() || request()->wantsJson()) {
             response()->json([
                 'status' => 'error',
@@ -94,7 +94,7 @@ class AuthController extends Controller
         }
 
         redirect()->route('login')->with('error', $message)->send();
-        
+
         exit;
     }
 

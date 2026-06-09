@@ -1,3 +1,7 @@
+@php
+    use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+@endphp
+
 <div class="modal-auth auth-classic">
 
     <section class="auth-classic__section" data-auth-classic-section="login">
@@ -48,6 +52,16 @@
             <label class="auth-form__field">
                 <span>Подтверждение пароля</span>
                 <input type="password" name="password_confirmation" autocomplete="new-password" required>
+            </label>
+
+            <label class="auth-form__field">
+                <span>Роль на проекте</span>
+                <select name="role" class="form-select">
+                    <option value="">Выбрать позже</option>
+                    @foreach(UserParticipationRoleEnum::cases() as $role)
+                        <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                    @endforeach
+                </select>
             </label>
 
             <div class="auth-form__message form-message"></div>

@@ -22,4 +22,12 @@ enum UserParticipationRoleEnum: string
             self::VENUE_RELATED => 'Представитель площадки',
         };
     }
+
+    public function isConfirmationRequired(): bool
+    {
+        return match ($this) {
+            self::PLAYER, self::COACH, self::REFEREE => true,
+            self::STATISTICIAN, self::MEDIA, self::VENUE_RELATED => false,
+        };
+    }
 }

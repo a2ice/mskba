@@ -102,7 +102,8 @@
 	font-weight: 700;
 }
 
-.auth-form__field input {
+.auth-form__field input,
+.auth-form__field select {
 	width: 100%;
 	min-height: 42px;
 	border: 1px solid rgba(255, 255, 255, 0.15);
@@ -113,7 +114,8 @@
 	outline: none;
 }
 
-.auth-form__field input:focus {
+.auth-form__field input:focus,
+.auth-form__field select:focus {
 	border-color: var(--accent-strong);
 }
 
