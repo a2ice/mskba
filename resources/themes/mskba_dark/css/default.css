@@ -124,6 +124,17 @@ p {
     background: linear-gradient(180deg, #ff8440, #f96a22);
 }
 
+.btn--primary-bordered {
+    border-color: var(--accent-strong);
+    background: transparent;
+    color: #fff;
+}
+.btn--primary-bordered:hover,
+.btn--primary-bordered.is-active {
+    border-color: var(--accent-hover);
+    background-color: var(--accent-strong);
+}
+
 .btn--secondary {
     border-color: var(--line-strong);
     background: rgba(10, 10, 10, 0.34);
@@ -135,7 +146,7 @@ p {
     background: rgba(255, 255, 255, 0.08);
 }
 
-.btn--secondary-bordered {
+.btn---bordered-bordered {
     border-color: var(--accent-strong);
     background: transparent;
 }
@@ -264,6 +275,12 @@ p {
     outline: none;
     background-color: inherit;
     color: var(--text);
+}
+
+textarea.form-control {
+    min-height: 50px;
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .field small {

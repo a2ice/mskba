@@ -17,7 +17,13 @@ final class VenuesMenu implements MenuHandler
             [
                 'label' => 'Все площадки',
                 'url' => $this->routeUrl('venues'),
-                'active' => $this->isActiveRoute('venues, venues.*'),
+                'active' => $this->isActiveRoute('venues'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Добавить площадку',
+                'url' => $this->routeUrl('venues.create'),
+                'active' => $this->isActiveRoute('venues.create'),
                 'visible' => true,
             ],
         ];

@@ -38,6 +38,7 @@ final class ShowVenueHandler
             rawAddress: $venue->raw_address,
             canEdit: $this->access->canEdit($user, $venue),
             canEditSchedule: $this->access->canEditSchedule($user, $venue),
+            canRemove: $this->access->canRemove($user, $venue),
         );
     }
 }

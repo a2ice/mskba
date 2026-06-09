@@ -15,5 +15,6 @@ final readonly class VenueListItemDTO
         public bool $canView,
         public bool $canEdit,
         public bool $canEditSchedule,
+        public bool $canRemove,
     ) {}
 }

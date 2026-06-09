@@ -29,11 +29,8 @@ use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsReadHandler;
 use App\Modules\Notification\Application\UseCases\MarkUserNotificationAsReadHandler;
 use App\Modules\Notification\Domain\Models\UserNotification;
-use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
-use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
-use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
@@ -381,34 +378,6 @@ class AccountController extends Controller
         return ThemeResolver::page('account.venues', [
             'venues' => $listAccountVenues->handle($user),
         ]);
-    }
-
-    public function createVenue(): Response
-    {
-        try {
-            $user = $this->accountCheckForPresentationService->handle(request()->user());
-        } catch (\Exception $e) {
-            return ThemeResolver::page('account.venue-create', ['user' => null, 'error' => [
-                'message' => $e->getMessage(),
-                'code' => $e->getCode() ?: 500,
-            ]]);
-        }
-
-        abort_unless($user->can('add_venue'), 403);
-
-        return ThemeResolver::page('account.venue-create', [
-            'types' => VenueTypeEnum::cases(),
-        ]);
-    }
-
-    public function storeVenue(CreateVenueRequest $request, CreateAccountVenueHandler $createAccountVenue): RedirectResponse
-    {
-        $user = $this->accountCheckForPresentationService->handle($request->user());
-        $venue = $createAccountVenue->handle($user, $request->validated());
-
-        return redirect()
-            ->route('account.venues.show', $venue->alias)
-            ->with('status', 'Площадка добавлена и ожидает подтверждения.');
     }
 
     public function showVenue(string $alias, ShowVenueHandler $showVenue): Response

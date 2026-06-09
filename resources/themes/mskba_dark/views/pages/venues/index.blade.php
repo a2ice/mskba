@@ -7,9 +7,35 @@
     'sectionId' => 'venues',
     'sectionClass' => 'venues-section',
     'contentTitle' => $title,
-    'contentSubtitle' => 'Находите и добавляйте баскетбольные площадки по всей Москве и области.',
+    'contentSubtitle' => 'Баскетбольные площадки по всей Москве и области.',
     'sidebarLabel' => 'Навигация площадок',
 ])
+
+@section('section-heading-action')
+    @guest
+        <div class="section-heading-cta">
+            <p class="section-heading-cta__text">Чтобы добавить площадку, необходимо войти на сайт.</p>
+            <button
+                type="button"
+                class="btn btn--primary-bordered btn--sm js-handler"
+                data-handler="modal"
+                data-modal-action="open"
+                data-modal-target="auth-entry-classic"
+            >
+                Войти
+            </button>
+        </div>
+    @else
+        @if(auth()->user()->isConfirmed())
+            <a href="{{ route('venues.create') }}" class="btn btn--primary-bordered btn--sm">Добавить площадку</a>
+        @else
+            <div class="section-heading-cta">
+                <p class="section-heading-cta__text">Чтобы добавить площадку, необходимо подтвердить аккаунт.</p>
+                <a href="{{ route('account.confirmation') }}" class="btn btn--secondary btn--sm">Подтвердить</a>
+            </div>
+        @endif
+    @endguest
+@endsection
 
 @section('section-sidebar')
     <div class="section-sidebar-block">
@@ -38,14 +64,20 @@
                             {{ $venue->name }}
                         </a>
                     </h2>
-                    <p class="mb-2">Статус: {{ $venue->status }}</p>
+                    <p class="mb-2">Статус: <span class="badge badge--{{ $venue->status == 'confirmed' ? 'success' : 'danger' }}">{{ $venue->status }}</span></p>
                     <p class="mb-3">Описание: {{ $venue->description }}</p>
                     @if($venue->rawAddress)
                         <p class="mb-3">Адрес: {{ $venue->rawAddress }}</p>
                     @endif
-                    @if ($venue->canEdit)
-                        <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--primary btn--sm">Редактировать</a>
-                    @endif
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('venues.show', $venue->alias) }}" class="btn btn--secondary btn--sm">Подробнее</a>
+                        @if ($venue->canEdit)
+                            <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--primary btn--sm">Редактировать</a>
+                        @endif
+                        @if ($venue->canRemove)
+                            <a href="{{ route('venues.remove', $venue->alias) }}" class="btn btn--danger btn--sm">Удалить</a>
+                        @endif
+                    </div>
                 </article>
             @endforeach
         </div>

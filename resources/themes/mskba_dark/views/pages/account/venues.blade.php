@@ -49,7 +49,7 @@
         @endif
 
         @can('add_venue', $user)
-            <a href="{{ route('account.venues.create') }}" class="btn btn-success">Добавить площадку</a>
+            <a href="{{ route('venues.create') }}" class="btn btn-success">Добавить площадку</a>
         @endcan
     @endif
 @endsection

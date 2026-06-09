@@ -15,6 +15,10 @@ final class CreateAccountVenueHandler
      */
     public function handle(User $user, array $data): Venue
     {
+        if (!$user->isConfirmed()) {
+            throw new \DomainException('Подтвердите аккаунт, чтобы добавить площадку!', 403);
+        }
+
         return Venue::query()->create([
             'created_by_user_id' => $user->id,
             'name' => $data['name'],

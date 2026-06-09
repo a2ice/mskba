@@ -14,5 +14,6 @@ final readonly class VenueDetailsDTO
         public ?string $rawAddress,
         public bool $canEdit,
         public bool $canEditSchedule,
+        public bool $canRemove,
     ) {}
 }

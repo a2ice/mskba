@@ -80,8 +80,14 @@ Route::prefix('venues')->group(function () {
 	Route::get('/', [VenueController::class, 'index'])
 		->name('venues')
 		->defaults('breadcrumb', 'Площадки');
+	Route::get('/create', [VenueController::class, 'create'])
+		->name('venues.create')
+		->defaults('breadcrumb', 'Добавить площадку');
+	Route::post('/', [VenueController::class, 'store'])
+		->name('venues.store');
 	Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 	Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
+	Route::get('/{alias}/remove', [VenueController::class, 'remove'])->name('venues.remove');
 });
 
 // Group routes for authenticated users
@@ -121,8 +127,6 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 		Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
 		Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
 		Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');
-		Route::get('/venues/create', [AccountController::class, 'createVenue'])->name('account.venues.create');
-		Route::post('/venues', [AccountController::class, 'storeVenue'])->name('account.venues.store');
 		Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
 		Route::get('/venues/{alias}/edit', [AccountController::class, 'editVenue'])->name('account.venues.edit');
 	});

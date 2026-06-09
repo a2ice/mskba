@@ -34,6 +34,15 @@ final class VenueAccessResolver
         return $this->isBootstrapCreator($user, $venue);
     }
 
+    public function canRemove(?User $user, Venue $venue): bool
+    {
+        if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::REMOVE)) {
+            return true;
+        }
+
+        return $this->isBootstrapCreator($user, $venue);
+    }
+
     public function canEditSchedule(?User $user, Venue $venue): bool
     {
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT_SCHEDULE)) {

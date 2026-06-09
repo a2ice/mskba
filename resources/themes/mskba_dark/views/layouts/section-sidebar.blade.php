@@ -40,7 +40,15 @@
                     <div class="section-sidebar-layout__panel">
                         <div class="section-sidebar-layout__content">
                             <div class="section-content-heading">
-                                <h1 class="layout-content-title section-sidebar-layout__title">{{ $contentTitle }}</h1>
+                                <div class="section-content-heading__row">
+                                    <h1 class="layout-content-title section-sidebar-layout__title">{{ $contentTitle }}</h1>
+
+                                    @hasSection('section-heading-action')
+                                        <div class="section-content-heading__action">
+                                            @yield('section-heading-action')
+                                        </div>
+                                    @endif
+                                </div>
 
                                 @if($contentSubtitle)
                                     <p class="section-sidebar-layout__subtitle">{{ $contentSubtitle }}</p>

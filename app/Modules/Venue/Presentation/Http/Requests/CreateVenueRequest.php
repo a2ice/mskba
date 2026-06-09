@@ -4,13 +4,30 @@ namespace App\Modules\Venue\Presentation\Http\Requests;
 
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 class CreateVenueRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        return true;
+        //
         return $this->user()?->can('add_venue') === true;
+    }
+
+    protected function failedAuthorization(): void
+    {
+        $message = $this->user() === null
+            ? 'Чтобы добавить площадку, необходимо войти на сайт.'
+            : 'Чтобы добавить площадку, необходимо подтвердить аккаунт.';
+
+        throw new HttpResponseException(
+            redirect()
+                ->route('venues.create')
+                ->withInput()
+                ->with('error', $message),
+        );
     }
 
     /**

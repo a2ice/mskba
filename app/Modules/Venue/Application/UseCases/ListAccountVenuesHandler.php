@@ -43,6 +43,7 @@ final class ListAccountVenuesHandler
                     canView: $isBootstrapOwned || in_array($venue->id, $contractViewableVenueIds, true),
                     canEdit: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
                     canEditSchedule: $isBootstrapOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true),
+                    canRemove: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
                 );
             })
             ->all();
