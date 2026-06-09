@@ -183,6 +183,7 @@ make ENV=prod fresh-seed
 - `make shell` - открыть Tinker;
 - `make artisan CMD='...'` - выполнить произвольную artisan-команду;
 - `make npm CMD='...'` - выполнить произвольную npm-команду;
+- `make sr <role> <login>` - назначить системную роль пользователю по логину;
 - `make db-up` - запустить сервис `db`;
 - `make db-down` - остановить compose-сервисы;
 - `make db-restart` - перезапустить `db`;

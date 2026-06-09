@@ -29,6 +29,22 @@
 
 `UserSystemRoleEnum` содержит `numericValue()` и `atLeast()`, чтобы сравнивать уровень системной роли.
 
+Для dev/VDS-администрирования есть консольная команда:
+
+```bash
+php artisan identity:set-system-role {role} {username}
+```
+
+Makefile-обертка:
+
+```bash
+make sr superadmin user_login
+make sr admin user_login
+make ENV=prod sr superadmin user_login
+```
+
+Команда ищет пользователя по `users.username`, валидирует роль через `UserSystemRoleEnum` и обновляет `users.system_role`.
+
 ## Роли участия пользователя
 
 Роли участия вынесены в модель `UserParticipationRole` и таблицу `user_participation_roles`.
