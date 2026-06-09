@@ -49,6 +49,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
                                 <span
                                     class="account-notification-badge account-notification-badge--status {{ $notification->isNew() ? 'is-new' : 'is-read' }}"
                                     title="{{ $notification->status->label() }}"
+                                    data-tooltip-variant="title"
                                     aria-label="{{ $notification->status->label() }}"
                                 >
                                     <i class="ti {{ $statusIcon }}" aria-hidden="true"></i>
@@ -56,6 +57,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
                                 <span
                                     class="account-notification-badge account-notification-badge--type"
                                     title="{{ $notification->type->label() }}"
+                                    data-tooltip-variant="title"
                                     aria-label="{{ $notification->type->label() }}"
                                 >
                                     <i class="ti {{ $typeIcon }}" aria-hidden="true"></i>

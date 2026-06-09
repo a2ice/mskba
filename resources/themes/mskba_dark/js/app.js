@@ -16,6 +16,7 @@ import './core/ui-handlers.js';
 import './features/auth.js';
 import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
+import './features/tooltips.js';
 
 var header,
     headerHeight = 0;
