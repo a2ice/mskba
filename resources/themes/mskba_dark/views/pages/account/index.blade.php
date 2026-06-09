@@ -1,6 +1,16 @@
-@extends('theme::layouts.account', ['title' => 'Профиль'])
+@php $title = 'Профиль'; @endphp
 
-@section('account-content')
+@extends('theme::layouts.section-sidebar', [
+    'title' => $title,
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
+    'contentTitle' => $title,
+    'sidebarLabel' => 'Навигация аккаунта',
+    'wrapSidebarPanel' => false,
+    'sidebarPartial' => 'theme::partials.account.sidebar',
+])
+
+@section('section-content')
 
     @if(isset($error))
         <div class="alert alert-danger">

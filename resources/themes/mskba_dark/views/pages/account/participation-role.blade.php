@@ -2,9 +2,19 @@
     use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 @endphp
 
-@extends('theme::layouts.account', ['title' => $title ?? 'Роль участника'])
+@php $title = $title ?? 'Роль участника'; @endphp
 
-@section('account-content')
+@extends('theme::layouts.section-sidebar', [
+    'title' => $title,
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
+    'contentTitle' => $title,
+    'sidebarLabel' => 'Навигация аккаунта',
+    'wrapSidebarPanel' => false,
+    'sidebarPartial' => 'theme::partials.account.sidebar',
+])
+
+@section('section-content')
     @if(isset($error))
         <div class="alert alert-danger">
             {{ $error['message'] }}

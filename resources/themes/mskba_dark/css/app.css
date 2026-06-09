@@ -9,6 +9,7 @@
 
 @import './pages/home';
 @import './pages/account';
+@import './pages/section-sidebar';
 
 html {}
 body {
@@ -749,6 +750,16 @@ body.nav-shown .nav-hamburger > span:last-child {
     gap: 18px;
     margin-bottom: 24px;
 }
+
+.layout-content-title {
+    margin: 0 0 15px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: clamp(24px, 2.5vw, 36px);
+    font-weight: 700;
+    line-height: 1;
+}
+
 .section-title {
     font-size: clamp(24px, 4vw, 36px);
     font-weight: 700;
