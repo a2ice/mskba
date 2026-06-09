@@ -18,7 +18,7 @@
 	position: relative;
 	width: min(360px, 100%);
 	max-height: min(86vh, 900px);
-	overflow: auto;
+	/* overflow: auto; */
 	border: 1px solid rgba(255, 255, 255, 0.15);
 	border-radius: 16px;
 	padding: 26px 24px 22px;
