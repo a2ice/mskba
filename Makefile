@@ -1,40 +1,57 @@
- .DEFAULT_GOAL := help
+.DEFAULT_GOAL := help
 
-PHP := docker compose exec phpfpm php
-COMPOSER := docker compose exec phpfpm composer
+ENV ?= dev
+
+ifeq ($(ENV),prod)
+DOCKER_COMPOSE := docker compose -f compose.yaml -f compose.prod.yaml
+ARTISAN_FORCE := --force
+NPM := $(DOCKER_COMPOSE) --profile build run --rm node npm
+else ifeq ($(ENV),dev)
+DOCKER_COMPOSE := docker compose -f compose.yaml -f compose.override.yaml
+ARTISAN_FORCE :=
 NPM := npm
-ARTISAN := $(PHP) artisan
-DOCKER_COMPOSE := docker compose
+else
+$(error ENV must be dev or prod)
+endif
 
-.PHONY: help install update dev serve vite build test lint format migrate fresh fresh-seed seed cache-clear optimize-clear queue queue-restart logs shell up rebuild down restart ps db-up db-down db-restart db-logs module delete-module
+PHP := $(DOCKER_COMPOSE) exec phpfpm php
+COMPOSER := $(DOCKER_COMPOSE) exec phpfpm composer
+ARTISAN := $(PHP) artisan
+
+.PHONY: help install update dev serve vite build test lint format migrate fresh fresh-seed seed cache-clear optimize-clear queue queue-restart logs shell artisan npm up rebuild down restart ps config db-up db-down db-restart db-logs module delete-module
 
 help:
 	@echo "Available commands:"
-	@echo "  make up              Build and start Docker stack"
-	@echo "  make rebuild         Rebuild and recreate Docker stack"
-	@echo "  make down            Stop Docker stack"
-	@echo "  make restart         Restart Docker stack"
-	@echo "  make ps              Show Docker services"
-	@echo "  make install         Install dependencies, prepare app"
-	@echo "  make update          Update Composer and npm dependencies"
-	@echo "  make vite            Run Vite dev server"
-	@echo "  make build           Build frontend assets"
-	@echo "  make test            Run tests"
-	@echo "  make lint            Check code style with Pint"
-	@echo "  make format          Fix code style with Pint"
-	@echo "  make migrate         Run database migrations"
-	@echo "  make fresh           Recreate database and seed"
-	@echo "  make seed            Run database seeders"
-	@echo "  make cache-clear     Clear Laravel caches"
-	@echo "  make optimize-clear  Clear cached bootstrap files"
-	@echo "  make queue           Tail queue worker logs"
-	@echo "  make queue-restart   Restart queue worker container"
-	@echo "  make logs            Tail Laravel logs with Pail"
-	@echo "  make shell           Open Tinker"
-	@echo "  make db-up           Start database service"
-	@echo "  make db-down         Stop Docker stack"
-	@echo "  make db-restart      Restart PostgreSQL"
-	@echo "  make db-logs         Tail PostgreSQL logs"
+	@echo "  make ENV=dev|prod <command>  Select compose environment (default: dev)"
+	@echo "  make up                     Build and start Docker stack"
+	@echo "  make rebuild                Rebuild and recreate Docker stack"
+	@echo "  make down                   Stop Docker stack"
+	@echo "  make restart                Restart Docker stack"
+	@echo "  make ps                     Show Docker services"
+	@echo "  make config                 Render Docker Compose config"
+	@echo "  make install                Install dependencies, prepare app"
+	@echo "  make update                 Update Composer and npm dependencies"
+	@echo "  make vite                   Run Vite dev server"
+	@echo "  make build                  Build frontend assets"
+	@echo "  make test                   Run tests"
+	@echo "  make lint                   Check code style with Pint"
+	@echo "  make format                 Fix code style with Pint"
+	@echo "  make migrate                Run database migrations"
+	@echo "  make fresh                  Recreate database"
+	@echo "  make fresh-seed             Recreate database and seed"
+	@echo "  make seed                   Run database seeders"
+	@echo "  make cache-clear            Clear Laravel caches"
+	@echo "  make optimize-clear         Clear cached bootstrap files"
+	@echo "  make queue                  Tail queue worker logs"
+	@echo "  make queue-restart          Restart queue worker container"
+	@echo "  make logs                   Tail Laravel logs with Pail"
+	@echo "  make shell                  Open Tinker"
+	@echo "  make artisan CMD='...'      Run artisan command"
+	@echo "  make npm CMD='...'          Run npm command"
+	@echo "  make db-up                  Start database service"
+	@echo "  make db-down                Stop Docker stack"
+	@echo "  make db-restart             Restart PostgreSQL"
+	@echo "  make db-logs                Tail PostgreSQL logs"
 	@echo "  make module name=... Create bounded context module"
 	@echo "  make module name=... model=1 Create module with main model"
 	@echo "  make module name=... model=Account Create module with named model"
@@ -75,15 +92,15 @@ format:
 	$(DOCKER_COMPOSE) exec phpfpm ./vendor/bin/pint
 
 migrate:
-	$(ARTISAN) migrate
+	$(ARTISAN) migrate $(ARTISAN_FORCE)
 
 fresh:
-	$(ARTISAN) migrate:fresh
+	$(ARTISAN) migrate:fresh $(ARTISAN_FORCE)
 	$(ARTISAN) cache:clear
 	$(DOCKER_COMPOSE) restart queue
 
 fresh-seed:
-	$(ARTISAN) migrate:fresh --seed
+	$(ARTISAN) migrate:fresh --seed $(ARTISAN_FORCE)
 	$(ARTISAN) cache:clear
 	$(DOCKER_COMPOSE) restart queue
 
@@ -111,6 +128,18 @@ logs:
 shell:
 	$(ARTISAN) tinker
 
+artisan:
+ifndef CMD
+	$(error Usage: make artisan CMD='route:list')
+endif
+	$(ARTISAN) $(CMD)
+
+npm:
+ifndef CMD
+	$(error Usage: make npm CMD='run build')
+endif
+	$(NPM) $(CMD)
+
 up:
 	$(DOCKER_COMPOSE) up -d --build
 
@@ -125,6 +154,9 @@ restart:
 
 ps:
 	$(DOCKER_COMPOSE) ps
+
+config:
+	$(DOCKER_COMPOSE) config
 
 db-up:
 	$(DOCKER_COMPOSE) up -d db

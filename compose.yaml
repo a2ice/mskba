@@ -1,11 +1,8 @@
-name: mskbanew
-
 services:
   phpfpm:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
-    container_name: mskbanew-phpfpm
     working_dir: /var/www/html
     restart: unless-stopped
     environment:
@@ -24,7 +21,6 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: mskbanew-nginx
     restart: unless-stopped
     ports:
       - "${NGINX_PORT:-8000}:80"
@@ -38,7 +34,6 @@ services:
     build:
       context: .
       dockerfile: docker/app/Dockerfile
-    container_name: mskbanew-queue
     working_dir: /var/www/html
     restart: unless-stopped
     environment:
@@ -57,10 +52,7 @@ services:
 
   db:
     image: postgres:17-alpine
-    container_name: mskbanew-db
     restart: unless-stopped
-    ports:
-      - "${DB_FORWARD_PORT:-127.0.0.1:5433}:5432"
     environment:
       POSTGRES_DB: ${DB_DATABASE:-mskbabrandnew}
       POSTGRES_USER: ${DB_USERNAME:-mskbabrandnew}
@@ -75,25 +67,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: mskbanew-redis
     restart: unless-stopped
     volumes:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
 
-  node:
-    image: node:22-alpine
-    container_name: mskbanew-node
-    working_dir: /var/www/html
-    profiles:
-      - build
-    volumes:
-      - .:/var/www/html
-      - node_modules:/var/www/html/node_modules
-    command: ["sh", "-lc", "npm ci && npm run build"]
-
 volumes:
   postgres_data:
-    name: mskbabrandnew_postgres_data
   redis_data:
-  node_modules:

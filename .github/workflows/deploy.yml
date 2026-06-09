@@ -43,7 +43,7 @@ jobs:
             git reset --hard origin/main
             git clean -fd
 
-            COMPOSE="docker compose -f docker-compose.prod.yml"
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
             HOST_UID="$(id -u)"
             HOST_GID="$(id -g)"
 
@@ -59,6 +59,7 @@ jobs:
               --optimize-autoloader \
               </dev/null
 
+            $COMPOSE --profile build run -T --rm node </dev/null
             test -f public/build/manifest.json
             $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor public/build </dev/null || true
 

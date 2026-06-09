@@ -1,0 +1,45 @@
+name: mskbabrandnew
+
+services:
+  phpfpm:
+    container_name: mskbabrandnew-phpfpm
+    environment:
+      MAIL_HOST: mailpit
+
+  nginx:
+    container_name: mskbabrandnew-nginx
+
+  queue:
+    container_name: mskbabrandnew-queue
+    environment:
+      MAIL_HOST: mailpit
+
+  db:
+    container_name: mskbabrandnew-db
+    ports:
+      - "${DB_FORWARD_PORT:-5432}:5432"
+
+  adminer:
+    image: adminer:latest
+    container_name: mskbabrandnew-adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mskbabrandnew-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  redis:
+    container_name: mskbabrandnew-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+    name: mskbabrandnew_postgres-data
