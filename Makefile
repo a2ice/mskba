@@ -17,8 +17,10 @@ endif
 PHP := $(DOCKER_COMPOSE) exec phpfpm php
 COMPOSER := $(DOCKER_COMPOSE) exec phpfpm composer
 ARTISAN := $(PHP) artisan
+SR_ROLE := $(word 2,$(MAKECMDGOALS))
+SR_LOGIN := $(word 3,$(MAKECMDGOALS))
 
-.PHONY: help install update dev serve vite build test lint format migrate fresh fresh-seed seed cache-clear optimize-clear queue queue-restart logs shell artisan npm up rebuild down restart ps config db-up db-down db-restart db-logs module delete-module
+.PHONY: help install update dev serve vite build test lint format migrate fresh fresh-seed seed cache-clear optimize-clear queue queue-restart logs shell artisan npm sr up rebuild down restart ps config db-up db-down db-restart db-logs module delete-module
 
 help:
 	@echo "Available commands:"
@@ -48,6 +50,7 @@ help:
 	@echo "  make shell                  Open Tinker"
 	@echo "  make artisan CMD='...'      Run artisan command"
 	@echo "  make npm CMD='...'          Run npm command"
+	@echo "  make sr <role> <login>      Set user system role by login"
 	@echo "  make db-up                  Start database service"
 	@echo "  make db-down                Stop Docker stack"
 	@echo "  make db-restart             Restart PostgreSQL"
@@ -140,6 +143,14 @@ ifndef CMD
 endif
 	$(NPM) $(CMD)
 
+sr:
+	@if [ -z "$(SR_ROLE)" ] || [ -z "$(SR_LOGIN)" ]; then \
+		echo "Usage: make sr <role> <login>"; \
+		echo "Example: make sr superadmin user_login"; \
+		exit 2; \
+	fi
+	$(ARTISAN) identity:set-system-role $(SR_ROLE) $(SR_LOGIN)
+
 up:
 	$(DOCKER_COMPOSE) up -d --build
 
@@ -181,3 +192,11 @@ ifndef name
 	$(error Usage: make delete-module name=Billing force=1)
 endif
 	$(ARTISAN) delete:module $(name) $(if $(force),--force,)
+
+%:
+	@if [ "$(firstword $(MAKECMDGOALS))" = "sr" ]; then \
+		:; \
+	else \
+		echo "Unknown make target [$@]."; \
+		exit 2; \
+	fi
