@@ -55,7 +55,7 @@
                 >
                     <div class="mb-3">
                         <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--primary me-2" title="Обязательно к заполнению">*</span>
+                            <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
                             Выберите роль участия
                         </h4>
                         <p class="mb-0">Укажите, как вы участвуете в проекте: игрок, тренер, судья, представитель площадки или другая роль.</p>
@@ -95,7 +95,7 @@
                 >
                     <div class="mb-3">
                         <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--primary me-2" title="Обязательно к заполнению">*</span>
+                            <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
                             Заполните дату рождения и пол
                         </h4>
                         <p class="mb-0">Для выбранной роли эти данные нужны как часть базового профиля.</p>
@@ -142,7 +142,7 @@
                 >
                     <div class="mb-3">
                         <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--secondary me-2" title="Можно пропустить">*</span>
+                            <span class="badge badge--secondary me-2" title="Можно пропустить" data-tooltip-variant="title">*</span>
                             Представьтесь, пожалуйста
                         </h4>
                         <p class="mb-0">Можно указать имя и фамилию, чтобы профиль был понятен другим участникам проекта.</p>

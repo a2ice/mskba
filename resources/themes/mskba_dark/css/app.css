@@ -5,6 +5,7 @@
 @import './menu';
 @import './modal';
 @import './user';
+@import './tooltip';
 
 @import './pages/home';
 @import './pages/account';

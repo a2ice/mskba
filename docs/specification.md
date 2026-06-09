@@ -188,6 +188,8 @@
 
 Маршрут `/dashboard` сейчас есть, но view `pages/dashboard.blade.php` отсутствует в обеих текущих темах.
 
+В теме `mskba_dark` элементы пользовательского интерфейса с атрибутом `title` автоматически получают кастомный tooltip. JS enhancer переносит текст из `title` в кастомный tooltip и удаляет нативный `title`, чтобы не было двойной подсказки браузера. По умолчанию используется вариант `question` с отдельной кнопкой `?`; для уже существующих визуальных маркеров можно указать `data-tooltip-variant="title"`, чтобы tooltip был привязан к самому элементу без дополнительной иконки.
+
 ## Breadcrumbs
 
 Partial `theme::partials.breadcrumbs` строит цепочку навигации через `App\Presentation\Breadcrumbs\BreadcrumbsResolver`.
