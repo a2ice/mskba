@@ -4,11 +4,19 @@
     
 @endphp
 
-@extends('theme::layouts.account', [
-    'title' => 'Контракт: ' . $title,
+@php $title = 'Контракт: ' . $title; @endphp
+
+@extends('theme::layouts.section-sidebar', [
+    'title' => $title,
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
+    'contentTitle' => $title,
+    'sidebarLabel' => 'Навигация аккаунта',
+    'wrapSidebarPanel' => false,
+    'sidebarPartial' => 'theme::partials.account.sidebar',
 ])
 
-@section('account-content')
+@section('section-content')
     @if(isset($error))
         <div class="alert alert-danger">
             {{ $error['message'] }}

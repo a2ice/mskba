@@ -1,47 +1,50 @@
-@php 
+@php
     $title = 'Площадки';
 @endphp
 
-@extends('theme::layouts.app', ['title' => $title])
+@extends('theme::layouts.section-sidebar', [
+    'title' => $title,
+    'sectionId' => 'venues',
+    'sectionClass' => 'venues-section',
+    'contentTitle' => $title,
+    'contentSubtitle' => 'Находите и добавляйте баскетбольные площадки по всей Москве и области.',
+    'sidebarLabel' => 'Навигация площадок',
+])
 
-@section('content')
-
-<section class="venues-section first-screen">
-
-    <div class="inner">
-        <div class="mb-3">
-            @include('theme::partials.breadcrumbs')
-        </div>
-
-        <div class="section-heading mb-3">
-            <h1 class="section-title">{{ $title }}</h1>
-            <p class="lead">Находите и добавляйте баскетбольные площадки по всей Москве и области</p>
-        </div>
-
-        <div class="section-content">
-            @if ($venues === [])
-                <div class="alert alert-info">
-                    Площадки пока не назначены.
-                </div>
-            @else
-                @foreach ($venues as $venue)
-                    <div class="venue-item mb-5">
-                        <h5>
-                            <a href="{{ route('venues.show', $venue->alias) }}">
-                                {{ $venue->name }}
-                            </a>
-                        </h5>
-                        <p>Статус: {{ $venue->status }}</p>
-                        <p>Описание: {{ $venue->description }}</p>
-                        @if ($venue->canEdit)
-                            <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
-                        @endif
-                    <hr>
-                    </div>
-                @endforeach
-            @endif
-        </div>
-
+@section('section-sidebar')
+    <div class="section-sidebar-block">
+        @include('theme::partials.menu.sidebar', ['page' => 'venues'])
     </div>
-</section>
+
+    <div class="section-sidebar-block">
+        <h2 class="section-sidebar-block__title">Фильтры</h2>
+        <p class="section-sidebar-block__text">
+            Здесь появятся фильтры по типу площадки, статусу, району и доступности расписания.
+        </p>
+    </div>
+@endsection
+
+@section('section-content')
+    @if ($venues === [])
+        <div class="alert alert-info">
+            Площадки пока не назначены.
+        </div>
+    @else
+        <div class="section-list">
+            @foreach ($venues as $venue)
+                <article class="section-list-item">
+                    <h2 class="h5 mb-3">
+                        <a href="{{ route('venues.show', $venue->alias) }}">
+                            {{ $venue->name }}
+                        </a>
+                    </h2>
+                    <p class="mb-2">Статус: {{ $venue->status }}</p>
+                    <p class="mb-3">Описание: {{ $venue->description }}</p>
+                    @if ($venue->canEdit)
+                        <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--primary btn--sm">Редактировать</a>
+                    @endif
+                </article>
+            @endforeach
+        </div>
+    @endif
 @endsection

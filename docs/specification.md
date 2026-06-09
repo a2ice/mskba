@@ -190,6 +190,10 @@
 
 В теме `mskba_dark` элементы пользовательского интерфейса с атрибутом `title` автоматически получают кастомный tooltip. JS enhancer переносит текст из `title` в кастомный tooltip и удаляет нативный `title`, чтобы не было двойной подсказки браузера. По умолчанию используется вариант `question` с отдельной кнопкой `?`; для уже существующих визуальных маркеров можно указать `data-tooltip-variant="title"`, чтобы tooltip был привязан к самому элементу без дополнительной иконки.
 
+Для разделов с левой колонкой используется общий grid-based layout `theme::layouts.section-sidebar`. Он задает композицию: breadcrumbs, sidebar слева и основной content panel справа. Sidebar заполняется секцией `section-sidebar`, основной контент - секцией `section-content`. Если в sidebar нужен навигационный список, нужно использовать общий partial `theme::partials.menu.sidebar` и добавить соответствующий handler в `config/menus.php`, как это сделано для `venues`. Заголовки content panel используют общий класс `layout-content-title`. Layout предназначен для разделов вроде площадок, игр, тренировок, событий, команд и внутренних разделов с sidebar.
+
+Account-страницы напрямую используют `theme::layouts.section-sidebar` и передают `theme::partials.account.sidebar` как `sidebarPartial`. Отдельный `theme::layouts.account` больше не используется, чтобы account и публичные предметные разделы имели одну layout-сетку и одинаковую ширину sidebar.
+
 ## Breadcrumbs
 
 Partial `theme::partials.breadcrumbs` строит цепочку навигации через `App\Presentation\Breadcrumbs\BreadcrumbsResolver`.

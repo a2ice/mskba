@@ -1,8 +1,18 @@
 @php $contracts = isset($contracts) ? $contracts : null; @endphp
 
-@extends('theme::layouts.account', ['title' => 'Мои контракты'])
+@php $title = 'Мои контракты'; @endphp
 
-@section('account-content')
+@extends('theme::layouts.section-sidebar', [
+    'title' => $title,
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
+    'contentTitle' => $title,
+    'sidebarLabel' => 'Навигация аккаунта',
+    'wrapSidebarPanel' => false,
+    'sidebarPartial' => 'theme::partials.account.sidebar',
+])
+
+@section('section-content')
     @if(isset($error))
         <div class="alert alert-danger">
             {{ $error['message'] }}
