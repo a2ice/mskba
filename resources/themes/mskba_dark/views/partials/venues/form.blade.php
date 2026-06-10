@@ -44,6 +44,25 @@
     </div>
 
     <div class="mb-3">
+        <label for="" class="form-label">Ближайшее метро</label>
+        <select
+            id=""
+            name="nearest_metro"
+            class="form-select @error('nearest_metro') is-invalid @enderror"
+        >
+            <option value="">Выберите станцию</option>
+            @foreach ($metros ?? [] as $metro)
+                <option value="{{ $metro->id }}" @selected(old('nearest_metro') === $metro->id)>
+                    {{ $metro->name }}
+                </option>
+            @endforeach
+        </select>
+        @error('nearest_metro')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror        
+    </div>  
+
+    <div class="mb-3">
         <label for="venueRawAddress" class="form-label">Адрес</label>
         <textarea
             id="venueRawAddress"

@@ -4,6 +4,13 @@ use Illuminate\Support\Facades\Route;
 
 use App\Presentation\Theming\ThemeResolver;
 
+use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
@@ -68,11 +75,16 @@ Route::prefix('auth')->group(function () {
 
 });
 
-Route::prefix('admin')->group(function () use ($themeResolver) {
-
-	Route::get('/dashboard', function () use ($themeResolver) {
-		return $themeResolver->page('admin.dashboard');
-	})->middleware('auth', 'can:access-admin-panel')->name('admin.dashboard');
+Route::prefix('admin')
+	->middleware('auth', 'can:access-admin-panel')
+	->group(function () {
+		Route::get('/', [AdminController::class, 'index'])->name('admin.index')->defaults('breadcrumb', 'Панель управления');
+		Route::get('/users', [AdminController::class, 'users'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
+		Route::get('/venues', [AdminVenuesController::class, 'index'])->name('admin.venues')->defaults('breadcrumb', 'Площадки');
+		Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'События');
+		Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
+		Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
+		Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
 });
 
 

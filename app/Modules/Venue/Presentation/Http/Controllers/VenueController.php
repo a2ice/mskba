@@ -12,6 +12,8 @@ use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 
+use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
+
 class VenueController extends Controller
 {
     public function index(ListVenuesHandler $useCase): Response
@@ -22,10 +24,13 @@ class VenueController extends Controller
         return ThemeResolver::page('venues.index', ['venues' => $venues]);
     }
 
-    public function create(): Response
+    public function create(ListMetrostationsHandler $listMetrostations): Response
     {
+        $metros = $listMetrostations->handle();
+       
         return ThemeResolver::page('venues.create', [
             'types' => VenueTypeEnum::cases(),
+            'metros' => $metros
         ]);
     }
 
