@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Identity\Application\DTO\ProfileDTO;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
@@ -18,9 +19,13 @@ final class RegisterUserHandler
         private readonly CreateUserAccountHandler $createUserAccount,
     ) {}
 
-    public function handle(string $username, string $password, ?UserParticipationRoleEnum $participantRole = null): User
-    {
-        $user = DB::transaction(function () use ($username, $password, $participantRole): User {
+    public function handle(
+        string $username,
+        string $password,
+        ?UserParticipationRoleEnum $participantRole = null,
+        ?ProfileDTO $profile = null,
+    ): User {
+        $user = DB::transaction(function () use ($username, $password, $participantRole, $profile): User {
             $user = $this->createUserAccount->handle(
                 username: $username,
                 password: $password,
@@ -28,6 +33,7 @@ final class RegisterUserHandler
                 systemRole: UserSystemRoleEnum::USER,
                 status: UserStatusEnum::UNCONFIRMED,
                 isTemporaryPassword: false,
+                profile: $profile,
             );
 
             if ($participantRole !== null) {

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Identity\Application\DTO\ProfileDTO;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -12,9 +13,6 @@ use Illuminate\Support\Facades\DB;
 
 final class CreateUserAccountHandler
 {
-    /**
-     * @param  array<string, mixed>  $profile
-     */
     public function handle(
         string $username,
         string $password,
@@ -22,7 +20,7 @@ final class CreateUserAccountHandler
         UserSystemRoleEnum $systemRole = UserSystemRoleEnum::USER,
         UserStatusEnum $status = UserStatusEnum::UNCONFIRMED,
         bool $isTemporaryPassword = false,
-        array $profile = [],
+        ?ProfileDTO $profile = null,
     ): User {
         $username = UsernameVO::fromString($username)->value;
         $password = PasswordVO::fromString($password)->value;
@@ -38,9 +36,27 @@ final class CreateUserAccountHandler
                 'status' => $status,
             ]);
 
-            $user->createProfile($profile);
+            $user->createProfile($this->profileData($profile));
 
             return $user->load('profile');
         });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function profileData(?ProfileDTO $profile): array
+    {
+        if ($profile === null) {
+            return [];
+        }
+
+        return [
+            'first_name' => $profile->firstName,
+            'last_name' => $profile->lastName,
+            'middle_name' => $profile->middleName,
+            'gender' => $profile->gender,
+            'birth_date' => $profile->birthDate?->toDateString(),
+        ];
     }
 }

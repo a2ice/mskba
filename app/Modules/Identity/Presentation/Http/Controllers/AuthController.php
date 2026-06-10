@@ -66,6 +66,7 @@ class AuthController extends Controller
             username: $validated['username'],
             password: $validated['password'],
             participantRole: $request->participantRole(),
+            profile: $request->profile(),
         );
 
         if ($this->shouldReturnJson($request)) {

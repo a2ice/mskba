@@ -2,10 +2,13 @@
 
 namespace App\Modules\Identity\Presentation\Http\Requests;
 
+use App\Modules\Identity\Application\DTO\ProfileDTO;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\InvalidIdentityValueException;
 use App\Modules\Identity\Domain\ValueObjects\PasswordVO;
 use App\Modules\Identity\Domain\ValueObjects\UsernameVO;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -40,11 +43,12 @@ class RegisterRequest extends FormRequest
                 'confirmed',
                 $this->domainPasswordRule(),
             ],
-            'role' => [
-                'nullable',
-                'string',
-                Rule::enum(UserParticipationRoleEnum::class),
-            ],
+            'first_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'gender' => ['nullable', Rule::enum(UserGenderEnum::class)],
+            'birth_date' => ['nullable', 'date_format:Y-m-d', 'before:today'],
+            'role' => ['nullable', 'string', Rule::enum(UserParticipationRoleEnum::class)],
         ];
     }
 
@@ -52,9 +56,20 @@ class RegisterRequest extends FormRequest
     {
         $role = $this->validated('role');
 
-        return is_string($role)
+        return is_string($role) && $role !== ''
             ? UserParticipationRoleEnum::tryFrom($role)
             : null;
+    }
+
+    public function profile(): ProfileDTO
+    {
+        return new ProfileDTO(
+            firstName: $this->nullableString('first_name'),
+            lastName: $this->nullableString('last_name'),
+            middleName: $this->nullableString('middle_name'),
+            gender: $this->gender(),
+            birthDate: $this->birthDate(),
+        );
     }
 
     /**
@@ -126,6 +141,39 @@ class RegisterRequest extends FormRequest
         }
 
         parent::failedValidation($validator);
+    }
+
+    private function nullableString(string $key): ?string
+    {
+        $value = $this->validated($key);
+
+        return is_string($value) && trim($value) !== ''
+            ? trim($value)
+            : null;
+    }
+
+    private function gender(): ?UserGenderEnum
+    {
+        $gender = $this->validated('gender');
+
+        return is_string($gender) && $gender !== ''
+            ? UserGenderEnum::tryFrom($gender)
+            : null;
+    }
+
+    private function birthDate(): ?CarbonImmutable
+    {
+        $birthDate = $this->validated('birth_date');
+
+        if (! is_string($birthDate) || trim($birthDate) === '') {
+            return null;
+        }
+
+        $date = CarbonImmutable::createFromFormat('Y-m-d', $birthDate);
+
+        return $date instanceof CarbonImmutable
+            ? $date->startOfDay()
+            : null;
     }
 
     private function domainUsernameRule(): \Closure
