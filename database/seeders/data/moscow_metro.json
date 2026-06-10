@@ -1,0 +1,2870 @@
+{
+    "source": {
+        "name": "nalgeon/metro metro.ru.json",
+        "url": "https://github.com/nalgeon/metro",
+        "upstream": "HeadHunter API",
+        "license": "MIT"
+    },
+    "city": "Москва",
+    "lines": [
+        {
+            "name": "Калининская",
+            "color": "FFCD1C",
+            "sort_order": 0,
+            "stations": [
+                {
+                    "name": "Новокосино",
+                    "latitude": 55.745113,
+                    "longitude": 37.864052,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Новогиреево",
+                    "latitude": 55.752237,
+                    "longitude": 37.814587,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Перово",
+                    "latitude": 55.75098,
+                    "longitude": 37.78422,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Шоссе Энтузиастов",
+                    "latitude": 55.75809,
+                    "longitude": 37.751703,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Авиамоторная",
+                    "latitude": 55.751933,
+                    "longitude": 37.717444,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Площадь Ильича",
+                    "latitude": 55.747115,
+                    "longitude": 37.680726,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Марксистская",
+                    "latitude": 55.740746,
+                    "longitude": 37.65604,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Третьяковская",
+                    "latitude": 55.741125,
+                    "longitude": 37.626142,
+                    "sort_order": 7
+                }
+            ]
+        },
+        {
+            "name": "Замоскворецкая",
+            "color": "4FB04F",
+            "sort_order": 1,
+            "stations": [
+                {
+                    "name": "Ховрино",
+                    "latitude": 55.8777,
+                    "longitude": 37.4877,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Беломорская",
+                    "latitude": 55.8651,
+                    "longitude": 37.4764,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Речной вокзал",
+                    "latitude": 55.854152,
+                    "longitude": 37.476728,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Водный стадион",
+                    "latitude": 55.838978,
+                    "longitude": 37.487515,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Войковская",
+                    "latitude": 55.818923,
+                    "longitude": 37.497791,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Сокол",
+                    "latitude": 55.805564,
+                    "longitude": 37.515245,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Аэропорт",
+                    "latitude": 55.800441,
+                    "longitude": 37.530477,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Динамо",
+                    "latitude": 55.789704,
+                    "longitude": 37.558212,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Белорусская",
+                    "latitude": 55.777439,
+                    "longitude": 37.582107,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Маяковская",
+                    "latitude": 55.769808,
+                    "longitude": 37.596192,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Тверская",
+                    "latitude": 55.765343,
+                    "longitude": 37.603918,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Театральная",
+                    "latitude": 55.758808,
+                    "longitude": 37.61768,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Новокузнецкая",
+                    "latitude": 55.742391,
+                    "longitude": 37.62928,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Павелецкая",
+                    "latitude": 55.729741,
+                    "longitude": 37.638693,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Автозаводская",
+                    "latitude": 55.706634,
+                    "longitude": 37.657008,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Технопарк",
+                    "latitude": 55.695,
+                    "longitude": 37.664167,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Коломенская",
+                    "latitude": 55.677423,
+                    "longitude": 37.663719,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Каширская",
+                    "latitude": 55.655745,
+                    "longitude": 37.649683,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Кантемировская",
+                    "latitude": 55.636107,
+                    "longitude": 37.656218,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Царицыно",
+                    "latitude": 55.620982,
+                    "longitude": 37.669612,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Орехово",
+                    "latitude": 55.61269,
+                    "longitude": 37.695214,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Домодедовская",
+                    "latitude": 55.610131,
+                    "longitude": 37.717111,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Красногвардейская",
+                    "latitude": 55.614075,
+                    "longitude": 37.742697,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Алма-Атинская",
+                    "latitude": 55.63349,
+                    "longitude": 37.765678,
+                    "sort_order": 23
+                }
+            ]
+        },
+        {
+            "name": "Калужско-Рижская",
+            "color": "F07E24",
+            "sort_order": 2,
+            "stations": [
+                {
+                    "name": "Медведково",
+                    "latitude": 55.888103,
+                    "longitude": 37.661562,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Бабушкинская",
+                    "latitude": 55.870641,
+                    "longitude": 37.664341,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Свиблово",
+                    "latitude": 55.855558,
+                    "longitude": 37.653379,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Ботанический сад",
+                    "latitude": 55.844597,
+                    "longitude": 37.637811,
+                    "sort_order": 3
+                },
+                {
+                    "name": "ВДНХ",
+                    "latitude": 55.819626,
+                    "longitude": 37.640751,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Алексеевская",
+                    "latitude": 55.807794,
+                    "longitude": 37.638699,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Рижская",
+                    "latitude": 55.792494,
+                    "longitude": 37.636114,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Проспект Мира",
+                    "latitude": 55.781827,
+                    "longitude": 37.633199,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Сухаревская",
+                    "latitude": 55.772315,
+                    "longitude": 37.63285,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Тургеневская",
+                    "latitude": 55.765371,
+                    "longitude": 37.636732,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Китай-город",
+                    "latitude": 55.756498,
+                    "longitude": 37.631326,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Третьяковская",
+                    "latitude": 55.74073,
+                    "longitude": 37.625624,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Октябрьская",
+                    "latitude": 55.731232,
+                    "longitude": 37.612851,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Шаболовская",
+                    "latitude": 55.718828,
+                    "longitude": 37.607892,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Ленинский проспект",
+                    "latitude": 55.70678,
+                    "longitude": 37.58499,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Академическая",
+                    "latitude": 55.687147,
+                    "longitude": 37.5723,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Профсоюзная",
+                    "latitude": 55.677671,
+                    "longitude": 37.562595,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Новые Черемушки",
+                    "latitude": 55.670077,
+                    "longitude": 37.554493,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Калужская",
+                    "latitude": 55.656682,
+                    "longitude": 37.540075,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Беляево",
+                    "latitude": 55.642357,
+                    "longitude": 37.526115,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Коньково",
+                    "latitude": 55.631857,
+                    "longitude": 37.519156,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Теплый Стан",
+                    "latitude": 55.61873,
+                    "longitude": 37.505912,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Ясенево",
+                    "latitude": 55.606182,
+                    "longitude": 37.5334,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Новоясеневская",
+                    "latitude": 55.601947,
+                    "longitude": 37.553017,
+                    "sort_order": 23
+                }
+            ]
+        },
+        {
+            "name": "Сокольническая",
+            "color": "E42313",
+            "sort_order": 3,
+            "stations": [
+                {
+                    "name": "Бульвар Рокоссовского",
+                    "latitude": 55.814916,
+                    "longitude": 37.732227,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Черкизовская",
+                    "latitude": 55.802787,
+                    "longitude": 37.744863,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Преображенская площадь",
+                    "latitude": 55.796322,
+                    "longitude": 37.713582,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Сокольники",
+                    "latitude": 55.789282,
+                    "longitude": 37.679895,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Красносельская",
+                    "latitude": 55.780014,
+                    "longitude": 37.666097,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Комсомольская",
+                    "latitude": 55.774072,
+                    "longitude": 37.654565,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Красные ворота",
+                    "latitude": 55.768307,
+                    "longitude": 37.6478,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Чистые пруды",
+                    "latitude": 55.76499,
+                    "longitude": 37.638293,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Лубянка",
+                    "latitude": 55.759889,
+                    "longitude": 37.625336,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Охотный ряд",
+                    "latitude": 55.757228,
+                    "longitude": 37.615078,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Библиотека им.Ленина",
+                    "latitude": 55.752123,
+                    "longitude": 37.610388,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Кропоткинская",
+                    "latitude": 55.745297,
+                    "longitude": 37.604217,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Парк культуры",
+                    "latitude": 55.736163,
+                    "longitude": 37.595027,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Фрунзенская",
+                    "latitude": 55.727462,
+                    "longitude": 37.58022,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Спортивная",
+                    "latitude": 55.722388,
+                    "longitude": 37.562041,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Воробьевы горы",
+                    "latitude": 55.709169,
+                    "longitude": 37.557293,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Университет",
+                    "latitude": 55.69329,
+                    "longitude": 37.534511,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Проспект Вернадского",
+                    "latitude": 55.676549,
+                    "longitude": 37.504584,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Юго-Западная",
+                    "latitude": 55.663146,
+                    "longitude": 37.482852,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Тропарево",
+                    "latitude": 55.6459,
+                    "longitude": 37.4725,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Румянцево",
+                    "latitude": 55.633,
+                    "longitude": 37.4419,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Саларьево",
+                    "latitude": 55.6227,
+                    "longitude": 37.424,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Филатов луг",
+                    "latitude": 55.5997,
+                    "longitude": 37.4075,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Прокшино",
+                    "latitude": 55.5813,
+                    "longitude": 37.4425,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Ольховая",
+                    "latitude": 55.5692,
+                    "longitude": 37.4589,
+                    "sort_order": 24
+                },
+                {
+                    "name": "Новомосковская (Коммунарка)",
+                    "latitude": 55.559765,
+                    "longitude": 37.468716,
+                    "sort_order": 25
+                },
+                {
+                    "name": "Потапово",
+                    "latitude": 55.552538,
+                    "longitude": 37.490978,
+                    "sort_order": 26
+                }
+            ]
+        },
+        {
+            "name": "Арбатско-Покровская",
+            "color": "0072BA",
+            "sort_order": 4,
+            "stations": [
+                {
+                    "name": "Щелковская",
+                    "latitude": 55.809962,
+                    "longitude": 37.798261,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Первомайская",
+                    "latitude": 55.794376,
+                    "longitude": 37.799364,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Измайловская",
+                    "latitude": 55.787713,
+                    "longitude": 37.779896,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Партизанская",
+                    "latitude": 55.788401,
+                    "longitude": 37.74882,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Семеновская",
+                    "latitude": 55.783096,
+                    "longitude": 37.719289,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Электрозаводская",
+                    "latitude": 55.782057,
+                    "longitude": 37.7053,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Бауманская",
+                    "latitude": 55.772405,
+                    "longitude": 37.67904,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Курская",
+                    "latitude": 55.758564,
+                    "longitude": 37.659039,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Площадь Революции",
+                    "latitude": 55.756741,
+                    "longitude": 37.62236,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Арбатская",
+                    "latitude": 55.752312,
+                    "longitude": 37.60349,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Смоленская",
+                    "latitude": 55.747713,
+                    "longitude": 37.583802,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Киевская",
+                    "latitude": 55.743117,
+                    "longitude": 37.564132,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Парк Победы",
+                    "latitude": 55.735679,
+                    "longitude": 37.516865,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Славянский бульвар",
+                    "latitude": 55.729542,
+                    "longitude": 37.470973,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Кунцевская",
+                    "latitude": 55.730673,
+                    "longitude": 37.446522,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Молодежная",
+                    "latitude": 55.741375,
+                    "longitude": 37.415627,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Крылатское",
+                    "latitude": 55.756842,
+                    "longitude": 37.408139,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Строгино",
+                    "latitude": 55.803831,
+                    "longitude": 37.402405,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Мякинино",
+                    "latitude": 55.823342,
+                    "longitude": 37.385214,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Волоколамская",
+                    "latitude": 55.835154,
+                    "longitude": 37.382453,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Митино",
+                    "latitude": 55.846098,
+                    "longitude": 37.36122,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Пятницкое шоссе",
+                    "latitude": 55.853634,
+                    "longitude": 37.353108,
+                    "sort_order": 21
+                }
+            ]
+        },
+        {
+            "name": "Филевская",
+            "color": "1EBCEF",
+            "sort_order": 5,
+            "stations": [
+                {
+                    "name": "Кунцевская",
+                    "latitude": 55.730815,
+                    "longitude": 37.446754,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Пионерская",
+                    "latitude": 55.736027,
+                    "longitude": 37.466728,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Филевский парк",
+                    "latitude": 55.739665,
+                    "longitude": 37.483902,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Багратионовская",
+                    "latitude": 55.743544,
+                    "longitude": 37.497042,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Фили",
+                    "latitude": 55.746763,
+                    "longitude": 37.514035,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Кутузовская",
+                    "latitude": 55.740544,
+                    "longitude": 37.5341,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Студенческая",
+                    "latitude": 55.738761,
+                    "longitude": 37.54842,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Киевская",
+                    "latitude": 55.743168,
+                    "longitude": 37.565425,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Смоленская",
+                    "latitude": 55.749083,
+                    "longitude": 37.582173,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Арбатская",
+                    "latitude": 55.752122,
+                    "longitude": 37.601553,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Александровский сад",
+                    "latitude": 55.752255,
+                    "longitude": 37.608775,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Деловой центр (Выставочная)",
+                    "latitude": 55.750243,
+                    "longitude": 37.542641,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Москва-Сити",
+                    "latitude": 55.748056,
+                    "longitude": 37.532778,
+                    "sort_order": 12
+                }
+            ]
+        },
+        {
+            "name": "Серпуховско-Тимирязевская",
+            "color": "ADACAC",
+            "sort_order": 6,
+            "stations": [
+                {
+                    "name": "Алтуфьево",
+                    "latitude": 55.899034,
+                    "longitude": 37.586473,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Бибирево",
+                    "latitude": 55.883868,
+                    "longitude": 37.603011,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Отрадное",
+                    "latitude": 55.864273,
+                    "longitude": 37.605066,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Владыкино",
+                    "latitude": 55.848236,
+                    "longitude": 37.590451,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Петровско-Разумовская",
+                    "latitude": 55.836565,
+                    "longitude": 37.575512,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Тимирязевская",
+                    "latitude": 55.81866,
+                    "longitude": 37.574498,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Дмитровская",
+                    "latitude": 55.808056,
+                    "longitude": 37.581734,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Савёловская",
+                    "latitude": 55.794054,
+                    "longitude": 37.587163,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Менделеевская",
+                    "latitude": 55.781999,
+                    "longitude": 37.599141,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Цветной бульвар",
+                    "latitude": 55.771653,
+                    "longitude": 37.620466,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Чеховская",
+                    "latitude": 55.765747,
+                    "longitude": 37.608493,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Боровицкая",
+                    "latitude": 55.750399,
+                    "longitude": 37.60934,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Полянка",
+                    "latitude": 55.736795,
+                    "longitude": 37.618594,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Серпуховская",
+                    "latitude": 55.726548,
+                    "longitude": 37.624792,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Тульская",
+                    "latitude": 55.70961,
+                    "longitude": 37.622569,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Нагатинская",
+                    "latitude": 55.682099,
+                    "longitude": 37.620917,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Нагорная",
+                    "latitude": 55.672962,
+                    "longitude": 37.610397,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Нахимовский проспект",
+                    "latitude": 55.662379,
+                    "longitude": 37.605274,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Севастопольская",
+                    "latitude": 55.651451,
+                    "longitude": 37.59809,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Чертановская",
+                    "latitude": 55.640538,
+                    "longitude": 37.606065,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Южная",
+                    "latitude": 55.622436,
+                    "longitude": 37.609047,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Пражская",
+                    "latitude": 55.610962,
+                    "longitude": 37.602386,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Улица Академика Янгеля",
+                    "latitude": 55.596753,
+                    "longitude": 37.601498,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Аннино",
+                    "latitude": 55.583477,
+                    "longitude": 37.596999,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Бульвар Дмитрия Донского",
+                    "latitude": 55.568201,
+                    "longitude": 37.576856,
+                    "sort_order": 24
+                }
+            ]
+        },
+        {
+            "name": "Таганско-Краснопресненская",
+            "color": "943E90",
+            "sort_order": 7,
+            "stations": [
+                {
+                    "name": "Планерная",
+                    "latitude": 55.859676,
+                    "longitude": 37.436808,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Сходненская",
+                    "latitude": 55.84926,
+                    "longitude": 37.44076,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Тушинская",
+                    "latitude": 55.825479,
+                    "longitude": 37.437024,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Спартак",
+                    "latitude": 55.8182,
+                    "longitude": 37.4352,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Щукинская",
+                    "latitude": 55.8094,
+                    "longitude": 37.463241,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Октябрьское поле",
+                    "latitude": 55.793581,
+                    "longitude": 37.493317,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Полежаевская",
+                    "latitude": 55.777201,
+                    "longitude": 37.517895,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Беговая",
+                    "latitude": 55.773505,
+                    "longitude": 37.545518,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Улица 1905 года",
+                    "latitude": 55.763944,
+                    "longitude": 37.562271,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Баррикадная",
+                    "latitude": 55.760793,
+                    "longitude": 37.581242,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Пушкинская",
+                    "latitude": 55.765607,
+                    "longitude": 37.604356,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Кузнецкий мост",
+                    "latitude": 55.761498,
+                    "longitude": 37.624423,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Китай-город",
+                    "latitude": 55.75436,
+                    "longitude": 37.633877,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Таганская",
+                    "latitude": 55.739502,
+                    "longitude": 37.653605,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Пролетарская",
+                    "latitude": 55.731546,
+                    "longitude": 37.666917,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Волгоградский проспект",
+                    "latitude": 55.725546,
+                    "longitude": 37.685197,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Текстильщики",
+                    "latitude": 55.709211,
+                    "longitude": 37.732117,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Кузьминки",
+                    "latitude": 55.705493,
+                    "longitude": 37.763295,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Рязанский проспект",
+                    "latitude": 55.716139,
+                    "longitude": 37.792694,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Выхино",
+                    "latitude": 55.715983,
+                    "longitude": 37.816788,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Лермонтовский проспект",
+                    "latitude": 55.702036,
+                    "longitude": 37.851044,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Жулебино",
+                    "latitude": 55.684722,
+                    "longitude": 37.855833,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Котельники",
+                    "latitude": 55.6743,
+                    "longitude": 37.8582,
+                    "sort_order": 22
+                }
+            ]
+        },
+        {
+            "name": "Кольцевая",
+            "color": "915133",
+            "sort_order": 8,
+            "stations": [
+                {
+                    "name": "Новослободская",
+                    "latitude": 55.779606,
+                    "longitude": 37.601252,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Проспект Мира",
+                    "latitude": 55.779584,
+                    "longitude": 37.633646,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Комсомольская",
+                    "latitude": 55.775672,
+                    "longitude": 37.654772,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Курская",
+                    "latitude": 55.758631,
+                    "longitude": 37.661059,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Таганская",
+                    "latitude": 55.742396,
+                    "longitude": 37.653334,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Павелецкая",
+                    "latitude": 55.731414,
+                    "longitude": 37.636294,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Добрынинская",
+                    "latitude": 55.728994,
+                    "longitude": 37.622533,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Октябрьская",
+                    "latitude": 55.729264,
+                    "longitude": 37.611049,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Парк культуры",
+                    "latitude": 55.735221,
+                    "longitude": 37.593095,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Киевская",
+                    "latitude": 55.74361,
+                    "longitude": 37.56735,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Краснопресненская",
+                    "latitude": 55.760378,
+                    "longitude": 37.577114,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Белорусская",
+                    "latitude": 55.775179,
+                    "longitude": 37.582303,
+                    "sort_order": 12
+                }
+            ]
+        },
+        {
+            "name": "Люблинско-Дмитровская",
+            "color": "BED12C",
+            "sort_order": 9,
+            "stations": [
+                {
+                    "name": "Физтех",
+                    "latitude": 55.921389,
+                    "longitude": 37.546389,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Лианозово",
+                    "latitude": 55.931111,
+                    "longitude": 37.543611,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Яхромская",
+                    "latitude": 55.8775,
+                    "longitude": 37.545833,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Селигерская",
+                    "latitude": 55.86483,
+                    "longitude": 37.55005,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Верхние Лихоборы",
+                    "latitude": 55.85566,
+                    "longitude": 37.56282,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Окружная",
+                    "latitude": 55.848889,
+                    "longitude": 37.571111,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Петровско-Разумовская",
+                    "latitude": 55.836667,
+                    "longitude": 37.575556,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Фонвизинская",
+                    "latitude": 55.822778,
+                    "longitude": 37.588056,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Бутырская ",
+                    "latitude": 55.813333,
+                    "longitude": 37.602778,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Марьина Роща",
+                    "latitude": 55.793723,
+                    "longitude": 37.61618,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Достоевская",
+                    "latitude": 55.781667,
+                    "longitude": 37.613889,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Трубная",
+                    "latitude": 55.76771,
+                    "longitude": 37.621926,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Сретенский бульвар",
+                    "latitude": 55.766106,
+                    "longitude": 37.635688,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Чкаловская",
+                    "latitude": 55.755951,
+                    "longitude": 37.659293,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Римская",
+                    "latitude": 55.747027,
+                    "longitude": 37.679996,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Крестьянская застава",
+                    "latitude": 55.732278,
+                    "longitude": 37.665325,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Дубровка",
+                    "latitude": 55.71807,
+                    "longitude": 37.676259,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Кожуховская",
+                    "latitude": 55.706156,
+                    "longitude": 37.68544,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Печатники",
+                    "latitude": 55.692921,
+                    "longitude": 37.728338,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Волжская",
+                    "latitude": 55.690446,
+                    "longitude": 37.754314,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Люблино",
+                    "latitude": 55.676596,
+                    "longitude": 37.761639,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Братиславская",
+                    "latitude": 55.658817,
+                    "longitude": 37.748415,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Марьино",
+                    "latitude": 55.649158,
+                    "longitude": 37.743844,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Борисово",
+                    "latitude": 55.6325,
+                    "longitude": 37.743333,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Шипиловская",
+                    "latitude": 55.621667,
+                    "longitude": 37.743611,
+                    "sort_order": 24
+                },
+                {
+                    "name": "Зябликово",
+                    "latitude": 55.611944,
+                    "longitude": 37.745278,
+                    "sort_order": 25
+                }
+            ]
+        },
+        {
+            "name": "Каховская",
+            "color": "88CDCF",
+            "sort_order": 10,
+            "stations": [
+                {
+                    "name": "Каширская",
+                    "latitude": 55.654327,
+                    "longitude": 37.647705,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Варшавская",
+                    "latitude": 55.653294,
+                    "longitude": 37.619522,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Каховская",
+                    "latitude": 55.652923,
+                    "longitude": 37.596573,
+                    "sort_order": 2
+                }
+            ]
+        },
+        {
+            "name": "Бутовская",
+            "color": "BAC8E8",
+            "sort_order": 11,
+            "stations": [
+                {
+                    "name": "Бунинская аллея",
+                    "latitude": 55.537977,
+                    "longitude": 37.515899,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Улица Горчакова",
+                    "latitude": 55.542281,
+                    "longitude": 37.532063,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Бульвар Адмирала Ушакова",
+                    "latitude": 55.545207,
+                    "longitude": 37.542329,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Улица Скобелевская",
+                    "latitude": 55.548103,
+                    "longitude": 37.552721,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Улица Старокачаловская",
+                    "latitude": 55.569194,
+                    "longitude": 37.576074,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Лесопарковая",
+                    "latitude": 55.581656,
+                    "longitude": 37.577816,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Битцевский Парк",
+                    "latitude": 55.600066,
+                    "longitude": 37.556058,
+                    "sort_order": 6
+                }
+            ]
+        },
+        {
+            "name": "Солнцевская",
+            "color": "FFCD1C",
+            "sort_order": 12,
+            "stations": [
+                {
+                    "name": "Деловой центр",
+                    "latitude": 55.7491,
+                    "longitude": 37.5395,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Пыхтино",
+                    "latitude": 55.625,
+                    "longitude": 37.298056,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Парк Победы",
+                    "latitude": 55.736478,
+                    "longitude": 37.514401,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Минская",
+                    "latitude": 55.7232,
+                    "longitude": 37.5038,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Ломоносовский проспект",
+                    "latitude": 55.7055,
+                    "longitude": 37.5225,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Раменки",
+                    "latitude": 55.6961,
+                    "longitude": 37.505,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Мичуринский проспект",
+                    "latitude": 55.6888,
+                    "longitude": 37.485,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Озёрная",
+                    "latitude": 55.6698,
+                    "longitude": 37.4495,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Говорово",
+                    "latitude": 55.6588,
+                    "longitude": 37.4174,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Солнцево",
+                    "latitude": 55.649,
+                    "longitude": 37.3911,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Боровское шоссе",
+                    "latitude": 55.647,
+                    "longitude": 37.3701,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Новопеределкино",
+                    "latitude": 55.6385,
+                    "longitude": 37.3544,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Рассказовка",
+                    "latitude": 55.6324,
+                    "longitude": 37.3328,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Аэропорт Внуково",
+                    "latitude": 55.606667,
+                    "longitude": 37.288333,
+                    "sort_order": 13
+                }
+            ]
+        },
+        {
+            "name": "МЦК",
+            "color": "CC4C6E",
+            "sort_order": 13,
+            "stations": [
+                {
+                    "name": "Окружная",
+                    "latitude": 55.848889,
+                    "longitude": 37.571111,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Владыкино",
+                    "latitude": 55.847222,
+                    "longitude": 37.591944,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Ботанический сад",
+                    "latitude": 55.845556,
+                    "longitude": 37.640278,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Ростокино",
+                    "latitude": 55.839444,
+                    "longitude": 37.667778,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Белокаменная",
+                    "latitude": 55.83,
+                    "longitude": 37.700556,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Бульвар Рокоссовского",
+                    "latitude": 55.817222,
+                    "longitude": 37.736944,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Локомотив",
+                    "latitude": 55.803219,
+                    "longitude": 37.745742,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Измайлово",
+                    "latitude": 55.788611,
+                    "longitude": 37.742778,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Соколиная Гора",
+                    "latitude": 55.77,
+                    "longitude": 37.745278,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Шоссе Энтузиастов",
+                    "latitude": 55.758633,
+                    "longitude": 37.748477,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Андроновка",
+                    "latitude": 55.741111,
+                    "longitude": 37.734444,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Нижегородская",
+                    "latitude": 55.732222,
+                    "longitude": 37.72825,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Новохохловская",
+                    "latitude": 55.723889,
+                    "longitude": 37.716111,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Угрешская",
+                    "latitude": 55.718333,
+                    "longitude": 37.697778,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Дубровка",
+                    "latitude": 55.71268,
+                    "longitude": 37.677775,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Автозаводская",
+                    "latitude": 55.70631,
+                    "longitude": 37.66314,
+                    "sort_order": 15
+                },
+                {
+                    "name": "ЗИЛ",
+                    "latitude": 55.698333,
+                    "longitude": 37.648333,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Верхние Котлы",
+                    "latitude": 55.69,
+                    "longitude": 37.618889,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Крымская",
+                    "latitude": 55.690038,
+                    "longitude": 37.605,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Площадь Гагарина",
+                    "latitude": 55.706944,
+                    "longitude": 37.585833,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Лужники",
+                    "latitude": 55.720278,
+                    "longitude": 37.563056,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Кутузовская",
+                    "latitude": 55.740833,
+                    "longitude": 37.533333,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Деловой центр",
+                    "latitude": 55.747222,
+                    "longitude": 37.532222,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Шелепиха",
+                    "latitude": 55.7575,
+                    "longitude": 37.525556,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Хорошево",
+                    "latitude": 55.777222,
+                    "longitude": 37.507222,
+                    "sort_order": 24
+                },
+                {
+                    "name": "Зорге",
+                    "latitude": 55.787778,
+                    "longitude": 37.504444,
+                    "sort_order": 25
+                },
+                {
+                    "name": "Панфиловская",
+                    "latitude": 55.799167,
+                    "longitude": 37.498889,
+                    "sort_order": 26
+                },
+                {
+                    "name": "Стрешнево",
+                    "latitude": 55.813611,
+                    "longitude": 37.486944,
+                    "sort_order": 27
+                },
+                {
+                    "name": "Балтийская",
+                    "latitude": 55.825833,
+                    "longitude": 37.496111,
+                    "sort_order": 28
+                },
+                {
+                    "name": "Коптево",
+                    "latitude": 55.839637,
+                    "longitude": 37.520037,
+                    "sort_order": 29
+                },
+                {
+                    "name": "Лихоборы",
+                    "latitude": 55.847222,
+                    "longitude": 37.551389,
+                    "sort_order": 30
+                }
+            ]
+        },
+        {
+            "name": "Большая кольцевая линия",
+            "color": "88CDCF",
+            "sort_order": 14,
+            "stations": [
+                {
+                    "name": "Мичуринский проспект",
+                    "latitude": 55.688333,
+                    "longitude": 37.485,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Проспект Вернадского",
+                    "latitude": 55.677778,
+                    "longitude": 37.505,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Новаторская",
+                    "latitude": 55.670833,
+                    "longitude": 37.52,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Воронцовская",
+                    "latitude": 55.658333,
+                    "longitude": 37.540833,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Зюзино",
+                    "latitude": 55.655158,
+                    "longitude": 37.575786,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Каховская",
+                    "latitude": 55.653056,
+                    "longitude": 37.598333,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Варшавская",
+                    "latitude": 55.653333,
+                    "longitude": 37.619444,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Каширская",
+                    "latitude": 55.655,
+                    "longitude": 37.648611,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Кленовый бульвар",
+                    "latitude": 55.674444,
+                    "longitude": 37.680833,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Нагатинский Затон",
+                    "latitude": 55.684444,
+                    "longitude": 37.703611,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Печатники",
+                    "latitude": 55.694722,
+                    "longitude": 37.7275,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Текстильщики",
+                    "latitude": 55.708333,
+                    "longitude": 37.728333,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Нижегородская",
+                    "latitude": 55.7325,
+                    "longitude": 37.728611,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Авиамоторная",
+                    "latitude": 55.753056,
+                    "longitude": 37.718611,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Лефортово",
+                    "latitude": 55.764444,
+                    "longitude": 37.702778,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Электрозаводская",
+                    "latitude": 55.782057,
+                    "longitude": 37.7053,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Сокольники",
+                    "latitude": 55.791111,
+                    "longitude": 37.678889,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Рижская",
+                    "latitude": 55.792222,
+                    "longitude": 37.633889,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Марьина Роща",
+                    "latitude": 55.798333,
+                    "longitude": 37.617222,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Савёловская",
+                    "latitude": 55.794054,
+                    "longitude": 37.587163,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Петровский парк",
+                    "latitude": 55.79233,
+                    "longitude": 37.55952,
+                    "sort_order": 20
+                },
+                {
+                    "name": "ЦСКА",
+                    "latitude": 55.78643,
+                    "longitude": 37.53502,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Хорошевская",
+                    "latitude": 55.77643,
+                    "longitude": 37.51981,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Шелепиха",
+                    "latitude": 55.75723,
+                    "longitude": 37.52571,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Деловой центр",
+                    "latitude": 55.7491,
+                    "longitude": 37.5395,
+                    "sort_order": 24
+                },
+                {
+                    "name": "Народное Ополчение",
+                    "latitude": 55.77592,
+                    "longitude": 37.485073,
+                    "sort_order": 25
+                },
+                {
+                    "name": "Мнёвники",
+                    "latitude": 55.761153,
+                    "longitude": 37.47139,
+                    "sort_order": 26
+                },
+                {
+                    "name": "Терехово",
+                    "latitude": 55.748108,
+                    "longitude": 37.459738,
+                    "sort_order": 27
+                },
+                {
+                    "name": "Кунцевская",
+                    "latitude": 55.730278,
+                    "longitude": 37.445833,
+                    "sort_order": 28
+                },
+                {
+                    "name": "Давыдково",
+                    "latitude": 55.715278,
+                    "longitude": 37.451667,
+                    "sort_order": 29
+                },
+                {
+                    "name": "Аминьевская",
+                    "latitude": 55.697222,
+                    "longitude": 37.464167,
+                    "sort_order": 30
+                }
+            ]
+        },
+        {
+            "name": "Некрасовская",
+            "color": "CC0066",
+            "sort_order": 15,
+            "stations": [
+                {
+                    "name": "Косино",
+                    "latitude": 55.7026,
+                    "longitude": 37.8511,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Улица Дмитриевского",
+                    "latitude": 55.7093,
+                    "longitude": 37.8792,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Лухмановская",
+                    "latitude": 55.7078,
+                    "longitude": 37.9004,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Некрасовка",
+                    "latitude": 55.7029,
+                    "longitude": 37.9264,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Юго-Восточная",
+                    "latitude": 55.71,
+                    "longitude": 37.82,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Окская",
+                    "latitude": 55.72,
+                    "longitude": 37.77,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Стахановская",
+                    "latitude": 55.73,
+                    "longitude": 37.76,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Нижегородская",
+                    "latitude": 55.73,
+                    "longitude": 37.73,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Лефортово",
+                    "latitude": 55.764444,
+                    "longitude": 37.702778,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Электрозаводская",
+                    "latitude": 55.782057,
+                    "longitude": 37.7053,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Авиамоторная",
+                    "latitude": 55.751933,
+                    "longitude": 37.717444,
+                    "sort_order": 10
+                }
+            ]
+        },
+        {
+            "name": "МЦД-1",
+            "color": "F5A528",
+            "sort_order": 16,
+            "stations": [
+                {
+                    "name": "Лобня",
+                    "latitude": 56.0048,
+                    "longitude": 37.29057,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Шереметьевская",
+                    "latitude": 55.983882,
+                    "longitude": 37.498752,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Хлебниково",
+                    "latitude": 55.970682,
+                    "longitude": 37.504638,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Водники",
+                    "latitude": 55.953419,
+                    "longitude": 37.511143,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Долгопрудная",
+                    "latitude": 55.938656,
+                    "longitude": 37.520542,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Новодачная",
+                    "latitude": 55.924459,
+                    "longitude": 37.527877,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Марк",
+                    "latitude": 55.904458,
+                    "longitude": 37.538242,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Лианозово",
+                    "latitude": 55.897316,
+                    "longitude": 37.553261,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Бескудниково",
+                    "latitude": 55.882713,
+                    "longitude": 37.567768,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Дегунино",
+                    "latitude": 55.86586,
+                    "longitude": 37.573235,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Окружная",
+                    "latitude": 55.848889,
+                    "longitude": 37.571111,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Тимирязевская",
+                    "latitude": 55.81866,
+                    "longitude": 37.574498,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Савёловская",
+                    "latitude": 55.793936,
+                    "longitude": 37.587038,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Белорусская",
+                    "latitude": 55.775179,
+                    "longitude": 37.582303,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Беговая",
+                    "latitude": 55.773505,
+                    "longitude": 37.545518,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Тестовская",
+                    "latitude": 55.754292,
+                    "longitude": 37.531551,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Фили",
+                    "latitude": 55.744263,
+                    "longitude": 37.514526,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Славянский бульвар",
+                    "latitude": 55.729722,
+                    "longitude": 37.470556,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Кунцевская",
+                    "latitude": 55.730554,
+                    "longitude": 37.445591,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Рабочий Посёлок",
+                    "latitude": 55.726957,
+                    "longitude": 37.415577,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Сетунь",
+                    "latitude": 55.723713,
+                    "longitude": 37.397259,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Немчиновка",
+                    "latitude": 55.715668,
+                    "longitude": 37.374611,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Сколково",
+                    "latitude": 55.666801,
+                    "longitude": 37.424618,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Баковка",
+                    "latitude": 55.682816,
+                    "longitude": 37.315205,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Одинцово",
+                    "latitude": 55.67798,
+                    "longitude": 37.27773,
+                    "sort_order": 24
+                }
+            ]
+        },
+        {
+            "name": "МЦД-2",
+            "color": "E74683",
+            "sort_order": 17,
+            "stations": [
+                {
+                    "name": "Нахабино",
+                    "latitude": 55.841522,
+                    "longitude": 37.185204,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Аникеевка",
+                    "latitude": 55.832099,
+                    "longitude": 37.219829,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Опалиха",
+                    "latitude": 55.82333,
+                    "longitude": 37.246843,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Красногорская",
+                    "latitude": 55.814571,
+                    "longitude": 37.303337,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Павшино",
+                    "latitude": 55.815231,
+                    "longitude": 37.341461,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Пенягино",
+                    "latitude": 55.822539,
+                    "longitude": 37.361049,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Волоколамская",
+                    "latitude": 55.835154,
+                    "longitude": 37.382453,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Трикотажная",
+                    "latitude": 55.833137,
+                    "longitude": 37.398967,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Тушинская",
+                    "latitude": 55.825479,
+                    "longitude": 37.437024,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Покровское-Стрешнево",
+                    "latitude": 55.814247,
+                    "longitude": 37.47678,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Стрешнево",
+                    "latitude": 55.813611,
+                    "longitude": 37.486944,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Красный Балтиец",
+                    "latitude": 55.815514,
+                    "longitude": 37.526367,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Гражданская",
+                    "latitude": 55.805527,
+                    "longitude": 37.55315,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Дмитровская",
+                    "latitude": 55.808056,
+                    "longitude": 37.581734,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Рижская",
+                    "latitude": 55.792494,
+                    "longitude": 37.636114,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Площадь трёх вокзалов",
+                    "latitude": 55.776087,
+                    "longitude": 37.651861,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Курская",
+                    "latitude": 55.757622,
+                    "longitude": 37.660767,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Москва Товарная",
+                    "latitude": 55.745358,
+                    "longitude": 37.688839,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Калитники",
+                    "latitude": 55.733981,
+                    "longitude": 37.702203,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Новохохловская",
+                    "latitude": 55.718523,
+                    "longitude": 37.719236,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Текстильщики",
+                    "latitude": 55.708934,
+                    "longitude": 37.731283,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Люблино",
+                    "latitude": 55.676596,
+                    "longitude": 37.761639,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Депо",
+                    "latitude": 55.674257,
+                    "longitude": 37.728446,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Перерва",
+                    "latitude": 55.660809,
+                    "longitude": 37.716278,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Курьяново",
+                    "latitude": 55.649722,
+                    "longitude": 37.701667,
+                    "sort_order": 24
+                },
+                {
+                    "name": "Москворечье",
+                    "latitude": 55.641239,
+                    "longitude": 37.689789,
+                    "sort_order": 25
+                },
+                {
+                    "name": "Царицыно",
+                    "latitude": 55.618309,
+                    "longitude": 37.668846,
+                    "sort_order": 26
+                },
+                {
+                    "name": "Покровское",
+                    "latitude": 55.814247,
+                    "longitude": 37.47678,
+                    "sort_order": 27
+                },
+                {
+                    "name": "Красный строитель",
+                    "latitude": 55.589455,
+                    "longitude": 37.615093,
+                    "sort_order": 28
+                },
+                {
+                    "name": "Битца",
+                    "latitude": 55.571186,
+                    "longitude": 37.611443,
+                    "sort_order": 29
+                },
+                {
+                    "name": "Бутово",
+                    "latitude": 55.548279,
+                    "longitude": 37.555668,
+                    "sort_order": 30
+                },
+                {
+                    "name": "Щербинка",
+                    "latitude": 55.509724,
+                    "longitude": 37.562008,
+                    "sort_order": 31
+                },
+                {
+                    "name": "Остафьево",
+                    "latitude": 55.50337,
+                    "longitude": 37.520055,
+                    "sort_order": 32
+                },
+                {
+                    "name": "Силикатная",
+                    "latitude": 55.470278,
+                    "longitude": 37.555278,
+                    "sort_order": 33
+                },
+                {
+                    "name": "Подольск",
+                    "latitude": 55.431667,
+                    "longitude": 37.565,
+                    "sort_order": 34
+                },
+                {
+                    "name": "Марьина Роща",
+                    "latitude": 55.800833,
+                    "longitude": 37.618889,
+                    "sort_order": 35
+                }
+            ]
+        },
+        {
+            "name": "МЦД-3",
+            "color": "EA5B04",
+            "sort_order": 18,
+            "stations": [
+                {
+                    "name": "Крюково",
+                    "latitude": 55.979722,
+                    "longitude": 37.173611,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Малино",
+                    "latitude": 55.969167,
+                    "longitude": 37.211667,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Фирсановская",
+                    "latitude": 55.960278,
+                    "longitude": 37.251111,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Сходня",
+                    "latitude": 55.949722,
+                    "longitude": 37.298611,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Подрезково",
+                    "latitude": 55.941667,
+                    "longitude": 37.334722,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Новоподрезково",
+                    "latitude": 55.936389,
+                    "longitude": 37.351667,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Молжаниново",
+                    "latitude": 55.924167,
+                    "longitude": 37.380833,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Химки",
+                    "latitude": 55.894444,
+                    "longitude": 37.450833,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Левобережная",
+                    "latitude": 55.886944,
+                    "longitude": 37.468611,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Ховрино",
+                    "latitude": 55.879444,
+                    "longitude": 37.486667,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Грачёвская",
+                    "latitude": 55.869444,
+                    "longitude": 37.509167,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Моссельмаш",
+                    "latitude": 55.862222,
+                    "longitude": 37.526389,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Лихоборы",
+                    "latitude": 55.85,
+                    "longitude": 37.5525,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Петровско-Разумовская",
+                    "latitude": 55.839722,
+                    "longitude": 37.568333,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Останкино",
+                    "latitude": 55.817222,
+                    "longitude": 37.603611,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Рижская",
+                    "latitude": 55.796944,
+                    "longitude": 37.639167,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Митьково",
+                    "latitude": 55.786389,
+                    "longitude": 37.6675,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Электрозаводская",
+                    "latitude": 55.781111,
+                    "longitude": 37.705278,
+                    "sort_order": 17
+                },
+                {
+                    "name": "Сортировочная",
+                    "latitude": 55.763611,
+                    "longitude": 37.720833,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Авиамоторная",
+                    "latitude": 55.750278,
+                    "longitude": 37.721944,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Андроновка",
+                    "latitude": 55.744444,
+                    "longitude": 37.741111,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Перово",
+                    "latitude": 55.735556,
+                    "longitude": 37.765,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Плющево",
+                    "latitude": 55.730556,
+                    "longitude": 37.774167,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Вешняки",
+                    "latitude": 55.721944,
+                    "longitude": 37.799167,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Выхино",
+                    "latitude": 55.716575,
+                    "longitude": 37.815911,
+                    "sort_order": 24
+                },
+                {
+                    "name": "Косино",
+                    "latitude": 55.714167,
+                    "longitude": 37.8475,
+                    "sort_order": 25
+                },
+                {
+                    "name": "Ухтомская",
+                    "latitude": 55.698611,
+                    "longitude": 37.864167,
+                    "sort_order": 26
+                },
+                {
+                    "name": "Люберцы I",
+                    "latitude": 55.681667,
+                    "longitude": 37.896944,
+                    "sort_order": 27
+                },
+                {
+                    "name": "Панки",
+                    "latitude": 55.668889,
+                    "longitude": 37.9225,
+                    "sort_order": 28
+                },
+                {
+                    "name": "Томилино",
+                    "latitude": 55.655,
+                    "longitude": 37.954722,
+                    "sort_order": 29
+                },
+                {
+                    "name": "Красково",
+                    "latitude": 55.649722,
+                    "longitude": 37.9825,
+                    "sort_order": 30
+                },
+                {
+                    "name": "Малаховка",
+                    "latitude": 55.645,
+                    "longitude": 38.008333,
+                    "sort_order": 31
+                },
+                {
+                    "name": "Удельная",
+                    "latitude": 55.634444,
+                    "longitude": 38.043889,
+                    "sort_order": 32
+                },
+                {
+                    "name": "Быково",
+                    "latitude": 55.626667,
+                    "longitude": 38.070556,
+                    "sort_order": 33
+                },
+                {
+                    "name": "Ильинская",
+                    "latitude": 55.616389,
+                    "longitude": 38.100278,
+                    "sort_order": 34
+                },
+                {
+                    "name": "Отдых",
+                    "latitude": 55.601111,
+                    "longitude": 38.136944,
+                    "sort_order": 35
+                },
+                {
+                    "name": "Кратово",
+                    "latitude": 55.591667,
+                    "longitude": 38.16,
+                    "sort_order": 36
+                },
+                {
+                    "name": "Есенинская",
+                    "latitude": 55.581944,
+                    "longitude": 38.184167,
+                    "sort_order": 37
+                },
+                {
+                    "name": "Фабричная",
+                    "latitude": 55.572778,
+                    "longitude": 1.873333,
+                    "sort_order": 38
+                },
+                {
+                    "name": "Раменское",
+                    "latitude": 55.565278,
+                    "longitude": 55.565278,
+                    "sort_order": 39
+                },
+                {
+                    "name": "Ипподром",
+                    "latitude": 55.560278,
+                    "longitude": 38.238889,
+                    "sort_order": 40
+                }
+            ]
+        },
+        {
+            "name": "МЦД-4",
+            "color": "00CC66",
+            "sort_order": 19,
+            "stations": [
+                {
+                    "name": "Железнодорожная",
+                    "latitude": 55.7525,
+                    "longitude": 38.008889,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Ольгино",
+                    "latitude": 55.751667,
+                    "longitude": 37.978611,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Кучино",
+                    "latitude": 55.752222,
+                    "longitude": 37.954722,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Салтыковская",
+                    "latitude": 55.757778,
+                    "longitude": 37.923056,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Никольское",
+                    "latitude": 55.759722,
+                    "longitude": 37.897778,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Реутов",
+                    "latitude": 55.751389,
+                    "longitude": 37.855833,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Новогиреево",
+                    "latitude": 55.744444,
+                    "longitude": 37.818333,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Кусково",
+                    "latitude": 55.739722,
+                    "longitude": 37.795278,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Чухлинка",
+                    "latitude": 55.733889,
+                    "longitude": 55.733889,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Нижегородская",
+                    "latitude": 55.733333,
+                    "longitude": 37.729444,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Серп и Молот",
+                    "latitude": 55.748056,
+                    "longitude": 37.681944,
+                    "sort_order": 10
+                },
+                {
+                    "name": "Курская",
+                    "latitude": 55.740833,
+                    "longitude": 37.660556,
+                    "sort_order": 11
+                },
+                {
+                    "name": "Площадь трёх вокзалов",
+                    "latitude": 55.776667,
+                    "longitude": 37.651111,
+                    "sort_order": 12
+                },
+                {
+                    "name": "Рижская",
+                    "latitude": 55.793889,
+                    "longitude": 37.638611,
+                    "sort_order": 13
+                },
+                {
+                    "name": "Марьина Роща",
+                    "latitude": 55.800833,
+                    "longitude": 37.618889,
+                    "sort_order": 14
+                },
+                {
+                    "name": "Савёловская",
+                    "latitude": 55.794444,
+                    "longitude": 37.590278,
+                    "sort_order": 15
+                },
+                {
+                    "name": "Белорусская",
+                    "latitude": 55.776389,
+                    "longitude": 37.580278,
+                    "sort_order": 16
+                },
+                {
+                    "name": "Ермакова Роща",
+                    "latitude": 55.765556,
+                    "longitude": 37.535278,
+                    "sort_order": 18
+                },
+                {
+                    "name": "Тестовская",
+                    "latitude": 55.750833,
+                    "longitude": 37.530278,
+                    "sort_order": 19
+                },
+                {
+                    "name": "Кутузовская",
+                    "latitude": 55.741944,
+                    "longitude": 37.533056,
+                    "sort_order": 20
+                },
+                {
+                    "name": "Поклонная",
+                    "latitude": 55.728333,
+                    "longitude": 37.511667,
+                    "sort_order": 21
+                },
+                {
+                    "name": "Минская",
+                    "latitude": 55.723333,
+                    "longitude": 37.533056,
+                    "sort_order": 22
+                },
+                {
+                    "name": "Матвеевское",
+                    "latitude": 55.704722,
+                    "longitude": 37.482222,
+                    "sort_order": 23
+                },
+                {
+                    "name": "Аминьевская",
+                    "latitude": 55.699444,
+                    "longitude": 37.468056,
+                    "sort_order": 24
+                },
+                {
+                    "name": "Очаково I",
+                    "latitude": 55.683611,
+                    "longitude": 37.451389,
+                    "sort_order": 25
+                },
+                {
+                    "name": "Мещерская",
+                    "latitude": 55.666667,
+                    "longitude": 37.424444,
+                    "sort_order": 26
+                },
+                {
+                    "name": "Солнечная",
+                    "latitude": 55.656944,
+                    "longitude": 37.383611,
+                    "sort_order": 27
+                },
+                {
+                    "name": "Новопеределкино",
+                    "latitude": 55.639167,
+                    "longitude": 37.381111,
+                    "sort_order": 28
+                },
+                {
+                    "name": "Переделкино",
+                    "latitude": 55.656111,
+                    "longitude": 37.353889,
+                    "sort_order": 29
+                },
+                {
+                    "name": "Мичуринец",
+                    "latitude": 55.646111,
+                    "longitude": 37.315,
+                    "sort_order": 30
+                },
+                {
+                    "name": "Внуково",
+                    "latitude": 55.648889,
+                    "longitude": 37.269722,
+                    "sort_order": 31
+                },
+                {
+                    "name": "Лесной Городок",
+                    "latitude": 55.630278,
+                    "longitude": 37.219167,
+                    "sort_order": 32
+                },
+                {
+                    "name": "Толстопальцево",
+                    "latitude": 55.607778,
+                    "longitude": 37.186389,
+                    "sort_order": 33
+                },
+                {
+                    "name": "Кокошкино",
+                    "latitude": 55.599722,
+                    "longitude": 37.171389,
+                    "sort_order": 34
+                },
+                {
+                    "name": "Санино",
+                    "latitude": 55.583889,
+                    "longitude": 37.138333,
+                    "sort_order": 35
+                },
+                {
+                    "name": "Крёкшино",
+                    "latitude": 55.577778,
+                    "longitude": 37.109722,
+                    "sort_order": 36
+                },
+                {
+                    "name": "Победа",
+                    "latitude": 55.566111,
+                    "longitude": 37.093056,
+                    "sort_order": 37
+                },
+                {
+                    "name": "Апрелевка",
+                    "latitude": 55.550278,
+                    "longitude": 37.0675,
+                    "sort_order": 38
+                }
+            ]
+        },
+        {
+            "name": "Троицкая",
+            "color": "03795F",
+            "sort_order": 20,
+            "stations": [
+                {
+                    "name": "ЗИЛ",
+                    "latitude": 55.697915,
+                    "longitude": 37.647565,
+                    "sort_order": 0
+                },
+                {
+                    "name": "Крымская",
+                    "latitude": 55.689971,
+                    "longitude": 37.605612,
+                    "sort_order": 1
+                },
+                {
+                    "name": "Академическая",
+                    "latitude": 55.68808,
+                    "longitude": 37.57501,
+                    "sort_order": 2
+                },
+                {
+                    "name": "Вавиловская",
+                    "latitude": 55.686688,
+                    "longitude": 37.543706,
+                    "sort_order": 3
+                },
+                {
+                    "name": "Новаторская",
+                    "latitude": 55.670833,
+                    "longitude": 37.52,
+                    "sort_order": 4
+                },
+                {
+                    "name": "Университет дружбы народов",
+                    "latitude": 55.64824,
+                    "longitude": 37.507556,
+                    "sort_order": 5
+                },
+                {
+                    "name": "Генерала Тюленева",
+                    "latitude": 55.626248,
+                    "longitude": 37.486032,
+                    "sort_order": 6
+                },
+                {
+                    "name": "Тютчевская",
+                    "latitude": 55.618801,
+                    "longitude": 37.481415,
+                    "sort_order": 7
+                },
+                {
+                    "name": "Корниловская",
+                    "latitude": 55.599411,
+                    "longitude": 37.479586,
+                    "sort_order": 8
+                },
+                {
+                    "name": "Коммунарка",
+                    "latitude": 55.57354,
+                    "longitude": 37.468116,
+                    "sort_order": 9
+                },
+                {
+                    "name": "Новомосковская",
+                    "latitude": 55.560094,
+                    "longitude": 37.469807,
+                    "sort_order": 10
+                }
+            ]
+        }
+    ]
+}

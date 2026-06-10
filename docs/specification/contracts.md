@@ -200,7 +200,7 @@ access level template
 Переходный порядок:
 
 1. Добавить новую модель membership contracts. Выполнено.
-2. Создать owner membership contracts для существующих площадок по `created_by_user_id`. В чистой схеме это делает seeder; для реальной базы нужен отдельный backfill-процесс.
+2. Создать owner membership contracts для существующих площадок по `created_by_user_id`. Это должен делать отдельный backfill-процесс или специализированный data migration, потому что базовый `DatabaseSeeder` остается production-safe и не создает demo venues или contracts.
 3. Сохранить creator fallback только для площадок без действующего owner membership contract. Выполнено.
 4. Перевести списки и карточки площадок на contract effective permissions. Выполнено для `venue` membership.
 5. Удалить creator fallback отдельным шагом, когда данные и тесты подтверждают корректность. Не выполнено, оставлено как будущий этап.

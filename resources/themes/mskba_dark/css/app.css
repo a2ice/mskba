@@ -101,7 +101,7 @@ a:not([class*="btn"]).current {
 }
 
 body:not(.main) .site-header {
-    background: linear-gradient(0deg, rgba(255,255,255,.25) 0%, #000 1%, #210e01 85%, rgb(101, 5, 98) 100%);
+    background: linear-gradient(0deg, rgba(255,255,255,.25) 0%, #000 1%, #210e01 85%, rgb(46, 2, 44) 100%);
 }
 
 .site-header a {
