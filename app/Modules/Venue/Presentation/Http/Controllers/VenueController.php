@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
@@ -11,8 +12,6 @@ use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
-
-use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 
 class VenueController extends Controller
 {
@@ -27,17 +26,17 @@ class VenueController extends Controller
     public function create(ListMetrostationsHandler $listMetrostations): Response
     {
         $metros = $listMetrostations->handle();
-       
+
         return ThemeResolver::page('venues.create', [
             'types' => VenueTypeEnum::cases(),
-            'metros' => $metros
+            'metros' => $metros,
         ]);
     }
 
     public function store(CreateVenueRequest $request, CreateAccountVenueHandler $createVenue): RedirectResponse
     {
         try {
-            $venue = $createVenue->handle($request->user(), $request->validated());
+            $venue = $createVenue->handle($request->user(), $request->validated(), $request->locationData());
         } catch (\Exception $e) {
             return redirect()
                 ->route('venues.create')

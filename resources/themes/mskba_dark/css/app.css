@@ -6,6 +6,8 @@
 @import './modal';
 @import './user';
 @import './tooltip';
+@import './tom-select';
+@import './address-suggest';
 
 @import './pages/home';
 @import './pages/account';

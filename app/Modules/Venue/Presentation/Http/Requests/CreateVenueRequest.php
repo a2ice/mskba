@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Presentation\Http\Requests;
 
+use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -11,8 +12,6 @@ class CreateVenueRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
-        //
         return $this->user()?->can('add_venue') === true;
     }
 
@@ -40,7 +39,31 @@ class CreateVenueRequest extends FormRequest
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'description' => ['nullable', 'string', 'max:5000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
+            'location' => ['nullable', 'array'],
+            'location.raw_address' => ['nullable', 'string', 'max:1000'],
+            'location.city' => ['nullable', 'string', 'max:255'],
+            'location.street' => ['nullable', 'string', 'max:255'],
+            'location.building' => ['nullable', 'string', 'max:255'],
+            'location.postal_code' => ['nullable', 'string', 'max:32'],
+            'location.latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'location.longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'location.metro_station_ids' => ['nullable', 'array'],
+            'location.metro_station_ids.*' => ['integer', 'distinct', 'exists:metro_stations,id'],
         ];
+    }
+
+    public function locationData(): CreateLocationDTO
+    {
+        return new CreateLocationDTO(
+            rawAddress: $this->nullableString('location.raw_address') ?? $this->nullableString('raw_address'),
+            city: $this->nullableString('location.city'),
+            street: $this->nullableString('location.street'),
+            building: $this->nullableString('location.building'),
+            postalCode: $this->nullableString('location.postal_code'),
+            latitude: $this->nullableFloat('location.latitude'),
+            longitude: $this->nullableFloat('location.longitude'),
+            metroStationIds: $this->metroStationIds(),
+        );
     }
 
     /**
@@ -53,6 +76,52 @@ class CreateVenueRequest extends FormRequest
             'type' => 'тип площадки',
             'description' => 'описание',
             'raw_address' => 'адрес',
+            'location.raw_address' => 'адрес',
+            'location.city' => 'город',
+            'location.street' => 'улица',
+            'location.building' => 'дом',
+            'location.postal_code' => 'почтовый индекс',
+            'location.latitude' => 'широта',
+            'location.longitude' => 'долгота',
+            'location.metro_station_ids' => 'ближайшее метро',
+            'location.metro_station_ids.*' => 'станция метро',
         ];
+    }
+
+    private function nullableString(string $key): ?string
+    {
+        $value = $this->validated($key);
+
+        return is_string($value) && trim($value) !== ''
+            ? trim($value)
+            : null;
+    }
+
+    private function nullableFloat(string $key): ?float
+    {
+        $value = $this->validated($key);
+
+        return is_numeric($value)
+            ? (float) $value
+            : null;
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function metroStationIds(): array
+    {
+        $metroStationIds = $this->validated('location.metro_station_ids');
+
+        if (! is_array($metroStationIds)) {
+            return [];
+        }
+
+        return collect($metroStationIds)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

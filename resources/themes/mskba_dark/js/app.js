@@ -17,6 +17,51 @@ import './features/auth.js';
 import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
 import './features/tooltips.js';
+import './features/address-suggest.js';
+
+import TomSelect from 'tom-select';
+import 'tom-select/dist/css/tom-select.css';
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.predictive_select').forEach((select) => {
+        new TomSelect(select, {
+            create: false,
+            maxItems: 1,
+            placeholder: select.dataset.placeholder || 'Начните вводить...',
+        });
+    });
+
+    document.querySelectorAll('.metro_select').forEach((select) => {
+        new TomSelect(select, {
+            create: false,
+            placeholder: 'Начните вводить станцию метро...',
+            plugins: ['remove_button'],
+            render: {
+                option(data, escape) {
+                    return metroOptionTemplate(data, escape);
+                },
+                item(data, escape) {
+                    return metroOptionTemplate(data, escape);
+                },
+            },
+        });
+    });
+});
+
+function metroOptionTemplate(data, escape) {
+    const color = data.lineColor || '#666666';
+    const lineName = data.lineName
+        ? `<span class="metro-option__line">${escape(data.lineName)}</span>`
+        : '';
+
+    return `
+        <div class="metro-option">
+            <span class="metro-dot" style="background:${color};"></span>
+            <span class="metro-option__name">${escape(data.text)}</span>
+            ${lineName}
+        </div>
+    `;
+}
 
 var header,
     headerHeight = 0;
