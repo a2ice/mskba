@@ -1,0 +1,257 @@
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-address-suggest]').forEach(initAddressSuggest);
+});
+
+function initAddressSuggest(container) {
+    const input = container.querySelector('[data-address-suggest-input]');
+    const list = container.querySelector('[data-address-suggest-list]');
+    const error = container.querySelector('[data-address-suggest-error]');
+    const metroSelect = document.querySelector('[data-address-metro-select]');
+
+    if (!input || !list) {
+        return;
+    }
+
+    let timer = null;
+    let requestId = 0;
+    let applyingSuggestion = false;
+
+    metroSelect?.addEventListener('change', () => {
+        if (metroSelect.dataset.addressApplyingMetro === '1') {
+            return;
+        }
+
+        metroSelect.dataset.addressUserMetroChanged = '1';
+    });
+
+    input.addEventListener('input', () => {
+        if (applyingSuggestion) {
+            applyingSuggestion = false;
+            return;
+        }
+
+        clearTimeout(timer);
+        clearStructuredFields(container);
+        hideError(error);
+
+        const query = input.value.trim();
+
+        if (query === '') {
+            hideList(list);
+            clearAutofilledMetro(metroSelect);
+            return;
+        }
+
+        if (query.length < 3) {
+            hideList(list);
+            return;
+        }
+
+        timer = setTimeout(() => {
+            fetchSuggestions(input, list, error, ++requestId, () => requestId);
+        }, 350);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!container.contains(event.target)) {
+            hideList(list);
+        }
+    });
+
+    list.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-address-suggestion-index]');
+
+        if (!button) {
+            return;
+        }
+
+        const suggestions = JSON.parse(list.dataset.addressSuggestions || '[]');
+        const suggestion = suggestions[Number(button.dataset.addressSuggestionIndex)];
+
+        if (!suggestion) {
+            return;
+        }
+
+        applyingSuggestion = true;
+        input.value = suggestion.label || '';
+        fillStructuredFields(container, suggestion);
+        applyMetroSuggestion(metroSelect, suggestion.metro_station_ids || []);
+        hideList(list);
+        hideError(error);
+    });
+}
+
+async function fetchSuggestions(input, list, error, requestId, currentRequestId) {
+    const url = input.dataset.addressSuggestUrl;
+
+    if (!url) {
+        return;
+    }
+
+    input.classList.add('is-loading');
+
+    try {
+        const response = await fetch(`${url}?query=${encodeURIComponent(input.value.trim())}`, {
+            headers: {
+                Accept: 'application/json',
+            },
+        });
+
+        if (requestId !== currentRequestId()) {
+            return;
+        }
+
+        if (!response.ok) {
+            showError(error, 'Не удалось получить подсказки.');
+            hideList(list);
+            return;
+        }
+
+        const data = await response.json();
+        const suggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
+
+        renderSuggestions(list, suggestions);
+
+        if (suggestions.length === 0) {
+            showError(error, 'Варианты не найдены.');
+        } else {
+            hideError(error);
+        }
+    } catch (e) {
+        if (requestId === currentRequestId()) {
+            showError(error, 'Не удалось получить подсказки.');
+            hideList(list);
+        }
+    } finally {
+        if (requestId === currentRequestId()) {
+            input.classList.remove('is-loading');
+        }
+    }
+}
+
+function renderSuggestions(list, suggestions) {
+    list.dataset.addressSuggestions = JSON.stringify(suggestions);
+
+    if (suggestions.length === 0) {
+        hideList(list);
+        return;
+    }
+
+    list.innerHTML = suggestions.map((suggestion, index) => {
+        const metroLabels = Array.isArray(suggestion.metro_station_labels) && suggestion.metro_station_labels.length
+            ? `<span class="address-suggest__metro">${escapeHtml(suggestion.metro_station_labels.join(', '))}</span>`
+            : '';
+
+        return `
+            <button class="address-suggest__item" type="button" data-address-suggestion-index="${index}">
+                <span class="address-suggest__label">${escapeHtml(suggestion.label || '')}</span>
+                ${metroLabels}
+            </button>
+        `;
+    }).join('');
+
+    list.classList.remove('d-none');
+}
+
+function fillStructuredFields(container, suggestion) {
+    setField(container, '[data-address-city]', suggestion.city);
+    setField(container, '[data-address-street]', suggestion.street);
+    setField(container, '[data-address-building]', suggestion.building);
+    setField(container, '[data-address-postal-code]', suggestion.postal_code);
+    setField(container, '[data-address-latitude]', suggestion.latitude);
+    setField(container, '[data-address-longitude]', suggestion.longitude);
+}
+
+function clearStructuredFields(container) {
+    setField(container, '[data-address-city]', '');
+    setField(container, '[data-address-street]', '');
+    setField(container, '[data-address-building]', '');
+    setField(container, '[data-address-postal-code]', '');
+    setField(container, '[data-address-latitude]', '');
+    setField(container, '[data-address-longitude]', '');
+}
+
+function setField(container, selector, value) {
+    const field = container.querySelector(selector);
+
+    if (field) {
+        field.value = value ?? '';
+    }
+}
+
+function applyMetroSuggestion(select, stationIds) {
+    if (!select) {
+        return;
+    }
+
+    const ids = stationIds.map((id) => String(id));
+    select.dataset.addressApplyingMetro = '1';
+    select.dataset.addressAutofilledMetro = '1';
+    delete select.dataset.addressUserMetroChanged;
+
+    const tom = select.tomselect;
+
+    if (tom) {
+        tom.clear(true);
+        ids.forEach((id) => tom.addItem(id, true));
+        tom.refreshItems();
+    } else {
+        Array.from(select.options).forEach((option) => {
+            option.selected = ids.includes(option.value);
+        });
+    }
+
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    delete select.dataset.addressApplyingMetro;
+}
+
+function clearAutofilledMetro(select) {
+    if (!select || select.dataset.addressAutofilledMetro !== '1' || select.dataset.addressUserMetroChanged === '1') {
+        return;
+    }
+
+    const tom = select.tomselect;
+
+    if (tom) {
+        tom.clear();
+    } else {
+        Array.from(select.options).forEach((option) => {
+            option.selected = false;
+        });
+    }
+
+    delete select.dataset.addressAutofilledMetro;
+}
+
+function showError(error, message) {
+    if (!error) {
+        return;
+    }
+
+    error.textContent = message;
+    error.classList.remove('d-none');
+}
+
+function hideError(error) {
+    if (!error) {
+        return;
+    }
+
+    error.textContent = '';
+    error.classList.add('d-none');
+}
+
+function hideList(list) {
+    list.classList.add('d-none');
+    list.innerHTML = '';
+    list.dataset.addressSuggestions = '[]';
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}

@@ -28,7 +28,7 @@
         <select
             id="venueType"
             name="type"
-            class="form-select @error('type') is-invalid @enderror"
+            class="form-select predictive_select @error('type') is-invalid @enderror"
             required
         >
             <option value="">Выберите тип</option>
@@ -44,15 +44,64 @@
     </div>
 
     <div class="mb-3">
+        <label for="metro_station" class="form-label">Ближайшее метро</label>
+        <select
+            id="metro_station"
+            name="location[metro_station_ids][]"
+            class="form-select metro_select @error('location.metro_station_ids') is-invalid @enderror @error('location.metro_station_ids.*') is-invalid @enderror"
+            multiple
+            data-address-metro-select
+        >
+            @php
+                $selectedMetroIds = collect(old('location.metro_station_ids', []))
+                    ->map(fn ($id) => (string) $id)
+                    ->all();
+            @endphp
+            @foreach ($metros ?? [] as $metro)
+                <option
+                    value="{{ $metro->id }}"
+                    data-line-name="{{ $metro->lineName }}"
+                    data-line-color="{{ $metro->lineColor ?? '#666666' }}"
+                    @selected(in_array((string) $metro->id, $selectedMetroIds, true))
+                >
+                    {{ $metro->name }}@if ($metro->lineName) ({{ $metro->lineName }})@endif
+                </option>
+            @endforeach
+        </select>
+        @error('location.metro_station_ids')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+        @error('location.metro_station_ids.*')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+
+    <div class="mb-3 address-suggest" data-address-suggest>
         <label for="venueRawAddress" class="form-label">Адрес</label>
-        <textarea
+
+        <input
             id="venueRawAddress"
-            name="raw_address"
-            class="form-control @error('raw_address') is-invalid @enderror"
-            rows="1"
+            type="text"
+            name="location[raw_address]"
+            class="form-control input-predictive @error('location.raw_address') is-invalid @enderror"
+            value="{{ old('location.raw_address', old('raw_address')) }}"
             placeholder="Например: Москва, ул. Летниковская, 12"
-        >{{ old('raw_address') }}</textarea>
-        @error('raw_address')
+            autocomplete="off"
+            data-address-suggest-input
+            data-address-suggest-url="{{ route('integrations.address-suggest') }}"
+        >
+
+        <input type="hidden" name="location[city]" value="{{ old('location.city') }}" data-address-city>
+        <input type="hidden" name="location[street]" value="{{ old('location.street') }}" data-address-street>
+        <input type="hidden" name="location[building]" value="{{ old('location.building') }}" data-address-building>
+        <input type="hidden" name="location[postal_code]" value="{{ old('location.postal_code') }}" data-address-postal-code>
+        <input type="hidden" name="location[latitude]" value="{{ old('location.latitude') }}" data-address-latitude>
+        <input type="hidden" name="location[longitude]" value="{{ old('location.longitude') }}" data-address-longitude>
+
+        <div class="address-suggest__list d-none" data-address-suggest-list></div>
+        <div class="address-suggest__message text-danger d-none" data-address-suggest-error></div>
+
+        @error('location.raw_address')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>

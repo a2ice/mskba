@@ -17,6 +17,7 @@
 - [Локации](#локации)
 - [Уведомления](#уведомления)
 - [Площадки](#площадки)
+- [Админка](#админка)
 - [Контракты](#контракты)
 - [Целевая модель контрактов](#целевая-модель-контрактов)
 - [Темы и представления](#темы-и-представления)
@@ -130,9 +131,39 @@
 
 Если структурированная локация еще не создана, площадка может хранить fallback-адрес в `raw_address`.
 
+Форма создания площадки использует backend endpoint `/integrations/address-suggest` для Yandex-подсказок адреса. Endpoint нормализует ответ внешнего API, подбирает локальные станции метро и не раскрывает `YANDEX_MAPS_API_KEY` на клиенте. Без настроенного ключа форма продолжает работать через ручной ввод адреса и fallback `raw_address`.
+
 Создание площадки разрешено подтвержденному пользователю через Gate `add_venue`. Каноническая точка входа находится на `/venues/create`, отправка формы идет через `POST /venues`. Личный кабинет не имеет отдельного create/store маршрута площадок и ведет пользователя на этот же публичный URL. GET-страница `/venues/create` доступна гостям и неподтвержденным пользователям, но вместо формы показывает контекстное действие: открыть auth-modal или перейти на подтверждение аккаунта. POST-маршрут защищается `CreateVenueRequest::authorize()`: если право потеряно между открытием формы и отправкой, пользователь возвращается на `/venues/create` с понятным flash-сообщением, а use case создания не вызывается.
 
 `VenueFeatureEnum` и JSON-поле `features` в текущей кодовой базе отсутствуют.
+
+## Админка
+
+Админская часть находится в `App\Modules\Admin`.
+
+Текущая структура:
+
+- `Application/UseCases` - read models для dashboard, users, venues, placeholder events/teams, content и settings;
+- `Presentation/Http/Controllers` - тонкие controllers, которые вызывают use case и возвращают themed pages.
+
+Routes находятся под prefix `/admin` и middleware `auth`, `can:access-admin-panel`.
+
+Текущие route names:
+
+- `admin.dashboard` - `/admin`;
+- `admin.dashboard.legacy` - `/admin/dashboard`, redirect на `/admin`;
+- `admin.users`;
+- `admin.venues`;
+- `admin.events`;
+- `admin.teams`;
+- `admin.content`;
+- `admin.settings`.
+
+Gate `access-admin-panel` определен в `App\Providers\AccessServiceProvider` и использует `User::isAdmin()`. Это означает системную роль `admin` или выше и подтвержденный аккаунт.
+
+Dashboard использует отдельный layout `theme::layouts.admin-dashboard`. Внутренние admin-разделы используют общий `theme::layouts.section-sidebar` с admin sidebar partial, чтобы сохранить единую двухколоночную композицию проекта.
+
+Текущая первая итерация админки является read-only каркасом. CRUD, сохранение настроек, content persistence, moderation workflow, audit log и прикладные actions должны добавляться отдельными задачами.
 
 ## Контракты
 

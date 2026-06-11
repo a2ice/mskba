@@ -15,6 +15,13 @@ body {
     overflow-y: scroll;
 }
 
+.inner {
+    width: 100%;
+    max-width: var(--inner-width);
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
 a {
     color: inherit;
     text-decoration: none;
@@ -146,14 +153,14 @@ p {
     background: rgba(255, 255, 255, 0.08);
 }
 
-.btn---bordered-bordered {
-    border-color: var(--accent-strong);
+.btn--secondary-bordered {
+    border-color: var(--light-purple);
     background: transparent;
 }
 
 .btn--secondary-bordered:hover,
 .btn--secondary-bordered.is-active {
-    border-color: var(--accent-hover);
+    border-color: var(--light-purple-hover);
 }
 
 .btn__icon {
@@ -262,6 +269,17 @@ p {
 .form-select:hover,
 .field input:hover {
     border-color: rgba(255, 255, 255, 0.36);
+}
+
+
+
+.form-control:disabled,
+.form-select:disabled,
+.field input:disabled {
+    background-color: var(--field-disabled);
+    border-color: var(--field-border-disabled);
+    color: var(--muted);
+    cursor: not-allowed;
 }
 
 .form-control:focus,

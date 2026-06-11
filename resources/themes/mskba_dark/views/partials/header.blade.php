@@ -2,20 +2,24 @@
 
     <div class="light-overlay"></div>
 
-    <div class="site-header-left header-cell">
-        @include('theme::partials.logo')
-    </div>
+    <div class="inner site-header-inner">
 
-    <div class="site-header-right header-cell">
+        <div class="site-header-left header-cell">
+            @include('theme::partials.logo')
+        </div>
 
-        @include('theme::partials.menu.main')
+        <div class="site-header-right header-cell">
 
-        <div class="site-auth header-cell" aria-label="Пользовательская навигация">
+            @include('theme::partials.menu.main')
 
-            @include('theme::partials.header-search')
+            <div class="site-auth header-cell" aria-label="Пользовательская навигация">
 
-            <div class="header-cell">
-                @include('theme::partials.menu.account-nav')
+                @include('theme::partials.header-search')
+
+                <div class="header-cell">
+                    @include('theme::partials.menu.account-nav')
+                </div>
+
             </div>
 
         </div>

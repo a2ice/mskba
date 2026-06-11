@@ -6,10 +6,13 @@
 @import './modal';
 @import './user';
 @import './tooltip';
+@import './tom-select';
+@import './address-suggest';
 
 @import './pages/home';
 @import './pages/account';
 @import './pages/section-sidebar';
+@import './pages/admin';
 
 html {}
 body {
@@ -33,6 +36,8 @@ body {
     --surface-raised: #191d18;
     --field: #2a2d28;
     --field-border: rgba(255, 255, 255, 0.24);
+    --field-disabled: var(--dark-purple);
+    --field-border-disabled: var(--soft-purple);
     --accent: #ec7f12;
     --accent-light: rgba(240, 138, 36, 0.24);
     --accent-strong: #e2590f;
@@ -56,6 +61,11 @@ body {
     --hero-panel: rgba(20, 14, 11, 0.68);
     --hero-panel-strong: rgba(14, 11, 10, 0.82);
     --hero-line: rgba(255, 255, 255, 0.14);
+
+    --dark-purple: #130012;
+    --light-purple: #4c0348;
+    --light-purple-hover: #8b0884;
+    --soft-purple: #2e022c;
 }
 
 a:not([class*="btn"]) {
@@ -88,20 +98,17 @@ a:not([class*="btn"]).current {
     top: 0;
     left: 0;
     right: 0;
+    background: rgba(0, 0, 0, calc(var(--header-bg-alpha) * 0.82));
+}
+
+.site-header-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: clamp(28px, 4vw, 72px);
-    min-height: 80px;
-    padding: 22px clamp(22px, 3vw, 42px);
-    background: rgba(0, 0, 0, calc(var(--header-bg-alpha) * 0.82));
-    transition: all .3s ease;
-    color: var(--text-header);
-    font-size: 13px;
+    gap: var(--header-gap);
 }
 
 body:not(.main) .site-header {
-    background: linear-gradient(0deg, rgba(255,255,255,.25) 0%, #000 1%, #210e01 85%, rgb(46, 2, 44) 100%);
+    background: linear-gradient(0deg, rgba(255,255,255,.25) 0%, #000 1%, #210e01 85%, var(--soft-purple) 100%);
 }
 
 .site-header a {
@@ -746,6 +753,7 @@ body.nav-shown .nav-hamburger > span:last-child {
 .site-content {
     position: relative;
     z-index: 2;
+    min-height: calc(100vh - 75px);
 }
 
 .section-header {
