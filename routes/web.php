@@ -76,7 +76,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('admin')
     ->middleware('auth', 'can:access-admin-panel')
     ->group(function () {
-        Route::get('/', [AdminController::class, 'index'])->name('admin.index')->defaults('breadcrumb', 'Панель управления');
+        Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard')->defaults('breadcrumb', 'Панель управления');
         Route::get('/users', [AdminController::class, 'users'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
         Route::get('/venues', [AdminVenuesController::class, 'index'])->name('admin.venues')->defaults('breadcrumb', 'Площадки');
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'События');

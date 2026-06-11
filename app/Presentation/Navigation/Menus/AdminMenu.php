@@ -17,8 +17,8 @@ final class AdminMenu implements MenuHandler
             [
                 'label' => 'Дашборд',
                 'description' => 'Сводная информация и статистика по проекту.',
-                'url' => $this->routeUrl('admin.index'),
-                'active' => $this->isActiveRoute('admin.index'),
+                'url' => $this->routeUrl('admin.dashboard'),
+                'active' => $this->isActiveRoute('admin.dashboard'),
                 'visible' => true,
                 'icon' => 'ti-dashboard',
                 'data' => ['count' => 0], // TODO: добавить динамические данные

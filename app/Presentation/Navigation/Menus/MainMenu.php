@@ -46,7 +46,7 @@ final class MainMenu implements MenuHandler
             $moreItems[] = [
                 'divider' => true,
                 'label' => 'Админка',
-                'url' => $this->routeUrl('admin.index'),
+                'url' => $this->routeUrl('admin.dashboard'),
                 'active' => $this->isActiveRoute('admin.*'),
                 'visible' => true,
             ];
