@@ -507,6 +507,66 @@
     gap: 4px;
 }
 
+.venue-reviews {
+    display: grid;
+    gap: 12px;
+}
+
+.venue-review {
+    display: grid;
+    gap: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.venue-review__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.venue-review h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.venue-review__head span {
+    display: block;
+    margin-top: 3px;
+    color: rgba(247, 243, 234, 0.48);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.venue-review__head strong {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    border: 1px solid rgba(236, 127, 18, 0.44);
+    border-radius: 999px;
+    padding: 0 12px;
+    color: #fff;
+    background: rgba(236, 127, 18, 0.14);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.venue-review p {
+    margin: 0;
+    color: rgba(247, 243, 234, 0.78);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
 @media (max-width: 1100px) {
     .venue-hero,
     .venue-address-grid {

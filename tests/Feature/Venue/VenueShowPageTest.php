@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Venue;
 
+use App\Modules\Identity\Domain\Models\Profile;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Location\Domain\Models\MetroLine;
 use App\Modules\Location\Domain\Models\MetroStation;
@@ -10,6 +12,7 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -201,5 +204,51 @@ class VenueShowPageTest extends TestCase
         } finally {
             Carbon::setTestNow();
         }
+    }
+
+    public function test_public_venue_show_page_renders_published_reviews_and_rating(): void
+    {
+        $venue = Venue::factory()->create([
+            'name' => 'Площадка с отзывами',
+            'alias' => 'venue-with-reviews',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $author = User::factory()->create([
+            'username' => 'review_author',
+        ]);
+        Profile::factory()->for($author)->create([
+            'first_name' => 'Иван',
+            'last_name' => 'Петров',
+        ]);
+
+        VenueReview::factory()->for($venue)->for($author)->create([
+            'rating' => 5,
+            'body' => 'Хороший паркет и удобные раздевалки.',
+            'is_published' => true,
+            'published_at' => '2026-06-14 12:00:00',
+        ]);
+        VenueReview::factory()->for($venue)->create([
+            'rating' => 3,
+            'body' => 'Нормальный зал для тренировок.',
+            'is_published' => true,
+            'published_at' => '2026-06-13 12:00:00',
+        ]);
+        VenueReview::factory()->for($venue)->create([
+            'rating' => 1,
+            'body' => 'Этот отзыв еще не опубликован.',
+            'is_published' => false,
+            'published_at' => null,
+        ]);
+
+        $this
+            ->get(route('venues.show', $venue->alias))
+            ->assertOk()
+            ->assertSee('Отзывы')
+            ->assertSee('4,0')
+            ->assertSee('2 оценок')
+            ->assertSee('Иван Петров')
+            ->assertSee('Хороший паркет и удобные раздевалки.')
+            ->assertSee('Нормальный зал для тренировок.')
+            ->assertDontSee('Этот отзыв еще не опубликован.');
     }
 }

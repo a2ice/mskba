@@ -83,6 +83,11 @@ class Venue extends Model
         return $this->hasOne(VenueSchedule::class);
     }
 
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(VenueReview::class);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'alias';

@@ -330,12 +330,36 @@
             <section id="reviews" class="venue-show-section">
                 <div class="venue-show-section__heading">
                     <h2>Отзывы</h2>
-                    <span class="venue-section-state">заглушка</span>
+                    <span class="venue-section-state">
+                        {{ $venue->about->ratingCount ? $venue->about->ratingCount . ' оценок' : 'заглушка' }}
+                    </span>
                 </div>
 
-                <div class="venue-empty-block">
-                    <p>Отзывы и рейтинг будут подключены отдельным модулем после появления модели оценок.</p>
-                </div>
+                @if($venue->reviews !== [])
+                    <div class="venue-reviews">
+                        @foreach($venue->reviews as $review)
+                            <article class="venue-review">
+                                <div class="venue-review__head">
+                                    <div>
+                                        <h3>{{ $review->authorName }}</h3>
+                                        @if($review->publishedAt)
+                                            <span>{{ $review->publishedAt }}</span>
+                                        @endif
+                                    </div>
+                                    <strong>{{ number_format($review->rating, 1, ',', ' ') }}</strong>
+                                </div>
+
+                                @if($review->body)
+                                    <p>{{ $review->body }}</p>
+                                @endif
+                            </article>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="venue-empty-block">
+                        <p>Отзывы и рейтинг появятся после публикации первых оценок площадки.</p>
+                    </div>
+                @endif
             </section>
         </div>
     @else

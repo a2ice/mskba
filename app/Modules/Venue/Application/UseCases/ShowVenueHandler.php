@@ -11,10 +11,12 @@ use App\Modules\Venue\Application\DTO\VenueAddressDTO;
 use App\Modules\Venue\Application\DTO\VenueAmenityDTO;
 use App\Modules\Venue\Application\DTO\VenueDetailsDTO;
 use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
+use App\Modules\Venue\Application\DTO\VenueReviewDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -41,7 +43,19 @@ final class ShowVenueHandler
                     ->orderBy('sort_order')
                     ->orderBy('name'),
                 'schedule.intervals',
+                'reviews' => fn ($query) => $query
+                    ->where('is_published', true)
+                    ->with('user.profile')
+                    ->orderByDesc('published_at')
+                    ->orderByDesc('id')
+                    ->limit(3),
             ])
+            ->withCount([
+                'reviews as published_reviews_count' => fn ($query) => $query->where('is_published', true),
+            ])
+            ->withAvg([
+                'reviews as published_reviews_avg_rating' => fn ($query) => $query->where('is_published', true),
+            ], 'rating')
             ->where('alias', $alias)
             ->first();
 
@@ -90,12 +104,22 @@ final class ShowVenueHandler
             ->values()
             ->all();
         $scheduleDays = $this->scheduleDays($venue);
+        $reviews = $venue->reviews
+            ->map(fn (VenueReview $review) => new VenueReviewDTO(
+                id: (int) $review->id,
+                rating: (int) $review->rating,
+                body: $review->body,
+                authorName: $this->reviewAuthorName($review),
+                publishedAt: $review->published_at?->translatedFormat('d M Y'),
+            ))
+            ->values()
+            ->all();
         $sections = [
             ['id' => 'address', 'label' => 'Адрес', 'isAvailable' => $displayAddress !== ''],
             ['id' => 'amenities', 'label' => 'Опции', 'isAvailable' => $amenities !== []],
             ['id' => 'schedule', 'label' => 'Расписание', 'isAvailable' => $scheduleDays !== []],
             ['id' => 'posts', 'label' => 'Посты', 'isAvailable' => false],
-            ['id' => 'reviews', 'label' => 'Отзывы', 'isAvailable' => false],
+            ['id' => 'reviews', 'label' => 'Отзывы', 'isAvailable' => $reviews !== []],
         ];
 
         if ($featuredMedia !== []) {
@@ -123,8 +147,10 @@ final class ShowVenueHandler
             ),
             metroStations: $metroStations,
             about: new VenueAboutDTO(
-                rating: null,
-                ratingCount: null,
+                rating: $venue->published_reviews_avg_rating === null
+                    ? null
+                    : round((float) $venue->published_reviews_avg_rating, 1),
+                ratingCount: (int) $venue->published_reviews_count ?: null,
                 scheduleDays: $scheduleDays,
                 scheduleUrl: null,
                 feedUrl: null,
@@ -134,6 +160,7 @@ final class ShowVenueHandler
             sections: $sections,
             amenities: $amenities,
             featuredMedia: $featuredMedia,
+            reviews: $reviews,
             canEdit: $this->access->canEdit($user, $venue),
             canEditSchedule: $this->access->canEditSchedule($user, $venue),
             canRemove: $this->access->canRemove($user, $venue),
@@ -202,5 +229,20 @@ final class ShowVenueHandler
         }
 
         return substr((string) $time, 0, 5);
+    }
+
+    private function reviewAuthorName(VenueReview $review): string
+    {
+        $profile = $review->user?->profile;
+        $name = trim(implode(' ', array_filter([
+            $profile?->first_name,
+            $profile?->last_name,
+        ])));
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return $review->user?->username ?: 'Участник MSKBA';
     }
 }
