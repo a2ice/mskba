@@ -273,17 +273,47 @@
             <section id="schedule" class="venue-show-section">
                 <div class="venue-show-section__heading">
                     <h2>Расписание</h2>
-                    <span class="venue-section-state">заглушка</span>
+                    <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
                 </div>
 
-                <div class="venue-schedule-preview">
-                    @for($day = 0; $day < 7; $day++)
-                        <div class="venue-schedule-preview__day">
-                            <span>{{ now()->addDays($day)->translatedFormat('d M') }}</span>
-                            <strong>Нет данных</strong>
-                        </div>
-                    @endfor
-                </div>
+                @if($venue->about->scheduleDays !== [])
+                    <div class="venue-schedule-preview">
+                        @foreach($venue->about->scheduleDays as $day)
+                            <div @class([
+                                'venue-schedule-preview__day',
+                                'is-today' => $day['isToday'],
+                                'is-closed' => $day['isClosed'],
+                            ])>
+                                <div>
+                                    <span>{{ $day['label'] }}</span>
+                                    <small>{{ $day['weekday'] }}</small>
+                                </div>
+
+                                @if($day['isClosed'])
+                                    <strong>Закрыто</strong>
+                                @else
+                                    <div class="venue-schedule-preview__intervals">
+                                        @foreach($day['intervals'] as $interval)
+                                            <strong>{{ $interval['startsAt'] }}-{{ $interval['endsAt'] }}</strong>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="venue-schedule-preview">
+                        @for($day = 0; $day < 7; $day++)
+                            <div class="venue-schedule-preview__day is-closed">
+                                <div>
+                                    <span>{{ now()->addDays($day)->translatedFormat('d M') }}</span>
+                                    <small>{{ now()->addDays($day)->translatedFormat('D') }}</small>
+                                </div>
+                                <strong>Нет данных</strong>
+                            </div>
+                        @endfor
+                    </div>
+                @endif
             </section>
 
             <section id="posts" class="venue-show-section">

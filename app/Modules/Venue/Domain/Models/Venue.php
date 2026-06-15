@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable([
@@ -75,6 +76,11 @@ class Venue extends Model
             ->withPivot(['note', 'deleted_at'])
             ->wherePivotNull('deleted_at')
             ->withTimestamps();
+    }
+
+    public function schedule(): HasOne
+    {
+        return $this->hasOne(VenueSchedule::class);
     }
 
     public function getRouteKeyName(): string

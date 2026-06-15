@@ -15,6 +15,9 @@ use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 
 final class ShowVenueHandler
 {
@@ -37,6 +40,7 @@ final class ShowVenueHandler
                     ->where('is_active', true)
                     ->orderBy('sort_order')
                     ->orderBy('name'),
+                'schedule.intervals',
             ])
             ->where('alias', $alias)
             ->first();
@@ -85,10 +89,11 @@ final class ShowVenueHandler
             ))
             ->values()
             ->all();
+        $scheduleDays = $this->scheduleDays($venue);
         $sections = [
             ['id' => 'address', 'label' => 'Адрес', 'isAvailable' => $displayAddress !== ''],
             ['id' => 'amenities', 'label' => 'Опции', 'isAvailable' => $amenities !== []],
-            ['id' => 'schedule', 'label' => 'Расписание', 'isAvailable' => false],
+            ['id' => 'schedule', 'label' => 'Расписание', 'isAvailable' => $scheduleDays !== []],
             ['id' => 'posts', 'label' => 'Посты', 'isAvailable' => false],
             ['id' => 'reviews', 'label' => 'Отзывы', 'isAvailable' => false],
         ];
@@ -120,7 +125,7 @@ final class ShowVenueHandler
             about: new VenueAboutDTO(
                 rating: null,
                 ratingCount: null,
-                scheduleDays: [],
+                scheduleDays: $scheduleDays,
                 scheduleUrl: null,
                 feedUrl: null,
                 bookingUrl: null,
@@ -150,5 +155,52 @@ final class ShowVenueHandler
         return $parts === []
             ? (string) ($rawAddress ?? '')
             : implode(', ', $parts);
+    }
+
+    /**
+     * @return array<int, array{date: string, label: string, weekday: string, isToday: bool, isClosed: bool, intervals: array<int, array{startsAt: string, endsAt: string}>}>
+     */
+    private function scheduleDays(Venue $venue): array
+    {
+        $schedule = $venue->schedule;
+
+        if ($schedule === null || $schedule->intervals->isEmpty()) {
+            return [];
+        }
+
+        $intervalsByDay = $schedule->intervals->groupBy('day_of_week');
+        $today = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'))->startOfDay();
+        $days = [];
+
+        for ($offset = 0; $offset < 14; $offset++) {
+            $date = $today->addDays($offset);
+            $intervals = ($intervalsByDay->get($date->dayOfWeekIso) ?? collect())
+                ->map(fn (VenueScheduleInterval $interval) => [
+                    'startsAt' => $this->formatTime($interval->starts_at),
+                    'endsAt' => $this->formatTime($interval->ends_at),
+                ])
+                ->values()
+                ->all();
+
+            $days[] = [
+                'date' => $date->toDateString(),
+                'label' => $date->translatedFormat('d M'),
+                'weekday' => $date->translatedFormat('D'),
+                'isToday' => $offset === 0,
+                'isClosed' => $intervals === [],
+                'intervals' => $intervals,
+            ];
+        }
+
+        return $days;
+    }
+
+    private function formatTime(mixed $time): string
+    {
+        if ($time instanceof CarbonInterface) {
+            return $time->format('H:i');
+        }
+
+        return substr((string) $time, 0, 5);
     }
 }

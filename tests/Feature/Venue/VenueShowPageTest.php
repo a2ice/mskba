@@ -10,7 +10,10 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueSchedule;
+use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class VenueShowPageTest extends TestCase
@@ -81,8 +84,8 @@ class VenueShowPageTest extends TestCase
             ->assertOk()
             ->assertSee('data-venue-map', false)
             ->assertSee('data-yandex-map-api-key="test-yandex-key"', false)
-            ->assertSee('data-latitude="' . $location->address->latitude . '"', false)
-            ->assertSee('data-longitude="' . $location->address->longitude . '"', false)
+            ->assertSee('data-latitude="'.$location->address->latitude.'"', false)
+            ->assertSee('data-longitude="'.$location->address->longitude.'"', false)
             ->assertSee('data-venue-map-fallback', false)
             ->assertSee('hidden', false);
     }
@@ -158,5 +161,45 @@ class VenueShowPageTest extends TestCase
             ->assertSee('ti-shirt', false)
             ->assertSee('1 опций')
             ->assertDontSee('Скрытая опция');
+    }
+
+    public function test_public_venue_show_page_renders_schedule_intervals(): void
+    {
+        Carbon::setTestNow('2026-06-15 10:00:00');
+
+        try {
+            $venue = Venue::factory()->create([
+                'name' => 'Площадка с расписанием',
+                'alias' => 'venue-with-schedule',
+                'status' => VenueStatusEnum::CONFIRMED,
+            ]);
+            $schedule = VenueSchedule::factory()->for($venue)->create([
+                'timezone' => 'Europe/Moscow',
+            ]);
+
+            VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
+                'day_of_week' => 1,
+                'starts_at' => '10:00',
+                'ends_at' => '12:30',
+                'sort_order' => 10,
+            ]);
+            VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
+                'day_of_week' => 3,
+                'starts_at' => '18:00',
+                'ends_at' => '21:00',
+                'sort_order' => 10,
+            ]);
+
+            $this
+                ->get(route('venues.show', $venue->alias))
+                ->assertOk()
+                ->assertSee('Расписание')
+                ->assertSee('14 дней')
+                ->assertSee('10:00-12:30')
+                ->assertSee('18:00-21:00')
+                ->assertSee('Закрыто');
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 }
