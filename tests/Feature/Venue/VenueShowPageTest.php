@@ -127,6 +127,8 @@ class VenueShowPageTest extends TestCase
             ->assertSee('/storage/venues/second-photo.jpg', false)
             ->assertSee('Главное фото')
             ->assertSee('Вид на игровую площадку')
+            ->assertSee('data-venue-gallery-item', false)
+            ->assertSee('data-venue-gallery-modal', false)
             ->assertSee('2 фото');
     }
 

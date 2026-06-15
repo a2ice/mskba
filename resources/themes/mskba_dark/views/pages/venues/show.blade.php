@@ -154,9 +154,19 @@
                     </div>
 
                     <div class="venue-gallery">
-                        @foreach($venue->featuredMedia as $media)
+                        @foreach($venue->featuredMedia as $index => $media)
                             <figure class="venue-gallery__item">
-                                <img src="{{ $media['url'] }}" alt="{{ $media['title'] ?: $venue->name }}">
+                                <button
+                                    type="button"
+                                    class="venue-gallery__button"
+                                    data-venue-gallery-item
+                                    data-index="{{ $index }}"
+                                    data-url="{{ $media['url'] }}"
+                                    data-title="{{ $media['title'] ?: $venue->name }}"
+                                    data-description="{{ $media['description'] ?: '' }}"
+                                >
+                                    <img src="{{ $media['url'] }}" alt="{{ $media['title'] ?: $venue->name }}">
+                                </button>
                                 @if($media['title'] || $media['description'])
                                     <figcaption>
                                         @if($media['title'])
@@ -169,6 +179,30 @@
                                 @endif
                             </figure>
                         @endforeach
+                    </div>
+
+                    <div class="venue-gallery-modal" data-venue-gallery-modal hidden>
+                        <div class="venue-gallery-modal__backdrop" data-venue-gallery-close></div>
+                        <section class="venue-gallery-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="venue-gallery-modal-title">
+                            <button type="button" class="venue-gallery-modal__close" data-venue-gallery-close aria-label="Закрыть">
+                                <i class="ti ti-x"></i>
+                            </button>
+
+                            <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--prev" data-venue-gallery-prev aria-label="Предыдущее фото">
+                                <i class="ti ti-chevron-left"></i>
+                            </button>
+
+                            <img src="" alt="" data-venue-gallery-image>
+
+                            <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--next" data-venue-gallery-next aria-label="Следующее фото">
+                                <i class="ti ti-chevron-right"></i>
+                            </button>
+
+                            <div class="venue-gallery-modal__caption">
+                                <h3 id="venue-gallery-modal-title" data-venue-gallery-title></h3>
+                                <p data-venue-gallery-description></p>
+                            </div>
+                        </section>
                     </div>
                 </section>
             @endif

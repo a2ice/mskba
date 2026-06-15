@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     initVenueAnchors();
+    initVenueGalleryModal();
     initVenueDayModal();
 });
 
@@ -64,6 +65,75 @@ function initVenueAnchors() {
     });
 
     sections.forEach((section) => observer.observe(section));
+}
+
+function initVenueGalleryModal() {
+    const modal = document.querySelector('[data-venue-gallery-modal]');
+    const items = Array.from(document.querySelectorAll('[data-venue-gallery-item]'));
+
+    if (!modal || items.length === 0) {
+        return;
+    }
+
+    const image = modal.querySelector('[data-venue-gallery-image]');
+    const title = modal.querySelector('[data-venue-gallery-title]');
+    const description = modal.querySelector('[data-venue-gallery-description]');
+    const closeButtons = Array.from(modal.querySelectorAll('[data-venue-gallery-close]'));
+    const prevButton = modal.querySelector('[data-venue-gallery-prev]');
+    const nextButton = modal.querySelector('[data-venue-gallery-next]');
+    let currentIndex = 0;
+
+    const show = (index) => {
+        currentIndex = (index + items.length) % items.length;
+        const item = items[currentIndex];
+
+        image.src = item.dataset.url || '';
+        image.alt = item.dataset.title || '';
+        title.textContent = item.dataset.title || '';
+        description.textContent = item.dataset.description || '';
+        description.hidden = !description.textContent;
+    };
+
+    const open = (index) => {
+        show(index);
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+
+    const close = () => {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        image.src = '';
+    };
+
+    items.forEach((item, index) => {
+        item.addEventListener('click', () => open(index));
+    });
+
+    closeButtons.forEach((button) => {
+        button.addEventListener('click', close);
+    });
+
+    prevButton?.addEventListener('click', () => show(currentIndex - 1));
+    nextButton?.addEventListener('click', () => show(currentIndex + 1));
+
+    document.addEventListener('keydown', (event) => {
+        if (modal.hidden) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            close();
+        }
+
+        if (event.key === 'ArrowLeft') {
+            show(currentIndex - 1);
+        }
+
+        if (event.key === 'ArrowRight') {
+            show(currentIndex + 1);
+        }
+    });
 }
 
 function initVenueDayModal() {
