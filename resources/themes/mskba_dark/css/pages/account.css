@@ -60,6 +60,122 @@
     display: none;
 }
 
+.account-venue-schedule {
+    max-width: 860px;
+}
+
+.account-venue-schedule__days {
+    display: grid;
+    gap: 14px;
+}
+
+.account-venue-schedule__bulk-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.account-venue-schedule-day {
+    display: grid;
+    gap: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.account-venue-schedule-day__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 14px;
+}
+
+.account-venue-schedule-day h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.account-venue-schedule-day__head span {
+    color: rgba(249, 246, 239, 0.58);
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.account-venue-schedule-day__intervals {
+    display: grid;
+    gap: 10px;
+}
+
+.account-venue-schedule-interval {
+    display: grid;
+    grid-template-columns: minmax(92px, 120px) repeat(2, minmax(130px, 180px)) max-content;
+    align-items: end;
+    gap: 10px;
+}
+
+.account-venue-schedule-interval[hidden] {
+    display: none;
+}
+
+.account-venue-schedule-interval__label {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    color: rgba(249, 246, 239, 0.78);
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.account-venue-schedule-interval label {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+}
+
+.account-venue-schedule-interval span {
+    color: rgba(249, 246, 239, 0.64);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.account-venue-schedule-interval__remove {
+    min-height: 38px;
+}
+
+.account-venue-schedule-day__add {
+    justify-self: start;
+}
+
+.account-venue-schedule-day__add[hidden] {
+    display: none;
+}
+
+.account-venue-schedule__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+@media (max-width: 560px) {
+    .account-venue-schedule-interval {
+        grid-template-columns: 1fr;
+    }
+
+    .account-venue-schedule-interval__remove {
+        justify-self: start;
+    }
+}
+
 .account-confirmation-wizard__progress {
     display: inline-flex;
     align-items: center;

@@ -31,7 +31,10 @@ use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsRead
 use App\Modules\Notification\Application\UseCases\MarkUserNotificationAsReadHandler;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
+use App\Modules\Venue\Application\UseCases\ShowAccountVenueScheduleHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
+use App\Modules\Venue\Application\UseCases\UpdateVenueScheduleHandler;
+use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueScheduleRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
@@ -524,5 +527,92 @@ class AccountController extends Controller
             'message' => 'Редактирование площадки будет реализовано отдельно.',
             'code' => 501,
         ]]);
+    }
+
+    public function editVenueSchedule(string $alias, ShowAccountVenueScheduleHandler $showVenueSchedule): Response
+    {
+        try {
+            $user = $this->accountCheckForPresentationService->handle(request()->user());
+            $venue = $showVenueSchedule->handle($alias, $user);
+        } catch (\Exception $e) {
+            return ThemeResolver::page('account.venue-schedule', ['venue' => null, 'error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        return ThemeResolver::page('account.venue-schedule', [
+            'venue' => $venue,
+            'scheduleRows' => $this->venueScheduleRows($venue),
+            'weekDays' => $this->weekDays(),
+        ]);
+    }
+
+    public function updateVenueSchedule(
+        UpdateVenueScheduleRequest $request,
+        string $alias,
+        UpdateVenueScheduleHandler $updateVenueSchedule,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle($request->user());
+
+        try {
+            $updateVenueSchedule->handle(
+                alias: $alias,
+                user: $user,
+                timezone: $request->timezone(),
+                intervalsByDay: $request->intervalsByDay(),
+            );
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('account.venues.schedule.edit', $alias)
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('account.venues.schedule.edit', $alias)
+            ->with('status', 'Расписание сохранено.');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function weekDays(): array
+    {
+        return [
+            1 => 'Понедельник',
+            2 => 'Вторник',
+            3 => 'Среда',
+            4 => 'Четверг',
+            5 => 'Пятница',
+            6 => 'Суббота',
+            7 => 'Воскресенье',
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, array{starts_at: string, ends_at: string}>>
+     */
+    private function venueScheduleRows($venue): array
+    {
+        $rows = [];
+
+        foreach (array_keys($this->weekDays()) as $dayOfWeek) {
+            $intervals = $venue->schedule?->intervals
+                ->where('day_of_week', $dayOfWeek)
+                ->values()
+                ->map(fn ($interval) => [
+                    'starts_at' => substr((string) $interval->starts_at, 0, 5),
+                    'ends_at' => substr((string) $interval->ends_at, 0, 5),
+                ])
+                ->all() ?? [];
+
+            $rows[$dayOfWeek] = array_pad(array_slice($intervals, 0, 3), 3, [
+                'starts_at' => '',
+                'ends_at' => '',
+            ]);
+        }
+
+        return $rows;
     }
 }

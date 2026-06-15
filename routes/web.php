@@ -151,6 +151,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
         Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
+        Route::get('/venues/{alias}/schedule', [AccountController::class, 'editVenueSchedule'])
+            ->name('account.venues.schedule.edit');
+        Route::put('/venues/{alias}/schedule', [AccountController::class, 'updateVenueSchedule'])
+            ->name('account.venues.schedule.update');
         Route::get('/venues/{alias}/edit', [AccountController::class, 'editVenue'])->name('account.venues.edit');
     });
 });

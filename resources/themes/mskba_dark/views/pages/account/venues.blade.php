@@ -43,6 +43,9 @@
                     @if ($venue->canEdit)
                         <a href="{{ route('account.venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
                     @endif
+                    @if ($venue->canEditSchedule)
+                        <a href="{{ route('account.venues.schedule.edit', $venue->alias) }}" class="btn btn-outline-primary">Расписание</a>
+                    @endif
                 <hr>
                 </div>
             @endforeach 
