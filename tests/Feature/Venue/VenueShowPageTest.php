@@ -198,6 +198,10 @@ class VenueShowPageTest extends TestCase
                 ->assertOk()
                 ->assertSee('Расписание')
                 ->assertSee('14 дней')
+                ->assertSee('Выбрать время')
+                ->assertSee('Нажмите на день, чтобы посмотреть интервалы.')
+                ->assertSee('data-venue-day-card', false)
+                ->assertSee('data-venue-day-modal', false)
                 ->assertSee('10:00-12:30')
                 ->assertSee('18:00-21:00')
                 ->assertSee('Закрыто');

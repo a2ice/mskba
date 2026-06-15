@@ -117,12 +117,30 @@
                     <p class="venue-hero__text">
                         {{ $venue->description ?: 'Описание площадки будет дополнено после модерации и заполнения профиля площадки.' }}
                     </p>
+
+                    <div class="venue-hero__actions">
+                        @if($venue->about->scheduleDays !== [])
+                            <button type="button" class="btn btn--primary btn--sm" data-venue-scroll-target="schedule">
+                                Выбрать время
+                            </button>
+                        @else
+                            <button type="button" class="btn btn--primary btn--sm" disabled>
+                                Расписание готовится
+                            </button>
+                        @endif
+
+                        @if($yandexMapUrl)
+                            <a href="{{ $yandexMapUrl }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">
+                                Маршрут
+                            </a>
+                        @endif
+                    </div>
                 </div>
             </section>
 
-            <nav class="venue-anchor-nav" aria-label="Быстрая навигация">
+            <nav class="venue-anchor-nav" aria-label="Быстрая навигация" data-venue-anchor-nav>
                 @foreach($venue->sections as $section)
-                    <a href="#{{ $section['id'] }}" @class(['venue-anchor-nav__link', 'is-muted' => ! $section['isAvailable']])>
+                    <a href="#{{ $section['id'] }}" @class(['venue-anchor-nav__link', 'is-muted' => ! $section['isAvailable']]) data-venue-anchor-link>
                         {{ $section['label'] }}
                     </a>
                 @endforeach
@@ -272,18 +290,31 @@
 
             <section id="schedule" class="venue-show-section">
                 <div class="venue-show-section__heading">
-                    <h2>Расписание</h2>
+                    <div>
+                        <h2>Расписание</h2>
+                        <p class="venue-show-section__caption">Нажмите на день, чтобы посмотреть интервалы.</p>
+                    </div>
                     <span class="venue-section-state">{{ $venue->about->scheduleDays === [] ? 'заглушка' : '14 дней' }}</span>
                 </div>
 
                 @if($venue->about->scheduleDays !== [])
                     <div class="venue-schedule-preview">
                         @foreach($venue->about->scheduleDays as $day)
-                            <div @class([
+                            <button
+                                type="button"
+                                @class([
                                 'venue-schedule-preview__day',
                                 'is-today' => $day['isToday'],
                                 'is-closed' => $day['isClosed'],
-                            ])>
+                                ])
+                                data-venue-day-card
+                                data-date="{{ $day['date'] }}"
+                                data-label="{{ $day['label'] }}"
+                                data-weekday="{{ $day['weekday'] }}"
+                                data-is-today="{{ $day['isToday'] ? '1' : '0' }}"
+                                data-is-closed="{{ $day['isClosed'] ? '1' : '0' }}"
+                                data-intervals='@json($day['intervals'])'
+                            >
                                 <div>
                                     <span>{{ $day['label'] }}</span>
                                     <small>{{ $day['weekday'] }}</small>
@@ -298,8 +329,36 @@
                                         @endforeach
                                     </div>
                                 @endif
-                            </div>
+                            </button>
                         @endforeach
+                    </div>
+
+                    <div class="venue-schedule-legend" aria-label="Легенда расписания">
+                        <span><i class="venue-schedule-legend__dot venue-schedule-legend__dot--open"></i>Есть интервалы</span>
+                        <span><i class="venue-schedule-legend__dot venue-schedule-legend__dot--closed"></i>Закрыто</span>
+                        <span><i class="venue-schedule-legend__dot venue-schedule-legend__dot--today"></i>Сегодня</span>
+                    </div>
+
+                    <div class="venue-day-modal" data-venue-day-modal hidden>
+                        <div class="venue-day-modal__backdrop" data-venue-day-modal-close></div>
+                        <section class="venue-day-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="venue-day-modal-title">
+                            <div class="venue-day-modal__head">
+                                <div>
+                                    <p class="venue-day-modal__eyebrow" data-venue-day-modal-weekday></p>
+                                    <h3 id="venue-day-modal-title" data-venue-day-modal-title>День расписания</h3>
+                                </div>
+                                <button type="button" class="venue-day-modal__close" data-venue-day-modal-close aria-label="Закрыть">
+                                    <i class="ti ti-x"></i>
+                                </button>
+                            </div>
+
+                            <div class="venue-day-modal__body">
+                                <div data-venue-day-modal-intervals></div>
+                                <div class="venue-day-modal__notice">
+                                    Бронирование появится здесь после подключения модуля событий и заявок.
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 @else
                     <div class="venue-schedule-preview">

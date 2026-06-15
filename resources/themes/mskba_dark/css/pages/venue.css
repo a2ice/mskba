@@ -125,6 +125,12 @@
     max-width: 620px;
 }
 
+.venue-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .venue-anchor-nav,
 .venue-side-nav {
     display: flex;
@@ -170,6 +176,12 @@
 .venue-side-nav__link:hover {
     border-color: rgba(236, 127, 18, 0.58);
     color: var(--accent-text);
+}
+
+.venue-anchor-nav__link.is-active {
+    border-color: rgba(236, 127, 18, 0.78);
+    color: #fff;
+    background: rgba(236, 127, 18, 0.2);
 }
 
 .venue-anchor-nav__link.is-muted,
@@ -237,6 +249,14 @@
     font-size: 28px;
     font-weight: 700;
     line-height: 1.1;
+}
+
+.venue-show-section__caption {
+    margin-top: 6px;
+    color: rgba(247, 243, 234, 0.56);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
 }
 
 .venue-show-section__link {
@@ -459,13 +479,25 @@
 }
 
 .venue-schedule-preview__day {
+    cursor: pointer;
     display: grid;
     min-height: 96px;
     align-content: space-between;
+    width: 100%;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
     padding: 13px;
+    text-align: left;
     background: rgba(255, 255, 255, 0.035);
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.venue-schedule-preview__day:hover,
+.venue-schedule-preview__day:focus-visible {
+    border-color: rgba(236, 127, 18, 0.62);
+    background: rgba(236, 127, 18, 0.09);
+    transform: translateY(-1px);
+    outline: none;
 }
 
 .venue-schedule-preview__day.is-today {
@@ -505,6 +537,155 @@
 .venue-schedule-preview__intervals {
     display: grid;
     gap: 4px;
+}
+
+.venue-schedule-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 14px;
+    color: rgba(247, 243, 234, 0.64);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.venue-schedule-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.venue-schedule-legend__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+}
+
+.venue-schedule-legend__dot--open {
+    background: #2f8c69;
+}
+
+.venue-schedule-legend__dot--closed {
+    background: rgba(247, 243, 234, 0.42);
+}
+
+.venue-schedule-legend__dot--today {
+    background: #ef233c;
+}
+
+.venue-day-modal[hidden] {
+    display: none;
+}
+
+.venue-day-modal {
+    position: fixed;
+    z-index: 80;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+}
+
+.venue-day-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.68);
+}
+
+.venue-day-modal__dialog {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 20px;
+    width: min(520px, 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 22px;
+    background: #151914;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+
+.venue-day-modal__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.venue-day-modal__eyebrow {
+    margin-bottom: 5px;
+    color: var(--accent-text);
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.venue-day-modal h3 {
+    margin: 0;
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.venue-day-modal__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.venue-day-modal__close:hover,
+.venue-day-modal__close:focus-visible {
+    border-color: rgba(236, 127, 18, 0.62);
+    color: var(--accent-text);
+    outline: none;
+}
+
+.venue-day-modal__body {
+    display: grid;
+    gap: 14px;
+}
+
+.venue-day-modal__interval-list {
+    display: grid;
+    gap: 8px;
+}
+
+.venue-day-modal__interval {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 12px 14px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.035);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.venue-day-modal__empty,
+.venue-day-modal__notice {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 14px;
+    color: rgba(247, 243, 234, 0.68);
+    background: rgba(255, 255, 255, 0.035);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.45;
 }
 
 .venue-reviews {

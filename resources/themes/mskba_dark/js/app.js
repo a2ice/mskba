@@ -19,6 +19,7 @@ import './features/account-confirmation-wizard.js';
 import './features/tooltips.js';
 import './features/address-suggest.js';
 import './features/venue-map.js';
+import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 
 import TomSelect from 'tom-select';
