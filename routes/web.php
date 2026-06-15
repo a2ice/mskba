@@ -119,6 +119,14 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->defaults('breadcrumb', 'Подтверждение аккаунта');
         Route::post('/confirmation', [AccountController::class, 'completeConfirmation'])
             ->name('account.confirmation.complete');
+        Route::post('/confirmation/contact', [AccountController::class, 'storeConfirmationContact'])
+            ->name('account.confirmation.contact.store');
+        Route::post('/confirmation/contacts/{contact}/verification', [AccountController::class, 'startConfirmationContactVerification'])
+            ->middleware('throttle:10,1')
+            ->name('account.confirmation.contacts.verification.store');
+        Route::post('/confirmation/contacts/{contact}/verification/confirm', [AccountController::class, 'confirmConfirmationContactVerification'])
+            ->middleware('throttle:20,1')
+            ->name('account.confirmation.contacts.verification.confirm');
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
@@ -129,6 +137,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.notifications.read');
         Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
         Route::post('/contacts', [AccountController::class, 'storeContact'])->name('account.contacts.store');
+        Route::patch('/contacts/{contact}/primary', [AccountController::class, 'setPrimaryContact'])
+            ->name('account.contacts.primary');
         Route::delete('/contacts/{contact}', [AccountController::class, 'destroyContact'])
             ->name('account.contacts.destroy');
         Route::post('/contacts/{contact}/verification', [AccountController::class, 'startContactVerification'])

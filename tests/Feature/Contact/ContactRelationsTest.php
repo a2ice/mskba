@@ -118,6 +118,94 @@ class ContactRelationsTest extends TestCase
         $this->assertSame(1, $user->contacts()->where('is_primary', true)->count());
     }
 
+    public function test_user_can_switch_primary_contact(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'switch_primary_contact_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $oldPrimary = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'old-primary@example.test',
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+        $newPrimary = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'new-primary@example.test',
+            'is_primary' => false,
+            'verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->patch(route('account.contacts.primary', $newPrimary));
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('status', 'Основной контакт обновлен.');
+        $this->assertFalse($oldPrimary->fresh()->is_primary);
+        $this->assertTrue($newPrimary->fresh()->is_primary);
+        $this->assertSame(1, $user->contacts()->where('is_primary', true)->count());
+    }
+
+    public function test_user_cannot_switch_primary_to_another_users_contact(): void
+    {
+        $owner = User::factory()->create([
+            'username' => 'primary_owner',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $intruder = User::factory()->create([
+            'username' => 'primary_intruder',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $contact = $owner->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'primary-owner@example.test',
+            'is_primary' => false,
+        ]);
+
+        $response = $this->actingAs($intruder)
+            ->patch(route('account.contacts.primary', $contact));
+
+        $response->assertNotFound();
+        $this->assertFalse($contact->fresh()->is_primary);
+    }
+
+    public function test_contacts_page_shows_set_primary_action_for_secondary_contact(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'primary_action_user',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'primary-action@example.test',
+            'is_primary' => true,
+        ]);
+        $secondary = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'secondary-action@example.test',
+            'is_primary' => false,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('account.contacts'));
+
+        $response->assertOk();
+        $response->assertSee(route('account.contacts.primary', $secondary), false);
+        $response->assertSee('Сделать основным');
+    }
+
     public function test_user_can_start_email_contact_verification(): void
     {
         Mail::fake();

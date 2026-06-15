@@ -89,8 +89,24 @@ function setupAccountConfirmationWizard() {
             syncStepSummary($step);
         }
 
-        function currentStepIsValid() {
+        function currentStepIsValid(options = {}) {
             const $step = visibleSteps().eq(currentIndex);
+
+            if (
+                !options.allowIncompleteContact
+                &&
+                $step.data('step-key') === 'primary_verified_contact'
+                && String($step.data('contact-completed')) !== 'true'
+            ) {
+                const field = $step.find('input[name="value"], input[name="code"]').get(0);
+
+                if (field) {
+                    field.focus();
+                }
+
+                return false;
+            }
+
             const fields = $step.find('input, select, textarea').toArray();
 
             for (const field of fields) {
@@ -192,7 +208,10 @@ function setupAccountConfirmationWizard() {
         });
 
         $wizard.on('submit', function(event) {
-            if (!currentStepIsValid()) {
+            const submitter = event.originalEvent?.submitter;
+            const allowIncompleteContact = Boolean(submitter?.hasAttribute('data-contact-action'));
+
+            if (!currentStepIsValid({ allowIncompleteContact })) {
                 event.preventDefault();
             }
         });

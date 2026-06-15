@@ -1,47 +1,54 @@
 
-.account-contact-verification {
-    /* display: flex;
-    align-items: flex-end;
-    flex-wrap: wrap; */
+.account-contact-item {
+    display: grid;
     gap: 14px;
 }
 
-.account-contact-verification__field {
-    flex: 1 1 180px;
-    min-width: 180px;
-    max-width: 345px;
+.account-contact-item__summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 14px;
 }
 
-.account-contact-verification__actions {
+.account-contact-item__value {
     display: flex;
-    flex: 0 0 auto;
+    min-width: 0;
     flex-wrap: wrap;
+    gap: 5px;
+}
+
+.account-contact-item__value span {
+    overflow-wrap: anywhere;
+}
+
+.account-contact-item__meta,
+.account-contact-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.account-contact-item__meta {
+    align-items: baseline;
+}
+
+.account-contact-item__actions {
     align-items: center;
+}
+
+.account-contact-verification {
+    display: grid;
     gap: 10px;
 }
 
-.account-contact-verification__actions .btn {
-    /* min-width: 150px; */
+.account-contact-verification__field {
+    max-width: 345px;
 }
 
 @media (max-width: 760px) {
-    .account-contact-verification {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
     .account-contact-verification__field {
-        flex-basis: auto;
         min-width: 0;
-    }
-
-    .account-contact-verification__actions {
-        width: 100%;
-    }
-
-    .account-contact-verification__actions form,
-    .account-contact-verification__actions .btn {
-        /* width: 100%; */
     }
 }
 
@@ -62,6 +69,42 @@
 }
 
 .account-confirmation-wizard__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.account-confirmation-contact {
+    display: grid;
+    max-width: 560px;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.account-confirmation-contact--verified {
+    border-color: rgba(47, 140, 105, 0.52);
+    background: rgba(47, 140, 105, 0.12);
+}
+
+.account-confirmation-contact span {
+    color: rgba(249, 246, 239, 0.62);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.account-confirmation-contact strong {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.account-confirmation-contact-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;

@@ -68,9 +68,7 @@ final class CompleteAccountConfirmationWizardHandler
             $lockedUser->refresh()->loadMissing('profile', 'participationRoles');
 
             if ($lockedUser->status === UserStatusEnum::UNCONFIRMED && $this->wizard->requiredStepsCompleted($lockedUser)) {
-                $lockedUser->update([
-                    'status' => UserStatusEnum::CONFIRMED,
-                ]);
+                $lockedUser->confirmAccount();
             }
 
             return $lockedUser->refresh();

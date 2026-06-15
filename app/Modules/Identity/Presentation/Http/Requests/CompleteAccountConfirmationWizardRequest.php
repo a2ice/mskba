@@ -50,6 +50,10 @@ class CompleteAccountConfirmationWizardRequest extends FormRequest
                 return;
             }
 
+            if ($wizard->primaryVerifiedContact($user) === null) {
+                $validator->errors()->add('contact', 'Подтвердите основной контакт.');
+            }
+
             if ($role !== null && $wizard->roleRequiresBirthDateAndGender($role)) {
                 if (! is_string($this->input('birth_date')) || trim($this->input('birth_date')) === '') {
                     $validator->errors()->add('birth_date', 'Укажите дату рождения.');

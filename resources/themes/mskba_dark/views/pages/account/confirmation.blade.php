@@ -29,6 +29,16 @@
             {{ session('status') }}
         </div>
     @endif
+    @if(session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+    @if(session('info'))
+        <div class="alert alert-info">
+            {{ session('info') }}
+        </div>
+    @endif
 
     @if($user)
         @if($user->status === UserStatusEnum::CONFIRMED)
@@ -51,11 +61,120 @@
             >
                 @csrf
 
+                @error('contact')
+                    <div class="alert alert-danger">
+                        {{ $message }}
+                    </div>
+                @enderror
+
                 <div class="account-confirmation-wizard__progress mb-4" aria-live="polite">
                     <span data-wizard-progress-current>1</span>
                     <span>/</span>
                     <span data-wizard-progress-total>1</span>
                 </div>
+
+                <section
+                    class="account-confirmation-step"
+                    data-wizard-step
+                    data-step-key="primary_verified_contact"
+                    data-required="true"
+                    data-contact-completed="{{ $primaryVerifiedContact ? 'true' : 'false' }}"
+                >
+                    <div class="mb-3">
+                        <h4 class="h5 mb-2 align-items-center d-flex">
+                            <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-variant="title">*</span>
+                            Подтвердите основной контакт
+                        </h4>
+                        <p class="mb-0">Для подтверждения аккаунта нужен подтвержденный основной контакт.</p>
+                    </div>
+
+                    @if($primaryVerifiedContact)
+                        <div class="account-confirmation-contact account-confirmation-contact--verified">
+                            <span>Основной контакт подтвержден</span>
+                            <strong>{{ $primaryVerifiedContact->type->label() }}: {{ $primaryVerifiedContact->value }}</strong>
+                        </div>
+                    @elseif($primaryContact)
+                        <div class="account-confirmation-contact">
+                            <span>Основной контакт ожидает подтверждения</span>
+                            <strong>{{ $primaryContact->type->label() }}: {{ $primaryContact->value }}</strong>
+                        </div>
+
+                        <div class="account-confirmation-contact-actions mt-3">
+                            <button
+                                type="submit"
+                                class="btn btn--secondary btn--sm"
+                                formaction="{{ route('account.confirmation.contacts.verification.store', $primaryContact) }}"
+                                formmethod="POST"
+                                formnovalidate
+                                data-contact-action
+                            >
+                                Отправить код
+                            </button>
+                        </div>
+
+                        @if($primaryContactPendingVerification)
+                            <div class="field mt-3">
+                                <label for="confirmationContactCode" class="form-label">Код подтверждения</label>
+                                <input
+                                    id="confirmationContactCode"
+                                    type="text"
+                                    name="code"
+                                    inputmode="numeric"
+                                    autocomplete="one-time-code"
+                                    class="form-control @error('code') is-invalid @enderror"
+                                    value="{{ old('code') }}"
+                                    placeholder="000000"
+                                >
+                                @error('code')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="account-confirmation-contact-actions mt-3">
+                                <button
+                                    type="submit"
+                                    class="btn btn--primary btn--sm"
+                                    formaction="{{ route('account.confirmation.contacts.verification.confirm', $primaryContact) }}"
+                                    formmethod="POST"
+                                    formnovalidate
+                                    data-contact-action
+                                >
+                                    Подтвердить контакт
+                                </button>
+                            </div>
+                        @endif
+                    @else
+                        <input type="hidden" name="type" value="email">
+                        <div class="field">
+                            <label for="confirmationContactEmail" class="form-label">Email</label>
+                            <input
+                                id="confirmationContactEmail"
+                                type="email"
+                                name="value"
+                                class="form-control @error('value') is-invalid @enderror"
+                                value="{{ old('value') }}"
+                                placeholder="name@example.com"
+                            >
+                            @error('value')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="account-confirmation-contact-actions mt-3">
+                            <button
+                                type="submit"
+                                class="btn btn--primary btn--sm"
+                                formaction="{{ route('account.confirmation.contact.store') }}"
+                                formmethod="POST"
+                                formnovalidate
+                                data-contact-action
+                            >
+                                Добавить и отправить код
+                            </button>
+                        </div>
+                    @endif
+
+                </section>
 
                 @unless($currentRole)
                     <section

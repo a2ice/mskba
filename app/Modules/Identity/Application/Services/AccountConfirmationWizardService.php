@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Application\Services;
 
+use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Application\DTO\AccountConfirmationStepDTO;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -14,12 +15,20 @@ final class AccountConfirmationWizardService
      */
     public function steps(User $user): Collection
     {
-        $user->loadMissing('profile', 'participationRoles');
+        $user->loadMissing('contacts', 'profile', 'participationRoles');
 
         $role = $this->primaryParticipationRole($user);
         $profile = $user->profile;
 
-        $steps = collect();
+        $steps = collect([
+            new AccountConfirmationStepDTO(
+                key: 'primary_verified_contact',
+                title: 'Подтвердите основной контакт',
+                description: 'Для подтверждения аккаунта нужен подтвержденный основной контакт.',
+                required: true,
+                completed: $this->primaryVerifiedContact($user) !== null,
+            ),
+        ]);
 
         if ($role === null) {
             $steps->push(new AccountConfirmationStepDTO(
@@ -74,6 +83,21 @@ final class AccountConfirmationWizardService
         return $user->participationRoles
             ->first()
             ?->role;
+    }
+
+    public function primaryContact(User $user): ?Contact
+    {
+        $user->loadMissing('contacts');
+
+        return $user->contacts
+            ->first(fn (Contact $contact): bool => $contact->is_primary);
+    }
+
+    public function primaryVerifiedContact(User $user): ?Contact
+    {
+        $contact = $this->primaryContact($user);
+
+        return $contact?->hasBeenVerified() ? $contact : null;
     }
 
     public function roleRequiresBirthDateAndGender(UserParticipationRoleEnum $role): bool

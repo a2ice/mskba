@@ -9,6 +9,7 @@ use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
 use App\Modules\Contact\Application\UseCases\ConfirmContactVerificationHandler;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
 use App\Modules\Contact\Application\UseCases\DeleteContactHandler;
+use App\Modules\Contact\Application\UseCases\SetPrimaryContactForUserHandler;
 use App\Modules\Contact\Application\UseCases\StartContactVerificationHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
@@ -81,11 +82,25 @@ class AccountController extends Controller
             ]]);
         }
 
-        $user->loadMissing('profile', 'participationRoles');
+        $user->loadMissing([
+            'contacts' => fn ($query) => $query
+                ->with(['verifications' => fn ($verificationQuery) => $verificationQuery
+                    ->where('status', ContactVerificationStatusEnum::PENDING->value)
+                    ->latest()])
+                ->orderByDesc('is_primary')
+                ->orderBy('type')
+                ->orderBy('created_at'),
+            'profile',
+            'participationRoles',
+        ]);
+        $primaryContact = $wizard->primaryContact($user);
 
         return ThemeResolver::page('account.confirmation', [
             'user' => $user,
             'steps' => $wizard->steps($user),
+            'primaryContact' => $primaryContact,
+            'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
+            'primaryContactPendingVerification' => $primaryContact?->verifications->first(),
             'currentParticipationRole' => $wizard->primaryParticipationRole($user),
             'participationRoles' => UserParticipationRoleEnum::cases(),
             'genders' => UserGenderEnum::cases(),
@@ -116,6 +131,88 @@ class AccountController extends Controller
         return redirect()
             ->route($updatedUser->status === UserStatusEnum::CONFIRMED ? 'account' : 'account.confirmation')
             ->with('status', 'Аккаунт подтвержден.');
+    }
+
+    public function storeConfirmationContact(
+        CreateAccountContactRequest $request,
+        CreateContactForUserHandler $createContactForUser,
+        StartContactVerificationHandler $startContactVerification,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle($request->user());
+
+        try {
+            $contact = $createContactForUser->handle($user, $request->toDTO());
+            $startContactVerification->handle($contact);
+        } catch (InvalidArgumentException|ContactVerificationCooldownException|LogicException $e) {
+            return redirect()
+                ->route('account.confirmation')
+                ->withInput()
+                ->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('account.confirmation')
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('account.confirmation')
+            ->with('status', 'Контакт добавлен. Код подтверждения отправлен.');
+    }
+
+    public function startConfirmationContactVerification(
+        Contact $contact,
+        StartContactVerificationHandler $startContactVerification,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+
+        abort_unless(
+            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            404,
+        );
+
+        try {
+            $startContactVerification->handle($contact);
+        } catch (ContactVerificationCooldownException $e) {
+            return redirect()
+                ->route('account.confirmation')
+                ->with('info', $e->getMessage())
+                ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('account.confirmation')
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('account.confirmation')
+            ->with('status', 'Код подтверждения отправлен.');
+    }
+
+    public function confirmConfirmationContactVerification(
+        ConfirmContactVerificationRequest $request,
+        Contact $contact,
+        ConfirmContactVerificationHandler $confirmContactVerification,
+    ): RedirectResponse {
+        $user = $this->accountCheckForPresentationService->handle($request->user());
+
+        abort_unless(
+            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            404,
+        );
+
+        try {
+            $confirmContactVerification->handle($contact, $request->toDTO());
+        } catch (ContactVerificationException|LogicException $e) {
+            return redirect()
+                ->route('account.confirmation')
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('account.confirmation')
+            ->with('status', 'Контакт подтвержден.');
     }
 
     public function settings(): Response
@@ -213,6 +310,22 @@ class AccountController extends Controller
         return redirect()
             ->route('account.contacts')
             ->with('status', 'Контакт добавлен.');
+    }
+
+    public function setPrimaryContact(Contact $contact, SetPrimaryContactForUserHandler $setPrimaryContact): RedirectResponse
+    {
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+
+        abort_unless(
+            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            404,
+        );
+
+        $setPrimaryContact->handle($user, $contact);
+
+        return redirect()
+            ->route('account.contacts')
+            ->with('status', 'Основной контакт обновлен.');
     }
 
     public function startContactVerification(

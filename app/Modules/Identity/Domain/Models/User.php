@@ -4,10 +4,10 @@ namespace App\Modules\Identity\Domain\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
-use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
 use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
@@ -95,6 +95,50 @@ class User extends Authenticatable
             ->first(); // dd($contact);
 
         return $contact;
+    }
+
+    public function hasVerifiedPrimaryContact(): bool
+    {
+        return $this->contacts()
+            ->where('is_primary', true)
+            ->whereNotNull('verified_at')
+            ->exists();
+    }
+
+    /**
+     * @throws UserCannotBeChangedException
+     */
+    public function confirmAccount(): void
+    {
+        if ($this->status !== UserStatusEnum::UNCONFIRMED) {
+            throw new UserCannotBeChangedException('Подтвердить можно только неподтвержденный аккаунт.');
+        }
+
+        if (! $this->hasVerifiedPrimaryContact()) {
+            throw new UserCannotBeChangedException('Для подтверждения аккаунта нужен подтвержденный основной контакт.');
+        }
+
+        $this->forceFill([
+            'status' => UserStatusEnum::CONFIRMED,
+        ])->save();
+    }
+
+    /**
+     * @throws UserCannotBeChangedException
+     */
+    public function blockAccount(): void
+    {
+        if ($this->status === UserStatusEnum::REMOVED) {
+            throw new UserCannotBeChangedException('Удаленный аккаунт нельзя заблокировать.');
+        }
+
+        if ($this->status === UserStatusEnum::BLOCKED) {
+            return;
+        }
+
+        $this->forceFill([
+            'status' => UserStatusEnum::BLOCKED,
+        ])->save();
     }
 
     public function hasSystemRole(UserSystemRoleEnum|string $role): bool

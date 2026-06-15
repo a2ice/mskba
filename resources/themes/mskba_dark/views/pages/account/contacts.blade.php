@@ -59,32 +59,27 @@
                                 $pendingVerification = $contact->verifications->first();
                                 $hasActivePendingVerification = $pendingVerification?->expires_at?->isFuture() ?? false;
                             @endphp
-                            <li class="account-contact-item d-flex flex-wrap gap-3 align-center mb-3">
-                                <div>
-                                    <span class="fw-bold">{{ $contact->type->label() }}:</span>
-                                    <span>{{ $contact->value }}</span>
-                                    @if($contact->label)
-                                        <span class="text-muted">({{ $contact->label }})</span>
-                                    @endif
-                                </div>
-                                <div class="account-contact-item__meta gap-2 d-flex flex-wrap">
-                                    @if($contact->is_primary)
-                                        <span>Основной</span>
-                                    @endif
-                                    @if($contact->is_public)
-                                        <span>Публичный</span>
-                                    @endif
-                                    <span class="{{ $contact->is_verified ? 'text-success' : 'text-danger' }}">{{ $contact->is_verified ? 'Подтвержден' : 'Не подтвержден' }}</span>
-                                </div>
-                                <div class="account-contact-item__actions">
-                                    <form method="POST" action="{{ route('account.contacts.destroy', $contact) }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn--secondary btn--sm">Удалить</button>
-                                    </form>
+                            <li class="account-contact-item mb-3">
+                                <div class="account-contact-item__summary">
+                                    <div class="account-contact-item__value">
+                                        <span class="fw-bold">{{ $contact->type->label() }}:</span>
+                                        <span>{{ $contact->value }}</span>
+                                        @if($contact->label)
+                                            <span class="text-muted">({{ $contact->label }})</span>
+                                        @endif
+                                    </div>
+                                    <div class="account-contact-item__meta">
+                                        @if($contact->is_primary)
+                                            <span>Основной</span>
+                                        @endif
+                                        @if($contact->is_public)
+                                            <span>Публичный</span>
+                                        @endif
+                                        <span class="{{ $contact->is_verified ? 'text-success' : 'text-danger' }}">{{ $contact->is_verified ? 'Подтвержден' : 'Не подтвержден' }}</span>
+                                    </div>
                                 </div>
                                 @if(! $contact->is_verified && $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
-                                    <div class="account-contact-verification w-100">
+                                    <div class="account-contact-verification">
                                         @if($hasActivePendingVerification)
                                             <div class="account-contact-verification__field mb-3">
                                                 <form
@@ -113,24 +108,38 @@
                                                 </form>
                                             </div>
                                         @endif
-                                        <div class="account-contact-verification__actions">
-                                            @if($hasActivePendingVerification)
-                                                <button
-                                                    type="submit"
-                                                    form="contactVerificationConfirm{{ $contact->id }}"
-                                                    class="btn btn--primary btn--sm"
-                                                >Подтвердить</button>
-                                            @endif
-                                            <form method="POST" action="{{ route('account.contacts.verification.store', $contact) }}">
-                                                @csrf
-                                                <button type="submit" class="btn btn--secondary btn--sm">
-                                                    {{ $hasActivePendingVerification ? 'Новый код' : 'Подтвердить' }}
-                                                </button>
-                                            </form>
-                                        </div>
                                     </div>
                                 @endif
-                                @if(!$loop->last) 
+                                <div class="account-contact-item__actions">
+                                    @if(! $contact->is_verified && $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
+                                        @if($hasActivePendingVerification)
+                                            <button
+                                                type="submit"
+                                                form="contactVerificationConfirm{{ $contact->id }}"
+                                                class="btn btn--primary btn--sm"
+                                            >Подтвердить</button>
+                                        @endif
+                                        <form method="POST" action="{{ route('account.contacts.verification.store', $contact) }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn--secondary btn--sm">
+                                                {{ $hasActivePendingVerification ? 'Новый код' : 'Подтвердить' }}
+                                            </button>
+                                        </form>
+                                    @endif
+                                    @if(! $contact->is_primary)
+                                        <form method="POST" action="{{ route('account.contacts.primary', $contact) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="btn btn--secondary btn--sm">Сделать основным</button>
+                                        </form>
+                                    @endif
+                                    <form method="POST" action="{{ route('account.contacts.destroy', $contact) }}">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn--secondary btn--sm">Удалить</button>
+                                    </form>
+                                </div>
+                                @if(!$loop->last)
                                     <hr class="w-100 mt-3 mb-0">
                                 @endif
                             </li>

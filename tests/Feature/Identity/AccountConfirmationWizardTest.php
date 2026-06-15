@@ -3,6 +3,8 @@
 namespace Tests\Feature\Identity;
 
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\Enums\ContactVerificationChannelEnum;
+use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -12,6 +14,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AccountConfirmationWizardTest extends TestCase
@@ -50,6 +53,7 @@ class AccountConfirmationWizardTest extends TestCase
         $response = $this->actingAs($user)->get(route('account.confirmation'));
 
         $response->assertOk();
+        $response->assertSee('Подтвердите основной контакт');
         $response->assertSee('Выберите роль участия');
         $response->assertSee('Представьтесь, пожалуйста');
         $response->assertSee('(Н)');
@@ -68,6 +72,7 @@ class AccountConfirmationWizardTest extends TestCase
         $response = $this->actingAs($user)->get(route('account.confirmation'));
 
         $response->assertOk();
+        $response->assertSee('Подтвердите основной контакт');
         $response->assertDontSee('data-step-key="participation_role"', false);
         $response->assertDontSee('Выберите роль участия');
         $response->assertSee('Заполните дату рождения');
@@ -87,6 +92,7 @@ class AccountConfirmationWizardTest extends TestCase
         $response = $this->actingAs($user)->get(route('account.confirmation'));
 
         $response->assertOk();
+        $response->assertSee('Подтвердите основной контакт');
         $response->assertDontSee('data-step-key="participation_role"', false);
         $response->assertDontSee('data-step-key="birth_date"', false);
         $response->assertDontSee('data-step-key="gender"', false);
@@ -99,6 +105,7 @@ class AccountConfirmationWizardTest extends TestCase
     {
         $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
         $user->createProfile([]);
+        $this->addVerifiedPrimaryEmail($user);
 
         $this->actingAs($user)->post(route('account.confirmation.complete'), [
             'role' => UserParticipationRoleEnum::PLAYER->value,
@@ -126,6 +133,7 @@ class AccountConfirmationWizardTest extends TestCase
     {
         $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
         $user->createProfile([]);
+        $this->addVerifiedPrimaryEmail($user);
 
         $response = $this->actingAs($user)->post(route('account.confirmation.complete'), [
             'role' => UserParticipationRoleEnum::PLAYER->value,
@@ -141,6 +149,7 @@ class AccountConfirmationWizardTest extends TestCase
     {
         $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
         $user->createProfile([]);
+        $this->addVerifiedPrimaryEmail($user);
 
         $this->actingAs($user)->post(route('account.confirmation.complete'), [
             'role' => UserParticipationRoleEnum::REFEREE->value,
@@ -152,6 +161,86 @@ class AccountConfirmationWizardTest extends TestCase
             'first_name' => null,
             'last_name' => null,
         ]);
+    }
+
+    public function test_confirmation_requires_verified_primary_contact(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+
+        $response = $this->actingAs($user)->post(route('account.confirmation.complete'), [
+            'role' => UserParticipationRoleEnum::REFEREE->value,
+        ]);
+
+        $response->assertSessionHasErrors(['contact']);
+        $this->assertSame(UserStatusEnum::UNCONFIRMED, $user->refresh()->status);
+    }
+
+    public function test_confirmation_wizard_displays_verified_primary_contact(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+        $contact = $this->addVerifiedPrimaryEmail($user);
+
+        $response = $this->actingAs($user)->get(route('account.confirmation'));
+
+        $response->assertOk();
+        $response->assertSee('Основной контакт подтвержден');
+        $response->assertSee($contact->value);
+        $response->assertSee('data-contact-completed="true"', false);
+    }
+
+    public function test_confirmation_wizard_can_add_primary_email_contact_and_start_verification(): void
+    {
+        Mail::fake();
+
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+
+        $response = $this->actingAs($user)->post(route('account.confirmation.contact.store'), [
+            'type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'confirmation@example.test',
+        ]);
+
+        $response->assertRedirect(route('account.confirmation'));
+        $this->assertDatabaseHas('contacts', [
+            'contactable_type' => 'user',
+            'contactable_id' => $user->id,
+            'type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'confirmation@example.test',
+            'is_primary' => true,
+            'verified_at' => null,
+        ]);
+        $this->assertDatabaseHas('contact_verifications', [
+            'status' => ContactVerificationStatusEnum::PENDING->value,
+        ]);
+    }
+
+    public function test_confirmation_wizard_can_confirm_primary_contact(): void
+    {
+        $user = $this->makeUser(UserStatusEnum::UNCONFIRMED);
+        $user->createProfile([]);
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'pending@example.test',
+            'is_primary' => true,
+            'is_public' => false,
+        ]);
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('123456'),
+            'sent_to' => 'pending@example.test',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $response = $this->actingAs($user)->post(route('account.confirmation.contacts.verification.confirm', $contact), [
+            'code' => '123456',
+        ]);
+
+        $response->assertRedirect(route('account.confirmation'));
+        $this->assertNotNull($contact->fresh()->verified_at);
+        $this->assertSame(ContactVerificationStatusEnum::CONFIRMED, $verification->fresh()->status);
     }
 
     private function makeUser(UserStatusEnum $status): User
@@ -176,9 +265,9 @@ class AccountConfirmationWizardTest extends TestCase
         ]);
     }
 
-    private function addVerifiedPrimaryEmail(User $user): void
+    private function addVerifiedPrimaryEmail(User $user)
     {
-        $user->contacts()->create([
+        return $user->contacts()->create([
             'type' => ContactTypeEnum::EMAIL,
             'value' => fake()->unique()->safeEmail(),
             'is_primary' => true,
