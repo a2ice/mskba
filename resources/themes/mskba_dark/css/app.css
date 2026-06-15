@@ -12,6 +12,7 @@
 @import './pages/home';
 @import './pages/account';
 @import './pages/section-sidebar';
+@import './pages/venue';
 @import './pages/admin';
 
 html {}

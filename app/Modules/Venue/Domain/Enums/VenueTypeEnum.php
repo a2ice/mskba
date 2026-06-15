@@ -22,4 +22,16 @@ enum VenueTypeEnum: string
             self::STREET_COURT => 'Уличная площадка',
         };
     }
+
+    public function publicSlug(): string
+    {
+        return match ($this) {
+            self::SPORTS_HALL => 'halls',
+            self::SCHOOL => 'schools',
+            self::UNIVERSITY => 'universities',
+            self::SPORTS_COMPLEX => 'sports-complexes',
+            self::ARENA => 'arenas',
+            self::STREET_COURT => 'street-courts',
+        };
+    }
 }

@@ -1,6 +1,13 @@
 @php
     if(isset($venue)) {
         $title = "{$venue->name}";
+        $address = $venue->address;
+        $displayAddress = $address?->display ?: $venue->rawAddress;
+        $hasCoordinates = $address?->latitude && $address?->longitude;
+        $hasMap = $hasCoordinates && $venue->about->mapApiKey;
+        $yandexMapUrl = $displayAddress
+            ? 'https://yandex.ru/maps/?text=' . urlencode($displayAddress)
+            : null;
     } else {
         $title = 'Ошибка';
         $error_message = isset($error['message']) ? $error['message'] : 'Неизвестная ошибка';
@@ -13,57 +20,293 @@
     'sectionId' => 'venue',
     'sectionClass' => 'venue-section',
     'contentTitle' => isset($venue) ? $venue->name : 'Площадка',
+    'contentSubtitle' => isset($venue) ? $venue->description : null,
     'sidebarLabel' => 'Навигация площадки',
 ])
 
 @section('section-sidebar')
-    <div class="section-sidebar-block">
-        @include('theme::partials.menu.sidebar', ['page' => 'venues', 'sidebarTitle' => 'Площадки'])
-    </div>
+    @if(!empty($venue))
+        <div class="section-sidebar-block">
+            <h2 class="section-sidebar-block__title">Площадка</h2>
+            <nav class="venue-side-nav" aria-label="Разделы площадки">
+                @foreach($venue->sections as $section)
+                    <a href="#{{ $section['id'] }}" @class(['venue-side-nav__link', 'is-muted' => ! $section['isAvailable']])>
+                        <span>{{ $section['label'] }}</span>
+                        @if(! $section['isAvailable'])
+                            <span class="venue-side-nav__badge">скоро</span>
+                        @endif
+                    </a>
+                @endforeach
+            </nav>
+        </div>
 
-    <div class="section-sidebar-block">
-        <h2 class="section-sidebar-block__title">Управление</h2>
-        @if(!empty($venue) && $venue->canEdit)
-            <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--secondary btn--sm">Редактировать</a>
-        @else
-            <p class="section-sidebar-block__text">
-                Доступные действия появятся здесь, если у пользователя есть права на управление площадкой.
-            </p>
-        @endif
-    </div>
+        <div class="section-sidebar-block">
+            <h2 class="section-sidebar-block__title">Состояние</h2>
+            <dl class="venue-side-meta">
+                <div>
+                    <dt>Тип</dt>
+                    <dd>{{ $venue->type }}</dd>
+                </div>
+                <div>
+                    <dt>Статус</dt>
+                    <dd>{{ $venue->status }}</dd>
+                </div>
+                <div>
+                    <dt>Рейтинг</dt>
+                    <dd>{{ $venue->about->rating ? number_format($venue->about->rating, 1, ',', ' ') : 'Готовится' }}</dd>
+                </div>
+            </dl>
+        </div>
+
+        <div class="section-sidebar-block">
+            <h2 class="section-sidebar-block__title">Управление</h2>
+            @if($venue->canEdit)
+                <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+            @else
+                <p class="section-sidebar-block__text">
+                    Доступные действия появятся здесь, если у пользователя есть права на управление площадкой.
+                </p>
+            @endif
+        </div>
+    @else
+        <div class="section-sidebar-block">
+            @include('theme::partials.menu.sidebar', ['page' => 'venues', 'sidebarTitle' => 'Площадки'])
+        </div>
+    @endif
+@endsection
+
+@section('section-heading-action')
+    @if(!empty($venue))
+        <div class="venue-heading-actions">
+            <a href="{{ route('venues') }}" class="btn btn--secondary btn--sm">К списку</a>
+            @if($venue->canEdit)
+                <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--primary-bordered btn--sm">Редактировать</a>
+            @endif
+        </div>
+    @endif
 @endsection
 
 @section('section-content')
     @if(!empty($venue))
-        <ul class="list-unstyled mb-4">
-            <li class="mb-3">
-                Тип:
-                <span class="fw-bold">{{ $venue->type }}</span>
-            </li>
-            <li class="mb-3">
-                Статус:
-                <span class="fw-bold">{{ $venue->status }}</span>
-            </li>
-            <li class="mb-3">
-                Описание:
-                <span class="fw-bold">{{ $venue->description ?? '—' }}</span>
-            </li>
-            <li class="mb-3">
-                Адрес:
-                <span class="fw-bold">{{ $venue->rawAddress ?? '—' }}</span>
-            </li>
-        </ul>
+        <div class="venue-show">
+            <section class="venue-hero" aria-label="Краткая информация">
+                <div class="venue-hero__media">
+                    @if($venue->featuredMedia !== [])
+                        <img src="{{ $venue->featuredMedia[0]['url'] }}" alt="{{ $venue->featuredMedia[0]['title'] ?: $venue->name }}">
+                    @else
+                        <div class="venue-hero__placeholder">
+                            <span class="venue-hero__placeholder-kicker">{{ $venue->type }}</span>
+                            <span class="venue-hero__placeholder-title">{{ $venue->name }}</span>
+                        </div>
+                    @endif
+                </div>
 
-        <div class="d-flex flex-wrap gap-2">
-            <a href="{{ route('venues') }}" class="btn btn--primary btn--sm">К списку</a>
+                <div class="venue-hero__summary">
+                    <div class="venue-hero__status-row">
+                        <span class="venue-pill">{{ $venue->type }}</span>
+                        <span class="venue-pill venue-pill--muted">{{ $venue->status }}</span>
+                    </div>
 
-            @if ($venue->canEdit)
-                <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+                    <div class="venue-rating">
+                        <span class="venue-rating__value">{{ $venue->about->rating ? number_format($venue->about->rating, 1, ',', ' ') : '—' }}</span>
+                        <span class="venue-rating__caption">
+                            {{ $venue->about->ratingCount ? $venue->about->ratingCount . ' оценок' : 'Рейтинг появится после запуска отзывов' }}
+                        </span>
+                    </div>
+
+                    <p class="venue-hero__text">
+                        {{ $venue->description ?: 'Описание площадки будет дополнено после модерации и заполнения профиля площадки.' }}
+                    </p>
+                </div>
+            </section>
+
+            <nav class="venue-anchor-nav" aria-label="Быстрая навигация">
+                @foreach($venue->sections as $section)
+                    <a href="#{{ $section['id'] }}" @class(['venue-anchor-nav__link', 'is-muted' => ! $section['isAvailable']])>
+                        {{ $section['label'] }}
+                    </a>
+                @endforeach
+            </nav>
+
+            @if($venue->featuredMedia !== [])
+                <section id="gallery" class="venue-show-section">
+                    <div class="venue-show-section__heading">
+                        <h2>Галерея</h2>
+                        <span class="venue-section-state">{{ count($venue->featuredMedia) }} фото</span>
+                    </div>
+
+                    <div class="venue-gallery">
+                        @foreach($venue->featuredMedia as $media)
+                            <figure class="venue-gallery__item">
+                                <img src="{{ $media['url'] }}" alt="{{ $media['title'] ?: $venue->name }}">
+                                @if($media['title'] || $media['description'])
+                                    <figcaption>
+                                        @if($media['title'])
+                                            <strong>{{ $media['title'] }}</strong>
+                                        @endif
+                                        @if($media['description'])
+                                            <span>{{ $media['description'] }}</span>
+                                        @endif
+                                    </figcaption>
+                                @endif
+                            </figure>
+                        @endforeach
+                    </div>
+                </section>
             @endif
 
-            @if ($venue->canEditSchedule)
-                <a href="#" class="btn btn--secondary btn--sm">Расписание</a>
-            @endif
+            <section id="address" class="venue-show-section">
+                <div class="venue-show-section__heading">
+                    <h2>Адрес</h2>
+                    @if($yandexMapUrl)
+                        <a href="{{ $yandexMapUrl }}" class="venue-show-section__link" target="_blank" rel="noopener">
+                            Открыть в Яндекс Картах
+                        </a>
+                    @endif
+                </div>
+
+                <div class="venue-address-grid">
+                    <div class="venue-map-frame" data-venue-map-frame>
+                        @if($hasMap)
+                            <div
+                                class="venue-map"
+                                data-venue-map
+                                data-yandex-map-api-key="{{ $venue->about->mapApiKey }}"
+                                data-latitude="{{ $address->latitude }}"
+                                data-longitude="{{ $address->longitude }}"
+                                data-title="{{ $venue->name }}"
+                                data-address="{{ $displayAddress }}"
+                                aria-label="Карта площадки {{ $venue->name }}"
+                            ></div>
+                        @endif
+
+                        <div class="venue-map-placeholder" data-venue-map-fallback @if($hasMap) hidden @endif>
+                            <div class="venue-map-placeholder__marker" aria-hidden="true"></div>
+                            <div>
+                                <p class="venue-map-placeholder__title">Карта площадки</p>
+                                <p class="venue-map-placeholder__text" data-venue-map-fallback-message>
+                                    @if(! $venue->about->mapApiKey)
+                                        Ключ Яндекс Карт не настроен.
+                                    @elseif($hasCoordinates)
+                                        Координаты сохранены: {{ $address->latitude }}, {{ $address->longitude }}.
+                                    @else
+                                        Координаты площадки пока не указаны.
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="venue-address-card">
+                        <dl class="venue-address-list">
+                            <div>
+                                <dt>Адрес</dt>
+                                <dd>{{ $displayAddress ?: 'Адрес пока не указан' }}</dd>
+                            </div>
+
+                            @if($address?->postalCode)
+                                <div>
+                                    <dt>Индекс</dt>
+                                    <dd>{{ $address->postalCode }}</dd>
+                                </div>
+                            @endif
+                        </dl>
+
+                        <div class="venue-metro-list">
+                            <p class="venue-metro-list__title">Метро</p>
+                            @forelse($venue->metroStations as $station)
+                                @php
+                                    $lineColor = $station->lineColor && preg_match('/^#[0-9a-fA-F]{3,8}$/', $station->lineColor)
+                                        ? $station->lineColor
+                                        : '#ec7f12';
+                                @endphp
+                                <div class="venue-metro">
+                                    <span class="venue-metro__bullet" style="background-color: {{ $lineColor }}"></span>
+                                    <span class="venue-metro__name">{{ $station->name }}</span>
+                                    @if($station->lineName)
+                                        <span class="venue-metro__line">{{ $station->lineName }}</span>
+                                    @endif
+                                </div>
+                            @empty
+                                <p class="venue-placeholder-text">Станции метро пока не привязаны к локации.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="amenities" class="venue-show-section">
+                <div class="venue-show-section__heading">
+                    <h2>Опции</h2>
+                    <span class="venue-section-state">
+                        {{ $venue->amenities === [] ? 'заглушка' : count($venue->amenities) . ' опций' }}
+                    </span>
+                </div>
+
+                @if($venue->amenities !== [])
+                    <div class="venue-amenities">
+                        @foreach($venue->amenities as $amenity)
+                            <article class="venue-amenity">
+                                <div class="venue-amenity__icon" aria-hidden="true">
+                                    @if($amenity->icon)
+                                        <i class="ti {{ $amenity->icon }}"></i>
+                                    @else
+                                        <i class="ti ti-check"></i>
+                                    @endif
+                                </div>
+                                <div class="venue-amenity__content">
+                                    <h3>{{ $amenity->name }}</h3>
+                                    @if($amenity->note || $amenity->description)
+                                        <p>{{ $amenity->note ?: $amenity->description }}</p>
+                                    @endif
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="venue-empty-block">
+                        <p>Здесь будут особенности площадки: покрытие, раздевалки, душевые, инвентарь, парковка и другие параметры.</p>
+                    </div>
+                @endif
+            </section>
+
+            <section id="schedule" class="venue-show-section">
+                <div class="venue-show-section__heading">
+                    <h2>Расписание</h2>
+                    <span class="venue-section-state">заглушка</span>
+                </div>
+
+                <div class="venue-schedule-preview">
+                    @for($day = 0; $day < 7; $day++)
+                        <div class="venue-schedule-preview__day">
+                            <span>{{ now()->addDays($day)->translatedFormat('d M') }}</span>
+                            <strong>Нет данных</strong>
+                        </div>
+                    @endfor
+                </div>
+            </section>
+
+            <section id="posts" class="venue-show-section">
+                <div class="venue-show-section__heading">
+                    <h2>Посты</h2>
+                    <span class="venue-section-state">заглушка</span>
+                </div>
+
+                <div class="venue-empty-block">
+                    <p>Лента площадки появится после подключения публикаций и новостей площадки.</p>
+                </div>
+            </section>
+
+            <section id="reviews" class="venue-show-section">
+                <div class="venue-show-section__heading">
+                    <h2>Отзывы</h2>
+                    <span class="venue-section-state">заглушка</span>
+                </div>
+
+                <div class="venue-empty-block">
+                    <p>Отзывы и рейтинг будут подключены отдельным модулем после появления модели оценок.</p>
+                </div>
+            </section>
         </div>
     @else
         <div class="alert alert-warning" role="alert">

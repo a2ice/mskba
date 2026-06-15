@@ -37,7 +37,7 @@ class ThemeResolver
 
     public static function page(string $name, array $data = []): Response
     {
-        $statusCode = isset($data['error']['code']) ? $data['error']['code'] : 200;
+        $statusCode = self::normalizeStatusCode($data['error']['code'] ?? 200);
         $view = 'theme::pages.'.$name;
         $viewExists = view()->exists($view);
         if (!$viewExists) {
@@ -45,7 +45,14 @@ class ThemeResolver
             $data['page'] = $name;
             $data['view_error'] = "View for page '$name' not found.";
         }
-        return response()->view($view, $data, $statusCode ?? 200);
+        return response()->view($view, $data, $statusCode);
+    }
+
+    private static function normalizeStatusCode(mixed $statusCode): int
+    {
+        $statusCode = filter_var($statusCode, FILTER_VALIDATE_INT);
+
+        return $statusCode >= 100 && $statusCode <= 599 ? $statusCode : 500;
     }
 
     public function viteInputs(): array

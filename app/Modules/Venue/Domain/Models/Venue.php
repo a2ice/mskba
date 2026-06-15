@@ -7,6 +7,7 @@ use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Location;
+use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueFactory;
@@ -15,10 +16,20 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['created_by_user_id', 'location_id', 'name', 'alias', 'type', 'status', 'description', 'raw_address'])]
+#[Fillable([
+    'created_by_user_id',
+    'location_id',
+    'name',
+    'alias',
+    'type',
+    'status',
+    'description',
+    'raw_address',
+])]
 #[Hidden([])]
 class Venue extends Model
 {
@@ -50,6 +61,20 @@ class Venue extends Model
     public function contacts(): MorphMany
     {
         return $this->morphMany(Contact::class, 'contactable');
+    }
+
+    public function media(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'mediable');
+    }
+
+    public function amenities(): BelongsToMany
+    {
+        return $this
+            ->belongsToMany(Amenity::class, 'venue_amenities')
+            ->withPivot(['note', 'deleted_at'])
+            ->wherePivotNull('deleted_at')
+            ->withTimestamps();
     }
 
     public function getRouteKeyName(): string

@@ -18,6 +18,7 @@ import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
 import './features/tooltips.js';
 import './features/address-suggest.js';
+import './features/venue-map.js';
 
 import TomSelect from 'tom-select';
 import 'tom-select/dist/css/tom-select.css';
