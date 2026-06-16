@@ -204,9 +204,15 @@ class VenueShowPageTest extends TestCase
                 ->assertSee('Нажмите на день, чтобы посмотреть интервалы.')
                 ->assertSee('data-venue-day-card', false)
                 ->assertSee('data-venue-day-modal', false)
+                ->assertSee('15 июн')
+                ->assertSee('Пн')
+                ->assertSee('Ср')
                 ->assertSee('10:00-12:30')
                 ->assertSee('18:00-21:00')
-                ->assertSee('Закрыто');
+                ->assertSee('Закрыто')
+                ->assertDontSee('Jun')
+                ->assertDontSee('Mon')
+                ->assertDontSee('Wed');
         } finally {
             Carbon::setTestNow();
         }
@@ -253,8 +259,10 @@ class VenueShowPageTest extends TestCase
             ->assertSee('4,0')
             ->assertSee('2 оценок')
             ->assertSee('Иван Петров')
+            ->assertSee('14 июн 2026')
             ->assertSee('Хороший паркет и удобные раздевалки.')
             ->assertSee('Нормальный зал для тренировок.')
-            ->assertDontSee('Этот отзыв еще не опубликован.');
+            ->assertDontSee('Этот отзыв еще не опубликован.')
+            ->assertDontSee('14 Jun 2026');
     }
 }

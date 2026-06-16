@@ -8,6 +8,10 @@
         $yandexMapUrl = $displayAddress
             ? 'https://yandex.ru/maps/?text=' . urlencode($displayAddress)
             : null;
+        $shortWeekdays = [1 => 'Пн', 2 => 'Вт', 3 => 'Ср', 4 => 'Чт', 5 => 'Пт', 6 => 'Сб', 7 => 'Вс'];
+        $shortMonths = [1 => 'янв', 2 => 'фев', 3 => 'мар', 4 => 'апр', 5 => 'мая', 6 => 'июн', 7 => 'июл', 8 => 'авг', 9 => 'сен', 10 => 'окт', 11 => 'ноя', 12 => 'дек'];
+        $placeholderDateLabel = static fn ($date) => $date->format('d') . ' ' . $shortMonths[(int) $date->month];
+        $placeholderWeekdayLabel = static fn ($date) => $shortWeekdays[(int) $date->dayOfWeekIso];
     } else {
         $title = 'Ошибка';
         $error_message = isset($error['message']) ? $error['message'] : 'Неизвестная ошибка';
@@ -397,10 +401,11 @@
                 @else
                     <div class="venue-schedule-preview">
                         @for($day = 0; $day < 7; $day++)
+                            @php($placeholderDate = now()->addDays($day))
                             <div class="venue-schedule-preview__day is-closed">
                                 <div>
-                                    <span>{{ now()->addDays($day)->translatedFormat('d M') }}</span>
-                                    <small>{{ now()->addDays($day)->translatedFormat('D') }}</small>
+                                    <span>{{ $placeholderDateLabel($placeholderDate) }}</span>
+                                    <small>{{ $placeholderWeekdayLabel($placeholderDate) }}</small>
                                 </div>
                                 <strong>Нет данных</strong>
                             </div>

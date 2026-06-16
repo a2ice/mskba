@@ -110,7 +110,7 @@ final class ShowVenueHandler
                 rating: (int) $review->rating,
                 body: $review->body,
                 authorName: $this->reviewAuthorName($review),
-                publishedAt: $review->published_at?->translatedFormat('d M Y'),
+                publishedAt: $review->published_at === null ? null : $this->russianDateWithYear($review->published_at),
             ))
             ->values()
             ->all();
@@ -211,8 +211,8 @@ final class ShowVenueHandler
 
             $days[] = [
                 'date' => $date->toDateString(),
-                'label' => $date->translatedFormat('d M'),
-                'weekday' => $date->translatedFormat('D'),
+                'label' => $this->russianDateLabel($date),
+                'weekday' => $this->russianWeekdayLabel($date),
                 'isToday' => $offset === 0,
                 'isClosed' => $intervals === [],
                 'intervals' => $intervals,
@@ -229,6 +229,47 @@ final class ShowVenueHandler
         }
 
         return substr((string) $time, 0, 5);
+    }
+
+    private function russianDateLabel(CarbonInterface $date): string
+    {
+        return $date->format('d').' '.$this->russianMonthLabel($date);
+    }
+
+    private function russianDateWithYear(CarbonInterface $date): string
+    {
+        return $this->russianDateLabel($date).' '.$date->format('Y');
+    }
+
+    private function russianWeekdayLabel(CarbonInterface $date): string
+    {
+        return match ((int) $date->dayOfWeekIso) {
+            1 => 'Пн',
+            2 => 'Вт',
+            3 => 'Ср',
+            4 => 'Чт',
+            5 => 'Пт',
+            6 => 'Сб',
+            7 => 'Вс',
+        };
+    }
+
+    private function russianMonthLabel(CarbonInterface $date): string
+    {
+        return match ((int) $date->month) {
+            1 => 'янв',
+            2 => 'фев',
+            3 => 'мар',
+            4 => 'апр',
+            5 => 'мая',
+            6 => 'июн',
+            7 => 'июл',
+            8 => 'авг',
+            9 => 'сен',
+            10 => 'окт',
+            11 => 'ноя',
+            12 => 'дек',
+        };
     }
 
     private function reviewAuthorName(VenueReview $review): string
