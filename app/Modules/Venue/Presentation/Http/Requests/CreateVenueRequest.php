@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Presentation\Http\Requests;
 
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
+use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -35,6 +36,27 @@ class CreateVenueRequest extends FormRequest
             'location.metro_station_ids' => ['nullable', 'array'],
             'location.metro_station_ids.*' => ['integer', 'distinct', 'exists:metro_stations,id'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $checker = app(VenueUniquenessChecker::class);
+            $name = $this->nullableInputString('name');
+
+            if ($name !== null && $checker->aliasExistsForName($name)) {
+                $validator->errors()->add('name', 'Площадка с таким названием уже существует.');
+            }
+
+            if ($checker->addressExists(
+                rawAddress: $this->inputAddress(),
+                city: $this->nullableInputString('location.city'),
+                street: $this->nullableInputString('location.street'),
+                building: $this->nullableInputString('location.building'),
+            )) {
+                $validator->errors()->add($this->addressErrorField(), 'Площадка с таким адресом уже существует.');
+            }
+        });
     }
 
     public function locationData(): CreateLocationDTO
@@ -80,6 +102,28 @@ class CreateVenueRequest extends FormRequest
         return is_string($value) && trim($value) !== ''
             ? trim($value)
             : null;
+    }
+
+    private function nullableInputString(string $key): ?string
+    {
+        $value = $this->input($key);
+
+        return is_string($value) && trim($value) !== ''
+            ? trim($value)
+            : null;
+    }
+
+    private function inputAddress(): ?string
+    {
+        return $this->nullableInputString('location.raw_address')
+            ?? $this->nullableInputString('raw_address');
+    }
+
+    private function addressErrorField(): string
+    {
+        return $this->has('location')
+            ? 'location.raw_address'
+            : 'raw_address';
     }
 
     private function nullableFloat(string $key): ?float

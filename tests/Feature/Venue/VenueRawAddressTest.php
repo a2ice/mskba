@@ -6,9 +6,11 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\MetroLine;
 use App\Modules\Location\Domain\Models\MetroStation;
+use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class VenueRawAddressTest extends TestCase
@@ -34,7 +36,111 @@ class VenueRawAddressTest extends TestCase
 
         $this->assertDatabaseHas('venues', [
             'name' => 'Тестовая площадка',
+            'alias' => 'testovaia-ploshhadka',
             'raw_address' => 'Москва, ул. Летниковская, 12',
+        ]);
+    }
+
+    public function test_cannot_create_venue_with_duplicate_alias_from_name(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $user->createProfile([]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('venues.store'), [
+                'name' => 'test',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Первая площадка',
+                'raw_address' => 'Москва, ул. Летниковская, 12',
+            ])
+            ->assertRedirect();
+
+        $this
+            ->actingAs($user)
+            ->from(route('venues.create'))
+            ->post(route('venues.store'), [
+                'name' => 'TeSt',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Дубль названия',
+                'raw_address' => 'Москва, ул. Летниковская, 14',
+            ])
+            ->assertRedirect(route('venues.create'))
+            ->assertSessionHasErrors('name');
+
+        $this->assertDatabaseHas('venues', [
+            'name' => 'test',
+            'alias' => 'test',
+        ]);
+        $this->assertDatabaseMissing('venues', [
+            'name' => 'TeSt',
+        ]);
+        $this->assertDatabaseMissing('venues', [
+            'alias' => 'test-2',
+        ]);
+    }
+
+    public function test_create_handler_does_not_generate_alias_suffix_for_duplicate_name(): void
+    {
+        $createVenue = app(CreateAccountVenueHandler::class);
+
+        $createVenue->handle(null, [
+            'name' => 'test',
+            'type' => VenueTypeEnum::SPORTS_HALL->value,
+            'description' => 'Первая площадка',
+            'raw_address' => 'Москва, ул. Летниковская, 12',
+        ]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Площадка с таким названием уже существует.');
+
+        try {
+            $createVenue->handle(null, [
+                'name' => 'TEST',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Дубль названия',
+                'raw_address' => 'Москва, ул. Летниковская, 14',
+            ]);
+        } finally {
+            $this->assertDatabaseMissing('venues', [
+                'alias' => 'test-2',
+            ]);
+        }
+    }
+
+    public function test_cannot_create_venue_with_duplicate_raw_address(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $user->createProfile([]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('venues.store'), [
+                'name' => 'Первая площадка по адресу',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Описание',
+                'raw_address' => 'Москва, ул. Летниковская, 12',
+            ])
+            ->assertRedirect();
+
+        $this
+            ->actingAs($user)
+            ->from(route('venues.create'))
+            ->post(route('venues.store'), [
+                'name' => 'Вторая площадка по адресу',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Описание',
+                'raw_address' => '  москва, ул. летниковская, 12  ',
+            ])
+            ->assertRedirect(route('venues.create'))
+            ->assertSessionHasErrors('raw_address');
+
+        $this->assertDatabaseMissing('venues', [
+            'name' => 'Вторая площадка по адресу',
         ]);
     }
 
@@ -89,6 +195,48 @@ class VenueRawAddressTest extends TestCase
         $this->assertDatabaseHas('location_metro_station', [
             'location_id' => $venue->location_id,
             'metro_station_id' => $station->id,
+        ]);
+    }
+
+    public function test_cannot_create_venue_with_duplicate_structured_address(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $user->createProfile([]);
+
+        $this
+            ->actingAs($user)
+            ->post(route('venues.store'), [
+                'name' => 'Площадка с адресными полями',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Описание',
+                'location' => [
+                    'city' => 'Москва',
+                    'street' => 'Летниковская',
+                    'building' => '12',
+                ],
+            ])
+            ->assertRedirect();
+
+        $this
+            ->actingAs($user)
+            ->from(route('venues.create'))
+            ->post(route('venues.store'), [
+                'name' => 'Дубль адресных полей',
+                'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'description' => 'Описание',
+                'location' => [
+                    'city' => 'москва',
+                    'street' => 'летниковская',
+                    'building' => '12',
+                ],
+            ])
+            ->assertRedirect(route('venues.create'))
+            ->assertSessionHasErrors('location.raw_address');
+
+        $this->assertDatabaseMissing('venues', [
+            'name' => 'Дубль адресных полей',
         ]);
     }
 }
