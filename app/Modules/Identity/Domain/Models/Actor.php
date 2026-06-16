@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'actor_key',
@@ -42,5 +43,10 @@ class Actor extends Model
     public function fingerprint(): BelongsTo
     {
         return $this->belongsTo(UserFingerprint::class, 'user_fingerprint_id');
+    }
+
+    public function claims(): HasMany
+    {
+        return $this->hasMany(ActorClaim::class, 'claimed_actor_id');
     }
 }
