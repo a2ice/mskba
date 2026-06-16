@@ -106,9 +106,19 @@ final class VenueAccessResolver
 
                     if ($actor->user_id !== null || $actor->user_fingerprint_id !== null) {
                         $query->orWhereHas('creatorActor', function (Builder $query) use ($actor): void {
-                            $query
-                                ->when($actor->user_id !== null, fn (Builder $query) => $query->orWhere('user_id', $actor->user_id))
-                                ->when($actor->user_fingerprint_id !== null, fn (Builder $query) => $query->orWhere('user_fingerprint_id', $actor->user_fingerprint_id));
+                            $query->where(function (Builder $query) use ($actor): void {
+                                if ($actor->user_id !== null) {
+                                    $query->where('user_id', $actor->user_id);
+                                }
+
+                                if ($actor->user_fingerprint_id !== null) {
+                                    if ($actor->user_id === null) {
+                                        $query->where('user_fingerprint_id', $actor->user_fingerprint_id);
+                                    } else {
+                                        $query->orWhere('user_fingerprint_id', $actor->user_fingerprint_id);
+                                    }
+                                }
+                            });
                         });
                     }
                 })

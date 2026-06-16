@@ -3,7 +3,11 @@
 namespace Tests\Feature\Venue;
 
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserFingerprint;
+use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -132,6 +136,75 @@ class PublicVenueCreateEntryTest extends TestCase
             ->get(route('venues.show', $venue->alias))
             ->assertOk()
             ->assertSee('Гостевая площадка');
+    }
+
+    public function test_guest_created_unconfirmed_venue_is_listed_only_for_same_actor(): void
+    {
+        $response = $this
+            ->from(route('venues.create'))
+            ->post(route('venues.store'), [
+                'name' => 'Площадка видна только создателю',
+                'type' => VenueTypeEnum::STREET_COURT->value,
+                'description' => 'Описание гостевой площадки',
+                'raw_address' => 'Москва, Тестовая улица, 3',
+            ])
+            ->assertRedirect();
+
+        $venue = Venue::query()->where('name', 'Площадка видна только создателю')->firstOrFail();
+        $fingerprintCookie = $response->getCookie('mskba_browser_fp')->getValue();
+
+        $this
+            ->withCookie('mskba_browser_fp', $fingerprintCookie)
+            ->get(route('venues'))
+            ->assertOk()
+            ->assertSee('Площадка видна только создателю');
+
+        $this
+            ->withCookie('mskba_browser_fp', 'f3dc4ce6-2b9f-47bd-b9f1-89ec7d776f43')
+            ->get(route('venues.show', $venue->alias))
+            ->assertForbidden();
+
+        $this
+            ->withCookie('mskba_browser_fp', 'f3dc4ce6-2b9f-47bd-b9f1-89ec7d776f43')
+            ->get(route('venues'))
+            ->assertOk()
+            ->assertDontSee('Площадка видна только создателю');
+    }
+
+    public function test_list_venues_handler_does_not_include_other_actor_unconfirmed_venue(): void
+    {
+        $creatorActor = Actor::factory()->create([
+            'user_fingerprint_id' => UserFingerprint::query()->create([
+                'fingerprint_hash' => hash('sha256', 'creator'),
+                'visits_count' => 1,
+                'first_seen_at' => now(),
+                'last_seen_at' => now(),
+            ])->id,
+        ]);
+        $otherActor = Actor::factory()->create([
+            'user_fingerprint_id' => UserFingerprint::query()->create([
+                'fingerprint_hash' => hash('sha256', 'other'),
+                'visits_count' => 1,
+                'first_seen_at' => now(),
+                'last_seen_at' => now(),
+            ])->id,
+        ]);
+
+        Venue::factory()->create([
+            'name' => 'Площадка прямого use case',
+            'created_by_actor_id' => $creatorActor->id,
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $creatorVisibleNames = collect(app(ListVenuesHandler::class)->handle(null, $creatorActor))
+            ->pluck('name')
+            ->all();
+        $otherVisibleNames = collect(app(ListVenuesHandler::class)->handle(null, $otherActor))
+            ->pluck('name')
+            ->all();
+
+        $this->assertContains('Площадка прямого use case', $creatorVisibleNames);
+        $this->assertNotContains('Площадка прямого use case', $otherVisibleNames);
     }
 
     public function test_guest_venue_is_available_from_another_device_after_login_claims_guest_actor(): void
