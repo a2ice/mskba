@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Venue;
 
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -18,7 +19,7 @@ class VenueScheduleManagementTest extends TestCase
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create([
-            'created_by_user_id' => $user->id,
+            'created_by_actor_id' => $this->actorIdFor($user),
             'name' => 'Площадка с формой расписания',
             'alias' => 'schedule-form-venue',
             'status' => VenueStatusEnum::UNCONFIRMED,
@@ -54,7 +55,7 @@ class VenueScheduleManagementTest extends TestCase
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create([
-            'created_by_user_id' => $user->id,
+            'created_by_actor_id' => $this->actorIdFor($user),
             'alias' => 'schedule-update-venue',
             'status' => VenueStatusEnum::UNCONFIRMED,
         ]);
@@ -102,7 +103,7 @@ class VenueScheduleManagementTest extends TestCase
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create([
-            'created_by_user_id' => $user->id,
+            'created_by_actor_id' => $this->actorIdFor($user),
             'alias' => 'schedule-replace-venue',
             'status' => VenueStatusEnum::UNCONFIRMED,
         ]);
@@ -142,7 +143,7 @@ class VenueScheduleManagementTest extends TestCase
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create([
-            'created_by_user_id' => $user->id,
+            'created_by_actor_id' => $this->actorIdFor($user),
             'alias' => 'schedule-validation-venue',
             'status' => VenueStatusEnum::UNCONFIRMED,
         ]);
@@ -165,7 +166,7 @@ class VenueScheduleManagementTest extends TestCase
         $owner = User::factory()->create();
         $intruder = User::factory()->create();
         $venue = Venue::factory()->create([
-            'created_by_user_id' => $owner->id,
+            'created_by_actor_id' => $this->actorIdFor($owner),
             'alias' => 'schedule-denied-venue',
             'status' => VenueStatusEnum::UNCONFIRMED,
         ]);
@@ -181,5 +182,10 @@ class VenueScheduleManagementTest extends TestCase
         $this->assertDatabaseMissing('venue_schedules', [
             'venue_id' => $venue->id,
         ]);
+    }
+
+    private function actorIdFor(User $user): int
+    {
+        return app(CurrentActorResolver::class)->resolve($user, null)->id;
     }
 }

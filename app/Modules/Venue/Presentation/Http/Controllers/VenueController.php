@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
@@ -11,14 +12,14 @@ use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class VenueController extends Controller
 {
-    public function index(ListVenuesHandler $useCase): Response
+    public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response
     {
-        $user = request()->user();
-        $venues = $useCase->handle($user);
+        $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request));
 
         return ThemeResolver::page('venues.index', ['venues' => $venues]);
     }
@@ -33,10 +34,18 @@ class VenueController extends Controller
         ]);
     }
 
-    public function store(CreateVenueRequest $request, CreateAccountVenueHandler $createVenue): RedirectResponse
+    public function store(
+        CreateVenueRequest $request,
+        CreateAccountVenueHandler $createVenue,
+        CurrentActorResolver $actors,
+    ): RedirectResponse
     {
         try {
-            $venue = $createVenue->handle($request->user(), $request->validated(), $request->locationData());
+            $venue = $createVenue->handle(
+                $actors->resolveForRequest($request),
+                $request->validated(),
+                $request->locationData(),
+            );
         } catch (\Exception $e) {
             return redirect()
                 ->route('venues.create')
@@ -49,12 +58,15 @@ class VenueController extends Controller
             ->with('status', 'Площадка добавлена и ожидает подтверждения.');
     }
 
-    public function show(string $alias, ShowVenueHandler $useCase): Response
+    public function show(
+        Request $request,
+        string $alias,
+        ShowVenueHandler $useCase,
+        CurrentActorResolver $actors,
+    ): Response
     {
-        $user = request()->user();
-
         try {
-            $venue = $useCase->handle($alias, $user);
+            $venue = $useCase->handle($alias, $request->user(), $actors->resolveForRequest($request));
         } catch (\Exception $e) {
             return ThemeResolver::page('venues.show', ['error' => [
                 'message' => $e->getMessage(),

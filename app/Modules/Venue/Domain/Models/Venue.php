@@ -5,7 +5,7 @@ namespace App\Modules\Venue\Domain\Models;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
-use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable([
-    'created_by_user_id',
+    'created_by_actor_id',
     'location_id',
     'name',
     'alias',
@@ -49,9 +49,9 @@ class Venue extends Model
             ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value);
     }
 
-    public function creator(): BelongsTo
+    public function creatorActor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by_user_id');
+        return $this->belongsTo(Actor::class, 'created_by_actor_id');
     }
 
     public function location(): BelongsTo

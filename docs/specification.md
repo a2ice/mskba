@@ -110,7 +110,7 @@
 
 Текущие поля площадки:
 
-- `created_by_user_id`;
+- `created_by_actor_id`;
 - `location_id`;
 - `name`;
 - `alias`;
@@ -125,7 +125,7 @@
 - `VenueStatusEnum` - жизненный статус записи: `unconfirmed`, `confirmed`, `blocked`, `removed`;
 - `VenueTypeEnum` - тип площадки.
 
-`Venue` имеет relation `creator()` к `User` по `created_by_user_id` и relation `location()` к `Location` по `location_id`.
+`Venue` имеет relation `creatorActor()` к `Actor` по `created_by_actor_id` и relation `location()` к `Location` по `location_id`.
 
 Публично видимы площадки со статусом `confirmed`. Дополнительно пользователь может видеть площадки через договорный доступ.
 
@@ -214,7 +214,7 @@ Dashboard использует отдельный layout `theme::layouts.admin-d
 
 Шаблон access level используется как preset при выдаче контракта, но в конкретном контракте должен сохраняться фактический snapshot permissions. Это позволяет старшей роли снять часть прав при выдаче `admin` или другого уровня и не расширять старые контракты автоматически при изменении шаблона.
 
-`venues.created_by_user_id` в целевой модели является audit/source field, а не источником владения. Право владельца площадки должно задаваться `membership_contract` со `scope_type = venue` и `access_level = owner`. Пока у площадки нет действующего owner membership contract, создатель может получать полный управленческий доступ как bootstrap-owner. После появления owner membership contract управление должно определяться контрактами, а creator fallback больше не должен давать полную власть над этой площадкой.
+`venues.created_by_actor_id` в целевой модели является audit/source field, а не источником владения. Право владельца площадки должно задаваться `membership_contract` со `scope_type = venue` и `access_level = owner`. Пока у площадки нет действующего owner membership contract, actor-создатель или связанный с ним user/fingerprint может получать полный управленческий доступ как bootstrap-owner. После появления owner membership contract управление должно определяться контрактами, а creator fallback больше не должен давать полную власть над этой площадкой.
 
 ## Темы и представления
 

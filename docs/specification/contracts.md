@@ -32,7 +32,7 @@
 
 `VenueAccessResolver` сейчас использует два источника доступа:
 
-- `venues.created_by_user_id` как creator shortcut;
+- `venues.created_by_actor_id` как creator/bootstrap shortcut;
 - membership permissions через `VenueMembershipAccess`.
 
 ## Ограничение holder/provider/customer
@@ -186,21 +186,21 @@ access level template
 
 ## Venue transition
 
-Сейчас `venues.created_by_user_id` является не только audit field, но и bootstrap-источником доступа в `VenueAccessResolver`.
+Сейчас `venues.created_by_actor_id` является не только audit field, но и bootstrap-источником доступа в `VenueAccessResolver`.
 
 Целевое состояние:
 
-- `created_by_user_id` остается полем происхождения записи;
+- `created_by_actor_id` остается полем происхождения записи;
 - владение площадкой задается `membership_contract` со `scope_type = venue` и `access_level = owner`;
 - проверка доступа идет через effective permissions;
-- если у площадки еще нет действующего owner membership contract, создатель получает полный управленческий доступ как bootstrap-owner;
+- если у площадки еще нет действующего owner membership contract, actor-создатель или связанный с ним user/fingerprint получает полный управленческий доступ как bootstrap-owner;
 - после появления действующего owner membership contract права управления определяются контрактами, а не фактом создания записи;
 - creator fallback удаляется после backfill и проверки owner contracts либо остается только как явно ограниченное bootstrap-правило для сущностей без владельца.
 
 Переходный порядок:
 
 1. Добавить новую модель membership contracts. Выполнено.
-2. Создать owner membership contracts для существующих площадок по `created_by_user_id`. Это должен делать отдельный backfill-процесс или специализированный data migration, потому что базовый `DatabaseSeeder` остается production-safe и не создает demo venues или contracts.
+2. Создать owner membership contracts для существующих площадок по `created_by_actor_id -> actors.user_id`, если у actor есть user. Это должен делать отдельный backfill-процесс или специализированный data migration, потому что базовый `DatabaseSeeder` остается production-safe и не создает demo venues или contracts.
 3. Сохранить creator fallback только для площадок без действующего owner membership contract. Выполнено.
 4. Перевести списки и карточки площадок на contract effective permissions. Выполнено для `venue` membership.
 5. Удалить creator fallback отдельным шагом, когда данные и тесты подтверждают корректность. Не выполнено, оставлено как будущий этап.

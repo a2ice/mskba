@@ -1,10 +1,10 @@
 <?php
 
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
-use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 
 return new class extends Migration
 {
@@ -15,11 +15,22 @@ return new class extends Migration
     {
         Schema::create('venues', function (Blueprint $table): void {
             $table->id();
+            $table
+                ->foreignId('created_by_actor_id')
+                ->nullable()
+                ->constrained('actors')
+                ->nullOnDelete();
+            $table
+                ->foreignId('location_id')
+                ->nullable()
+                ->constrained('locations')
+                ->nullOnDelete();
             $table->string('name');
             $table->string('alias')->unique();
             $table->enum('type', array_column(VenueTypeEnum::cases(), 'value'));
             $table->enum('status', array_column(VenueStatusEnum::cases(), 'value'))->default(VenueStatusEnum::UNCONFIRMED->value);
             $table->text('description')->nullable();
+            $table->text('raw_address')->nullable();
             $table->timestamps();
         });
     }

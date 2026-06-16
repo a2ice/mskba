@@ -58,7 +58,7 @@ final class VenueMembershipAccess
     public function bootstrapOwnedVenueIdsFor(User $user): array
     {
         return Venue::query()
-            ->where('created_by_user_id', $user->id)
+            ->whereHas('creatorActor', fn (Builder $query) => $query->where('user_id', $user->id))
             ->whereNotIn('id', $this->activeOwnerVenueIds())
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
@@ -116,7 +116,7 @@ final class VenueMembershipAccess
     /**
      * @return array<int>
      */
-    private function activeOwnerVenueIds(): array
+    public function activeOwnerVenueIds(): array
     {
         return $this->baseOwnerQuery()
             ->distinct()

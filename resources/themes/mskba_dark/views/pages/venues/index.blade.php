@@ -12,29 +12,7 @@
 ])
 
 @section('section-heading-action')
-    @guest
-        <div class="section-heading-cta">
-            <p class="section-heading-cta__text">Чтобы добавить площадку, необходимо войти на сайт.</p>
-            <button
-                type="button"
-                class="btn btn--primary-bordered btn--sm js-handler"
-                data-handler="modal"
-                data-modal-action="open"
-                data-modal-target="auth-entry-classic"
-            >
-                Войти
-            </button>
-        </div>
-    @else
-        @if(auth()->user()->isConfirmed())
-            <a href="{{ route('venues.create') }}" class="btn btn--primary-bordered btn--sm">Добавить площадку</a>
-        @else
-            <div class="section-heading-cta">
-                <p class="section-heading-cta__text">Чтобы добавить площадку, необходимо подтвердить аккаунт.</p>
-                <a href="{{ route('account.confirmation') }}" class="btn btn--secondary btn--sm">Подтвердить</a>
-            </div>
-        @endif
-    @endguest
+    <a href="{{ route('venues.create') }}" class="btn btn--primary-bordered btn--sm">Добавить площадку</a>
 @endsection
 
 @section('section-sidebar')

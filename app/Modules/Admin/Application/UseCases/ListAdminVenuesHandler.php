@@ -14,7 +14,7 @@ final class ListAdminVenuesHandler
      */
     public function handle(array $filters): LengthAwarePaginator
     {
-        $query = Venue::query()->with('creator')->latest('id');
+        $query = Venue::query()->with('creatorActor.user')->latest('id');
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {

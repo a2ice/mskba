@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -57,13 +58,13 @@ class AdminPagesTest extends TestCase
     {
         $admin = $this->admin();
         Venue::factory()->create([
-            'created_by_user_id' => $admin->id,
+            'created_by_actor_id' => $this->actorIdFor($admin),
             'name' => 'Проверяемая площадка',
             'status' => VenueStatusEnum::CONFIRMED,
             'type' => VenueTypeEnum::SPORTS_HALL,
         ]);
         Venue::factory()->create([
-            'created_by_user_id' => $admin->id,
+            'created_by_actor_id' => $this->actorIdFor($admin),
             'name' => 'Скрытая площадка',
             'status' => VenueStatusEnum::UNCONFIRMED,
             'type' => VenueTypeEnum::STREET_COURT,
@@ -86,5 +87,10 @@ class AdminPagesTest extends TestCase
             'status' => UserStatusEnum::CONFIRMED,
             'system_role' => UserSystemRoleEnum::ADMIN,
         ]);
+    }
+
+    private function actorIdFor(User $user): int
+    {
+        return app(CurrentActorResolver::class)->resolve($user, null)->id;
     }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
-use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Application\UseCases\CreateLocationHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -20,20 +20,16 @@ final class CreateAccountVenueHandler
     /**
      * @param  array{name: string, type: string, description?: string|null, raw_address?: string|null}  $data
      */
-    public function handle(User $user, array $data, ?CreateLocationDTO $locationData = null): Venue
+    public function handle(?Actor $actor, array $data, ?CreateLocationDTO $locationData = null): Venue
     {
-        if (! $user->isConfirmed()) {
-            throw new \DomainException('Чтобы добавить площадку, необходимо подтвердить аккаунт.', 403);
-        }
-
-        return DB::transaction(function () use ($user, $data, $locationData): Venue {
+        return DB::transaction(function () use ($actor, $data, $locationData): Venue {
             $rawAddress = $locationData?->rawAddress ?? $data['raw_address'] ?? null;
             $location = $locationData === null
                 ? null
                 : $this->createLocation->handle($locationData);
 
             return Venue::query()->create([
-                'created_by_user_id' => $user->id,
+                'created_by_actor_id' => $actor?->id,
                 'location_id' => $location?->id,
                 'name' => $data['name'],
                 'alias' => $this->makeUniqueAlias($data['name']),

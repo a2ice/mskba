@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\MetroStation;
@@ -27,7 +28,7 @@ final class ShowVenueHandler
         private readonly VenueAccessResolver $access,
     ) {}
 
-    public function handle(string $alias, ?User $user): VenueDetailsDTO
+    public function handle(string $alias, ?User $user, ?Actor $actor = null): VenueDetailsDTO
     {
         $venue = Venue::query()
             ->with([
@@ -62,7 +63,7 @@ final class ShowVenueHandler
         if ($venue === null) {
             throw new VenueNotFoundException;
         }
-        if (! $this->access->canView($user, $venue)) {
+        if (! $this->access->canView($user, $venue, $actor)) {
             throw new VenueAccessDeniedException;
         }
 
@@ -161,9 +162,9 @@ final class ShowVenueHandler
             amenities: $amenities,
             featuredMedia: $featuredMedia,
             reviews: $reviews,
-            canEdit: $this->access->canEdit($user, $venue),
-            canEditSchedule: $this->access->canEditSchedule($user, $venue),
-            canRemove: $this->access->canRemove($user, $venue),
+            canEdit: $this->access->canEdit($user, $venue, $actor),
+            canEditSchedule: $this->access->canEditSchedule($user, $venue, $actor),
+            canRemove: $this->access->canRemove($user, $venue, $actor),
         );
     }
 

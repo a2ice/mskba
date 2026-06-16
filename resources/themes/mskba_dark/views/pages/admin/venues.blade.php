@@ -59,7 +59,7 @@
                             <td>{{ $venue->alias }}</td>
                             <td><span class="admin-badge">{{ $venue->status->label() }}</span></td>
                             <td>{{ $venue->type->label() }}</td>
-                            <td>{{ $venue->creator?->username ?? '—' }}</td>
+                            <td>{{ $venue->creatorActor?->user?->username ?? '—' }}</td>
                             <td>{{ $venue->created_at?->format('d.m.Y H:i') }}</td>
                         </tr>
                     @endforeach

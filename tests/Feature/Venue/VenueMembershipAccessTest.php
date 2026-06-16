@@ -7,6 +7,7 @@ use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
@@ -24,7 +25,7 @@ class VenueMembershipAccessTest extends TestCase
     {
         $creator = User::factory()->create();
         $venue = Venue::factory()->create([
-            'created_by_user_id' => $creator->id,
+            'created_by_actor_id' => $this->actorIdFor($creator),
             'status' => VenueStatusEnum::UNCONFIRMED->value,
         ]);
 
@@ -40,7 +41,7 @@ class VenueMembershipAccessTest extends TestCase
         $creator = User::factory()->create();
         $owner = User::factory()->create();
         $venue = Venue::factory()->create([
-            'created_by_user_id' => $creator->id,
+            'created_by_actor_id' => $this->actorIdFor($creator),
             'status' => VenueStatusEnum::UNCONFIRMED->value,
         ]);
 
@@ -111,5 +112,10 @@ class VenueMembershipAccessTest extends TestCase
             ]));
 
         return $contract;
+    }
+
+    private function actorIdFor(User $user): int
+    {
+        return app(CurrentActorResolver::class)->resolve($user, null)->id;
     }
 }

@@ -15,6 +15,7 @@ use App\Modules\Identity\Infrastructure\Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -85,6 +86,18 @@ class User extends Authenticatable
     public function contacts(): MorphMany
     {
         return $this->morphMany(Contact::class, 'contactable');
+    }
+
+    public function fingerprints(): BelongsToMany
+    {
+        return $this
+            ->belongsToMany(UserFingerprint::class, 'user_fingerprint_user')
+            ->withPivot([
+                'authentications_count',
+                'first_authenticated_at',
+                'last_authenticated_at',
+            ])
+            ->withTimestamps();
     }
 
     public function primaryEmail(): ?Contact
