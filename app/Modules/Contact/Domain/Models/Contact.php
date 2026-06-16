@@ -2,6 +2,7 @@
 
 namespace App\Modules\Contact\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 ])]
 class Contact extends Model
 {
-    use SoftDeletes;
+    use Auditable, SoftDeletes;
 
     public function contactable(): MorphTo
     {

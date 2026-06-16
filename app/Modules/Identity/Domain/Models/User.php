@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Domain\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
@@ -27,7 +28,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use Auditable, HasFactory, Notifiable;
 
     protected static function newFactory(): UserFactory
     {

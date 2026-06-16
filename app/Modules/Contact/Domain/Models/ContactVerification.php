@@ -2,6 +2,7 @@
 
 namespace App\Modules\Contact\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contact\Domain\Enums\ContactVerificationChannelEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class ContactVerification extends Model
 {
+    use Auditable;
+
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);

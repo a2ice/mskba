@@ -2,6 +2,7 @@
 
 namespace App\Modules\Location\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Location\Infrastructure\Database\Factories\LocationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Location extends Model
 {
     /** @use HasFactory<LocationFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
 
     protected static function newFactory(): LocationFactory
     {

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Domain\Models\Participation;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Infrastructure\Database\Factories\Participation\PlayerProfileFactory;
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PlayerProfile extends Model
 {
     /** @use HasFactory<PlayerProfileFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
 
     protected static function newFactory(): PlayerProfileFactory
     {

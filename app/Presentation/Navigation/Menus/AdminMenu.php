@@ -70,6 +70,15 @@ final class AdminMenu implements MenuHandler
                 'data' => ['count' => 0], // TODO: добавить динамическое количество
             ],
             [
+                'label' => 'Аудит',
+                'description' => 'Журнал изменений ключевых сущностей.',
+                'url' => $this->routeUrl('admin.audit'),
+                'active' => $this->isActiveRoute('admin.audit'),
+                'visible' => true,
+                'icon' => 'ti-history',
+                'data' => ['count' => 0],
+            ],
+            [
                 'label' => 'Настройки',
                 'description' => 'Базовые системные параметры.',
                 'url' => $this->routeUrl('admin.settings'),

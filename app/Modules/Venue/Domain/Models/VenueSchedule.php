@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class VenueSchedule extends Model
 {
     /** @use HasFactory<VenueScheduleFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
 
     protected static function newFactory(): VenueScheduleFactory
     {

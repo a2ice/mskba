@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Infrastructure\Database\Factories\ProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 class Profile extends Model
 {
     /** @use HasFactory<ProfileFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
 
     protected static function newFactory(): ProfileFactory
     {

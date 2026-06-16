@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Application\UseCases;
 
+use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 
@@ -24,6 +25,9 @@ final class GetAdminDashboardHandler
                     break;
                 case route('admin.venues'):
                     $item['data']['count'] = Venue::query()->count();
+                    break;
+                case route('admin.audit'):
+                    $item['data']['count'] = AuditLog::query()->count();
                     break;
             }
         }

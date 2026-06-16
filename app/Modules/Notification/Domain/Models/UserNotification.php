@@ -2,6 +2,7 @@
 
 namespace App\Modules\Notification\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class UserNotification extends Model
 {
+    use Auditable;
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

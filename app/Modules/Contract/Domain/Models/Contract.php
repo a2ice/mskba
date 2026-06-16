@@ -2,6 +2,7 @@
 
 namespace App\Modules\Contract\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 ])]
 class Contract extends Model
 {
+    use Auditable;
+
     public function membership(): HasOne
     {
         return $this->hasOne(ContractMembership::class);

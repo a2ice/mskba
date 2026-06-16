@@ -157,13 +157,20 @@ Routes находятся под prefix `/admin` и middleware `auth`, `can:acce
 - `admin.events`;
 - `admin.teams`;
 - `admin.content`;
+- `admin.audit`;
 - `admin.settings`.
 
 Gate `access-admin-panel` определен в `App\Providers\AccessServiceProvider` и использует `User::isAdmin()`. Это означает системную роль `admin` или выше и подтвержденный аккаунт.
 
 Dashboard использует отдельный layout `theme::layouts.admin-dashboard`. Внутренние admin-разделы используют общий `theme::layouts.section-sidebar` с admin sidebar partial, чтобы сохранить единую двухколоночную композицию проекта.
 
-Текущая первая итерация админки является read-only каркасом. CRUD, сохранение настроек, content persistence, moderation workflow, audit log и прикладные actions должны добавляться отдельными задачами.
+Текущая первая итерация админки является read-only каркасом. CRUD, сохранение настроек, content persistence, moderation workflow и прикладные actions должны добавляться отдельными задачами. Audit log уже доступен как read-only раздел `/admin/audit`.
+
+## Аудит
+
+Техническая модель audit logging описана в [Audit logging](architecture/audit.md).
+
+Audit фиксирует изменения доменных сущностей в `audit_logs` и связывает запись с `Actor`, если действие выполнялось в HTTP-flow. Это отдельный системный журнал изменений данных, а не runtime-логи приложения.
 
 ## Контракты
 
@@ -315,5 +322,6 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Location](specification/location.md)
 - [Notification](specification/notification.md)
 - [Contracts](specification/contracts.md)
+- [Audit logging](architecture/audit.md)
 - [Правила ведения документации](specification/documentation-guidelines.md)
 - [Процесс работы с задачами](specification/task-workflow.md)

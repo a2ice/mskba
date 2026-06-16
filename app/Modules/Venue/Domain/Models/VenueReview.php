@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueReviewFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class VenueReview extends Model
 {
     /** @use HasFactory<VenueReviewFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
 
     use SoftDeletes;
 

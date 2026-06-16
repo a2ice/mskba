@@ -2,6 +2,7 @@
 
 namespace App\Modules\Media\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Media\Infrastructure\Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\Storage;
 class Media extends Model
 {
     /** @use HasFactory<MediaFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
     use SoftDeletes;
 
     protected static function newFactory(): MediaFactory

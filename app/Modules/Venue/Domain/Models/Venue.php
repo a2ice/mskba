@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
@@ -35,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Venue extends Model
 {
     /** @use HasFactory<VenueFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
 
     protected static function newFactory(): VenueFactory
     {

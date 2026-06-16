@@ -2,6 +2,7 @@
 
 namespace App\Modules\Contract\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class ContractMembership extends Model
 {
+    use Auditable;
+
     public function contract(): BelongsTo
     {
         return $this->belongsTo(Contract::class);

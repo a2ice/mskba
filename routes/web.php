@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
@@ -82,6 +83,7 @@ Route::prefix('admin')
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'События');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
         Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
+        Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
     });
 
@@ -100,7 +102,7 @@ Route::prefix('venues')->group(function () {
 });
 
 Route::get('/integrations/address-suggest', AddressSuggestController::class)
-    ->middleware(['auth', 'throttle:30,1'])
+    ->middleware(['throttle:30,1'])
     ->name('integrations.address-suggest');
 
 // Group routes for authenticated users

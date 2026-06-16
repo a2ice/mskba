@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueScheduleIntervalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class VenueScheduleInterval extends Model
 {
     /** @use HasFactory<VenueScheduleIntervalFactory> */
-    use HasFactory;
+    use Auditable, HasFactory;
 
     protected static function newFactory(): VenueScheduleIntervalFactory
     {

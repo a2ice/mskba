@@ -82,7 +82,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-SLUF9Kpw.css",
+    "file": "assets/app-DyhpwTS6.css",
     "name": "app",
     "names": [
       "app.css"
@@ -91,9 +91,12 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-xHRqCes5.js",
+    "file": "assets/app-BjekukRY.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
-    "isEntry": true
+    "isEntry": true,
+    "css": [
+      "assets/app-dJhxz_Yn.css"
+    ]
   }
 }

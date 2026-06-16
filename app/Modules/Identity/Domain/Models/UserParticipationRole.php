@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Domain\Models;
 
+use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class UserParticipationRole extends Model
 {
+    use Auditable;
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

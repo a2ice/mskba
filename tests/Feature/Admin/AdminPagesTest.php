@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -29,6 +30,7 @@ class AdminPagesTest extends TestCase
             ->assertSee('События')
             ->assertSee('Команды')
             ->assertSee('Контент')
+            ->assertSee('Аудит')
             ->assertSee('Настройки');
     }
 
@@ -79,6 +81,35 @@ class AdminPagesTest extends TestCase
             ->assertOk()
             ->assertSee('Проверяемая площадка')
             ->assertDontSee('Скрытая площадка');
+    }
+
+    public function test_audit_page_shows_audit_logs(): void
+    {
+        $admin = $this->admin();
+        $actor = app(CurrentActorResolver::class)->resolve($admin, null);
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => $actor->id,
+            'name' => 'Площадка для аудита',
+        ]);
+
+        AuditLog::query()->create([
+            'actor_id' => $actor->id,
+            'auditable_type' => Venue::class,
+            'auditable_id' => $venue->id,
+            'event' => 'updated',
+            'old_values' => ['name' => 'Старое название'],
+            'new_values' => ['name' => 'Площадка для аудита'],
+            'metadata' => ['route' => 'test'],
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->get(route('admin.audit'))
+            ->assertOk()
+            ->assertSee('Аудит')
+            ->assertSee('Venue')
+            ->assertSee('updated')
+            ->assertSee('Площадка для аудита');
     }
 
     private function admin(): User
