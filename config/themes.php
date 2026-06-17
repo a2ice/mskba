@@ -7,6 +7,9 @@ return [
         'mskba_dark' => [
             'name' => 'MSKBA Dark',
         ],
+        'mskba_streetball' => [
+            'name' => 'MSKBA Streetball',
+        ],
         'blank' => [
             'name' => 'Blank',
         ],

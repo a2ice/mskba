@@ -53,13 +53,7 @@ final class MainMenu implements MenuHandler
 
         }
 
-        $items = [
-            [
-                'label' => 'Площадки',
-                'url' => $this->routeUrl('venues'),
-                'active' => $this->isActiveRoute('venues, venues.*'),
-                'visible' => true,
-            ],
+        $moreGames = [
             [
                 'label' => 'Игры',
                 'url' => $this->routeUrl('/#games'),
@@ -73,16 +67,56 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
+                'label' => 'Турниры',
+                'url' => $this->routeUrl('/#tournaments'),
+                'active' => $this->isActiveRoute('tournaments, tournaments.*'),
+                'visible' => true,
+            ],
+        ];
+
+        $items = [
+            [
+                'label' => 'Площадки',
+                'url' => $this->routeUrl('venues'),
+                'active' => $this->isActiveRoute('venues, venues.*'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Мероприятия',
+                'url' => $this->routeUrl('/#games'),
+                'active' => $this->isActiveRoute('games, games.*'),
+                'visible' => true,
+                'children' => $moreGames,
+            ],
+            [
                 'label' => 'Команды',
                 'url' => $this->routeUrl('/#teams'),
                 'active' => $this->isActiveRoute('teams, teams.*'),
                 'visible' => true,
             ],
             [
+                'label' => 'Новости',
+                'url' => $this->routeUrl('/#teams'),
+                'active' => $this->isActiveRoute('teams, teams.*'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Магазин',
+                'url' => $this->routeUrl('/#shop'),
+                'active' => $this->isActiveRoute('shop, shop.*'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'О нас',
+                'url' => $this->routeUrl('/#about'),
+                'active' => $this->isActiveRoute('about, about.*'),
+                'visible' => true,
+            ],
+            [
                 'label' => 'Еще',
                 'url' => null,
                 'active' => $this->hasActiveItem($moreItems),
-                'visible' => true,
+                'visible' => false,
                 'children' => $moreItems,
             ],
         ];
