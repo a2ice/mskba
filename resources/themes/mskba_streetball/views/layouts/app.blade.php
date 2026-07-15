@@ -21,5 +21,10 @@
     </head>
     <body>
         @include('theme::partials.header')
+
+        <main class="site-content">
+            @yield('content')
+        </main>
+
     </body>
 </html>
