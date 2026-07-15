@@ -52,6 +52,9 @@ final class TelegramMiniAppController extends Controller
                 'first_name' => $telegramAccount->first_name,
                 'last_name' => $telegramAccount->last_name,
                 'photo_url' => $telegramAccount->photo_url,
+                'start_param' => $telegramAccount->raw_data['start_param'] ?? null,
+                'chat_type' => $telegramAccount->raw_data['chat_type'] ?? null,
+                'chat_instance' => $telegramAccount->raw_data['chat_instance'] ?? null,
             ],
         ]);
     }

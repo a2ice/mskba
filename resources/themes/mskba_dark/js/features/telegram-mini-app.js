@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const telegramName = root.querySelector('[data-telegram-name]');
     const mskbaUser = root.querySelector('[data-mskba-user]');
     const registrationChannel = root.querySelector('[data-registration-channel]');
+    const telegramLaunch = root.querySelector('[data-telegram-launch]');
     const telegram = window.Telegram?.WebApp;
 
     if (!telegram?.initData) {
@@ -17,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    telegram.ready();
-    telegram.expand();
+    safeTelegramCall(() => telegram.ready());
+    safeTelegramCall(() => telegram.expand());
 
     fetch('/integrations/telegram/auth', {
         method: 'POST',
@@ -52,6 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
             telegramName.textContent = [name || 'Без имени', username].filter(Boolean).join(' · ');
             mskbaUser.textContent = `#${payload.user.id} · ${payload.user.username || 'без логина'}`;
             registrationChannel.textContent = payload.user.registration_channel || '—';
+            telegramLaunch.textContent = [
+                payload.telegram_user?.start_param ? `start_param=${payload.telegram_user.start_param}` : null,
+                payload.telegram_user?.chat_type ? `chat_type=${payload.telegram_user.chat_type}` : null,
+            ].filter(Boolean).join(' · ') || '—';
             summary.hidden = false;
             setStatus(payload.created ? 'Аккаунт создан и авторизован.' : 'Вы авторизованы.');
         })
@@ -62,6 +67,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function setStatus(message) {
         if (status) {
             status.textContent = message;
+        }
+    }
+
+    function safeTelegramCall(callback) {
+        try {
+            callback();
+        } catch (error) {
+            console.debug('Telegram WebApp call skipped:', error);
         }
     }
 });

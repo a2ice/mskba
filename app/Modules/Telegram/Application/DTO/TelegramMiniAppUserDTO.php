@@ -15,6 +15,9 @@ final readonly class TelegramMiniAppUserDTO
         public ?string $languageCode,
         public ?string $photoUrl,
         public int $authDate,
+        public ?string $startParam,
+        public ?string $chatType,
+        public ?string $chatInstance,
         public array $rawUser,
     ) {}
 }

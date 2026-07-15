@@ -30,6 +30,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertJsonPath('status', 'success')
             ->assertJsonPath('created', true)
             ->assertJsonPath('telegram_user.username', 'mskba_user')
+            ->assertJsonPath('telegram_user.start_param', 'mskba_chat')
             ->assertJsonPath('user.registration_channel', UserRegistrationChannelEnum::TELEGRAM_MINI_APP->value);
 
         $user = User::query()->where('username', 'tg_777')->firstOrFail();
@@ -45,6 +46,14 @@ class TelegramMiniAppAuthTest extends TestCase
             'first_name' => 'Dmitry',
             'last_name' => 'Losev',
         ]);
+    }
+
+    public function test_telegram_alias_page_is_available(): void
+    {
+        $this
+            ->get(route('integrations.telegram.main'))
+            ->assertOk()
+            ->assertSee('MSKBA - Main');
     }
 
     public function test_telegram_mini_app_auth_reuses_existing_telegram_account(): void
@@ -110,7 +119,9 @@ class TelegramMiniAppAuthTest extends TestCase
     {
         $params = [
             'auth_date' => (string) now()->timestamp,
+            'chat_type' => 'sender',
             'query_id' => 'AAHdF6IQAAAAAN0XohDhrOrc',
+            'start_param' => 'mskba_chat',
             'user' => json_encode($telegramUser, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 

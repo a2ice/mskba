@@ -26,6 +26,10 @@
                     <dt>Канал регистрации</dt>
                     <dd data-registration-channel>—</dd>
                 </div>
+                <div>
+                    <dt>Запуск</dt>
+                    <dd data-telegram-launch>—</dd>
+                </div>
             </dl>
 
             <div class="integration-panel__actions">

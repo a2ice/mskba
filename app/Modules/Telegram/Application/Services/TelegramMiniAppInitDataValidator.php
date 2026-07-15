@@ -64,6 +64,9 @@ final class TelegramMiniAppInitDataValidator
             languageCode: $this->nullableString($user['language_code'] ?? null),
             photoUrl: $this->nullableString($user['photo_url'] ?? null),
             authDate: $authDate,
+            startParam: $this->nullableString($data['start_param'] ?? null),
+            chatType: $this->nullableString($data['chat_type'] ?? null),
+            chatInstance: $this->nullableString($data['chat_instance'] ?? null),
             rawUser: $user,
         );
     }

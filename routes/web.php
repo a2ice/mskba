@@ -114,6 +114,9 @@ Route::get('/integrations/address-suggest', AddressSuggestController::class)
 Route::get('/integrations/main', [TelegramMiniAppController::class, 'main'])
     ->name('integrations.main');
 
+Route::get('/telegram', [TelegramMiniAppController::class, 'main'])
+    ->name('integrations.telegram.main');
+
 Route::post('/integrations/telegram/auth', [TelegramMiniAppController::class, 'authenticate'])
     ->middleware(['throttle:20,1'])
     ->name('integrations.telegram.auth');

@@ -121,6 +121,9 @@ final class AuthenticateTelegramMiniAppUserHandler
             'raw_data' => [
                 'user' => $telegramUser->rawUser,
                 'auth_date' => $telegramUser->authDate,
+                'start_param' => $telegramUser->startParam,
+                'chat_type' => $telegramUser->chatType,
+                'chat_instance' => $telegramUser->chatInstance,
             ],
         ];
     }
