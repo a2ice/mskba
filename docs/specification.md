@@ -114,6 +114,7 @@ Telegram Mini App интеграция находится в `App\Modules\Telegr
 - `TELEGRAM_BOT_TOKEN`;
 - `TELEGRAM_BOT_USERNAME`;
 - `TELEGRAM_BOT_DOMAIN`;
+- `TELEGRAM_MAIN_CHAT_ID`;
 - `TELEGRAM_INIT_DATA_MAX_AGE`.
 
 Маршрут `GET /integrations/main` показывает стартовую страницу Telegram-интеграции. Frontend загружает Telegram WebApp SDK, берет `Telegram.WebApp.initData` и отправляет его на `POST /integrations/telegram/auth`.
@@ -133,6 +134,8 @@ Backend не доверяет данным Telegram-пользователя с 
 - `raw_data`.
 
 Если связки еще нет, создается обычный `users`-аккаунт с `registration_channel = telegram_mini_app`, `status = unconfirmed`, `system_role = user` и стабильным техническим username вида `tg_{telegram_user_id}`. Telegram-вход логинит пользователя в Laravel-сессию, но не заменяет процесс подтверждения аккаунта.
+
+Для публикации закрепленной кнопки Mini App в Telegram-чате или канале используется artisan-команда `telegram:publish-main-link`. Она отправляет сообщение с URL-кнопкой `https://t.me/{bot_username}?startapp=mskba_chat` и закрепляет его через Bot API. Для закрепления бот должен быть администратором чата/канала с правом pin messages.
 
 ## Площадки
 
