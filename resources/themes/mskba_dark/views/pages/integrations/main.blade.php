@@ -7,7 +7,11 @@
 @section('content')
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <section class="integration-main inner" data-telegram-mini-app>
+    <section
+        class="integration-main inner"
+        data-telegram-mini-app
+        data-telegram-auth-url="{{ route('integrations.telegram.auth') }}"
+    >
         <div class="integration-panel">
             <div class="integration-panel__eyebrow">Telegram</div>
             <h1>MSKBA - Main</h1>

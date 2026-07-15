@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const mskbaUser = root.querySelector('[data-mskba-user]');
     const registrationChannel = root.querySelector('[data-registration-channel]');
     const telegramLaunch = root.querySelector('[data-telegram-launch]');
+    const authUrl = root.dataset.telegramAuthUrl;
     const telegram = window.Telegram?.WebApp;
+
+    if (!authUrl) {
+        setStatus('Не настроен endpoint авторизации Telegram.');
+        return;
+    }
 
     if (!telegram?.initData) {
         setStatus('Откройте эту страницу из Telegram, чтобы авторизоваться через Mini App.');
@@ -21,8 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
     safeTelegramCall(() => telegram.ready());
     safeTelegramCall(() => telegram.expand());
 
-    fetch('/integrations/telegram/auth', {
+    fetch(authUrl, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -61,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setStatus(payload.created ? 'Аккаунт создан и авторизован.' : 'Вы авторизованы.');
         })
         .catch((error) => {
-            setStatus(error.message);
+            setStatus(readableError(error));
         });
 
     function setStatus(message) {
@@ -76,5 +83,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.debug('Telegram WebApp call skipped:', error);
         }
+    }
+
+    function readableError(error) {
+        const message = error?.message || 'Не удалось авторизоваться через Telegram.';
+
+        if (message === 'The string did not match the expected pattern.') {
+            return 'Telegram WebView не смог выполнить запрос авторизации. Обновите Telegram или попробуйте открыть Mini App еще раз.';
+        }
+
+        return message;
     }
 });
