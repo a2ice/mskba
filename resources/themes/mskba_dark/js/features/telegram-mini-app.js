@@ -27,27 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
     safeTelegramCall(() => telegram.ready());
     safeTelegramCall(() => telegram.expand());
 
-    fetch(authUrl, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-        },
-        body: JSON.stringify({
-            init_data: telegram.initData,
-        }),
+    setStatus('Отправляем Telegram-подпись на сервер...');
+
+    postTelegramAuth(authUrl, {
+        init_data: telegram.initData,
     })
-        .then(async (response) => {
-            const payload = await response.json();
-
-            if (!response.ok) {
-                throw new Error(payload.message || 'Не удалось авторизоваться через Telegram.');
-            }
-
-            return payload;
-        })
         .then((payload) => {
             const name = [
                 payload.telegram_user?.first_name,
@@ -82,6 +66,42 @@ document.addEventListener('DOMContentLoaded', () => {
             callback();
         } catch (error) {
             console.debug('Telegram WebApp call skipped:', error);
+        }
+    }
+
+    function postTelegramAuth(url, payload) {
+        return new Promise((resolve, reject) => {
+            const request = new XMLHttpRequest();
+
+            request.open('POST', url, true);
+            request.withCredentials = true;
+            request.setRequestHeader('Accept', 'application/json');
+            request.setRequestHeader('Content-Type', 'application/json');
+            request.setRequestHeader('X-CSRF-TOKEN', document.querySelector('meta[name="csrf-token"]')?.content || '');
+
+            request.onload = () => {
+                const response = parseJson(request.responseText);
+
+                if (request.status >= 200 && request.status < 300) {
+                    resolve(response);
+                    return;
+                }
+
+                reject(new Error(response?.message || `Telegram auth failed: HTTP ${request.status}`));
+            };
+
+            request.onerror = () => reject(new Error('Telegram WebView не смог отправить запрос авторизации.'));
+            request.ontimeout = () => reject(new Error('Истекло время ожидания авторизации Telegram.'));
+            request.timeout = 15000;
+            request.send(JSON.stringify(payload));
+        });
+    }
+
+    function parseJson(value) {
+        try {
+            return JSON.parse(value);
+        } catch (error) {
+            return null;
         }
     }
 
