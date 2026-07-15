@@ -1,19 +1,35 @@
+.telegram-app-shell {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(236, 127, 18, 0.16), transparent 34rem),
+        linear-gradient(180deg, #090b09 0%, var(--page) 46%, #080a08 100%);
+}
+
+.telegram-app-content {
+    min-height: 100dvh;
+}
+
 .integration-main {
     display: grid;
-    min-height: 72vh;
+    min-height: 100dvh;
     place-items: center;
-    padding-top: 160px;
-    padding-bottom: 90px;
+    padding:
+        max(18px, env(safe-area-inset-top))
+        max(14px, env(safe-area-inset-right))
+        max(18px, env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
 }
 
 .integration-panel {
-    width: min(720px, 100%);
+    width: min(640px, 100%);
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
-    padding: clamp(24px, 4vw, 44px);
+    padding: clamp(22px, 6vw, 38px);
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
         var(--surface);
+    box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28);
 }
 
 .integration-panel__eyebrow {
@@ -27,7 +43,7 @@
 .integration-panel h1 {
     margin: 0 0 16px;
     font-family: var(--font-display);
-    font-size: clamp(42px, 8vw, 76px);
+    font-size: clamp(42px, 14vw, 72px);
     font-weight: 900;
     line-height: 0.95;
     text-transform: uppercase;
@@ -36,7 +52,7 @@
 .integration-panel p {
     margin: 0;
     color: var(--muted);
-    font-size: 18px;
+    font-size: clamp(17px, 4vw, 22px);
     font-weight: 700;
     line-height: 1.45;
 }
@@ -81,12 +97,15 @@
 
 @media (max-width: 640px) {
     .integration-main {
-        min-height: 68vh;
-        padding-top: 130px;
+        place-items: start stretch;
     }
 
     .integration-summary div {
         grid-template-columns: 1fr;
         gap: 4px;
+    }
+
+    .integration-panel {
+        border-radius: 14px;
     }
 }

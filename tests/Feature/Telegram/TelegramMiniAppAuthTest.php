@@ -53,7 +53,10 @@ class TelegramMiniAppAuthTest extends TestCase
         $this
             ->get(route('integrations.telegram.main'))
             ->assertOk()
-            ->assertSee('MSKBA - Main');
+            ->assertSee('MSKBA - Main')
+            ->assertSee('telegram-app-shell')
+            ->assertDontSee('site-header')
+            ->assertDontSee('site-footer');
     }
 
     public function test_telegram_mini_app_auth_reuses_existing_telegram_account(): void

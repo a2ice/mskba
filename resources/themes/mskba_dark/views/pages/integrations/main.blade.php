@@ -2,13 +2,11 @@
     $title = 'Telegram';
 @endphp
 
-@extends('theme::layouts.app')
+@extends('theme::layouts.telegram')
 
 @section('content')
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
     <section
-        class="integration-main inner"
+        class="integration-main"
         data-telegram-mini-app
         data-telegram-auth-url="{{ route('integrations.telegram.auth') }}"
     >
