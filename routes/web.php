@@ -11,6 +11,7 @@ use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
+use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
@@ -109,6 +110,13 @@ Route::prefix('venues')->group(function () {
 Route::get('/integrations/address-suggest', AddressSuggestController::class)
     ->middleware(['throttle:30,1'])
     ->name('integrations.address-suggest');
+
+Route::get('/integrations/main', [TelegramMiniAppController::class, 'main'])
+    ->name('integrations.main');
+
+Route::post('/integrations/telegram/auth', [TelegramMiniAppController::class, 'authenticate'])
+    ->middleware(['throttle:20,1'])
+    ->name('integrations.telegram.auth');
 
 // Group routes for authenticated users
 Route::middleware('auth')->group(function () use ($themeResolver) {

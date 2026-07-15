@@ -16,6 +16,7 @@
 - [Контакты](#контакты)
 - [Локации](#локации)
 - [Уведомления](#уведомления)
+- [Интеграции](#интеграции)
 - [Площадки](#площадки)
 - [Админка](#админка)
 - [Контракты](#контракты)
@@ -39,7 +40,7 @@
 - Frontend/assets: Vite, npm.
 - Docker окружение: общие сервисы описаны в `compose.yaml`; local/dev настройки находятся в `compose.override.yaml`; VDS/prod настройки находятся в `compose.prod.yaml`.
 - Доменные части приложения находятся в `app/Modules`.
-- Текущие доменные модули: `Identity`, `Contact`, `Location`, `Notification`, `Venue`, `Contract`.
+- Текущие доменные модули: `Identity`, `Contact`, `Location`, `Notification`, `Venue`, `Contract`, `Telegram`.
 - Основная тема находится в `resources/themes/mskba_dark`.
 - Минимальная тема-заготовка находится в `resources/themes/blank`.
 - Внешний backlog быстрых записей ведется во внешнем файле `../backlog/todo.md`.
@@ -103,6 +104,35 @@
 Техническая модель пользовательских in-app уведомлений описана в [Notification](specification/notification.md).
 
 Уведомления вынесены в отдельный доменный модуль `App\Modules\Notification`, потому что они создаются событиями разных предметных областей. Сообщения/переписка не входят в этот модуль и должны проектироваться как отдельный bounded context.
+
+## Интеграции
+
+Telegram Mini App интеграция находится в `App\Modules\Telegram`.
+
+Конфигурация берется из `config/telegram.php` и env-переменных:
+
+- `TELEGRAM_BOT_TOKEN`;
+- `TELEGRAM_BOT_USERNAME`;
+- `TELEGRAM_BOT_DOMAIN`;
+- `TELEGRAM_INIT_DATA_MAX_AGE`.
+
+Маршрут `GET /integrations/main` показывает стартовую страницу Telegram-интеграции. Frontend загружает Telegram WebApp SDK, берет `Telegram.WebApp.initData` и отправляет его на `POST /integrations/telegram/auth`.
+
+Backend не доверяет данным Telegram-пользователя с клиента напрямую. `TelegramMiniAppInitDataValidator` строит data check string, проверяет HMAC-подпись через bot token и ограничивает возраст `auth_date`. Только после успешной проверки `AuthenticateTelegramMiniAppUserHandler` ищет или создает связку в `telegram_accounts`.
+
+Таблица `telegram_accounts` хранит связь Telegram-профиля с обычным пользователем MSKBA:
+
+- `user_id`;
+- `telegram_user_id`;
+- `username`;
+- `first_name`;
+- `last_name`;
+- `language_code`;
+- `photo_url`;
+- `last_auth_at`;
+- `raw_data`.
+
+Если связки еще нет, создается обычный `users`-аккаунт с `registration_channel = telegram_mini_app`, `status = unconfirmed`, `system_role = user` и стабильным техническим username вида `tg_{telegram_user_id}`. Telegram-вход логинит пользователя в Laravel-сессию, но не заменяет процесс подтверждения аккаунта.
 
 ## Площадки
 

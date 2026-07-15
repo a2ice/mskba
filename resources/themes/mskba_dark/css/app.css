@@ -14,6 +14,7 @@
 @import './pages/section-sidebar';
 @import './pages/venue';
 @import './pages/admin';
+@import './pages/integrations';
 
 html {}
 body {

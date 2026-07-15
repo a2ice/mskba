@@ -1,0 +1,58 @@
+<?php
+
+namespace App\Modules\Telegram\Presentation\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Telegram\Application\UseCases\AuthenticateTelegramMiniAppUserHandler;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use InvalidArgumentException;
+
+final class TelegramMiniAppController extends Controller
+{
+    public function main(): Response
+    {
+        return ThemeResolver::page('integrations.main', [
+            'telegramBotUsername' => config('telegram.bot_username'),
+        ]);
+    }
+
+    public function authenticate(Request $request, AuthenticateTelegramMiniAppUserHandler $authenticate): JsonResponse
+    {
+        $validated = $request->validate([
+            'init_data' => ['required', 'string'],
+        ]);
+
+        try {
+            $result = $authenticate->handle($validated['init_data']);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        $user = $result['user'];
+        $telegramAccount = $result['telegram_account'];
+
+        return response()->json([
+            'status' => 'success',
+            'created' => $result['created'],
+            'user' => [
+                'id' => $user->id,
+                'username' => $user->username,
+                'registration_channel' => $user->registration_channel?->value,
+                'status' => $user->status?->value,
+            ],
+            'telegram_user' => [
+                'id' => $telegramAccount->telegram_user_id,
+                'username' => $telegramAccount->username,
+                'first_name' => $telegramAccount->first_name,
+                'last_name' => $telegramAccount->last_name,
+                'photo_url' => $telegramAccount->photo_url,
+            ],
+        ]);
+    }
+}
