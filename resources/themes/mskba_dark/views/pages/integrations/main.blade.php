@@ -11,8 +11,34 @@
         data-telegram-auth-url="{{ route('integrations.telegram.auth') }}"
     >
         <div class="integration-panel">
-            <div class="integration-panel__eyebrow">Telegram</div>
-            <h1>MSKBA - Main</h1>
+            <header class="telegram-app-header">
+                <a class="telegram-app-header__logo" href="{{ route('welcome') }}" aria-label="MSKBA">
+                    <img src="{{ asset('images/logo-header-cropped.png') }}" alt="MSKBA" width="420" height="165">
+                </a>
+
+                <button
+                    type="button"
+                    class="telegram-app-header__burger"
+                    aria-label="Открыть меню"
+                    aria-expanded="false"
+                    aria-controls="telegram-app-menu"
+                    data-telegram-menu-toggle
+                >
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+                <nav class="telegram-app-menu" id="telegram-app-menu" aria-label="Навигация Mini App" hidden data-telegram-menu>
+                    <a href="{{ route('account') }}">Аккаунт</a>
+                    <a href="{{ route('venues') }}">Площадки</a>
+                    <a href="{{ url('/#games') }}">Игры</a>
+                    <a href="{{ url('/#teams') }}">Команды</a>
+                    <a href="{{ url('/#about') }}">О нас</a>
+                    <a href="{{ url('/#shop') }}">Магазин</a>
+                </nav>
+            </header>
+
             <p data-telegram-status>Проверяем Telegram-подпись и авторизуем пользователя...</p>
 
             <dl class="integration-summary" hidden data-telegram-summary>

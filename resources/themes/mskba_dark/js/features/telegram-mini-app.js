@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const authUrl = root.dataset.telegramAuthUrl;
     const telegram = window.Telegram?.WebApp;
 
+    bindTelegramMenu(root);
+
     if (!authUrl) {
         setStatus('Не настроен endpoint авторизации Telegram.');
         return;
@@ -113,5 +115,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return message;
+    }
+
+    function bindTelegramMenu(container) {
+        const toggle = container.querySelector('[data-telegram-menu-toggle]');
+        const menu = container.querySelector('[data-telegram-menu]');
+
+        if (!toggle || !menu) {
+            return;
+        }
+
+        toggle.addEventListener('click', () => {
+            setMenuOpen(toggle.getAttribute('aria-expanded') !== 'true');
+        });
+
+        menu.querySelectorAll('a').forEach((link) => {
+            link.addEventListener('click', () => setMenuOpen(false));
+        });
+
+        document.addEventListener('click', (event) => {
+            if (toggle.contains(event.target) || menu.contains(event.target)) {
+                return;
+            }
+
+            setMenuOpen(false);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                setMenuOpen(false);
+                toggle.focus();
+            }
+        });
+
+        function setMenuOpen(isOpen) {
+            toggle.setAttribute('aria-expanded', String(isOpen));
+            menu.hidden = !isOpen;
+        }
     }
 });

@@ -53,7 +53,10 @@ class TelegramMiniAppAuthTest extends TestCase
         $this
             ->get(route('integrations.telegram.main'))
             ->assertOk()
-            ->assertSee('MSKBA - Main')
+            ->assertSee('Навигация Mini App')
+            ->assertSee('Аккаунт')
+            ->assertSee('Площадки')
+            ->assertSee('Игры')
             ->assertSee('telegram-app-shell')
             ->assertDontSee('site-header')
             ->assertDontSee('site-footer');

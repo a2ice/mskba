@@ -40,6 +40,7 @@
 }
 
 .integration-panel {
+    position: relative;
     width: min(640px, 100%);
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
@@ -50,21 +51,120 @@
     box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28);
 }
 
-.integration-panel__eyebrow {
-    margin-bottom: 12px;
-    color: var(--accent-text);
-    font-size: 13px;
-    font-weight: 900;
-    text-transform: uppercase;
+.telegram-app-header {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: clamp(24px, 7vw, 38px);
 }
 
-.integration-panel h1 {
-    margin: 0 0 16px;
-    font-family: var(--font-display);
-    font-size: clamp(42px, 14vw, 72px);
-    font-weight: 900;
-    line-height: 0.95;
-    text-transform: uppercase;
+.telegram-app-header__logo {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.telegram-app-header__logo img {
+    width: clamp(142px, 44vw, 188px);
+    height: auto;
+}
+
+.telegram-app-header__burger {
+    position: relative;
+    display: inline-grid;
+    width: 46px;
+    height: 46px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: rgba(10, 10, 10, 0.34);
+    color: #fff;
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        background-color 160ms ease,
+        transform 160ms ease;
+}
+
+.telegram-app-header__burger:hover,
+.telegram-app-header__burger[aria-expanded="true"] {
+    border-color: rgba(255, 139, 47, 0.7);
+    background: rgba(255, 111, 38, 0.14);
+}
+
+.telegram-app-header__burger span {
+    position: absolute;
+    width: 20px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    transition:
+        opacity 160ms ease,
+        transform 160ms ease;
+}
+
+.telegram-app-header__burger span:nth-child(1) {
+    transform: translateY(-7px);
+}
+
+.telegram-app-header__burger span:nth-child(3) {
+    transform: translateY(7px);
+}
+
+.telegram-app-header__burger[aria-expanded="true"] span:nth-child(1) {
+    transform: rotate(45deg);
+}
+
+.telegram-app-header__burger[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+}
+
+.telegram-app-header__burger[aria-expanded="true"] span:nth-child(3) {
+    transform: rotate(-45deg);
+}
+
+.telegram-app-menu {
+    position: absolute;
+    z-index: 4;
+    top: calc(100% + 12px);
+    right: 0;
+    display: grid;
+    width: min(260px, calc(100vw - 56px));
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: rgba(15, 18, 15, 0.96);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.36);
+    backdrop-filter: blur(16px);
+}
+
+.telegram-app-menu[hidden] {
+    display: none;
+}
+
+.telegram-app-menu a {
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0 18px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 850;
+}
+
+.telegram-app-menu a:last-child {
+    border-bottom: 0;
+}
+
+.telegram-app-menu a:hover,
+.telegram-app-menu a:focus-visible {
+    color: var(--accent-text);
+    background: rgba(255, 111, 38, 0.1);
 }
 
 .integration-panel p {
