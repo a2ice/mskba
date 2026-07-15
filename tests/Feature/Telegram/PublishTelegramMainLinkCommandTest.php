@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Telegram;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -71,5 +72,24 @@ class PublishTelegramMainLinkCommandTest extends TestCase
             ->assertSuccessful();
 
         Http::assertSentCount(1);
+    }
+
+    public function test_command_does_not_print_bot_token_on_connection_error(): void
+    {
+        config([
+            'telegram.bot_token' => '123456:secret-token',
+            'telegram.bot_username' => 'MSKBABot',
+            'telegram.main_chat_id' => '-1002136558099',
+        ]);
+
+        Http::fake(function (): never {
+            throw new ConnectionException('Failed to connect to https://api.telegram.org/bot123456:secret-token/sendMessage');
+        });
+
+        $this
+            ->artisan('telegram:publish-main-link')
+            ->expectsOutputToContain('Telegram API request failed:')
+            ->doesntExpectOutputToContain('123456:secret-token')
+            ->assertFailed();
     }
 }

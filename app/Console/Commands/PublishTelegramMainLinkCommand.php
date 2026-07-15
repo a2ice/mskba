@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 #[Signature('telegram:publish-main-link
@@ -29,7 +31,14 @@ final class PublishTelegramMainLinkCommand extends Command
 
         $miniAppUrl = sprintf('https://t.me/%s?startapp=%s', $botUsername, rawurlencode($startParam));
 
-        $message = $this->sendMessage($botToken, $chatId, $miniAppUrl);
+        try {
+            $message = $this->sendMessage($botToken, $chatId, $miniAppUrl);
+        } catch (ConnectionException|RequestException $exception) {
+            $this->error('Telegram API request failed: '.$this->safeTelegramError($exception));
+
+            return self::FAILURE;
+        }
+
         $messageId = data_get($message, 'result.message_id');
 
         if (! is_int($messageId)) {
@@ -41,7 +50,14 @@ final class PublishTelegramMainLinkCommand extends Command
         $this->info("Telegram Mini App link message sent. message_id={$messageId}");
 
         if (! $this->option('no-pin')) {
-            $this->pinMessage($botToken, $chatId, $messageId);
+            try {
+                $this->pinMessage($botToken, $chatId, $messageId);
+            } catch (ConnectionException|RequestException $exception) {
+                $this->error('Message was sent but pin request failed: '.$this->safeTelegramError($exception));
+
+                return self::FAILURE;
+            }
+
             $this->info('Message pinned.');
         }
 
@@ -54,6 +70,8 @@ final class PublishTelegramMainLinkCommand extends Command
     private function sendMessage(string $botToken, string $chatId, string $miniAppUrl): array
     {
         return Http::asJson()
+            ->timeout(30)
+            ->connectTimeout(20)
             ->post($this->apiUrl($botToken, 'sendMessage'), [
                 'chat_id' => $chatId,
                 'text' => implode("\n", [
@@ -79,6 +97,8 @@ final class PublishTelegramMainLinkCommand extends Command
     private function pinMessage(string $botToken, string $chatId, int $messageId): void
     {
         Http::asJson()
+            ->timeout(30)
+            ->connectTimeout(20)
             ->post($this->apiUrl($botToken, 'pinChatMessage'), [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
@@ -90,5 +110,18 @@ final class PublishTelegramMainLinkCommand extends Command
     private function apiUrl(string $botToken, string $method): string
     {
         return "https://api.telegram.org/bot{$botToken}/{$method}";
+    }
+
+    private function safeTelegramError(ConnectionException|RequestException $exception): string
+    {
+        if ($exception instanceof RequestException && $exception->response !== null) {
+            return 'HTTP '.$exception->response->status().' '.$exception->response->body();
+        }
+
+        return preg_replace(
+            '/bot[^\\s\\/]+/',
+            'bot***',
+            $exception->getMessage(),
+        ) ?? 'connection error';
     }
 }
