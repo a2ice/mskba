@@ -28,7 +28,7 @@
         @vite($theme->viteInputs())
         @yield('styles')
     </head>
-    <body class="theme-shell {{ $routeClass }}">
+    <body class="theme-shell {{ $routeClass }}" style="--site-body-bottom-bg: url('{{ asset('images/bg-indoor.png') }}');">
         <div class="site-frame">
             @include('theme::partials.header')
 

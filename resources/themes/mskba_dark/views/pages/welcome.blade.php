@@ -74,10 +74,20 @@
     <div class="home-welcome__content inner">
         <div class="home-welcome__main">
             <div class="home-welcome__copy">
-                <p class="home-welcome__eyebrow">
-                    <span class="home-welcome__eyebrow-dot" aria-hidden="true"></span>
-                    <span>Сегодня доступно 37 игр</span>
-                </p>
+                <div class="home-welcome__badges" aria-label="Статистика сайта">
+                    <p class="home-welcome__eyebrow">
+                        <span class="home-welcome__eyebrow-dot" aria-hidden="true"></span>
+                        <span>Сегодня доступно 37 игр</span>
+                    </p>
+
+                    <p class="home-welcome__eyebrow home-welcome__eyebrow--online">
+                        <span class="home-welcome__eyebrow-dot home-welcome__eyebrow-dot--online" aria-hidden="true"></span>
+                        <span>
+                            <span data-online-users-count>5</span>/<span data-online-total-count>10</span>
+                            пользователей на сайте
+                        </span>
+                    </p>
+                </div>
 
                 <h1 class="home-welcome__title">
                     Играй в баскетбол<br>
