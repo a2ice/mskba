@@ -1,4 +1,5 @@
 .telegram-app-shell {
+    position: relative;
     min-height: 100dvh;
     overflow-x: hidden;
     background:
@@ -6,7 +7,24 @@
         linear-gradient(180deg, #090b09 0%, var(--page) 46%, #080a08 100%);
 }
 
+.telegram-app-shell::before {
+    position: fixed;
+    z-index: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 28vh;
+    min-height: 140px;
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(8, 10, 8, 0.04) 0%, rgba(8, 10, 8, 0.42) 48%, var(--page) 100%),
+        url('/images/home-court.png') center top / cover no-repeat;
+    content: "";
+}
+
 .telegram-app-content {
+    position: relative;
+    z-index: 1;
     min-height: 100dvh;
 }
 
@@ -15,7 +33,7 @@
     min-height: 100dvh;
     place-items: center;
     padding:
-        max(18px, env(safe-area-inset-top))
+        calc(max(18px, env(safe-area-inset-top)) + 6vh)
         max(14px, env(safe-area-inset-right))
         max(18px, env(safe-area-inset-bottom))
         max(14px, env(safe-area-inset-left));
@@ -98,6 +116,7 @@
 @media (max-width: 640px) {
     .integration-main {
         place-items: start stretch;
+        padding-top: calc(max(18px, env(safe-area-inset-top)) + 10vh);
     }
 
     .integration-summary div {
