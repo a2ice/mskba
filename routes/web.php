@@ -1,12 +1,13 @@
 <?php
 
-use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
+use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
@@ -79,6 +80,10 @@ Route::prefix('admin')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard')->defaults('breadcrumb', 'Панель управления');
         Route::get('/users', [AdminController::class, 'users'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
+        Route::redirect('/venues/dublicates', '/admin/venues/duplicates')->name('admin.venues.dublicates');
+        Route::get('/venues/duplicates', [AdminVenueDuplicatesController::class, 'index'])->name('admin.venues.duplicates')->defaults('breadcrumb', 'Дубли площадок');
+        Route::post('/venues/duplicates/merge', [AdminVenueDuplicatesController::class, 'mergeBatch'])->name('admin.venues.duplicates.merge-batch');
+        Route::post('/venues/duplicates/{venueDuplicate}/merge', [AdminVenueDuplicatesController::class, 'merge'])->name('admin.venues.duplicates.merge');
         Route::get('/venues', [AdminVenuesController::class, 'index'])->name('admin.venues')->defaults('breadcrumb', 'Площадки');
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'События');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');

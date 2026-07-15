@@ -82,7 +82,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-DyhpwTS6.css",
+    "file": "assets/app-Bn7BKUjU.css",
     "name": "app",
     "names": [
       "app.css"
@@ -91,12 +91,27 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-BjekukRY.js",
+    "file": "assets/app-C1IVOFAf.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
     "css": [
       "assets/app-dJhxz_Yn.css"
     ]
+  },
+  "resources/themes/mskba_streetball/css/app.css": {
+    "file": "assets/app-OjTBBWco.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/themes/mskba_streetball/css/app.css",
+    "isEntry": true
+  },
+  "resources/themes/mskba_streetball/js/app.js": {
+    "file": "assets/app-DMP6Ja0h.js",
+    "name": "app",
+    "src": "resources/themes/mskba_streetball/js/app.js",
+    "isEntry": true
   }
 }

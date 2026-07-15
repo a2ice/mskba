@@ -2,8 +2,10 @@
 
 namespace App\Modules\Venue\Presentation\Http\Requests;
 
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -44,8 +46,22 @@ class CreateVenueRequest extends FormRequest
             $checker = app(VenueUniquenessChecker::class);
             $name = $this->nullableInputString('name');
 
-            if ($name !== null && $checker->aliasExistsForName($name)) {
+            if ($name !== null && $checker->aliasExistsForName($name, [VenueStatusEnum::CONFIRMED])) {
                 $validator->errors()->add('name', 'Площадка с таким названием уже существует.');
+            }
+
+            $actor = app(CurrentActorResolver::class)->resolveForRequest($this);
+
+            if (
+                $actor !== null
+                && $name !== null
+                && $checker->aliasExistsForActor(
+                    $actor,
+                    $checker->aliasForName($name),
+                    [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                )
+            ) {
+                $validator->errors()->add('name', 'Вы уже добавили площадку с таким названием.');
             }
 
             if ($checker->addressExists(
@@ -53,8 +69,23 @@ class CreateVenueRequest extends FormRequest
                 city: $this->nullableInputString('location.city'),
                 street: $this->nullableInputString('location.street'),
                 building: $this->nullableInputString('location.building'),
+                statuses: [VenueStatusEnum::CONFIRMED],
             )) {
                 $validator->errors()->add($this->addressErrorField(), 'Площадка с таким адресом уже существует.');
+            }
+
+            if (
+                $actor !== null
+                && $checker->addressExistsForActor(
+                    actor: $actor,
+                    rawAddress: $this->inputAddress(),
+                    city: $this->nullableInputString('location.city'),
+                    street: $this->nullableInputString('location.street'),
+                    building: $this->nullableInputString('location.building'),
+                    statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                )
+            ) {
+                $validator->errors()->add($this->addressErrorField(), 'Вы уже добавили площадку с таким адресом.');
             }
         });
     }

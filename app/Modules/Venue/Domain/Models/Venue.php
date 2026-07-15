@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 #[Fillable([
     'created_by_actor_id',
     'location_id',
+    'canonical_venue_id',
     'name',
     'alias',
     'type',
@@ -53,6 +54,26 @@ class Venue extends Model
     public function creatorActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'created_by_actor_id');
+    }
+
+    public function canonicalVenue(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'canonical_venue_id');
+    }
+
+    public function duplicateVenues(): HasMany
+    {
+        return $this->hasMany(self::class, 'canonical_venue_id');
+    }
+
+    public function duplicateCandidates(): HasMany
+    {
+        return $this->hasMany(VenueDuplicate::class);
+    }
+
+    public function duplicateOfCandidates(): HasMany
+    {
+        return $this->hasMany(VenueDuplicate::class, 'duplicate_venue_id');
     }
 
     public function location(): BelongsTo
@@ -104,6 +125,7 @@ class Venue extends Model
         return [
             'type' => VenueTypeEnum::class,
             'status' => VenueStatusEnum::class,
+            'canonical_venue_id' => 'integer',
         ];
     }
 }

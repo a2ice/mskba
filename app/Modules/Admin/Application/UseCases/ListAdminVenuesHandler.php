@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Application\UseCases;
 
+use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -10,11 +11,21 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 final class ListAdminVenuesHandler
 {
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     public function handle(array $filters): LengthAwarePaginator
     {
-        $query = Venue::query()->with('creatorActor.user')->latest('id');
+        $query = Venue::query()
+            ->with([
+                'canonicalVenue',
+                'creatorActor.user',
+                'duplicateCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
+                'duplicateOfCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
+            ])
+            ->withCount([
+                'duplicateVenues',
+            ])
+            ->latest('id');
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
@@ -42,7 +53,7 @@ final class ListAdminVenuesHandler
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     private function perPage(array $filters): int
     {

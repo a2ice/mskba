@@ -30,8 +30,9 @@ final class ShowVenueHandler
 
     public function handle(string $alias, ?User $user, ?Actor $actor = null): VenueDetailsDTO
     {
-        $venue = Venue::query()
+        $venues = Venue::query()
             ->with([
+                'creatorActor',
                 'location.address',
                 'location.metroStations.line',
                 'media' => fn ($query) => $query
@@ -58,10 +59,19 @@ final class ShowVenueHandler
                 'reviews as published_reviews_avg_rating' => fn ($query) => $query->where('is_published', true),
             ], 'rating')
             ->where('alias', $alias)
-            ->first();
+            ->orderBy('id')
+            ->get();
+
+        if ($venues->isEmpty()) {
+            throw new VenueNotFoundException;
+        }
+
+        $venue = $venues
+            ->sortByDesc(fn (Venue $venue): int => $this->ownershipPriority($venue, $user, $actor))
+            ->first(fn (Venue $venue): bool => $this->access->canView($user, $venue, $actor));
 
         if ($venue === null) {
-            throw new VenueNotFoundException;
+            throw new VenueAccessDeniedException;
         }
         if (! $this->access->canView($user, $venue, $actor)) {
             throw new VenueAccessDeniedException;
@@ -166,6 +176,33 @@ final class ShowVenueHandler
             canEditSchedule: $this->access->canEditSchedule($user, $venue, $actor),
             canRemove: $this->access->canRemove($user, $venue, $actor),
         );
+    }
+
+    private function ownershipPriority(Venue $venue, ?User $user, ?Actor $actor): int
+    {
+        $creator = $venue->creatorActor;
+
+        if ($creator === null) {
+            return 0;
+        }
+
+        if ($actor !== null && $venue->created_by_actor_id === $actor->id) {
+            return 4;
+        }
+
+        if ($user !== null && $creator->user_id === $user->id) {
+            return 3;
+        }
+
+        if ($actor?->user_id !== null && $creator->user_id === $actor->user_id) {
+            return 2;
+        }
+
+        if ($actor?->user_fingerprint_id !== null && $creator->user_fingerprint_id === $actor->user_fingerprint_id) {
+            return 1;
+        }
+
+        return 0;
     }
 
     private function displayAddress(?Address $address, ?string $rawAddress): string

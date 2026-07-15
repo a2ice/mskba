@@ -43,6 +43,7 @@
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Дубли</th>
                         <th>Название</th>
                         <th>Alias</th>
                         <th>Статус</th>
@@ -53,8 +54,29 @@
                 </thead>
                 <tbody>
                     @foreach($venues as $venue)
+                        @php
+                            $pendingDuplicateIds = $venue->duplicateCandidates
+                                ->pluck('duplicate_venue_id')
+                                ->merge($venue->duplicateOfCandidates->pluck('venue_id'))
+                                ->unique()
+                                ->sort()
+                                ->values();
+                        @endphp
                         <tr>
                             <td>{{ $venue->id }}</td>
+                            <td>
+                                @if($venue->canonicalVenue)
+                                    <span class="admin-badge">Дубль #{{ $venue->canonicalVenue->id }}</span>
+                                    <div class="admin-muted">{{ $venue->canonicalVenue->name }}</div>
+                                @elseif($venue->duplicate_venues_count > 0)
+                                    <span class="admin-badge">Главная</span>
+                                    <div class="admin-muted">Дублей: {{ $venue->duplicate_venues_count }}</div>
+                                @elseif($pendingDuplicateIds->isNotEmpty())
+                                    <span class="admin-badge">#{{ $pendingDuplicateIds->implode(', #') }}</span>
+                                @else
+                                    <span class="admin-muted">—</span>
+                                @endif
+                            </td>
                             <td>{{ $venue->name }}</td>
                             <td>{{ $venue->alias }}</td>
                             <td><span class="admin-badge">{{ $venue->status->label() }}</span></td>

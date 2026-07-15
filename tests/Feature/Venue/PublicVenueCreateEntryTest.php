@@ -2,15 +2,18 @@
 
 namespace Tests\Feature\Venue;
 
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
+use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class PublicVenueCreateEntryTest extends TestCase
@@ -346,5 +349,94 @@ class PublicVenueCreateEntryTest extends TestCase
 
         $this->assertSame($user->id, $actor->user_id);
         $this->assertNotNull($actor->user_fingerprint_id);
+    }
+
+    public function test_show_page_prefers_current_user_venue_when_alias_has_duplicates(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $userActor = app(CurrentActorResolver::class)->resolve($user, null);
+        $guestActor = Actor::factory()->create([
+            'user_fingerprint_id' => UserFingerprint::query()->create([
+                'fingerprint_hash' => hash('sha256', 'other-duplicate-owner'),
+                'visits_count' => 1,
+                'first_seen_at' => now(),
+                'last_seen_at' => now(),
+            ])->id,
+        ]);
+
+        Venue::factory()->create([
+            'created_by_actor_id' => $guestActor->id,
+            'name' => 'Чужая версия площадки',
+            'alias' => 'shared-alias',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+        Venue::factory()->create([
+            'created_by_actor_id' => $userActor->id,
+            'name' => 'Моя версия площадки',
+            'alias' => 'shared-alias',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('venues.show', 'shared-alias'))
+            ->assertOk()
+            ->assertSee('Моя версия площадки')
+            ->assertDontSee('Чужая версия площадки');
+    }
+
+    public function test_same_user_cannot_create_second_unconfirmed_duplicate_venue(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $actor = app(CurrentActorResolver::class)->resolve($user, null);
+        $createVenue = app(CreateAccountVenueHandler::class);
+
+        $createVenue->handle($actor, [
+            'name' => 'Повторная площадка',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'description' => 'Первая заявка',
+            'raw_address' => 'Москва, Тестовая улица, 91',
+        ]);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Вы уже добавили площадку с таким названием.');
+
+        $createVenue->handle($actor, [
+            'name' => 'Повторная площадка',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'description' => 'Вторая заявка',
+            'raw_address' => 'Москва, Тестовая улица, 92',
+        ]);
+    }
+
+    public function test_different_users_can_create_unconfirmed_duplicate_venues(): void
+    {
+        $firstUser = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $secondUser = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $createVenue = app(CreateAccountVenueHandler::class);
+
+        $firstVenue = $createVenue->handle(app(CurrentActorResolver::class)->resolve($firstUser, null), [
+            'name' => 'Общая площадка',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'description' => 'Первая заявка',
+            'raw_address' => 'Москва, Тестовая улица, 93',
+        ]);
+        $secondVenue = $createVenue->handle(app(CurrentActorResolver::class)->resolve($secondUser, null), [
+            'name' => 'Общая площадка',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'description' => 'Вторая заявка',
+            'raw_address' => 'Москва, Тестовая улица, 93',
+        ]);
+
+        $this->assertSame($firstVenue->alias, $secondVenue->alias);
+        $this->assertNotSame($firstVenue->id, $secondVenue->id);
     }
 }

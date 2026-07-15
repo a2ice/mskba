@@ -99,8 +99,11 @@
                         <img src="{{ $venue->featuredMedia[0]['url'] }}" alt="{{ $venue->featuredMedia[0]['title'] ?: $venue->name }}">
                     @else
                         <div class="venue-hero__placeholder">
-                            <span class="venue-hero__placeholder-kicker">{{ $venue->type }}</span>
-                            <span class="venue-hero__placeholder-title">{{ $venue->name }}</span>
+                            <img src="{{ asset('images/venue-placeholder.png') }}" alt="" aria-hidden="true">
+                            <div class="venue-hero__placeholder-content">
+                                <span class="venue-hero__placeholder-kicker">{{ $venue->type }}</span>
+                                <span class="venue-hero__placeholder-title">{{ $venue->name }}</span>
+                            </div>
                         </div>
                     @endif
                 </div>

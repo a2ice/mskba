@@ -4,6 +4,12 @@ const TOOLTIP_SELECTOR = '[title]';
 const SKIP_SELECTOR = '[data-tooltip-skip]';
 const TITLE_VARIANT = 'title';
 const QUESTION_VARIANT = 'question';
+const FLOATING_TOOLTIP_ID = 'ui-tooltip-floating';
+const FLOATING_TOOLTIP_OFFSET = 10;
+const FLOATING_TOOLTIP_VIEWPORT_GAP = 8;
+
+let floatingTooltip = null;
+let activeTooltipElement = null;
 
 function initTooltips(context = document) {
     $(context).find(TOOLTIP_SELECTOR).addBack(TOOLTIP_SELECTOR).each(function() {
@@ -81,8 +87,105 @@ function isFocusable(element) {
 
 $(function() {
     initTooltips();
+    bindFloatingTooltips();
 });
 
 $(document).on('modal:opened', function(_event, modal) {
     initTooltips(modal);
 });
+
+function bindFloatingTooltips() {
+    $(document)
+        .on('mouseenter focusin', '.ui-tooltip-trigger, .ui-tooltip-source', function() {
+            showFloatingTooltip(this);
+        })
+        .on('mouseleave focusout', '.ui-tooltip-trigger, .ui-tooltip-source', function() {
+            hideFloatingTooltip(this);
+        });
+
+    $(window).on('scroll resize', function() {
+        if (activeTooltipElement) {
+            positionFloatingTooltip(activeTooltipElement);
+        }
+    });
+}
+
+function showFloatingTooltip(element) {
+    const tooltipText = String($(element).attr('data-tooltip') || '').trim();
+
+    if (!tooltipText) {
+        return;
+    }
+
+    activeTooltipElement = element;
+    floatingTooltip = floatingTooltip || createFloatingTooltip();
+    floatingTooltip
+        .text(tooltipText)
+        .removeAttr('hidden');
+
+    positionFloatingTooltip(element);
+}
+
+function hideFloatingTooltip(element) {
+    if (activeTooltipElement !== element) {
+        return;
+    }
+
+    activeTooltipElement = null;
+
+    if (floatingTooltip) {
+        floatingTooltip.attr('hidden', true);
+    }
+}
+
+function createFloatingTooltip() {
+    let tooltip = $(`#${FLOATING_TOOLTIP_ID}`);
+
+    if (tooltip.length) {
+        return tooltip;
+    }
+
+    tooltip = $('<div>', {
+        id: FLOATING_TOOLTIP_ID,
+        class: 'ui-tooltip-floating',
+        role: 'tooltip',
+        hidden: true,
+    });
+
+    $('body').append(tooltip);
+
+    return tooltip;
+}
+
+function positionFloatingTooltip(element) {
+    if (!floatingTooltip) {
+        return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const tooltipElement = floatingTooltip.get(0);
+
+    floatingTooltip.css({
+        left: 0,
+        top: 0,
+    });
+
+    const tooltipRect = tooltipElement.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const preferredTop = rect.top - tooltipRect.height - FLOATING_TOOLTIP_OFFSET;
+    const belowTop = rect.bottom + FLOATING_TOOLTIP_OFFSET;
+    const top = preferredTop >= FLOATING_TOOLTIP_VIEWPORT_GAP
+        ? preferredTop
+        : Math.min(belowTop, viewportHeight - tooltipRect.height - FLOATING_TOOLTIP_VIEWPORT_GAP);
+    const centeredLeft = rect.left + rect.width / 2 - tooltipRect.width / 2;
+    const left = Math.min(
+        Math.max(centeredLeft, FLOATING_TOOLTIP_VIEWPORT_GAP),
+        viewportWidth - tooltipRect.width - FLOATING_TOOLTIP_VIEWPORT_GAP,
+    );
+
+    floatingTooltip.css({
+        left: `${Math.max(FLOATING_TOOLTIP_VIEWPORT_GAP, left)}px`,
+        top: `${Math.max(FLOATING_TOOLTIP_VIEWPORT_GAP, top)}px`,
+    });
+}

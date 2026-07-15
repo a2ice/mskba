@@ -7,9 +7,12 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenueDuplicateMatchTypeEnum;
+use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -81,6 +84,64 @@ class AdminPagesTest extends TestCase
             ->assertOk()
             ->assertSee('Проверяемая площадка')
             ->assertDontSee('Скрытая площадка');
+    }
+
+    public function test_venues_page_shows_duplicate_relationship_summary(): void
+    {
+        $admin = $this->admin();
+        $canonical = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($admin),
+            'name' => 'Главная площадка',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($admin),
+            'name' => 'Площадка дубль',
+            'status' => VenueStatusEnum::DUPLICATE,
+            'canonical_venue_id' => $canonical->id,
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->get(route('admin.venues'))
+            ->assertOk()
+            ->assertSee('Дубли')
+            ->assertSee('Главная')
+            ->assertSee('Дублей: 1')
+            ->assertSee('Дубль #'.$canonical->id)
+            ->assertSee('Главная площадка');
+    }
+
+    public function test_venues_page_shows_pending_duplicate_candidates_from_worker_table(): void
+    {
+        $admin = $this->admin();
+        $firstVenue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($admin),
+            'name' => 'Первый кандидат',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+        $secondVenue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($admin),
+            'name' => 'Второй кандидат',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        VenueDuplicate::query()->create([
+            'venue_id' => $firstVenue->id,
+            'duplicate_venue_id' => $secondVenue->id,
+            'matched_by' => VenueDuplicateMatchTypeEnum::NAME,
+            'status' => VenueDuplicateStatusEnum::PENDING,
+            'score' => 70,
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->get(route('admin.venues'))
+            ->assertOk()
+            ->assertSee('#'.$firstVenue->id)
+            ->assertSee('#'.$secondVenue->id)
+            ->assertDontSee('Кандидат дубля')
+            ->assertDontSee('Совпадений: 1');
     }
 
     public function test_audit_page_shows_audit_logs(): void

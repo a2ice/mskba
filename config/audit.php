@@ -15,6 +15,7 @@ use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
@@ -40,6 +41,7 @@ return [
         Contact::class,
         ContactVerification::class,
         Venue::class,
+        VenueDuplicate::class,
         VenueSchedule::class,
         VenueScheduleInterval::class,
         VenueReview::class,

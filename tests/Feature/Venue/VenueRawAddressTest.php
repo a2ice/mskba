@@ -7,9 +7,12 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\MetroLine;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Infrastructure\Jobs\FindVenueDuplicatesJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -41,7 +44,7 @@ class VenueRawAddressTest extends TestCase
         ]);
     }
 
-    public function test_cannot_create_venue_with_duplicate_alias_from_name(): void
+    public function test_cannot_create_venue_with_duplicate_alias_from_confirmed_name(): void
     {
         $user = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -57,6 +60,10 @@ class VenueRawAddressTest extends TestCase
                 'raw_address' => 'Москва, ул. Летниковская, 12',
             ])
             ->assertRedirect();
+
+        Venue::query()
+            ->where('name', 'test')
+            ->update(['status' => VenueStatusEnum::CONFIRMED->value]);
 
         $this
             ->actingAs($user)
@@ -86,12 +93,13 @@ class VenueRawAddressTest extends TestCase
     {
         $createVenue = app(CreateAccountVenueHandler::class);
 
-        $createVenue->handle(null, [
+        $venue = $createVenue->handle(null, [
             'name' => 'test',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
             'description' => 'Первая площадка',
             'raw_address' => 'Москва, ул. Летниковская, 12',
         ]);
+        $venue->forceFill(['status' => VenueStatusEnum::CONFIRMED])->save();
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Площадка с таким названием уже существует.');
@@ -110,7 +118,34 @@ class VenueRawAddressTest extends TestCase
         }
     }
 
-    public function test_cannot_create_venue_with_duplicate_raw_address(): void
+    public function test_can_create_unconfirmed_duplicate_name_without_alias_suffix_and_queues_detection(): void
+    {
+        Queue::fake();
+
+        $createVenue = app(CreateAccountVenueHandler::class);
+
+        $firstVenue = $createVenue->handle(null, [
+            'name' => 'test',
+            'type' => VenueTypeEnum::SPORTS_HALL->value,
+            'description' => 'Первая площадка',
+            'raw_address' => 'Москва, ул. Летниковская, 12',
+        ]);
+
+        $secondVenue = $createVenue->handle(null, [
+            'name' => 'TEST',
+            'type' => VenueTypeEnum::SPORTS_HALL->value,
+            'description' => 'Дубль названия',
+            'raw_address' => 'Москва, ул. Летниковская, 14',
+        ]);
+
+        $this->assertSame('test', $firstVenue->alias);
+        $this->assertSame('test', $secondVenue->alias);
+        $this->assertDatabaseCount('venues', 2);
+
+        Queue::assertPushed(FindVenueDuplicatesJob::class, 2);
+    }
+
+    public function test_cannot_create_venue_with_duplicate_confirmed_raw_address(): void
     {
         $user = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -126,6 +161,10 @@ class VenueRawAddressTest extends TestCase
                 'raw_address' => 'Москва, ул. Летниковская, 12',
             ])
             ->assertRedirect();
+
+        Venue::query()
+            ->where('name', 'Первая площадка по адресу')
+            ->update(['status' => VenueStatusEnum::CONFIRMED->value]);
 
         $this
             ->actingAs($user)
@@ -198,7 +237,7 @@ class VenueRawAddressTest extends TestCase
         ]);
     }
 
-    public function test_cannot_create_venue_with_duplicate_structured_address(): void
+    public function test_cannot_create_venue_with_duplicate_confirmed_structured_address(): void
     {
         $user = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -218,6 +257,10 @@ class VenueRawAddressTest extends TestCase
                 ],
             ])
             ->assertRedirect();
+
+        Venue::query()
+            ->where('name', 'Площадка с адресными полями')
+            ->update(['status' => VenueStatusEnum::CONFIRMED->value]);
 
         $this
             ->actingAs($user)

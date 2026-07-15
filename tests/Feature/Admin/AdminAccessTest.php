@@ -56,6 +56,7 @@ class AdminAccessTest extends TestCase
             'admin.dashboard',
             'admin.users',
             'admin.venues',
+            'admin.venues.duplicates',
             'admin.events',
             'admin.teams',
             'admin.content',

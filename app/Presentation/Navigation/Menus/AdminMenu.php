@@ -37,10 +37,19 @@ final class AdminMenu implements MenuHandler
                 'label' => 'Площадки',
                 'description' => 'Каталог площадок и модерация записей.',
                 'url' => $this->routeUrl('admin.venues'),
-                'active' => $this->isActiveRoute('admin.venues'),
+                'active' => $this->isActiveRoute('admin.venues, admin.venues.*'),
                 'visible' => true,
                 'icon' => 'ti-building-stadium',
                 'data' => ['count' => 0], // TODO: добавить динамическое количество
+            ],
+            [
+                'label' => 'Дубли площадок',
+                'description' => 'Кандидаты на объединение площадок.',
+                'url' => $this->routeUrl('admin.venues.duplicates'),
+                'active' => $this->isActiveRoute('admin.venues.duplicates, admin.venues.duplicates.*'),
+                'visible' => true,
+                'icon' => 'ti-copy-check',
+                'data' => ['count' => 0],
             ],
             [
                 'label' => 'События',
