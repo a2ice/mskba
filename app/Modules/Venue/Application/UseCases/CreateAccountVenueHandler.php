@@ -45,7 +45,7 @@ final class CreateAccountVenueHandler
             if ($actor !== null && $this->uniqueness->aliasExistsForActor(
                 $actor,
                 $this->uniqueness->aliasForName($data['name']),
-                [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
             )) {
                 throw new InvalidArgumentException('Вы уже добавили площадку с таким названием.');
             }
@@ -56,7 +56,7 @@ final class CreateAccountVenueHandler
                 city: $locationData?->city,
                 street: $locationData?->street,
                 building: $locationData?->building,
-                statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
             )) {
                 throw new InvalidArgumentException('Вы уже добавили площадку с таким адресом.');
             }

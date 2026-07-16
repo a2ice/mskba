@@ -86,6 +86,9 @@ Route::prefix('admin')
         Route::post('/venues/duplicates/merge', [AdminVenueDuplicatesController::class, 'mergeBatch'])->name('admin.venues.duplicates.merge-batch');
         Route::post('/venues/duplicates/{venueDuplicate}/merge', [AdminVenueDuplicatesController::class, 'merge'])->name('admin.venues.duplicates.merge');
         Route::get('/venues', [AdminVenuesController::class, 'index'])->name('admin.venues')->defaults('breadcrumb', 'Площадки');
+        Route::post('/venues/moderation/{venueModerationRequest}/approve', [AdminVenuesController::class, 'approve'])->name('admin.venues.moderation.approve');
+        Route::post('/venues/moderation/{venueModerationRequest}/reject', [AdminVenuesController::class, 'reject'])->name('admin.venues.moderation.reject');
+        Route::post('/venues/moderation/{venueModerationRequest}/block', [AdminVenuesController::class, 'block'])->name('admin.venues.moderation.block');
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'События');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
         Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
@@ -104,6 +107,8 @@ Route::prefix('venues')->group(function () {
         ->name('venues.store');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
     Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
+    Route::put('/{alias}', [VenueController::class, 'update'])->name('venues.update');
+    Route::post('/{alias}/moderation', [VenueController::class, 'submitModeration'])->name('venues.moderation.submit');
     Route::get('/{alias}/remove', [VenueController::class, 'remove'])->name('venues.remove');
 });
 

@@ -21,6 +21,7 @@ final class ListAdminVenuesHandler
                 'creatorActor.user',
                 'duplicateCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
                 'duplicateOfCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
+                'moderationRequests.messages',
             ])
             ->withCount([
                 'duplicateVenues',

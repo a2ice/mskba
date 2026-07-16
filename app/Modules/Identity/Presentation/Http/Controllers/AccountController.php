@@ -521,12 +521,9 @@ class AccountController extends Controller
         ]);
     }
 
-    public function editVenue(string $alias): Response
+    public function editVenue(string $alias): RedirectResponse
     {
-        return ThemeResolver::page('account.venue', ['venue' => null, 'error' => [
-            'message' => 'Редактирование площадки будет реализовано отдельно.',
-            'code' => 501,
-        ]]);
+        return redirect()->route('venues.edit', $alias);
     }
 
     public function editVenueSchedule(string $alias, ShowAccountVenueScheduleHandler $showVenueSchedule): Response

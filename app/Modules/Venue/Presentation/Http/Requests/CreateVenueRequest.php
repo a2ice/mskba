@@ -58,7 +58,7 @@ class CreateVenueRequest extends FormRequest
                 && $checker->aliasExistsForActor(
                     $actor,
                     $checker->aliasForName($name),
-                    [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                    [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
                 )
             ) {
                 $validator->errors()->add('name', 'Вы уже добавили площадку с таким названием.');
@@ -82,7 +82,7 @@ class CreateVenueRequest extends FormRequest
                     city: $this->nullableInputString('location.city'),
                     street: $this->nullableInputString('location.street'),
                     building: $this->nullableInputString('location.building'),
-                    statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                    statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
                 )
             ) {
                 $validator->errors()->add($this->addressErrorField(), 'Вы уже добавили площадку с таким адресом.');

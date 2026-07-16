@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'created_by_actor_id',
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
     'alias',
     'type',
     'status',
+    'status_info',
     'description',
     'raw_address',
 ])]
@@ -37,7 +39,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Venue extends Model
 {
     /** @use HasFactory<VenueFactory> */
-    use Auditable, HasFactory;
+    use Auditable, HasFactory, SoftDeletes;
 
     protected static function newFactory(): VenueFactory
     {
@@ -74,6 +76,11 @@ class Venue extends Model
     public function duplicateOfCandidates(): HasMany
     {
         return $this->hasMany(VenueDuplicate::class, 'duplicate_venue_id');
+    }
+
+    public function moderationRequests(): HasMany
+    {
+        return $this->hasMany(VenueModerationRequest::class);
     }
 
     public function location(): BelongsTo

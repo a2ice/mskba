@@ -2,10 +2,23 @@
     $types = $types ?? [];
     $action = $action ?? route('venues.store');
     $cancelUrl = $cancelUrl ?? route('venues');
+    $method = $method ?? 'POST';
+    $submitLabel = $submitLabel ?? 'Добавить';
+    $venue = $venue ?? null;
+    $venueAddress = $venue?->location?->address;
+    $selectedMetroIds = collect(old(
+        'location.metro_station_ids',
+        $venue?->location?->metroStations?->pluck('id')->all() ?? [],
+    ))
+        ->map(fn ($id) => (string) $id)
+        ->all();
 @endphp
 
 <form method="POST" action="{{ $action }}">
     @csrf
+    @if(strtoupper($method) !== 'POST')
+        @method($method)
+    @endif
 
     <div class="mb-3">
         <label for="venueName" class="form-label">Название</label>
@@ -14,7 +27,7 @@
             type="text"
             name="name"
             class="form-control @error('name') is-invalid @enderror"
-            value="{{ old('name') }}"
+            value="{{ old('name', $venue?->name) }}"
             autofocus
             required
         >
@@ -33,7 +46,7 @@
         >
             <option value="">Выберите тип</option>
             @foreach ($types as $type)
-                <option value="{{ $type->value }}" @selected(old('type') === $type->value)>
+                <option value="{{ $type->value }}" @selected(old('type', $venue?->type?->value) === $type->value)>
                     {{ $type->label() }}
                 </option>
             @endforeach
@@ -52,11 +65,6 @@
             multiple
             data-address-metro-select
         >
-            @php
-                $selectedMetroIds = collect(old('location.metro_station_ids', []))
-                    ->map(fn ($id) => (string) $id)
-                    ->all();
-            @endphp
             @foreach ($metros ?? [] as $metro)
                 <option
                     value="{{ $metro->id }}"
@@ -84,19 +92,19 @@
             type="text"
             name="location[raw_address]"
             class="form-control input-predictive @error('location.raw_address') is-invalid @enderror"
-            value="{{ old('location.raw_address', old('raw_address')) }}"
+            value="{{ old('location.raw_address', old('raw_address', $venueAddress?->full_address ?? $venue?->raw_address)) }}"
             placeholder="Например: Москва, ул. Летниковская, 12"
             autocomplete="off"
             data-address-suggest-input
             data-address-suggest-url="{{ route('integrations.address-suggest') }}"
         >
 
-        <input type="hidden" name="location[city]" value="{{ old('location.city') }}" data-address-city>
-        <input type="hidden" name="location[street]" value="{{ old('location.street') }}" data-address-street>
-        <input type="hidden" name="location[building]" value="{{ old('location.building') }}" data-address-building>
-        <input type="hidden" name="location[postal_code]" value="{{ old('location.postal_code') }}" data-address-postal-code>
-        <input type="hidden" name="location[latitude]" value="{{ old('location.latitude') }}" data-address-latitude>
-        <input type="hidden" name="location[longitude]" value="{{ old('location.longitude') }}" data-address-longitude>
+        <input type="hidden" name="location[city]" value="{{ old('location.city', $venueAddress?->city) }}" data-address-city>
+        <input type="hidden" name="location[street]" value="{{ old('location.street', $venueAddress?->street) }}" data-address-street>
+        <input type="hidden" name="location[building]" value="{{ old('location.building', $venueAddress?->building) }}" data-address-building>
+        <input type="hidden" name="location[postal_code]" value="{{ old('location.postal_code', $venueAddress?->postal_code) }}" data-address-postal-code>
+        <input type="hidden" name="location[latitude]" value="{{ old('location.latitude', $venueAddress?->latitude) }}" data-address-latitude>
+        <input type="hidden" name="location[longitude]" value="{{ old('location.longitude', $venueAddress?->longitude) }}" data-address-longitude>
 
         <div class="address-suggest__list d-none" data-address-suggest-list></div>
         <div class="address-suggest__message text-danger d-none" data-address-suggest-error></div>
@@ -113,14 +121,14 @@
             name="description"
             class="form-control @error('description') is-invalid @enderror"
             rows="2"
-        >{{ old('description') }}</textarea>
+        >{{ old('description', $venue?->description) }}</textarea>
         @error('description')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>
 
     <div class="d-flex flex-wrap gap-3">
-        <button type="submit" class="btn btn--primary btn--sm">Добавить</button>
+        <button type="submit" class="btn btn--primary btn--sm">{{ $submitLabel }}</button>
         <a href="{{ $cancelUrl }}" class="btn btn--secondary btn--sm">Отмена</a>
     </div>
 </form>

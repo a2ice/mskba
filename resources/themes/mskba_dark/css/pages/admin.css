@@ -270,6 +270,18 @@
     white-space: nowrap;
 }
 
+.admin-badge--button {
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.admin-badge--button:hover,
+.admin-badge--button:focus-visible {
+    border-color: var(--accent-strong);
+    color: var(--accent-text);
+}
+
 .admin-canonical-mark {
     position: relative;
     display: inline-block;
@@ -325,6 +337,8 @@
 .admin-action-modal__dialog {
     position: relative;
     width: min(620px, 100%);
+    max-height: min(760px, calc(100vh - 48px));
+    overflow-y: auto;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
     padding: 26px;
@@ -521,6 +535,24 @@
 }
 
 .admin-readonly-field label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.admin-moderation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.admin-moderation-form__field {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-moderation-form__field span {
     color: var(--muted);
     font-size: 12px;
     font-weight: 800;

@@ -81,7 +81,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
         $this->assertDatabaseHas('venues', [
             'id' => $duplicate->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
             'canonical_venue_id' => $canonical->id,
         ]);
         $this->assertDatabaseHas('venue_duplicates', [
@@ -145,7 +145,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         $canonical = $this->venue(['name' => 'Главная площадка']);
         $duplicate = $this->venue([
             'name' => 'Дубль площадки',
-            'status' => VenueStatusEnum::DUPLICATE,
+            'status' => VenueStatusEnum::UNCONFIRMED,
             'canonical_venue_id' => $canonical->id,
         ]);
 
@@ -207,7 +207,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         foreach ([$firstDuplicate, $secondDuplicate] as $duplicate) {
             $this->assertDatabaseHas('venues', [
                 'id' => $duplicate->id,
-                'status' => VenueStatusEnum::DUPLICATE->value,
+                'status' => VenueStatusEnum::UNCONFIRMED->value,
                 'canonical_venue_id' => $canonical->id,
             ]);
         }
@@ -257,7 +257,7 @@ class VenueDuplicateWorkflowTest extends TestCase
 
         $this->assertDatabaseMissing('venues', [
             'id' => $secondDuplicate->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'canonical_venue_id' => $firstCanonical->id,
         ]);
     }
 
@@ -273,12 +273,12 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
         $newCanonical = $this->venue([
             'name' => 'Новая главная',
-            'status' => VenueStatusEnum::DUPLICATE,
+            'status' => VenueStatusEnum::UNCONFIRMED,
             'canonical_venue_id' => $oldCanonical->id,
         ]);
         $anotherDuplicate = $this->venue([
             'name' => 'Еще дубль',
-            'status' => VenueStatusEnum::DUPLICATE,
+            'status' => VenueStatusEnum::UNCONFIRMED,
             'canonical_venue_id' => $oldCanonical->id,
         ]);
         VenueDuplicate::query()->create([
@@ -311,12 +311,12 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
         $this->assertDatabaseHas('venues', [
             'id' => $oldCanonical->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
             'canonical_venue_id' => $newCanonical->id,
         ]);
         $this->assertDatabaseHas('venues', [
             'id' => $anotherDuplicate->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
             'canonical_venue_id' => $newCanonical->id,
         ]);
     }
