@@ -38,11 +38,11 @@ final class ListAccountVenuesHandler
                     alias: $venue->alias,
                     type: $venue->type->label(),
                     status: $venue->status->label(),
-                    description: $venue->description,
+                    shortDescription: $venue->short_description,
                     rawAddress: $venue->raw_address,
                     canView: $isBootstrapOwned || in_array($venue->id, $contractViewableVenueIds, true),
-                    canEdit: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
-                    canEditSchedule: $isBootstrapOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true),
+                    canEdit: $venue->allowsDetailsEditing() && ($isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true)),
+                    canEditSchedule: $venue->allowsOperationalChanges() && ($isBootstrapOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true)),
                     canRemove: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
                 );
             })

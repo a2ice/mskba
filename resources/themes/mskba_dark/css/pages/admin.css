@@ -128,6 +128,14 @@
     overflow-x: auto;
 }
 
+.admin-table-toolbar {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    min-height: 40px;
+    margin-bottom: 12px;
+}
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -145,8 +153,17 @@
     white-space: nowrap;
 }
 
-.admin-table td.admin-table__check-cell,
+.admin-table td.admin-table__check-cell {
+    vertical-align: top;
+}
+
 .admin-table td.admin-table__canonical-cell {
+    vertical-align: middle;
+}
+
+.admin-table__check-cell input[type="checkbox"] {
+    display: block;
+    margin: 2px auto 0;
     vertical-align: middle;
 }
 
@@ -231,6 +248,12 @@
     color: var(--muted);
 }
 
+.admin-muted--compact {
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
 .admin-link-button {
     border: 0;
     padding: 0;
@@ -268,6 +291,18 @@
     font-size: 12px;
     font-weight: 900;
     white-space: nowrap;
+}
+
+.admin-badge--button {
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.admin-badge--button:hover,
+.admin-badge--button:focus-visible {
+    border-color: var(--accent-strong);
+    color: var(--accent-text);
 }
 
 .admin-canonical-mark {
@@ -324,7 +359,9 @@
 
 .admin-action-modal__dialog {
     position: relative;
-    width: min(620px, 100%);
+    width: min(760px, 100%);
+    max-height: min(760px, calc(100vh - 48px));
+    overflow-y: auto;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
     padding: 26px;
@@ -526,10 +563,125 @@
     font-weight: 800;
 }
 
+.admin-moderation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.admin-moderation-actions--single-row {
+    flex-wrap: nowrap;
+}
+
+.admin-moderation-workspace {
+    --admin-moderation-panel-height: 180px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    align-items: end;
+}
+
+.admin-moderation-workspace--single {
+    grid-template-columns: 1fr;
+}
+
+.admin-moderation-history {
+    height: var(--admin-moderation-panel-height);
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.admin-moderation-history__item {
+    border-left: 3px solid rgba(236, 127, 18, 0.65);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0 6px 6px 0;
+    padding: 10px;
+    background: rgba(236, 127, 18, 0.06);
+}
+
+.admin-moderation-history__item--moderator {
+    border-left-color: rgba(100, 174, 219, 0.72);
+    background: rgba(100, 174, 219, 0.05);
+}
+
+.admin-moderation-history__item + .admin-moderation-history__item {
+    margin-top: 10px;
+}
+
+.admin-moderation-history__item:last-child {
+    border-bottom: 0;
+    padding-bottom: 10px;
+}
+
+.admin-moderation-history__meta {
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.admin-moderation-history__item p {
+    margin: 0;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.admin-moderation-form__field {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-moderation-form__field textarea {
+    height: var(--admin-moderation-panel-height);
+    min-height: var(--admin-moderation-panel-height);
+    resize: vertical;
+}
+
+.admin-moderation-form__field span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.btn--success {
+    border-color: rgba(58, 190, 118, 0.78);
+    background: linear-gradient(180deg, #37b66f, #249457);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.btn--success:hover,
+.btn--success.is-active {
+    border-color: rgba(77, 217, 134, 0.9);
+    background: linear-gradient(180deg, #42c87d, #2aa866);
+}
+
+.btn--danger {
+    border-color: rgba(225, 72, 72, 0.82);
+    background: linear-gradient(180deg, #d94a4a, #a72d2d);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.btn--danger:hover,
+.btn--danger.is-active {
+    border-color: rgba(255, 96, 96, 0.92);
+    background: linear-gradient(180deg, #ee5757, #bd3434);
+}
+
 @media (max-width: 960px) {
     .admin-dashboard__grid,
     .admin-filter,
     .admin-settings-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-moderation-workspace {
         grid-template-columns: 1fr;
     }
 }

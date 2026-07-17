@@ -9,13 +9,13 @@ final class BreadcrumbsResolver
     /**
      * @return array<int, array{label: string, url: string, active: bool, visible: bool}>
      */
-    public function resolve(?string $page): array
+    public function resolve(?string $page, ?array $breadcrumbs = null): array
     {
         $title = $page ?? 'Страница';
         $routeName = request()->route()?->getName();
         $routes = app('router')->getRoutes();
 
-        $items = $breadcrumbs ?? null;
+        $items = $breadcrumbs;
 
         if ($items === null) {
             $items = [];

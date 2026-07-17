@@ -37,7 +37,7 @@
             </li>
             <li class="mb-3">
                 Описание:
-                <span class="fw-bold">{{ $venue->description ?? '—' }}</span>
+                <span class="fw-bold">{{ $venue->shortDescription ?? '—' }}</span>
             </li>
             <li class="mb-3">
                 Адрес:
@@ -50,6 +50,7 @@
 
             @if ($venue->canEdit)
                 <a href="{{ route('account.venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
+                <a href="{{ route('venues.status', $venue->alias) }}" class="btn btn-outline-primary">Статус</a>
             @endif
 
             @if ($venue->canEditSchedule)

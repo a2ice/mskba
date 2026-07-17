@@ -44,6 +44,29 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_detector_does_not_match_venues_of_different_types(): void
+    {
+        $indoorVenue = $this->venue([
+            'name' => 'Школьная площадка',
+            'alias' => 'skolnaia-ploshhadka',
+            'type' => VenueTypeEnum::SPORTS_HALL,
+            'raw_address' => 'Москва, Школьная улица, 1',
+        ]);
+        $outdoorVenue = $this->venue([
+            'name' => 'Школьная площадка',
+            'alias' => 'skolnaia-ploshhadka',
+            'type' => VenueTypeEnum::STREET_COURT,
+            'raw_address' => 'Москва, Школьная улица, 1',
+        ]);
+
+        app(VenueDuplicateDetector::class)->detectFor($outdoorVenue);
+
+        $this->assertDatabaseMissing('venue_duplicates', [
+            'venue_id' => min($indoorVenue->id, $outdoorVenue->id),
+            'duplicate_venue_id' => max($indoorVenue->id, $outdoorVenue->id),
+        ]);
+    }
+
     public function test_admin_can_merge_duplicate_candidate_and_merge_is_written_to_audit_log(): void
     {
         $admin = User::factory()->create([
@@ -81,7 +104,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
         $this->assertDatabaseHas('venues', [
             'id' => $duplicate->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
             'canonical_venue_id' => $canonical->id,
         ]);
         $this->assertDatabaseHas('venue_duplicates', [
@@ -145,7 +168,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         $canonical = $this->venue(['name' => 'Главная площадка']);
         $duplicate = $this->venue([
             'name' => 'Дубль площадки',
-            'status' => VenueStatusEnum::DUPLICATE,
+            'status' => VenueStatusEnum::UNCONFIRMED,
             'canonical_venue_id' => $canonical->id,
         ]);
 
@@ -207,7 +230,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         foreach ([$firstDuplicate, $secondDuplicate] as $duplicate) {
             $this->assertDatabaseHas('venues', [
                 'id' => $duplicate->id,
-                'status' => VenueStatusEnum::DUPLICATE->value,
+                'status' => VenueStatusEnum::UNCONFIRMED->value,
                 'canonical_venue_id' => $canonical->id,
             ]);
         }
@@ -257,7 +280,7 @@ class VenueDuplicateWorkflowTest extends TestCase
 
         $this->assertDatabaseMissing('venues', [
             'id' => $secondDuplicate->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'canonical_venue_id' => $firstCanonical->id,
         ]);
     }
 
@@ -273,12 +296,12 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
         $newCanonical = $this->venue([
             'name' => 'Новая главная',
-            'status' => VenueStatusEnum::DUPLICATE,
+            'status' => VenueStatusEnum::UNCONFIRMED,
             'canonical_venue_id' => $oldCanonical->id,
         ]);
         $anotherDuplicate = $this->venue([
             'name' => 'Еще дубль',
-            'status' => VenueStatusEnum::DUPLICATE,
+            'status' => VenueStatusEnum::UNCONFIRMED,
             'canonical_venue_id' => $oldCanonical->id,
         ]);
         VenueDuplicate::query()->create([
@@ -311,12 +334,12 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
         $this->assertDatabaseHas('venues', [
             'id' => $oldCanonical->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
             'canonical_venue_id' => $newCanonical->id,
         ]);
         $this->assertDatabaseHas('venues', [
             'id' => $anotherDuplicate->id,
-            'status' => VenueStatusEnum::DUPLICATE->value,
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
             'canonical_venue_id' => $newCanonical->id,
         ]);
     }
@@ -372,7 +395,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         return Venue::factory()->create(array_merge([
             'type' => VenueTypeEnum::SPORTS_HALL,
             'status' => VenueStatusEnum::UNCONFIRMED,
-            'description' => 'Описание площадки',
+            'short_description' => 'Описание площадки',
             'raw_address' => 'Москва, Тестовый адрес, 1',
         ], $overrides));
     }

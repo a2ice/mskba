@@ -9,6 +9,8 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
+use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueFactory;
@@ -21,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'created_by_actor_id',
@@ -30,18 +33,30 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
     'alias',
     'type',
     'status',
-    'description',
+    'status_info',
+    'short_description',
+    'full_description',
     'raw_address',
 ])]
 #[Hidden([])]
 class Venue extends Model
 {
     /** @use HasFactory<VenueFactory> */
-    use Auditable, HasFactory;
+    use Auditable, HasFactory, SoftDeletes;
 
     protected static function newFactory(): VenueFactory
     {
         return VenueFactory::new();
+    }
+
+    public function allowsDetailsEditing(): bool
+    {
+        return ! $this->trashed() && $this->status !== VenueStatusEnum::CONFIRMED;
+    }
+
+    public function allowsOperationalChanges(): bool
+    {
+        return ! $this->trashed() && $this->status !== VenueStatusEnum::BLOCKED;
     }
 
     public function memberships(): HasMany
@@ -74,6 +89,13 @@ class Venue extends Model
     public function duplicateOfCandidates(): HasMany
     {
         return $this->hasMany(VenueDuplicate::class, 'duplicate_venue_id');
+    }
+
+    public function moderationRequests(): HasMany
+    {
+        return $this
+            ->hasMany(ModerationRequest::class, 'subject_id')
+            ->where('type', ModerationTypeEnum::VENUE->value);
     }
 
     public function location(): BelongsTo

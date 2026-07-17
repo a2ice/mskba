@@ -43,7 +43,7 @@
                         </a>
                     </h2>
                     <p class="mb-2">Статус: <span class="badge badge--{{ $venue->status == 'confirmed' ? 'success' : 'danger' }}">{{ $venue->status }}</span></p>
-                    <p class="mb-3">Описание: {{ $venue->description }}</p>
+                    <p class="mb-3">Описание: {{ $venue->shortDescription }}</p>
                     @if($venue->rawAddress)
                         <p class="mb-3">Адрес: {{ $venue->rawAddress }}</p>
                     @endif

@@ -29,7 +29,8 @@ class VenueFactory extends Factory
             'alias' => Str::slug($name).'-'.fake()->unique()->numberBetween(1000, 9999),
             'type' => fake()->randomElement(VenueTypeEnum::cases())->value,
             'status' => VenueStatusEnum::UNCONFIRMED->value,
-            'description' => fake()->optional()->sentence(),
+            'short_description' => fake()->optional()->sentence(),
+            'full_description' => fake()->optional()->paragraph(),
             'raw_address' => fake()->optional()->address(),
         ];
     }

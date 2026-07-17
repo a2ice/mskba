@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-kAG0JejO.css",
+    "file": "assets/app-Ded6Xxue.css",
     "name": "app",
     "names": [
       "app.css"
@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-ztNhpMF8.css",
+    "file": "assets/app-DMQCgKRU.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-DMuaA-nx.css",
+    "file": "assets/app-CzmESVUr.css",
     "name": "app",
     "names": [
       "app.css"
@@ -39,7 +39,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-ComrR1nR.js",
+    "file": "assets/app-Ce2EUjHe.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,

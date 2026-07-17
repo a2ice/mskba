@@ -14,6 +14,7 @@ use App\Modules\Venue\Application\DTO\VenueDetailsDTO;
 use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\DTO\VenueReviewDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -115,6 +116,7 @@ final class ShowVenueHandler
             ->values()
             ->all();
         $scheduleDays = $this->scheduleDays($venue);
+        $openingState = $this->openingState($venue);
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
@@ -144,7 +146,10 @@ final class ShowVenueHandler
             type: $venue->type->label(),
             typeSlug: $venue->type->publicSlug(),
             status: $venue->status->label(),
-            description: $venue->description,
+            isOpen: $openingState['isOpen'],
+            todayHours: $openingState['todayHours'],
+            shortDescription: $venue->short_description,
+            fullDescription: $venue->full_description,
             rawAddress: $venue->raw_address,
             address: $address === null ? null : new VenueAddressDTO(
                 city: $address->city,
@@ -258,6 +263,42 @@ final class ShowVenueHandler
         }
 
         return $days;
+    }
+
+    /**
+     * @return array{isOpen: bool, todayHours: string}
+     */
+    private function openingState(Venue $venue): array
+    {
+        if ($venue->status !== VenueStatusEnum::CONFIRMED) {
+            return ['isOpen' => false, 'todayHours' => 'Площадка не подтверждена'];
+        }
+
+        $schedule = $venue->schedule;
+        if ($schedule === null || $schedule->intervals->isEmpty()) {
+            return ['isOpen' => true, 'todayHours' => 'Расписание не указано'];
+        }
+
+        $now = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'));
+        $todayIntervals = $schedule->intervals
+            ->where('day_of_week', $now->dayOfWeekIso)
+            ->values();
+
+        if ($todayIntervals->isEmpty()) {
+            return ['isOpen' => false, 'todayHours' => 'Сегодня закрыто'];
+        }
+
+        $isOpen = $todayIntervals->contains(function (VenueScheduleInterval $interval) use ($now): bool {
+            $startsAt = $now->setTimeFromTimeString($this->formatTime($interval->starts_at));
+            $endsAt = $now->setTimeFromTimeString($this->formatTime($interval->ends_at));
+
+            return $now->greaterThanOrEqualTo($startsAt) && $now->lessThan($endsAt);
+        });
+        $hours = $todayIntervals
+            ->map(fn (VenueScheduleInterval $interval): string => $this->formatTime($interval->starts_at).'–'.$this->formatTime($interval->ends_at))
+            ->implode(', ');
+
+        return ['isOpen' => $isOpen, 'todayHours' => 'Сегодня: '.$hours];
     }
 
     private function formatTime(mixed $time): string

@@ -86,9 +86,6 @@ final class MergeVenueDuplicateHandler
             }
 
             $canonical->forceFill([
-                'status' => $canonical->status === VenueStatusEnum::DUPLICATE
-                    ? VenueStatusEnum::UNCONFIRMED
-                    : $canonical->status,
                 'canonical_venue_id' => null,
             ])->save();
 
@@ -109,12 +106,10 @@ final class MergeVenueDuplicateHandler
                 }
 
                 $duplicateOldValues = [
-                    'status' => $duplicate->getRawOriginal('status'),
                     'canonical_venue_id' => $duplicate->getRawOriginal('canonical_venue_id'),
                 ];
 
                 $duplicate->forceFill([
-                    'status' => VenueStatusEnum::DUPLICATE,
                     'canonical_venue_id' => $canonical->id,
                 ])->save();
 
@@ -237,7 +232,6 @@ final class MergeVenueDuplicateHandler
             'event' => 'merged',
             'old_values' => $duplicateOldValues,
             'new_values' => [
-                'status' => VenueStatusEnum::DUPLICATE->value,
                 'canonical_venue_id' => $canonical->id,
             ],
             'metadata' => [

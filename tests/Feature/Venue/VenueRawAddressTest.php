@@ -32,14 +32,14 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Тестовая площадка',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Описание тестовой площадки',
+                'short_description' => 'Описание тестовой площадки',
                 'raw_address' => 'Москва, ул. Летниковская, 12',
             ])
             ->assertRedirect();
 
         $this->assertDatabaseHas('venues', [
             'name' => 'Тестовая площадка',
-            'alias' => 'testovaia-ploshhadka',
+            'alias' => 'testovaya-ploshchadka',
             'raw_address' => 'Москва, ул. Летниковская, 12',
         ]);
     }
@@ -56,7 +56,7 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'test',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Первая площадка',
+                'short_description' => 'Первая площадка',
                 'raw_address' => 'Москва, ул. Летниковская, 12',
             ])
             ->assertRedirect();
@@ -71,7 +71,7 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'TeSt',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Дубль названия',
+                'short_description' => 'Дубль названия',
                 'raw_address' => 'Москва, ул. Летниковская, 14',
             ])
             ->assertRedirect(route('venues.create'))
@@ -89,6 +89,30 @@ class VenueRawAddressTest extends TestCase
         ]);
     }
 
+    public function test_can_create_venue_of_different_type_with_same_confirmed_name_and_address(): void
+    {
+        $createVenue = app(CreateAccountVenueHandler::class);
+
+        $indoorVenue = $createVenue->handle(null, [
+            'name' => 'Школьная площадка',
+            'type' => VenueTypeEnum::SPORTS_HALL->value,
+            'short_description' => 'Спортивный зал',
+            'raw_address' => 'Москва, Школьная улица, 1',
+        ]);
+        $indoorVenue->forceFill(['status' => VenueStatusEnum::CONFIRMED])->save();
+
+        $outdoorVenue = $createVenue->handle(null, [
+            'name' => 'Школьная площадка',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'short_description' => 'Уличная площадка',
+            'raw_address' => 'Москва, Школьная улица, 1',
+        ]);
+
+        $this->assertSame($indoorVenue->alias, $outdoorVenue->alias);
+        $this->assertSame(VenueTypeEnum::STREET_COURT, $outdoorVenue->type);
+        $this->assertDatabaseCount('venues', 2);
+    }
+
     public function test_create_handler_does_not_generate_alias_suffix_for_duplicate_name(): void
     {
         $createVenue = app(CreateAccountVenueHandler::class);
@@ -96,7 +120,7 @@ class VenueRawAddressTest extends TestCase
         $venue = $createVenue->handle(null, [
             'name' => 'test',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
-            'description' => 'Первая площадка',
+            'short_description' => 'Первая площадка',
             'raw_address' => 'Москва, ул. Летниковская, 12',
         ]);
         $venue->forceFill(['status' => VenueStatusEnum::CONFIRMED])->save();
@@ -108,7 +132,7 @@ class VenueRawAddressTest extends TestCase
             $createVenue->handle(null, [
                 'name' => 'TEST',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Дубль названия',
+                'short_description' => 'Дубль названия',
                 'raw_address' => 'Москва, ул. Летниковская, 14',
             ]);
         } finally {
@@ -127,14 +151,14 @@ class VenueRawAddressTest extends TestCase
         $firstVenue = $createVenue->handle(null, [
             'name' => 'test',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
-            'description' => 'Первая площадка',
+            'short_description' => 'Первая площадка',
             'raw_address' => 'Москва, ул. Летниковская, 12',
         ]);
 
         $secondVenue = $createVenue->handle(null, [
             'name' => 'TEST',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
-            'description' => 'Дубль названия',
+            'short_description' => 'Дубль названия',
             'raw_address' => 'Москва, ул. Летниковская, 14',
         ]);
 
@@ -157,7 +181,7 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Первая площадка по адресу',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Описание',
+                'short_description' => 'Описание',
                 'raw_address' => 'Москва, ул. Летниковская, 12',
             ])
             ->assertRedirect();
@@ -172,7 +196,7 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Вторая площадка по адресу',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Описание',
+                'short_description' => 'Описание',
                 'raw_address' => '  москва, ул. летниковская, 12  ',
             ])
             ->assertRedirect(route('venues.create'))
@@ -201,7 +225,7 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Площадка с метро',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Описание площадки с метро',
+                'short_description' => 'Описание площадки с метро',
                 'location' => [
                     'raw_address' => 'Москва, ул. Летниковская, 12',
                     'city' => 'Москва',
@@ -249,7 +273,7 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Площадка с адресными полями',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Описание',
+                'short_description' => 'Описание',
                 'location' => [
                     'city' => 'Москва',
                     'street' => 'Летниковская',
@@ -268,7 +292,7 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Дубль адресных полей',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'description' => 'Описание',
+                'short_description' => 'Описание',
                 'location' => [
                     'city' => 'москва',
                     'street' => 'летниковская',

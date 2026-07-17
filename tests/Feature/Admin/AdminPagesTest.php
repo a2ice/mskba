@@ -97,7 +97,7 @@ class AdminPagesTest extends TestCase
         Venue::factory()->create([
             'created_by_actor_id' => $this->actorIdFor($admin),
             'name' => 'Площадка дубль',
-            'status' => VenueStatusEnum::DUPLICATE,
+            'status' => VenueStatusEnum::UNCONFIRMED,
             'canonical_venue_id' => $canonical->id,
         ]);
 

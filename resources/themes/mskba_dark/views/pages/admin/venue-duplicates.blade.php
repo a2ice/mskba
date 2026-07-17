@@ -187,7 +187,7 @@
                                                 data-venue-created-at="{{ $venue->created_at?->format('d.m.Y H:i') ?? '—' }}"
                                                 data-venue-status="{{ $venue->status->label() }}"
                                                 data-venue-type="{{ $venue->type->label() }}"
-                                                data-venue-description="{{ $venue->description ?: 'Описание не заполнено' }}"
+                                                data-venue-description="{{ $venue->short_description ?: 'Описание не заполнено' }}"
                                                 data-group-has-confirmed="{{ $row['group_has_confirmed'] ? '1' : '0' }}"
                                                 data-is-confirmed="{{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED ? '1' : '0' }}"
                                             >
@@ -214,7 +214,7 @@
                                     data-venue-created-at="{{ $venue->created_at?->format('d.m.Y H:i') ?? '—' }}"
                                     data-venue-status="{{ $venue->status->label() }}"
                                     data-venue-type="{{ $venue->type->label() }}"
-                                    data-venue-description="{{ $venue->description ?: 'Описание не заполнено' }}"
+                                    data-venue-description="{{ $venue->short_description ?: 'Описание не заполнено' }}"
                                 >
                                     {{ $venue->name }}
                                 </button>

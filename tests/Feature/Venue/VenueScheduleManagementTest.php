@@ -184,6 +184,61 @@ class VenueScheduleManagementTest extends TestCase
         ]);
     }
 
+    public function test_schedule_can_be_changed_for_confirmed_venue_but_not_for_blocked_venue(): void
+    {
+        $user = User::factory()->create();
+        $confirmedVenue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($user),
+            'alias' => 'confirmed-schedule-venue',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $blockedVenue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($user),
+            'alias' => 'blocked-schedule-venue',
+            'status' => VenueStatusEnum::BLOCKED,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->put(route('account.venues.schedule.update', $confirmedVenue->alias), [
+                'timezone' => 'Europe/Moscow',
+            ])
+            ->assertRedirect(route('account.venues.schedule.edit', $confirmedVenue->alias));
+
+        $this->assertDatabaseHas('venue_schedules', ['venue_id' => $confirmedVenue->id]);
+
+        $this
+            ->actingAs($user)
+            ->put(route('account.venues.schedule.update', $blockedVenue->alias), [
+                'timezone' => 'Europe/Moscow',
+            ])
+            ->assertRedirect(route('account.venues.schedule.edit', $blockedVenue->alias))
+            ->assertSessionHas('error', 'Доступ запрещен');
+
+        $this->assertDatabaseMissing('venue_schedules', ['venue_id' => $blockedVenue->id]);
+    }
+
+    public function test_schedule_cannot_be_changed_for_deleted_venue(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($user),
+            'alias' => 'deleted-schedule-venue',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+        $venue->delete();
+
+        $this
+            ->actingAs($user)
+            ->put(route('account.venues.schedule.update', $venue->alias), [
+                'timezone' => 'Europe/Moscow',
+            ])
+            ->assertRedirect(route('account.venues.schedule.edit', $venue->alias))
+            ->assertSessionHas('error', 'Площадка не найдена');
+
+        $this->assertDatabaseMissing('venue_schedules', ['venue_id' => $venue->id]);
+    }
+
     private function actorIdFor(User $user): int
     {
         return app(CurrentActorResolver::class)->resolve($user, null)->id;

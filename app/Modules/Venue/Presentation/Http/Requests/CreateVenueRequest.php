@@ -25,7 +25,8 @@ class CreateVenueRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'short_description' => ['nullable', 'string', 'max:500'],
+            'full_description' => ['nullable', 'string', 'max:10000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'array'],
             'location.raw_address' => ['nullable', 'string', 'max:1000'],
@@ -45,8 +46,9 @@ class CreateVenueRequest extends FormRequest
         $validator->after(function ($validator): void {
             $checker = app(VenueUniquenessChecker::class);
             $name = $this->nullableInputString('name');
+            $type = VenueTypeEnum::tryFrom((string) $this->input('type'));
 
-            if ($name !== null && $checker->aliasExistsForName($name, [VenueStatusEnum::CONFIRMED])) {
+            if ($name !== null && $type !== null && $checker->aliasExistsForName($name, $type, [VenueStatusEnum::CONFIRMED])) {
                 $validator->errors()->add('name', 'Площадка с таким названием уже существует.');
             }
 
@@ -55,10 +57,12 @@ class CreateVenueRequest extends FormRequest
             if (
                 $actor !== null
                 && $name !== null
+                && $type !== null
                 && $checker->aliasExistsForActor(
                     $actor,
                     $checker->aliasForName($name),
-                    [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                    $type,
+                    [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
                 )
             ) {
                 $validator->errors()->add('name', 'Вы уже добавили площадку с таким названием.');
@@ -69,6 +73,7 @@ class CreateVenueRequest extends FormRequest
                 city: $this->nullableInputString('location.city'),
                 street: $this->nullableInputString('location.street'),
                 building: $this->nullableInputString('location.building'),
+                type: $type,
                 statuses: [VenueStatusEnum::CONFIRMED],
             )) {
                 $validator->errors()->add($this->addressErrorField(), 'Площадка с таким адресом уже существует.');
@@ -76,13 +81,15 @@ class CreateVenueRequest extends FormRequest
 
             if (
                 $actor !== null
+                && $type !== null
                 && $checker->addressExistsForActor(
                     actor: $actor,
                     rawAddress: $this->inputAddress(),
                     city: $this->nullableInputString('location.city'),
                     street: $this->nullableInputString('location.street'),
                     building: $this->nullableInputString('location.building'),
-                    statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::DUPLICATE],
+                    type: $type,
+                    statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
                 )
             ) {
                 $validator->errors()->add($this->addressErrorField(), 'Вы уже добавили площадку с таким адресом.');
@@ -112,7 +119,8 @@ class CreateVenueRequest extends FormRequest
         return [
             'name' => 'название',
             'type' => 'тип площадки',
-            'description' => 'описание',
+            'short_description' => 'краткое описание',
+            'full_description' => 'полное описание',
             'raw_address' => 'адрес',
             'location.raw_address' => 'адрес',
             'location.city' => 'город',

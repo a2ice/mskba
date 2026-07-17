@@ -32,6 +32,19 @@ final class VenueAccessResolver
 
     public function canEdit(?User $user, Venue $venue, ?Actor $actor = null): bool
     {
+        if (! $venue->allowsDetailsEditing()) {
+            return false;
+        }
+
+        return $this->canManage($user, $venue, $actor);
+    }
+
+    public function canManage(?User $user, Venue $venue, ?Actor $actor = null): bool
+    {
+        if ($venue->trashed()) {
+            return false;
+        }
+
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT)) {
             return true;
         }
@@ -43,6 +56,10 @@ final class VenueAccessResolver
 
     public function canRemove(?User $user, Venue $venue, ?Actor $actor = null): bool
     {
+        if ($venue->trashed()) {
+            return false;
+        }
+
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::REMOVE)) {
             return true;
         }
@@ -54,6 +71,10 @@ final class VenueAccessResolver
 
     public function canEditSchedule(?User $user, Venue $venue, ?Actor $actor = null): bool
     {
+        if (! $venue->allowsOperationalChanges()) {
+            return false;
+        }
+
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT_SCHEDULE)) {
             return true;
         }

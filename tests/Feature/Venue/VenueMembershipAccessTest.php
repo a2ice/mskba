@@ -80,8 +80,35 @@ class VenueMembershipAccessTest extends TestCase
         $this->assertFalse($access->canEditSchedule($admin, $venue));
     }
 
+    public function test_venue_state_limits_detail_and_operational_permissions(): void
+    {
+        $owner = User::factory()->create();
+        $confirmedVenue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($owner),
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $blockedVenue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($owner),
+            'status' => VenueStatusEnum::BLOCKED,
+        ]);
+        $deletedVenue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($owner),
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+        $deletedVenue->delete();
+
+        $access = app(VenueAccessResolver::class);
+
+        $this->assertFalse($access->canEdit($owner, $confirmedVenue));
+        $this->assertTrue($access->canEditSchedule($owner, $confirmedVenue));
+        $this->assertTrue($access->canEdit($owner, $blockedVenue));
+        $this->assertFalse($access->canEditSchedule($owner, $blockedVenue));
+        $this->assertFalse($access->canEdit($owner, $deletedVenue));
+        $this->assertFalse($access->canEditSchedule($owner, $deletedVenue));
+    }
+
     /**
-     * @param array<VenuePermissionEnum>|null $permissions
+     * @param  array<VenuePermissionEnum>|null  $permissions
      */
     private function createVenueMembership(
         User $user,

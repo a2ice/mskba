@@ -1,5 +1,5 @@
 @php
-    $trail = app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null);
+    $trail = app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
 @endphp
 
 @if (!request()->routeIs('home'))

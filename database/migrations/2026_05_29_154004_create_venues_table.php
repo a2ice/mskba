@@ -29,7 +29,8 @@ return new class extends Migration
             $table->string('alias')->unique();
             $table->enum('type', array_column(VenueTypeEnum::cases(), 'value'));
             $table->enum('status', array_column(VenueStatusEnum::cases(), 'value'))->default(VenueStatusEnum::UNCONFIRMED->value);
-            $table->text('description')->nullable();
+            $table->string('short_description', 500)->nullable();
+            $table->text('full_description')->nullable();
             $table->text('raw_address')->nullable();
             $table->timestamps();
         });
