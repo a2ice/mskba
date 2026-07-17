@@ -8,12 +8,13 @@ use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowEditableVenueHandler;
+use App\Modules\Venue\Application\UseCases\ShowManageableVenueHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
-use App\Modules\Venue\Application\UseCases\SubmitVenueModerationRequestHandler;
+use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
-use App\Modules\Venue\Presentation\Http\Requests\SubmitVenueModerationRequest;
+use App\Modules\Venue\Presentation\Http\Requests\SubmitModerationRequest;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
@@ -43,8 +44,7 @@ class VenueController extends Controller
         CreateVenueRequest $request,
         CreateAccountVenueHandler $createVenue,
         CurrentActorResolver $actors,
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         try {
             $venue = $createVenue->handle(
                 $actors->resolveForRequest($request),
@@ -68,8 +68,7 @@ class VenueController extends Controller
         string $alias,
         ShowVenueHandler $useCase,
         CurrentActorResolver $actors,
-    ): Response
-    {
+    ): Response {
         try {
             $venue = $useCase->handle($alias, $request->user(), $actors->resolveForRequest($request));
         } catch (\Exception $e) {
@@ -88,8 +87,7 @@ class VenueController extends Controller
         ShowEditableVenueHandler $showEditableVenue,
         ListMetrostationsHandler $listMetrostations,
         CurrentActorResolver $actors,
-    ): Response
-    {
+    ): Response {
         try {
             $venue = $showEditableVenue->handle($alias, $request->user(), $actors->resolveForRequest($request));
         } catch (\Exception $e) {
@@ -132,10 +130,28 @@ class VenueController extends Controller
             ->with('status', 'Площадка сохранена.');
     }
 
-    public function submitModeration(
-        SubmitVenueModerationRequest $request,
+    public function status(
+        Request $request,
         string $alias,
-        SubmitVenueModerationRequestHandler $submitModeration,
+        ShowManageableVenueHandler $showManageableVenue,
+        CurrentActorResolver $actors,
+    ): Response {
+        try {
+            $venue = $showManageableVenue->handle($alias, $request->user(), $actors->resolveForRequest($request));
+        } catch (\Exception $e) {
+            return ThemeResolver::page('venues.status', ['venue' => null, 'error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        return ThemeResolver::page('venues.status', ['venue' => $venue]);
+    }
+
+    public function submitModeration(
+        SubmitModerationRequest $request,
+        string $alias,
+        SubmitModerationRequestHandler $submitModeration,
         CurrentActorResolver $actors,
     ): RedirectResponse {
         try {
@@ -147,13 +163,13 @@ class VenueController extends Controller
             );
         } catch (\Exception $e) {
             return redirect()
-                ->route('venues.edit', $alias)
+                ->route('venues.status', $alias)
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
 
         return redirect()
-            ->route('venues.edit', $alias)
+            ->route('venues.status', $alias)
             ->with('status', 'Площадка отправлена на модерацию.');
     }
 

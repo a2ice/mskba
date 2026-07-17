@@ -5,6 +5,7 @@
         $displayAddress = $address?->display ?: $venue->rawAddress;
         $hasCoordinates = $address?->latitude && $address?->longitude;
         $hasMap = $hasCoordinates && $venue->about->mapApiKey;
+        $nearestMetro = $venue->metroStations[0] ?? null;
         $yandexMapUrl = $displayAddress
             ? 'https://yandex.ru/maps/?text=' . urlencode($displayAddress)
             : null;
@@ -12,6 +13,10 @@
         $shortMonths = [1 => 'янв', 2 => 'фев', 3 => 'мар', 4 => 'апр', 5 => 'мая', 6 => 'июн', 7 => 'июл', 8 => 'авг', 9 => 'сен', 10 => 'окт', 11 => 'ноя', 12 => 'дек'];
         $placeholderDateLabel = static fn ($date) => $date->format('d') . ' ' . $shortMonths[(int) $date->month];
         $placeholderWeekdayLabel = static fn ($date) => $shortWeekdays[(int) $date->dayOfWeekIso];
+        $ratingPercent = max(0, min(100, (($venue->about->rating ?? 0) / 5) * 100));
+        $ratingLabel = $venue->about->rating
+            ? 'Рейтинг: ' . number_format($venue->about->rating, 1, ',', ' ') . ' из 5'
+            : 'Рейтинг пока не сформирован';
     } else {
         $title = 'Ошибка';
         $error_message = isset($error['message']) ? $error['message'] : 'Неизвестная ошибка';
@@ -24,7 +29,7 @@
     'sectionId' => 'venue',
     'sectionClass' => 'venue-section',
     'contentTitle' => isset($venue) ? $venue->name : 'Площадка',
-    'contentSubtitle' => isset($venue) ? $venue->description : null,
+    'contentSubtitle' => isset($venue) ? $venue->shortDescription : null,
     'sidebarLabel' => 'Навигация площадки',
 ])
 
@@ -65,7 +70,10 @@
         <div class="section-sidebar-block">
             <h2 class="section-sidebar-block__title">Управление</h2>
             @if($venue->canEdit)
-                <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+                <div class="venue-management-actions">
+                    <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+                    <a href="{{ route('venues.status', $venue->alias) }}" class="btn btn--secondary btn--sm">Статус</a>
+                </div>
             @else
                 <p class="section-sidebar-block__text">
                     Доступные действия появятся здесь, если у пользователя есть права на управление площадкой.
@@ -82,10 +90,17 @@
 @section('section-heading-action')
     @if(!empty($venue))
         <div class="venue-heading-actions">
-            <a href="{{ route('venues') }}" class="btn btn--secondary btn--sm">К списку</a>
-            @if($venue->canEdit)
-                <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--primary-bordered btn--sm">Редактировать</a>
-            @endif
+            <div
+                class="venue-star-rating"
+                role="img"
+                aria-label="{{ $ratingLabel }}"
+                title="{{ $ratingLabel }}"
+                data-tooltip-variant="title"
+            >
+                <span class="venue-star-rating__base" aria-hidden="true">★★★★★</span>
+                <span class="venue-star-rating__fill" style="width: {{ $ratingPercent }}%" aria-hidden="true">★★★★★</span>
+            </div>
+            <button type="button" class="btn btn--primary btn--sm" disabled>Забронировать</button>
         </div>
     @endif
 @endsection
@@ -96,16 +111,44 @@
             <section class="venue-hero" aria-label="Краткая информация">
                 <div class="venue-hero__media">
                     @if($venue->featuredMedia !== [])
-                        <img src="{{ $venue->featuredMedia[0]['url'] }}" alt="{{ $venue->featuredMedia[0]['title'] ?: $venue->name }}">
+                        <img
+                            src="{{ $venue->featuredMedia[0]['url'] }}"
+                            alt="{{ $venue->featuredMedia[0]['title'] ?: $venue->name }}"
+                            data-venue-hero-image
+                        >
                     @else
                         <div class="venue-hero__placeholder">
-                            <img src="{{ asset('images/venue-placeholder.png') }}" alt="" aria-hidden="true">
-                            <div class="venue-hero__placeholder-content">
-                                <span class="venue-hero__placeholder-kicker">{{ $venue->type }}</span>
-                                <span class="venue-hero__placeholder-title">{{ $venue->name }}</span>
-                            </div>
+                            <img src="{{ asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}" data-venue-hero-image>
                         </div>
                     @endif
+
+                    <div class="venue-hero-thumbnails" aria-label="Фотографии площадки">
+                        @forelse($venue->featuredMedia as $index => $media)
+                            <button
+                                type="button"
+                                @class(['venue-hero-thumbnail', 'is-active' => $index === 0])
+                                data-venue-hero-thumbnail
+                                data-url="{{ $media['url'] }}"
+                                data-alt="{{ $media['title'] ?: $venue->name }}"
+                                aria-label="Показать фото {{ $index + 1 }}"
+                                aria-pressed="{{ $index === 0 ? 'true' : 'false' }}"
+                            >
+                                <img src="{{ $media['url'] }}" alt="">
+                            </button>
+                        @empty
+                            <button
+                                type="button"
+                                class="venue-hero-thumbnail is-active"
+                                data-venue-hero-thumbnail
+                                data-url="{{ asset('images/venue-placeholder.png') }}"
+                                data-alt="Фото площадки {{ $venue->name }}"
+                                aria-label="Показать фото площадки"
+                                aria-pressed="true"
+                            >
+                                <img src="{{ asset('images/venue-placeholder.png') }}" alt="">
+                            </button>
+                        @endforelse
+                    </div>
                 </div>
 
                 <div class="venue-hero__summary">
@@ -114,33 +157,39 @@
                         <span class="venue-pill venue-pill--muted">{{ $venue->status }}</span>
                     </div>
 
-                    <div class="venue-rating">
-                        <span class="venue-rating__value">{{ $venue->about->rating ? number_format($venue->about->rating, 1, ',', ' ') : '—' }}</span>
-                        <span class="venue-rating__caption">
-                            {{ $venue->about->ratingCount ? $venue->about->ratingCount . ' оценок' : 'Рейтинг появится после запуска отзывов' }}
-                        </span>
+                    <div @class(['venue-opening-state', 'is-open' => $venue->isOpen, 'is-closed' => ! $venue->isOpen])>
+                        <span class="venue-opening-state__dot" aria-hidden="true"></span>
+                        <strong>{{ $venue->isOpen ? 'Открыта' : 'Закрыта' }}</strong>
                     </div>
 
-                    <p class="venue-hero__text">
-                        {{ $venue->description ?: 'Описание площадки будет дополнено после модерации и заполнения профиля площадки.' }}
-                    </p>
-
-                    <div class="venue-hero__actions">
-                        @if($venue->about->scheduleDays !== [])
-                            <button type="button" class="btn btn--primary btn--sm" data-venue-scroll-target="schedule">
-                                Выбрать время
-                            </button>
-                        @else
-                            <button type="button" class="btn btn--primary btn--sm" disabled>
-                                Расписание готовится
-                            </button>
-                        @endif
-
-                        @if($yandexMapUrl)
-                            <a href="{{ $yandexMapUrl }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">
-                                Маршрут
-                            </a>
-                        @endif
+                    <div class="venue-hero__details">
+                        <div>
+                            <span class="venue-hero__detail-label">Адрес</span>
+                            @if ($displayAddress)
+                                <p class="venue-hero__text">{{ $displayAddress }} <br><a href="#address" class="venue-hero__map-link fc-link">На карте</a></p>
+                            @else
+                                <p class="venue-hero__text">Адрес пока не указан.</p>
+                            @endif
+                        </div>
+                        <div>
+                            <span class="venue-hero__detail-label">Ближайшее метро</span>
+                            <p class="venue-hero__text">
+                                @if($nearestMetro)
+                                    {{ $nearestMetro->name }}@if($nearestMetro->lineName), {{ $nearestMetro->lineName }}@endif
+                                    @if($nearestMetro->walkingTimeMinutes) · {{ $nearestMetro->walkingTimeMinutes }} мин пешком @endif
+                                @else
+                                    Ближайшее метро пока не указано.
+                                @endif
+                            </p>
+                        </div>
+                        <div>
+                            <span class="venue-hero__detail-label">Часы работы</span>
+                            <p class="venue-hero__text">{{ $venue->todayHours }}</p>
+                        </div>
+                        <div>
+                            <span class="venue-hero__detail-label">Текущие слоты</span>
+                            <p class="venue-hero__text">Свободные слоты появятся после запуска бронирования.</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -152,6 +201,15 @@
                     </a>
                 @endforeach
             </nav>
+
+            @if($venue->fullDescription)
+                <section id="venue-full-description" class="venue-show-section" aria-labelledby="venue-full-description-title">
+                    <div class="venue-show-section__heading">
+                        <h2 >О площадке</h2>
+                    </div>
+                    <p>{{ $venue->fullDescription }}</p>
+                </section>
+            @endif
 
             @if($venue->featuredMedia !== [])
                 <section id="gallery" class="venue-show-section">
@@ -217,11 +275,6 @@
             <section id="address" class="venue-show-section">
                 <div class="venue-show-section__heading">
                     <h2>Адрес</h2>
-                    @if($yandexMapUrl)
-                        <a href="{{ $yandexMapUrl }}" class="venue-show-section__link" target="_blank" rel="noopener">
-                            Открыть в Яндекс Картах
-                        </a>
-                    @endif
                 </div>
 
                 <div class="venue-address-grid">
@@ -260,15 +313,10 @@
                         <dl class="venue-address-list">
                             <div>
                                 <dt>Адрес</dt>
-                                <dd>{{ $displayAddress ?: 'Адрес пока не указан' }}</dd>
+                                <dd>
+                                    @if($address?->postalCode){{ $address->postalCode }}, @endif{{ $displayAddress ?: 'адрес пока не указан' }}
+                                </dd>
                             </div>
-
-                            @if($address?->postalCode)
-                                <div>
-                                    <dt>Индекс</dt>
-                                    <dd>{{ $address->postalCode }}</dd>
-                                </div>
-                            @endif
                         </dl>
 
                         <div class="venue-metro-list">
@@ -290,7 +338,39 @@
                                 <p class="venue-placeholder-text">Станции метро пока не привязаны к локации.</p>
                             @endforelse
                         </div>
+
+                        @if($yandexMapUrl)
+                            <div class="venue-address-card__actions">
+                                <a href="{{ $yandexMapUrl }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">
+                                    Маршрут
+                                </a>
+                            </div>
+                        @endif
+
+                        <button type="button" class="venue-address-card__nearby" data-venue-nearby-open>
+                            Площадки рядом
+                        </button>
                     </div>
+                </div>
+
+                <div class="venue-day-modal" data-venue-nearby-modal hidden>
+                    <div class="venue-day-modal__backdrop" data-venue-nearby-close></div>
+                    <section class="venue-day-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="venue-nearby-modal-title">
+                        <div class="venue-day-modal__head">
+                            <div>
+                                <p class="venue-day-modal__eyebrow">Рядом с вами</p>
+                                <h3 id="venue-nearby-modal-title">Площадки рядом</h3>
+                            </div>
+                            <button type="button" class="venue-day-modal__close" data-venue-nearby-close aria-label="Закрыть">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                        <div class="venue-day-modal__body" data-venue-nearby-results>
+                            <div class="venue-day-modal__notice">
+                                Список ближайших площадок появится после подключения AJAX-загрузки.
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </section>
 

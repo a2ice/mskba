@@ -115,14 +115,29 @@
     </div>
 
     <div class="mb-3">
-        <label for="venueDescription" class="form-label">Описание</label>
+        <label for="venueShortDescription" class="form-label">Краткое описание</label>
         <textarea
-            id="venueDescription"
-            name="description"
-            class="form-control @error('description') is-invalid @enderror"
+            id="venueShortDescription"
+            name="short_description"
+            class="form-control @error('short_description') is-invalid @enderror"
             rows="2"
-        >{{ old('description', $venue?->description) }}</textarea>
-        @error('description')
+            maxlength="500"
+        >{{ old('short_description', $venue?->short_description) }}</textarea>
+        @error('short_description')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+
+    <div class="mb-3">
+        <label for="venueFullDescription" class="form-label">Полное описание</label>
+        <textarea
+            id="venueFullDescription"
+            name="full_description"
+            class="form-control @error('full_description') is-invalid @enderror"
+            rows="6"
+            maxlength="10000"
+        >{{ old('full_description', $venue?->full_description) }}</textarea>
+        @error('full_description')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>

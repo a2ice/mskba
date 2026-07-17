@@ -23,6 +23,7 @@ import './features/venue-map.js';
 import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 import './features/admin-action-modals.js';
+import './features/admin-venue-bulk-actions.js';
 import './features/admin-venue-duplicates.js';
 
 import TomSelect from 'tom-select';

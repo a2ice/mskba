@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Application\UseCases;
 
+use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -21,12 +22,16 @@ final class ListAdminVenuesHandler
                 'creatorActor.user',
                 'duplicateCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
                 'duplicateOfCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
-                'moderationRequests.messages',
+                'moderationRequests.messages.sender.user',
             ])
             ->withCount([
                 'duplicateVenues',
             ])
             ->latest('id');
+
+        if (($filters['deleted'] ?? '') === '1') {
+            $query->onlyTrashed();
+        }
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
@@ -38,8 +43,12 @@ final class ListAdminVenuesHandler
             });
         }
 
-        $status = VenueStatusEnum::tryFrom((string) ($filters['status'] ?? ''));
-        if ($status !== null) {
+        $statusFilter = (string) ($filters['status'] ?? '');
+        $status = VenueStatusEnum::tryFrom($statusFilter);
+        if ($statusFilter === 'pending_moderation') {
+            $query->whereHas('moderationRequests', fn ($query) => $query
+                ->where('status', ModerationRequestStatusEnum::PENDING->value));
+        } elseif ($status !== null) {
             $query->where('status', $status->value);
         }
 

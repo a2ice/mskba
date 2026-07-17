@@ -21,14 +21,15 @@ final class CreateAccountVenueHandler
     ) {}
 
     /**
-     * @param  array{name: string, type: string, description?: string|null, raw_address?: string|null}  $data
+     * @param  array{name: string, type: string, short_description?: string|null, full_description?: string|null, raw_address?: string|null}  $data
      */
     public function handle(?Actor $actor, array $data, ?CreateLocationDTO $locationData = null): Venue
     {
         $venue = DB::transaction(function () use ($actor, $data, $locationData): Venue {
             $rawAddress = $locationData?->rawAddress ?? $data['raw_address'] ?? null;
+            $type = VenueTypeEnum::from($data['type']);
 
-            if ($this->uniqueness->aliasExistsForName($data['name'], [VenueStatusEnum::CONFIRMED])) {
+            if ($this->uniqueness->aliasExistsForName($data['name'], $type, [VenueStatusEnum::CONFIRMED])) {
                 throw new InvalidArgumentException('Площадка с таким названием уже существует.');
             }
 
@@ -37,6 +38,7 @@ final class CreateAccountVenueHandler
                 city: $locationData?->city,
                 street: $locationData?->street,
                 building: $locationData?->building,
+                type: $type,
                 statuses: [VenueStatusEnum::CONFIRMED],
             )) {
                 throw new InvalidArgumentException('Площадка с таким адресом уже существует.');
@@ -45,6 +47,7 @@ final class CreateAccountVenueHandler
             if ($actor !== null && $this->uniqueness->aliasExistsForActor(
                 $actor,
                 $this->uniqueness->aliasForName($data['name']),
+                $type,
                 [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
             )) {
                 throw new InvalidArgumentException('Вы уже добавили площадку с таким названием.');
@@ -56,6 +59,7 @@ final class CreateAccountVenueHandler
                 city: $locationData?->city,
                 street: $locationData?->street,
                 building: $locationData?->building,
+                type: $type,
                 statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
             )) {
                 throw new InvalidArgumentException('Вы уже добавили площадку с таким адресом.');
@@ -70,9 +74,10 @@ final class CreateAccountVenueHandler
                 'location_id' => $location?->id,
                 'name' => $data['name'],
                 'alias' => $this->uniqueness->aliasForName($data['name']),
-                'type' => VenueTypeEnum::from($data['type'])->value,
+                'type' => $type->value,
                 'status' => VenueStatusEnum::UNCONFIRMED->value,
-                'description' => $data['description'] ?? null,
+                'short_description' => $data['short_description'] ?? null,
+                'full_description' => $data['full_description'] ?? null,
                 'raw_address' => $rawAddress,
             ]);
         });

@@ -2,7 +2,31 @@ document.addEventListener('DOMContentLoaded', () => {
     initVenueAnchors();
     initVenueGalleryModal();
     initVenueDayModal();
+    initVenueNearbyModal();
+    initVenueHeroGallery();
 });
+
+function initVenueHeroGallery() {
+    const mainImage = document.querySelector('[data-venue-hero-image]');
+    const thumbnails = Array.from(document.querySelectorAll('[data-venue-hero-thumbnail]'));
+
+    if (!mainImage || thumbnails.length === 0) {
+        return;
+    }
+
+    thumbnails.forEach((thumbnail) => {
+        thumbnail.addEventListener('click', () => {
+            mainImage.src = thumbnail.dataset.url || '';
+            mainImage.alt = thumbnail.dataset.alt || '';
+
+            thumbnails.forEach((item) => {
+                const isActive = item === thumbnail;
+                item.classList.toggle('is-active', isActive);
+                item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+        });
+    });
+}
 
 function initVenueAnchors() {
     const links = Array.from(document.querySelectorAll('[data-venue-anchor-link]'));
@@ -65,6 +89,37 @@ function initVenueAnchors() {
     });
 
     sections.forEach((section) => observer.observe(section));
+}
+
+function initVenueNearbyModal() {
+    const modal = document.querySelector('[data-venue-nearby-modal]');
+    const openButton = document.querySelector('[data-venue-nearby-open]');
+
+    if (!modal || !openButton) {
+        return;
+    }
+
+    const closeButtons = Array.from(modal.querySelectorAll('[data-venue-nearby-close]'));
+
+    const close = () => {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        openButton.focus();
+    };
+
+    openButton.addEventListener('click', () => {
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        modal.querySelector('[data-venue-nearby-close]')?.focus();
+    });
+
+    closeButtons.forEach((button) => button.addEventListener('click', close));
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.hidden) {
+            close();
+        }
+    });
 }
 
 function initVenueGalleryModal() {

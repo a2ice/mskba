@@ -86,9 +86,15 @@ Route::prefix('admin')
         Route::post('/venues/duplicates/merge', [AdminVenueDuplicatesController::class, 'mergeBatch'])->name('admin.venues.duplicates.merge-batch');
         Route::post('/venues/duplicates/{venueDuplicate}/merge', [AdminVenueDuplicatesController::class, 'merge'])->name('admin.venues.duplicates.merge');
         Route::get('/venues', [AdminVenuesController::class, 'index'])->name('admin.venues')->defaults('breadcrumb', 'Площадки');
-        Route::post('/venues/moderation/{venueModerationRequest}/approve', [AdminVenuesController::class, 'approve'])->name('admin.venues.moderation.approve');
-        Route::post('/venues/moderation/{venueModerationRequest}/reject', [AdminVenuesController::class, 'reject'])->name('admin.venues.moderation.reject');
-        Route::post('/venues/moderation/{venueModerationRequest}/block', [AdminVenuesController::class, 'block'])->name('admin.venues.moderation.block');
+        Route::post('/venues/bulk-delete', [AdminVenuesController::class, 'bulkDelete'])->name('admin.venues.bulk-delete');
+        Route::post('/venues/bulk-restore', [AdminVenuesController::class, 'bulkRestore'])->name('admin.venues.bulk-restore');
+        Route::post('/venues/bulk-block', [AdminVenuesController::class, 'bulkBlock'])->name('admin.venues.bulk-block');
+        Route::post('/venues/bulk-unblock', [AdminVenuesController::class, 'bulkUnblock'])->name('admin.venues.bulk-unblock');
+        Route::post('/venues/{venue}/status', [AdminVenuesController::class, 'updateStatus'])->name('admin.venues.status.update');
+        Route::delete('/venues/{venue}', [AdminVenuesController::class, 'destroy'])->name('admin.venues.destroy');
+        Route::post('/venues/{venueId}/restore', [AdminVenuesController::class, 'restore'])->whereNumber('venueId')->name('admin.venues.restore');
+        Route::post('/venues/moderation/{moderationRequest}/approve', [AdminVenuesController::class, 'approve'])->name('admin.venues.moderation.approve');
+        Route::post('/venues/moderation/{moderationRequest}/reject', [AdminVenuesController::class, 'reject'])->name('admin.venues.moderation.reject');
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'События');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
         Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
@@ -105,6 +111,9 @@ Route::prefix('venues')->group(function () {
         ->defaults('breadcrumb', 'Добавить площадку');
     Route::post('/', [VenueController::class, 'store'])
         ->name('venues.store');
+    Route::get('/{alias}/status', [VenueController::class, 'status'])
+        ->name('venues.status')
+        ->defaults('breadcrumb', 'Статус площадки');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
     Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
     Route::put('/{alias}', [VenueController::class, 'update'])->name('venues.update');

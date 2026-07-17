@@ -1,4 +1,4 @@
-# 003 - Добавить модерационные заявки
+# 003 - Добавить заявки модерации
 
 ## Цель
 
@@ -6,7 +6,7 @@
 
 ## Краткое описание
 
-Добавить таблицы `venue_moderation_requests` и `venue_moderation_messages`, enum-статусы заявок и application use cases для отправки и решения заявки.
+Добавить таблицы `moderation_requests` и `moderation_messages`, enum-статусы заявок и application use cases для отправки и решения модерации.
 
 ## Статус
 
@@ -14,4 +14,4 @@
 
 ## Результат выполнения
 
-Добавлены таблицы `venue_moderation_requests` и `venue_moderation_messages`, enum-статусы заявок, модели и use cases отправки/рассмотрения заявок.
+Добавлены таблицы `moderation_requests` и `moderation_messages`, enum-статусы заявок, модели и use cases отправки/рассмотрения модерации.

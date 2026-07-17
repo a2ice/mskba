@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Venue;
 
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Location;
@@ -52,7 +54,8 @@ class VenueShowPageTest extends TestCase
             'alias' => 'na-dubninskoi',
             'type' => VenueTypeEnum::SPORTS_HALL,
             'status' => VenueStatusEnum::CONFIRMED,
-            'description' => 'Баскетбольный зал для тренировок и игр.',
+            'short_description' => 'Баскетбольный зал для тренировок и игр.',
+            'full_description' => 'Полное описание зала, покрытия и условий игры.',
         ]);
 
         $this
@@ -60,6 +63,18 @@ class VenueShowPageTest extends TestCase
             ->assertOk()
             ->assertSee('Зал на Дубнинской')
             ->assertSee('Баскетбольный зал для тренировок и игр.')
+            ->assertSee('Полное описание зала, покрытия и условий игры.')
+            ->assertSee('О площадке')
+            ->assertSee('Ближайшее метро')
+            ->assertSee('href="#address"', false)
+            ->assertSee('На карте')
+            ->assertSee('Маршрут')
+            ->assertDontSee('Открыть в Яндекс Картах')
+            ->assertDontSee('<dt>Индекс</dt>', false)
+            ->assertSee('Площадки рядом')
+            ->assertSee('data-venue-nearby-open', false)
+            ->assertSee('data-venue-nearby-modal', false)
+            ->assertSee('data-venue-nearby-results', false)
             ->assertSee($location->address->full_address)
             ->assertSee('Верхние Лихоборы')
             ->assertSee('Серпуховско-Тимирязевская линия')
@@ -67,6 +82,15 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Расписание')
             ->assertSee('Посты')
             ->assertSee('Отзывы')
+            ->assertSee('Открыта')
+            ->assertSee('Расписание не указано')
+            ->assertSee('Свободные слоты появятся')
+            ->assertSee('Забронировать')
+            ->assertSee('venue-star-rating', false)
+            ->assertSee('data-venue-hero-image', false)
+            ->assertSee('data-venue-hero-thumbnail', false)
+            ->assertSee('venue-hero-thumbnail is-active', false)
+            ->assertDontSee('venue-hero__placeholder-content', false)
             ->assertSee('Ключ Яндекс Карт не настроен.');
     }
 
@@ -91,6 +115,22 @@ class VenueShowPageTest extends TestCase
             ->assertSee('data-longitude="'.$location->address->longitude.'"', false)
             ->assertSee('data-venue-map-fallback', false)
             ->assertSee('hidden', false);
+    }
+
+    public function test_unconfirmed_venue_is_closed_even_without_schedule(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($owner, null)->id,
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this
+            ->actingAs($owner)
+            ->get(route('venues.show', $venue->alias))
+            ->assertOk()
+            ->assertSee('Закрыта')
+            ->assertSee('Площадка не подтверждена');
     }
 
     public function test_public_venue_show_page_renders_featured_media_gallery(): void
@@ -200,7 +240,8 @@ class VenueShowPageTest extends TestCase
                 ->assertOk()
                 ->assertSee('Расписание')
                 ->assertSee('14 дней')
-                ->assertSee('Выбрать время')
+                ->assertSee('Открыта')
+                ->assertSee('Сегодня: 10:00–12:30')
                 ->assertSee('Нажмите на день, чтобы посмотреть интервалы.')
                 ->assertSee('data-venue-day-card', false)
                 ->assertSee('data-venue-day-modal', false)
@@ -213,6 +254,14 @@ class VenueShowPageTest extends TestCase
                 ->assertDontSee('Jun')
                 ->assertDontSee('Mon')
                 ->assertDontSee('Wed');
+
+            Carbon::setTestNow('2026-06-15 13:00:00');
+
+            $this
+                ->get(route('venues.show', $venue->alias))
+                ->assertOk()
+                ->assertSee('Закрыта')
+                ->assertSee('Сегодня: 10:00–12:30');
         } finally {
             Carbon::setTestNow();
         }
@@ -257,6 +306,9 @@ class VenueShowPageTest extends TestCase
             ->assertOk()
             ->assertSee('Отзывы')
             ->assertSee('4,0')
+            ->assertSee('width: 80%', false)
+            ->assertSee('title="Рейтинг: 4,0 из 5"', false)
+            ->assertSee('data-tooltip-variant="title"', false)
             ->assertSee('2 оценок')
             ->assertSee('Иван Петров')
             ->assertSee('14 июн 2026')

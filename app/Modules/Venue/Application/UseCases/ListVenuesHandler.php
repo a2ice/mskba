@@ -42,11 +42,11 @@ final class ListVenuesHandler
                     alias: $venue->alias,
                     type: $venue->type->label(),
                     status: $venue->status->label(),
-                    description: $venue->description,
+                    shortDescription: $venue->short_description,
                     rawAddress: $venue->raw_address,
                     canView: $venue->status === VenueStatusEnum::CONFIRMED || $isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractViewableVenueIds, true),
-                    canEdit: $isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractEditableVenueIds, true),
-                    canEditSchedule: $isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true),
+                    canEdit: $venue->allowsDetailsEditing() && ($isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractEditableVenueIds, true)),
+                    canEditSchedule: $venue->allowsOperationalChanges() && ($isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true)),
                     canRemove: $isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractEditableVenueIds, true),
                 );
             })

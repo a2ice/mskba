@@ -16,10 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
             closeButton.addEventListener('click', () => closeModal(modal));
         });
 
-        modal.querySelectorAll('[data-admin-moderation-comment-submit]').forEach((button) => {
+        modal.querySelectorAll('[data-admin-action-comment-submit]').forEach((button) => {
             button.addEventListener('click', (event) => {
-                const comment = modal.querySelector('[data-admin-moderation-comment]');
-                const input = button.form?.querySelector('[data-admin-moderation-message-input]');
+                const comment = modal.querySelector('[data-admin-action-comment]');
+                const input = button.form?.querySelector('[data-admin-action-message-input]');
 
                 if (!comment || !input) {
                     return;
@@ -38,6 +38,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 comment.focus();
             });
         });
+
+        modal.querySelectorAll('[data-admin-action-comment-copy]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const comment = modal.querySelector('[data-admin-action-comment]');
+                const input = button.form?.querySelector('[data-admin-action-message-input]');
+
+                if (comment && input) {
+                    input.value = comment.value.trim();
+                }
+            });
+        });
+
+        modal.querySelectorAll('form[data-admin-confirm]').forEach((form) => {
+            form.addEventListener('submit', (event) => {
+                if (!window.confirm(form.dataset.adminConfirm)) {
+                    event.preventDefault();
+                }
+            });
+        });
+
     });
 
     document.addEventListener('keydown', (event) => {

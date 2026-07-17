@@ -21,7 +21,7 @@ final class UpdateVenueHandler
     ) {}
 
     /**
-     * @param  array{name: string, type: string, description?: string|null, raw_address?: string|null}  $data
+     * @param  array{name: string, type: string, short_description?: string|null, full_description?: string|null, raw_address?: string|null}  $data
      */
     public function handle(string $alias, ?User $user, ?Actor $actor, array $data, CreateLocationDTO $locationData): Venue
     {
@@ -49,7 +49,8 @@ final class UpdateVenueHandler
                 'location_id' => $location?->id,
                 'name' => $data['name'],
                 'type' => VenueTypeEnum::from($data['type'])->value,
-                'description' => $data['description'] ?? null,
+                'short_description' => $data['short_description'] ?? null,
+                'full_description' => $data['full_description'] ?? null,
                 'raw_address' => $locationData->rawAddress ?? $data['raw_address'] ?? null,
             ])->save();
 

@@ -4,15 +4,21 @@ namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Support\Text\CyrillicTransliterator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 final class VenueUniquenessChecker
 {
+    public function __construct(
+        private readonly CyrillicTransliterator $transliterator,
+    ) {}
+
     public function aliasForName(string $name): string
     {
-        $alias = Str::slug($name);
+        $alias = Str::slug($this->transliterator->transliterate($name));
 
         return $alias === '' ? 'venue' : $alias;
     }
@@ -20,18 +26,19 @@ final class VenueUniquenessChecker
     /**
      * @param  array<int, VenueStatusEnum>  $statuses
      */
-    public function aliasExistsForName(string $name, array $statuses = []): bool
+    public function aliasExistsForName(string $name, VenueTypeEnum $type, array $statuses = []): bool
     {
-        return $this->aliasExists($this->aliasForName($name), $statuses);
+        return $this->aliasExists($this->aliasForName($name), $type, $statuses);
     }
 
     /**
      * @param  array<int, VenueStatusEnum>  $statuses
      */
-    public function aliasExists(string $alias, array $statuses = []): bool
+    public function aliasExists(string $alias, VenueTypeEnum $type, array $statuses = []): bool
     {
         return Venue::query()
             ->whereRaw('LOWER(alias) = ?', [Str::lower($alias)])
+            ->where('type', $type)
             ->when($statuses !== [], fn ($query) => $query->whereIn(
                 'status',
                 array_map(fn (VenueStatusEnum $status): string => $status->value, $statuses),
@@ -42,9 +49,9 @@ final class VenueUniquenessChecker
     /**
      * @param  array<int, VenueStatusEnum>  $statuses
      */
-    public function aliasExistsForActor(Actor $actor, string $alias, array $statuses = []): bool
+    public function aliasExistsForActor(Actor $actor, string $alias, VenueTypeEnum $type, array $statuses = []): bool
     {
-        return $this->ownedVenueQuery($actor, $statuses)
+        return $this->ownedVenueQuery($actor, $type, $statuses)
             ->whereRaw('LOWER(alias) = ?', [Str::lower($alias)])
             ->exists();
     }
@@ -57,15 +64,16 @@ final class VenueUniquenessChecker
         ?string $city = null,
         ?string $street = null,
         ?string $building = null,
+        ?VenueTypeEnum $type = null,
         array $statuses = [],
     ): bool {
         $normalizedRawAddress = $this->normalizeAddress($rawAddress);
 
-        if ($normalizedRawAddress !== null && $this->rawAddressExists($normalizedRawAddress, $statuses)) {
+        if ($normalizedRawAddress !== null && $this->rawAddressExists($normalizedRawAddress, $type, $statuses)) {
             return true;
         }
 
-        return $this->structuredAddressExists($city, $street, $building, $statuses);
+        return $this->structuredAddressExists($city, $street, $building, $type, $statuses);
     }
 
     /**
@@ -77,6 +85,7 @@ final class VenueUniquenessChecker
         ?string $city = null,
         ?string $street = null,
         ?string $building = null,
+        ?VenueTypeEnum $type = null,
         array $statuses = [],
     ): bool {
         $keys = collect([
@@ -88,7 +97,7 @@ final class VenueUniquenessChecker
             return false;
         }
 
-        return $this->ownedVenueQuery($actor, $statuses)
+        return $this->ownedVenueQuery($actor, $type, $statuses)
             ->get()
             ->contains(function (Venue $venue) use ($keys): bool {
                 return array_intersect($keys->all(), $this->duplicateAddressKeysForVenue($venue)) !== [];
@@ -141,9 +150,9 @@ final class VenueUniquenessChecker
     /**
      * @param  array<int, VenueStatusEnum>  $statuses
      */
-    private function rawAddressExists(string $normalizedAddress, array $statuses): bool
+    private function rawAddressExists(string $normalizedAddress, ?VenueTypeEnum $type, array $statuses): bool
     {
-        return $this->venueAddressQuery($statuses)
+        return $this->venueAddressQuery($type, $statuses)
             ->get()
             ->contains(function (Venue $venue) use ($normalizedAddress): bool {
                 return in_array($normalizedAddress, $this->duplicateAddressKeysForVenue($venue), true);
@@ -153,14 +162,14 @@ final class VenueUniquenessChecker
     /**
      * @param  array<int, VenueStatusEnum>  $statuses
      */
-    private function structuredAddressExists(?string $city, ?string $street, ?string $building, array $statuses): bool
+    private function structuredAddressExists(?string $city, ?string $street, ?string $building, ?VenueTypeEnum $type, array $statuses): bool
     {
         $structuredAddressKey = $this->structuredAddressKey($city, $street, $building);
         if ($structuredAddressKey === null) {
             return false;
         }
 
-        return $this->venueAddressQuery($statuses)
+        return $this->venueAddressQuery($type, $statuses)
             ->get()
             ->contains(function (Venue $venue) use ($structuredAddressKey): bool {
                 return in_array($structuredAddressKey, $this->duplicateAddressKeysForVenue($venue), true);
@@ -184,10 +193,11 @@ final class VenueUniquenessChecker
      * @param  array<int, VenueStatusEnum>  $statuses
      * @return Builder<Venue>
      */
-    private function venueAddressQuery(array $statuses): Builder
+    private function venueAddressQuery(?VenueTypeEnum $type, array $statuses): Builder
     {
         return Venue::query()
             ->with('location.address')
+            ->when($type !== null, fn ($query) => $query->where('type', $type))
             ->when($statuses !== [], fn ($query) => $query->whereIn(
                 'status',
                 array_map(fn (VenueStatusEnum $status): string => $status->value, $statuses),
@@ -198,10 +208,11 @@ final class VenueUniquenessChecker
      * @param  array<int, VenueStatusEnum>  $statuses
      * @return Builder<Venue>
      */
-    private function ownedVenueQuery(Actor $actor, array $statuses): Builder
+    private function ownedVenueQuery(Actor $actor, VenueTypeEnum $type, array $statuses): Builder
     {
         return Venue::query()
             ->with('location.address')
+            ->where('type', $type)
             ->whereHas('creatorActor', function (Builder $query) use ($actor): void {
                 if ($actor->user_id !== null) {
                     $query->where('user_id', $actor->user_id);

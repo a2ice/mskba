@@ -44,6 +44,29 @@ class VenueDuplicateWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_detector_does_not_match_venues_of_different_types(): void
+    {
+        $indoorVenue = $this->venue([
+            'name' => 'Школьная площадка',
+            'alias' => 'skolnaia-ploshhadka',
+            'type' => VenueTypeEnum::SPORTS_HALL,
+            'raw_address' => 'Москва, Школьная улица, 1',
+        ]);
+        $outdoorVenue = $this->venue([
+            'name' => 'Школьная площадка',
+            'alias' => 'skolnaia-ploshhadka',
+            'type' => VenueTypeEnum::STREET_COURT,
+            'raw_address' => 'Москва, Школьная улица, 1',
+        ]);
+
+        app(VenueDuplicateDetector::class)->detectFor($outdoorVenue);
+
+        $this->assertDatabaseMissing('venue_duplicates', [
+            'venue_id' => min($indoorVenue->id, $outdoorVenue->id),
+            'duplicate_venue_id' => max($indoorVenue->id, $outdoorVenue->id),
+        ]);
+    }
+
     public function test_admin_can_merge_duplicate_candidate_and_merge_is_written_to_audit_log(): void
     {
         $admin = User::factory()->create([
@@ -372,7 +395,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         return Venue::factory()->create(array_merge([
             'type' => VenueTypeEnum::SPORTS_HALL,
             'status' => VenueStatusEnum::UNCONFIRMED,
-            'description' => 'Описание площадки',
+            'short_description' => 'Описание площадки',
             'raw_address' => 'Москва, Тестовый адрес, 1',
         ], $overrides));
     }

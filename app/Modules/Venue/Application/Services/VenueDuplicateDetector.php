@@ -55,6 +55,7 @@ final class VenueDuplicateDetector
         return Venue::query()
             ->with('location.address')
             ->whereKeyNot($venue->id)
+            ->where('type', $venue->type)
             ->where('status', VenueStatusEnum::UNCONFIRMED)
             ->whereNull('canonical_venue_id')
             ->get();

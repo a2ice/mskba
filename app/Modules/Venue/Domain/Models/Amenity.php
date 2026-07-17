@@ -21,6 +21,7 @@ class Amenity extends Model
 {
     /** @use HasFactory<AmenityFactory> */
     use HasFactory;
+
     use SoftDeletes;
 
     protected static function newFactory(): AmenityFactory

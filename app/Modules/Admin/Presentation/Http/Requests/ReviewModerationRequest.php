@@ -4,7 +4,7 @@ namespace App\Modules\Admin\Presentation\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ReviewVenueModerationRequest extends FormRequest
+class ReviewModerationRequest extends FormRequest
 {
     public function authorize(): bool
     {

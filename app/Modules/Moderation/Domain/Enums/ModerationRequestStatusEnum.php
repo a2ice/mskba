@@ -1,13 +1,12 @@
 <?php
 
-namespace App\Modules\Venue\Domain\Enums;
+namespace App\Modules\Moderation\Domain\Enums;
 
-enum VenueModerationRequestStatusEnum: string
+enum ModerationRequestStatusEnum: string
 {
     case PENDING = 'pending';
     case APPROVED = 'approved';
     case REJECTED = 'rejected';
-    case BLOCKED = 'blocked';
 
     public function label(): string
     {
@@ -15,7 +14,6 @@ enum VenueModerationRequestStatusEnum: string
             self::PENDING => 'На рассмотрении',
             self::APPROVED => 'Подтверждена',
             self::REJECTED => 'Отклонена',
-            self::BLOCKED => 'Заблокирована',
         };
     }
 }

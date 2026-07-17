@@ -4,11 +4,19 @@ namespace App\Modules\Admin\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Admin\Application\UseCases\ListAdminVenuesHandler;
-use App\Modules\Admin\Presentation\Http\Requests\ReviewVenueModerationRequest as ReviewVenueModerationHttpRequest;
-use App\Modules\Venue\Application\UseCases\ReviewVenueModerationRequestHandler;
+use App\Modules\Admin\Presentation\Http\Requests\ReviewModerationRequest;
+use App\Modules\Admin\Presentation\Http\Requests\UpdateVenueStatusRequest;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Venue\Application\UseCases\BulkChangeVenueDeletionStateHandler;
+use App\Modules\Venue\Application\UseCases\BulkUpdateVenueStatusHandler;
+use App\Modules\Venue\Application\UseCases\DeleteVenueHandler;
+use App\Modules\Venue\Application\UseCases\RestoreVenueHandler;
+use App\Modules\Venue\Application\UseCases\ReviewModerationRequestHandler;
+use App\Modules\Venue\Application\UseCases\UpdateVenueStatusHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
-use App\Modules\Venue\Domain\Models\VenueModerationRequest;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,11 +35,18 @@ final class AdminVenuesController extends Controller
     }
 
     public function approve(
-        VenueModerationRequest $venueModerationRequest,
-        ReviewVenueModerationRequestHandler $review,
+        ReviewModerationRequest $request,
+        ModerationRequest $moderationRequest,
+        ReviewModerationRequestHandler $review,
+        CurrentActorResolver $actors,
     ): RedirectResponse {
         try {
-            $review->approve($venueModerationRequest, request()->user());
+            $review->approve(
+                $moderationRequest,
+                $request->user(),
+                $request->messageText(),
+                $actors->resolveForRequest($request),
+            );
         } catch (\Exception $e) {
             return redirect()->route('admin.venues')->with('error', $e->getMessage());
         }
@@ -40,30 +55,99 @@ final class AdminVenuesController extends Controller
     }
 
     public function reject(
-        ReviewVenueModerationHttpRequest $request,
-        VenueModerationRequest $venueModerationRequest,
-        ReviewVenueModerationRequestHandler $review,
+        ReviewModerationRequest $request,
+        ModerationRequest $moderationRequest,
+        ReviewModerationRequestHandler $review,
+        CurrentActorResolver $actors,
     ): RedirectResponse {
         try {
-            $review->reject($venueModerationRequest, $request->user(), $request->messageText());
+            $review->reject($moderationRequest, $request->user(), $request->messageText(), $actors->resolveForRequest($request));
         } catch (\Exception $e) {
             return redirect()->route('admin.venues')->with('error', $e->getMessage());
         }
 
-        return redirect()->route('admin.venues')->with('success', 'Заявка отклонена.');
+        return redirect()->route('admin.venues')->with('success', 'Заявка модерации отклонена.');
     }
 
-    public function block(
-        ReviewVenueModerationHttpRequest $request,
-        VenueModerationRequest $venueModerationRequest,
-        ReviewVenueModerationRequestHandler $review,
+    public function updateStatus(
+        UpdateVenueStatusRequest $request,
+        Venue $venue,
+        UpdateVenueStatusHandler $statuses,
     ): RedirectResponse {
         try {
-            $review->block($venueModerationRequest, $request->user(), $request->messageText());
+            $statuses->handle($venue, $request->statusEnum(), $request->messageText());
         } catch (\Exception $e) {
             return redirect()->route('admin.venues')->with('error', $e->getMessage());
         }
 
-        return redirect()->route('admin.venues')->with('success', 'Площадка заблокирована.');
+        return redirect()->route('admin.venues')->with('success', 'Статус площадки обновлен.');
+    }
+
+    public function destroy(Venue $venue, DeleteVenueHandler $deleteVenue): RedirectResponse
+    {
+        try {
+            $deleteVenue->handle($venue);
+        } catch (\Exception $e) {
+            return redirect()->route('admin.venues')->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.venues')->with('success', 'Площадка удалена.');
+    }
+
+    public function restore(int $venueId, RestoreVenueHandler $restoreVenue): RedirectResponse
+    {
+        try {
+            $restoreVenue->handle($venueId);
+        } catch (\Exception $e) {
+            return redirect()->route('admin.venues', ['deleted' => 1])->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('admin.venues', ['deleted' => 1])->with('success', 'Площадка восстановлена.');
+    }
+
+    public function bulkDelete(Request $request, BulkChangeVenueDeletionStateHandler $deletionState): RedirectResponse
+    {
+        $venueIds = $this->validatedVenueIds($request);
+        $count = $deletionState->delete($venueIds);
+
+        return redirect()->route('admin.venues')->with('success', "Удалено площадок: {$count}.");
+    }
+
+    public function bulkRestore(Request $request, BulkChangeVenueDeletionStateHandler $deletionState): RedirectResponse
+    {
+        $venueIds = $this->validatedVenueIds($request);
+        $count = $deletionState->restore($venueIds);
+
+        return redirect()->route('admin.venues', ['deleted' => 1])->with('success', "Восстановлено площадок: {$count}.");
+    }
+
+    public function bulkBlock(Request $request, BulkUpdateVenueStatusHandler $statuses): RedirectResponse
+    {
+        $venueIds = $this->validatedVenueIds($request);
+        $validated = $request->validate(['message' => ['required', 'string', 'max:5000']]);
+        $count = $statuses->handle($venueIds, VenueStatusEnum::BLOCKED, $validated['message']);
+
+        return redirect()->route('admin.venues')->with('success', "Заблокировано площадок: {$count}.");
+    }
+
+    public function bulkUnblock(Request $request, BulkUpdateVenueStatusHandler $statuses): RedirectResponse
+    {
+        $venueIds = $this->validatedVenueIds($request);
+        $count = $statuses->handle($venueIds, VenueStatusEnum::UNCONFIRMED);
+
+        return redirect()->route('admin.venues')->with('success', "Разблокировано площадок: {$count}.");
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function validatedVenueIds(Request $request): array
+    {
+        $validated = $request->validate([
+            'venue_ids' => ['required', 'array', 'min:1', 'max:100'],
+            'venue_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        return array_map('intval', $validated['venue_ids']);
     }
 }

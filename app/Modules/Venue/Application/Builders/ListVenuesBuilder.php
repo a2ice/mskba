@@ -2,10 +2,9 @@
 
 namespace App\Modules\Venue\Application\Builders;
 
-use Illuminate\Database\Eloquent\Builder;
 use App\Modules\Venue\Domain\Models\Venue;
-
 use Closure;
+use Illuminate\Database\Eloquent\Builder;
 
 final class ListVenuesBuilder
 {
@@ -24,5 +23,4 @@ final class ListVenuesBuilder
     {
         return Venue::query();
     }
-
 }

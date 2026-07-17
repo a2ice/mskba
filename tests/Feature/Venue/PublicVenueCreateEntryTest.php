@@ -98,7 +98,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Публичная площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
-                'description' => 'Описание публичной площадки',
+                'short_description' => 'Описание публичной площадки',
                 'raw_address' => 'Москва, Тестовая улица, 1',
             ])
             ->assertRedirect();
@@ -122,7 +122,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Гостевая площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
-                'description' => 'Описание гостевой площадки',
+                'short_description' => 'Описание гостевой площадки',
                 'raw_address' => 'Москва, Тестовая улица, 2',
             ])
             ->assertRedirect();
@@ -148,7 +148,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Площадка видна только создателю',
                 'type' => VenueTypeEnum::STREET_COURT->value,
-                'description' => 'Описание гостевой площадки',
+                'short_description' => 'Описание гостевой площадки',
                 'raw_address' => 'Москва, Тестовая улица, 3',
             ])
             ->assertRedirect();
@@ -226,7 +226,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Площадка из гостевого режима',
                 'type' => VenueTypeEnum::STREET_COURT->value,
-                'description' => 'Описание гостевой площадки',
+                'short_description' => 'Описание гостевой площадки',
                 'raw_address' => 'Москва, Тестовая улица, 12',
             ])
             ->assertRedirect();
@@ -280,7 +280,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Площадка первого гостя',
                 'type' => VenueTypeEnum::STREET_COURT->value,
-                'description' => 'Описание',
+                'short_description' => 'Описание',
                 'raw_address' => 'Москва, Тестовая улица, 14',
             ])
             ->assertRedirect();
@@ -335,7 +335,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Черновик площадки',
                 'type' => VenueTypeEnum::STREET_COURT->value,
-                'description' => 'Описание',
+                'short_description' => 'Описание',
                 'raw_address' => 'Москва, Тестовая улица, 2',
             ])
             ->assertRedirect();
@@ -398,7 +398,7 @@ class PublicVenueCreateEntryTest extends TestCase
         $createVenue->handle($actor, [
             'name' => 'Повторная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
-            'description' => 'Первая заявка',
+            'short_description' => 'Первая заявка',
             'raw_address' => 'Москва, Тестовая улица, 91',
         ]);
 
@@ -408,7 +408,7 @@ class PublicVenueCreateEntryTest extends TestCase
         $createVenue->handle($actor, [
             'name' => 'Повторная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
-            'description' => 'Вторая заявка',
+            'short_description' => 'Вторая заявка',
             'raw_address' => 'Москва, Тестовая улица, 92',
         ]);
     }
@@ -426,13 +426,13 @@ class PublicVenueCreateEntryTest extends TestCase
         $firstVenue = $createVenue->handle(app(CurrentActorResolver::class)->resolve($firstUser, null), [
             'name' => 'Общая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
-            'description' => 'Первая заявка',
+            'short_description' => 'Первая заявка',
             'raw_address' => 'Москва, Тестовая улица, 93',
         ]);
         $secondVenue = $createVenue->handle(app(CurrentActorResolver::class)->resolve($secondUser, null), [
             'name' => 'Общая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
-            'description' => 'Вторая заявка',
+            'short_description' => 'Вторая заявка',
             'raw_address' => 'Москва, Тестовая улица, 93',
         ]);
 

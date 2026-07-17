@@ -1,12 +1,11 @@
 @php
     $title = $venue?->name ?? 'Редактирование площадки';
-    $latestModerationRequest = $venue?->moderationRequests?->first();
-    $latestOutgoingMessage = $latestModerationRequest?->messages
-        ?->where('direction', \App\Modules\Venue\Domain\Enums\VenueModerationMessageDirectionEnum::OUTGOING)
-        ->sortByDesc('id')
-        ->first();
-    $hasPendingModeration = $venue?->moderationRequests
-        ?->contains(fn ($request) => $request->status === \App\Modules\Venue\Domain\Enums\VenueModerationRequestStatusEnum::PENDING) ?? false;
+    $breadcrumbs = $venue === null ? null : [
+        ['label' => 'Площадки', 'url' => route('venues')],
+        ['label' => $venue->name, 'url' => route('venues.show', $venue->alias)],
+        ['label' => 'Редактирование'],
+    ];
+    $venueSidebarActive = 'edit';
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -15,8 +14,13 @@
     'sectionClass' => 'venues-section',
     'contentTitle' => $title,
     'sidebarLabel' => 'Навигация площадок',
-    'wrapSidebarPanel' => false,
 ])
+
+@section('section-sidebar')
+    @if($venue !== null)
+        @include('theme::partials.venues.internal-sidebar')
+    @endif
+@endsection
 
 @section('section-content')
     @if(isset($error))
@@ -38,25 +42,6 @@
     @endif
 
     @if($venue !== null)
-        <div class="alert alert-info">
-            Текущий статус: <strong>{{ $venue->status->label() }}</strong>
-            @if($venue->canonicalVenue)
-                <br>Эта запись связана с главной площадкой: #{{ $venue->canonicalVenue->id }} {{ $venue->canonicalVenue->name }}
-            @endif
-            @if($venue->status_info)
-                <br>{{ $venue->status_info }}
-            @endif
-        </div>
-
-        @if($latestModerationRequest)
-            <div class="alert {{ $latestModerationRequest->status === \App\Modules\Venue\Domain\Enums\VenueModerationRequestStatusEnum::REJECTED ? 'alert-warning' : 'alert-secondary' }}">
-                Последняя заявка: <strong>{{ $latestModerationRequest->status->label() }}</strong>
-                @if($latestOutgoingMessage)
-                    <br>{{ $latestOutgoingMessage->message }}
-                @endif
-            </div>
-        @endif
-
         @include('theme::partials.venues.form', [
             'venue' => $venue,
             'types' => $types,
@@ -67,27 +52,5 @@
             'submitLabel' => 'Сохранить',
         ])
 
-        <hr class="my-4">
-
-        @if($venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::BLOCKED)
-            <div class="alert alert-danger">
-                Площадка заблокирована. Повторная отправка на модерацию недоступна.
-            </div>
-        @elseif($hasPendingModeration)
-            <div class="alert alert-secondary">
-                Заявка уже находится на модерации.
-            </div>
-        @else
-            <form method="POST" action="{{ route('venues.moderation.submit', $venue->alias) }}" class="mt-4">
-                @csrf
-
-                <div class="mb-3">
-                    <label for="moderationMessage" class="form-label">Комментарий для модератора</label>
-                    <textarea id="moderationMessage" name="message" class="form-control" rows="3">{{ old('message') }}</textarea>
-                </div>
-
-                <button type="submit" class="btn btn--primary btn--sm">Отправить на модерацию</button>
-            </form>
-        @endif
     @endif
 @endsection

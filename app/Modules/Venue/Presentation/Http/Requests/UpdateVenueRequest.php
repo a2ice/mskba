@@ -22,7 +22,8 @@ class UpdateVenueRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
-            'description' => ['nullable', 'string', 'max:5000'],
+            'short_description' => ['nullable', 'string', 'max:500'],
+            'full_description' => ['nullable', 'string', 'max:10000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'array'],
             'location.raw_address' => ['nullable', 'string', 'max:1000'],
