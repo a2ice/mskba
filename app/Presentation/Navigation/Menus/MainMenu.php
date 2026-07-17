@@ -101,12 +101,6 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
-                'label' => 'О нас',
-                'url' => $this->routeUrl('/#about'),
-                'active' => $this->isActiveRoute('about, about.*'),
-                'visible' => true,
-            ],
-            [
                 'label' => 'Еще',
                 'url' => null,
                 'active' => $this->hasActiveItem($moreItems),
