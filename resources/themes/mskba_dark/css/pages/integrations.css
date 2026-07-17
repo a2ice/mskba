@@ -134,7 +134,9 @@
     right: 0;
     display: grid;
     width: min(260px, calc(100vw - 56px));
-    overflow: hidden;
+    max-height: calc(100dvh - 100px);
+    overflow-x: hidden;
+    overflow-y: auto;
     border: 1px solid var(--line);
     border-radius: 14px;
     background: rgba(15, 18, 15, 0.96);
@@ -162,9 +164,27 @@
 }
 
 .telegram-app-menu a:hover,
-.telegram-app-menu a:focus-visible {
+.telegram-app-menu a:focus-visible,
+.telegram-app-menu a.is-active {
     color: var(--accent-text);
     background: rgba(255, 111, 38, 0.1);
+}
+
+.telegram-app-menu__group {
+    display: grid;
+}
+
+.telegram-app-menu__group-label {
+    padding: 10px 18px 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.telegram-app-menu__group a {
+    padding-left: 28px;
 }
 
 .integration-panel p {

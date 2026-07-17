@@ -3,11 +3,11 @@
 namespace App\Presentation\Navigation\Menus;
 
 use App\Presentation\Navigation\MenuHandler;
-use App\Presentation\Navigation\Menus\MenuHelper;
 
 final class MainMenu implements MenuHandler
 {
     use MenuHelper;
+
     /**
      * @return array<int, array{label: string, url: string|null, active: bool, visible: bool, children?: array<int, array{label: string, url: string|null, active: bool, visible: bool}>}>
      */
@@ -20,12 +20,6 @@ final class MainMenu implements MenuHandler
                 'label' => 'FAQ',
                 'url' => $this->routeUrl('faq.index'),
                 'active' => $this->isActiveRoute('faq.*'),
-                'visible' => true,
-            ],
-            [
-                'label' => 'Новости',
-                'url' => $this->routeUrl('/#news'),
-                'active' => $this->isActiveRoute('news, news.*'),
                 'visible' => true,
             ],
             [
@@ -42,7 +36,7 @@ final class MainMenu implements MenuHandler
             ],
         ];
 
-        if($user?->isAdmin()) {
+        if ($user?->isAdmin()) {
             $moreItems[] = [
                 'divider' => true,
                 'label' => 'Админка',
@@ -96,8 +90,8 @@ final class MainMenu implements MenuHandler
             ],
             [
                 'label' => 'Новости',
-                'url' => $this->routeUrl('/#teams'),
-                'active' => $this->isActiveRoute('teams, teams.*'),
+                'url' => $this->routeUrl('/#news'),
+                'active' => $this->isActiveRoute('news, news.*'),
                 'visible' => true,
             ],
             [
@@ -116,19 +110,16 @@ final class MainMenu implements MenuHandler
                 'label' => 'Еще',
                 'url' => null,
                 'active' => $this->hasActiveItem($moreItems),
-                'visible' => false,
+                'visible' => true,
                 'children' => $moreItems,
             ],
         ];
-
-        if ($user) {
-        }
 
         return $items;
     }
 
     /**
-     * @param array<int, array{label: string, url: string|null, active: bool, visible: bool}> $items
+     * @param  array<int, array{label: string, url: string|null, active: bool, visible: bool}>  $items
      */
     private function hasActiveItem(array $items): bool
     {

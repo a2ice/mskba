@@ -1,5 +1,6 @@
 @php
     $title = 'Telegram';
+    $menuItems = app(\App\Presentation\Navigation\MenuResolver::class)->resolve('main');
 @endphp
 
 @extends('theme::layouts.telegram')
@@ -31,11 +32,33 @@
 
                 <nav class="telegram-app-menu" id="telegram-app-menu" aria-label="Навигация Mini App" hidden data-telegram-menu>
                     <a href="{{ route('account') }}">Аккаунт</a>
-                    <a href="{{ route('venues') }}">Площадки</a>
-                    <a href="{{ url('/#games') }}">Игры</a>
-                    <a href="{{ url('/#teams') }}">Команды</a>
-                    <a href="{{ url('/#about') }}">О нас</a>
-                    <a href="{{ url('/#shop') }}">Магазин</a>
+
+                    @foreach ($menuItems as $item)
+                        @continue(! $item['visible'])
+
+                        @php
+                            $visibleChildren = array_values(array_filter(
+                                $item['children'] ?? [],
+                                fn (array $child): bool => $child['visible'],
+                            ));
+                        @endphp
+
+                        @if ($visibleChildren !== [])
+                            <div class="telegram-app-menu__group">
+                                <span class="telegram-app-menu__group-label">{{ $item['label'] }}</span>
+
+                                @foreach ($visibleChildren as $child)
+                                    <a href="{{ $child['url'] }}" @class(['is-active' => $child['active']])>
+                                        {{ $child['label'] }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @else
+                            <a href="{{ $item['url'] }}" @class(['is-active' => $item['active']])>
+                                {{ $item['label'] }}
+                            </a>
+                        @endif
+                    @endforeach
                 </nav>
             </header>
 
