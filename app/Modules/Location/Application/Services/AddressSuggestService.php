@@ -22,33 +22,56 @@ final class AddressSuggestService
     {
         $provider = $this->resolveProvider();
         $suggestions = $provider->suggest(trim($query));
-        $defaultCountry = trim((string) config('integrations.address.default_country', ''));
 
         $result = [];
 
         foreach ($suggestions as $suggestion) {
-            if (! $this->countryAllowed($suggestion, $defaultCountry)) {
-                continue;
+            $mapped = $this->mapSuggestion($suggestion);
+
+            if ($mapped !== null) {
+                $result[] = $mapped;
             }
-
-            [$metroStationIds, $metroStationLabels] = $this->matchMetroStations($suggestion);
-
-            $result[] = [
-                'label' => $suggestion->label,
-                'country' => $suggestion->country,
-                'city' => $suggestion->city,
-                'street' => $suggestion->street,
-                'building' => $suggestion->building,
-                'postal_code' => $suggestion->postalCode,
-                'latitude' => $suggestion->latitude,
-                'longitude' => $suggestion->longitude,
-                'has_house' => $suggestion->hasHouse(),
-                'metro_station_ids' => $metroStationIds,
-                'metro_station_labels' => $metroStationLabels,
-            ];
         }
 
         return $result;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function reverse(float $latitude, float $longitude): ?array
+    {
+        $suggestion = $this->resolveProvider()->reverse($latitude, $longitude);
+
+        return $suggestion === null ? null : $this->mapSuggestion($suggestion);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function mapSuggestion(AddressSuggestionDTO $suggestion): ?array
+    {
+        $defaultCountry = trim((string) config('integrations.address.default_country', ''));
+
+        if (! $this->countryAllowed($suggestion, $defaultCountry)) {
+            return null;
+        }
+
+        [$metroStationIds, $metroStationLabels] = $this->matchMetroStations($suggestion);
+
+        return [
+            'label' => $suggestion->label,
+            'country' => $suggestion->country,
+            'city' => $suggestion->city,
+            'street' => $suggestion->street,
+            'building' => $suggestion->building,
+            'postal_code' => $suggestion->postalCode,
+            'latitude' => $suggestion->latitude,
+            'longitude' => $suggestion->longitude,
+            'has_house' => $suggestion->hasHouse(),
+            'metro_station_ids' => $metroStationIds,
+            'metro_station_labels' => $metroStationLabels,
+        ];
     }
 
     private function resolveProvider(): AddressSuggestProvider

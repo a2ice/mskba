@@ -66,6 +66,31 @@ class AddressSuggestServiceTest extends TestCase
         $this->assertSame([$nearest->id], $suggestions[0]['metro_station_ids']);
     }
 
+    public function test_reverse_geocode_uses_common_mapping_and_nearest_metro(): void
+    {
+        config(['integrations.yandex.api_key' => 'test-key']);
+
+        $nearest = MetroStation::factory()->create([
+            'name' => 'Парк культуры',
+            'latitude' => 55.7350000,
+            'longitude' => 37.5940000,
+        ]);
+
+        Http::fake([
+            'geocode-maps.yandex.ru/*' => Http::response($this->geocodeResponse(
+                latitude: 55.7351000,
+                longitude: 37.5941000,
+            )),
+        ]);
+
+        $suggestion = app(AddressSuggestService::class)->reverse(55.7351, 37.5941);
+
+        $this->assertNotNull($suggestion);
+        $this->assertSame('Россия, Москва, Летниковская улица, 12', $suggestion['label']);
+        $this->assertSame([$nearest->id], $suggestion['metro_station_ids']);
+        $this->assertTrue($suggestion['has_house']);
+    }
+
     /**
      * @param  array<int, string>  $metroNames
      * @return array<string, mixed>

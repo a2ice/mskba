@@ -395,6 +395,23 @@
     font-weight: 650;
 }
 
+.telegram-venue-form__location-button {
+    justify-self: start;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 8px 13px;
+    background: transparent;
+    color: var(--accent-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.telegram-venue-form__location-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
 .telegram-venue-form__metro {
     display: grid;
     gap: 4px;

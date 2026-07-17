@@ -34,6 +34,15 @@ final class YandexAddressSuggestProvider implements AddressSuggestProvider
         return array_slice($suggestions, 0, $this->limit());
     }
 
+    public function reverse(float $latitude, float $longitude): ?AddressSuggestionDTO
+    {
+        if ($this->apiKey() === null) {
+            return null;
+        }
+
+        return $this->fetchGeocodeSuggestions("{$longitude},{$latitude}", null)[0] ?? null;
+    }
+
     /**
      * @return array<int, AddressSuggestionDTO>
      */

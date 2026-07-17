@@ -52,4 +52,31 @@ class AddressSuggestControllerTest extends TestCase
 
         Http::assertNothingSent();
     }
+
+    public function test_reverse_geocode_validates_coordinate_ranges(): void
+    {
+        $this
+            ->postJson(route('integrations.address-reverse'), [
+                'latitude' => 91,
+                'longitude' => 37.6,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('latitude');
+    }
+
+    public function test_reverse_geocode_returns_null_without_configured_provider(): void
+    {
+        config(['integrations.yandex.api_key' => null]);
+        Http::fake();
+
+        $this
+            ->postJson(route('integrations.address-reverse'), [
+                'latitude' => 55.75,
+                'longitude' => 37.62,
+            ])
+            ->assertOk()
+            ->assertExactJson(['suggestion' => null]);
+
+        Http::assertNothingSent();
+    }
 }
