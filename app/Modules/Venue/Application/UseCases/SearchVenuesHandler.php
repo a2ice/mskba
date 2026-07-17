@@ -7,11 +7,14 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Support\Text\CyrillicTransliterator;
+use Illuminate\Support\Str;
 
 final readonly class SearchVenuesHandler
 {
     public function __construct(
         private ListVenuesHandler $listVenues,
+        private CyrillicTransliterator $transliterator,
     ) {}
 
     /**
@@ -50,14 +53,21 @@ final readonly class SearchVenuesHandler
 
         if ($needle !== '') {
             $visibleVenueIds = $venues->pluck('id')->all();
+            $tagNeedle = Str::slug($this->transliterator->transliterate($needle));
             $matchingVenueIds = Venue::query()
                 ->whereIn('id', $visibleVenueIds)
-                ->where(function ($query) use ($needle): void {
+                ->where(function ($query) use ($needle, $tagNeedle): void {
                     $query
                         ->where('name', 'like', '%'.$needle.'%')
                         ->orWhere('short_description', 'like', '%'.$needle.'%')
                         ->orWhere('raw_address', 'like', '%'.$needle.'%')
-                        ->orWhereHas('tags', fn ($query) => $query->where('name', 'like', '%'.$needle.'%'))
+                        ->orWhereHas('tags', function ($query) use ($needle, $tagNeedle): void {
+                            $query->where('name', 'like', '%'.$needle.'%');
+
+                            if ($tagNeedle !== '') {
+                                $query->orWhere('slug', 'like', '%'.$tagNeedle.'%');
+                            }
+                        })
                         ->orWhereHas('location.metroStations', fn ($query) => $query->where('name', 'like', '%'.$needle.'%'));
                 })
                 ->pluck('id')

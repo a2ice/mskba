@@ -152,7 +152,7 @@ class TelegramMiniAppAuthTest extends TestCase
 
         $this
             ->getJson(route('venues.search', [
-                'query' => 'Круглосуточно',
+                'query' => 'КРУГЛОСУТОЧНО',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'metro_station_id' => $metro->id,
                 'requires_payment' => '0',
