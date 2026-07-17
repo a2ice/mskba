@@ -57,6 +57,24 @@
     </div>
 
     <div class="mb-3">
+        <input type="hidden" name="is_free" value="0">
+        <label class="form-check">
+            <input
+                type="checkbox"
+                name="is_free"
+                value="1"
+                class="form-check-input"
+                @checked((bool) old('is_free', $venue?->is_free ?? true))
+            >
+            <span class="form-check-label">Свободная площадка</span>
+        </label>
+        <div class="form-text">Не требует оплаты и ручного подтверждения бронирования.</div>
+        @error('is_free')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+        @enderror
+    </div>
+
+    <div class="mb-3">
         <label for="metro_station" class="form-label">Ближайшее метро</label>
         <select
             id="metro_station"

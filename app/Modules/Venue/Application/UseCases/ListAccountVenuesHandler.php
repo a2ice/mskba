@@ -37,6 +37,7 @@ final class ListAccountVenuesHandler
                     name: $venue->name,
                     alias: $venue->alias,
                     type: $venue->type->label(),
+                    isFree: $venue->is_free,
                     status: $venue->status->label(),
                     shortDescription: $venue->short_description,
                     rawAddress: $venue->raw_address,

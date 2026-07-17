@@ -22,6 +22,15 @@
     <small data-field-error="type"></small>
 </label>
 
+<label class="telegram-venue-form__field" for="{{ $fieldPrefix }}IsFree">
+    <span>Условия доступа</span>
+    <select id="{{ $fieldPrefix }}IsFree" name="is_free">
+        <option value="1" selected>Свободная — без оплаты и подтверждения</option>
+        <option value="0">Требует оплаты или подтверждения</option>
+    </select>
+    <small data-field-error="is_free"></small>
+</label>
+
 <div class="telegram-venue-form__field address-suggest" data-address-suggest>
     <label for="{{ $fieldPrefix }}Address">Адрес</label>
     <input

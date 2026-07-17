@@ -42,6 +42,7 @@ class VenueRawAddressTest extends TestCase
             'name' => 'Тестовая площадка',
             'alias' => 'testovaya-ploshchadka',
             'raw_address' => 'Москва, ул. Летниковская, 12',
+            'is_free' => true,
         ]);
         $this->assertDatabaseHas('venue_tags', [
             'name' => 'крытая',

@@ -32,6 +32,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'name',
     'alias',
     'type',
+    'is_free',
     'status',
     'status_info',
     'short_description',
@@ -151,6 +152,7 @@ class Venue extends Model
     {
         return [
             'type' => VenueTypeEnum::class,
+            'is_free' => 'boolean',
             'status' => VenueStatusEnum::class,
             'canonical_venue_id' => 'integer',
         ];

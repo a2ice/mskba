@@ -23,6 +23,7 @@ final readonly class SearchVenuesHandler
         ?string $query = null,
         ?VenueTypeEnum $type = null,
         ?int $metroStationId = null,
+        ?bool $isFree = null,
         int $limit = 20,
     ): array {
         $venues = collect($this->listVenues->handle($user, $actor));
@@ -31,6 +32,16 @@ final readonly class SearchVenuesHandler
             $venues = $venues->filter(
                 fn (VenueListItemDTO $venue): bool => $venue->type === $type->label(),
             );
+        }
+
+        if ($isFree !== null) {
+            $freeVenueIds = Venue::query()
+                ->whereIn('id', $venues->pluck('id')->all())
+                ->where('is_free', $isFree)
+                ->pluck('id')
+                ->all();
+
+            $venues = $venues->whereIn('id', $freeVenueIds);
         }
 
         $needle = trim((string) $query);

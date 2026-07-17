@@ -458,7 +458,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.className = 'telegram-venue-search-card';
                 card.href = venue.url;
                 heading.textContent = venue.name;
-                meta.textContent = [venue.type, venue.address].filter(Boolean).join(' · ');
+                meta.textContent = [
+                    venue.type,
+                    venue.is_free ? 'Свободная' : 'По бронированию',
+                    venue.address,
+                ].filter(Boolean).join(' · ');
                 description.textContent = venue.description || '';
                 card.append(heading, meta);
 

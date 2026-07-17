@@ -51,6 +51,7 @@ final class UpdateVenueHandler
                 'location_id' => $location?->id,
                 'name' => $data['name'],
                 'type' => VenueTypeEnum::from($data['type'])->value,
+                'is_free' => (bool) ($data['is_free'] ?? $venue->is_free),
                 'short_description' => $data['short_description'] ?? null,
                 'full_description' => $data['full_description'] ?? null,
                 'raw_address' => $locationData->rawAddress ?? $data['raw_address'] ?? null,

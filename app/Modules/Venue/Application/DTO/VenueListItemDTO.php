@@ -10,6 +10,7 @@ final readonly class VenueListItemDTO
         public string $alias,
         public string $status,
         public string $type,
+        public bool $isFree,
         public ?string $shortDescription,
         public ?string $rawAddress,
         public bool $canView,

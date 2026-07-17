@@ -77,6 +77,7 @@ final class CreateAccountVenueHandler
                 'name' => $data['name'],
                 'alias' => $this->uniqueness->aliasForName($data['name']),
                 'type' => $type->value,
+                'is_free' => (bool) ($data['is_free'] ?? true),
                 'status' => VenueStatusEnum::UNCONFIRMED->value,
                 'short_description' => $data['short_description'] ?? null,
                 'full_description' => $data['full_description'] ?? null,
