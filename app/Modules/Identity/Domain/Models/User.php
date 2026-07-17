@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -28,7 +29,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use Auditable, HasFactory, Notifiable;
+    use Auditable, HasFactory, Notifiable, SoftDeletes;
 
     protected static function newFactory(): UserFactory
     {
@@ -142,7 +143,7 @@ class User extends Authenticatable
      */
     public function blockAccount(): void
     {
-        if ($this->status === UserStatusEnum::REMOVED) {
+        if ($this->trashed()) {
             throw new UserCannotBeChangedException('Удаленный аккаунт нельзя заблокировать.');
         }
 

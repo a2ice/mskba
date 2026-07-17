@@ -55,9 +55,10 @@ class UserStatusTransitionTest extends TestCase
         $this->assertSame(UserStatusEnum::BLOCKED, $user->refresh()->status);
     }
 
-    public function test_removed_account_cannot_be_blocked(): void
+    public function test_soft_deleted_account_cannot_be_blocked(): void
     {
-        $user = $this->makeUser(UserStatusEnum::REMOVED);
+        $user = $this->makeUser(UserStatusEnum::CONFIRMED);
+        $user->delete();
 
         $this->expectException(UserCannotBeChangedException::class);
         $this->expectExceptionMessage('Удаленный аккаунт нельзя заблокировать.');

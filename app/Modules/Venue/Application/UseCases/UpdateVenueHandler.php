@@ -5,10 +5,8 @@ namespace App\Modules\Venue\Application\UseCases;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
-use App\Modules\Location\Application\UseCases\CreateLocationHandler;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
-use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
-use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Application\Services\VenueDetailsUpdater;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -17,9 +15,8 @@ use Illuminate\Support\Facades\DB;
 final class UpdateVenueHandler
 {
     public function __construct(
-        private readonly CreateLocationHandler $createLocation,
         private readonly VenueAccessResolver $access,
-        private readonly VenueTagSynchronizer $tagSynchronizer,
+        private readonly VenueDetailsUpdater $updater,
     ) {}
 
     /**
@@ -45,22 +42,7 @@ final class UpdateVenueHandler
                 throw new VenueAccessDeniedException;
             }
 
-            $location = $this->createLocation->handle($locationData);
-
-            $venue->forceFill([
-                'location_id' => $location?->id,
-                'name' => $data['name'],
-                'type' => VenueTypeEnum::from($data['type'])->value,
-                'requires_payment' => (bool) ($data['requires_payment'] ?? $venue->requires_payment),
-                'requires_booking_approval' => (bool) ($data['requires_booking_approval'] ?? $venue->requires_booking_approval),
-                'short_description' => $data['short_description'] ?? null,
-                'full_description' => $data['full_description'] ?? null,
-                'raw_address' => $locationData->rawAddress ?? $data['raw_address'] ?? null,
-            ])->save();
-
-            $this->tagSynchronizer->sync($venue, $tagNames);
-
-            return $venue->refresh();
+            return $this->updater->update($venue, $data, $locationData, $tagNames);
         });
     }
 }
