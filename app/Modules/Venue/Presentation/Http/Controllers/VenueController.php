@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
+use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
@@ -13,6 +14,7 @@ use App\Modules\Venue\Application\UseCases\ShowManageableVenueHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
@@ -214,6 +216,53 @@ class VenueController extends Controller
         return ThemeResolver::page('venues.status', ['venue' => $venue]);
     }
 
+    public function moderationState(
+        Request $request,
+        string $alias,
+        ShowManageableVenueHandler $showManageableVenue,
+        CurrentActorResolver $actors,
+    ): JsonResponse {
+        try {
+            $venue = $showManageableVenue->handle($alias, $request->user(), $actors->resolveForRequest($request));
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getCode() ?: 404);
+        }
+
+        $pending = $venue->moderationRequests
+            ->first(fn ($moderationRequest) => $moderationRequest->status === ModerationRequestStatusEnum::PENDING);
+        $latest = $venue->moderationRequests->first();
+        $canSubmit = $venue->status === VenueStatusEnum::UNCONFIRMED && $pending === null;
+        $displayStatus = $pending?->status
+            ?? ($venue->status === VenueStatusEnum::UNCONFIRMED ? $latest?->status : null);
+
+        return response()->json([
+            'moderation' => [
+                'can_submit' => $canSubmit,
+                'state' => $displayStatus?->value ?? $venue->status->value,
+                'label' => $displayStatus?->label() ?? $venue->status->label(),
+                'history' => $venue->moderationRequests->map(fn ($moderationRequest): array => [
+                    'id' => $moderationRequest->id,
+                    'status' => $moderationRequest->status->value,
+                    'status_label' => $moderationRequest->status->label(),
+                    'submitted_at' => $moderationRequest->submitted_at?->format('d.m.Y H:i'),
+                    'messages' => $moderationRequest->messages
+                        ->sortByDesc('id')
+                        ->map(fn ($message): array => [
+                            'id' => $message->id,
+                            'sender_label' => $message->sender_id === $moderationRequest->submitted_by_actor_id ? 'Вы' : 'Модератор',
+                            'sender_username' => $message->sender?->user?->username
+                                ?? $message->sender?->user?->email
+                                ?? 'гость',
+                            'message' => $message->message,
+                            'created_at' => $message->created_at?->format('d.m.Y H:i'),
+                        ])
+                        ->values()
+                        ->all(),
+                ])->values()->all(),
+            ],
+        ]);
+    }
+
     public function submitModeration(
         SubmitModerationRequest $request,
         string $alias,
@@ -282,6 +331,7 @@ class VenueController extends Controller
                 ->all(),
             'update_url' => route('venues.update', $venue->alias),
             'moderation_url' => route('venues.moderation.submit', $venue->alias),
+            'moderation_state_url' => route('venues.moderation.state', $venue->alias),
         ];
     }
 }

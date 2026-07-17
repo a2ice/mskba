@@ -211,9 +211,15 @@
 
                 <form method="POST" class="telegram-venue-moderation-form" data-telegram-venue-moderation-form>
                     @csrf
+                    <div class="telegram-venue-moderation-state" role="status" data-telegram-venue-moderation-status></div>
                     <div class="telegram-venue-form__message" role="status" data-form-message></div>
                     <button type="submit" class="btn btn--primary btn--sm">Отправить на модерацию</button>
                 </form>
+
+                <section class="telegram-venue-moderation-history" aria-live="polite" data-telegram-venue-moderation-history hidden>
+                    <h3>История модерации</h3>
+                    <div class="telegram-venue-moderation-history__list" data-telegram-venue-moderation-history-list></div>
+                </section>
 
                 <hr>
 

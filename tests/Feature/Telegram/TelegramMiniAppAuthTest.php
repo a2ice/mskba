@@ -6,9 +6,11 @@ use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Location\Domain\Models\MetroStation;
+use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -219,6 +221,12 @@ class TelegramMiniAppAuthTest extends TestCase
         $venue = Venue::query()->where('name', 'Площадка Telegram')->firstOrFail();
 
         $this
+            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->assertOk()
+            ->assertJsonPath('moderation.can_submit', true)
+            ->assertJsonCount(0, 'moderation.history');
+
+        $this
             ->putJson(route('venues.update', $venue->alias), array_replace_recursive($venueData, [
                 'short_description' => 'Площадка рядом с центром',
                 'tags' => 'крытая, бесплатная',
@@ -243,6 +251,36 @@ class TelegramMiniAppAuthTest extends TestCase
             ->postJson(route('venues.moderation.submit', $venue->alias))
             ->assertOk()
             ->assertJsonPath('message', 'Площадка отправлена на модерацию.');
+
+        $this
+            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->assertOk()
+            ->assertJsonPath('moderation.can_submit', false)
+            ->assertJsonPath('moderation.state', 'pending')
+            ->assertJsonCount(1, 'moderation.history');
+
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $moderationRequest = ModerationRequest::query()->latest('id')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.venues.moderation.reject', $moderationRequest), [
+                'message' => 'Добавьте больше информации.',
+            ])
+            ->assertRedirect(route('admin.venues'));
+
+        $this->actingAs($user)
+            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->assertOk()
+            ->assertJsonPath('moderation.can_submit', true)
+            ->assertJsonPath('moderation.state', 'rejected')
+            ->assertJsonPath('moderation.history.0.messages.0.message', 'Добавьте больше информации.');
+
+        $this->actingAs(User::factory()->create())
+            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->assertForbidden();
     }
 
     public function test_telegram_mini_app_auth_reuses_existing_telegram_account(): void
