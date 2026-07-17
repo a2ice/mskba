@@ -58,19 +58,17 @@
                 <span class="fw-bold">{{ $user->participation_role_labels }}</span>
             </li>
             <li class="list-unstyled mb-2">
-                Email:
-                @if ( $user->primaryEmail() )
-                    <span class="fw-bold">{{ $user->primaryEmail()->value }}</span>
-                    @if ($user->primaryEmail()->is_verified)
+                Основной контакт:
+                @if($primaryContact)
+                    <span class="fw-bold">{{ $primaryContact->type->label() }}: {{ $primaryContact->displayValue() }}</span>
+                    @if($primaryContact->is_verified)
                         <span class="badge bg-success">Подтвержден</span>
                     @else
                         <span class="badge bg-warning text-dark">Не подтвержден</span>
                     @endif
-
-                @else 
+                @else
                     <a href="{{ route('account.contacts') }}" class="fc-link">Добавить контакт</a>
                 @endif
-                
             </li>
             <li class="list-unstyled mb-2">
                 Дата регистрации:
@@ -79,37 +77,24 @@
         </ul>
 
         @if($user->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED)
-        @php
-            if($user->primaryEmail()) {
-                if($user->primaryEmail()->is_verified) {
-                    $confirmationCondition = 'Все необходимые условия выполнены. Подтвердите аккаунт, чтобы получить доступ ко всем функциям платформы.';
-                    $confirmationConditionActionBtn = '
-                        <a href="' . route('account.confirmation') . '" class="btn btn--primary btn--sm">
-                            Подтвердить аккаунт
-                        </a>
-                    ';
-                } else {
-                    $confirmationCondition = 'Подтвердите контакт, чтобы получить возможность подтвердить аккаунт и получить доступ ко всем функциям платформы.';
-                    $confirmationConditionActionBtn = '
-                        <a href="' . route('account.contacts') . '" class="btn btn--secondary btn--sm">
-                            Перейти к контактам
-                        </a>
-                    ';
-                }
-            } else {
-                $confirmationCondition = 'Добавьте и подтвердите контакт, чтобы получить возможность подтвердить аккаунт и получить доступ ко всем функциям платформы.';
-                $confirmationConditionActionBtn = '
-                    <a href="' . route('account.contacts') . '" class="btn btn--secondary btn--sm">
-                        Перейти к контактам
-                    </a>
-                ';
-            }
-        @endphp
             <hr>
-            <p class="mb-4">{{ $confirmationCondition }}</p>
-            <div class="mt-4">
-                {!! $confirmationConditionActionBtn !!}
-            </div>
+
+            @if($primaryVerifiedContact)
+                <p class="mb-4">Основной контакт подтвержден. Продолжите настройку профиля, чтобы подтвердить аккаунт и получить доступ ко всем функциям платформы.</p>
+                <div class="mt-4">
+                    <a href="{{ route('account.confirmation') }}" class="btn btn--primary btn--sm">Подтвердить аккаунт</a>
+                </div>
+            @elseif($primaryContact)
+                <p class="mb-4">Подтвердите основной контакт, чтобы получить возможность подтвердить аккаунт и получить доступ ко всем функциям платформы.</p>
+                <div class="mt-4">
+                    <a href="{{ route('account.contacts') }}" class="btn btn--secondary btn--sm">Перейти к контактам</a>
+                </div>
+            @else
+                <p class="mb-4">Добавьте и подтвердите контакт, чтобы получить возможность подтвердить аккаунт и получить доступ ко всем функциям платформы.</p>
+                <div class="mt-4">
+                    <a href="{{ route('account.contacts') }}" class="btn btn--secondary btn--sm">Перейти к контактам</a>
+                </div>
+            @endif
         @endif
     @endif
 @endsection

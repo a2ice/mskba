@@ -47,7 +47,7 @@ class AccountController extends Controller
         private readonly AccountCheckForPresentationService $accountCheckForPresentationService,
     ) {}
 
-    public function index(): Response
+    public function index(AccountConfirmationWizardService $wizard): Response
     {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -58,7 +58,7 @@ class AccountController extends Controller
             ]]);
         }
 
-        $user->load('profile', 'participationRoles');
+        $user->load('contacts', 'profile', 'participationRoles');
 
         if ($user->participationRoles) {
             $participationRoleLabels = $user->participationRoles
@@ -67,9 +67,11 @@ class AccountController extends Controller
             $user->participation_role_labels = $participationRoleLabels;
         }
 
-        $user->email = $user->primaryEmail()?->value;
-
-        $data = ['user' => $user];
+        $data = [
+            'user' => $user,
+            'primaryContact' => $wizard->primaryContact($user),
+            'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
+        ];
 
         return ThemeResolver::page('account.index', $data);
     }

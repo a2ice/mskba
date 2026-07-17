@@ -91,7 +91,7 @@
                     @if($primaryVerifiedContact)
                         <div class="account-confirmation-contact account-confirmation-contact--verified">
                             <span>Основной контакт подтвержден</span>
-                            <strong>{{ $primaryVerifiedContact->type->label() }}: {{ $primaryVerifiedContact->value }}</strong>
+                            <strong>{{ $primaryVerifiedContact->type->label() }}: {{ $primaryVerifiedContact->displayValue() }}</strong>
                         </div>
                     @elseif($primaryContact)
                         <div class="account-confirmation-contact">

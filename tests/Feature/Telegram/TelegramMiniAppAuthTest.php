@@ -51,6 +51,15 @@ class TelegramMiniAppAuthTest extends TestCase
         $this->assertSame(777, $contact->meta['telegram_user_id']);
         $this->assertTrue($user->hasVerifiedPrimaryContact());
 
+        $this
+            ->get(route('account'))
+            ->assertOk()
+            ->assertSee('Основной контакт:')
+            ->assertSee('Telegram: @mskba_user')
+            ->assertSee('Основной контакт подтвержден')
+            ->assertSee('Подтвердить аккаунт')
+            ->assertDontSee('Добавьте и подтвердите контакт');
+
         $this->assertDatabaseHas('telegram_accounts', [
             'user_id' => $user->id,
             'telegram_user_id' => 777,
