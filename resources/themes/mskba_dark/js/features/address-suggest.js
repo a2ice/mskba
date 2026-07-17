@@ -6,7 +6,7 @@ function initAddressSuggest(container) {
     const input = container.querySelector('[data-address-suggest-input]');
     const list = container.querySelector('[data-address-suggest-list]');
     const error = container.querySelector('[data-address-suggest-error]');
-    const metroSelect = document.querySelector('[data-address-metro-select]');
+    const metroSelect = container.closest('form')?.querySelector('[data-address-metro-select]');
 
     if (!input || !list) {
         return;
@@ -75,6 +75,7 @@ function initAddressSuggest(container) {
         applyingSuggestion = true;
         input.value = suggestion.label || '';
         fillStructuredFields(container, suggestion);
+        setField(container, '[data-address-selected]', '1');
         applyMetroSuggestion(metroSelect, suggestion.metro_station_ids || []);
         hideList(list);
         hideError(error);
@@ -163,6 +164,7 @@ function fillStructuredFields(container, suggestion) {
 }
 
 function clearStructuredFields(container) {
+    setField(container, '[data-address-selected]', '');
     setField(container, '[data-address-city]', '');
     setField(container, '[data-address-street]', '');
     setField(container, '[data-address-building]', '');

@@ -13,10 +13,12 @@ use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Modules\Venue\Presentation\Http\Requests\SubmitModerationRequest;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -44,7 +46,7 @@ class VenueController extends Controller
         CreateVenueRequest $request,
         CreateAccountVenueHandler $createVenue,
         CurrentActorResolver $actors,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         try {
             $venue = $createVenue->handle(
                 $actors->resolveForRequest($request),
@@ -52,10 +54,21 @@ class VenueController extends Controller
                 $request->locationData(),
             );
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return redirect()
                 ->route('venues.create')
                 ->withInput()
                 ->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Площадка создана. Проверьте данные и отправьте её на модерацию.',
+                'venue' => $this->venuePayload($venue),
+            ], 201);
         }
 
         return redirect()
@@ -109,7 +122,7 @@ class VenueController extends Controller
         string $alias,
         UpdateVenueHandler $updateVenue,
         CurrentActorResolver $actors,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         try {
             $venue = $updateVenue->handle(
                 alias: $alias,
@@ -119,10 +132,21 @@ class VenueController extends Controller
                 locationData: $request->locationData(),
             );
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return redirect()
                 ->route('venues.edit', $alias)
                 ->withInput()
                 ->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Площадка сохранена.',
+                'venue' => $this->venuePayload($venue),
+            ]);
         }
 
         return redirect()
@@ -153,7 +177,7 @@ class VenueController extends Controller
         string $alias,
         SubmitModerationRequestHandler $submitModeration,
         CurrentActorResolver $actors,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         try {
             $submitModeration->handle(
                 alias: $alias,
@@ -162,10 +186,18 @@ class VenueController extends Controller
                 message: $request->messageText(),
             );
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return redirect()
                 ->route('venues.status', $alias)
                 ->withInput()
                 ->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Площадка отправлена на модерацию.']);
         }
 
         return redirect()
@@ -179,5 +211,31 @@ class VenueController extends Controller
             'message' => 'Удаление площадки будет реализовано отдельно.',
             'code' => 501,
         ]]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function venuePayload(Venue $venue): array
+    {
+        $venue->loadMissing('location.address', 'location.metroStations.line');
+
+        return [
+            'alias' => $venue->alias,
+            'name' => $venue->name,
+            'type' => $venue->type->value,
+            'short_description' => $venue->short_description,
+            'full_description' => $venue->full_description,
+            'address' => $venue->location?->address?->full_address ?? $venue->raw_address,
+            'metro' => collect($venue->location?->metroStations ?? [])
+                ->map(fn ($station): array => [
+                    'id' => $station->id,
+                    'label' => $station->name.($station->line?->name ? ' ('.$station->line->name.')' : ''),
+                ])
+                ->values()
+                ->all(),
+            'update_url' => route('venues.update', $venue->alias),
+            'moderation_url' => route('venues.moderation.submit', $venue->alias),
+        ];
     }
 }

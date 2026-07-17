@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     bindTelegramMenu(root);
     bindFeatureModal(root);
+    bindTelegramVenueFlow(root);
 
     if (!authUrl) {
         setStatus('Не настроен endpoint авторизации Telegram.');
@@ -177,6 +178,189 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.hidden = true;
             trigger?.focus();
             trigger = null;
+        }
+    }
+
+    function bindTelegramVenueFlow(container) {
+        const openButton = container.querySelector('[data-telegram-venue-create-open]');
+        const createModal = container.querySelector('[data-telegram-venue-create-modal]');
+        const editModal = container.querySelector('[data-telegram-venue-edit-modal]');
+        const createForm = createModal?.querySelector('[data-telegram-venue-create-form]');
+        const editForm = editModal?.querySelector('[data-telegram-venue-edit-form]');
+        const moderationForm = editModal?.querySelector('[data-telegram-venue-moderation-form]');
+
+        if (!openButton || !createModal || !editModal || !createForm || !editForm || !moderationForm) {
+            return;
+        }
+
+        openButton.addEventListener('click', () => openModal(createModal));
+
+        container.querySelectorAll('[data-telegram-venue-modal-close]').forEach((button) => {
+            button.addEventListener('click', () => closeModal(button.closest('.telegram-feature-modal')));
+        });
+
+        [createForm, editForm].forEach((form) => {
+            const metro = form.querySelector('[data-address-metro-select]');
+            metro?.addEventListener('change', () => updateMetroSummary(form));
+        });
+
+        createForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const payload = await submitForm(createForm);
+
+            if (!payload) {
+                return;
+            }
+
+            copyFormValues(createForm, editForm);
+            editForm.action = payload.venue.update_url;
+            moderationForm.action = payload.venue.moderation_url;
+            updateMetroSummary(editForm, payload.venue.metro);
+            closeModal(createModal);
+            openModal(editModal);
+            showMessage(editForm, payload.message, 'success');
+        });
+
+        editForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const payload = await submitForm(editForm);
+
+            if (payload) {
+                updateMetroSummary(editForm, payload.venue.metro);
+            }
+        });
+
+        moderationForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const payload = await submitForm(moderationForm);
+
+            if (payload) {
+                moderationForm.querySelector('button[type="submit"]').disabled = true;
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') {
+                return;
+            }
+
+            [createModal, editModal].forEach((modal) => {
+                if (!modal.hidden) {
+                    closeModal(modal);
+                }
+            });
+        });
+
+        function openModal(modal) {
+            modal.hidden = false;
+            modal.querySelector('input:not([type="hidden"]), button')?.focus();
+        }
+
+        function closeModal(modal) {
+            if (modal) {
+                modal.hidden = true;
+            }
+        }
+
+        async function submitForm(form) {
+            clearFormFeedback(form);
+            const button = form.querySelector('button[type="submit"]');
+            button.disabled = true;
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    credentials: 'same-origin',
+                    body: new FormData(form),
+                });
+                const payload = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    renderErrors(form, payload.errors || {});
+                    showMessage(form, payload.message || 'Не удалось выполнить действие.', 'error');
+                    return null;
+                }
+
+                showMessage(form, payload.message || 'Готово.', 'success');
+                return payload;
+            } catch (error) {
+                showMessage(form, 'Не удалось связаться с сервером. Попробуйте ещё раз.', 'error');
+                return null;
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function clearFormFeedback(form) {
+            form.querySelectorAll('[data-field-error]').forEach((element) => {
+                element.textContent = '';
+            });
+            form.querySelectorAll('.is-invalid').forEach((element) => element.classList.remove('is-invalid'));
+            showMessage(form, '', '');
+        }
+
+        function renderErrors(form, errors) {
+            Object.entries(errors).forEach(([field, messages]) => {
+                const error = form.querySelector(`[data-field-error="${field}"]`);
+                const input = findNamedField(form, field);
+
+                if (error) {
+                    error.textContent = Array.isArray(messages) ? messages[0] : messages;
+                }
+                input?.classList.add('is-invalid');
+            });
+        }
+
+        function findNamedField(form, dottedName) {
+            const bracketName = dottedName.replace(/\.([^.]*)/g, '[$1]');
+            return Array.from(form.elements).find((field) => field.name === bracketName);
+        }
+
+        function showMessage(form, message, state) {
+            const target = form.querySelector('[data-form-message]');
+
+            if (!target) {
+                return;
+            }
+
+            target.textContent = message;
+            target.className = `telegram-venue-form__message${state ? ` telegram-venue-form__message--${state}` : ''}`;
+        }
+
+        function copyFormValues(source, target) {
+            Array.from(source.elements).forEach((sourceField) => {
+                if (!sourceField.name || sourceField.name === '_token') {
+                    return;
+                }
+
+                const targets = Array.from(target.elements).filter((field) => field.name === sourceField.name);
+                targets.forEach((targetField) => {
+                    if (targetField instanceof HTMLSelectElement && targetField.multiple) {
+                        const selected = Array.from(sourceField.selectedOptions || []).map((option) => option.value);
+                        Array.from(targetField.options).forEach((option) => {
+                            option.selected = selected.includes(option.value);
+                        });
+                    } else {
+                        targetField.value = sourceField.value;
+                    }
+                });
+            });
+        }
+
+        function updateMetroSummary(form, metroPayload = null) {
+            const summary = form.querySelector('[data-telegram-venue-metro]');
+            const select = form.querySelector('[data-address-metro-select]');
+            const labels = Array.isArray(metroPayload)
+                ? metroPayload.map((station) => station.label)
+                : Array.from(select?.selectedOptions || []).map((option) => option.textContent.trim());
+
+            if (summary) {
+                summary.textContent = labels.length ? labels.join(', ') : 'Метро рядом не найдено';
+            }
         }
     }
 });

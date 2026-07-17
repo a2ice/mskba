@@ -292,6 +292,79 @@
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
 }
 
+.telegram-feature-modal__dialog--form {
+    width: min(560px, 100%);
+    max-height: calc(100dvh - 40px);
+    overflow-y: auto;
+}
+
+.telegram-venue-form,
+.telegram-venue-moderation-form {
+    display: grid;
+    gap: 16px;
+}
+
+.telegram-venue-form__field {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+    color: #fff;
+    font-weight: 750;
+}
+
+.telegram-venue-form__field input,
+.telegram-venue-form__field select,
+.telegram-venue-form__field textarea {
+    width: 100%;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    padding: 11px 13px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font: inherit;
+}
+
+.telegram-venue-form__field .is-invalid {
+    border-color: #ee6666;
+}
+
+.telegram-venue-form__field small {
+    color: #ff8b8b;
+    font-weight: 650;
+}
+
+.telegram-venue-form__metro {
+    display: grid;
+    gap: 4px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.telegram-venue-form__metro strong {
+    color: #fff;
+    font-size: 14px;
+}
+
+.telegram-venue-form__message {
+    min-height: 0;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.telegram-venue-form__message:not(:empty) {
+    padding: 11px 13px;
+}
+
+.telegram-venue-form__message--success {
+    background: rgba(55, 178, 107, 0.16);
+    color: #8ce0ae;
+}
+
+.telegram-venue-form__message--error {
+    background: rgba(216, 65, 65, 0.16);
+    color: #ff9d9d;
+}
+
 .telegram-feature-modal__dialog h2 {
     margin: 6px 44px 12px 0;
     font-size: clamp(26px, 7vw, 36px);

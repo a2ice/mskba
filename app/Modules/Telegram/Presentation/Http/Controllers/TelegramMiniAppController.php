@@ -3,19 +3,24 @@
 namespace App\Modules\Telegram\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Telegram\Application\UseCases\AuthenticateTelegramMiniAppUserHandler;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 final class TelegramMiniAppController extends Controller
 {
-    public function main(): Response
+    public function main(ListMetrostationsHandler $listMetrostations): Response
     {
         return ThemeResolver::page('integrations.main', [
             'telegramBotUsername' => config('telegram.bot_username'),
+            'venueTypes' => VenueTypeEnum::cases(),
+            'metros' => Schema::hasTable('metro_stations') ? $listMetrostations->handle() : [],
         ]);
     }
 

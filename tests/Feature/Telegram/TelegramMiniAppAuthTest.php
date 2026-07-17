@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -92,9 +93,63 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('Функционал находится в разработке')
             ->assertSee('data-telegram-dashboard', false)
             ->assertSee('data-telegram-feature-modal', false)
+            ->assertSee('data-telegram-venue-create-form', false)
+            ->assertSee('data-telegram-venue-edit-form', false)
+            ->assertSee('data-telegram-venue-moderation-form', false)
+            ->assertSee('Проверьте данные и отправьте на модерацию')
             ->assertSee('telegram-app-shell')
             ->assertDontSee('site-header')
             ->assertDontSee('site-footer');
+    }
+
+    public function test_telegram_venue_flow_requires_suggested_address_and_returns_json_for_every_step(): void
+    {
+        $user = User::factory()->create();
+        $user->createProfile([]);
+        $this->actingAs($user);
+
+        $venueData = [
+            'telegram_flow' => '1',
+            'name' => 'Площадка Telegram',
+            'type' => 'street_court',
+            'location' => [
+                'raw_address' => 'Россия, Москва, Тверская улица, 1',
+                'city' => 'Москва',
+                'street' => 'Тверская улица',
+                'building' => '1',
+                'latitude' => 55.757,
+                'longitude' => 37.615,
+            ],
+        ];
+
+        $this
+            ->postJson(route('venues.store'), $venueData)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('location.address_selected');
+
+        $this
+            ->postJson(route('venues.store'), array_replace_recursive($venueData, [
+                'location' => ['address_selected' => '1'],
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('message', 'Площадка создана. Проверьте данные и отправьте её на модерацию.')
+            ->assertJsonStructure(['venue' => ['alias', 'update_url', 'moderation_url']]);
+
+        $venue = Venue::query()->where('name', 'Площадка Telegram')->firstOrFail();
+
+        $this
+            ->putJson(route('venues.update', $venue->alias), array_replace_recursive($venueData, [
+                'short_description' => 'Площадка рядом с центром',
+                'location' => ['address_selected' => '1'],
+            ]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Площадка сохранена.')
+            ->assertJsonPath('venue.short_description', 'Площадка рядом с центром');
+
+        $this
+            ->postJson(route('venues.moderation.submit', $venue->alias))
+            ->assertOk()
+            ->assertJsonPath('message', 'Площадка отправлена на модерацию.');
     }
 
     public function test_telegram_mini_app_auth_reuses_existing_telegram_account(): void

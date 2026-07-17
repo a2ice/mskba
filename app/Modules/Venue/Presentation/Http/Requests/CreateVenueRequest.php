@@ -22,20 +22,25 @@ class CreateVenueRequest extends FormRequest
      */
     public function rules(): array
     {
+        $telegramRequired = $this->boolean('telegram_flow') ? ['required'] : ['nullable'];
+        $telegramAddressSelected = $this->boolean('telegram_flow') ? ['required', 'accepted'] : ['nullable'];
+
         return [
+            'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'short_description' => ['nullable', 'string', 'max:500'],
             'full_description' => ['nullable', 'string', 'max:10000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'array'],
-            'location.raw_address' => ['nullable', 'string', 'max:1000'],
+            'location.raw_address' => [...$telegramRequired, 'string', 'max:1000'],
+            'location.address_selected' => $telegramAddressSelected,
             'location.city' => ['nullable', 'string', 'max:255'],
             'location.street' => ['nullable', 'string', 'max:255'],
             'location.building' => ['nullable', 'string', 'max:255'],
             'location.postal_code' => ['nullable', 'string', 'max:32'],
-            'location.latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'location.longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'location.latitude' => [...$telegramRequired, 'numeric', 'between:-90,90'],
+            'location.longitude' => [...$telegramRequired, 'numeric', 'between:-180,180'],
             'location.metro_station_ids' => ['nullable', 'array'],
             'location.metro_station_ids.*' => ['integer', 'distinct', 'exists:metro_stations,id'],
         ];
@@ -123,6 +128,7 @@ class CreateVenueRequest extends FormRequest
             'full_description' => 'полное описание',
             'raw_address' => 'адрес',
             'location.raw_address' => 'адрес',
+            'location.address_selected' => 'адрес из подсказки',
             'location.city' => 'город',
             'location.street' => 'улица',
             'location.building' => 'дом',

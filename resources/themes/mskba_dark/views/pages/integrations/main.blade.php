@@ -94,7 +94,7 @@
                             <i class="ti ti-map-pin-search" aria-hidden="true"></i>
                             <span>Найти площадку</span>
                         </button>
-                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Добавить">
+                        <button type="button" class="telegram-action-card" data-telegram-venue-create-open>
                             <i class="ti ti-map-pin-plus" aria-hidden="true"></i>
                             <span>Добавить</span>
                         </button>
@@ -118,6 +118,50 @@
                 <h2 id="telegram-feature-title" data-telegram-feature-title>Новый раздел</h2>
                 <p>Функционал находится в разработке и появится в одном из следующих обновлений.</p>
                 <button type="button" class="btn btn--primary btn--sm" data-telegram-feature-close>Понятно</button>
+            </section>
+        </div>
+
+        <div class="telegram-feature-modal" hidden data-telegram-venue-create-modal>
+            <button type="button" class="telegram-feature-modal__backdrop" aria-label="Закрыть окно" data-telegram-venue-modal-close></button>
+            <section class="telegram-feature-modal__dialog telegram-feature-modal__dialog--form" role="dialog" aria-modal="true" aria-labelledby="telegram-venue-create-title">
+                <button type="button" class="telegram-feature-modal__close" aria-label="Закрыть окно" data-telegram-venue-modal-close></button>
+                <p class="telegram-feature-modal__eyebrow">Новая площадка</p>
+                <h2 id="telegram-venue-create-title">Добавить площадку</h2>
+
+                <form method="POST" action="{{ route('venues.store') }}" class="telegram-venue-form" data-telegram-venue-create-form novalidate>
+                    @csrf
+                    @include('theme::partials.venues.telegram-form-fields', ['fieldPrefix' => 'telegramVenueCreate'])
+                    <div class="telegram-venue-form__message" role="status" data-form-message></div>
+                    <button type="submit" class="btn btn--primary btn--sm">Создать</button>
+                </form>
+            </section>
+        </div>
+
+        <div class="telegram-feature-modal" hidden data-telegram-venue-edit-modal>
+            <button type="button" class="telegram-feature-modal__backdrop" aria-label="Закрыть окно" data-telegram-venue-modal-close></button>
+            <section class="telegram-feature-modal__dialog telegram-feature-modal__dialog--form" role="dialog" aria-modal="true" aria-labelledby="telegram-venue-edit-title">
+                <button type="button" class="telegram-feature-modal__close" aria-label="Закрыть окно" data-telegram-venue-modal-close></button>
+                <p class="telegram-feature-modal__eyebrow">Площадка создана</p>
+                <h2 id="telegram-venue-edit-title">Проверьте данные и отправьте на модерацию</h2>
+
+                <form method="POST" class="telegram-venue-moderation-form" data-telegram-venue-moderation-form>
+                    @csrf
+                    <div class="telegram-venue-form__message" role="status" data-form-message></div>
+                    <button type="submit" class="btn btn--primary btn--sm">Отправить на модерацию</button>
+                </form>
+
+                <hr>
+
+                <form method="POST" class="telegram-venue-form" data-telegram-venue-edit-form novalidate>
+                    @csrf
+                    @method('PUT')
+                    @include('theme::partials.venues.telegram-form-fields', [
+                        'fieldPrefix' => 'telegramVenueEdit',
+                        'includeDescriptions' => true,
+                    ])
+                    <div class="telegram-venue-form__message" role="status" data-form-message></div>
+                    <button type="submit" class="btn btn--secondary btn--sm">Сохранить</button>
+                </form>
             </section>
         </div>
     </section>
