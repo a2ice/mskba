@@ -16,6 +16,8 @@
         })(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
 
         ym({{ $counterId }}, "init", {
+            referrer: document.referrer,
+            url: location.href,
             clickmap: true,
             trackLinks: true,
             accurateTrackBounce: true,

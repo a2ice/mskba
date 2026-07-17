@@ -27,6 +27,8 @@ class YandexMetrikaTest extends TestCase
                 ->assertOk()
                 ->assertSee('https://mc.yandex.ru/metrika/tag.js', false)
                 ->assertSee('ym(12345678, "init"', false)
+                ->assertSee('referrer: document.referrer', false)
+                ->assertSee('url: location.href', false)
                 ->assertSee('https://mc.yandex.ru/watch/12345678', false);
         }
     }
