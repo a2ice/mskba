@@ -265,12 +265,18 @@
 }
 
 .telegram-feature-modal {
+    --telegram-modal-top-offset: 6vh;
+
     position: fixed;
     z-index: 20;
     inset: 0;
     display: grid;
     place-items: center;
-    padding: 20px;
+    padding:
+        calc(max(18px, env(safe-area-inset-top)) + var(--telegram-modal-top-offset))
+        max(14px, env(safe-area-inset-right))
+        max(18px, env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
 }
 
 .telegram-feature-modal__backdrop {
@@ -294,7 +300,12 @@
 
 .telegram-feature-modal__dialog--form {
     width: min(560px, 100%);
-    max-height: calc(100dvh - 40px);
+    max-height: calc(
+        100dvh
+        - max(18px, env(safe-area-inset-top))
+        - var(--telegram-modal-top-offset)
+        - max(18px, env(safe-area-inset-bottom))
+    );
     overflow-y: auto;
 }
 
@@ -423,6 +434,10 @@
 
     .integration-panel {
         border-radius: 14px;
+    }
+
+    .telegram-feature-modal {
+        --telegram-modal-top-offset: 10vh;
     }
 
     .telegram-action-card {
