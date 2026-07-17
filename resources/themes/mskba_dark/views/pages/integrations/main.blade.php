@@ -72,13 +72,13 @@
                     </div>
 
                     <div class="telegram-action-grid">
-                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Создать игру">
-                            <i class="ti ti-plus" aria-hidden="true"></i>
-                            <span>Создать игру</span>
-                        </button>
-                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Найти игру">
+                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Играть">
                             <i class="ti ti-ball-basketball" aria-hidden="true"></i>
-                            <span>Найти игру</span>
+                            <span>Играть</span>
+                        </button>
+                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Новая игра">
+                            <i class="ti ti-plus" aria-hidden="true"></i>
+                            <span>Новая игра</span>
                         </button>
                     </div>
                 </section>
@@ -94,9 +94,9 @@
                             <i class="ti ti-map-pin-search" aria-hidden="true"></i>
                             <span>Найти площадку</span>
                         </button>
-                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Добавить площадку">
+                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Добавить">
                             <i class="ti ti-map-pin-plus" aria-hidden="true"></i>
-                            <span>Добавить площадку</span>
+                            <span>Добавить</span>
                         </button>
                     </div>
                 </section>
