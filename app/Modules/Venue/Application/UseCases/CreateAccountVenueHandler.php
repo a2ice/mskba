@@ -77,8 +77,6 @@ final class CreateAccountVenueHandler
                 'name' => $data['name'],
                 'alias' => $this->uniqueness->aliasForName($data['name']),
                 'type' => $type->value,
-                'requires_payment' => (bool) ($data['requires_payment'] ?? false),
-                'requires_booking_approval' => (bool) ($data['requires_booking_approval'] ?? false),
                 'status' => VenueStatusEnum::UNCONFIRMED->value,
                 'short_description' => $data['short_description'] ?? null,
                 'full_description' => $data['full_description'] ?? null,

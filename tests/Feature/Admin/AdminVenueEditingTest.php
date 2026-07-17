@@ -22,6 +22,8 @@ final class AdminVenueEditingTest extends TestCase
             'name' => 'Старое название',
             'status' => VenueStatusEnum::CONFIRMED,
             'type' => VenueTypeEnum::STREET_COURT,
+            'requires_payment' => true,
+            'requires_booking_approval' => true,
         ]);
 
         $this->actingAs($superadmin)
@@ -33,7 +35,7 @@ final class AdminVenueEditingTest extends TestCase
             ->put(route('admin.venues.update', $venue), [
                 'name' => 'Новое название',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
-                'requires_payment' => '1',
+                'requires_payment' => '0',
                 'requires_booking_approval' => '0',
                 'short_description' => 'Новое краткое описание',
                 'full_description' => 'Новое полное описание',
@@ -48,7 +50,7 @@ final class AdminVenueEditingTest extends TestCase
         $this->assertSame(VenueTypeEnum::SPORTS_HALL, $venue->type);
         $this->assertSame(VenueStatusEnum::CONFIRMED, $venue->status);
         $this->assertTrue($venue->requires_payment);
-        $this->assertFalse($venue->requires_booking_approval);
+        $this->assertTrue($venue->requires_booking_approval);
         $this->assertEqualsCanonicalizing(['паркет', 'раздевалки'], $venue->tags()->pluck('name')->all());
     }
 

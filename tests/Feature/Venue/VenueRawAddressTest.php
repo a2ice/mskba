@@ -32,6 +32,8 @@ class VenueRawAddressTest extends TestCase
             ->post(route('venues.store'), [
                 'name' => 'Тестовая площадка',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
+                'requires_payment' => '1',
+                'requires_booking_approval' => '1',
                 'short_description' => 'Описание тестовой площадки',
                 'tags' => 'крытая, паркет',
                 'raw_address' => 'Москва, ул. Летниковская, 12',
