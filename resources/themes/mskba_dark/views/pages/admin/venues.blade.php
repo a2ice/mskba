@@ -94,6 +94,9 @@
                         <th>Тип</th>
                         <th>Создатель</th>
                         <th>Создана</th>
+                        @if(auth()->user()?->hasSystemRole(\App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN))
+                            <th>Действия</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -149,6 +152,13 @@
                             <td>{{ $venue->type->label() }}</td>
                             <td>{{ $venue->creatorActor?->user?->username ?? '—' }}</td>
                             <td>{{ $venue->created_at?->format('d.m.Y H:i') }}</td>
+                            @if(auth()->user()?->hasSystemRole(\App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN))
+                                <td>
+                                    @unless($venue->trashed())
+                                        <a href="{{ route('admin.venues.edit', $venue) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+                                    @endunless
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                 </tbody>

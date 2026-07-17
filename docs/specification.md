@@ -236,7 +236,9 @@ Routes находятся под prefix `/admin` и middleware `auth`, `can:acce
 - `admin.dashboard` - `/admin`;
 - `admin.dashboard.legacy` - `/admin/dashboard`, redirect на `/admin`;
 - `admin.users`;
+- `admin.users.status.update`, `admin.users.bulk-delete`, `admin.users.bulk-restore` - управление аккаунтами только для `superadmin`;
 - `admin.venues`;
+- `admin.venues.edit` и `admin.venues.update` - административное редактирование активной площадки только для `superadmin`;
 - `admin.venues.duplicates`;
 - `admin.events`;
 - `admin.teams`;
@@ -246,9 +248,13 @@ Routes находятся под prefix `/admin` и middleware `auth`, `can:acce
 
 Gate `access-admin-panel` определен в `App\Providers\AccessServiceProvider` и использует `User::isAdmin()`. Это означает системную роль `admin` или выше и подтвержденный аккаунт.
 
+Gate `edit-venues-as-superadmin` требует подтвержденный аккаунт и точную системную роль `superadmin`. Проверка продублирована в `AdminUpdateVenueHandler`, чтобы административный use case нельзя было вызвать в обход HTTP middleware. Обновление переиспользует `VenueDetailsUpdater`, общий для пользовательского и административного сценариев; обычный `UpdateVenueHandler` по-прежнему применяет предметные ограничения владельца. Удаленные площадки административным редактированием не загружаются и требуют предварительного восстановления.
+
+Gate `manage-users-as-superadmin` защищает изменение статуса, массовое удаление и восстановление пользователей. Точная роль также проверяется в FormRequest и application handlers. Собственный аккаунт действующего superadmin нельзя изменить или удалить этим сценарием. Удаление пользователя представлено `SoftDeletes`: `deleted_at` создаётся в исходной users-миграции, а `UserStatusEnum` содержит только `unconfirmed`, `confirmed` и `blocked`.
+
 Dashboard использует отдельный layout `theme::layouts.admin-dashboard`. Внутренние admin-разделы используют общий `theme::layouts.section-sidebar` с admin sidebar partial, чтобы сохранить единую двухколоночную композицию проекта.
 
-Текущая первая итерация админки является read-only каркасом. CRUD, сохранение настроек, content persistence, moderation workflow и прикладные actions должны добавляться отдельными задачами. Audit log уже доступен как read-only раздел `/admin/audit`.
+Админка начиналась как read-only каркас, но теперь содержит отдельные moderation и venue actions. Полный CRUD, сохранение настроек и content persistence должны добавляться отдельными задачами. Audit log доступен как read-only раздел `/admin/audit`.
 
 ## Аудит
 

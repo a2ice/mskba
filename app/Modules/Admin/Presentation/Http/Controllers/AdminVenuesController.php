@@ -4,10 +4,13 @@ namespace App\Modules\Admin\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Admin\Application\UseCases\ListAdminVenuesHandler;
+use App\Modules\Admin\Presentation\Http\Requests\AdminUpdateVenueRequest;
 use App\Modules\Admin\Presentation\Http\Requests\ReviewModerationRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateVenueStatusRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Venue\Application\UseCases\AdminUpdateVenueHandler;
 use App\Modules\Venue\Application\UseCases\BulkChangeVenueDeletionStateHandler;
 use App\Modules\Venue\Application\UseCases\BulkUpdateVenueStatusHandler;
 use App\Modules\Venue\Application\UseCases\DeleteVenueHandler;
@@ -32,6 +35,42 @@ final class AdminVenuesController extends Controller
             'statuses' => VenueStatusEnum::cases(),
             'types' => VenueTypeEnum::cases(),
         ]);
+    }
+
+    public function edit(Venue $venue, ListMetrostationsHandler $listMetrostations): Response
+    {
+        $venue->loadMissing('location.address', 'location.metroStations', 'tags');
+
+        return ThemeResolver::page('admin.venue-edit', [
+            'venue' => $venue,
+            'types' => VenueTypeEnum::cases(),
+            'metros' => $listMetrostations->handle(),
+        ]);
+    }
+
+    public function update(
+        AdminUpdateVenueRequest $request,
+        Venue $venue,
+        AdminUpdateVenueHandler $updateVenue,
+    ): RedirectResponse {
+        try {
+            $updateVenue->handle(
+                user: $request->user(),
+                venueId: $venue->id,
+                data: $request->validated(),
+                locationData: $request->locationData(),
+                tagNames: $request->tagNames(),
+            );
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('admin.venues.edit', $venue)
+                ->withInput()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.venues.edit', $venue)
+            ->with('success', 'Площадка сохранена.');
     }
 
     public function approve(

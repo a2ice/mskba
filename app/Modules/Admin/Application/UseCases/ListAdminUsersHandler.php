@@ -10,11 +10,15 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 final class ListAdminUsersHandler
 {
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     public function handle(array $filters): LengthAwarePaginator
     {
         $query = User::query()->with('profile')->latest('id');
+
+        if (($filters['deleted'] ?? '') === '1') {
+            $query->onlyTrashed();
+        }
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
@@ -37,7 +41,7 @@ final class ListAdminUsersHandler
     }
 
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     private function perPage(array $filters): int
     {

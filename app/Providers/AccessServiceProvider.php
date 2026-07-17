@@ -2,9 +2,10 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Gate;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\ServiceProvider;
 
 class AccessServiceProvider extends ServiceProvider
 {
@@ -24,5 +25,13 @@ class AccessServiceProvider extends ServiceProvider
         //
 
         Gate::define('access-admin-panel', fn (User $user): bool => $user->isAdmin());
+        Gate::define(
+            'edit-venues-as-superadmin',
+            fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),
+        );
+        Gate::define(
+            'manage-users-as-superadmin',
+            fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),
+        );
     }
 }

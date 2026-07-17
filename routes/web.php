@@ -5,6 +5,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
@@ -80,12 +81,28 @@ Route::prefix('admin')
     ->middleware('auth', 'can:access-admin-panel')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard')->defaults('breadcrumb', 'Панель управления');
-        Route::get('/users', [AdminController::class, 'users'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
+        Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
+        Route::post('/users/bulk-delete', [AdminUsersController::class, 'bulkDelete'])
+            ->middleware('can:manage-users-as-superadmin')
+            ->name('admin.users.bulk-delete');
+        Route::post('/users/bulk-restore', [AdminUsersController::class, 'bulkRestore'])
+            ->middleware('can:manage-users-as-superadmin')
+            ->name('admin.users.bulk-restore');
+        Route::post('/users/{user}/status', [AdminUsersController::class, 'updateStatus'])
+            ->middleware('can:manage-users-as-superadmin')
+            ->name('admin.users.status.update');
         Route::redirect('/venues/dublicates', '/admin/venues/duplicates')->name('admin.venues.dublicates');
         Route::get('/venues/duplicates', [AdminVenueDuplicatesController::class, 'index'])->name('admin.venues.duplicates')->defaults('breadcrumb', 'Дубли площадок');
         Route::post('/venues/duplicates/merge', [AdminVenueDuplicatesController::class, 'mergeBatch'])->name('admin.venues.duplicates.merge-batch');
         Route::post('/venues/duplicates/{venueDuplicate}/merge', [AdminVenueDuplicatesController::class, 'merge'])->name('admin.venues.duplicates.merge');
         Route::get('/venues', [AdminVenuesController::class, 'index'])->name('admin.venues')->defaults('breadcrumb', 'Площадки');
+        Route::get('/venues/{venue}/edit', [AdminVenuesController::class, 'edit'])
+            ->middleware('can:edit-venues-as-superadmin')
+            ->name('admin.venues.edit')
+            ->defaults('breadcrumb', 'Редактирование площадки');
+        Route::put('/venues/{venue}', [AdminVenuesController::class, 'update'])
+            ->middleware('can:edit-venues-as-superadmin')
+            ->name('admin.venues.update');
         Route::post('/venues/bulk-delete', [AdminVenuesController::class, 'bulkDelete'])->name('admin.venues.bulk-delete');
         Route::post('/venues/bulk-restore', [AdminVenuesController::class, 'bulkRestore'])->name('admin.venues.bulk-restore');
         Route::post('/venues/bulk-block', [AdminVenuesController::class, 'bulkBlock'])->name('admin.venues.bulk-block');
