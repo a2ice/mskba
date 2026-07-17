@@ -19,6 +19,59 @@ class VenueModerationWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_owner_cannot_edit_or_save_venue_while_moderation_is_pending(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($owner, null)->id,
+            'name' => 'Площадка на проверке',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('venues.moderation.submit', $venue->alias))
+            ->assertRedirect(route('venues.status', $venue->alias));
+
+        $this->actingAs($owner)
+            ->get(route('venues.edit', $venue->alias))
+            ->assertStatus(409)
+            ->assertSee('Площадка находится на модерации');
+
+        $this->actingAs($owner)
+            ->put(route('venues.update', $venue->alias), [
+                'name' => 'Подменённое название',
+                'type' => $venue->type->value,
+            ])
+            ->assertRedirect(route('venues.edit', $venue->alias))
+            ->assertSessionHas('error', 'Площадка находится на модерации. Дождитесь решения перед редактированием.');
+
+        $this->assertSame('Площадка на проверке', $venue->refresh()->name);
+    }
+
+    public function test_owner_can_edit_venue_again_after_moderation_rejection(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($owner, null)->id,
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this->actingAs($owner)->post(route('venues.moderation.submit', $venue->alias));
+        $request = ModerationRequest::query()->firstOrFail();
+
+        $this->actingAs($admin)
+            ->post(route('admin.venues.moderation.reject', $request), ['message' => 'Дополните описание.'])
+            ->assertRedirect(route('admin.venues'));
+
+        $this->actingAs($owner)
+            ->get(route('venues.edit', $venue->alias))
+            ->assertOk();
+    }
+
     public function test_owner_can_submit_venue_to_moderation_and_see_rejection_reason(): void
     {
         $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);

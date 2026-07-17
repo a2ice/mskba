@@ -5,6 +5,8 @@ namespace Tests\Feature\Admin;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
+use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -69,6 +71,27 @@ final class AdminVenueEditingTest extends TestCase
                 'type' => VenueTypeEnum::STREET_COURT->value,
             ])
             ->assertForbidden();
+    }
+
+    public function test_superadmin_can_edit_venue_while_moderation_is_pending(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $venue = Venue::factory()->create(['name' => 'До исправления']);
+        $venue->moderationRequests()->create([
+            'type' => ModerationTypeEnum::VENUE,
+            'status' => ModerationRequestStatusEnum::PENDING,
+            'submitted_at' => now(),
+        ]);
+
+        $this->actingAs($superadmin)
+            ->put(route('admin.venues.update', $venue), [
+                'name' => 'Исправлено суперадмином',
+                'type' => $venue->type->value,
+            ])
+            ->assertRedirect(route('admin.venues.edit', $venue))
+            ->assertSessionHas('success');
+
+        $this->assertSame('Исправлено суперадмином', $venue->refresh()->name);
     }
 
     public function test_deleted_venue_cannot_be_edited_by_superadmin(): void

@@ -9,6 +9,7 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -70,6 +71,13 @@ class Venue extends Model
     public function hasFreeAccess(): bool
     {
         return ! $this->requires_payment && ! $this->requires_booking_approval;
+    }
+
+    public function hasPendingModerationRequest(): bool
+    {
+        return $this->moderationRequests()
+            ->where('status', ModerationRequestStatusEnum::PENDING->value)
+            ->exists();
     }
 
     public function memberships(): HasMany
