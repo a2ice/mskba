@@ -87,6 +87,8 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('Новая игра')
             ->assertSee('Найти площадку')
             ->assertSee('Добавить')
+            ->assertSee('Открыть бота')
+            ->assertDontSee('На главную')
             ->assertSee('Функционал находится в разработке')
             ->assertSee('data-telegram-dashboard', false)
             ->assertSee('data-telegram-feature-modal', false)

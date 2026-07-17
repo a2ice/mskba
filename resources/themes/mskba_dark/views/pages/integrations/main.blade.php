@@ -102,12 +102,12 @@
                 </section>
             </div>
 
-            <div class="integration-panel__actions">
-                <a href="{{ route('welcome') }}" class="btn btn--primary btn--sm">На главную</a>
-                @if($telegramBotUsername)
+            @if($telegramBotUsername)
+                <hr>
+                <div class="integration-panel__actions">
                     <a href="https://t.me/{{ $telegramBotUsername }}" class="btn btn--secondary btn--sm">Открыть бота</a>
-                @endif
-            </div>
+                </div>
+            @endif
         </div>
 
         <div class="telegram-feature-modal" hidden data-telegram-feature-modal>
