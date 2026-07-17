@@ -108,7 +108,7 @@
                         <i class="ti ti-arrow-right icon" aria-hidden="true"></i>
                     </a>
 
-                    <a class="btn btn--secondary btn--lg home-cta js-handler has-arrow-right-hover" data-handler="modal" data-modal-action="open" data-modal-target="create-game" href="#venues">
+                    <a class="btn btn--secondary btn--lg home-cta has-arrow-right-hover" href="{{ route('venues.create') }}">
                         <i class="ti ti-plus icon" aria-hidden="true"></i>
                         <span class="btn__stack">
                             <span class="btn__title">Добавить площадку</span>

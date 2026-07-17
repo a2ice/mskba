@@ -20,6 +20,16 @@ class PublicVenueCreateEntryTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_home_page_create_button_links_to_public_create_page(): void
+    {
+        $this
+            ->get(route('welcome'))
+            ->assertOk()
+            ->assertSee('Добавить площадку')
+            ->assertSee('href="'.route('venues.create').'"', false)
+            ->assertDontSee('data-modal-target="create-game"', false);
+    }
+
     public function test_guest_sees_create_link_on_public_venues_page(): void
     {
         $this
