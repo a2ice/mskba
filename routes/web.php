@@ -11,6 +11,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
+use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
@@ -145,6 +146,10 @@ Route::prefix('venues')->group(function () {
 Route::get('/integrations/address-suggest', AddressSuggestController::class)
     ->middleware(['throttle:30,1'])
     ->name('integrations.address-suggest');
+
+Route::post('/integrations/address-reverse', AddressReverseGeocodeController::class)
+    ->middleware(['throttle:20,1'])
+    ->name('integrations.address-reverse');
 
 Route::get('/integrations/main', [TelegramMiniAppController::class, 'main'])
     ->name('integrations.main');

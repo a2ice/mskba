@@ -6,6 +6,7 @@ function initAddressSuggest(container) {
     const input = container.querySelector('[data-address-suggest-input]');
     const list = container.querySelector('[data-address-suggest-list]');
     const error = container.querySelector('[data-address-suggest-error]');
+    const locationButton = container.querySelector('[data-address-current-location]');
     const metroSelect = container.closest('form')?.querySelector('[data-address-metro-select]');
 
     if (!input || !list) {
@@ -14,7 +15,6 @@ function initAddressSuggest(container) {
 
     let timer = null;
     let requestId = 0;
-    let applyingSuggestion = false;
 
     metroSelect?.addEventListener('change', () => {
         if (metroSelect.dataset.addressApplyingMetro === '1') {
@@ -25,11 +25,6 @@ function initAddressSuggest(container) {
     });
 
     input.addEventListener('input', () => {
-        if (applyingSuggestion) {
-            applyingSuggestion = false;
-            return;
-        }
-
         clearTimeout(timer);
         clearStructuredFields(container);
         hideError(error);
@@ -72,14 +67,123 @@ function initAddressSuggest(container) {
             return;
         }
 
-        applyingSuggestion = true;
+        applySuggestion(suggestion);
+        hideList(list);
+        hideError(error);
+    });
+
+    locationButton?.addEventListener('click', async () => {
+        const initialText = locationButton.textContent;
+        locationButton.disabled = true;
+        locationButton.textContent = 'Определяем местоположение…';
+        hideError(error);
+
+        try {
+            const coordinates = await getCurrentCoordinates();
+            const suggestion = await reverseGeocode(
+                locationButton.dataset.addressReverseUrl,
+                coordinates.latitude,
+                coordinates.longitude,
+            );
+
+            if (!suggestion) {
+                showError(error, 'Не удалось определить адрес. Выберите его вручную.');
+                return;
+            }
+
+            applySuggestion(suggestion);
+            hideList(list);
+            hideError(error);
+        } catch (geolocationError) {
+            showError(error, geolocationError.code === 'permission_denied'
+                    ? 'Разрешите доступ к геопозиции или выберите адрес вручную.'
+                    : 'Не удалось получить геопозицию. Попробуйте ещё раз.');
+        } finally {
+            locationButton.disabled = false;
+            locationButton.textContent = initialText;
+        }
+    });
+
+    function applySuggestion(suggestion) {
         input.value = suggestion.label || '';
         fillStructuredFields(container, suggestion);
         setField(container, '[data-address-selected]', '1');
         applyMetroSuggestion(metroSelect, suggestion.metro_station_ids || []);
-        hideList(list);
-        hideError(error);
+    }
+}
+
+async function reverseGeocode(url, latitude, longitude) {
+    if (!url) {
+        return null;
+    }
+
+    const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+        },
+        body: JSON.stringify({ latitude, longitude }),
     });
+
+    if (!response.ok) {
+        return null;
+    }
+
+    const data = await response.json();
+
+    return data?.suggestion || null;
+}
+
+function getCurrentCoordinates() {
+    const telegram = window.Telegram?.WebApp;
+    const locationManager = telegram?.LocationManager;
+
+    if (locationManager && telegram.isVersionAtLeast?.('8.0')) {
+        return new Promise((resolve, reject) => {
+            locationManager.init(() => {
+                if (!locationManager.isLocationAvailable) {
+                    reject(locationError('unavailable'));
+                    return;
+                }
+
+                locationManager.getLocation((location) => {
+                    if (!location) {
+                        reject(locationError('permission_denied'));
+                        return;
+                    }
+
+                    resolve({ latitude: location.latitude, longitude: location.longitude });
+                });
+            });
+        });
+    }
+
+    if (!navigator.geolocation) {
+        return Promise.reject(locationError('unavailable'));
+    }
+
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            (position) => resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+            }),
+            (error) => reject(locationError(
+                error.code === error.PERMISSION_DENIED ? 'permission_denied' : 'unavailable',
+            )),
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+        );
+    });
+}
+
+function locationError(code) {
+    const error = new Error(code);
+    error.code = code;
+
+    return error;
 }
 
 async function fetchSuggestions(input, list, error, requestId, currentRequestId) {

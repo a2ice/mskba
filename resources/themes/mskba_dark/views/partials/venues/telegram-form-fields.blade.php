@@ -34,6 +34,14 @@
         data-address-suggest-input
         data-address-suggest-url="{{ route('integrations.address-suggest') }}"
     >
+    <button
+        class="telegram-venue-form__location-button"
+        type="button"
+        data-address-current-location
+        data-address-reverse-url="{{ route('integrations.address-reverse') }}"
+    >
+        Я на площадке
+    </button>
     <input type="hidden" name="location[address_selected]" data-address-selected>
     <input type="hidden" name="location[city]" data-address-city>
     <input type="hidden" name="location[street]" data-address-street>

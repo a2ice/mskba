@@ -51,6 +51,22 @@ class YandexAddressSuggestProviderTest extends TestCase
         $this->assertSame([], app(YandexAddressSuggestProvider::class)->suggest('Москва Летниковская'));
     }
 
+    public function test_coordinates_are_reverse_geocoded_to_house(): void
+    {
+        config(['integrations.yandex.api_key' => 'test-key']);
+
+        Http::fake([
+            'geocode-maps.yandex.ru/*' => Http::response($this->geocodeResponse()),
+        ]);
+
+        $suggestion = app(YandexAddressSuggestProvider::class)->reverse(55.728, 37.644);
+
+        $this->assertNotNull($suggestion);
+        $this->assertSame('Россия, Москва, Летниковская улица, 12', $suggestion->label);
+        Http::assertSent(fn ($request): bool => $request['geocode'] === '37.644,55.728'
+            && $request['kind'] === 'house');
+    }
+
     private function geocodeResponse(?string $building = '12'): array
     {
         $components = [
