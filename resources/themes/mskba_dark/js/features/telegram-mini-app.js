@@ -460,7 +460,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 heading.textContent = venue.name;
                 meta.textContent = [
                     venue.type,
-                    venue.is_free ? 'Свободная' : 'По бронированию',
+                    venue.has_free_access ? 'Свободный доступ' : null,
+                    venue.requires_payment ? 'Платная' : null,
+                    venue.requires_booking_approval ? 'С подтверждением' : null,
                     venue.address,
                 ].filter(Boolean).join(' · ');
                 description.textContent = venue.description || '';

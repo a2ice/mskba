@@ -10,7 +10,8 @@ final readonly class VenueListItemDTO
         public string $alias,
         public string $status,
         public string $type,
-        public bool $isFree,
+        public bool $requiresPayment,
+        public bool $requiresBookingApproval,
         public ?string $shortDescription,
         public ?string $rawAddress,
         public bool $canView,
@@ -18,4 +19,9 @@ final readonly class VenueListItemDTO
         public bool $canEditSchedule,
         public bool $canRemove,
     ) {}
+
+    public function hasFreeAccess(): bool
+    {
+        return ! $this->requiresPayment && ! $this->requiresBookingApproval;
+    }
 }

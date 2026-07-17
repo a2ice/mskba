@@ -23,7 +23,8 @@ final readonly class SearchVenuesHandler
         ?string $query = null,
         ?VenueTypeEnum $type = null,
         ?int $metroStationId = null,
-        ?bool $isFree = null,
+        ?bool $requiresPayment = null,
+        ?bool $requiresBookingApproval = null,
         int $limit = 20,
     ): array {
         $venues = collect($this->listVenues->handle($user, $actor));
@@ -34,14 +35,15 @@ final readonly class SearchVenuesHandler
             );
         }
 
-        if ($isFree !== null) {
-            $freeVenueIds = Venue::query()
+        if ($requiresPayment !== null || $requiresBookingApproval !== null) {
+            $conditionVenueIds = Venue::query()
                 ->whereIn('id', $venues->pluck('id')->all())
-                ->where('is_free', $isFree)
+                ->when($requiresPayment !== null, fn ($query) => $query->where('requires_payment', $requiresPayment))
+                ->when($requiresBookingApproval !== null, fn ($query) => $query->where('requires_booking_approval', $requiresBookingApproval))
                 ->pluck('id')
                 ->all();
 
-            $venues = $venues->whereIn('id', $freeVenueIds);
+            $venues = $venues->whereIn('id', $conditionVenueIds);
         }
 
         $needle = trim((string) $query);

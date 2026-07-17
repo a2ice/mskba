@@ -32,7 +32,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'name',
     'alias',
     'type',
-    'is_free',
+    'requires_payment',
+    'requires_booking_approval',
     'status',
     'status_info',
     'short_description',
@@ -58,6 +59,11 @@ class Venue extends Model
     public function allowsOperationalChanges(): bool
     {
         return ! $this->trashed() && $this->status !== VenueStatusEnum::BLOCKED;
+    }
+
+    public function hasFreeAccess(): bool
+    {
+        return ! $this->requires_payment && ! $this->requires_booking_approval;
     }
 
     public function memberships(): HasMany
@@ -152,7 +158,8 @@ class Venue extends Model
     {
         return [
             'type' => VenueTypeEnum::class,
-            'is_free' => 'boolean',
+            'requires_payment' => 'boolean',
+            'requires_booking_approval' => 'boolean',
             'status' => VenueStatusEnum::class,
             'canonical_venue_id' => 'integer',
         ];

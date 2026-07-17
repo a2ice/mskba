@@ -22,13 +22,22 @@
     <small data-field-error="type"></small>
 </label>
 
-<label class="telegram-venue-form__field" for="{{ $fieldPrefix }}IsFree">
-    <span>Условия доступа</span>
-    <select id="{{ $fieldPrefix }}IsFree" name="is_free">
-        <option value="1" selected>Свободная — без оплаты и подтверждения</option>
-        <option value="0">Требует оплаты или подтверждения</option>
+<label class="telegram-venue-form__field" for="{{ $fieldPrefix }}RequiresPayment">
+    <span>Оплата</span>
+    <select id="{{ $fieldPrefix }}RequiresPayment" name="requires_payment">
+        <option value="0" selected>Не требуется</option>
+        <option value="1">Требуется</option>
     </select>
-    <small data-field-error="is_free"></small>
+    <small data-field-error="requires_payment"></small>
+</label>
+
+<label class="telegram-venue-form__field" for="{{ $fieldPrefix }}RequiresApproval">
+    <span>Подтверждение бронирования</span>
+    <select id="{{ $fieldPrefix }}RequiresApproval" name="requires_booking_approval">
+        <option value="0" selected>Не требуется</option>
+        <option value="1">Требуется</option>
+    </select>
+    <small data-field-error="requires_booking_approval"></small>
 </label>
 
 <div class="telegram-venue-form__field address-suggest" data-address-suggest>

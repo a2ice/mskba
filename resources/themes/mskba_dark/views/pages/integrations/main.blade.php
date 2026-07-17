@@ -137,12 +137,21 @@
                     <details class="telegram-venue-search__advanced">
                         <summary>Расширенные фильтры</summary>
                         <div class="telegram-venue-search__filters">
-                            <label class="telegram-venue-form__field" for="telegramVenueSearchAccess">
-                                <span>Доступ</span>
-                                <select id="telegramVenueSearchAccess" name="is_free">
-                                    <option value="">Любые условия</option>
-                                    <option value="1">Только свободные</option>
-                                    <option value="0">С оплатой или подтверждением</option>
+                            <label class="telegram-venue-form__field" for="telegramVenueSearchPayment">
+                                <span>Оплата</span>
+                                <select id="telegramVenueSearchPayment" name="requires_payment">
+                                    <option value="">Не важно</option>
+                                    <option value="0">Не требуется</option>
+                                    <option value="1">Требуется</option>
+                                </select>
+                            </label>
+
+                            <label class="telegram-venue-form__field" for="telegramVenueSearchApproval">
+                                <span>Подтверждение</span>
+                                <select id="telegramVenueSearchApproval" name="requires_booking_approval">
+                                    <option value="">Не важно</option>
+                                    <option value="0">Не требуется</option>
+                                    <option value="1">Требуется</option>
                                 </select>
                             </label>
 

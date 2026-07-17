@@ -43,7 +43,8 @@ class VenueController extends Controller
             'query' => ['nullable', 'string', 'max:100'],
             'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
             'metro_station_id' => ['nullable', 'integer', 'exists:metro_stations,id'],
-            'is_free' => ['nullable', 'boolean'],
+            'requires_payment' => ['nullable', 'boolean'],
+            'requires_booking_approval' => ['nullable', 'boolean'],
         ]);
 
         $venues = $searchVenues->handle(
@@ -52,7 +53,8 @@ class VenueController extends Controller
             query: $validated['query'] ?? null,
             type: isset($validated['type']) ? VenueTypeEnum::from($validated['type']) : null,
             metroStationId: isset($validated['metro_station_id']) ? (int) $validated['metro_station_id'] : null,
-            isFree: isset($validated['is_free']) ? (bool) $validated['is_free'] : null,
+            requiresPayment: isset($validated['requires_payment']) ? (bool) $validated['requires_payment'] : null,
+            requiresBookingApproval: isset($validated['requires_booking_approval']) ? (bool) $validated['requires_booking_approval'] : null,
         );
 
         return response()->json([
@@ -62,7 +64,9 @@ class VenueController extends Controller
                 'type' => $venue->type,
                 'description' => $venue->shortDescription,
                 'address' => $venue->rawAddress,
-                'is_free' => $venue->isFree,
+                'requires_payment' => $venue->requiresPayment,
+                'requires_booking_approval' => $venue->requiresBookingApproval,
+                'has_free_access' => $venue->hasFreeAccess(),
                 'url' => route('venues.show', $venue->alias),
             ])->all(),
         ]);
@@ -262,7 +266,9 @@ class VenueController extends Controller
             'alias' => $venue->alias,
             'name' => $venue->name,
             'type' => $venue->type->value,
-            'is_free' => $venue->is_free,
+            'requires_payment' => $venue->requires_payment,
+            'requires_booking_approval' => $venue->requires_booking_approval,
+            'has_free_access' => $venue->hasFreeAccess(),
             'short_description' => $venue->short_description,
             'full_description' => $venue->full_description,
             'tags' => $venue->tags->pluck('name')->values()->all(),

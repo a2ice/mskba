@@ -137,7 +137,8 @@ class TelegramMiniAppAuthTest extends TestCase
             'alias' => 'platnaya-tsentralnaya-ploshchadka',
             'type' => VenueTypeEnum::STREET_COURT,
             'status' => VenueStatusEnum::CONFIRMED,
-            'is_free' => false,
+            'requires_payment' => true,
+            'requires_booking_approval' => false,
         ])->tags()->create([
             'name' => 'Круглосуточно',
             'slug' => 'kruglosutochno',
@@ -154,17 +155,24 @@ class TelegramMiniAppAuthTest extends TestCase
                 'query' => 'Круглосуточно',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'metro_station_id' => $metro->id,
-                'is_free' => '1',
+                'requires_payment' => '0',
+                'requires_booking_approval' => '0',
             ]))
             ->assertOk()
             ->assertJsonCount(1, 'venues')
             ->assertJsonPath('venues.0.name', 'Центральная площадка')
             ->assertJsonPath('venues.0.address', 'Москва, Арбат, 10')
-            ->assertJsonPath('venues.0.is_free', true)
+            ->assertJsonPath('venues.0.requires_payment', false)
+            ->assertJsonPath('venues.0.requires_booking_approval', false)
+            ->assertJsonPath('venues.0.has_free_access', true)
             ->assertJsonMissing(['name' => 'Чужая скрытая Арбатская площадка']);
 
         $this
-            ->getJson(route('venues.search', ['query' => 'Арбатская', 'is_free' => '1']))
+            ->getJson(route('venues.search', [
+                'query' => 'Арбатская',
+                'requires_payment' => '0',
+                'requires_booking_approval' => '0',
+            ]))
             ->assertOk()
             ->assertJsonCount(1, 'venues')
             ->assertJsonPath('venues.0.name', 'Центральная площадка');
@@ -201,7 +209,9 @@ class TelegramMiniAppAuthTest extends TestCase
             ]))
             ->assertCreated()
             ->assertJsonPath('message', 'Площадка создана. Проверьте данные и отправьте её на модерацию.')
-            ->assertJsonPath('venue.is_free', true)
+            ->assertJsonPath('venue.requires_payment', false)
+            ->assertJsonPath('venue.requires_booking_approval', false)
+            ->assertJsonPath('venue.has_free_access', true)
             ->assertJsonStructure(['venue' => ['alias', 'update_url', 'moderation_url']]);
 
         $venue = Venue::query()->where('name', 'Площадка Telegram')->firstOrFail();
@@ -210,13 +220,16 @@ class TelegramMiniAppAuthTest extends TestCase
             ->putJson(route('venues.update', $venue->alias), array_replace_recursive($venueData, [
                 'short_description' => 'Площадка рядом с центром',
                 'tags' => 'крытая, бесплатная',
-                'is_free' => '0',
+                'requires_payment' => '1',
+                'requires_booking_approval' => '0',
                 'location' => ['address_selected' => '1'],
             ]))
             ->assertOk()
             ->assertJsonPath('message', 'Площадка сохранена.')
             ->assertJsonPath('venue.short_description', 'Площадка рядом с центром')
-            ->assertJsonPath('venue.is_free', false);
+            ->assertJsonPath('venue.requires_payment', true)
+            ->assertJsonPath('venue.requires_booking_approval', false)
+            ->assertJsonPath('venue.has_free_access', false);
 
         $this->assertDatabaseHas('venue_tags', [
             'venue_id' => $venue->id,
