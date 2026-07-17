@@ -46,6 +46,12 @@ class Venue extends Model
     /** @use HasFactory<VenueFactory> */
     use Auditable, HasFactory, SoftDeletes;
 
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'requires_payment' => false,
+        'requires_booking_approval' => false,
+    ];
+
     protected static function newFactory(): VenueFactory
     {
         return VenueFactory::new();

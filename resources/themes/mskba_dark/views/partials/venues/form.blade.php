@@ -57,41 +57,6 @@
     </div>
 
     <div class="mb-3">
-        <input type="hidden" name="requires_payment" value="0">
-        <label class="form-check">
-            <input
-                type="checkbox"
-                name="requires_payment"
-                value="1"
-                class="form-check-input"
-                @checked((bool) old('requires_payment', $venue?->requires_payment ?? false))
-            >
-            <span class="form-check-label">Требуется оплата</span>
-        </label>
-        @error('requires_payment')
-            <div class="invalid-feedback d-block">{{ $message }}</div>
-        @enderror
-    </div>
-
-    <div class="mb-3">
-        <input type="hidden" name="requires_booking_approval" value="0">
-        <label class="form-check">
-            <input
-                type="checkbox"
-                name="requires_booking_approval"
-                value="1"
-                class="form-check-input"
-                @checked((bool) old('requires_booking_approval', $venue?->requires_booking_approval ?? false))
-            >
-            <span class="form-check-label">Требуется подтверждение бронирования</span>
-        </label>
-        <div class="form-text">Если оба условия выключены, площадка имеет свободный доступ.</div>
-        @error('requires_booking_approval')
-            <div class="invalid-feedback d-block">{{ $message }}</div>
-        @enderror
-    </div>
-
-    <div class="mb-3">
         <label for="metro_station" class="form-label">Ближайшее метро</label>
         <select
             id="metro_station"

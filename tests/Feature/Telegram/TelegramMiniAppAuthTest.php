@@ -188,6 +188,8 @@ class TelegramMiniAppAuthTest extends TestCase
             'telegram_flow' => '1',
             'name' => 'Площадка Telegram',
             'type' => 'street_court',
+            'requires_payment' => '1',
+            'requires_booking_approval' => '1',
             'location' => [
                 'raw_address' => 'Россия, Москва, Тверская улица, 1',
                 'city' => 'Москва',
@@ -227,9 +229,9 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Площадка сохранена.')
             ->assertJsonPath('venue.short_description', 'Площадка рядом с центром')
-            ->assertJsonPath('venue.requires_payment', true)
+            ->assertJsonPath('venue.requires_payment', false)
             ->assertJsonPath('venue.requires_booking_approval', false)
-            ->assertJsonPath('venue.has_free_access', false);
+            ->assertJsonPath('venue.has_free_access', true);
 
         $this->assertDatabaseHas('venue_tags', [
             'venue_id' => $venue->id,

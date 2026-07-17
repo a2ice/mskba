@@ -29,8 +29,6 @@ class UpdateVenueRequest extends FormRequest
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
-            'requires_payment' => ['sometimes', 'boolean'],
-            'requires_booking_approval' => ['sometimes', 'boolean'],
             'short_description' => ['nullable', 'string', 'max:500'],
             'full_description' => ['nullable', 'string', 'max:10000'],
             'tags' => ['nullable', 'string', 'max:1000'],

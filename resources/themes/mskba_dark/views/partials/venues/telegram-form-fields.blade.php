@@ -22,24 +22,6 @@
     <small data-field-error="type"></small>
 </label>
 
-<label class="telegram-venue-form__field" for="{{ $fieldPrefix }}RequiresPayment">
-    <span>Оплата</span>
-    <select id="{{ $fieldPrefix }}RequiresPayment" name="requires_payment">
-        <option value="0" selected>Не требуется</option>
-        <option value="1">Требуется</option>
-    </select>
-    <small data-field-error="requires_payment"></small>
-</label>
-
-<label class="telegram-venue-form__field" for="{{ $fieldPrefix }}RequiresApproval">
-    <span>Подтверждение бронирования</span>
-    <select id="{{ $fieldPrefix }}RequiresApproval" name="requires_booking_approval">
-        <option value="0" selected>Не требуется</option>
-        <option value="1">Требуется</option>
-    </select>
-    <small data-field-error="requires_booking_approval"></small>
-</label>
-
 <div class="telegram-venue-form__field address-suggest" data-address-suggest>
     <label for="{{ $fieldPrefix }}Address">Адрес</label>
     <input
