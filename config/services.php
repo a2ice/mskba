@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'yandex_metrika' => [
+        'id' => env('YANDEX_METRIKA_ID'),
+    ],
+
 ];

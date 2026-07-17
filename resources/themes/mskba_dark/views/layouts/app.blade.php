@@ -25,10 +25,13 @@
         <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
         <title>{{ $pageTitle }}</title>
+        @include('partials.analytics.yandex-metrika')
         @vite($theme->viteInputs())
         @yield('styles')
     </head>
     <body class="theme-shell {{ $routeClass }}" style="--site-body-bottom-bg: url('{{ asset('images/bg-indoor.png') }}');">
+        @include('partials.analytics.yandex-metrika-noscript')
+
         <div class="site-frame">
             @include('theme::partials.header')
 

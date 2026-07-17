@@ -15,11 +15,14 @@
         <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
         <title>{{ $pageTitle }}</title>
+        @include('partials.analytics.yandex-metrika')
         <script src="https://telegram.org/js/telegram-web-app.js"></script>
         @vite($theme->viteInputs())
         @yield('styles')
     </head>
     <body class="telegram-app-shell">
+        @include('partials.analytics.yandex-metrika-noscript')
+
         <main class="telegram-app-content">
             @yield('content')
         </main>

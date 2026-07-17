@@ -15,11 +15,14 @@
         <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
         <title>{{ $pageTitle }}</title>
+        @include('partials.analytics.yandex-metrika')
         @vite($theme->viteInputs())
         @yield('styles')
         @stack('styles')
     </head>
     <body>
+        @include('partials.analytics.yandex-metrika-noscript')
+
         @include('theme::partials.header')
 
         <main class="site-content">
