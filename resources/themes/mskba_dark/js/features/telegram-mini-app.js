@@ -6,15 +6,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const status = root.querySelector('[data-telegram-status]');
-    const summary = root.querySelector('[data-telegram-summary]');
-    const telegramName = root.querySelector('[data-telegram-name]');
-    const mskbaUser = root.querySelector('[data-mskba-user]');
-    const registrationChannel = root.querySelector('[data-registration-channel]');
-    const telegramLaunch = root.querySelector('[data-telegram-launch]');
+    const dashboard = root.querySelector('[data-telegram-dashboard]');
     const authUrl = root.dataset.telegramAuthUrl;
     const telegram = window.Telegram?.WebApp;
 
     bindTelegramMenu(root);
+    bindFeatureModal(root);
 
     if (!authUrl) {
         setStatus('Не настроен endpoint авторизации Telegram.');
@@ -35,23 +32,15 @@ document.addEventListener('DOMContentLoaded', () => {
         init_data: telegram.initData,
     })
         .then((payload) => {
-            const name = [
-                payload.telegram_user?.first_name,
-                payload.telegram_user?.last_name,
-            ].filter(Boolean).join(' ');
-            const username = payload.telegram_user?.username
+            const nickname = payload.telegram_user?.username
                 ? `@${payload.telegram_user.username}`
-                : '';
+                : payload.telegram_user?.first_name || payload.user?.username || 'игрок';
 
-            telegramName.textContent = [name || 'Без имени', username].filter(Boolean).join(' · ');
-            mskbaUser.textContent = `#${payload.user.id} · ${payload.user.username || 'без логина'}`;
-            registrationChannel.textContent = payload.user.registration_channel || '—';
-            telegramLaunch.textContent = [
-                payload.telegram_user?.start_param ? `start_param=${payload.telegram_user.start_param}` : null,
-                payload.telegram_user?.chat_type ? `chat_type=${payload.telegram_user.chat_type}` : null,
-            ].filter(Boolean).join(' · ') || '—';
-            summary.hidden = false;
-            setStatus(payload.created ? 'Аккаунт создан и авторизован.' : 'Вы авторизованы.');
+            setStatus(`Добро пожаловать, ${nickname}!`);
+
+            if (dashboard) {
+                dashboard.hidden = false;
+            }
         })
         .catch((error) => {
             setStatus(readableError(error));
@@ -151,6 +140,43 @@ document.addEventListener('DOMContentLoaded', () => {
         function setMenuOpen(isOpen) {
             toggle.setAttribute('aria-expanded', String(isOpen));
             menu.hidden = !isOpen;
+        }
+    }
+
+    function bindFeatureModal(container) {
+        const modal = container.querySelector('[data-telegram-feature-modal]');
+        const title = modal?.querySelector('[data-telegram-feature-title]');
+        const openButtons = container.querySelectorAll('[data-telegram-feature-open]');
+        const closeButtons = modal?.querySelectorAll('[data-telegram-feature-close]') || [];
+        let trigger = null;
+
+        if (!modal || !title) {
+            return;
+        }
+
+        openButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                trigger = button;
+                title.textContent = button.dataset.featureTitle || 'Новый раздел';
+                modal.hidden = false;
+                modal.querySelector('.telegram-feature-modal__close')?.focus();
+            });
+        });
+
+        closeButtons.forEach((button) => {
+            button.addEventListener('click', closeModal);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.hidden) {
+                closeModal();
+            }
+        });
+
+        function closeModal() {
+            modal.hidden = true;
+            trigger?.focus();
+            trigger = null;
         }
     }
 });

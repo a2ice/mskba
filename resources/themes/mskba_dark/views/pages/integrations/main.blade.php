@@ -62,26 +62,45 @@
                 </nav>
             </header>
 
-            <p data-telegram-status>Проверяем Telegram-подпись и авторизуем пользователя...</p>
+            <h1 class="telegram-app-welcome" data-telegram-status>Проверяем Telegram-подпись и авторизуем пользователя...</h1>
 
-            <dl class="integration-summary" hidden data-telegram-summary>
-                <div>
-                    <dt>Telegram</dt>
-                    <dd data-telegram-name>—</dd>
-                </div>
-                <div>
-                    <dt>MSKBA user</dt>
-                    <dd data-mskba-user>—</dd>
-                </div>
-                <div>
-                    <dt>Канал регистрации</dt>
-                    <dd data-registration-channel>—</dd>
-                </div>
-                <div>
-                    <dt>Запуск</dt>
-                    <dd data-telegram-launch>—</dd>
-                </div>
-            </dl>
+            <div class="telegram-action-dashboard" hidden data-telegram-dashboard>
+                <section class="telegram-action-section" aria-labelledby="telegram-games-title">
+                    <div class="telegram-action-section__heading">
+                        <p class="telegram-action-section__eyebrow">На площадку</p>
+                        <h2 id="telegram-games-title">Игры</h2>
+                    </div>
+
+                    <div class="telegram-action-grid">
+                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Создать игру">
+                            <i class="ti ti-plus" aria-hidden="true"></i>
+                            <span>Создать игру</span>
+                        </button>
+                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Найти игру">
+                            <i class="ti ti-ball-basketball" aria-hidden="true"></i>
+                            <span>Найти игру</span>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="telegram-action-section" aria-labelledby="telegram-venues-title">
+                    <div class="telegram-action-section__heading">
+                        <p class="telegram-action-section__eyebrow">Где играть</p>
+                        <h2 id="telegram-venues-title">Площадки</h2>
+                    </div>
+
+                    <div class="telegram-action-grid">
+                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Найти площадку">
+                            <i class="ti ti-map-pin-search" aria-hidden="true"></i>
+                            <span>Найти площадку</span>
+                        </button>
+                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Добавить площадку">
+                            <i class="ti ti-map-pin-plus" aria-hidden="true"></i>
+                            <span>Добавить площадку</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
 
             <div class="integration-panel__actions">
                 <a href="{{ route('welcome') }}" class="btn btn--primary btn--sm">На главную</a>
@@ -89,6 +108,17 @@
                     <a href="https://t.me/{{ $telegramBotUsername }}" class="btn btn--secondary btn--sm">Открыть бота</a>
                 @endif
             </div>
+        </div>
+
+        <div class="telegram-feature-modal" hidden data-telegram-feature-modal>
+            <button type="button" class="telegram-feature-modal__backdrop" aria-label="Закрыть окно" data-telegram-feature-close></button>
+            <section class="telegram-feature-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="telegram-feature-title">
+                <button type="button" class="telegram-feature-modal__close" aria-label="Закрыть окно" data-telegram-feature-close></button>
+                <p class="telegram-feature-modal__eyebrow">MSKBA Mini App</p>
+                <h2 id="telegram-feature-title" data-telegram-feature-title>Новый раздел</h2>
+                <p>Функционал находится в разработке и появится в одном из следующих обновлений.</p>
+                <button type="button" class="btn btn--primary btn--sm" data-telegram-feature-close>Понятно</button>
+            </section>
         </div>
     </section>
 @endsection
