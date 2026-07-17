@@ -96,7 +96,7 @@
                     @elseif($primaryContact)
                         <div class="account-confirmation-contact">
                             <span>Основной контакт ожидает подтверждения</span>
-                            <strong>{{ $primaryContact->type->label() }}: {{ $primaryContact->value }}</strong>
+                            <strong>{{ $primaryContact->type->label() }}: {{ $primaryContact->displayValue() }}</strong>
                         </div>
 
                         <div class="account-confirmation-contact-actions mt-3">

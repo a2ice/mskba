@@ -63,7 +63,7 @@
                                 <div class="account-contact-item__summary">
                                     <div class="account-contact-item__value">
                                         <span class="fw-bold">{{ $contact->type->label() }}:</span>
-                                        <span>{{ $contact->value }}</span>
+                                        <span>{{ $contact->displayValue() }}</span>
                                         @if($contact->label)
                                             <span class="text-muted">({{ $contact->label }})</span>
                                         @endif

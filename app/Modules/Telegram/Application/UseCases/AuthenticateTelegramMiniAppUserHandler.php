@@ -2,6 +2,7 @@
 
 namespace App\Modules\Telegram\Application\UseCases;
 
+use App\Modules\Contact\Application\UseCases\SyncVerifiedTelegramContactHandler;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -18,6 +19,7 @@ final class AuthenticateTelegramMiniAppUserHandler
 {
     public function __construct(
         private readonly TelegramMiniAppInitDataValidator $validator,
+        private readonly SyncVerifiedTelegramContactHandler $syncVerifiedTelegramContact,
     ) {}
 
     /**
@@ -47,6 +49,13 @@ final class AuthenticateTelegramMiniAppUserHandler
             }
 
             $telegramAccount->forceFill($this->telegramAccountData($telegramUser))->save();
+            $this->syncVerifiedTelegramContact->handle(
+                $user,
+                $telegramUser->id,
+                $telegramUser->username,
+                $telegramUser->firstName,
+                $telegramUser->lastName,
+            );
 
             return [
                 'user' => $user->loadMissing('profile'),
