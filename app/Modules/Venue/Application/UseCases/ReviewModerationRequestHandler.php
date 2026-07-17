@@ -8,6 +8,8 @@ use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Moderation\Domain\Events\ModerationRequestApproved;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -33,6 +35,15 @@ final class ReviewModerationRequestHandler
         ?Actor $reviewedByActor = null,
     ): ModerationRequest {
         return DB::transaction(function () use ($request, $status, $reviewedBy, $message, $reviewedByActor): ModerationRequest {
+            $venue = null;
+
+            if ($request->type === ModerationTypeEnum::VENUE) {
+                $venue = Venue::query()
+                    ->whereKey($request->subject_id)
+                    ->lockForUpdate()
+                    ->first();
+            }
+
             $lockedRequest = ModerationRequest::query()
                 ->whereKey($request->id)
                 ->lockForUpdate()
@@ -62,6 +73,13 @@ final class ReviewModerationRequestHandler
                     'receiver_id' => $lockedRequest->submitted_by_actor_id,
                     'message' => trim((string) $message),
                 ]);
+            }
+
+            if ($status === ModerationRequestStatusEnum::APPROVED && $venue !== null) {
+                $venue->forceFill([
+                    'status' => VenueStatusEnum::CONFIRMED,
+                    'status_info' => null,
+                ])->save();
             }
 
             return $lockedRequest;

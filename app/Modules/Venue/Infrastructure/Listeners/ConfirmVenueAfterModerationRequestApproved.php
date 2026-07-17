@@ -26,6 +26,10 @@ final class ConfirmVenueAfterModerationRequestApproved
                 return;
             }
 
+            if ($venue->status === VenueStatusEnum::CONFIRMED && $venue->status_info === null) {
+                return;
+            }
+
             $venue->forceFill([
                 'status' => VenueStatusEnum::CONFIRMED,
                 'status_info' => null,

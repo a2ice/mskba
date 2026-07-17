@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
+use App\Modules\Venue\Domain\Exceptions\VenuePendingModerationException;
 use App\Modules\Venue\Domain\Models\Venue;
 
 final class ShowEditableVenueHandler
@@ -40,6 +41,10 @@ final class ShowEditableVenueHandler
 
         if ($venue === null) {
             throw new VenueAccessDeniedException;
+        }
+
+        if ($venue->hasPendingModerationRequest()) {
+            throw new VenuePendingModerationException;
         }
 
         return $venue;
