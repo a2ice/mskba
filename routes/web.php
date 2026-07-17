@@ -109,6 +109,8 @@ Route::prefix('venues')->group(function () {
     Route::get('/create', [VenueController::class, 'create'])
         ->name('venues.create')
         ->defaults('breadcrumb', 'Добавить площадку');
+    Route::get('/search', [VenueController::class, 'search'])
+        ->name('venues.search');
     Route::post('/', [VenueController::class, 'store'])
         ->name('venues.store');
     Route::get('/{alias}/status', [VenueController::class, 'status'])

@@ -7,7 +7,11 @@ use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Location;
+use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -96,10 +100,51 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('data-telegram-venue-create-form', false)
             ->assertSee('data-telegram-venue-edit-form', false)
             ->assertSee('data-telegram-venue-moderation-form', false)
+            ->assertSee('data-telegram-venue-search-form', false)
+            ->assertSee('Название, адрес или описание')
+            ->assertSee('Любое метро')
             ->assertSee('Проверьте данные и отправьте на модерацию')
             ->assertSee('telegram-app-shell')
             ->assertDontSee('site-header')
             ->assertDontSee('site-footer');
+    }
+
+    public function test_telegram_venue_search_filters_visible_venues_by_query_type_and_metro(): void
+    {
+        $user = User::factory()->create();
+        $user->createProfile([]);
+        $this->actingAs($user);
+
+        $metro = MetroStation::factory()->create(['name' => 'Арбатская']);
+        $location = Location::factory()->create();
+        $location->metroStations()->attach($metro->id);
+
+        Venue::factory()->create([
+            'location_id' => $location->id,
+            'name' => 'Арбатская площадка',
+            'alias' => 'arbatskaya-ploshchadka',
+            'type' => VenueTypeEnum::STREET_COURT,
+            'status' => VenueStatusEnum::CONFIRMED,
+            'raw_address' => 'Москва, Арбат, 10',
+        ]);
+
+        Venue::factory()->create([
+            'name' => 'Чужая скрытая Арбатская площадка',
+            'type' => VenueTypeEnum::STREET_COURT,
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $this
+            ->getJson(route('venues.search', [
+                'query' => 'Арбат',
+                'type' => VenueTypeEnum::STREET_COURT->value,
+                'metro_station_id' => $metro->id,
+            ]))
+            ->assertOk()
+            ->assertJsonCount(1, 'venues')
+            ->assertJsonPath('venues.0.name', 'Арбатская площадка')
+            ->assertJsonPath('venues.0.address', 'Москва, Арбат, 10')
+            ->assertJsonMissing(['name' => 'Чужая скрытая Арбатская площадка']);
     }
 
     public function test_telegram_venue_flow_requires_suggested_address_and_returns_json_for_every_step(): void

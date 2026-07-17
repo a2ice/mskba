@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     bindTelegramMenu(root);
     bindFeatureModal(root);
+    bindTelegramVenueSearch(root);
     bindTelegramVenueFlow(root);
 
     if (!authUrl) {
@@ -361,6 +362,118 @@ document.addEventListener('DOMContentLoaded', () => {
             if (summary) {
                 summary.textContent = labels.length ? labels.join(', ') : 'Метро рядом не найдено';
             }
+        }
+    }
+
+    function bindTelegramVenueSearch(container) {
+        const openButton = container.querySelector('[data-telegram-venue-search-open]');
+        const modal = container.querySelector('[data-telegram-venue-search-modal]');
+        const form = modal?.querySelector('[data-telegram-venue-search-form]');
+        const results = modal?.querySelector('[data-telegram-venue-search-results]');
+        const message = modal?.querySelector('[data-form-message]');
+        let timer = null;
+
+        if (!openButton || !modal || !form || !results || !message) {
+            return;
+        }
+
+        openButton.addEventListener('click', () => {
+            modal.hidden = false;
+            form.querySelector('input[type="search"]')?.focus();
+            search();
+        });
+
+        modal.querySelectorAll('[data-telegram-venue-search-close]').forEach((button) => {
+            button.addEventListener('click', close);
+        });
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            search();
+        });
+
+        form.querySelectorAll('select').forEach((select) => {
+            select.addEventListener('change', search);
+        });
+
+        form.querySelector('input[type="search"]')?.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(search, 350);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.hidden) {
+                close();
+            }
+        });
+
+        async function search() {
+            const submit = form.querySelector('button[type="submit"]');
+            const parameters = new URLSearchParams();
+
+            new FormData(form).forEach((value, key) => {
+                if (String(value).trim() !== '') {
+                    parameters.set(key, String(value));
+                }
+            });
+
+            submit.disabled = true;
+            setMessage('Ищем площадки...', '');
+
+            try {
+                const response = await fetch(`${form.action}?${parameters.toString()}`, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const payload = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    renderResults([]);
+                    setMessage(payload.message || 'Не удалось выполнить поиск.', 'error');
+                    return;
+                }
+
+                const venues = Array.isArray(payload.venues) ? payload.venues : [];
+                renderResults(venues);
+                setMessage(venues.length ? `Найдено: ${venues.length}` : 'Площадки не найдены.', venues.length ? 'success' : '');
+            } catch (error) {
+                renderResults([]);
+                setMessage('Не удалось связаться с сервером. Попробуйте ещё раз.', 'error');
+            } finally {
+                submit.disabled = false;
+            }
+        }
+
+        function renderResults(venues) {
+            results.replaceChildren(...venues.map((venue) => {
+                const card = document.createElement('a');
+                const heading = document.createElement('strong');
+                const meta = document.createElement('span');
+                const description = document.createElement('span');
+
+                card.className = 'telegram-venue-search-card';
+                card.href = venue.url;
+                heading.textContent = venue.name;
+                meta.textContent = [venue.type, venue.address].filter(Boolean).join(' · ');
+                description.textContent = venue.description || '';
+                card.append(heading, meta);
+
+                if (description.textContent) {
+                    card.append(description);
+                }
+
+                return card;
+            }));
+        }
+
+        function setMessage(text, state) {
+            message.textContent = text;
+            message.className = `telegram-venue-form__message${state ? ` telegram-venue-form__message--${state}` : ''}`;
+        }
+
+        function close() {
+            modal.hidden = true;
+            openButton.focus();
         }
     }
 });

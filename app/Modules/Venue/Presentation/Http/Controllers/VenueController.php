@@ -7,6 +7,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
+use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowEditableVenueHandler;
 use App\Modules\Venue\Application\UseCases\ShowManageableVenueHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
@@ -22,6 +23,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Validation\Rule;
 
 class VenueController extends Controller
 {
@@ -30,6 +32,37 @@ class VenueController extends Controller
         $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request));
 
         return ThemeResolver::page('venues.index', ['venues' => $venues]);
+    }
+
+    public function search(
+        Request $request,
+        SearchVenuesHandler $searchVenues,
+        CurrentActorResolver $actors,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'query' => ['nullable', 'string', 'max:100'],
+            'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
+            'metro_station_id' => ['nullable', 'integer', 'exists:metro_stations,id'],
+        ]);
+
+        $venues = $searchVenues->handle(
+            user: $request->user(),
+            actor: $actors->resolveForRequest($request),
+            query: $validated['query'] ?? null,
+            type: isset($validated['type']) ? VenueTypeEnum::from($validated['type']) : null,
+            metroStationId: isset($validated['metro_station_id']) ? (int) $validated['metro_station_id'] : null,
+        );
+
+        return response()->json([
+            'venues' => collect($venues)->map(fn ($venue): array => [
+                'id' => $venue->id,
+                'name' => $venue->name,
+                'type' => $venue->type,
+                'description' => $venue->shortDescription,
+                'address' => $venue->rawAddress,
+                'url' => route('venues.show', $venue->alias),
+            ])->all(),
+        ]);
     }
 
     public function create(ListMetrostationsHandler $listMetrostations): Response

@@ -90,7 +90,7 @@
                     </div>
 
                     <div class="telegram-action-grid">
-                        <button type="button" class="telegram-action-card" data-telegram-feature-open data-feature-title="Найти площадку">
+                        <button type="button" class="telegram-action-card" data-telegram-venue-search-open>
                             <i class="ti ti-map-pin-search" aria-hidden="true"></i>
                             <span>Найти площадку</span>
                         </button>
@@ -118,6 +118,51 @@
                 <h2 id="telegram-feature-title" data-telegram-feature-title>Новый раздел</h2>
                 <p>Функционал находится в разработке и появится в одном из следующих обновлений.</p>
                 <button type="button" class="btn btn--primary btn--sm" data-telegram-feature-close>Понятно</button>
+            </section>
+        </div>
+
+        <div class="telegram-feature-modal" hidden data-telegram-venue-search-modal>
+            <button type="button" class="telegram-feature-modal__backdrop" aria-label="Закрыть окно" data-telegram-venue-search-close></button>
+            <section class="telegram-feature-modal__dialog telegram-feature-modal__dialog--form" role="dialog" aria-modal="true" aria-labelledby="telegram-venue-search-title">
+                <button type="button" class="telegram-feature-modal__close" aria-label="Закрыть окно" data-telegram-venue-search-close></button>
+                <p class="telegram-feature-modal__eyebrow">Площадки</p>
+                <h2 id="telegram-venue-search-title">Найти площадку</h2>
+
+                <form method="GET" action="{{ route('venues.search') }}" class="telegram-venue-search" data-telegram-venue-search-form>
+                    <label class="telegram-venue-form__field" for="telegramVenueSearchQuery">
+                        <span>Поиск</span>
+                        <input id="telegramVenueSearchQuery" type="search" name="query" placeholder="Название, адрес или описание">
+                    </label>
+
+                    <div class="telegram-venue-search__filters">
+                        <label class="telegram-venue-form__field" for="telegramVenueSearchType">
+                            <span>Тип</span>
+                            <select id="telegramVenueSearchType" name="type">
+                                <option value="">Все типы</option>
+                                @foreach($venueTypes as $type)
+                                    <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="telegram-venue-form__field" for="telegramVenueSearchMetro">
+                            <span>Метро</span>
+                            <select id="telegramVenueSearchMetro" name="metro_station_id">
+                                <option value="">Любое метро</option>
+                                @foreach($metros as $metro)
+                                    <option value="{{ $metro->id }}">
+                                        {{ $metro->name }}@if($metro->lineName) ({{ $metro->lineName }})@endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="telegram-venue-form__message" role="status" data-form-message></div>
+                    <button type="submit" class="btn btn--primary btn--sm">Найти</button>
+                </form>
+
+                <div class="telegram-venue-search__results" aria-live="polite" data-telegram-venue-search-results></div>
             </section>
         </div>
 
