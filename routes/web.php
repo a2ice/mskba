@@ -133,6 +133,8 @@ Route::prefix('venues')->group(function () {
     Route::get('/{alias}/status', [VenueController::class, 'status'])
         ->name('venues.status')
         ->defaults('breadcrumb', 'Статус площадки');
+    Route::get('/{alias}/moderation-state', [VenueController::class, 'moderationState'])
+        ->name('venues.moderation.state');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
     Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
     Route::put('/{alias}', [VenueController::class, 'update'])->name('venues.update');

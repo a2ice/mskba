@@ -427,6 +427,85 @@
     color: #ff9d9d;
 }
 
+.telegram-venue-moderation-state {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 750;
+}
+
+.telegram-venue-moderation-history {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.telegram-venue-moderation-history[hidden] {
+    display: none;
+}
+
+.telegram-venue-moderation-history h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 18px;
+}
+
+.telegram-venue-moderation-history__list,
+.telegram-venue-moderation-request {
+    display: grid;
+    gap: 10px;
+}
+
+.telegram-venue-moderation-request {
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    padding: 13px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.telegram-venue-moderation-request__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.telegram-venue-moderation-request__header strong,
+.telegram-venue-moderation-request__status {
+    font-size: 12px;
+}
+
+.telegram-venue-moderation-request__status--pending {
+    color: var(--accent-text);
+}
+
+.telegram-venue-moderation-request__status--approved {
+    color: #8ce0ae;
+}
+
+.telegram-venue-moderation-request__status--rejected {
+    color: #ff9d9d;
+}
+
+.telegram-venue-moderation-message {
+    border-left: 3px solid var(--accent-text);
+    padding: 8px 10px;
+    background: rgba(255, 115, 28, 0.09);
+}
+
+.telegram-venue-moderation-message--moderator {
+    border-left-color: #63b8e8;
+    background: rgba(99, 184, 232, 0.09);
+}
+
+.telegram-venue-moderation-message small {
+    color: var(--muted);
+}
+
+.telegram-venue-moderation-message p {
+    margin: 4px 0 0;
+    color: #fff;
+}
+
 .telegram-feature-modal__dialog h2 {
     margin: 6px 44px 12px 0;
     font-size: clamp(26px, 7vw, 36px);

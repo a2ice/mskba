@@ -189,6 +189,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const createForm = createModal?.querySelector('[data-telegram-venue-create-form]');
         const editForm = editModal?.querySelector('[data-telegram-venue-edit-form]');
         const moderationForm = editModal?.querySelector('[data-telegram-venue-moderation-form]');
+        const moderationStatus = editModal?.querySelector('[data-telegram-venue-moderation-status]');
+        const moderationHistory = editModal?.querySelector('[data-telegram-venue-moderation-history]');
+        const moderationHistoryList = editModal?.querySelector('[data-telegram-venue-moderation-history-list]');
+        let moderationStateUrl = null;
 
         if (!openButton || !createModal || !editModal || !createForm || !editForm || !moderationForm) {
             return;
@@ -216,10 +220,12 @@ document.addEventListener('DOMContentLoaded', () => {
             copyFormValues(createForm, editForm);
             editForm.action = payload.venue.update_url;
             moderationForm.action = payload.venue.moderation_url;
+            moderationStateUrl = payload.venue.moderation_state_url;
             updateMetroSummary(editForm, payload.venue.metro);
             closeModal(createModal);
             openModal(editModal);
             showMessage(editForm, payload.message, 'success');
+            await refreshModerationState();
         });
 
         editForm.addEventListener('submit', async (event) => {
@@ -229,15 +235,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (payload) {
                 updateMetroSummary(editForm, payload.venue.metro);
             }
+
+            await refreshModerationState();
         });
 
         moderationForm.addEventListener('submit', async (event) => {
             event.preventDefault();
-            const payload = await submitForm(moderationForm);
-
-            if (payload) {
-                moderationForm.querySelector('button[type="submit"]').disabled = true;
-            }
+            await submitForm(moderationForm);
+            await refreshModerationState();
         });
 
         document.addEventListener('keydown', (event) => {
@@ -261,6 +266,76 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modal) {
                 modal.hidden = true;
             }
+        }
+
+        async function refreshModerationState() {
+            if (!moderationStateUrl) {
+                return;
+            }
+
+            try {
+                const response = await fetch(moderationStateUrl, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const payload = await response.json().catch(() => ({}));
+
+                if (!response.ok || !payload.moderation) {
+                    return;
+                }
+
+                renderModerationState(payload.moderation);
+            } catch (error) {
+                // Submit feedback is already visible; state will be retried after the next action.
+            }
+        }
+
+        function renderModerationState(moderation) {
+            const button = moderationForm.querySelector('button[type="submit"]');
+            button.disabled = !moderation.can_submit;
+            button.textContent = moderation.can_submit ? 'Отправить на модерацию' : moderation.label;
+            moderationStatus.textContent = `Статус: ${moderation.label}`;
+
+            const requests = Array.isArray(moderation.history) ? moderation.history : [];
+            moderationHistory.hidden = requests.length === 0;
+            moderationHistoryList.replaceChildren(...requests.map(renderModerationRequest));
+        }
+
+        function renderModerationRequest(request) {
+            const article = document.createElement('article');
+            const header = document.createElement('header');
+            const title = document.createElement('strong');
+            const status = document.createElement('span');
+            const messages = document.createElement('div');
+
+            article.className = 'telegram-venue-moderation-request';
+            header.className = 'telegram-venue-moderation-request__header';
+            title.textContent = `Запрос №${request.id} · ${request.submitted_at || 'Дата не указана'}`;
+            status.textContent = request.status_label;
+            status.className = `telegram-venue-moderation-request__status telegram-venue-moderation-request__status--${request.status}`;
+            header.append(title, status);
+
+            const requestMessages = Array.isArray(request.messages) ? request.messages : [];
+            if (requestMessages.length === 0) {
+                const empty = document.createElement('p');
+                empty.textContent = 'Запрос отправлен без комментария.';
+                messages.append(empty);
+            } else {
+                requestMessages.forEach((message) => {
+                    const item = document.createElement('div');
+                    const meta = document.createElement('small');
+                    const text = document.createElement('p');
+
+                    item.className = `telegram-venue-moderation-message telegram-venue-moderation-message--${message.sender_label === 'Вы' ? 'owner' : 'moderator'}`;
+                    meta.textContent = `${message.sender_label} (${message.sender_username}) · ${message.created_at || '—'}`;
+                    text.textContent = message.message;
+                    item.append(meta, text);
+                    messages.append(item);
+                });
+            }
+
+            article.append(header, messages);
+            return article;
         }
 
         async function submitForm(form) {
