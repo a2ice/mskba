@@ -322,6 +322,22 @@
     gap: 12px;
 }
 
+.telegram-venue-search__advanced {
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.telegram-venue-search__advanced summary {
+    color: var(--accent-text);
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.telegram-venue-search__advanced[open] summary {
+    margin-bottom: 14px;
+}
+
 .telegram-venue-search__results {
     display: grid;
     gap: 10px;

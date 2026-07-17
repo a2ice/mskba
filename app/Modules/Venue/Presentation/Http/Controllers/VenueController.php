@@ -85,6 +85,7 @@ class VenueController extends Controller
                 $actors->resolveForRequest($request),
                 $request->validated(),
                 $request->locationData(),
+                $request->tagNames(),
             );
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
@@ -163,6 +164,7 @@ class VenueController extends Controller
                 actor: $actors->resolveForRequest($request),
                 data: $request->validated(),
                 locationData: $request->locationData(),
+                tagNames: $request->tagNames(),
             );
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
@@ -251,7 +253,7 @@ class VenueController extends Controller
      */
     private function venuePayload(Venue $venue): array
     {
-        $venue->loadMissing('location.address', 'location.metroStations.line');
+        $venue->loadMissing('location.address', 'location.metroStations.line', 'tags');
 
         return [
             'alias' => $venue->alias,
@@ -259,6 +261,7 @@ class VenueController extends Controller
             'type' => $venue->type->value,
             'short_description' => $venue->short_description,
             'full_description' => $venue->full_description,
+            'tags' => $venue->tags->pluck('name')->values()->all(),
             'address' => $venue->location?->address?->full_address ?? $venue->raw_address,
             'metro' => collect($venue->location?->metroStations ?? [])
                 ->map(fn ($station): array => [

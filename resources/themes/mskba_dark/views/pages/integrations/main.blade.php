@@ -134,32 +134,34 @@
                         <input id="telegramVenueSearchQuery" type="search" name="query" placeholder="Название, адрес или описание">
                     </label>
 
-                    <div class="telegram-venue-search__filters">
-                        <label class="telegram-venue-form__field" for="telegramVenueSearchType">
-                            <span>Тип</span>
-                            <select id="telegramVenueSearchType" name="type">
-                                <option value="">Все типы</option>
-                                @foreach($venueTypes as $type)
-                                    <option value="{{ $type->value }}">{{ $type->label() }}</option>
-                                @endforeach
-                            </select>
-                        </label>
+                    <details class="telegram-venue-search__advanced">
+                        <summary>Расширенные фильтры</summary>
+                        <div class="telegram-venue-search__filters">
+                            <label class="telegram-venue-form__field" for="telegramVenueSearchType">
+                                <span>Тип</span>
+                                <select id="telegramVenueSearchType" name="type">
+                                    <option value="">Все типы</option>
+                                    @foreach($venueTypes as $type)
+                                        <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
 
-                        <label class="telegram-venue-form__field" for="telegramVenueSearchMetro">
-                            <span>Метро</span>
-                            <select id="telegramVenueSearchMetro" name="metro_station_id">
-                                <option value="">Любое метро</option>
-                                @foreach($metros as $metro)
-                                    <option value="{{ $metro->id }}">
-                                        {{ $metro->name }}@if($metro->lineName) ({{ $metro->lineName }})@endif
-                                    </option>
-                                @endforeach
-                            </select>
-                        </label>
-                    </div>
+                            <label class="telegram-venue-form__field" for="telegramVenueSearchMetro">
+                                <span>Метро</span>
+                                <select id="telegramVenueSearchMetro" name="metro_station_id">
+                                    <option value="">Любое метро</option>
+                                    @foreach($metros as $metro)
+                                        <option value="{{ $metro->id }}">
+                                            {{ $metro->name }}@if($metro->lineName) ({{ $metro->lineName }})@endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        </div>
+                    </details>
 
                     <div class="telegram-venue-form__message" role="status" data-form-message></div>
-                    <button type="submit" class="btn btn--primary btn--sm">Найти</button>
                 </form>
 
                 <div class="telegram-venue-search__results" aria-live="polite" data-telegram-venue-search-results></div>

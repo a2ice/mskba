@@ -33,18 +33,24 @@ final readonly class SearchVenuesHandler
             );
         }
 
-        $needle = mb_strtolower(trim((string) $query));
+        $needle = trim((string) $query);
 
         if ($needle !== '') {
-            $venues = $venues->filter(function (VenueListItemDTO $venue) use ($needle): bool {
-                $haystack = mb_strtolower(implode(' ', array_filter([
-                    $venue->name,
-                    $venue->shortDescription,
-                    $venue->rawAddress,
-                ])));
+            $visibleVenueIds = $venues->pluck('id')->all();
+            $matchingVenueIds = Venue::query()
+                ->whereIn('id', $visibleVenueIds)
+                ->where(function ($query) use ($needle): void {
+                    $query
+                        ->where('name', 'like', '%'.$needle.'%')
+                        ->orWhere('short_description', 'like', '%'.$needle.'%')
+                        ->orWhere('raw_address', 'like', '%'.$needle.'%')
+                        ->orWhereHas('tags', fn ($query) => $query->where('name', 'like', '%'.$needle.'%'))
+                        ->orWhereHas('location.metroStations', fn ($query) => $query->where('name', 'like', '%'.$needle.'%'));
+                })
+                ->pluck('id')
+                ->all();
 
-                return str_contains($haystack, $needle);
-            });
+            $venues = $venues->whereIn('id', $matchingVenueIds);
         }
 
         if ($metroStationId !== null) {

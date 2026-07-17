@@ -4,11 +4,14 @@ namespace App\Modules\Venue\Presentation\Http\Requests;
 
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Presentation\Http\Requests\Concerns\InteractsWithVenueTags;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateVenueRequest extends FormRequest
 {
+    use InteractsWithVenueTags;
+
     public function authorize(): bool
     {
         return ! ($this->user()?->isBlocked() ?? false);
@@ -28,6 +31,7 @@ class UpdateVenueRequest extends FormRequest
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'short_description' => ['nullable', 'string', 'max:500'],
             'full_description' => ['nullable', 'string', 'max:10000'],
+            'tags' => ['nullable', 'string', 'max:1000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'array'],
             'location.raw_address' => [...$telegramRequired, 'string', 'max:1000'],
@@ -55,6 +59,11 @@ class UpdateVenueRequest extends FormRequest
             longitude: $this->nullableFloat('location.longitude'),
             metroStationIds: $this->metroStationIds(),
         );
+    }
+
+    public function withValidator($validator): void
+    {
+        $this->addVenueTagValidation($validator);
     }
 
     private function nullableString(string $key): ?string

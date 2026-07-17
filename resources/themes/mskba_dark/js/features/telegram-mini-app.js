@@ -417,7 +417,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            submit.disabled = true;
+            if (submit) {
+                submit.disabled = true;
+            }
             setMessage('Ищем площадки...', '');
 
             try {
@@ -440,7 +442,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderResults([]);
                 setMessage('Не удалось связаться с сервером. Попробуйте ещё раз.', 'error');
             } finally {
-                submit.disabled = false;
+                if (submit) {
+                    submit.disabled = false;
+                }
             }
         }
 

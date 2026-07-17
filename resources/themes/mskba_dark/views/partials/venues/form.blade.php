@@ -142,6 +142,23 @@
         @enderror
     </div>
 
+    <div class="mb-3">
+        <label for="venueTags" class="form-label">Теги</label>
+        <input
+            id="venueTags"
+            type="text"
+            name="tags"
+            class="form-control @error('tags') is-invalid @enderror"
+            value="{{ old('tags', $venue?->tags?->pluck('name')->implode(', ')) }}"
+            maxlength="1000"
+            placeholder="Например: круглосуточно, крытая, бесплатная"
+        >
+        <div class="form-text">Разделяйте теги запятыми.</div>
+        @error('tags')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+
     <div class="d-flex flex-wrap gap-3">
         <button type="submit" class="btn btn--primary btn--sm">{{ $submitLabel }}</button>
         <a href="{{ $cancelUrl }}" class="btn btn--secondary btn--sm">Отмена</a>

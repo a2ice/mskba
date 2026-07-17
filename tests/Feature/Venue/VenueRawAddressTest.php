@@ -33,6 +33,7 @@ class VenueRawAddressTest extends TestCase
                 'name' => 'Тестовая площадка',
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
                 'short_description' => 'Описание тестовой площадки',
+                'tags' => 'крытая, паркет',
                 'raw_address' => 'Москва, ул. Летниковская, 12',
             ])
             ->assertRedirect();
@@ -41,6 +42,10 @@ class VenueRawAddressTest extends TestCase
             'name' => 'Тестовая площадка',
             'alias' => 'testovaya-ploshchadka',
             'raw_address' => 'Москва, ул. Летниковская, 12',
+        ]);
+        $this->assertDatabaseHas('venue_tags', [
+            'name' => 'крытая',
+            'slug' => 'krytaya',
         ]);
     }
 

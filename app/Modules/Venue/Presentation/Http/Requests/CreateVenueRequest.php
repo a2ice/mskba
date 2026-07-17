@@ -7,11 +7,14 @@ use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Presentation\Http\Requests\Concerns\InteractsWithVenueTags;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class CreateVenueRequest extends FormRequest
 {
+    use InteractsWithVenueTags;
+
     public function authorize(): bool
     {
         return ! ($this->user()?->isBlocked() ?? false);
@@ -31,6 +34,7 @@ class CreateVenueRequest extends FormRequest
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'short_description' => ['nullable', 'string', 'max:500'],
             'full_description' => ['nullable', 'string', 'max:10000'],
+            'tags' => ['nullable', 'string', 'max:1000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'array'],
             'location.raw_address' => [...$telegramRequired, 'string', 'max:1000'],
@@ -48,6 +52,8 @@ class CreateVenueRequest extends FormRequest
 
     public function withValidator($validator): void
     {
+        $this->addVenueTagValidation($validator);
+
         $validator->after(function ($validator): void {
             $checker = app(VenueUniquenessChecker::class);
             $name = $this->nullableInputString('name');
@@ -126,6 +132,7 @@ class CreateVenueRequest extends FormRequest
             'type' => 'тип площадки',
             'short_description' => 'краткое описание',
             'full_description' => 'полное описание',
+            'tags' => 'теги',
             'raw_address' => 'адрес',
             'location.raw_address' => 'адрес',
             'location.address_selected' => 'адрес из подсказки',

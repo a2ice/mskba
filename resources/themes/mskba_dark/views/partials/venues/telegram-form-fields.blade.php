@@ -60,6 +60,13 @@
 </div>
 
 @if($includeDescriptions)
+    <label class="telegram-venue-form__field" for="{{ $fieldPrefix }}Tags">
+        <span>Теги</span>
+        <input id="{{ $fieldPrefix }}Tags" type="text" name="tags" maxlength="1000" placeholder="Например: круглосуточно, крытая, бесплатная">
+        <small>Разделяйте теги запятыми</small>
+        <small data-field-error="tags"></small>
+    </label>
+
     <label class="telegram-venue-form__field" for="{{ $fieldPrefix }}ShortDescription">
         <span>Краткое описание</span>
         <textarea id="{{ $fieldPrefix }}ShortDescription" name="short_description" rows="2" maxlength="500"></textarea>

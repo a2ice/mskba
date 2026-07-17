@@ -121,11 +121,14 @@ class TelegramMiniAppAuthTest extends TestCase
 
         Venue::factory()->create([
             'location_id' => $location->id,
-            'name' => 'Арбатская площадка',
-            'alias' => 'arbatskaya-ploshchadka',
+            'name' => 'Центральная площадка',
+            'alias' => 'tsentralnaya-ploshchadka',
             'type' => VenueTypeEnum::STREET_COURT,
             'status' => VenueStatusEnum::CONFIRMED,
             'raw_address' => 'Москва, Арбат, 10',
+        ])->tags()->create([
+            'name' => 'Круглосуточно',
+            'slug' => 'kruglosutochno',
         ]);
 
         Venue::factory()->create([
@@ -136,15 +139,21 @@ class TelegramMiniAppAuthTest extends TestCase
 
         $this
             ->getJson(route('venues.search', [
-                'query' => 'Арбат',
+                'query' => 'Круглосуточно',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'metro_station_id' => $metro->id,
             ]))
             ->assertOk()
             ->assertJsonCount(1, 'venues')
-            ->assertJsonPath('venues.0.name', 'Арбатская площадка')
+            ->assertJsonPath('venues.0.name', 'Центральная площадка')
             ->assertJsonPath('venues.0.address', 'Москва, Арбат, 10')
             ->assertJsonMissing(['name' => 'Чужая скрытая Арбатская площадка']);
+
+        $this
+            ->getJson(route('venues.search', ['query' => 'Арбатская']))
+            ->assertOk()
+            ->assertJsonCount(1, 'venues')
+            ->assertJsonPath('venues.0.name', 'Центральная площадка');
     }
 
     public function test_telegram_venue_flow_requires_suggested_address_and_returns_json_for_every_step(): void
@@ -185,11 +194,18 @@ class TelegramMiniAppAuthTest extends TestCase
         $this
             ->putJson(route('venues.update', $venue->alias), array_replace_recursive($venueData, [
                 'short_description' => 'Площадка рядом с центром',
+                'tags' => 'крытая, бесплатная',
                 'location' => ['address_selected' => '1'],
             ]))
             ->assertOk()
             ->assertJsonPath('message', 'Площадка сохранена.')
             ->assertJsonPath('venue.short_description', 'Площадка рядом с центром');
+
+        $this->assertDatabaseHas('venue_tags', [
+            'venue_id' => $venue->id,
+            'name' => 'бесплатная',
+            'slug' => 'besplatnaya',
+        ]);
 
         $this
             ->postJson(route('venues.moderation.submit', $venue->alias))

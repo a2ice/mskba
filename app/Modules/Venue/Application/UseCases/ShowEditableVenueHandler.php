@@ -22,6 +22,7 @@ final class ShowEditableVenueHandler
                 'canonicalVenue',
                 'creatorActor',
                 'location.metroStations',
+                'tags',
                 'moderationRequests' => fn ($query) => $query
                     ->with('messages')
                     ->latest('id')

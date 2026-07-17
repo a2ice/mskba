@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Application\UseCases;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Application\UseCases\CreateLocationHandler;
+use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -18,14 +19,15 @@ final class CreateAccountVenueHandler
     public function __construct(
         private readonly CreateLocationHandler $createLocation,
         private readonly VenueUniquenessChecker $uniqueness,
+        private readonly VenueTagSynchronizer $tagSynchronizer,
     ) {}
 
     /**
      * @param  array{name: string, type: string, short_description?: string|null, full_description?: string|null, raw_address?: string|null}  $data
      */
-    public function handle(?Actor $actor, array $data, ?CreateLocationDTO $locationData = null): Venue
+    public function handle(?Actor $actor, array $data, ?CreateLocationDTO $locationData = null, array $tagNames = []): Venue
     {
-        $venue = DB::transaction(function () use ($actor, $data, $locationData): Venue {
+        $venue = DB::transaction(function () use ($actor, $data, $locationData, $tagNames): Venue {
             $rawAddress = $locationData?->rawAddress ?? $data['raw_address'] ?? null;
             $type = VenueTypeEnum::from($data['type']);
 
@@ -69,7 +71,7 @@ final class CreateAccountVenueHandler
                 ? null
                 : $this->createLocation->handle($locationData);
 
-            return Venue::query()->create([
+            $venue = Venue::query()->create([
                 'created_by_actor_id' => $actor?->id,
                 'location_id' => $location?->id,
                 'name' => $data['name'],
@@ -80,6 +82,10 @@ final class CreateAccountVenueHandler
                 'full_description' => $data['full_description'] ?? null,
                 'raw_address' => $rawAddress,
             ]);
+
+            $this->tagSynchronizer->sync($venue, $tagNames);
+
+            return $venue;
         });
 
         FindVenueDuplicatesJob::dispatch($venue->id)->afterCommit();
