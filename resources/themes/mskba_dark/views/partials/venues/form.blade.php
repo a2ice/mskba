@@ -87,17 +87,29 @@
     <div class="mb-3 address-suggest" data-address-suggest>
         <label for="venueRawAddress" class="form-label">Адрес</label>
 
-        <input
-            id="venueRawAddress"
-            type="text"
-            name="location[raw_address]"
-            class="form-control input-predictive @error('location.raw_address') is-invalid @enderror"
-            value="{{ old('location.raw_address', old('raw_address', $venueAddress?->full_address ?? $venue?->raw_address)) }}"
-            placeholder="Например: Москва, ул. Летниковская, 12"
-            autocomplete="off"
-            data-address-suggest-input
-            data-address-suggest-url="{{ route('integrations.address-suggest') }}"
+        <div class="address-suggest__input-wrap">
+            <input
+                id="venueRawAddress"
+                type="text"
+                name="location[raw_address]"
+                class="form-control input-predictive @error('location.raw_address') is-invalid @enderror"
+                value="{{ old('location.raw_address', old('raw_address', $venueAddress?->full_address ?? $venue?->raw_address)) }}"
+                placeholder="Например: Москва, ул. Летниковская, 12"
+                autocomplete="off"
+                data-address-suggest-input
+                data-address-suggest-url="{{ route('integrations.address-suggest') }}"
+            >
+            <button class="address-suggest__control" type="button" aria-label="Очистить адрес" data-address-clear hidden></button>
+        </div>
+
+        <button
+            class="address-suggest__location-button"
+            type="button"
+            data-address-current-location
+            data-address-reverse-url="{{ route('integrations.address-reverse') }}"
         >
+            Я на площадке
+        </button>
 
         <input type="hidden" name="location[city]" value="{{ old('location.city', $venueAddress?->city) }}" data-address-city>
         <input type="hidden" name="location[street]" value="{{ old('location.street', $venueAddress?->street) }}" data-address-street>

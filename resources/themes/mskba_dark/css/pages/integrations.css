@@ -386,6 +386,10 @@
     font: inherit;
 }
 
+.telegram-venue-form__field .address-suggest__input-wrap input {
+    padding-right: 44px;
+}
+
 .telegram-venue-form__field .is-invalid {
     border-color: #ee6666;
 }
@@ -397,19 +401,6 @@
 
 .telegram-venue-form__location-button {
     justify-self: start;
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    padding: 8px 13px;
-    background: transparent;
-    color: var(--accent-text);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 750;
-}
-
-.telegram-venue-form__location-button:disabled {
-    cursor: wait;
-    opacity: 0.65;
 }
 
 .telegram-venue-form__metro {

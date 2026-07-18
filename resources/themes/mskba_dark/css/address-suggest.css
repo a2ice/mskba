@@ -2,6 +2,97 @@
     position: relative;
 }
 
+.address-suggest__input-wrap {
+    position: relative;
+}
+
+.address-suggest__input-wrap > [data-address-suggest-input] {
+    padding-right: 44px;
+}
+
+.address-suggest__control {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+}
+
+.address-suggest__control[hidden] {
+    display: none;
+}
+
+.address-suggest__control::before,
+.address-suggest__control::after {
+    position: absolute;
+    top: 12px;
+    left: 5px;
+    width: 16px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    content: '';
+}
+
+.address-suggest__control::before {
+    transform: rotate(45deg);
+}
+
+.address-suggest__control::after {
+    transform: rotate(-45deg);
+}
+
+.address-suggest__control:hover,
+.address-suggest__control:focus-visible {
+    color: var(--text);
+}
+
+.address-suggest__control.is-loading::before {
+    top: 4px;
+    left: 4px;
+    width: 18px;
+    height: 18px;
+    transform: none;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    background: transparent;
+    animation: address-suggest-spin 0.7s linear infinite;
+}
+
+.address-suggest__control.is-loading::after {
+    display: none;
+}
+
+@keyframes address-suggest-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.address-suggest__location-button {
+    margin-top: 8px;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 8px 13px;
+    background: transparent;
+    color: var(--accent-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.address-suggest__location-button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
 .address-suggest__list {
     background: var(--surface);
     border: 1px solid var(--line);
@@ -53,11 +144,4 @@
 .address-suggest__message {
     font-size: 12px;
     margin-top: 6px;
-}
-
-.input-predictive.is-loading {
-    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
-    background-position: 100% 0;
-    background-repeat: no-repeat;
-    background-size: 48px 100%;
 }
