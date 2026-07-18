@@ -7,6 +7,7 @@ function initAddressSuggest(container) {
     const list = container.querySelector('[data-address-suggest-list]');
     const error = container.querySelector('[data-address-suggest-error]');
     const locationButton = container.querySelector('[data-address-current-location]');
+    const clearButton = container.querySelector('[data-address-clear]');
     const metroSelect = container.closest('form')?.querySelector('[data-address-metro-select]');
 
     if (!input || !list) {
@@ -15,6 +16,8 @@ function initAddressSuggest(container) {
 
     let timer = null;
     let requestId = 0;
+
+    setAddressControlState(clearButton, input.value.trim() === '' ? 'idle' : 'clear');
 
     metroSelect?.addEventListener('change', () => {
         if (metroSelect.dataset.addressApplyingMetro === '1') {
@@ -26,6 +29,7 @@ function initAddressSuggest(container) {
 
     input.addEventListener('input', () => {
         clearTimeout(timer);
+        requestId += 1;
         clearStructuredFields(container);
         hideError(error);
 
@@ -34,17 +38,38 @@ function initAddressSuggest(container) {
         if (query === '') {
             hideList(list);
             clearAutofilledMetro(metroSelect);
+            setAddressControlState(clearButton, 'idle');
             return;
         }
 
         if (query.length < 3) {
             hideList(list);
+            setAddressControlState(clearButton, 'clear');
             return;
         }
 
+        const activeRequestId = requestId;
+        setAddressControlState(clearButton, 'loading');
         timer = setTimeout(() => {
-            fetchSuggestions(input, list, error, ++requestId, () => requestId);
+            fetchSuggestions(input, list, error, activeRequestId, () => requestId, clearButton);
         }, 350);
+    });
+
+    input.addEventListener('address-suggest:sync', () => {
+        setAddressControlState(clearButton, input.value.trim() === '' ? 'idle' : 'clear');
+    });
+
+    clearButton?.addEventListener('click', () => {
+        clearTimeout(timer);
+        requestId += 1;
+        input.value = '';
+        input.classList.remove('is-loading');
+        clearStructuredFields(container);
+        clearAutofilledMetro(metroSelect);
+        hideList(list);
+        hideError(error);
+        setAddressControlState(clearButton, 'idle');
+        input.focus();
     });
 
     document.addEventListener('click', (event) => {
@@ -76,6 +101,7 @@ function initAddressSuggest(container) {
         const initialText = locationButton.textContent;
         locationButton.disabled = true;
         locationButton.textContent = 'Определяем местоположение…';
+        setAddressControlState(clearButton, 'loading');
         hideError(error);
 
         try {
@@ -101,6 +127,7 @@ function initAddressSuggest(container) {
         } finally {
             locationButton.disabled = false;
             locationButton.textContent = initialText;
+            setAddressControlState(clearButton, input.value.trim() === '' ? 'idle' : 'clear');
         }
     });
 
@@ -109,6 +136,7 @@ function initAddressSuggest(container) {
         fillStructuredFields(container, suggestion);
         setField(container, '[data-address-selected]', '1');
         applyMetroSuggestion(metroSelect, suggestion.metro_station_ids || []);
+        setAddressControlState(clearButton, 'clear');
     }
 }
 
@@ -186,10 +214,11 @@ function locationError(code) {
     return error;
 }
 
-async function fetchSuggestions(input, list, error, requestId, currentRequestId) {
+async function fetchSuggestions(input, list, error, requestId, currentRequestId, clearButton) {
     const url = input.dataset.addressSuggestUrl;
 
     if (!url) {
+        setAddressControlState(clearButton, input.value.trim() === '' ? 'idle' : 'clear');
         return;
     }
 
@@ -230,8 +259,20 @@ async function fetchSuggestions(input, list, error, requestId, currentRequestId)
     } finally {
         if (requestId === currentRequestId()) {
             input.classList.remove('is-loading');
+            setAddressControlState(clearButton, input.value.trim() === '' ? 'idle' : 'clear');
         }
     }
+}
+
+function setAddressControlState(control, state) {
+    if (!control) {
+        return;
+    }
+
+    control.hidden = state === 'idle';
+    control.disabled = state === 'loading';
+    control.classList.toggle('is-loading', state === 'loading');
+    control.setAttribute('aria-label', state === 'loading' ? 'Загрузка адресов' : 'Очистить адрес');
 }
 
 function renderSuggestions(list, suggestions) {

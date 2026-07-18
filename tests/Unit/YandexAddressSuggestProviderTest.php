@@ -30,7 +30,7 @@ class YandexAddressSuggestProviderTest extends TestCase
         $suggestions = app(YandexAddressSuggestProvider::class)->suggest('Москва Летниковская 12');
 
         $this->assertCount(1, $suggestions);
-        $this->assertSame('Россия, Москва, Летниковская улица, 12', $suggestions[0]->label);
+        $this->assertSame('Москва, Летниковская улица, 12', $suggestions[0]->label);
         $this->assertSame('Москва', $suggestions[0]->city);
         $this->assertSame('Летниковская улица', $suggestions[0]->street);
         $this->assertSame('12', $suggestions[0]->building);
@@ -62,7 +62,7 @@ class YandexAddressSuggestProviderTest extends TestCase
         $suggestion = app(YandexAddressSuggestProvider::class)->reverse(55.728, 37.644);
 
         $this->assertNotNull($suggestion);
-        $this->assertSame('Россия, Москва, Летниковская улица, 12', $suggestion->label);
+        $this->assertSame('Москва, Летниковская улица, 12', $suggestion->label);
         Http::assertSent(fn ($request): bool => $request['geocode'] === '37.644,55.728'
             && $request['kind'] === 'house');
     }

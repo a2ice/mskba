@@ -425,6 +425,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             });
+
+            target.querySelector('[data-address-suggest-input]')
+                ?.dispatchEvent(new Event('address-suggest:sync'));
         }
 
         function updateMetroSummary(form, metroPayload = null) {

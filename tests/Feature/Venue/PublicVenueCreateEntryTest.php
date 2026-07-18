@@ -80,6 +80,9 @@ class PublicVenueCreateEntryTest extends TestCase
             ->get(route('venues.create'))
             ->assertOk()
             ->assertSee('Добавить площадку')
+            ->assertSee('data-address-clear', false)
+            ->assertSee('Я на площадке')
+            ->assertSee(route('integrations.address-reverse'), false)
             ->assertSee(route('venues.store', [], false));
 
         $this

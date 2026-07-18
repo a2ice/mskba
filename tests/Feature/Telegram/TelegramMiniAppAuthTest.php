@@ -102,6 +102,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('data-telegram-venue-create-form', false)
             ->assertSee('data-telegram-venue-edit-form', false)
             ->assertSee('data-telegram-venue-moderation-form', false)
+            ->assertSee('data-address-clear', false)
             ->assertSee('Я на площадке')
             ->assertSee(route('integrations.address-reverse'), false)
             ->assertSee('data-telegram-venue-search-form', false)

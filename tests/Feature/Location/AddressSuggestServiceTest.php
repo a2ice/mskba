@@ -86,7 +86,7 @@ class AddressSuggestServiceTest extends TestCase
         $suggestion = app(AddressSuggestService::class)->reverse(55.7351, 37.5941);
 
         $this->assertNotNull($suggestion);
-        $this->assertSame('Россия, Москва, Летниковская улица, 12', $suggestion['label']);
+        $this->assertSame('Москва, Летниковская улица, 12', $suggestion['label']);
         $this->assertSame([$nearest->id], $suggestion['metro_station_ids']);
         $this->assertTrue($suggestion['has_house']);
     }

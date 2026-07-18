@@ -152,7 +152,6 @@ final class YandexAddressSuggestProvider implements AddressSuggestProvider
             return null;
         }
 
-        $label = (string) Arr::get($meta, 'text', '');
         $country = $this->findComponent($components, ['country']);
         $city = $this->findComponent($components, ['locality'])
             ?? $this->findComponent($components, ['province', 'area']);
@@ -170,7 +169,7 @@ final class YandexAddressSuggestProvider implements AddressSuggestProvider
         [$longitude, $latitude] = $this->extractCoordinates($geo);
 
         return new AddressSuggestionDTO(
-            label: $label !== '' ? $label : trim("{$city}, {$street}, {$building}"),
+            label: implode(', ', [$city, $street, $building]),
             country: $country,
             city: $city,
             street: $street,

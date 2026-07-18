@@ -24,18 +24,21 @@
 
 <div class="telegram-venue-form__field address-suggest" data-address-suggest>
     <label for="{{ $fieldPrefix }}Address">Адрес</label>
-    <input
-        id="{{ $fieldPrefix }}Address"
-        type="text"
-        name="location[raw_address]"
-        placeholder="Начните вводить адрес"
-        autocomplete="off"
-        required
-        data-address-suggest-input
-        data-address-suggest-url="{{ route('integrations.address-suggest') }}"
-    >
+    <div class="address-suggest__input-wrap">
+        <input
+            id="{{ $fieldPrefix }}Address"
+            type="text"
+            name="location[raw_address]"
+            placeholder="Начните вводить адрес"
+            autocomplete="off"
+            required
+            data-address-suggest-input
+            data-address-suggest-url="{{ route('integrations.address-suggest') }}"
+        >
+        <button class="address-suggest__control" type="button" aria-label="Очистить адрес" data-address-clear hidden></button>
+    </div>
     <button
-        class="telegram-venue-form__location-button"
+        class="address-suggest__location-button telegram-venue-form__location-button"
         type="button"
         data-address-current-location
         data-address-reverse-url="{{ route('integrations.address-reverse') }}"
