@@ -31,13 +31,13 @@ function initAddressSuggest(container) {
         clearTimeout(timer);
         requestId += 1;
         clearStructuredFields(container);
+        clearMetroSelection(metroSelect);
         hideError(error);
 
         const query = input.value.trim();
 
         if (query === '') {
             hideList(list);
-            clearAutofilledMetro(metroSelect);
             setAddressControlState(clearButton, 'idle');
             return;
         }
@@ -65,7 +65,7 @@ function initAddressSuggest(container) {
         input.value = '';
         input.classList.remove('is-loading');
         clearStructuredFields(container);
-        clearAutofilledMetro(metroSelect);
+        clearMetroSelection(metroSelect);
         hideList(list);
         hideError(error);
         setAddressControlState(clearButton, 'idle');
@@ -170,6 +170,10 @@ function getCurrentCoordinates() {
     const locationManager = telegram?.LocationManager;
 
     if (locationManager && telegram.isVersionAtLeast?.('8.0')) {
+        if (locationManager.isInited) {
+            return requestTelegramLocation(locationManager);
+        }
+
         return new Promise((resolve, reject) => {
             locationManager.init(() => {
                 if (!locationManager.isLocationAvailable) {
@@ -177,14 +181,7 @@ function getCurrentCoordinates() {
                     return;
                 }
 
-                locationManager.getLocation((location) => {
-                    if (!location) {
-                        reject(locationError('permission_denied'));
-                        return;
-                    }
-
-                    resolve({ latitude: location.latitude, longitude: location.longitude });
-                });
+                requestTelegramLocation(locationManager).then(resolve, reject);
             });
         });
     }
@@ -204,6 +201,19 @@ function getCurrentCoordinates() {
             )),
             { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
         );
+    });
+}
+
+function requestTelegramLocation(locationManager) {
+    return new Promise((resolve, reject) => {
+        locationManager.getLocation((location) => {
+            if (!location) {
+                reject(locationError('permission_denied'));
+                return;
+            }
+
+            resolve({ latitude: location.latitude, longitude: location.longitude });
+        });
     });
 }
 
@@ -352,8 +362,8 @@ function applyMetroSuggestion(select, stationIds) {
     delete select.dataset.addressApplyingMetro;
 }
 
-function clearAutofilledMetro(select) {
-    if (!select || select.dataset.addressAutofilledMetro !== '1' || select.dataset.addressUserMetroChanged === '1') {
+function clearMetroSelection(select) {
+    if (!select) {
         return;
     }
 
@@ -368,6 +378,7 @@ function clearAutofilledMetro(select) {
     }
 
     delete select.dataset.addressAutofilledMetro;
+    delete select.dataset.addressUserMetroChanged;
 }
 
 function showError(error, message) {
