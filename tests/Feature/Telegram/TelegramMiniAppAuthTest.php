@@ -107,6 +107,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee(route('integrations.address-reverse'), false)
             ->assertSee('data-telegram-venue-search-form', false)
             ->assertSee('Название, адрес или описание')
+            ->assertSee('Все статусы')
             ->assertSee('Любое метро')
             ->assertSee('Проверьте данные и отправьте на модерацию')
             ->assertSee('telegram-app-shell')
@@ -159,6 +160,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->getJson(route('venues.search', [
                 'query' => 'КРУГЛОСУТОЧНО',
                 'type' => VenueTypeEnum::STREET_COURT->value,
+                'status' => VenueStatusEnum::CONFIRMED->value,
                 'metro_station_id' => $metro->id,
                 'requires_payment' => '0',
                 'requires_booking_approval' => '0',
@@ -167,6 +169,8 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertJsonCount(1, 'venues')
             ->assertJsonPath('venues.0.name', 'Центральная площадка')
             ->assertJsonPath('venues.0.address', 'Москва, Арбат, 10')
+            ->assertJsonPath('venues.0.status', VenueStatusEnum::CONFIRMED->label())
+            ->assertJsonPath('venues.0.is_confirmed', true)
             ->assertJsonPath('venues.0.requires_payment', false)
             ->assertJsonPath('venues.0.requires_booking_approval', false)
             ->assertJsonPath('venues.0.has_free_access', true)

@@ -529,12 +529,14 @@ document.addEventListener('DOMContentLoaded', () => {
         function renderResults(venues) {
             results.replaceChildren(...venues.map((venue) => {
                 const card = document.createElement('a');
+                const headingRow = document.createElement('div');
                 const heading = document.createElement('strong');
                 const meta = document.createElement('span');
                 const description = document.createElement('span');
 
                 card.className = 'telegram-venue-search-card';
                 card.href = venue.url;
+                headingRow.className = 'telegram-venue-search-card__heading';
                 heading.textContent = venue.name;
                 meta.textContent = [
                     venue.type,
@@ -544,7 +546,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     venue.address,
                 ].filter(Boolean).join(' · ');
                 description.textContent = venue.description || '';
-                card.append(heading, meta);
+                headingRow.append(heading);
+
+                if (venue.is_confirmed) {
+                    const statusBadge = document.createElement('span');
+
+                    statusBadge.className = 'telegram-venue-search-card__status';
+                    statusBadge.textContent = '✓';
+                    statusBadge.title = venue.status;
+                    statusBadge.setAttribute('aria-label', venue.status);
+                    headingRow.append(statusBadge);
+                }
+
+                card.append(headingRow, meta);
 
                 if (description.textContent) {
                     card.append(description);

@@ -165,6 +165,16 @@
                                 </select>
                             </label>
 
+                            <label class="telegram-venue-form__field" for="telegramVenueSearchStatus">
+                                <span>Статус</span>
+                                <select id="telegramVenueSearchStatus" name="status">
+                                    <option value="">Все статусы</option>
+                                    @foreach($venueStatuses as $status)
+                                        <option value="{{ $status->value }}">{{ $status->label() }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+
                             <label class="telegram-venue-form__field" for="telegramVenueSearchMetro">
                                 <span>Метро</span>
                                 <select id="telegramVenueSearchMetro" name="metro_station_id">

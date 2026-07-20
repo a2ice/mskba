@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Application\UseCases;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Support\Text\CyrillicTransliterator;
@@ -25,6 +26,7 @@ final readonly class SearchVenuesHandler
         ?Actor $actor,
         ?string $query = null,
         ?VenueTypeEnum $type = null,
+        ?VenueStatusEnum $status = null,
         ?int $metroStationId = null,
         ?bool $requiresPayment = null,
         ?bool $requiresBookingApproval = null,
@@ -35,6 +37,12 @@ final readonly class SearchVenuesHandler
         if ($type !== null) {
             $venues = $venues->filter(
                 fn (VenueListItemDTO $venue): bool => $venue->type === $type->label(),
+            );
+        }
+
+        if ($status !== null) {
+            $venues = $venues->filter(
+                fn (VenueListItemDTO $venue): bool => $venue->status === $status->label(),
             );
         }
 

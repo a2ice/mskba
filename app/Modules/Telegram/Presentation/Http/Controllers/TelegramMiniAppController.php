@@ -5,6 +5,7 @@ namespace App\Modules\Telegram\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Telegram\Application\UseCases\AuthenticateTelegramMiniAppUserHandler;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,7 @@ final class TelegramMiniAppController extends Controller
         return ThemeResolver::page('integrations.main', [
             'telegramBotUsername' => config('telegram.bot_username'),
             'venueTypes' => VenueTypeEnum::cases(),
+            'venueStatuses' => VenueStatusEnum::cases(),
             'metros' => Schema::hasTable('metro_stations') ? $listMetrostations->handle() : [],
         ]);
     }

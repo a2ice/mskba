@@ -360,6 +360,27 @@
     border-color: var(--accent-text);
 }
 
+.telegram-venue-search-card__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.telegram-venue-search-card .telegram-venue-search-card__status {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border: 1px solid #38c779;
+    border-radius: 50%;
+    color: #38c779;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1;
+}
+
 .telegram-venue-search-card span {
     color: var(--muted);
     font-size: 13px;
