@@ -703,12 +703,16 @@ body.nav-shown .nav-hamburger > span:last-child {
         font-size: 11px;
     }
 
-    .page-breadcrumbs__item:not(:first-child):not(:last-child) {
-        display: none;
+    .page-breadcrumbs__list {
+        flex-wrap: wrap;
+        row-gap: 6px;
     }
 
     .page-breadcrumbs__current {
-        max-width: 62vw;
+        overflow: visible;
+        max-width: 100%;
+        text-overflow: clip;
+        white-space: normal;
     }
 }
 

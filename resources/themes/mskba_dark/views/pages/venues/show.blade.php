@@ -37,9 +37,9 @@
     @if(!empty($venue))
         <div class="section-sidebar-block">
             <h2 class="section-sidebar-block__title">Площадка</h2>
-            <nav class="venue-side-nav" aria-label="Разделы площадки">
+            <nav class="venue-side-nav" aria-label="Разделы площадки" data-venue-mobile-nav>
                 @foreach($venue->sections as $section)
-                    <a href="#{{ $section['id'] }}" @class(['venue-side-nav__link', 'is-muted' => ! $section['isAvailable']])>
+                    <a href="#{{ $section['id'] }}" @class(['venue-side-nav__link', 'is-muted' => ! $section['isAvailable']]) data-venue-anchor-link>
                         <span>{{ $section['label'] }}</span>
                         @if(! $section['isAvailable'])
                             <span class="venue-side-nav__badge">скоро</span>

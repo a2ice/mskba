@@ -63,9 +63,9 @@ function initVenueAnchors() {
         });
     });
 
-    const sections = links
+    const sections = [...new Set(links
         .map((link) => document.querySelector(link.getAttribute('href') || ''))
-        .filter(Boolean);
+        .filter(Boolean))];
 
     if (sections.length === 0 || !('IntersectionObserver' in window)) {
         return;
@@ -81,7 +81,16 @@ function initVenueAnchors() {
         }
 
         links.forEach((link) => {
-            link.classList.toggle('is-active', link.getAttribute('href') === `#${visible.target.id}`);
+            const isActive = link.getAttribute('href') === `#${visible.target.id}`;
+
+            link.classList.toggle('is-active', isActive);
+
+            if (isActive && link.closest('[data-venue-mobile-nav]') && window.matchMedia('(max-width: 900px)').matches) {
+                const navigation = link.closest('[data-venue-mobile-nav]');
+                const targetLeft = link.offsetLeft - ((navigation.clientWidth - link.offsetWidth) / 2);
+
+                navigation.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+            }
         });
     }, {
         rootMargin: '-30% 0px -55% 0px',
