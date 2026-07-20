@@ -83,6 +83,12 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('Добавить площадку')
             ->assertSee('data-address-clear', false)
             ->assertSee('Я на площадке')
+            ->assertDontSee('Краткое описание')
+            ->assertDontSee('Полное описание')
+            ->assertDontSee('Теги')
+            ->assertSee('Ближайшее метро')
+            ->assertSee('Подставится после выбора адреса')
+            ->assertSeeInOrder(['data-address-suggest-list', 'data-address-current-location'], false)
             ->assertSee(route('integrations.address-reverse'), false)
             ->assertSee(route('venues.store', [], false));
 
@@ -107,15 +113,14 @@ class PublicVenueCreateEntryTest extends TestCase
             'status' => UserStatusEnum::CONFIRMED,
         ]);
 
-        $this
+        $response = $this
             ->actingAs($user)
             ->post(route('venues.store'), [
                 'name' => 'Публичная площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => 'Описание публичной площадки',
                 'location' => $this->locationPayload('Москва, Тестовая улица, 1'),
-            ])
-            ->assertRedirect();
+            ]);
 
         $this->assertDatabaseHas('venues', [
             'name' => 'Публичная площадка',
@@ -123,6 +128,7 @@ class PublicVenueCreateEntryTest extends TestCase
         ]);
 
         $venue = Venue::query()->where('name', 'Публичная площадка')->firstOrFail();
+        $response->assertRedirect(route('venues.edit', $venue->routeIdentifier()));
         $actor = $venue->creatorActor()->firstOrFail();
 
         $this->assertSame($user->id, $actor->user_id);
@@ -142,6 +148,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertRedirect();
 
         $venue = Venue::query()->where('name', 'Гостевая площадка')->firstOrFail();
+        $response->assertRedirect(route('venues.edit', $venue->routeIdentifier()));
 
         $actor = $venue->creatorActor()->firstOrFail();
 
@@ -150,9 +157,12 @@ class PublicVenueCreateEntryTest extends TestCase
 
         $this
             ->withCookie('mskba_browser_fp', $response->getCookie('mskba_browser_fp')->getValue())
-            ->get(route('venues.show', $venue->alias))
+            ->get(route('venues.edit', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Гостевая площадка');
+            ->assertSee('Гостевая площадка')
+            ->assertSee('Краткое описание')
+            ->assertSee('Полное описание')
+            ->assertSee('Теги');
     }
 
     public function test_guest_created_unconfirmed_venue_is_listed_only_for_same_actor(): void

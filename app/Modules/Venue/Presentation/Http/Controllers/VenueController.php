@@ -115,8 +115,8 @@ class VenueController extends Controller
         }
 
         return redirect()
-            ->route('venues.show', $venue->routeIdentifier())
-            ->with('status', 'Площадка добавлена и ожидает подтверждения.');
+            ->route('venues.edit', $venue->routeIdentifier())
+            ->with('status', 'Площадка создана. Проверьте и дополните данные.');
     }
 
     public function show(

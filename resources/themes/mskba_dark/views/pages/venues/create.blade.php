@@ -8,7 +8,7 @@
     'sectionId' => 'venues',
     'sectionClass' => 'venues-section',
     'contentTitle' => $title,
-    'contentSubtitle' => 'Находите и добавляйте баскетбольные площадки по всей Москве и области.',
+    'contentSubtitle' => 'Укажите основные данные. Описание, теги и другие сведения можно добавить на следующем шаге.',
     'sidebarLabel' => 'Навигация площадок',
 ])
 
@@ -29,5 +29,6 @@
         'types' => $types,
         'action' => route('venues.store'),
         'cancelUrl' => route('venues'),
+        'compactCreate' => true,
     ])
 @endsection

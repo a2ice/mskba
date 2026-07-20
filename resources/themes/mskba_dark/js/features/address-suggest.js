@@ -8,7 +8,9 @@ function initAddressSuggest(container) {
     const error = container.querySelector('[data-address-suggest-error]');
     const locationButton = container.querySelector('[data-address-current-location]');
     const clearButton = container.querySelector('[data-address-clear]');
-    const metroSelect = container.closest('form')?.querySelector('[data-address-metro-select]');
+    const form = container.closest('form');
+    const metroSelect = form?.querySelector('[data-address-metro-select]');
+    const metroSummary = form?.querySelector('[data-address-metro-summary]');
 
     if (!input || !list) {
         return;
@@ -32,6 +34,7 @@ function initAddressSuggest(container) {
         requestId += 1;
         clearStructuredFields(container);
         clearMetroSelection(metroSelect);
+        resetMetroSummary(metroSummary);
         hideError(error);
 
         const query = input.value.trim();
@@ -66,6 +69,7 @@ function initAddressSuggest(container) {
         input.classList.remove('is-loading');
         clearStructuredFields(container);
         clearMetroSelection(metroSelect);
+        resetMetroSummary(metroSummary);
         hideList(list);
         hideError(error);
         setAddressControlState(clearButton, 'idle');
@@ -136,7 +140,26 @@ function initAddressSuggest(container) {
         fillStructuredFields(container, suggestion);
         setField(container, '[data-address-selected]', '1');
         applyMetroSuggestion(metroSelect, suggestion.metro_station_ids || []);
+        updateMetroSummary(metroSelect, metroSummary);
         setAddressControlState(clearButton, 'clear');
+    }
+}
+
+function updateMetroSummary(select, summary) {
+    if (!summary) {
+        return;
+    }
+
+    const labels = Array.from(select?.selectedOptions || [])
+        .map((option) => option.textContent.trim())
+        .filter(Boolean);
+
+    summary.textContent = labels.length ? labels.join(', ') : 'Метро рядом не найдено';
+}
+
+function resetMetroSummary(summary) {
+    if (summary) {
+        summary.textContent = 'Подставится после выбора адреса';
     }
 }
 

@@ -4,6 +4,7 @@
     $cancelUrl = $cancelUrl ?? route('venues');
     $method = $method ?? 'POST';
     $submitLabel = $submitLabel ?? 'Добавить';
+    $compactCreate = $compactCreate ?? false;
     $venue = $venue ?? null;
     $venueAddress = $venue?->location?->address;
     $selectedMetroIds = collect(old(
@@ -56,8 +57,10 @@
         @enderror
     </div>
 
-    <div class="mb-3">
+    <div class="mb-3 @if($compactCreate) d-none @endif">
+        @unless($compactCreate)
         <label for="metro_station" class="form-label">Ближайшее метро</label>
+        @endunless
         <select
             id="metro_station"
             name="location[metro_station_ids][]"
@@ -76,12 +79,14 @@
                 </option>
             @endforeach
         </select>
-        @error('location.metro_station_ids')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
-        @error('location.metro_station_ids.*')
-            <div class="invalid-feedback">{{ $message }}</div>
-        @enderror
+        @unless($compactCreate)
+            @error('location.metro_station_ids')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+            @error('location.metro_station_ids.*')
+                <div class="invalid-feedback">{{ $message }}</div>
+            @enderror
+        @endunless
     </div>
 
     <div class="mb-3 address-suggest" data-address-suggest>
@@ -101,6 +106,7 @@
                 data-address-suggest-url="{{ route('integrations.address-suggest') }}"
             >
             <button class="address-suggest__control" type="button" aria-label="Очистить адрес" data-address-clear hidden></button>
+            <div class="address-suggest__list d-none" data-address-suggest-list></div>
         </div>
 
         <button
@@ -120,7 +126,6 @@
         <input type="hidden" name="location[latitude]" value="{{ old('location.latitude', $venueAddress?->latitude) }}" data-address-latitude>
         <input type="hidden" name="location[longitude]" value="{{ old('location.longitude', $venueAddress?->longitude) }}" data-address-longitude>
 
-        <div class="address-suggest__list d-none" data-address-suggest-list></div>
         <div class="address-suggest__message text-danger d-none" data-address-suggest-error></div>
 
         @error('location.raw_address')
@@ -128,6 +133,14 @@
         @enderror
     </div>
 
+    @if($compactCreate)
+        <div class="venue-form__metro-summary">
+            <span>Ближайшее метро</span>
+            <strong data-address-metro-summary>Подставится после выбора адреса</strong>
+        </div>
+    @endif
+
+    @unless($compactCreate)
     <div class="mb-3">
         <label for="venueShortDescription" class="form-label">Краткое описание</label>
         <textarea
@@ -155,7 +168,6 @@
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>
-
     <div class="mb-3">
         <label for="venueTags" class="form-label">Теги</label>
         <input
@@ -172,6 +184,7 @@
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
     </div>
+    @endunless
 
     <div class="d-flex flex-wrap gap-3">
         <button type="submit" class="btn btn--primary btn--sm">{{ $submitLabel }}</button>

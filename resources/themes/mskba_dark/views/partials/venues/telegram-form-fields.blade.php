@@ -36,6 +36,7 @@
             data-address-suggest-url="{{ route('integrations.address-suggest') }}"
         >
         <button class="address-suggest__control" type="button" aria-label="Очистить адрес" data-address-clear hidden></button>
+        <div class="address-suggest__list d-none" data-address-suggest-list></div>
     </div>
     <button
         class="address-suggest__location-button telegram-venue-form__location-button"
@@ -59,7 +60,6 @@
         @endforeach
     </select>
 
-    <div class="address-suggest__list d-none" data-address-suggest-list></div>
     <div class="address-suggest__message text-danger d-none" data-address-suggest-error></div>
     <small data-field-error="location.raw_address"></small>
     <small data-field-error="location.address_selected"></small>
