@@ -22,7 +22,7 @@
     <small data-field-error="type"></small>
 </label>
 
-<div class="telegram-venue-form__field address-suggest" data-address-suggest>
+<div class="telegram-venue-form__field address-suggest" data-address-suggest data-address-proximity-url="{{ route('venues.proximity-check') }}">
     <label for="{{ $fieldPrefix }}Address">Адрес</label>
     <div class="address-suggest__input-wrap">
         <input
@@ -38,14 +38,17 @@
         <button class="address-suggest__control" type="button" aria-label="Очистить адрес" data-address-clear hidden></button>
         <div class="address-suggest__list d-none" data-address-suggest-list></div>
     </div>
-    <button
-        class="address-suggest__location-button telegram-venue-form__location-button"
-        type="button"
-        data-address-current-location
-        data-address-reverse-url="{{ route('integrations.address-reverse') }}"
-    >
-        Я на площадке
-    </button>
+    <div class="address-suggest__location-row">
+        <button
+            class="address-suggest__location-button telegram-venue-form__location-button"
+            type="button"
+            data-address-current-location
+            data-address-reverse-url="{{ route('integrations.address-reverse') }}"
+        >
+            Я на площадке
+        </button>
+        <span class="address-suggest__proximity-warning" role="status" data-address-proximity-warning hidden></span>
+    </div>
     <input type="hidden" name="location[address_selected]" data-address-selected>
     <input type="hidden" name="location[city]" data-address-city>
     <input type="hidden" name="location[street]" data-address-street>

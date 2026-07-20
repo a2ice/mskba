@@ -154,7 +154,7 @@ class VenueModerationWorkflowTest extends TestCase
             ->get(route('admin.venues'))
             ->assertOk()
             ->assertSee('От пользователя ('.($owner->username ?? $owner->email ?? 'гость').')')
-            ->assertSee('От модератора ('.($admin->username ?? $admin->email).')');
+            ->assertSee('От модератора ('.($admin->username ?? $admin->email ?? 'гость').')');
 
         $this
             ->actingAs($owner)
@@ -167,7 +167,7 @@ class VenueModerationWorkflowTest extends TestCase
             ->assertSee('Вы ('.($owner->username ?? $owner->email ?? 'гость').')')
             ->assertSee('Проверьте, пожалуйста.')
             ->assertSee('Модератор')
-            ->assertSee('Модератор ('.($admin->username ?? $admin->email).')')
+            ->assertSee('Модератор ('.($admin->username ?? $admin->email ?? 'гость').')')
             ->assertSee('Исправьте опечатку в адресе.')
             ->assertSeeInOrder([
                 'Исправьте опечатку в адресе.',

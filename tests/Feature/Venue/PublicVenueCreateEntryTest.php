@@ -8,6 +8,8 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -89,6 +91,8 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('Ближайшее метро')
             ->assertSee('Подставится после выбора адреса')
             ->assertSeeInOrder(['data-address-suggest-list', 'data-address-current-location'], false)
+            ->assertSee('data-address-proximity-warning', false)
+            ->assertSee(route('venues.proximity-check'), false)
             ->assertSee(route('integrations.address-reverse'), false)
             ->assertSee(route('venues.store', [], false));
 
@@ -105,6 +109,48 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertOk()
             ->assertSee('Добавить площадку')
             ->assertSee(route('venues.store', [], false));
+    }
+
+    public function test_proximity_check_warns_only_for_confirmed_venue_of_same_type_within_strong_radius(): void
+    {
+        $address = Address::factory()->create([
+            'latitude' => 55.751244,
+            'longitude' => 37.618423,
+        ]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
+
+        Venue::factory()->create([
+            'location_id' => $location->id,
+            'type' => VenueTypeEnum::STREET_COURT,
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+
+        $this->getJson(route('venues.proximity-check', [
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'latitude' => 55.7513,
+            'longitude' => 37.6184,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('has_conflict', true)
+            ->assertJsonPath('radius_meters', 50)
+            ->assertJsonPath('message', 'По этому адресу или рядом уже есть подтверждённая площадка такого типа.');
+
+        $this->getJson(route('venues.proximity-check', [
+            'type' => VenueTypeEnum::SPORTS_HALL->value,
+            'latitude' => 55.7513,
+            'longitude' => 37.6184,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('has_conflict', false)
+            ->assertJsonPath('message', null);
+
+        $this->getJson(route('venues.proximity-check', [
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'latitude' => 55.7530,
+            'longitude' => 37.6184,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('has_conflict', false);
     }
 
     public function test_confirmed_user_can_submit_venue_from_public_create_page(): void

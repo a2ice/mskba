@@ -77,7 +77,6 @@
 }
 
 .address-suggest__location-button {
-    margin-top: 8px;
     border: 1px solid var(--accent);
     border-radius: 999px;
     padding: 8px 13px;
@@ -86,6 +85,24 @@
     font: inherit;
     font-size: 13px;
     font-weight: 750;
+}
+
+.address-suggest__location-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.address-suggest__proximity-warning {
+    color: #ff9a65;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+.address-suggest__proximity-warning[hidden] {
+    display: none;
 }
 
 .address-suggest__location-button:disabled {

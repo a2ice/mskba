@@ -129,6 +129,9 @@ Route::prefix('venues')->group(function () {
         ->defaults('breadcrumb', 'Добавить площадку');
     Route::get('/search', [VenueController::class, 'search'])
         ->name('venues.search');
+    Route::get('/proximity-check', [VenueController::class, 'proximityCheck'])
+        ->middleware('throttle:30,1')
+        ->name('venues.proximity-check');
     Route::post('/', [VenueController::class, 'store'])
         ->name('venues.store');
     Route::get('/{alias}/status', [VenueController::class, 'status'])

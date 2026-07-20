@@ -89,7 +89,12 @@
         @endunless
     </div>
 
-    <div class="mb-3 address-suggest" data-address-suggest>
+    <div
+        class="mb-3 address-suggest"
+        data-address-suggest
+        data-address-proximity-url="{{ route('venues.proximity-check') }}"
+        @if($venue) data-address-proximity-except-venue-id="{{ $venue->id }}" @endif
+    >
         <label for="venueRawAddress" class="form-label">Адрес</label>
 
         <div class="address-suggest__input-wrap">
@@ -109,14 +114,17 @@
             <div class="address-suggest__list d-none" data-address-suggest-list></div>
         </div>
 
-        <button
-            class="address-suggest__location-button"
-            type="button"
-            data-address-current-location
-            data-address-reverse-url="{{ route('integrations.address-reverse') }}"
-        >
-            Я на площадке
-        </button>
+        <div class="address-suggest__location-row">
+            <button
+                class="address-suggest__location-button"
+                type="button"
+                data-address-current-location
+                data-address-reverse-url="{{ route('integrations.address-reverse') }}"
+            >
+                Я на площадке
+            </button>
+            <span class="address-suggest__proximity-warning" role="status" data-address-proximity-warning hidden></span>
+        </div>
 
         <input type="hidden" name="location[address_selected]" value="{{ old('location.address_selected', $venueAddress !== null ? '1' : '') }}" data-address-selected>
         <input type="hidden" name="location[city]" value="{{ old('location.city', $venueAddress?->city) }}" data-address-city>

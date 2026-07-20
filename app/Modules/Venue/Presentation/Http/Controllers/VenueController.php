@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
+use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
@@ -29,6 +30,34 @@ use Illuminate\Validation\Rule;
 
 class VenueController extends Controller
 {
+    public function proximityCheck(Request $request, VenueProximityService $proximity): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => ['required', Rule::enum(VenueTypeEnum::class)],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'except_venue_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $radiusMeters = $proximity->strongRadiusMeters();
+        $nearest = $proximity->nearestToCoordinates(
+            type: VenueTypeEnum::from($validated['type']),
+            latitude: (float) $validated['latitude'],
+            longitude: (float) $validated['longitude'],
+            radiusMeters: $radiusMeters,
+            statuses: [VenueStatusEnum::CONFIRMED],
+            exceptVenueId: isset($validated['except_venue_id']) ? (int) $validated['except_venue_id'] : null,
+        );
+
+        return response()->json([
+            'has_conflict' => $nearest !== null,
+            'radius_meters' => $radiusMeters,
+            'distance_meters' => $nearest['distance_meters'] ?? null,
+            'message' => $nearest === null
+                ? null
+                : 'По этому адресу или рядом уже есть подтверждённая площадка такого типа.',
+        ]);
+    }
+
     public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response
     {
         $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request));

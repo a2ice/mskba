@@ -40,6 +40,34 @@ final class VenueProximityService
 
     /**
      * @param  array<int, VenueStatusEnum>  $statuses
+     * @return array{venue: Venue, distance_meters: int}|null
+     */
+    public function nearestToCoordinates(
+        VenueTypeEnum $type,
+        float $latitude,
+        float $longitude,
+        int $radiusMeters,
+        array $statuses = [],
+        ?int $exceptVenueId = null,
+    ): ?array {
+        return $this->query($type, $statuses, null, $exceptVenueId)
+            ->get()
+            ->map(function (Venue $venue) use ($latitude, $longitude): ?array {
+                $distance = $this->distanceToCoordinates($venue, $latitude, $longitude);
+
+                return $distance === null ? null : [
+                    'venue' => $venue,
+                    'distance_meters' => $distance,
+                ];
+            })
+            ->filter()
+            ->filter(fn (array $candidate): bool => $candidate['distance_meters'] <= $radiusMeters)
+            ->sortBy('distance_meters')
+            ->first();
+    }
+
+    /**
+     * @param  array<int, VenueStatusEnum>  $statuses
      * @return Collection<int, Venue>
      */
     public function venuesNearVenue(Venue $venue, int $radiusMeters, array $statuses = []): Collection

@@ -11,6 +11,9 @@ function initAddressSuggest(container) {
     const form = container.closest('form');
     const metroSelect = form?.querySelector('[data-address-metro-select]');
     const metroSummary = form?.querySelector('[data-address-metro-summary]');
+    const typeSelect = form?.querySelector('[name="type"]');
+    const proximityWarning = container.querySelector('[data-address-proximity-warning]');
+    const proximityUrl = container.dataset.addressProximityUrl;
 
     if (!input || !list) {
         return;
@@ -18,6 +21,7 @@ function initAddressSuggest(container) {
 
     let timer = null;
     let requestId = 0;
+    let proximityRequestId = 0;
 
     setAddressControlState(clearButton, input.value.trim() === '' ? 'idle' : 'clear');
 
@@ -29,12 +33,15 @@ function initAddressSuggest(container) {
         metroSelect.dataset.addressUserMetroChanged = '1';
     });
 
+    typeSelect?.addEventListener('change', () => checkProximity());
+
     input.addEventListener('input', () => {
         clearTimeout(timer);
         requestId += 1;
         clearStructuredFields(container);
         clearMetroSelection(metroSelect);
         resetMetroSummary(metroSummary);
+        resetProximityWarning();
         hideError(error);
 
         const query = input.value.trim();
@@ -70,6 +77,7 @@ function initAddressSuggest(container) {
         clearStructuredFields(container);
         clearMetroSelection(metroSelect);
         resetMetroSummary(metroSummary);
+        resetProximityWarning();
         hideList(list);
         hideError(error);
         setAddressControlState(clearButton, 'idle');
@@ -142,7 +150,71 @@ function initAddressSuggest(container) {
         applyMetroSuggestion(metroSelect, suggestion.metro_station_ids || []);
         updateMetroSummary(metroSelect, metroSummary);
         setAddressControlState(clearButton, 'clear');
+        checkProximity();
     }
+
+    async function checkProximity() {
+        const activeRequestId = ++proximityRequestId;
+        hideProximityWarning(proximityWarning);
+
+        const type = typeSelect?.value;
+        const latitude = container.querySelector('[data-address-latitude]')?.value;
+        const longitude = container.querySelector('[data-address-longitude]')?.value;
+
+        if (!proximityUrl || !type || !latitude || !longitude) {
+            return;
+        }
+
+        const url = new URL(proximityUrl, window.location.origin);
+        url.searchParams.set('type', type);
+        url.searchParams.set('latitude', latitude);
+        url.searchParams.set('longitude', longitude);
+        if (container.dataset.addressProximityExceptVenueId) {
+            url.searchParams.set('except_venue_id', container.dataset.addressProximityExceptVenueId);
+        }
+
+        try {
+            const response = await fetch(url, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            });
+
+            if (!response.ok || activeRequestId !== proximityRequestId) {
+                return;
+            }
+
+            const payload = await response.json();
+
+            if (payload.has_conflict && payload.message) {
+                showProximityWarning(proximityWarning, payload.message);
+            }
+        } catch (error) {
+            // UX-проверка не должна мешать заполнению формы при сетевой ошибке.
+        }
+    }
+
+    function resetProximityWarning() {
+        proximityRequestId += 1;
+        hideProximityWarning(proximityWarning);
+    }
+}
+
+function showProximityWarning(warning, message) {
+    if (!warning) {
+        return;
+    }
+
+    warning.textContent = message;
+    warning.hidden = false;
+}
+
+function hideProximityWarning(warning) {
+    if (!warning) {
+        return;
+    }
+
+    warning.textContent = '';
+    warning.hidden = true;
 }
 
 function updateMetroSummary(select, summary) {
