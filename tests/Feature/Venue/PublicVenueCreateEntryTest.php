@@ -133,7 +133,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertOk()
             ->assertJsonPath('has_conflict', true)
             ->assertJsonPath('radius_meters', 50)
-            ->assertJsonPath('message', 'По этому адресу или рядом уже есть подтверждённая площадка такого типа.');
+            ->assertJsonPath('message', 'Рядом уже есть такая площадка.');
 
         $this->getJson(route('venues.proximity-check', [
             'type' => VenueTypeEnum::SPORTS_HALL->value,

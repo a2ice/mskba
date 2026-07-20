@@ -54,7 +54,7 @@ class VenueController extends Controller
             'distance_meters' => $nearest['distance_meters'] ?? null,
             'message' => $nearest === null
                 ? null
-                : 'По этому адресу или рядом уже есть подтверждённая площадка такого типа.',
+                : 'Рядом уже есть такая площадка.',
         ]);
     }
 

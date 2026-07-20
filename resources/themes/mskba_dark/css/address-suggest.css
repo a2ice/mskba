@@ -85,6 +85,7 @@
     font: inherit;
     font-size: 13px;
     font-weight: 750;
+    white-space: nowrap;
 }
 
 .address-suggest__location-row {
