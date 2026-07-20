@@ -59,7 +59,7 @@ final class ShowVenueHandler
             ->withAvg([
                 'reviews as published_reviews_avg_rating' => fn ($query) => $query->where('is_published', true),
             ], 'rating')
-            ->where('alias', $alias)
+            ->whereRouteIdentifier($alias)
             ->orderBy('id')
             ->get();
 

@@ -2,7 +2,7 @@
     $title = $venue?->name ?? 'Редактирование площадки';
     $breadcrumbs = $venue === null ? null : [
         ['label' => 'Площадки', 'url' => route('venues')],
-        ['label' => $venue->name, 'url' => route('venues.show', $venue->alias)],
+        ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
         ['label' => 'Редактирование'],
     ];
     $venueSidebarActive = 'edit';
@@ -46,9 +46,9 @@
             'venue' => $venue,
             'types' => $types,
             'metros' => $metros,
-            'action' => route('venues.update', $venue->alias),
+            'action' => route('venues.update', $venue->routeIdentifier()),
             'method' => 'PUT',
-            'cancelUrl' => route('venues.show', $venue->alias),
+            'cancelUrl' => route('venues.show', $venue->routeIdentifier()),
             'submitLabel' => 'Сохранить',
         ])
 

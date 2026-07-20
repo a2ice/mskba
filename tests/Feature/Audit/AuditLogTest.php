@@ -29,6 +29,15 @@ class AuditLogTest extends TestCase
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'description' => 'Площадка для проверки аудита',
                 'raw_address' => 'Москва, Тестовая, 10',
+                'location' => [
+                    'raw_address' => 'Москва, Тестовая улица, 10',
+                    'address_selected' => '1',
+                    'city' => 'Москва',
+                    'street' => 'Тестовая улица',
+                    'building' => '10',
+                    'latitude' => 55.751244,
+                    'longitude' => 37.618423,
+                ],
             ])
             ->assertRedirect();
 

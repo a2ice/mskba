@@ -26,7 +26,7 @@ final class ShowManageableVenueHandler
                     ->with('messages.sender.user')
                     ->latest('id'),
             ])
-            ->where('alias', $alias)
+            ->whereRouteIdentifier($alias)
             ->orderBy('id')
             ->get();
 

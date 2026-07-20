@@ -69,7 +69,7 @@ class VenueController extends Controller
                 'requires_payment' => $venue->requiresPayment,
                 'requires_booking_approval' => $venue->requiresBookingApproval,
                 'has_free_access' => $venue->hasFreeAccess(),
-                'url' => route('venues.show', $venue->alias),
+                'url' => route('venues.show', $venue->routeIdentifier()),
             ])->all(),
         ]);
     }
@@ -115,7 +115,7 @@ class VenueController extends Controller
         }
 
         return redirect()
-            ->route('venues.show', $venue->alias)
+            ->route('venues.show', $venue->routeIdentifier())
             ->with('status', 'Площадка добавлена и ожидает подтверждения.');
     }
 
@@ -194,7 +194,7 @@ class VenueController extends Controller
         }
 
         return redirect()
-            ->route('venues.edit', $venue->alias)
+            ->route('venues.edit', $venue->routeIdentifier())
             ->with('status', 'Площадка сохранена.');
     }
 
@@ -329,9 +329,9 @@ class VenueController extends Controller
                 ])
                 ->values()
                 ->all(),
-            'update_url' => route('venues.update', $venue->alias),
-            'moderation_url' => route('venues.moderation.submit', $venue->alias),
-            'moderation_state_url' => route('venues.moderation.state', $venue->alias),
+            'update_url' => route('venues.update', $venue->routeIdentifier()),
+            'moderation_url' => route('venues.moderation.submit', $venue->routeIdentifier()),
+            'moderation_state_url' => route('venues.moderation.state', $venue->routeIdentifier()),
         ];
     }
 }

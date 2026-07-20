@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Application\UseCases;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Application\UseCases\CreateLocationHandler;
+use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\Services\VenueTagSynchronizer;
 use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -19,6 +20,7 @@ final class CreateAccountVenueHandler
     public function __construct(
         private readonly CreateLocationHandler $createLocation,
         private readonly VenueUniquenessChecker $uniqueness,
+        private readonly VenueProximityService $proximity,
         private readonly VenueTagSynchronizer $tagSynchronizer,
     ) {}
 
@@ -31,40 +33,29 @@ final class CreateAccountVenueHandler
             $rawAddress = $locationData?->rawAddress ?? $data['raw_address'] ?? null;
             $type = VenueTypeEnum::from($data['type']);
 
-            if ($this->uniqueness->aliasExistsForName($data['name'], $type, [VenueStatusEnum::CONFIRMED])) {
-                throw new InvalidArgumentException('Площадка с таким названием уже существует.');
+            if ($locationData?->latitude === null || $locationData->longitude === null) {
+                throw new InvalidArgumentException('Выберите адрес из подсказки, чтобы сохранить координаты площадки.');
             }
 
-            if ($this->uniqueness->addressExists(
-                rawAddress: $rawAddress,
-                city: $locationData?->city,
-                street: $locationData?->street,
-                building: $locationData?->building,
+            if ($this->proximity->existsNearCoordinates(
                 type: $type,
+                latitude: $locationData->latitude,
+                longitude: $locationData->longitude,
+                radiusMeters: $this->proximity->strongRadiusMeters(),
                 statuses: [VenueStatusEnum::CONFIRMED],
             )) {
-                throw new InvalidArgumentException('Площадка с таким адресом уже существует.');
+                throw new InvalidArgumentException('Рядом уже существует подтвержденная площадка такого типа.');
             }
 
-            if ($actor !== null && $this->uniqueness->aliasExistsForActor(
-                $actor,
-                $this->uniqueness->aliasForName($data['name']),
-                $type,
-                [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
-            )) {
-                throw new InvalidArgumentException('Вы уже добавили площадку с таким названием.');
-            }
-
-            if ($actor !== null && $this->uniqueness->addressExistsForActor(
-                actor: $actor,
-                rawAddress: $rawAddress,
-                city: $locationData?->city,
-                street: $locationData?->street,
-                building: $locationData?->building,
+            if ($actor !== null && $this->proximity->existsNearCoordinates(
                 type: $type,
+                latitude: $locationData->latitude,
+                longitude: $locationData->longitude,
+                radiusMeters: $this->proximity->strongRadiusMeters(),
                 statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
+                actor: $actor,
             )) {
-                throw new InvalidArgumentException('Вы уже добавили площадку с таким адресом.');
+                throw new InvalidArgumentException('Вы уже добавили площадку такого типа рядом с этой точкой.');
             }
 
             $location = $locationData === null

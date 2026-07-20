@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
+use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -112,7 +113,7 @@ class PublicVenueCreateEntryTest extends TestCase
                 'name' => 'Публичная площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => 'Описание публичной площадки',
-                'raw_address' => 'Москва, Тестовая улица, 1',
+                'location' => $this->locationPayload('Москва, Тестовая улица, 1'),
             ])
             ->assertRedirect();
 
@@ -136,7 +137,7 @@ class PublicVenueCreateEntryTest extends TestCase
                 'name' => 'Гостевая площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => 'Описание гостевой площадки',
-                'raw_address' => 'Москва, Тестовая улица, 2',
+                'location' => $this->locationPayload('Москва, Тестовая улица, 2'),
             ])
             ->assertRedirect();
 
@@ -162,7 +163,7 @@ class PublicVenueCreateEntryTest extends TestCase
                 'name' => 'Площадка видна только создателю',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => 'Описание гостевой площадки',
-                'raw_address' => 'Москва, Тестовая улица, 3',
+                'location' => $this->locationPayload('Москва, Тестовая улица, 3'),
             ])
             ->assertRedirect();
 
@@ -240,7 +241,7 @@ class PublicVenueCreateEntryTest extends TestCase
                 'name' => 'Площадка из гостевого режима',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => 'Описание гостевой площадки',
-                'raw_address' => 'Москва, Тестовая улица, 12',
+                'location' => $this->locationPayload('Москва, Тестовая улица, 12'),
             ])
             ->assertRedirect();
 
@@ -294,7 +295,7 @@ class PublicVenueCreateEntryTest extends TestCase
                 'name' => 'Площадка первого гостя',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => 'Описание',
-                'raw_address' => 'Москва, Тестовая улица, 14',
+                'location' => $this->locationPayload('Москва, Тестовая улица, 14'),
             ])
             ->assertRedirect();
 
@@ -349,7 +350,7 @@ class PublicVenueCreateEntryTest extends TestCase
                 'name' => 'Черновик площадки',
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => 'Описание',
-                'raw_address' => 'Москва, Тестовая улица, 2',
+                'location' => $this->locationPayload('Москва, Тестовая улица, 2'),
             ])
             ->assertRedirect();
 
@@ -412,18 +413,16 @@ class PublicVenueCreateEntryTest extends TestCase
             'name' => 'Повторная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
             'short_description' => 'Первая заявка',
-            'raw_address' => 'Москва, Тестовая улица, 91',
-        ]);
+        ], $this->locationDto('Москва, Тестовая улица, 91', 55.7000000, 37.6000000));
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Вы уже добавили площадку с таким названием.');
+        $this->expectExceptionMessage('Вы уже добавили площадку такого типа рядом с этой точкой.');
 
         $createVenue->handle($actor, [
             'name' => 'Повторная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
             'short_description' => 'Вторая заявка',
-            'raw_address' => 'Москва, Тестовая улица, 92',
-        ]);
+        ], $this->locationDto('Москва, Тестовая улица, 92', 55.7001000, 37.6001000));
     }
 
     public function test_different_users_can_create_unconfirmed_duplicate_venues(): void
@@ -440,16 +439,42 @@ class PublicVenueCreateEntryTest extends TestCase
             'name' => 'Общая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
             'short_description' => 'Первая заявка',
-            'raw_address' => 'Москва, Тестовая улица, 93',
-        ]);
+        ], $this->locationDto('Москва, Тестовая улица, 93', 55.7000000, 37.6000000));
         $secondVenue = $createVenue->handle(app(CurrentActorResolver::class)->resolve($secondUser, null), [
             'name' => 'Общая площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
             'short_description' => 'Вторая заявка',
-            'raw_address' => 'Москва, Тестовая улица, 93',
-        ]);
+        ], $this->locationDto('Москва, Тестовая улица, 93', 55.7000000, 37.6000000));
 
         $this->assertSame($firstVenue->alias, $secondVenue->alias);
         $this->assertNotSame($firstVenue->id, $secondVenue->id);
+    }
+
+    /** @return array<string, mixed> */
+    private function locationPayload(string $rawAddress): array
+    {
+        $offset = (abs(crc32($rawAddress)) % 10_000) / 1_000_000;
+
+        return [
+            'raw_address' => $rawAddress,
+            'address_selected' => '1',
+            'city' => 'Москва',
+            'street' => 'Тестовая улица',
+            'building' => '1',
+            'latitude' => 55.7 + $offset,
+            'longitude' => 37.6 + $offset,
+        ];
+    }
+
+    private function locationDto(string $rawAddress, float $latitude, float $longitude): CreateLocationDTO
+    {
+        return new CreateLocationDTO(
+            rawAddress: $rawAddress,
+            city: 'Москва',
+            street: 'Тестовая улица',
+            building: '1',
+            latitude: $latitude,
+            longitude: $longitude,
+        );
     }
 }

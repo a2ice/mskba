@@ -49,12 +49,12 @@
             <a href="{{ route('account.venues') }}" class="btn btn-outline-secondary">К списку</a>
 
             @if ($venue->canEdit)
-                <a href="{{ route('account.venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
-                <a href="{{ route('venues.status', $venue->alias) }}" class="btn btn-outline-primary">Статус</a>
+                <a href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}" class="btn btn-primary">Редактировать</a>
+                <a href="{{ route('venues.status', $venue->routeIdentifier()) }}" class="btn btn-outline-primary">Статус</a>
             @endif
 
             @if ($venue->canEditSchedule)
-                <a href="{{ route('account.venues.schedule.edit', $venue->alias) }}" class="btn btn-outline-primary">Расписание</a>
+                <a href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}" class="btn btn-outline-primary">Расписание</a>
             @endif
         </div>
     @endif

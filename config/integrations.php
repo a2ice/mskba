@@ -11,4 +11,9 @@ return [
     'yandex' => [
         'api_key' => env('YANDEX_MAPS_API_KEY'),
     ],
+
+    'venue_duplicates' => [
+        'strong_radius_meters' => (int) env('VENUE_DUPLICATE_STRONG_RADIUS_METERS', 50),
+        'candidate_radius_meters' => (int) env('VENUE_DUPLICATE_CANDIDATE_RADIUS_METERS', 200),
+    ],
 ];

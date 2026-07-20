@@ -18,7 +18,7 @@ final class ShowAccountVenueScheduleHandler
     {
         $venue = Venue::query()
             ->with('schedule.intervals')
-            ->where('alias', $alias)
+            ->whereRouteIdentifier($alias)
             ->first();
 
         if ($venue === null) {

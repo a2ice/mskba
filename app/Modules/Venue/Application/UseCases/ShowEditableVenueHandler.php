@@ -29,7 +29,7 @@ final class ShowEditableVenueHandler
                     ->latest('id')
                     ->limit(5),
             ])
-            ->where('alias', $alias)
+            ->whereRouteIdentifier($alias)
             ->orderBy('id')
             ->get();
 

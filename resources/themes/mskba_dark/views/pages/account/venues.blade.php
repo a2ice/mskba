@@ -31,7 +31,7 @@
             @foreach ($venues as $venue)
                 <div class="venue-item mb-5">
                     <h5>
-                        <a href="{{ route('account.venues.show', $venue->alias) }}">
+                        <a href="{{ route('account.venues.show', $venue->routeIdentifier()) }}">
                             {{ $venue->name }}
                         </a>
                     </h5>
@@ -41,11 +41,11 @@
                         <p>Адрес: {{ $venue->rawAddress }}</p>
                     @endif
                     @if ($venue->canEdit)
-                        <a href="{{ route('account.venues.edit', $venue->alias) }}" class="btn btn-primary">Редактировать</a>
-                        <a href="{{ route('venues.status', $venue->alias) }}" class="btn btn-outline-primary">Статус</a>
+                        <a href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}" class="btn btn-primary">Редактировать</a>
+                        <a href="{{ route('venues.status', $venue->routeIdentifier()) }}" class="btn btn-outline-primary">Статус</a>
                     @endif
                     @if ($venue->canEditSchedule)
-                        <a href="{{ route('account.venues.schedule.edit', $venue->alias) }}" class="btn btn-outline-primary">Расписание</a>
+                        <a href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}" class="btn btn-outline-primary">Расписание</a>
                     @endif
                 <hr>
                 </div>

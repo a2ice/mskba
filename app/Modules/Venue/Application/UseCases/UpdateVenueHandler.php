@@ -28,7 +28,7 @@ final class UpdateVenueHandler
         return DB::transaction(function () use ($alias, $user, $actor, $data, $locationData, $tagNames): Venue {
             $venues = Venue::query()
                 ->with('creatorActor')
-                ->where('alias', $alias)
+                ->whereRouteIdentifier($alias)
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();

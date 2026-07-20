@@ -4,7 +4,7 @@ namespace App\Modules\Venue\Presentation\Http\Requests;
 
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
-use App\Modules\Venue\Application\Services\VenueUniquenessChecker;
+use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Presentation\Http\Requests\Concerns\InteractsWithVenueTags;
@@ -25,9 +25,6 @@ class CreateVenueRequest extends FormRequest
      */
     public function rules(): array
     {
-        $telegramRequired = $this->boolean('telegram_flow') ? ['required'] : ['nullable'];
-        $telegramAddressSelected = $this->boolean('telegram_flow') ? ['required', 'accepted'] : ['nullable'];
-
         return [
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
@@ -36,15 +33,15 @@ class CreateVenueRequest extends FormRequest
             'full_description' => ['nullable', 'string', 'max:10000'],
             'tags' => ['nullable', 'string', 'max:1000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
-            'location' => ['nullable', 'array'],
-            'location.raw_address' => [...$telegramRequired, 'string', 'max:1000'],
-            'location.address_selected' => $telegramAddressSelected,
-            'location.city' => ['nullable', 'string', 'max:255'],
-            'location.street' => ['nullable', 'string', 'max:255'],
-            'location.building' => ['nullable', 'string', 'max:255'],
+            'location' => ['required', 'array'],
+            'location.raw_address' => ['required', 'string', 'max:1000'],
+            'location.address_selected' => ['required', 'accepted'],
+            'location.city' => ['required', 'string', 'max:255'],
+            'location.street' => ['required', 'string', 'max:255'],
+            'location.building' => ['required', 'string', 'max:255'],
             'location.postal_code' => ['nullable', 'string', 'max:32'],
-            'location.latitude' => [...$telegramRequired, 'numeric', 'between:-90,90'],
-            'location.longitude' => [...$telegramRequired, 'numeric', 'between:-180,180'],
+            'location.latitude' => ['required', 'numeric', 'between:-90,90'],
+            'location.longitude' => ['required', 'numeric', 'between:-180,180'],
             'location.metro_station_ids' => ['nullable', 'array'],
             'location.metro_station_ids.*' => ['integer', 'distinct', 'exists:metro_stations,id'],
         ];
@@ -55,55 +52,37 @@ class CreateVenueRequest extends FormRequest
         $this->addVenueTagValidation($validator);
 
         $validator->after(function ($validator): void {
-            $checker = app(VenueUniquenessChecker::class);
-            $name = $this->nullableInputString('name');
+            $proximity = app(VenueProximityService::class);
             $type = VenueTypeEnum::tryFrom((string) $this->input('type'));
-
-            if ($name !== null && $type !== null && $checker->aliasExistsForName($name, $type, [VenueStatusEnum::CONFIRMED])) {
-                $validator->errors()->add('name', 'Площадка с таким названием уже существует.');
-            }
-
+            $latitude = $this->input('location.latitude');
+            $longitude = $this->input('location.longitude');
             $actor = app(CurrentActorResolver::class)->resolveForRequest($this);
 
             if (
-                $actor !== null
-                && $name !== null
-                && $type !== null
-                && $checker->aliasExistsForActor(
-                    $actor,
-                    $checker->aliasForName($name),
-                    $type,
-                    [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
-                )
-            ) {
-                $validator->errors()->add('name', 'Вы уже добавили площадку с таким названием.');
-            }
-
-            if ($checker->addressExists(
-                rawAddress: $this->inputAddress(),
-                city: $this->nullableInputString('location.city'),
-                street: $this->nullableInputString('location.street'),
-                building: $this->nullableInputString('location.building'),
-                type: $type,
-                statuses: [VenueStatusEnum::CONFIRMED],
-            )) {
-                $validator->errors()->add($this->addressErrorField(), 'Площадка с таким адресом уже существует.');
-            }
-
-            if (
-                $actor !== null
-                && $type !== null
-                && $checker->addressExistsForActor(
-                    actor: $actor,
-                    rawAddress: $this->inputAddress(),
-                    city: $this->nullableInputString('location.city'),
-                    street: $this->nullableInputString('location.street'),
-                    building: $this->nullableInputString('location.building'),
+                $type !== null
+                && is_numeric($latitude)
+                && is_numeric($longitude)
+                && $proximity->existsNearCoordinates(
                     type: $type,
-                    statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
+                    latitude: (float) $latitude,
+                    longitude: (float) $longitude,
+                    radiusMeters: $proximity->strongRadiusMeters(),
+                    statuses: [VenueStatusEnum::CONFIRMED],
                 )
             ) {
-                $validator->errors()->add($this->addressErrorField(), 'Вы уже добавили площадку с таким адресом.');
+                $validator->errors()->add('location.raw_address', 'Рядом уже существует подтвержденная площадка такого типа.');
+            }
+
+            if ($actor !== null && $type !== null && is_numeric($latitude) && is_numeric($longitude)
+                && $proximity->existsNearCoordinates(
+                    type: $type,
+                    latitude: (float) $latitude,
+                    longitude: (float) $longitude,
+                    radiusMeters: $proximity->strongRadiusMeters(),
+                    statuses: [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::BLOCKED],
+                    actor: $actor,
+                )) {
+                $validator->errors()->add('location.raw_address', 'Вы уже добавили площадку такого типа рядом с этой точкой.');
             }
         });
     }
@@ -154,28 +133,6 @@ class CreateVenueRequest extends FormRequest
         return is_string($value) && trim($value) !== ''
             ? trim($value)
             : null;
-    }
-
-    private function nullableInputString(string $key): ?string
-    {
-        $value = $this->input($key);
-
-        return is_string($value) && trim($value) !== ''
-            ? trim($value)
-            : null;
-    }
-
-    private function inputAddress(): ?string
-    {
-        return $this->nullableInputString('location.raw_address')
-            ?? $this->nullableInputString('raw_address');
-    }
-
-    private function addressErrorField(): string
-    {
-        return $this->has('location')
-            ? 'location.raw_address'
-            : 'raw_address';
     }
 
     private function nullableFloat(string $key): ?float

@@ -6,6 +6,8 @@ use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Application\Services\VenueDuplicateDetector;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateMatchTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
@@ -38,7 +40,7 @@ class VenueDuplicateWorkflowTest extends TestCase
         $this->assertDatabaseHas('venue_duplicates', [
             'venue_id' => min($firstVenue->id, $secondVenue->id),
             'duplicate_venue_id' => max($firstVenue->id, $secondVenue->id),
-            'matched_by' => VenueDuplicateMatchTypeEnum::NAME_AND_ADDRESS->value,
+            'matched_by' => VenueDuplicateMatchTypeEnum::ADDRESS->value,
             'status' => VenueDuplicateStatusEnum::PENDING->value,
             'score' => 100,
         ]);
@@ -392,11 +394,22 @@ class VenueDuplicateWorkflowTest extends TestCase
      */
     private function venue(array $overrides = []): Venue
     {
+        $latitude = (float) ($overrides['latitude'] ?? 55.7000000);
+        $longitude = (float) ($overrides['longitude'] ?? 37.6000000);
+        unset($overrides['latitude'], $overrides['longitude']);
+
+        $address = Address::factory()->create([
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+        ]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
+
         return Venue::factory()->create(array_merge([
             'type' => VenueTypeEnum::SPORTS_HALL,
             'status' => VenueStatusEnum::UNCONFIRMED,
             'short_description' => 'Описание площадки',
             'raw_address' => 'Москва, Тестовый адрес, 1',
+            'location_id' => $location->id,
         ], $overrides));
     }
 }

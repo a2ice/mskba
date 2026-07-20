@@ -71,8 +71,8 @@
             <h2 class="section-sidebar-block__title">Управление</h2>
             @if($venue->canEdit)
                 <div class="venue-management-actions">
-                    <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--secondary btn--sm">Редактировать</a>
-                    <a href="{{ route('venues.status', $venue->alias) }}" class="btn btn--secondary btn--sm">Статус</a>
+                    <a href="{{ route('venues.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+                    <a href="{{ route('venues.status', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Статус</a>
                 </div>
             @else
                 <p class="section-sidebar-block__text">

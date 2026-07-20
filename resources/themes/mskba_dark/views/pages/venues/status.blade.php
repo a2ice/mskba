@@ -5,7 +5,7 @@
         ?->contains(fn ($request) => $request->status === \App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum::PENDING) ?? false;
     $breadcrumbs = $venue === null ? null : [
         ['label' => 'Площадки', 'url' => route('venues')],
-        ['label' => $venue->name, 'url' => route('venues.show', $venue->alias)],
+        ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
         ['label' => 'Статус'],
     ];
     $venueSidebarActive = 'status';
@@ -62,7 +62,7 @@
         @elseif($hasPendingModeration)
             <div class="alert alert-secondary">Заявка модерации уже находится на рассмотрении.</div>
         @else
-            <form method="POST" action="{{ route('venues.moderation.submit', $venue->alias) }}" class="mt-4">
+            <form method="POST" action="{{ route('venues.moderation.submit', $venue->routeIdentifier()) }}" class="mt-4">
                 @csrf
                 <div class="mb-3">
                     <label for="moderationMessage" class="form-label">Комментарий для модера</label>

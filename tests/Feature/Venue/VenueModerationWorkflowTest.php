@@ -274,7 +274,7 @@ class VenueModerationWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Площадка подтверждена')
             ->assertSee('Проверено, всё в порядке.')
-            ->assertSee(route('venues.show', $venue->alias), false)
+            ->assertSee(route('venues.show', $venue->routeIdentifier()), false)
             ->assertDontSee('Редактировать площадку')
             ->assertDontSee('Комментарий для модератора')
             ->assertDontSee('Отправить на модерацию');

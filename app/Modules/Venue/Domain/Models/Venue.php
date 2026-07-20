@@ -17,6 +17,7 @@ use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -71,6 +72,24 @@ class Venue extends Model
     public function hasFreeAccess(): bool
     {
         return ! $this->requires_payment && ! $this->requires_booking_approval;
+    }
+
+    public function routeIdentifier(): string
+    {
+        return $this->id.'-'.$this->alias;
+    }
+
+    /**
+     * @param  Builder<Venue>  $query
+     * @return Builder<Venue>
+     */
+    public function scopeWhereRouteIdentifier(Builder $query, string $identifier): Builder
+    {
+        if (preg_match('/^(\d+)-/', $identifier, $matches) === 1) {
+            return $query->whereKey((int) $matches[1]);
+        }
+
+        return $query->where('alias', $identifier);
     }
 
     public function hasPendingModerationRequest(): bool

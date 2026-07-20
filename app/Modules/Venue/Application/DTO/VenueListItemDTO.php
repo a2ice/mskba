@@ -24,4 +24,9 @@ final readonly class VenueListItemDTO
     {
         return ! $this->requiresPayment && ! $this->requiresBookingApproval;
     }
+
+    public function routeIdentifier(): string
+    {
+        return $this->id.'-'.$this->alias;
+    }
 }

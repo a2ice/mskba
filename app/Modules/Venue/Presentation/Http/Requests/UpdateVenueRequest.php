@@ -22,9 +22,6 @@ class UpdateVenueRequest extends FormRequest
      */
     public function rules(): array
     {
-        $telegramRequired = $this->boolean('telegram_flow') ? ['required'] : ['nullable'];
-        $telegramAddressSelected = $this->boolean('telegram_flow') ? ['required', 'accepted'] : ['nullable'];
-
         return [
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
@@ -33,15 +30,15 @@ class UpdateVenueRequest extends FormRequest
             'full_description' => ['nullable', 'string', 'max:10000'],
             'tags' => ['nullable', 'string', 'max:1000'],
             'raw_address' => ['nullable', 'string', 'max:1000'],
-            'location' => ['nullable', 'array'],
-            'location.raw_address' => [...$telegramRequired, 'string', 'max:1000'],
-            'location.address_selected' => $telegramAddressSelected,
-            'location.city' => ['nullable', 'string', 'max:255'],
-            'location.street' => ['nullable', 'string', 'max:255'],
-            'location.building' => ['nullable', 'string', 'max:255'],
+            'location' => ['sometimes', 'required', 'array'],
+            'location.raw_address' => ['required_with:location', 'string', 'max:1000'],
+            'location.address_selected' => ['sometimes', 'required_with:location', 'accepted'],
+            'location.city' => ['required_with:location', 'string', 'max:255'],
+            'location.street' => ['required_with:location', 'string', 'max:255'],
+            'location.building' => ['required_with:location', 'string', 'max:255'],
             'location.postal_code' => ['nullable', 'string', 'max:32'],
-            'location.latitude' => [...$telegramRequired, 'numeric', 'between:-90,90'],
-            'location.longitude' => [...$telegramRequired, 'numeric', 'between:-180,180'],
+            'location.latitude' => ['required_with:location', 'numeric', 'between:-90,90'],
+            'location.longitude' => ['required_with:location', 'numeric', 'between:-180,180'],
             'location.metro_station_ids' => ['nullable', 'array'],
             'location.metro_station_ids.*' => ['integer', 'distinct', 'exists:metro_stations,id'],
         ];

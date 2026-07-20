@@ -96,6 +96,7 @@
                 value="{{ old('location.raw_address', old('raw_address', $venueAddress?->full_address ?? $venue?->raw_address)) }}"
                 placeholder="Например: Москва, ул. Летниковская, 12"
                 autocomplete="off"
+                required
                 data-address-suggest-input
                 data-address-suggest-url="{{ route('integrations.address-suggest') }}"
             >
@@ -111,6 +112,7 @@
             Я на площадке
         </button>
 
+        <input type="hidden" name="location[address_selected]" value="{{ old('location.address_selected', $venueAddress !== null ? '1' : '') }}" data-address-selected>
         <input type="hidden" name="location[city]" value="{{ old('location.city', $venueAddress?->city) }}" data-address-city>
         <input type="hidden" name="location[street]" value="{{ old('location.street', $venueAddress?->street) }}" data-address-street>
         <input type="hidden" name="location[building]" value="{{ old('location.building', $venueAddress?->building) }}" data-address-building>

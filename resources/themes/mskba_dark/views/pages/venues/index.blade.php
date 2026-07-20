@@ -38,7 +38,7 @@
             @foreach ($venues as $venue)
                 <article class="section-list-item">
                     <h2 class="h5 mb-3">
-                        <a href="{{ route('venues.show', $venue->alias) }}">
+                        <a href="{{ route('venues.show', $venue->routeIdentifier()) }}">
                             {{ $venue->name }}
                         </a>
                     </h2>
@@ -48,12 +48,12 @@
                         <p class="mb-3">Адрес: {{ $venue->rawAddress }}</p>
                     @endif
                     <div class="d-flex gap-2">
-                        <a href="{{ route('venues.show', $venue->alias) }}" class="btn btn--secondary btn--sm">Подробнее</a>
+                        <a href="{{ route('venues.show', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Подробнее</a>
                         @if ($venue->canEdit)
-                            <a href="{{ route('venues.edit', $venue->alias) }}" class="btn btn--primary btn--sm">Редактировать</a>
+                            <a href="{{ route('venues.edit', $venue->routeIdentifier()) }}" class="btn btn--primary btn--sm">Редактировать</a>
                         @endif
                         @if ($venue->canRemove)
-                            <a href="{{ route('venues.remove', $venue->alias) }}" class="btn btn--danger btn--sm">Удалить</a>
+                            <a href="{{ route('venues.remove', $venue->routeIdentifier()) }}" class="btn btn--danger btn--sm">Удалить</a>
                         @endif
                     </div>
                 </article>

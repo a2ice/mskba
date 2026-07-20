@@ -26,7 +26,7 @@ final class SubmitModerationRequestHandler
         return DB::transaction(function () use ($alias, $user, $actor, $message): ModerationRequest {
             $venues = Venue::query()
                 ->with('creatorActor')
-                ->where('alias', $alias)
+                ->whereRouteIdentifier($alias)
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();
@@ -43,6 +43,12 @@ final class SubmitModerationRequestHandler
 
             if ($venue->status === VenueStatusEnum::BLOCKED) {
                 throw new InvalidArgumentException('Площадка заблокирована, повторная отправка недоступна.');
+            }
+
+            $venue->loadMissing('location.address');
+
+            if ($venue->location?->address?->latitude === null || $venue->location->address->longitude === null) {
+                throw new InvalidArgumentException('Перед отправкой на модерацию выберите адрес площадки с координатами.');
             }
 
             if ($venue->moderationRequests()

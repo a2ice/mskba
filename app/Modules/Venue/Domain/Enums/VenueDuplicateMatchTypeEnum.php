@@ -13,7 +13,7 @@ enum VenueDuplicateMatchTypeEnum: string
     {
         return match ($this) {
             self::NAME => 'Название',
-            self::ADDRESS => 'Адрес',
+            self::ADDRESS => 'Близость координат',
             self::NAME_AND_ADDRESS => 'Название и адрес',
             self::MANUAL => 'Вручную',
         };

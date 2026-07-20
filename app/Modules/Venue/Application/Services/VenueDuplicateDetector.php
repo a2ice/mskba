@@ -12,7 +12,7 @@ use Illuminate\Support\Collection;
 final class VenueDuplicateDetector
 {
     public function __construct(
-        private readonly VenueUniquenessChecker $uniqueness,
+        private readonly VenueProximityService $proximity,
     ) {}
 
     public function detectFor(Venue $venue): void
@@ -21,9 +21,9 @@ final class VenueDuplicateDetector
 
         $this->candidatesFor($venue)
             ->each(function (Venue $candidate) use ($venue): void {
-                $matchedBy = $this->matchedBy($venue, $candidate);
+                $distanceMeters = $this->proximity->distanceBetween($venue, $candidate);
 
-                if ($matchedBy === null) {
+                if ($distanceMeters === null) {
                     return;
                 }
 
@@ -35,12 +35,15 @@ final class VenueDuplicateDetector
                         'duplicate_venue_id' => $duplicateVenueId,
                     ],
                     [
-                        'matched_by' => $matchedBy,
+                        'matched_by' => VenueDuplicateMatchTypeEnum::ADDRESS,
                         'status' => VenueDuplicateStatusEnum::PENDING,
-                        'score' => $matchedBy === VenueDuplicateMatchTypeEnum::NAME_AND_ADDRESS ? 100 : 70,
+                        'score' => $distanceMeters <= $this->proximity->strongRadiusMeters() ? 100 : 70,
                         'metadata' => [
                             'source_venue_id' => (int) $venue->id,
                             'candidate_venue_id' => (int) $candidate->id,
+                            'distance_meters' => $distanceMeters,
+                            'strong_radius_meters' => $this->proximity->strongRadiusMeters(),
+                            'candidate_radius_meters' => $this->proximity->candidateRadiusMeters(),
                         ],
                     ],
                 );
@@ -52,26 +55,14 @@ final class VenueDuplicateDetector
      */
     private function candidatesFor(Venue $venue): Collection
     {
-        return Venue::query()
-            ->with('location.address')
-            ->whereKeyNot($venue->id)
-            ->where('type', $venue->type)
-            ->where('status', VenueStatusEnum::UNCONFIRMED)
-            ->whereNull('canonical_venue_id')
-            ->get();
-    }
-
-    private function matchedBy(Venue $venue, Venue $candidate): ?VenueDuplicateMatchTypeEnum
-    {
-        $nameMatches = mb_strtolower((string) $venue->alias) === mb_strtolower((string) $candidate->alias);
-        $addressMatches = $this->uniqueness->venuesShareAddress($venue, $candidate);
-
-        return match (true) {
-            $nameMatches && $addressMatches => VenueDuplicateMatchTypeEnum::NAME_AND_ADDRESS,
-            $nameMatches => VenueDuplicateMatchTypeEnum::NAME,
-            $addressMatches => VenueDuplicateMatchTypeEnum::ADDRESS,
-            default => null,
-        };
+        return $this->proximity
+            ->venuesNearVenue(
+                $venue,
+                $this->proximity->candidateRadiusMeters(),
+                [VenueStatusEnum::UNCONFIRMED, VenueStatusEnum::CONFIRMED],
+            )
+            ->filter(fn (Venue $candidate): bool => $candidate->canonical_venue_id === null)
+            ->values();
     }
 
     /**

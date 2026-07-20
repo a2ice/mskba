@@ -22,7 +22,7 @@ final class UpdateVenueScheduleHandler
     {
         return DB::transaction(function () use ($alias, $user, $timezone, $intervalsByDay): Venue {
             $venue = Venue::query()
-                ->where('alias', $alias)
+                ->whereRouteIdentifier($alias)
                 ->lockForUpdate()
                 ->first();
 

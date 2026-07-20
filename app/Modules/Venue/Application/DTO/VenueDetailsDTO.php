@@ -33,4 +33,9 @@ final readonly class VenueDetailsDTO
         public bool $canEditSchedule,
         public bool $canRemove,
     ) {}
+
+    public function routeIdentifier(): string
+    {
+        return $this->id.'-'.$this->alias;
+    }
 }

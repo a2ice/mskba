@@ -33,7 +33,7 @@
     @endif
 
     @if($venue !== null)
-        <form method="POST" action="{{ route('account.venues.schedule.update', $venue->alias) }}" class="account-venue-schedule">
+        <form method="POST" action="{{ route('account.venues.schedule.update', $venue->routeIdentifier()) }}" class="account-venue-schedule">
             @csrf
             @method('PUT')
 
@@ -123,7 +123,7 @@
             </div>
 
             <div class="account-venue-schedule__actions mt-4">
-                <a href="{{ route('account.venues.show', $venue->alias) }}" class="btn btn--secondary btn--sm">К площадке</a>
+                <a href="{{ route('account.venues.show', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">К площадке</a>
                 <button type="submit" class="btn btn--primary btn--sm">Сохранить расписание</button>
             </div>
         </form>
