@@ -99,7 +99,7 @@ class VenueMembershipAccessTest extends TestCase
 
         $access = app(VenueAccessResolver::class);
 
-        $this->assertFalse($access->canEdit($owner, $confirmedVenue));
+        $this->assertTrue($access->canEdit($owner, $confirmedVenue));
         $this->assertTrue($access->canEditSchedule($owner, $confirmedVenue));
         $this->assertTrue($access->canEdit($owner, $blockedVenue));
         $this->assertFalse($access->canEditSchedule($owner, $blockedVenue));

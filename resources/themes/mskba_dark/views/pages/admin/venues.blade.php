@@ -202,6 +202,39 @@
                         Сейчас: <strong>{{ $venue->trashed() ? 'Удалена' : ($pendingModerationRequest?->status->label() ?? $venue->status->label()) }}</strong>
                     </p>
 
+                    @if($pendingModerationRequest?->venueRevision)
+                        @php
+                            $revisionPayload = $pendingModerationRequest->venueRevision->payload;
+                            $revisionDetails = $revisionPayload['details'] ?? [];
+                            $revisionLocation = $revisionPayload['location'] ?? [];
+                            $revisionDraftMedia = $pendingModerationRequest->venueRevision->media->keyBy('id');
+                            $publishedMedia = $venue->media->keyBy('id');
+                        @endphp
+                        <section class="admin-moderation-revision" aria-label="Предлагаемые изменения">
+                            <h4>Предлагаемые изменения</h4>
+                            <dl>
+                                <div><dt>Название</dt><dd>{{ $revisionDetails['name'] ?? '—' }}</dd></div>
+                                <div><dt>Тип</dt><dd>{{ \App\Modules\Venue\Domain\Enums\VenueTypeEnum::tryFrom($revisionDetails['type'] ?? '')?->label() ?? '—' }}</dd></div>
+                                <div><dt>Адрес</dt><dd>{{ $revisionLocation['raw_address'] ?? '—' }}</dd></div>
+                                <div><dt>Краткое описание</dt><dd>{{ $revisionDetails['short_description'] ?? '—' }}</dd></div>
+                                <div><dt>Полное описание</dt><dd>{{ $revisionDetails['full_description'] ?? '—' }}</dd></div>
+                                <div><dt>Теги</dt><dd>{{ implode(', ', $revisionPayload['tags'] ?? []) ?: '—' }}</dd></div>
+                            </dl>
+                            <div class="admin-moderation-revision__gallery">
+                                @foreach($revisionPayload['gallery'] ?? [] as $galleryItem)
+                                    @php
+                                        $galleryMedia = ($galleryItem['kind'] ?? null) === 'draft'
+                                            ? $revisionDraftMedia->get((int) ($galleryItem['id'] ?? 0))
+                                            : $publishedMedia->get((int) ($galleryItem['id'] ?? 0));
+                                    @endphp
+                                    @if($galleryMedia)
+                                        <img src="{{ $galleryMedia->publicUrl() }}" alt="" @class(['is-featured' => $galleryItem['is_featured'] ?? false])>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+
                     @unless($venue->trashed())
                     <div @class(['admin-moderation-workspace', 'admin-moderation-workspace--single' => $moderationMessages->isEmpty()])>
                         @if($moderationMessages->isNotEmpty())
@@ -236,11 +269,11 @@
                             <form
                                 method="POST"
                                 action="{{ route('admin.venues.moderation.approve', $pendingModerationRequest) }}"
-                                data-admin-confirm="Вы уверены, что хотите подтвердить площадку?"
+                                data-admin-confirm="{{ $pendingModerationRequest->venueRevision ? 'Применить предложенные изменения?' : 'Вы уверены, что хотите подтвердить площадку?' }}"
                             >
                                 @csrf
                                 <input type="hidden" name="message" data-admin-action-message-input>
-                                <button type="submit" class="btn btn--success btn--sm" data-admin-action-comment-copy>Подтвердить</button>
+                                <button type="submit" class="btn btn--success btn--sm" data-admin-action-comment-copy>{{ $pendingModerationRequest->venueRevision ? 'Применить изменения' : 'Подтвердить' }}</button>
                             </form>
 
                             <form

@@ -8,6 +8,7 @@ use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\VenueRevisionManager;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
@@ -19,6 +20,7 @@ final class SubmitModerationRequestHandler
 {
     public function __construct(
         private readonly VenueAccessResolver $access,
+        private readonly VenueRevisionManager $revisions,
     ) {}
 
     public function handle(string $alias, ?User $user, ?Actor $actor, ?string $message = null): ModerationRequest
@@ -57,8 +59,21 @@ final class SubmitModerationRequestHandler
                 throw new InvalidArgumentException('Заявка модерации уже находится на рассмотрении.');
             }
 
+            $revision = $venue->status === VenueStatusEnum::CONFIRMED
+                ? $this->revisions->draftFor($venue)
+                : null;
+
+            if ($venue->status === VenueStatusEnum::CONFIRMED && $revision === null) {
+                throw new InvalidArgumentException('Сначала сохраните изменения площадки.');
+            }
+
+            if ($revision !== null) {
+                $this->revisions->assertCurrent($revision);
+            }
+
             $thread = $venue->moderationRequests()->create([
                 'type' => ModerationTypeEnum::VENUE,
+                'venue_revision_id' => $revision?->id,
                 'submitted_by_actor_id' => $actor?->id,
                 'status' => ModerationRequestStatusEnum::PENDING,
                 'submitted_at' => now(),

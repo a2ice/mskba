@@ -15,6 +15,12 @@
     @endif
 
     <div class="admin-card">
+        @include('theme::partials.venues.gallery-editor', [
+            'venue' => $venue,
+            'photos' => $venuePhotos ?? [],
+            'adminMode' => true,
+        ])
+
         @include('theme::partials.venues.form', [
             'venue' => $venue,
             'types' => $types,

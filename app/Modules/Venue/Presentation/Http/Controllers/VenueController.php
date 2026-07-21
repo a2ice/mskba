@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
+use App\Modules\Venue\Application\Services\VenueGalleryManager;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
@@ -18,6 +19,7 @@ use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueRevision;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Modules\Venue\Presentation\Http\Requests\SubmitModerationRequest;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueRequest;
@@ -176,6 +178,7 @@ class VenueController extends Controller
         ShowEditableVenueHandler $showEditableVenue,
         ListMetrostationsHandler $listMetrostations,
         CurrentActorResolver $actors,
+        VenueGalleryManager $gallery,
     ): Response {
         try {
             $venue = $showEditableVenue->handle($alias, $request->user(), $actors->resolveForRequest($request));
@@ -188,6 +191,8 @@ class VenueController extends Controller
 
         return ThemeResolver::page('venues.edit', [
             'venue' => $venue,
+            'venueRevision' => $venue->draftRevision,
+            'venuePhotos' => $gallery->editableGallery($venue),
             'types' => VenueTypeEnum::cases(),
             'metros' => $listMetrostations->handle(),
         ]);
@@ -220,15 +225,25 @@ class VenueController extends Controller
         }
 
         if ($request->expectsJson()) {
+            $revision = $venue->status === VenueStatusEnum::CONFIRMED
+                ? $venue->draftRevision()->first()
+                : null;
+
             return response()->json([
-                'message' => 'Площадка сохранена.',
-                'venue' => $this->venuePayload($venue),
+                'message' => $venue->status === VenueStatusEnum::CONFIRMED
+                    ? 'Изменения сохранены в черновик. Отправьте их на модерацию.'
+                    : 'Площадка сохранена.',
+                'venue' => $this->venuePayload($venue, $revision),
             ]);
         }
 
+        $message = $venue->status === VenueStatusEnum::CONFIRMED
+            ? 'Изменения сохранены в черновик. Отправьте их на модерацию.'
+            : 'Площадка сохранена.';
+
         return redirect()
             ->route('venues.edit', $venue->routeIdentifier())
-            ->with('status', 'Площадка сохранена.');
+            ->with('status', $message);
     }
 
     public function status(
@@ -264,7 +279,10 @@ class VenueController extends Controller
         $pending = $venue->moderationRequests
             ->first(fn ($moderationRequest) => $moderationRequest->status === ModerationRequestStatusEnum::PENDING);
         $latest = $venue->moderationRequests->first();
-        $canSubmit = $venue->status === VenueStatusEnum::UNCONFIRMED && $pending === null;
+        $canSubmit = $pending === null && (
+            $venue->status === VenueStatusEnum::UNCONFIRMED
+            || ($venue->status === VenueStatusEnum::CONFIRMED && $venue->draftRevision()->whereNull('applied_at')->exists())
+        );
         $displayStatus = $pending?->status
             ?? ($venue->status === VenueStatusEnum::UNCONFIRMED ? $latest?->status : null);
 
@@ -340,21 +358,24 @@ class VenueController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function venuePayload(Venue $venue): array
+    private function venuePayload(Venue $venue, ?VenueRevision $revision = null): array
     {
         $venue->loadMissing('location.address', 'location.metroStations.line', 'tags');
+        $revisionPayload = $revision?->payload ?? [];
+        $details = is_array($revisionPayload['details'] ?? null) ? $revisionPayload['details'] : [];
+        $location = is_array($revisionPayload['location'] ?? null) ? $revisionPayload['location'] : [];
 
         return [
             'alias' => $venue->alias,
-            'name' => $venue->name,
-            'type' => $venue->type->value,
+            'name' => $details['name'] ?? $venue->name,
+            'type' => $details['type'] ?? $venue->type->value,
             'requires_payment' => $venue->requires_payment,
             'requires_booking_approval' => $venue->requires_booking_approval,
             'has_free_access' => $venue->hasFreeAccess(),
-            'short_description' => $venue->short_description,
-            'full_description' => $venue->full_description,
-            'tags' => $venue->tags->pluck('name')->values()->all(),
-            'address' => $venue->location?->address?->full_address ?? $venue->raw_address,
+            'short_description' => $details['short_description'] ?? $venue->short_description,
+            'full_description' => $details['full_description'] ?? $venue->full_description,
+            'tags' => is_array($revisionPayload['tags'] ?? null) ? $revisionPayload['tags'] : $venue->tags->pluck('name')->values()->all(),
+            'address' => $location['raw_address'] ?? $venue->location?->address?->full_address ?? $venue->raw_address,
             'metro' => collect($venue->location?->metroStations ?? [])
                 ->map(fn ($station): array => [
                     'id' => $station->id,
@@ -365,6 +386,7 @@ class VenueController extends Controller
             'update_url' => route('venues.update', $venue->routeIdentifier()),
             'moderation_url' => route('venues.moderation.submit', $venue->routeIdentifier()),
             'moderation_state_url' => route('venues.moderation.state', $venue->routeIdentifier()),
+            'photos_store_url' => route('venues.photos.store', $venue->routeIdentifier()),
         ];
     }
 }

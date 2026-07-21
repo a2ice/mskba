@@ -41,6 +41,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'short_description',
     'full_description',
     'raw_address',
+    'content_version',
 ])]
 #[Hidden([])]
 class Venue extends Model
@@ -52,6 +53,7 @@ class Venue extends Model
     protected $attributes = [
         'requires_payment' => false,
         'requires_booking_approval' => false,
+        'content_version' => 0,
     ];
 
     protected static function newFactory(): VenueFactory
@@ -61,7 +63,7 @@ class Venue extends Model
 
     public function allowsDetailsEditing(): bool
     {
-        return ! $this->trashed() && $this->status !== VenueStatusEnum::CONFIRMED;
+        return ! $this->trashed();
     }
 
     public function allowsOperationalChanges(): bool
@@ -153,6 +155,16 @@ class Venue extends Model
         return $this->morphMany(Media::class, 'mediable');
     }
 
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(VenueRevision::class);
+    }
+
+    public function draftRevision(): HasOne
+    {
+        return $this->hasOne(VenueRevision::class)->whereNull('applied_at')->latestOfMany();
+    }
+
     public function amenities(): BelongsToMany
     {
         return $this
@@ -195,6 +207,7 @@ class Venue extends Model
             'requires_booking_approval' => 'boolean',
             'status' => VenueStatusEnum::class,
             'canonical_venue_id' => 'integer',
+            'content_version' => 'integer',
         ];
     }
 }

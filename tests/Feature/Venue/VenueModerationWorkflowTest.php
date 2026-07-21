@@ -282,8 +282,9 @@ class VenueModerationWorkflowTest extends TestCase
         $this
             ->actingAs($owner)
             ->get(route('venues.edit', $venue->alias))
-            ->assertForbidden()
-            ->assertSee('Доступ запрещен');
+            ->assertOk()
+            ->assertSee('Фотографии')
+            ->assertSee('Изменения фотографий появятся на странице после модерации.');
 
         $this
             ->actingAs($owner)
@@ -291,8 +292,8 @@ class VenueModerationWorkflowTest extends TestCase
                 'name' => 'Изменённое название',
                 'type' => VenueTypeEnum::STREET_COURT->value,
             ])
-            ->assertRedirect(route('venues.edit', $venue->alias))
-            ->assertSessionHas('error', 'Доступ запрещен');
+            ->assertRedirect(route('venues.edit', $venue->routeIdentifier()))
+            ->assertSessionHas('status', 'Изменения сохранены в черновик. Отправьте их на модерацию.');
 
         $this->assertDatabaseHas('venues', [
             'id' => $venue->id,

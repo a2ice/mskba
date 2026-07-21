@@ -42,6 +42,11 @@
     @endif
 
     @if($venue !== null)
+        @include('theme::partials.venues.gallery-editor', [
+            'venue' => $venue,
+            'photos' => $venuePhotos ?? [],
+        ])
+
         @include('theme::partials.venues.form', [
             'venue' => $venue,
             'types' => $types,
@@ -50,6 +55,7 @@
             'method' => 'PUT',
             'cancelUrl' => route('venues.show', $venue->routeIdentifier()),
             'submitLabel' => 'Сохранить',
+            'venueRevision' => $venueRevision ?? null,
         ])
 
     @endif

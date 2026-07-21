@@ -19,6 +19,7 @@ use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeCont
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
 
@@ -108,6 +109,12 @@ Route::prefix('admin')
         Route::put('/venues/{venue}', [AdminVenuesController::class, 'update'])
             ->middleware('can:edit-venues-as-superadmin')
             ->name('admin.venues.update');
+        Route::post('/venues/{venue}/photos', [AdminVenuesController::class, 'storePhoto'])
+            ->middleware('can:edit-venues-as-superadmin', 'throttle:10,1')->name('admin.venues.photos.store');
+        Route::patch('/venues/{venue}/photos/{photo}/active', [AdminVenuesController::class, 'activatePhoto'])
+            ->middleware('can:edit-venues-as-superadmin', 'throttle:20,1')->whereNumber('photo')->name('admin.venues.photos.activate');
+        Route::delete('/venues/{venue}/photos/{photo}', [AdminVenuesController::class, 'destroyPhoto'])
+            ->middleware('can:edit-venues-as-superadmin', 'throttle:20,1')->whereNumber('photo')->name('admin.venues.photos.destroy');
         Route::post('/venues/bulk-delete', [AdminVenuesController::class, 'bulkDelete'])->name('admin.venues.bulk-delete');
         Route::post('/venues/bulk-restore', [AdminVenuesController::class, 'bulkRestore'])->name('admin.venues.bulk-restore');
         Route::post('/venues/bulk-block', [AdminVenuesController::class, 'bulkBlock'])->name('admin.venues.bulk-block');
@@ -146,6 +153,9 @@ Route::prefix('venues')->group(function () {
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
     Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
     Route::put('/{alias}', [VenueController::class, 'update'])->name('venues.update');
+    Route::post('/{alias}/photos', [VenuePhotoController::class, 'store'])->middleware('throttle:10,1')->name('venues.photos.store');
+    Route::patch('/{alias}/photos/{photo}/active', [VenuePhotoController::class, 'activate'])->middleware('throttle:20,1')->whereNumber('photo')->name('venues.photos.activate');
+    Route::delete('/{alias}/photos/{photo}', [VenuePhotoController::class, 'destroy'])->middleware('throttle:20,1')->whereNumber('photo')->name('venues.photos.destroy');
     Route::post('/{alias}/moderation', [VenueController::class, 'submitModeration'])->name('venues.moderation.submit');
     Route::get('/{alias}/remove', [VenueController::class, 'remove'])->name('venues.remove');
 });

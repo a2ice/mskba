@@ -24,6 +24,8 @@ final class ShowEditableVenueHandler
                 'creatorActor',
                 'location.metroStations',
                 'tags',
+                'media' => fn ($query) => $query->where('collection', 'gallery')->orderByDesc('is_featured')->orderBy('sort_order')->orderBy('id'),
+                'draftRevision.media' => fn ($query) => $query->where('collection', 'gallery'),
                 'moderationRequests' => fn ($query) => $query
                     ->with('messages')
                     ->latest('id')

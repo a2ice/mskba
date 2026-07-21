@@ -3,6 +3,7 @@
     $latestModerationRequest = $venue?->moderationRequests?->first();
     $hasPendingModeration = $venue?->moderationRequests
         ?->contains(fn ($request) => $request->status === \App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum::PENDING) ?? false;
+    $hasDraftRevision = $venue?->draftRevision !== null;
     $breadcrumbs = $venue === null ? null : [
         ['label' => 'Площадки', 'url' => route('venues')],
         ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
@@ -57,10 +58,10 @@
 
         @if($venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::BLOCKED)
             <div class="alert alert-danger">Площадка заблокирована. Повторная отправка на модерацию недоступна.</div>
-        @elseif($venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED)
-            <div class="alert alert-success">Площадка подтверждена и не требует повторной модерации.</div>
         @elseif($hasPendingModeration)
             <div class="alert alert-secondary">Заявка модерации уже находится на рассмотрении.</div>
+        @elseif($venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED && ! $hasDraftRevision)
+            <div class="alert alert-success">Площадка подтверждена. Сохраните изменения, чтобы сформировать новую заявку.</div>
         @else
             <form method="POST" action="{{ route('venues.moderation.submit', $venue->routeIdentifier()) }}" class="mt-4">
                 @csrf
@@ -68,7 +69,7 @@
                     <label for="moderationMessage" class="form-label">Комментарий для модера</label>
                     <textarea id="moderationMessage" name="message" class="form-control" rows="3">{{ old('message') }}</textarea>
                 </div>
-                <button type="submit" class="btn btn--primary btn--sm">Отправить на модерацию</button>
+                <button type="submit" class="btn btn--primary btn--sm">{{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED ? 'Отправить изменения на модерацию' : 'Отправить на модерацию' }}</button>
             </form>
         @endif
 

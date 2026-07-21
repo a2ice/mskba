@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
+use App\Modules\Venue\Domain\Models\VenueRevision;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'type',
     'subject_id',
+    'venue_revision_id',
     'submitted_by_actor_id',
     'reviewed_by_user_id',
     'status',
@@ -37,11 +39,17 @@ class ModerationRequest extends Model
         return $this->hasMany(ModerationMessage::class);
     }
 
+    public function venueRevision(): BelongsTo
+    {
+        return $this->belongsTo(VenueRevision::class);
+    }
+
     protected function casts(): array
     {
         return [
             'type' => ModerationTypeEnum::class,
             'subject_id' => 'integer',
+            'venue_revision_id' => 'integer',
             'submitted_by_actor_id' => 'integer',
             'reviewed_by_user_id' => 'integer',
             'status' => ModerationRequestStatusEnum::class,
