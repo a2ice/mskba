@@ -40,7 +40,7 @@
 - Frontend/assets: Vite, npm.
 - Docker окружение: общие сервисы описаны в `compose.yaml`; local/dev настройки находятся в `compose.override.yaml`; VDS/prod настройки находятся в `compose.prod.yaml`.
 - Доменные части приложения находятся в `app/Modules`.
-- Текущие доменные модули: `Identity`, `Contact`, `Location`, `Notification`, `Venue`, `Contract`, `Telegram`.
+- Текущие доменные модули: `Identity`, `Contact`, `Location`, `Media`, `Notification`, `Venue`, `Contract`, `Telegram`.
 - Основная тема находится в `resources/themes/mskba_dark`.
 - Минимальная тема-заготовка находится в `resources/themes/blank`.
 - Внешний backlog быстрых записей ведется во внешнем файле `../backlog/todo.md`.
@@ -136,6 +136,8 @@ Backend не доверяет данным Telegram-пользователя с 
 - `raw_data`.
 
 Если связки еще нет, создается обычный `users`-аккаунт с `registration_channel = telegram_mini_app`, `status = unconfirmed`, `system_role = user` и стабильным техническим username вида `tg_{telegram_user_id}`. Telegram-вход логинит пользователя в Laravel-сессию, но не заменяет процесс подтверждения аккаунта.
+
+Если Telegram передал `photo_url`, после успешной авторизации ставится асинхронная задача `SyncTelegramProfileAvatarJob`. Она скачивает изображение после ответа пользователю, проверяет ограничение размера и передаёт его в общий сценарий хранения аватара. Одинаковая ссылка не обрабатывается повторно, а активный аватар с источником `upload` имеет приоритет и не заменяется Telegram-копией.
 
 Для публикации закрепленной кнопки Mini App в Telegram-чате или канале используется artisan-команда `telegram:publish-main-link`. Она отправляет сообщение с URL-кнопкой `https://t.me/{bot_username}?startapp=mskba_chat` и закрепляет его через Bot API. Для закрепления бот должен быть администратором чата/канала с правом pin messages.
 

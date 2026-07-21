@@ -4,7 +4,7 @@
     $telegramAccount = $headerTelegramAccount ?? null;
     $displayName = trim((string) ($profile?->first_name ?: $telegramAccount?->first_name ?: $headerUser?->username));
     $initials = $displayName !== '' ? mb_strtoupper(mb_substr($displayName, 0, 2)) : '';
-    $avatarUrl = $profile?->getAttribute('avatar_url') ?: $telegramAccount?->photo_url;
+    $avatarUrl = $profile?->avatarUrl() ?: $telegramAccount?->photo_url;
     $profileLabel = $headerUser ? 'Открыть профиль' : 'Войти или зарегистрироваться';
 @endphp
 

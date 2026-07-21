@@ -11,7 +11,7 @@
     $routeClass .= $isTelegramMiniApp ? ' telegram-mini-app' : '';
 
     $user = auth()->user();
-    $user?->loadMissing('profile');
+    $user?->loadMissing('profile.activeAvatar');
     $headerTelegramAccount = $user
         ? \App\Modules\Telegram\Domain\Models\TelegramAccount::query()->where('user_id', $user->id)->first()
         : null;

@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
     'mediable_type',
     'mediable_id',
     'collection',
+    'source',
+    'source_reference',
     'disk',
     'path',
     'title',
@@ -28,6 +30,7 @@ class Media extends Model
 {
     /** @use HasFactory<MediaFactory> */
     use Auditable, HasFactory;
+
     use SoftDeletes;
 
     protected static function newFactory(): MediaFactory

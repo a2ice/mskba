@@ -4,10 +4,15 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
         unzip \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        libwebp-dev \
         libicu-dev \
         libpq-dev \
         libzip-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install \
+        gd \
         intl \
         pdo_pgsql \
         zip \

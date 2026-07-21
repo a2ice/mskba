@@ -9,6 +9,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
+use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
@@ -175,6 +176,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
+        Route::post('/avatar', AccountAvatarController::class)
+            ->middleware('throttle:10,1')
+            ->name('account.avatar.store');
         Route::get('/confirmation', [AccountController::class, 'confirmation'])
             ->name('account.confirmation')
             ->defaults('breadcrumb', 'Подтверждение аккаунта');

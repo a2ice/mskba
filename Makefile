@@ -67,6 +67,7 @@ install:
 	$(COMPOSER) install
 	@test -f .env || cp .env.example .env
 	$(ARTISAN) key:generate
+	$(ARTISAN) storage:link
 	$(ARTISAN) migrate
 	$(NPM) install
 	$(NPM) run build

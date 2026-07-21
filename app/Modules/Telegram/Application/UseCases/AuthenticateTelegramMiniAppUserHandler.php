@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Application\DTO\TelegramMiniAppUserDTO;
 use App\Modules\Telegram\Application\Services\TelegramMiniAppInitDataValidator;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramProfileAvatarJob;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -66,6 +67,10 @@ final class AuthenticateTelegramMiniAppUserHandler
 
         Auth::login($result['user'], true);
         request()->session()->regenerate();
+
+        if ($result['telegram_account']->photo_url) {
+            SyncTelegramProfileAvatarJob::dispatch($result['telegram_account']->id)->afterResponse();
+        }
 
         $firstLoginMarked = User::query()
             ->whereKey($result['user']->id)

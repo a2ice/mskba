@@ -12,10 +12,12 @@ use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramProfileAvatarJob;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class TelegramMiniAppAuthTest extends TestCase
@@ -25,6 +27,7 @@ class TelegramMiniAppAuthTest extends TestCase
     public function test_telegram_mini_app_auth_creates_user_and_logs_him_in(): void
     {
         config(['telegram.bot_token' => '123456:test-token']);
+        Queue::fake();
 
         $this
             ->postJson(route('integrations.telegram.auth'), [
@@ -33,6 +36,7 @@ class TelegramMiniAppAuthTest extends TestCase
                     'username' => 'mskba_user',
                     'first_name' => 'Dmitry',
                     'last_name' => 'Losev',
+                    'photo_url' => 'https://cdn.telegram.test/avatar.jpg',
                 ]),
             ])
             ->assertOk()
@@ -74,6 +78,8 @@ class TelegramMiniAppAuthTest extends TestCase
             'first_name' => 'Dmitry',
             'last_name' => 'Losev',
         ]);
+
+        Queue::assertPushed(SyncTelegramProfileAvatarJob::class);
     }
 
     public function test_legacy_telegram_integration_page_remains_available(): void
