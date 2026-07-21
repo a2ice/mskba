@@ -196,6 +196,10 @@
         text-align: right;
     }
 
+    body.telegram-mini-app.nav-shown .site-header .site-nav-wrapper {
+        top: var(--telegram-content-top);
+    }
+
     .mobile-nav-switcher {
         display: flex;
         width: min(100%, 520px);
@@ -269,6 +273,7 @@
         flex-direction: column;
         align-items: flex-end;
         justify-content: flex-end;
+        justify-content: safe flex-end;
     }
 
     .mobile-nav-section__panel[hidden],
