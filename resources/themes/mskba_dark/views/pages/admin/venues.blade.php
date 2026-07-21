@@ -204,34 +204,73 @@
 
                     @if($pendingModerationRequest?->venueRevision)
                         @php
-                            $revisionPayload = $pendingModerationRequest->venueRevision->payload;
-                            $revisionDetails = $revisionPayload['details'] ?? [];
-                            $revisionLocation = $revisionPayload['location'] ?? [];
-                            $revisionDraftMedia = $pendingModerationRequest->venueRevision->media->keyBy('id');
-                            $publishedMedia = $venue->media->keyBy('id');
+                            $revisionDiff = $pendingModerationRequest->revision_diff ?? [
+                                'fields' => [],
+                                'gallery_changed' => false,
+                                'gallery_summary' => '',
+                                'before_gallery' => [],
+                                'after_gallery' => [],
+                                'has_changes' => false,
+                            ];
                         @endphp
                         <section class="admin-moderation-revision" aria-label="Предлагаемые изменения">
-                            <h4>Предлагаемые изменения</h4>
-                            <dl>
-                                <div><dt>Название</dt><dd>{{ $revisionDetails['name'] ?? '—' }}</dd></div>
-                                <div><dt>Тип</dt><dd>{{ \App\Modules\Venue\Domain\Enums\VenueTypeEnum::tryFrom($revisionDetails['type'] ?? '')?->label() ?? '—' }}</dd></div>
-                                <div><dt>Адрес</dt><dd>{{ $revisionLocation['raw_address'] ?? '—' }}</dd></div>
-                                <div><dt>Краткое описание</dt><dd>{{ $revisionDetails['short_description'] ?? '—' }}</dd></div>
-                                <div><dt>Полное описание</dt><dd>{{ $revisionDetails['full_description'] ?? '—' }}</dd></div>
-                                <div><dt>Теги</dt><dd>{{ implode(', ', $revisionPayload['tags'] ?? []) ?: '—' }}</dd></div>
-                            </dl>
-                            <div class="admin-moderation-revision__gallery">
-                                @foreach($revisionPayload['gallery'] ?? [] as $galleryItem)
-                                    @php
-                                        $galleryMedia = ($galleryItem['kind'] ?? null) === 'draft'
-                                            ? $revisionDraftMedia->get((int) ($galleryItem['id'] ?? 0))
-                                            : $publishedMedia->get((int) ($galleryItem['id'] ?? 0));
-                                    @endphp
-                                    @if($galleryMedia)
-                                        <img src="{{ $galleryMedia->publicUrl() }}" alt="" @class(['is-featured' => $galleryItem['is_featured'] ?? false])>
-                                    @endif
-                                @endforeach
-                            </div>
+                            <h4>Что изменится</h4>
+
+                            @if(! $revisionDiff['has_changes'])
+                                <p class="admin-muted">В заявке нет отличий от опубликованной версии.</p>
+                            @else
+                                @if($revisionDiff['fields'] !== [])
+                                    <div class="admin-moderation-diff" role="table" aria-label="Изменённые поля">
+                                        <div class="admin-moderation-diff__header" role="row">
+                                            <span role="columnheader">Поле</span>
+                                            <span role="columnheader">Было</span>
+                                            <span role="columnheader">Станет</span>
+                                        </div>
+                                        @foreach($revisionDiff['fields'] as $field)
+                                            <div class="admin-moderation-diff__row" role="row">
+                                                <strong role="cell">{{ $field['label'] }}</strong>
+                                                <span class="admin-moderation-diff__before" role="cell">{{ $field['before'] }}</span>
+                                                <span class="admin-moderation-diff__after" role="cell">{{ $field['after'] }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                @if($revisionDiff['gallery_changed'])
+                                    <div class="admin-moderation-gallery-diff">
+                                        <h5>Фотографии</h5>
+                                        <p>{{ $revisionDiff['gallery_summary'] }}</p>
+                                        <div class="admin-moderation-gallery-diff__columns">
+                                            <div>
+                                                <strong>Было</strong>
+                                                <div class="admin-moderation-revision__gallery">
+                                                    @forelse($revisionDiff['before_gallery'] as $photo)
+                                                        <figure @class(['is-removed' => $photo['state'] === 'removed'])>
+                                                            <img src="{{ $photo['url'] }}" alt="" @class(['is-featured' => $photo['is_featured']])>
+                                                            @if($photo['state'] === 'removed')<figcaption>Удаляется</figcaption>@endif
+                                                        </figure>
+                                                    @empty
+                                                        <span class="admin-muted">Нет фотографий</span>
+                                                    @endforelse
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <strong>Станет</strong>
+                                                <div class="admin-moderation-revision__gallery">
+                                                    @forelse($revisionDiff['after_gallery'] as $photo)
+                                                        <figure @class(['is-added' => $photo['state'] === 'added'])>
+                                                            <img src="{{ $photo['url'] }}" alt="" @class(['is-featured' => $photo['is_featured']])>
+                                                            @if($photo['state'] === 'added')<figcaption>Новая</figcaption>@endif
+                                                        </figure>
+                                                    @empty
+                                                        <span class="admin-muted">Нет фотографий</span>
+                                                    @endforelse
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
                         </section>
                     @endif
 

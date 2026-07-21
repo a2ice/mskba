@@ -1,9 +1,10 @@
 @php
     $photos = collect($photos ?? []);
     $adminMode = $adminMode ?? false;
+    $readOnly = $readOnly ?? false;
     $routeKey = $adminMode ? $venue : $venue->routeIdentifier();
     $storeRoute = $adminMode ? route('admin.venues.photos.store', $routeKey) : route('venues.photos.store', $routeKey);
-    $canManagePhotos = $adminMode || $venue->status !== \App\Modules\Venue\Domain\Enums\VenueStatusEnum::BLOCKED;
+    $canManagePhotos = ! $readOnly && ($adminMode || $venue->status !== \App\Modules\Venue\Domain\Enums\VenueStatusEnum::BLOCKED);
 @endphp
 
 <section class="venue-gallery-editor mb-4" data-tooltip-skip data-image-upload-surface>
@@ -30,7 +31,7 @@
         <input id="venue-photo-input-{{ $adminMode ? 'admin' : 'owner' }}" type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden>
     </form>
     @else
-        <p class="venue-gallery-editor__notice">Фотографии заблокированной площадки нельзя изменять.</p>
+        <p class="venue-gallery-editor__notice">{{ $readOnly ? 'Фотографии доступны для просмотра до решения модератора.' : 'Фотографии заблокированной площадки нельзя изменять.' }}</p>
     @endif
 
     @if($photos->isNotEmpty())

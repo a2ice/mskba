@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Application\UseCases;
 
+use App\Modules\Admin\Application\Services\VenueRevisionDiffBuilder;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -11,6 +12,10 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class ListAdminVenuesHandler
 {
+    public function __construct(
+        private readonly VenueRevisionDiffBuilder $revisionDiffs,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $filters
      */
@@ -25,6 +30,9 @@ final class ListAdminVenuesHandler
                 'moderationRequests.messages.sender.user',
                 'moderationRequests.venueRevision.media',
                 'media' => fn ($query) => $query->where('collection', 'gallery'),
+                'location.address',
+                'location.metroStations.line',
+                'tags',
             ])
             ->withCount([
                 'duplicateVenues',
@@ -59,9 +67,25 @@ final class ListAdminVenuesHandler
             $query->where('type', $type->value);
         }
 
-        return $query
+        $venues = $query
             ->paginate($this->perPage($filters))
             ->withQueryString();
+
+        foreach ($venues as $venue) {
+            foreach ($venue->moderationRequests as $moderationRequest) {
+                if (
+                    $moderationRequest->status === ModerationRequestStatusEnum::PENDING
+                    && $moderationRequest->venueRevision !== null
+                ) {
+                    $moderationRequest->setAttribute(
+                        'revision_diff',
+                        $this->revisionDiffs->build($venue, $moderationRequest->venueRevision),
+                    );
+                }
+            }
+        }
+
+        return $venues;
     }
 
     /**

@@ -34,8 +34,12 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this->actingAs($owner)
             ->get(route('venues.edit', $venue->alias))
-            ->assertStatus(409)
-            ->assertSee('Площадка находится на модерации');
+            ->assertOk()
+            ->assertSee('Площадка находится на модерации')
+            ->assertSee('Дождитесь результата модерации')
+            ->assertSee('fieldset class="venue-form__fieldset" disabled', false)
+            ->assertSee('type="submit" class="btn btn--primary btn--sm" disabled', false)
+            ->assertDontSee('Добавить фотографию');
 
         $this->actingAs($owner)
             ->put(route('venues.update', $venue->alias), [
@@ -102,7 +106,7 @@ class VenueModerationWorkflowTest extends TestCase
             ->assertSee('Редактировать')
             ->assertSee('Статус')
             ->assertDontSee('Комментарий для модератора')
-            ->assertDontSee('Отправить на модерацию');
+            ->assertSee('Отправить на модерацию');
 
         $this
             ->actingAs($owner)

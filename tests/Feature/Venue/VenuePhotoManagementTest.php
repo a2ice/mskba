@@ -119,7 +119,9 @@ final class VenuePhotoManagementTest extends TestCase
         $admin = User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::ADMIN]);
         $this->actingAs($admin)->get(route('admin.venues'))
             ->assertOk()
-            ->assertSee('Предлагаемые изменения')
+            ->assertSee('Что изменится')
+            ->assertSee('Фотографии')
+            ->assertSee('Новая')
             ->assertSee($draftPhoto->publicUrl(), false)
             ->assertSee('Применить изменения');
         $this->actingAs($admin)
@@ -149,6 +151,42 @@ final class VenuePhotoManagementTest extends TestCase
 
         $this->assertSame($originalName, $venue->refresh()->name);
         $this->assertSame('Новое название после проверки', $venue->revisions()->whereNull('applied_at')->sole()->payload['details']['name']);
+
+        $this->actingAs($owner)
+            ->get(route('venues.edit', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Изменения готовы к отправке')
+            ->assertSee('Отправить изменения на модерацию')
+            ->assertSee('Новое название после проверки');
+
+        $this->actingAs($owner)
+            ->post(route('venues.moderation.submit', $venue->routeIdentifier()), ['message' => 'Проверьте правки.'])
+            ->assertRedirect(route('venues.status', $venue->routeIdentifier()));
+
+        $request = ModerationRequest::query()->latest('id')->firstOrFail();
+        $admin = User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::ADMIN]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.venues'))
+            ->assertOk()
+            ->assertSee('Что изменится')
+            ->assertSee('Название')
+            ->assertSee('Было')
+            ->assertSee('Станет')
+            ->assertSee($originalName)
+            ->assertSee('Новое название после проверки')
+            ->assertSee('Краткое описание')
+            ->assertSee('Новый текст');
+
+        $this->actingAs($owner)
+            ->get(route('venues.edit', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Площадка находится на модерации')
+            ->assertSee('Новое название после проверки')
+            ->assertSee('fieldset class="venue-form__fieldset" disabled', false)
+            ->assertDontSee('Отправить изменения на модерацию');
+
+        $this->assertSame($request->id, $venue->moderationRequests()->latest('id')->firstOrFail()->id);
     }
 
     public function test_rejected_revision_does_not_change_public_venue_and_can_be_edited_again(): void

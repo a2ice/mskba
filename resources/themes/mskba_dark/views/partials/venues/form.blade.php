@@ -7,6 +7,8 @@
     $compactCreate = $compactCreate ?? false;
     $venue = $venue ?? null;
     $venueRevision = $venueRevision ?? null;
+    $readOnly = $readOnly ?? false;
+    $readOnlyMessage = $readOnlyMessage ?? 'Форма временно недоступна для сохранения.';
     $revisionPayload = $venueRevision?->payload ?? [];
     $revisionDetails = is_array($revisionPayload['details'] ?? null) ? $revisionPayload['details'] : [];
     $revisionLocation = is_array($revisionPayload['location'] ?? null) ? $revisionPayload['location'] : [];
@@ -19,12 +21,13 @@
         ->all();
 @endphp
 
-<form method="POST" action="{{ $action }}">
+<form method="POST" action="{{ $action }}" @if($readOnly) aria-describedby="venue-form-read-only-message" @endif>
     @csrf
     @if(strtoupper($method) !== 'POST')
         @method($method)
     @endif
 
+    <fieldset class="venue-form__fieldset" @disabled($readOnly)>
     <div class="mb-3">
         <label for="venueName" class="form-label">Название</label>
         <input
@@ -198,8 +201,13 @@
     </div>
     @endunless
 
-    <div class="d-flex flex-wrap gap-3">
-        <button type="submit" class="btn btn--primary btn--sm">{{ $submitLabel }}</button>
+    </fieldset>
+
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <button type="submit" class="btn btn--primary btn--sm" @disabled($readOnly)>{{ $submitLabel }}</button>
         <a href="{{ $cancelUrl }}" class="btn btn--secondary btn--sm">Отмена</a>
+        @if($readOnly)
+            <span id="venue-form-read-only-message" class="venue-form__read-only-message">{{ $readOnlyMessage }}</span>
+        @endif
     </div>
 </form>
