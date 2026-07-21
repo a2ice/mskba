@@ -11,20 +11,45 @@
     </div>
 
     <div class="site-nav-wrapper">
-        <div class="mobile-nav-accordion" data-mobile-nav-accordion>
-            <section class="mobile-nav-section mobile-nav-section--main" data-mobile-nav-section="main">
+        <div class="mobile-nav-switcher" data-mobile-nav-switcher>
+            <div class="mobile-nav-tabs" role="tablist" aria-label="Выбор навигации">
                 <button
-                    class="mobile-nav-section__toggle"
+                    id="mobileMainNavigationTab"
+                    class="mobile-nav-tabs__tab"
                     type="button"
-                    aria-expanded="true"
+                    role="tab"
+                    aria-selected="true"
                     aria-controls="mobileMainNavigation"
+                    tabindex="0"
                     data-mobile-nav-section-toggle="main"
                 >
-                    <span>Главное меню</span>
-                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                    Главное меню
                 </button>
 
-                <div id="mobileMainNavigation" class="mobile-nav-section__panel" data-mobile-nav-section-panel="main">
+                <button
+                    id="mobileSectionNavigationTab"
+                    class="mobile-nav-tabs__tab"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="mobileSectionNavigation"
+                    tabindex="-1"
+                    data-mobile-nav-section-toggle="sidebar"
+                    data-mobile-nav-sidebar-tab
+                    hidden
+                >
+                    <span data-mobile-nav-sidebar-title>Меню раздела</span>
+                </button>
+            </div>
+
+            <section class="mobile-nav-section mobile-nav-section--main" data-mobile-nav-section="main">
+                <div
+                    id="mobileMainNavigation"
+                    class="mobile-nav-section__panel"
+                    role="tabpanel"
+                    aria-labelledby="mobileMainNavigationTab"
+                    data-mobile-nav-section-panel="main"
+                >
                     @if ($menuItems !== [])
                         <nav class="site-nav" aria-label="Основная навигация">
                             @foreach ($menuItems as $item)
@@ -87,20 +112,11 @@
             </section>
 
             <section class="mobile-nav-section mobile-nav-section--sidebar" data-mobile-nav-section="sidebar" hidden>
-                <button
-                    class="mobile-nav-section__toggle"
-                    type="button"
-                    aria-expanded="false"
-                    aria-controls="mobileSectionNavigation"
-                    data-mobile-nav-section-toggle="sidebar"
-                >
-                    <span data-mobile-nav-sidebar-title>Навигация раздела</span>
-                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
-                </button>
-
                 <div
                     id="mobileSectionNavigation"
                     class="mobile-nav-section__panel mobile-nav-sidebar-slot"
+                    role="tabpanel"
+                    aria-labelledby="mobileSectionNavigationTab"
                     data-mobile-nav-section-panel="sidebar"
                     data-mobile-nav-sidebar-slot
                     hidden

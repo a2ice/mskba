@@ -8,13 +8,14 @@ function setNavigationToggleState(isOpen) {
 }
 
 function initMobileSidebarNavigation() {
-    const accordion = document.querySelector('[data-mobile-nav-accordion]');
+    const navigationSwitcher = document.querySelector('[data-mobile-nav-switcher]');
     const sidebar = document.querySelector('[data-mobile-section-sidebar]');
     const sidebarSlot = document.querySelector('[data-mobile-nav-sidebar-slot]');
-    const mainSection = accordion?.querySelector('[data-mobile-nav-section="main"]');
-    const sidebarSection = accordion?.querySelector('[data-mobile-nav-section="sidebar"]');
+    const mainSection = navigationSwitcher?.querySelector('[data-mobile-nav-section="main"]');
+    const sidebarSection = navigationSwitcher?.querySelector('[data-mobile-nav-section="sidebar"]');
+    const sidebarTab = navigationSwitcher?.querySelector('[data-mobile-nav-sidebar-tab]');
 
-    if (!accordion || !mainSection || !sidebarSection || !sidebarSlot) {
+    if (!navigationSwitcher || !mainSection || !sidebarSection || !sidebarSlot || !sidebarTab) {
         return;
     }
 
@@ -34,17 +35,19 @@ function initMobileSidebarNavigation() {
 
         mainSection.hidden = false;
         sidebarSection.hidden = !isMobile || !hasSidebar;
+        sidebarTab.hidden = !isMobile || !hasSidebar;
 
-        accordion.querySelectorAll('[data-mobile-nav-section]').forEach((section) => {
+        navigationSwitcher.querySelectorAll('[data-mobile-nav-section]').forEach((section) => {
             const name = section.dataset.mobileNavSection;
-            const toggle = section.querySelector('[data-mobile-nav-section-toggle]');
+            const toggle = navigationSwitcher.querySelector(`[data-mobile-nav-section-toggle="${name}"]`);
             const panel = section.querySelector('[data-mobile-nav-section-panel]');
-            const isExpanded = !isMobile || name === activeSection;
+            const isActive = !isMobile || name === activeSection;
 
-            toggle?.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+            toggle?.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            toggle?.setAttribute('tabindex', isActive ? '0' : '-1');
 
             if (panel) {
-                panel.hidden = !isExpanded;
+                panel.hidden = !isActive;
             }
         });
     };
@@ -68,10 +71,10 @@ function initMobileSidebarNavigation() {
 
     if (hasSidebar && sidebar) {
         const sidebarTitle = sidebar.dataset.mobileSectionSidebarTitle;
-        const titleTarget = accordion.querySelector('[data-mobile-nav-sidebar-title]');
+        const titleTarget = navigationSwitcher.querySelector('[data-mobile-nav-sidebar-title]');
 
         if (sidebarTitle && titleTarget) {
-            titleTarget.textContent = sidebarTitle;
+            titleTarget.textContent = sidebarTitle.replace(/^Навигация\s+/iu, 'Меню ');
         }
 
         document.body.classList.add('has-mobile-section-sidebar');
@@ -79,7 +82,7 @@ function initMobileSidebarNavigation() {
 
     document.body.classList.add('mobile-sidebar-navigation-ready');
 
-    accordion.addEventListener('click', (event) => {
+    navigationSwitcher.addEventListener('click', (event) => {
         const toggle = event.target.closest('[data-mobile-nav-section-toggle]');
 
         if (!toggle || !mobileViewport.matches) {
@@ -94,6 +97,30 @@ function initMobileSidebarNavigation() {
 
         activeSection = requestedSection;
         renderSections();
+    });
+
+    navigationSwitcher.addEventListener('keydown', (event) => {
+        const currentTab = event.target.closest('[role="tab"]');
+
+        if (!currentTab || !mobileViewport.matches || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const availableTabs = Array.from(navigationSwitcher.querySelectorAll('[role="tab"]'))
+            .filter((tab) => !tab.hidden);
+        const currentIndex = availableTabs.indexOf(currentTab);
+        const requestedIndex = event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+                ? availableTabs.length - 1
+                : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + availableTabs.length) % availableTabs.length;
+        const requestedTab = availableTabs[requestedIndex];
+
+        activeSection = requestedTab.dataset.mobileNavSectionToggle;
+        renderSections();
+        requestedTab.focus();
     });
 
     sidebarSlot.addEventListener('click', (event) => {

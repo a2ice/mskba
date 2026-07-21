@@ -114,8 +114,15 @@
             >
                 <span class="venue-star-rating__base" aria-hidden="true">★★★★★</span>
                 <span class="venue-star-rating__fill" style="width: {{ $ratingPercent }}%" aria-hidden="true">★★★★★</span>
+                <span class="venue-star-rating__compact" aria-hidden="true">
+                    <span class="venue-star-rating__compact-star">★</span>
+                    <span>{{ number_format($venue->about->rating ?? 0, 1, ',', ' ') }}</span>
+                </span>
             </div>
-            <button type="button" class="btn btn--primary btn--sm" disabled>Забронировать</button>
+            <button type="button" class="btn btn--primary btn--sm venue-booking-action" aria-label="Забронировать" disabled>
+                <i class="ti ti-calendar-plus venue-booking-action__icon" aria-hidden="true"></i>
+                <span class="venue-booking-action__label">Забронировать</span>
+            </button>
         </div>
     @endif
 @endsection
