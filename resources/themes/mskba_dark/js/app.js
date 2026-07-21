@@ -18,6 +18,7 @@ import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
 import './features/tooltips.js';
 import './features/mobile-sidebar-navigation.js';
+import './features/image-upload.js';
 import './features/telegram-mini-app.js';
 import './features/address-suggest.js';
 import './features/venue-map.js';

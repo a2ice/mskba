@@ -45,6 +45,8 @@ final class VenuePhotoManagementTest extends TestCase
         $this->actingAs($owner)->get(route('venues.edit', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee($photo->publicUrl(), false)
+            ->assertSee('data-image-upload-auto-submit', false)
+            ->assertSee('Загружаем фотографию…')
             ->assertSee(route('venues.photos.activate', [$venue->routeIdentifier(), $photo->id]), false)
             ->assertSee(route('venues.photos.destroy', [$venue->routeIdentifier(), $photo->id]), false);
     }

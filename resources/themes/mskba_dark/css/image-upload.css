@@ -1,0 +1,51 @@
+[data-image-upload-surface] {
+    position: relative;
+}
+
+.image-upload-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border-radius: inherit;
+    background: rgba(8, 10, 8, 0.82);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 750;
+    text-align: center;
+    backdrop-filter: blur(5px);
+}
+
+.image-upload-loading[hidden] {
+    display: none;
+}
+
+.image-upload-loading__spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(255, 255, 255, 0.34);
+    border-right-color: var(--accent-strong);
+    border-radius: 50%;
+    animation: image-upload-spin 0.7s linear infinite;
+}
+
+.is-image-upload-loading {
+    cursor: wait;
+}
+
+@keyframes image-upload-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .image-upload-loading__spinner {
+        animation-duration: 1.4s;
+    }
+}

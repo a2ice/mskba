@@ -42,7 +42,9 @@ class AccountAvatarTest extends TestCase
         $this->get(route('account'))
             ->assertOk()
             ->assertSee(Storage::disk('public')->url($avatar->path), false)
-            ->assertSee('Загрузить новый аватар');
+            ->assertSee('Загрузить новый аватар')
+            ->assertSee('data-image-upload-auto-submit', false)
+            ->assertSee('Загружаем аватар…');
     }
 
     public function test_only_three_avatars_are_kept_and_only_latest_is_active(): void

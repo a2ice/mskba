@@ -16,6 +16,7 @@
 @import './pages/admin';
 @import './pages/integrations';
 @import './mobile-primary-bar';
+@import './image-upload';
 
 html {}
 body {

@@ -1,3 +1,5 @@
+import { setImageUploadLoading } from './image-upload.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const root = document.querySelector('[data-telegram-mini-app]');
 
@@ -388,11 +390,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const payload = await submitPhotoRequest(photoForm.action, new FormData(photoForm));
-            if (payload) {
-                renderGallery(payload.photos || []);
-                photoInput.value = '';
-                await refreshModerationState();
+            setImageUploadLoading(photoForm, true);
+
+            try {
+                const payload = await submitPhotoRequest(photoForm.action, new FormData(photoForm));
+                if (payload) {
+                    renderGallery(payload.photos || []);
+                    photoInput.value = '';
+                    await refreshModerationState();
+                }
+            } finally {
+                setImageUploadLoading(photoForm, false);
             }
         });
 

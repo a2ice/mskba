@@ -6,7 +6,8 @@
     $canManagePhotos = $adminMode || $venue->status !== \App\Modules\Venue\Domain\Enums\VenueStatusEnum::BLOCKED;
 @endphp
 
-<section class="venue-gallery-editor mb-4" data-tooltip-skip>
+<section class="venue-gallery-editor mb-4" data-tooltip-skip data-image-upload-surface>
+    @include('theme::partials.image-upload-loading', ['text' => 'Загружаем фотографию…'])
     <div class="venue-gallery-editor__heading">
         <div>
             <h2>Фотографии</h2>
@@ -23,10 +24,10 @@
     @endif
 
     @if($canManagePhotos)
-    <form action="{{ $storeRoute }}" method="post" enctype="multipart/form-data" class="venue-gallery-editor__upload">
+    <form action="{{ $storeRoute }}" method="post" enctype="multipart/form-data" class="venue-gallery-editor__upload" data-image-upload data-image-upload-auto-submit>
         @csrf
         <label for="venue-photo-input-{{ $adminMode ? 'admin' : 'owner' }}" class="btn btn--secondary btn--sm">Добавить фотографию</label>
-        <input id="venue-photo-input-{{ $adminMode ? 'admin' : 'owner' }}" type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden onchange="this.form.submit()">
+        <input id="venue-photo-input-{{ $adminMode ? 'admin' : 'owner' }}" type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden>
     </form>
     @else
         <p class="venue-gallery-editor__notice">Фотографии заблокированной площадки нельзя изменять.</p>

@@ -39,9 +39,9 @@
         <div class="alert alert-danger mb-3">{{ session('avatar_error') ?: $errors->first('avatar') }}</div>
     @endif
 
-    <form action="{{ route('account.avatar.store') }}" method="post" enctype="multipart/form-data" class="avatar-upload-form mb-3">
+    <form action="{{ route('account.avatar.store') }}" method="post" enctype="multipart/form-data" class="avatar-upload-form mb-3" data-image-upload data-image-upload-auto-submit>
         @csrf
-        <label class="avatar-wrapper avatar-upload" for="account-avatar-input" title="Загрузить новый аватар">
+        <label class="avatar-wrapper avatar-upload" for="account-avatar-input" title="Загрузить новый аватар" data-image-upload-surface>
             @if ($avatarUrl)
                 <img src="{{ $avatarUrl }}" alt="Аватар {{ $displayName }}" class="rounded-circle avatar-lg">
             @else
@@ -50,6 +50,7 @@
             <span class="avatar-upload__overlay" aria-hidden="true">
                 <i class="ti ti-camera"></i>
             </span>
+            @include('theme::partials.image-upload-loading', ['text' => 'Загружаем аватар…'])
             <span class="visually-hidden">Загрузить новый аватар</span>
         </label>
         <input
@@ -58,7 +59,6 @@
             type="file"
             name="avatar"
             accept="image/jpeg,image/png,image/webp"
-            onchange="this.form.submit()"
         >
         <p class="avatar-upload__hint">JPEG, PNG или WebP · до 5 МБ</p>
     </form>

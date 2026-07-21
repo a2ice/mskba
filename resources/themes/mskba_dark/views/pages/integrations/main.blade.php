@@ -233,13 +233,14 @@
 
                 <hr>
 
-                <section class="telegram-venue-gallery" data-telegram-venue-gallery>
+                <section class="telegram-venue-gallery" data-telegram-venue-gallery data-image-upload-surface>
+                    @include('theme::partials.image-upload-loading', ['text' => 'Загружаем фотографию…'])
                     <div class="telegram-venue-gallery__heading">
                         <h3>Фотографии</h3>
                         <span data-telegram-venue-gallery-count>0/3</span>
                     </div>
                     <p>JPEG, PNG или WebP · до 5 МБ</p>
-                    <form method="POST" enctype="multipart/form-data" data-telegram-venue-photo-form>
+                    <form method="POST" enctype="multipart/form-data" data-telegram-venue-photo-form data-image-upload>
                         @csrf
                         <label class="btn btn--secondary btn--sm" for="telegramVenuePhoto">Добавить фотографию</label>
                         <input id="telegramVenuePhoto" type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden>
