@@ -4,7 +4,7 @@
 @endphp
 
 <div class="partial-wrapper partial-main-menu site-header-nav-wrapper header-cell">
-    <div class="nav-hamburger js-handler" data-handler="toggleClass" data-params="nav-shown;body">
+    <div class="nav-hamburger js-handler" data-handler="toggleClass" data-params="nav-shown;body" data-nav-toggle aria-expanded="false" aria-label="Открыть основное меню">
         <span></span>
         <span></span>
         <span></span>
@@ -57,26 +57,16 @@
             @guest
                 <button
                     type="button"
-                    class="btn btn--secondary btn--sm site-nav__mobile-auth-button js-handler"
+                    class="site-nav__link site-nav__mobile-account-link js-handler"
                     data-handler="modal"
                     data-modal-action="open"
                     data-modal-target="auth-entry-classic"
                 >
-                    Войти
-                </button>
-                <button
-                    type="button"
-                    class="btn btn--primary btn--sm site-nav__mobile-auth-button js-handler"
-                    data-handler="modal"
-                    data-modal-action="open"
-                    data-modal-target="auth-entry-classic"
-                    data-modal-section="register"
-                >
-                    Регистрация
+                    Личный кабинет
                 </button>
             @else
-                <a href="{{ route('account') }}" class="btn btn--secondary btn--sm site-nav__mobile-auth-button">
-                    {{ $userLoginLabel ?? 'Аккаунт' }}
+                <a href="{{ route('account') }}" class="site-nav__link site-nav__mobile-account-link">
+                    Личный кабинет
                 </a>
             @endguest
         </div>

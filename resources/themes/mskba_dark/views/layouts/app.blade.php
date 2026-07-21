@@ -56,6 +56,8 @@
                 @yield('content')
             </main>
 
+            @include('theme::partials.mobile-primary-bar')
+
             <footer class="site-footer">
                 @include('theme::partials.footer')
             </footer>

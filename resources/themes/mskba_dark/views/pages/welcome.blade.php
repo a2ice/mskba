@@ -125,7 +125,10 @@
                 <div class="home-welcome__actions" aria-label="Основные действия">
                     @foreach ($primaryActions as $action)
                         <a
-                            class="btn btn--secondary btn--lg home-cta @isset($action['modal']) js-handler @endisset"
+                            @class([
+                                'btn btn--secondary btn--lg home-cta',
+                                'js-handler' => isset($action['modal']),
+                            ])
                             href="{{ $action['url'] ?? '#'.$action['modal'] }}"
                             @isset($action['modal'])
                                 data-handler="modal"
@@ -137,6 +140,7 @@
                             <span class="btn__title">{{ $action['title'] }}</span>
                         </a>
                     @endforeach
+
                 </div>
 
                 <a class="home-welcome__how link-action has-arrow-right-hover mb-5" href="#highlights">

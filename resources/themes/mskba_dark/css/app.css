@@ -15,6 +15,7 @@
 @import './pages/venue';
 @import './pages/admin';
 @import './pages/integrations';
+@import './mobile-primary-bar';
 
 html {}
 body {
@@ -580,7 +581,7 @@ body.nav-shown .nav-hamburger > span:last-child {
 
 body.telegram-mini-app {
     --telegram-content-top: max(
-        48px,
+        80px,
         env(safe-area-inset-top, 0px),
         var(--tg-content-safe-area-inset-top, 0px)
     );
@@ -588,7 +589,7 @@ body.telegram-mini-app {
 
 @media (max-width: 768px) {
     body.telegram-mini-app .site-header {
-        padding-top: var(--telegram-content-top);
+        padding-top: var(--telegram-content-top) !important;
     }
 
     body.telegram-mini-app .home-welcome__content {

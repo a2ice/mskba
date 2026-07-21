@@ -38,6 +38,10 @@ class PublicVenueCreateEntryTest extends TestCase
         $this
             ->get(route('venues'))
             ->assertOk()
+            ->assertSee('data-mobile-primary-bar', false)
+            ->assertSee('mobile-primary-bar__menu', false)
+            ->assertSee('37 игр сегодня')
+            ->assertSee('Личный кабинет')
             ->assertSee('Добавить площадку')
             ->assertSee(route('venues.create', [], false));
     }

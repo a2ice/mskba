@@ -10,6 +10,14 @@ const handlers = {
         const parsedParams = paramsStr.split(';');
         const target = parsedParams[1] ? $(parsedParams[1]) : $(trigger);
         target.toggleClass(parsedParams[0]);
+
+        if (parsedParams[0] === 'nav-shown' && target.is('body')) {
+            const isOpen = target.hasClass('nav-shown');
+
+            $('[data-nav-toggle]')
+                .attr('aria-expanded', isOpen ? 'true' : 'false')
+                .attr('aria-label', isOpen ? 'Закрыть основное меню' : 'Открыть основное меню');
+        }
     },
 
     modal(trigger) {
