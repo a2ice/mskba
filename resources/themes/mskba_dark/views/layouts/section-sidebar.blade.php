@@ -18,7 +18,12 @@
             </div>
 
             <div class="section-sidebar-layout__grid">
-                <aside class="section-sidebar-layout__aside" aria-label="{{ $sidebarLabel ?? 'Навигация раздела' }}">
+                <aside
+                    class="section-sidebar-layout__aside"
+                    aria-label="{{ $sidebarLabel ?? 'Навигация раздела' }}"
+                    data-mobile-section-sidebar
+                    data-mobile-section-sidebar-title="{{ $sidebarLabel ?? 'Навигация раздела' }}"
+                >
                     @if($wrapSidebarPanel)
                         <div class="section-sidebar-layout__panel">
                             @hasSection('section-sidebar')

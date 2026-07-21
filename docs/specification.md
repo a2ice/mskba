@@ -366,6 +366,8 @@ Audit фиксирует изменения доменных сущностей 
 
 Для разделов с левой колонкой используется общий grid-based layout `theme::layouts.section-sidebar`. Он задает композицию: breadcrumbs, sidebar слева и основной content panel справа. Sidebar заполняется секцией `section-sidebar`, основной контент - секцией `section-content`. Если в sidebar нужен навигационный список, нужно использовать общий partial `theme::partials.menu.sidebar` и добавить соответствующий handler в `config/menus.php`, как это сделано для `venues`. Заголовки content panel используют общий класс `layout-content-title`. Layout предназначен для разделов вроде площадок, игр, тренировок, событий, команд и внутренних разделов с sidebar.
 
+На viewport до 768 пикселей модуль `mobile-sidebar-navigation` переносит существующий `.section-sidebar-layout__aside` в слот общей мобильной навигации. Узел переносится, а не клонируется, поэтому формы, значения и JS-состояние sidebar остаются единственными. Accordion показывает либо главное меню, либо контекстный sidebar; при возврате к desktop sidebar восстанавливается по DOM-маркеру в исходную grid-позицию.
+
 Account-страницы напрямую используют `theme::layouts.section-sidebar` и передают `theme::partials.account.sidebar` как `sidebarPartial`. Отдельный `theme::layouts.account` больше не используется, чтобы account и публичные предметные разделы имели одну layout-сетку и одинаковую ширину sidebar.
 
 ## Breadcrumbs
