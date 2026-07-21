@@ -110,6 +110,7 @@ class AccountAvatarTest extends TestCase
         $this->get(route('account'))
             ->assertOk()
             ->assertSee('Сохранённые аватары')
+            ->assertSee('partial-avatar text-center" data-tooltip-skip', false)
             ->assertSee(route('account.avatar.activate', $first->id), false)
             ->assertSee(route('account.avatar.destroy', $second->id), false);
     }

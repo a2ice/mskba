@@ -73,6 +73,16 @@
     opacity: 1;
 }
 
+.avatar-gallery__select-form {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+.avatar-gallery__delete-form {
+    margin: 0;
+}
+
 .avatar-gallery__select {
     display: block;
     width: 100%;

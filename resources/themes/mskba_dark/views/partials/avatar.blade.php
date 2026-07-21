@@ -30,7 +30,7 @@
         ?->value;
 @endphp
 
-<div class="partial-wrapper partial-avatar text-center">
+<div class="partial-wrapper partial-avatar text-center" data-tooltip-skip>
     @if(session('avatar_status'))
         <div class="alert alert-success mb-3">{{ session('avatar_status') }}</div>
     @endif
@@ -67,7 +67,7 @@
         <div class="avatar-gallery" aria-label="Сохранённые аватары">
             @foreach($avatars as $avatar)
                 <div @class(['avatar-gallery__item', 'is-active' => $avatar->is_featured])>
-                    <form action="{{ route('account.avatar.activate', $avatar->id) }}" method="post">
+                    <form action="{{ route('account.avatar.activate', $avatar->id) }}" method="post" class="avatar-gallery__select-form">
                         @csrf
                         @method('PATCH')
                         <button
@@ -81,7 +81,7 @@
                         </button>
                     </form>
 
-                    <form action="{{ route('account.avatar.destroy', $avatar->id) }}" method="post">
+                    <form action="{{ route('account.avatar.destroy', $avatar->id) }}" method="post" class="avatar-gallery__delete-form">
                         @csrf
                         @method('DELETE')
                         <button
