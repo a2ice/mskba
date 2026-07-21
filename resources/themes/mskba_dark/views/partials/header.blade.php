@@ -15,6 +15,7 @@
             <div class="site-auth header-cell" aria-label="Пользовательская навигация">
 
                 @include('theme::partials.header-search')
+                @include('theme::partials.header-profile', ['isTelegramMiniApp' => $isTelegramMiniApp ?? false])
 
                 <div class="header-cell">
                     @include('theme::partials.menu.account-nav')

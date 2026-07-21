@@ -26,6 +26,13 @@ final class TelegramMiniAppController extends Controller
         ]);
     }
 
+    public function home(): Response
+    {
+        return ThemeResolver::page('welcome', [
+            'telegramMiniApp' => true,
+        ]);
+    }
+
     public function authenticate(Request $request, AuthenticateTelegramMiniAppUserHandler $authenticate): JsonResponse
     {
         $validated = $request->validate([

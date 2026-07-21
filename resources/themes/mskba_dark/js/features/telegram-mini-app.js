@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const status = root.querySelector('[data-telegram-status]');
     const dashboard = root.querySelector('[data-telegram-dashboard]');
     const authUrl = root.dataset.telegramAuthUrl;
-    const telegram = window.Telegram?.WebApp;
 
     bindTelegramMenu(root);
     bindFeatureModal(root);
@@ -20,33 +19,112 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    if (!telegram?.initData) {
-        setStatus('Откройте эту страницу из Telegram, чтобы авторизоваться через Mini App.');
-        return;
-    }
+    authenticateWhenReady();
 
-    safeTelegramCall(() => telegram.ready());
-    safeTelegramCall(() => telegram.expand());
+    async function authenticateWhenReady() {
+        const initData = await waitForInitData();
 
-    setStatus('Отправляем Telegram-подпись на сервер...');
+        if (!initData) {
+            setStatus('Откройте эту страницу из Telegram, чтобы авторизоваться через Mini App.');
+            root.dataset.telegramAuthState = 'missing-init-data';
+            return;
+        }
 
-    postTelegramAuth(authUrl, {
-        init_data: telegram.initData,
-    })
-        .then((payload) => {
+        const telegram = window.Telegram?.WebApp;
+
+        safeTelegramCall(() => telegram?.ready());
+        safeTelegramCall(() => telegram?.expand());
+        setStatus('Отправляем Telegram-подпись на сервер...');
+
+        try {
+            const payload = await postTelegramAuth(authUrl, { init_data: initData });
             const nickname = payload.telegram_user?.username
                 ? `@${payload.telegram_user.username}`
                 : payload.telegram_user?.first_name || payload.user?.username || 'игрок';
 
             setStatus(`Добро пожаловать, ${nickname}!`);
+            root.dataset.telegramAuthState = 'authenticated';
+            updateMobileProfile(payload);
 
             if (dashboard) {
                 dashboard.hidden = false;
             }
-        })
-        .catch((error) => {
+        } catch (error) {
+            root.dataset.telegramAuthState = 'error';
             setStatus(readableError(error));
+        }
+    }
+
+    function waitForInitData() {
+        const launchInitData = readInitDataFromLaunchUrl();
+        const sdkInitData = window.Telegram?.WebApp?.initData || '';
+
+        if (sdkInitData || launchInitData) {
+            return Promise.resolve(sdkInitData || launchInitData);
+        }
+
+        return new Promise((resolve) => {
+            const deadline = Date.now() + 3000;
+            const timer = window.setInterval(() => {
+                const value = window.Telegram?.WebApp?.initData || readInitDataFromLaunchUrl();
+
+                if (value || Date.now() >= deadline) {
+                    window.clearInterval(timer);
+                    resolve(value || '');
+                }
+            }, 100);
         });
+    }
+
+    function readInitDataFromLaunchUrl() {
+        const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+
+        return new URLSearchParams(hash).get('tgWebAppData') || '';
+    }
+
+    function updateMobileProfile(payload) {
+        const profile = root.querySelector('[data-mobile-profile]');
+
+        if (!profile) {
+            return;
+        }
+
+        const telegramUser = payload.telegram_user || {};
+        const fallbackName = telegramUser.first_name || telegramUser.username || payload.user?.username || '';
+        const initials = Array.from(fallbackName).slice(0, 2).join('').toLocaleUpperCase('ru-RU');
+        const guest = profile.querySelector('[data-profile-guest]');
+        const avatar = profile.querySelector('[data-profile-avatar]');
+        const initialsElement = profile.querySelector('[data-profile-initials]');
+
+        profile.dataset.authenticated = '1';
+        profile.setAttribute('aria-label', 'Открыть профиль');
+
+        if (profile instanceof HTMLAnchorElement && root.dataset.accountUrl) {
+            profile.href = root.dataset.accountUrl;
+        }
+
+        if (guest) {
+            guest.hidden = true;
+        }
+
+        if (avatar && telegramUser.photo_url) {
+            avatar.src = telegramUser.photo_url;
+            avatar.hidden = false;
+            avatar.addEventListener('error', () => {
+                avatar.hidden = true;
+
+                if (initialsElement) {
+                    initialsElement.hidden = false;
+                }
+            }, { once: true });
+        } else if (initialsElement) {
+            initialsElement.hidden = false;
+        }
+
+        if (initialsElement) {
+            initialsElement.textContent = initials;
+        }
+    }
 
     function setStatus(message) {
         if (status) {

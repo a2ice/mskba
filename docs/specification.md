@@ -117,7 +117,9 @@ Telegram Mini App интеграция находится в `App\Modules\Telegr
 - `TELEGRAM_MAIN_CHAT_ID`;
 - `TELEGRAM_INIT_DATA_MAX_AGE`.
 
-Маршрут `GET /integrations/main` показывает стартовую страницу Telegram-интеграции. Frontend загружает Telegram WebApp SDK, берет `Telegram.WebApp.initData` и отправляет его на `POST /integrations/telegram/auth`.
+Основной маршрут Telegram Mini App `GET /telegram` показывает общую страницу `welcome` в layout `theme::layouts.app` с флагом Telegram-контекста. Флаг добавляет `viewport-fit=cover`, CSS safe-area, data-атрибуты авторизации и асинхронную загрузку Telegram WebApp SDK. Прежняя отдельная страница остаётся на `GET /integrations/main` как временный legacy-интерфейс переходного периода.
+
+Frontend берет подписанные данные сначала из `Telegram.WebApp.initData`, а при недоступном или медленном SDK — из параметра `tgWebAppData` hash-части launch URL. В обоих случаях строка без изменений отправляется на `POST /integrations/telegram/auth` и обязательно проходит серверную HMAC-проверку; fallback не ослабляет доверенную границу. Поэтому внешний SDK больше не блокирует рендер общей главной и не является единственной точкой отказа идентификации.
 
 Backend не доверяет данным Telegram-пользователя с клиента напрямую. `TelegramMiniAppInitDataValidator` строит data check string, проверяет HMAC-подпись через bot token и ограничивает возраст `auth_date`. Только после успешной проверки `AuthenticateTelegramMiniAppUserHandler` ищет или создает связку в `telegram_accounts`.
 
@@ -181,6 +183,8 @@ Backend не доверяет данным Telegram-пользователя с 
 Telegram `WebApp.LocationManager` инициализируется только перед первым запросом; последующие нажатия используют `isInited` и сразу запрашивают новую точку через `getLocation()`. Любое ручное изменение текста адреса инвалидирует всю связанную структуру, включая координаты и метро, чтобы в форме не сочетались новый неподтверждённый адрес и данные прежней локации.
 
 Telegram Mini App переиспользует публичные venue endpoints и application use cases, но отправляет запросы с `Accept: application/json` и маркером `telegram_flow`. Для этого потока `CreateVenueRequest` и `UpdateVenueRequest` требуют выбранную адресную подсказку, координаты и структурированный адрес; метро передаётся автоматически в скрытом поле. `VenueController` возвращает JSON для создания, обновления и отправки на модерацию, а обычные браузерные формы сохраняют redirect-based поведение. Глобальный exception renderer учитывает `Request::expectsJson()`, поэтому ошибки FormRequest на web-маршрутах возвращаются как JSON `422`, а не HTML-редирект.
+
+Мобильный header общего layout рендерит профиль отдельно от desktop account-nav. Гость видит иконку пользователя с входом через существующую auth-модаль; авторизованный пользователь — фото из доступного profile/Telegram-источника либо Unicode-safe инициалы из первых двух букв имени. После Telegram AJAX-auth этот элемент обновляется без перезагрузки страницы.
 
 Авторизованный endpoint `GET /venues/{alias}/moderation-state` доступен только actor-у с правом управления площадкой и возвращает вычисленную возможность отправки, текущее состояние и историю заявок с сообщениями. Telegram-форма запрашивает его после создания площадки, каждого сохранения (включая ошибочное) и отправки заявки. Кнопка модерации и история полностью строятся из свежего ответа, поэтому отклонённую площадку можно исправить и повторно отправить из того же окна, а устаревший клиентский флаг не блокирует сценарий.
 

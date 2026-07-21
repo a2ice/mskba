@@ -76,10 +76,10 @@ class TelegramMiniAppAuthTest extends TestCase
         ]);
     }
 
-    public function test_telegram_alias_page_is_available(): void
+    public function test_legacy_telegram_integration_page_remains_available(): void
     {
         $this
-            ->get(route('integrations.telegram.main'))
+            ->get(route('integrations.main'))
             ->assertOk()
             ->assertSee('Навигация Mini App')
             ->assertSee('Аккаунт')
@@ -113,6 +113,40 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('telegram-app-shell')
             ->assertDontSee('site-header')
             ->assertDontSee('site-footer');
+    }
+
+    public function test_telegram_entry_uses_shared_mobile_home_with_auth_bootstrap(): void
+    {
+        $this
+            ->get(route('integrations.telegram.main'))
+            ->assertOk()
+            ->assertSee('Играй в баскетбол')
+            ->assertSee('site-header', false)
+            ->assertSee('site-footer', false)
+            ->assertSee('telegram-mini-app', false)
+            ->assertSee('data-telegram-mini-app', false)
+            ->assertSee('data-telegram-auth-url="'.route('integrations.telegram.auth').'"', false)
+            ->assertSee('data-account-url="'.route('account').'"', false)
+            ->assertSee('data-mobile-profile', false)
+            ->assertSee('https://telegram.org/js/telegram-web-app.js', false)
+            ->assertDontSee('telegram-app-shell');
+    }
+
+    public function test_mobile_header_uses_authenticated_user_initials_without_avatar(): void
+    {
+        $user = User::factory()->create();
+        $user->createProfile([
+            'first_name' => 'Дмитрий',
+            'last_name' => 'Лосев',
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('welcome'))
+            ->assertOk()
+            ->assertSee('data-authenticated="1"', false)
+            ->assertSee('data-profile-initials', false)
+            ->assertSee('ДМ');
     }
 
     public function test_telegram_venue_search_filters_visible_venues_by_query_type_and_metro(): void

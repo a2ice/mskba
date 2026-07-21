@@ -157,7 +157,7 @@ Route::post('/integrations/address-reverse', AddressReverseGeocodeController::cl
 Route::get('/integrations/main', [TelegramMiniAppController::class, 'main'])
     ->name('integrations.main');
 
-Route::get('/telegram', [TelegramMiniAppController::class, 'main'])
+Route::get('/telegram', [TelegramMiniAppController::class, 'home'])
     ->name('integrations.telegram.main');
 
 Route::post('/integrations/telegram/auth', [TelegramMiniAppController::class, 'authenticate'])
