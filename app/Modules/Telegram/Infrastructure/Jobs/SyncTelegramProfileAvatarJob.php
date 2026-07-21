@@ -39,7 +39,14 @@ final class SyncTelegramProfileAvatarJob implements ShouldQueue
         $activeAvatar = $profile->activeAvatar;
         $reference = hash('sha256', $photoUrl);
 
-        if ($activeAvatar?->source === 'upload' || $activeAvatar?->source_reference === $reference) {
+        $wasDeletedByUser = $profile->media()
+            ->onlyTrashed()
+            ->where('collection', 'avatar')
+            ->where('source', 'telegram')
+            ->where('source_reference', $reference)
+            ->exists();
+
+        if ($wasDeletedByUser || $activeAvatar?->source === 'upload' || $activeAvatar?->source_reference === $reference) {
             return;
         }
 

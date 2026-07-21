@@ -11,7 +11,9 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
+use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
+use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
@@ -179,6 +181,14 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/avatar', AccountAvatarController::class)
             ->middleware('throttle:10,1')
             ->name('account.avatar.store');
+        Route::patch('/avatar/{avatar}/active', ActivateAccountAvatarController::class)
+            ->middleware('throttle:20,1')
+            ->whereNumber('avatar')
+            ->name('account.avatar.activate');
+        Route::delete('/avatar/{avatar}', DeleteAccountAvatarController::class)
+            ->middleware('throttle:20,1')
+            ->whereNumber('avatar')
+            ->name('account.avatar.destroy');
         Route::get('/confirmation', [AccountController::class, 'confirmation'])
             ->name('account.confirmation')
             ->defaults('breadcrumb', 'Подтверждение аккаунта');

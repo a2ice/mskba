@@ -8,11 +8,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const status = root.querySelector('[data-telegram-status]');
     const dashboard = root.querySelector('[data-telegram-dashboard]');
     const authUrl = root.dataset.telegramAuthUrl;
+    const shouldBootstrapAuth = root.hasAttribute('data-telegram-auth-bootstrap');
 
     bindTelegramMenu(root);
     bindFeatureModal(root);
     bindTelegramVenueSearch(root);
     bindTelegramVenueFlow(root);
+    syncTelegramHeaderOffset();
+    initializeTelegramContext();
+
+    if (!shouldBootstrapAuth) {
+        return;
+    }
 
     if (!authUrl) {
         setStatus('Не настроен endpoint авторизации Telegram.');
@@ -20,6 +27,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     authenticateWhenReady();
+
+    async function initializeTelegramContext() {
+        const telegram = await waitForTelegramWebApp();
+
+        safeTelegramCall(() => telegram?.ready());
+        safeTelegramCall(() => telegram?.expand());
+    }
+
+    function waitForTelegramWebApp() {
+        if (window.Telegram?.WebApp) {
+            return Promise.resolve(window.Telegram.WebApp);
+        }
+
+        return new Promise((resolve) => {
+            const deadline = Date.now() + 3000;
+            const timer = window.setInterval(() => {
+                const telegram = window.Telegram?.WebApp;
+
+                if (telegram || Date.now() >= deadline) {
+                    window.clearInterval(timer);
+                    resolve(telegram || null);
+                }
+            }, 100);
+        });
+    }
+
+    function syncTelegramHeaderOffset() {
+        const header = root.querySelector('.site-header');
+
+        if (!header) {
+            return;
+        }
+
+        const update = () => {
+            root.style.setProperty('--telegram-header-height', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+        };
+
+        update();
+        window.addEventListener('resize', update, { passive: true });
+
+        if ('ResizeObserver' in window) {
+            new ResizeObserver(update).observe(header);
+        }
+    }
 
     async function authenticateWhenReady() {
         const initData = await waitForInitData();

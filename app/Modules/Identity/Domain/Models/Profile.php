@@ -49,6 +49,13 @@ class Profile extends Model
             ->where('is_featured', true);
     }
 
+    public function avatars(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'mediable')
+            ->where('collection', 'avatar')
+            ->latest('id');
+    }
+
     public function avatarUrl(): ?string
     {
         $avatar = $this->relationLoaded('activeAvatar')

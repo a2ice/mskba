@@ -17,7 +17,14 @@
         default => asset('images/blank/avatar/avatar-male.png'),
     };
 
-    $avatarUrl = $user?->profile?->avatarUrl() ?? $placeholderUrl;
+    $profile = $user?->profile;
+    $activeAvatar = $profile
+        ? ($profile->relationLoaded('activeAvatar') ? $profile->activeAvatar : $profile->activeAvatar()->first())
+        : null;
+    $avatars = $profile
+        ? ($profile->relationLoaded('avatars') ? $profile->avatars : $profile->avatars()->get())
+        : collect();
+    $avatarUrl = $activeAvatar?->publicUrl() ?? $placeholderUrl;
     $primaryEmail = $user?->contacts
         ?->first(fn ($contact) => $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL && $contact->is_primary)
         ?->value;
@@ -55,6 +62,43 @@
         >
         <p class="avatar-upload__hint">JPEG, PNG или WebP · до 5 МБ</p>
     </form>
+
+    @if($avatars->isNotEmpty())
+        <div class="avatar-gallery" aria-label="Сохранённые аватары">
+            @foreach($avatars as $avatar)
+                <div @class(['avatar-gallery__item', 'is-active' => $avatar->is_featured])>
+                    <form action="{{ route('account.avatar.activate', $avatar->id) }}" method="post">
+                        @csrf
+                        @method('PATCH')
+                        <button
+                            type="submit"
+                            class="avatar-gallery__select"
+                            title="Сделать активным"
+                            aria-label="Сделать аватар активным"
+                            @if($avatar->is_featured) aria-current="true" disabled @endif
+                        >
+                            <img src="{{ $avatar->publicUrl() }}" alt="">
+                        </button>
+                    </form>
+
+                    <form action="{{ route('account.avatar.destroy', $avatar->id) }}" method="post">
+                        @csrf
+                        @method('DELETE')
+                        <button
+                            type="submit"
+                            class="avatar-gallery__delete"
+                            title="Удалить аватар"
+                            aria-label="Удалить аватар"
+                            onclick="return confirm('Вы уверены, что хотите удалить аватар?')"
+                        >
+                            <i class="ti ti-x" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     <h5 class="card-title">{{ $displayName }}</h5>
     <p class="card-text fs-smaller">{{ $primaryEmail }}</p>
 </div>

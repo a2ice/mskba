@@ -4,8 +4,11 @@
 
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
 
-    $isTelegramMiniApp = ($telegramMiniApp ?? false) === true;
-    $isMainPage = Route::currentRouteName() === 'welcome' || $isTelegramMiniApp;
+    $isTelegramMiniApp = ($telegramMiniApp ?? false) === true
+        || session()->get('telegram_mini_app_context') === true;
+    $shouldBootstrapTelegramAuth = ($telegramAuthBootstrap ?? false) === true;
+    $isMainPage = Route::currentRouteName() === 'welcome'
+        || Route::currentRouteName() === 'integrations.telegram.main';
 
     $routeClass .= $isMainPage ? ' main' : '';
     $routeClass .= $isTelegramMiniApp ? ' telegram-mini-app' : '';
@@ -43,8 +46,11 @@
         style="--site-body-bottom-bg: url('{{ asset('images/bg-indoor.png') }}');"
         @if($isTelegramMiniApp)
             data-telegram-mini-app
-            data-telegram-auth-url="{{ route('integrations.telegram.auth') }}"
             data-account-url="{{ route('account') }}"
+            @if($shouldBootstrapTelegramAuth)
+                data-telegram-auth-bootstrap
+                data-telegram-auth-url="{{ route('integrations.telegram.auth') }}"
+            @endif
         @endif
     >
         @include('partials.analytics.yandex-metrika-noscript')

@@ -592,6 +592,10 @@ body.telegram-mini-app {
         padding-top: var(--telegram-content-top) !important;
     }
 
+    body.telegram-mini-app:not(.main) .first-screen {
+        padding-top: var(--telegram-header-height, calc(var(--telegram-content-top) + 65px));
+    }
+
     body.telegram-mini-app .home-welcome__content {
         padding-top: var(--telegram-content-top);
     }

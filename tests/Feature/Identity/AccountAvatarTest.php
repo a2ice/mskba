@@ -87,4 +87,91 @@ class AccountAvatarTest extends TestCase
             ->assertRedirect(route('account'))
             ->assertSessionHasErrors('avatar');
     }
+
+    public function test_user_can_select_one_of_saved_avatars_as_active(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $profile = $user->createProfile([]);
+        $first = $profile->media()->create($this->avatarAttributes('avatars/first.webp', true));
+        $second = $profile->media()->create($this->avatarAttributes('avatars/second.webp'));
+        Storage::disk('public')->put($first->path, 'first');
+        Storage::disk('public')->put($second->path, 'second');
+
+        $this->actingAs($user)
+            ->from(route('account'))
+            ->patch(route('account.avatar.activate', $second->id))
+            ->assertRedirect(route('account'))
+            ->assertSessionHas('avatar_status', 'Активный аватар изменён.');
+
+        $this->assertFalse($first->refresh()->is_featured);
+        $this->assertTrue($second->refresh()->is_featured);
+
+        $this->get(route('account'))
+            ->assertOk()
+            ->assertSee('Сохранённые аватары')
+            ->assertSee(route('account.avatar.activate', $first->id), false)
+            ->assertSee(route('account.avatar.destroy', $second->id), false);
+    }
+
+    public function test_deleting_active_avatar_activates_next_saved_avatar_and_removes_file(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $profile = $user->createProfile([]);
+        $replacement = $profile->media()->create($this->avatarAttributes('avatars/replacement.webp'));
+        $active = $profile->media()->create($this->avatarAttributes('avatars/active.webp', true));
+        Storage::disk('public')->put($replacement->path, 'replacement');
+        Storage::disk('public')->put($active->path, 'active');
+
+        $this->actingAs($user)
+            ->from(route('account'))
+            ->delete(route('account.avatar.destroy', $active->id))
+            ->assertRedirect(route('account'))
+            ->assertSessionHas('avatar_status', 'Аватар удалён.');
+
+        $this->assertSoftDeleted('media', ['id' => $active->id]);
+        $this->assertTrue($replacement->refresh()->is_featured);
+        Storage::disk('public')->assertMissing($active->path);
+        Storage::disk('public')->assertExists($replacement->path);
+    }
+
+    public function test_user_cannot_activate_or_delete_another_users_avatar(): void
+    {
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $ownerProfile = $owner->createProfile([]);
+        $avatar = $ownerProfile->media()->create($this->avatarAttributes('avatars/owner.webp', true));
+        Storage::disk('public')->put($avatar->path, 'owner');
+
+        $otherUser = User::factory()->create();
+        $otherUser->createProfile([]);
+
+        $this->actingAs($otherUser)
+            ->patch(route('account.avatar.activate', $avatar->id))
+            ->assertNotFound();
+
+        $this->actingAs($otherUser)
+            ->delete(route('account.avatar.destroy', $avatar->id))
+            ->assertNotFound();
+
+        $this->assertTrue($avatar->refresh()->is_featured);
+        Storage::disk('public')->assertExists($avatar->path);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function avatarAttributes(string $path, bool $active = false): array
+    {
+        return [
+            'collection' => 'avatar',
+            'source' => 'upload',
+            'disk' => 'public',
+            'path' => $path,
+            'mime' => 'image/webp',
+            'size' => 100,
+            'is_featured' => $active,
+        ];
+    }
 }

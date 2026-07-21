@@ -126,16 +126,50 @@ class TelegramMiniAppAuthTest extends TestCase
         $this
             ->get(route('integrations.telegram.main'))
             ->assertOk()
+            ->assertSessionHas('telegram_mini_app_context', true)
             ->assertSee('Играй в баскетбол')
             ->assertSee('site-header', false)
             ->assertSee('site-footer', false)
             ->assertSee('telegram-mini-app', false)
             ->assertSee('data-telegram-mini-app', false)
+            ->assertSee('data-telegram-auth-bootstrap', false)
             ->assertSee('data-telegram-auth-url="'.route('integrations.telegram.auth').'"', false)
             ->assertSee('data-account-url="'.route('account').'"', false)
             ->assertSee('data-mobile-profile', false)
             ->assertSee('https://telegram.org/js/telegram-web-app.js', false)
             ->assertDontSee('telegram-app-shell');
+    }
+
+    public function test_telegram_presentation_context_persists_on_internal_pages_without_restarting_auth(): void
+    {
+        $user = User::factory()->create();
+
+        $this
+            ->actingAs($user)
+            ->get(route('integrations.telegram.main'))
+            ->assertOk();
+
+        $this
+            ->get(route('account'))
+            ->assertOk()
+            ->assertSee('telegram-mini-app', false)
+            ->assertSee('data-telegram-mini-app', false)
+            ->assertSee('https://telegram.org/js/telegram-web-app.js', false)
+            ->assertDontSee('data-telegram-auth-bootstrap', false)
+            ->assertDontSee('data-telegram-auth-url=', false);
+    }
+
+    public function test_regular_mobile_browser_page_does_not_enable_telegram_presentation_context(): void
+    {
+        $user = User::factory()->create();
+
+        $this
+            ->actingAs($user)
+            ->get(route('account'))
+            ->assertOk()
+            ->assertDontSee('telegram-mini-app', false)
+            ->assertDontSee('data-telegram-mini-app', false)
+            ->assertDontSee('https://telegram.org/js/telegram-web-app.js', false);
     }
 
     public function test_shared_home_exposes_four_primary_actions_and_mobile_stats_bar(): void

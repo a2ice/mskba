@@ -68,4 +68,35 @@ class SyncTelegramProfileAvatarJobTest extends TestCase
         $this->assertSame(1, $profile->media()->where('collection', 'avatar')->count());
         Http::assertNothingSent();
     }
+
+    public function test_telegram_sync_does_not_restore_avatar_deleted_by_user(): void
+    {
+        Storage::fake('public');
+        Http::preventStrayRequests();
+        $photoUrl = 'https://cdn.telegram.test/deleted-avatar.jpg';
+        $user = User::factory()->create();
+        $profile = $user->createProfile([]);
+        $avatar = $profile->media()->create([
+            'collection' => 'avatar',
+            'source' => 'telegram',
+            'source_reference' => hash('sha256', $photoUrl),
+            'disk' => 'public',
+            'path' => 'avatars/deleted.webp',
+            'mime' => 'image/webp',
+            'size' => 100,
+            'is_featured' => true,
+        ]);
+        $avatar->delete();
+
+        $account = TelegramAccount::query()->create([
+            'user_id' => $user->id,
+            'telegram_user_id' => 789,
+            'photo_url' => $photoUrl,
+        ]);
+
+        (new SyncTelegramProfileAvatarJob($account->id))->handle(app(StoreProfileAvatarHandler::class));
+
+        $this->assertSame(0, $profile->media()->where('collection', 'avatar')->count());
+        Http::assertNothingSent();
+    }
 }

@@ -26,10 +26,14 @@ final class TelegramMiniAppController extends Controller
         ]);
     }
 
-    public function home(): Response
+    public function home(Request $request): Response
     {
+        // Presentation context only: authorization still relies exclusively on
+        // validated Telegram init data in authenticate().
+        $request->session()->put('telegram_mini_app_context', true);
+
         return ThemeResolver::page('welcome', [
-            'telegramMiniApp' => true,
+            'telegramAuthBootstrap' => true,
         ]);
     }
 
