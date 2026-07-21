@@ -34,7 +34,7 @@ return new class extends Migration
         $isPostgres = DB::getDriverName() === 'pgsql';
 
         Schema::table('contacts', function (Blueprint $table) use ($isPostgres): void {
-            $userEmailKey = $table->string('user_email_key')->after('value');
+            $userEmailKey = $table->string('user_email_key')->nullable()->after('value');
             $expression = "CASE WHEN contactable_type = 'user' AND type = 'email' THEN lower(trim(value)) ELSE NULL END";
 
             if ($isPostgres) {
