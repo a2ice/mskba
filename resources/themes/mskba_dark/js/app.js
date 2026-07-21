@@ -80,6 +80,7 @@ const HEADER_BACKGROUND_SCROLL_DISTANCE = 360;
 function paddingFirstScreen() {
     header = $('.site-header');
     headerHeight = header.outerHeight();
+    document.documentElement.style.setProperty('--site-header-height', `${Math.ceil(headerHeight || 0)}px`);
     $('.first-screen').css('padding-top', headerHeight);
 }
 

@@ -17,6 +17,12 @@
                 @include('theme::partials.breadcrumbs')
             </div>
 
+            @hasSection('section-mobile-sticky-navigation')
+                <div class="section-sidebar-layout__mobile-sticky-navigation">
+                    @yield('section-mobile-sticky-navigation')
+                </div>
+            @endif
+
             <div class="section-sidebar-layout__grid">
                 <aside
                     class="section-sidebar-layout__aside"

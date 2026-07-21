@@ -68,6 +68,8 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Ближайшее метро')
             ->assertSee('href="#address"', false)
             ->assertSee('data-venue-mobile-nav', false)
+            ->assertSee('section-sidebar-layout__mobile-sticky-navigation', false)
+            ->assertSee('venue-mobile-sticky-nav', false)
             ->assertSee('data-venue-anchor-link', false)
             ->assertSee('На карте')
             ->assertSee('Маршрут')

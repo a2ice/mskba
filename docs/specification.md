@@ -368,6 +368,8 @@ Audit фиксирует изменения доменных сущностей 
 
 На viewport до 768 пикселей модуль `mobile-sidebar-navigation` переносит существующий `.section-sidebar-layout__aside` в слот общей мобильной навигации. Узел переносится, а не клонируется, поэтому формы, значения и JS-состояние sidebar остаются единственными. Accordion показывает либо главное меню, либо контекстный sidebar; при возврате к desktop sidebar восстанавливается по DOM-маркеру в исходную grid-позицию.
 
+Layout предоставляет необязательную секцию `section-mobile-sticky-navigation` между breadcrumbs и основной grid. Страница площадки использует её для горизонтальных якорных ссылок. На мобильном секция получает `top` из `--site-header-height`; общий JS обновляет токен по фактической высоте шапки, а Telegram ResizeObserver повторяет обновление при изменении safe-area. Поэтому sticky-элемент и `scroll-margin-top` целевых секций не зависят от фиксированной высоты обычного браузера.
+
 Account-страницы напрямую используют `theme::layouts.section-sidebar` и передают `theme::partials.account.sidebar` как `sidebarPartial`. Отдельный `theme::layouts.account` больше не используется, чтобы account и публичные предметные разделы имели одну layout-сетку и одинаковую ширину sidebar.
 
 ## Breadcrumbs

@@ -22,6 +22,10 @@
     min-width: 0;
 }
 
+.section-sidebar-layout__mobile-sticky-navigation {
+    display: none;
+}
+
 .section-content-heading__row {
     display: flex;
     gap: 24px;
@@ -118,6 +122,16 @@
 @media (max-width: 900px) {
     .section-sidebar-layout__grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .section-sidebar-layout__mobile-sticky-navigation {
+        position: sticky;
+        top: var(--site-header-height, 76px);
+        z-index: 25;
+        display: block;
+        margin-bottom: 10px;
     }
 }
 

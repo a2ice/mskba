@@ -61,7 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const update = () => {
-            root.style.setProperty('--telegram-header-height', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+            const headerHeight = Math.ceil(header.getBoundingClientRect().height);
+
+            root.style.setProperty('--telegram-header-height', `${headerHeight}px`);
+            document.documentElement.style.setProperty('--site-header-height', `${headerHeight}px`);
         };
 
         update();

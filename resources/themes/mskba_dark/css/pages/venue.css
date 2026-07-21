@@ -330,6 +330,33 @@
     flex-direction: column;
 }
 
+.venue-mobile-sticky-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 8px;
+    background: rgba(21, 25, 20, 0.96);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(12px);
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    scroll-snap-type: inline proximity;
+}
+
+.venue-mobile-sticky-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.venue-mobile-sticky-nav .venue-side-nav__link {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding-inline: 12px;
+    white-space: nowrap;
+    scroll-snap-align: center;
+}
+
 @media (max-width: 900px) {
     .venue-section .section-sidebar-layout__aside {
         position: sticky;
@@ -1204,6 +1231,12 @@
 
     .venue-gallery {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .venue-show-section {
+        scroll-margin-top: calc(var(--site-header-height, 76px) + 64px);
     }
 }
 
