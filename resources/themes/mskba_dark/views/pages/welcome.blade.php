@@ -61,6 +61,29 @@
         ['value' => '12', 'label' => 'активных игр', 'icon' => 'ball'],
         ['value' => '5', 'label' => 'турниров на неделе', 'icon' => 'trophy'],
     ];
+
+    $primaryActions = [
+        [
+            'title' => 'Играть',
+            'icon' => 'ti ti-ball-basketball',
+            'modal' => 'games',
+        ],
+        [
+            'title' => 'Площадки',
+            'icon' => 'ti ti-map-pin',
+            'url' => route('venues'),
+        ],
+        [
+            'title' => 'Тренировки',
+            'icon' => 'ti ti-barbell',
+            'modal' => 'trainings',
+        ],
+        [
+            'title' => 'Команды',
+            'icon' => 'ti ti-users-group',
+            'modal' => 'teams',
+        ],
+    ];
 @endphp
 
 
@@ -77,14 +100,14 @@
                 <div class="home-welcome__badges" aria-label="Статистика сайта">
                     <p class="home-welcome__eyebrow">
                         <span class="home-welcome__eyebrow-dot" aria-hidden="true"></span>
-                        <span>Сегодня доступно 37 игр</span>
+                        <span>37 игр сегодня</span>
                     </p>
 
                     <p class="home-welcome__eyebrow home-welcome__eyebrow--online">
                         <span class="home-welcome__eyebrow-dot home-welcome__eyebrow-dot--online" aria-hidden="true"></span>
                         <span>
                             <span data-online-users-count>5</span>/<span data-online-total-count>10</span>
-                            пользователей на сайте
+                            онлайн
                         </span>
                     </p>
                 </div>
@@ -100,20 +123,20 @@
                 </p>
 
                 <div class="home-welcome__actions" aria-label="Основные действия">
-                    <a class="btn btn--primary btn--lg home-cta js-handler has-arrow-right-hover" data-handler="modal" data-modal-action="open" data-modal-target="venues" href="#venues">
-                        <i class="ti ti-ball-basketball icon" aria-hidden="true"></i>
-                        <span class="btn__stack">
-                            <span class="btn__title">Найти игру</span>
-                        </span>
-                        <i class="ti ti-arrow-right icon" aria-hidden="true"></i>
-                    </a>
-
-                    <a class="btn btn--secondary btn--lg home-cta has-arrow-right-hover" href="{{ route('venues.create') }}">
-                        <i class="ti ti-plus icon" aria-hidden="true"></i>
-                        <span class="btn__stack">
-                            <span class="btn__title">Добавить площадку</span>
-                        </span>
-                    </a>
+                    @foreach ($primaryActions as $action)
+                        <a
+                            class="btn btn--secondary btn--lg home-cta @isset($action['modal']) js-handler @endisset"
+                            href="{{ $action['url'] ?? '#'.$action['modal'] }}"
+                            @isset($action['modal'])
+                                data-handler="modal"
+                                data-modal-action="open"
+                                data-modal-target="{{ $action['modal'] }}"
+                            @endisset
+                        >
+                            <i class="{{ $action['icon'] }} icon" aria-hidden="true"></i>
+                            <span class="btn__title">{{ $action['title'] }}</span>
+                        </a>
+                    @endforeach
                 </div>
 
                 <a class="home-welcome__how link-action has-arrow-right-hover mb-5" href="#highlights">

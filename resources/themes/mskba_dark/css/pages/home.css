@@ -152,10 +152,10 @@
 }
 
 .home-welcome__actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
     gap: 15px;
-    flex-wrap: wrap;
     margin-top: 34px;    
 }
 
@@ -169,11 +169,11 @@
 }
 
 .home-cta {
-    /* min-height: 88px; */
-    justify-content: flex-start;
-    padding: 18px 24px;
+    justify-content: center;
+    padding: 18px 16px;
     gap: 10px;
     min-width: 0;
+    white-space: nowrap;
 }
 
 .home-cta .btn__icon {
@@ -675,6 +675,11 @@
 }
 
 @media screen and (max-width: 768px) {
+    :root {
+        --home-mobile-actions-height: 72px;
+        --home-mobile-stats-height: 43px;
+    }
+
     .home-welcome {
         padding-bottom: 28px;
     }
@@ -687,8 +692,19 @@
     }
 
     .home-welcome {
-        min-height: max(750px, 75vh);
-        padding: 0px 0 0;
+        min-height: 0;
+        padding: 0;
+    }
+
+    .home-welcome__content {
+        position: relative;
+        z-index: auto;
+        min-height: 0;
+    }
+
+    .home-welcome__copy {
+        padding-top: 100px;
+        padding-bottom: 10px;
     }
 
     .home-welcome__image {
@@ -703,6 +719,45 @@
         font-size: 13px;
     }
 
+    .home-welcome__badges {
+        position: fixed;
+        right: 0;
+        bottom: calc(var(--home-mobile-actions-height) + env(safe-area-inset-bottom));
+        left: 0;
+        z-index: 110;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0;
+        height: var(--home-mobile-stats-height);
+        margin: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(13, 15, 14, 0.96);
+        backdrop-filter: blur(18px);
+    }
+
+    .home-welcome__eyebrow {
+        justify-content: center;
+        min-width: 0;
+        min-height: 0;
+        gap: 6px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        font-size: clamp(9px, 2.8vw, 12px);
+        white-space: nowrap;
+    }
+
+    .home-welcome__eyebrow-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    .home-welcome__eyebrow + .home-welcome__eyebrow {
+        border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
     .home-welcome__title {
         font-size: clamp(42px, 10vw, 72px);
         line-height: 0.95;
@@ -714,14 +769,54 @@
         line-height: 1.4;
     }
 
+    .home-welcome__how {
+        margin-left: 0;
+    }
+
     .home-welcome__actions {
-        gap: 12px;
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 110;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0;
+        height: calc(var(--home-mobile-actions-height) + env(safe-area-inset-bottom));
+        margin: 0;
+        padding-bottom: env(safe-area-inset-bottom);
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(7, 8, 8, 0.98);
+        box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.36);
+        backdrop-filter: blur(18px);
     }
 
     .home-cta {
+        display: flex;
         width: 100%;
-        min-height: 78px;
-        padding: 16px 18px;
+        min-width: 0;
+        min-height: var(--home-mobile-actions-height);
+        flex-direction: column;
+        gap: 5px;
+        padding: 8px 3px;
+        border: 0;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .home-cta:last-child {
+        border-right: 0;
+    }
+
+    .home-cta .icon {
+        font-size: 23px;
+    }
+
+    .home-welcome__actions .btn__title {
+        max-width: 100%;
+        font-size: clamp(10px, 3vw, 13px);
+        line-height: 1;
+        white-space: nowrap;
     }
 
     .home-live__panel {
@@ -760,6 +855,13 @@
 
     .home-highlights {
         grid-template-columns: 1fr;
+    }
+
+    .home-highlights-section {
+        border-radius: 15px;
+        margin-top: -20px;
+        background: linear-gradient(180deg, #1d1d1d 0%, #1f0d02 100%);
+        padding-bottom: calc(48px + var(--home-mobile-actions-height) + var(--home-mobile-stats-height) + env(safe-area-inset-bottom)) !important;
     }
 
     .home-highlight {

@@ -34,3 +34,10 @@ $modals = [
 ])
 	@include('theme::partials.modal.views.venues')
 @endcomponent
+
+@foreach (['games' => 'Играть', 'trainings' => 'Тренировки', 'teams' => 'Команды'] as $id => $title)
+    @component('theme::partials.modal.layout', ['id' => $id])
+        <h2 class="modal_title" id="modal-title-{{ $id }}">{{ $title }}</h2>
+        <p class="modal-description">Функционал находится в разработке.</p>
+    @endcomponent
+@endforeach

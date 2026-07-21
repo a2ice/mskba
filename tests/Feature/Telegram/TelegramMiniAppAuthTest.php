@@ -132,6 +132,22 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertDontSee('telegram-app-shell');
     }
 
+    public function test_shared_home_exposes_four_primary_actions_and_mobile_stats_bar(): void
+    {
+        $this
+            ->get(route('welcome'))
+            ->assertOk()
+            ->assertSee('Играть')
+            ->assertSee('Площадки')
+            ->assertSee('Тренировки')
+            ->assertSee('Команды')
+            ->assertSee('37 игр сегодня')
+            ->assertSee('онлайн')
+            ->assertSee('data-online-users-count', false)
+            ->assertDontSee('Найти игру')
+            ->assertDontSee('Добавить площадку');
+    }
+
     public function test_mobile_header_uses_authenticated_user_initials_without_avatar(): void
     {
         $user = User::factory()->create();
