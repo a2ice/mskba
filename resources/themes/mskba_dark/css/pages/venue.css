@@ -27,6 +27,11 @@
     display: block;
 }
 
+.venue-star-rating__compact,
+.venue-booking-action__icon {
+    display: none;
+}
+
 .venue-star-rating__fill {
     position: absolute;
     inset: 0 auto 0 0;
@@ -1235,6 +1240,76 @@
 }
 
 @media (max-width: 768px) {
+    .venue-section .section-content-heading__row {
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .venue-section .layout-content-title {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        font-size: clamp(22px, 7vw, 30px);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .venue-section .section-content-heading__action {
+        width: auto;
+        min-width: 0;
+        flex: 0 0 auto;
+    }
+
+    .venue-heading-actions {
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .venue-star-rating {
+        width: auto;
+        flex: 0 0 auto;
+        font-size: 15px;
+        letter-spacing: 0;
+    }
+
+    .venue-star-rating__base,
+    .venue-star-rating__fill {
+        display: none;
+    }
+
+    .venue-star-rating__compact {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--text);
+        font-weight: 800;
+    }
+
+    .venue-star-rating__compact-star {
+        color: #f2b632;
+        font-size: 19px;
+        line-height: 1;
+    }
+
+    .venue-booking-action {
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: 50%;
+    }
+
+    .venue-booking-action__icon {
+        display: inline-block;
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    .venue-booking-action__label {
+        display: none;
+    }
+
     .venue-show-section {
         scroll-margin-top: calc(var(--site-header-height, 76px) + 64px);
     }
