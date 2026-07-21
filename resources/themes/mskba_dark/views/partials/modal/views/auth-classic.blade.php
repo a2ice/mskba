@@ -10,7 +10,7 @@
         <form class="auth-form" action="{{ route('auth.login', [], false) }}" method="POST" data-auth-classic-form data-auth-classic-kind="login">
 
             <label class="auth-form__field">
-                <span>Логин / Email</span>
+                <span>Логин или подтверждённый контакт</span>
                 <input type="text" name="login" autocomplete="username" required autofocus>
             </label>
 

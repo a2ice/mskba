@@ -49,7 +49,7 @@ final class SyncVerifiedTelegramContactHandler
                 'meta' => [
                     'source' => 'telegram_mini_app',
                     'telegram_user_id' => $telegramUserId,
-                    'username' => $username,
+                    'username' => $username === null ? null : mb_strtolower(ltrim($username, '@')),
                     'first_name' => $firstName,
                     'last_name' => $lastName,
                 ],

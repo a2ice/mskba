@@ -4,6 +4,7 @@ namespace App\Modules\Contact\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\ValueObjects\ContactValue;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Contact extends Model
 {
     use Auditable, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Contact $contact): void {
+            if ($contact->type === ContactTypeEnum::EMAIL || $contact->type === ContactTypeEnum::EMAIL->value) {
+                $contact->value = (new ContactValue(ContactTypeEnum::EMAIL, (string) $contact->value))->value();
+            }
+
+        });
+    }
 
     public function contactable(): MorphTo
     {
