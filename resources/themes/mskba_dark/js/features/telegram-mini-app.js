@@ -324,6 +324,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const moderationStatus = editModal?.querySelector('[data-telegram-venue-moderation-status]');
         const moderationHistory = editModal?.querySelector('[data-telegram-venue-moderation-history]');
         const moderationHistoryList = editModal?.querySelector('[data-telegram-venue-moderation-history-list]');
+        const photoForm = editModal?.querySelector('[data-telegram-venue-photo-form]');
+        const photoInput = photoForm?.querySelector('input[type="file"]');
+        const galleryItems = editModal?.querySelector('[data-telegram-venue-gallery-items]');
+        const galleryCount = editModal?.querySelector('[data-telegram-venue-gallery-count]');
         let moderationStateUrl = null;
 
         if (!openButton || !createModal || !editModal || !createForm || !editForm || !moderationForm) {
@@ -352,7 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
             copyFormValues(createForm, editForm);
             editForm.action = payload.venue.update_url;
             moderationForm.action = payload.venue.moderation_url;
+            photoForm.action = payload.venue.photos_store_url;
             moderationStateUrl = payload.venue.moderation_state_url;
+            renderGallery([]);
             updateMetroSummary(editForm, payload.venue.metro);
             closeModal(createModal);
             openModal(editModal);
@@ -375,6 +381,39 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
             await submitForm(moderationForm);
             await refreshModerationState();
+        });
+
+        photoInput?.addEventListener('change', async () => {
+            if (!photoInput.files?.length || !photoForm.action) {
+                return;
+            }
+
+            const payload = await submitPhotoRequest(photoForm.action, new FormData(photoForm));
+            if (payload) {
+                renderGallery(payload.photos || []);
+                photoInput.value = '';
+                await refreshModerationState();
+            }
+        });
+
+        galleryItems?.addEventListener('click', async (event) => {
+            const action = event.target.closest('[data-telegram-photo-action]');
+            if (!action || action.disabled) {
+                return;
+            }
+
+            if (action.dataset.telegramPhotoAction === 'delete'
+                && !window.confirm('Вы уверены, что хотите удалить фотографию?')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('_method', action.dataset.telegramPhotoAction === 'delete' ? 'DELETE' : 'PATCH');
+            const payload = await submitPhotoRequest(action.dataset.url, formData);
+            if (payload) {
+                renderGallery(payload.photos || []);
+                await refreshModerationState();
+            }
         });
 
         document.addEventListener('keydown', (event) => {
@@ -468,6 +507,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
             article.append(header, messages);
             return article;
+        }
+
+        function renderGallery(photos) {
+            const items = Array.isArray(photos) ? photos : [];
+            galleryCount.textContent = `${items.length}/3`;
+            galleryItems.replaceChildren(...items.map((photo) => {
+                const item = document.createElement('article');
+                const preview = document.createElement('button');
+                const image = document.createElement('img');
+                const remove = document.createElement('button');
+
+                item.className = `telegram-venue-gallery__item${photo.is_featured ? ' is-active' : ''}`;
+                preview.type = 'button';
+                preview.className = 'telegram-venue-gallery__preview';
+                preview.dataset.telegramPhotoAction = 'activate';
+                preview.dataset.url = photo.activate_url;
+                preview.disabled = Boolean(photo.is_featured);
+                preview.setAttribute('aria-label', 'Сделать фотографию основной');
+                image.src = photo.url;
+                image.alt = '';
+                preview.append(image);
+
+                remove.type = 'button';
+                remove.className = 'telegram-venue-gallery__delete';
+                remove.dataset.telegramPhotoAction = 'delete';
+                remove.dataset.url = photo.delete_url;
+                remove.setAttribute('aria-label', 'Удалить фотографию');
+                remove.textContent = '×';
+                item.append(preview, remove);
+
+                return item;
+            }));
+        }
+
+        async function submitPhotoRequest(url, body) {
+            showMessage(photoForm, '', '');
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    credentials: 'same-origin',
+                    body,
+                });
+                const payload = await response.json().catch(() => ({}));
+                showMessage(photoForm, payload.message || (response.ok ? 'Готово.' : 'Не удалось выполнить действие.'), response.ok ? 'success' : 'error');
+
+                return response.ok ? payload : null;
+            } catch (error) {
+                showMessage(photoForm, 'Не удалось связаться с сервером. Попробуйте ещё раз.', 'error');
+                return null;
+            }
         }
 
         async function submitForm(form) {

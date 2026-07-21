@@ -58,6 +58,7 @@ final class VenueDetailsUpdater
             'raw_address' => $hasNewLocation
                 ? ($locationData->rawAddress ?? $data['raw_address'] ?? null)
                 : $venue->raw_address,
+            'content_version' => $venue->content_version + 1,
         ])->save();
 
         $this->tagSynchronizer->sync($venue, $tagNames);

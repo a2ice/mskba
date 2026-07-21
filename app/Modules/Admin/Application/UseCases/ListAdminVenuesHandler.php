@@ -23,6 +23,8 @@ final class ListAdminVenuesHandler
                 'duplicateCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
                 'duplicateOfCandidates' => fn ($query) => $query->where('status', VenueDuplicateStatusEnum::PENDING),
                 'moderationRequests.messages.sender.user',
+                'moderationRequests.venueRevision.media',
+                'media' => fn ($query) => $query->where('collection', 'gallery'),
             ])
             ->withCount([
                 'duplicateVenues',

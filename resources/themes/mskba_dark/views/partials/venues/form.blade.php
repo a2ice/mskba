@@ -6,10 +6,14 @@
     $submitLabel = $submitLabel ?? 'Добавить';
     $compactCreate = $compactCreate ?? false;
     $venue = $venue ?? null;
+    $venueRevision = $venueRevision ?? null;
+    $revisionPayload = $venueRevision?->payload ?? [];
+    $revisionDetails = is_array($revisionPayload['details'] ?? null) ? $revisionPayload['details'] : [];
+    $revisionLocation = is_array($revisionPayload['location'] ?? null) ? $revisionPayload['location'] : [];
     $venueAddress = $venue?->location?->address;
     $selectedMetroIds = collect(old(
         'location.metro_station_ids',
-        $venue?->location?->metroStations?->pluck('id')->all() ?? [],
+        $revisionLocation['metro_station_ids'] ?? $venue?->location?->metroStations?->pluck('id')->all() ?? [],
     ))
         ->map(fn ($id) => (string) $id)
         ->all();
@@ -28,7 +32,7 @@
             type="text"
             name="name"
             class="form-control @error('name') is-invalid @enderror"
-            value="{{ old('name', $venue?->name) }}"
+            value="{{ old('name', $revisionDetails['name'] ?? $venue?->name) }}"
             autofocus
             required
         >
@@ -47,7 +51,7 @@
         >
             <option value="">Выберите тип</option>
             @foreach ($types as $type)
-                <option value="{{ $type->value }}" @selected(old('type', $venue?->type?->value) === $type->value)>
+                <option value="{{ $type->value }}" @selected(old('type', $revisionDetails['type'] ?? $venue?->type?->value) === $type->value)>
                     {{ $type->label() }}
                 </option>
             @endforeach
@@ -103,7 +107,7 @@
                 type="text"
                 name="location[raw_address]"
                 class="form-control input-predictive @error('location.raw_address') is-invalid @enderror"
-                value="{{ old('location.raw_address', old('raw_address', $venueAddress?->full_address ?? $venue?->raw_address)) }}"
+                value="{{ old('location.raw_address', old('raw_address', $revisionLocation['raw_address'] ?? $venueAddress?->full_address ?? $venue?->raw_address)) }}"
                 placeholder="Например: Москва, ул. Летниковская, 12"
                 autocomplete="off"
                 required
@@ -126,13 +130,13 @@
             <span class="address-suggest__proximity-warning" role="status" data-address-proximity-warning hidden></span>
         </div>
 
-        <input type="hidden" name="location[address_selected]" value="{{ old('location.address_selected', $venueAddress !== null ? '1' : '') }}" data-address-selected>
-        <input type="hidden" name="location[city]" value="{{ old('location.city', $venueAddress?->city) }}" data-address-city>
-        <input type="hidden" name="location[street]" value="{{ old('location.street', $venueAddress?->street) }}" data-address-street>
-        <input type="hidden" name="location[building]" value="{{ old('location.building', $venueAddress?->building) }}" data-address-building>
-        <input type="hidden" name="location[postal_code]" value="{{ old('location.postal_code', $venueAddress?->postal_code) }}" data-address-postal-code>
-        <input type="hidden" name="location[latitude]" value="{{ old('location.latitude', $venueAddress?->latitude) }}" data-address-latitude>
-        <input type="hidden" name="location[longitude]" value="{{ old('location.longitude', $venueAddress?->longitude) }}" data-address-longitude>
+        <input type="hidden" name="location[address_selected]" value="{{ old('location.address_selected', ($revisionLocation !== [] || $venueAddress !== null) ? '1' : '') }}" data-address-selected>
+        <input type="hidden" name="location[city]" value="{{ old('location.city', $revisionLocation['city'] ?? $venueAddress?->city) }}" data-address-city>
+        <input type="hidden" name="location[street]" value="{{ old('location.street', $revisionLocation['street'] ?? $venueAddress?->street) }}" data-address-street>
+        <input type="hidden" name="location[building]" value="{{ old('location.building', $revisionLocation['building'] ?? $venueAddress?->building) }}" data-address-building>
+        <input type="hidden" name="location[postal_code]" value="{{ old('location.postal_code', $revisionLocation['postal_code'] ?? $venueAddress?->postal_code) }}" data-address-postal-code>
+        <input type="hidden" name="location[latitude]" value="{{ old('location.latitude', $revisionLocation['latitude'] ?? $venueAddress?->latitude) }}" data-address-latitude>
+        <input type="hidden" name="location[longitude]" value="{{ old('location.longitude', $revisionLocation['longitude'] ?? $venueAddress?->longitude) }}" data-address-longitude>
 
         <div class="address-suggest__message text-danger d-none" data-address-suggest-error></div>
 
@@ -157,7 +161,7 @@
             class="form-control @error('short_description') is-invalid @enderror"
             rows="2"
             maxlength="500"
-        >{{ old('short_description', $venue?->short_description) }}</textarea>
+        >{{ old('short_description', $revisionDetails['short_description'] ?? $venue?->short_description) }}</textarea>
         @error('short_description')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
@@ -171,7 +175,7 @@
             class="form-control @error('full_description') is-invalid @enderror"
             rows="6"
             maxlength="10000"
-        >{{ old('full_description', $venue?->full_description) }}</textarea>
+        >{{ old('full_description', $revisionDetails['full_description'] ?? $venue?->full_description) }}</textarea>
         @error('full_description')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
@@ -183,7 +187,7 @@
             type="text"
             name="tags"
             class="form-control @error('tags') is-invalid @enderror"
-            value="{{ old('tags', $venue?->tags?->pluck('name')->implode(', ')) }}"
+            value="{{ old('tags', isset($revisionPayload['tags']) && is_array($revisionPayload['tags']) ? implode(', ', $revisionPayload['tags']) : $venue?->tags?->pluck('name')->implode(', ')) }}"
             maxlength="1000"
             placeholder="Например: круглосуточно, крытая, бесплатная"
         >

@@ -7,6 +7,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\Venue\Application\Services\VenueDetailsUpdater;
+use App\Modules\Venue\Application\Services\VenueRevisionManager;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Exceptions\VenuePendingModerationException;
@@ -18,6 +20,7 @@ final class UpdateVenueHandler
     public function __construct(
         private readonly VenueAccessResolver $access,
         private readonly VenueDetailsUpdater $updater,
+        private readonly VenueRevisionManager $revisions,
     ) {}
 
     /**
@@ -45,6 +48,12 @@ final class UpdateVenueHandler
 
             if ($venue->hasPendingModerationRequest()) {
                 throw new VenuePendingModerationException;
+            }
+
+            if ($venue->status === VenueStatusEnum::CONFIRMED) {
+                $this->revisions->saveDetails($venue, $actor, $data, $locationData, $tagNames);
+
+                return $venue->refresh();
             }
 
             return $this->updater->update($venue, $data, $locationData, $tagNames);

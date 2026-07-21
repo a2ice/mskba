@@ -9,8 +9,10 @@ use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Moderation\Domain\Events\ModerationRequestApproved;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
 use App\Modules\Venue\Application\Services\VenueProximityService;
+use App\Modules\Venue\Application\Services\VenueRevisionManager;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueRevision;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -18,6 +20,7 @@ final class ReviewModerationRequestHandler
 {
     public function __construct(
         private readonly VenueProximityService $proximity,
+        private readonly VenueRevisionManager $revisions,
     ) {}
 
     public function approve(ModerationRequest $request, User $reviewedBy, ?string $message = null, ?Actor $reviewedByActor = null): void
@@ -40,6 +43,16 @@ final class ReviewModerationRequestHandler
         ?Actor $reviewedByActor = null,
     ): ModerationRequest {
         return DB::transaction(function () use ($request, $status, $reviewedBy, $message, $reviewedByActor): ModerationRequest {
+            $venueSnapshot = Venue::query()
+                ->with('location.address')
+                ->whereKey($request->subject_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($venueSnapshot === null) {
+                throw new InvalidArgumentException('Площадка для этой заявки не найдена.');
+            }
+
             $lockedRequest = ModerationRequest::query()
                 ->whereKey($request->id)
                 ->lockForUpdate()
@@ -53,13 +66,18 @@ final class ReviewModerationRequestHandler
                 throw new InvalidArgumentException('Этот сценарий модерации доступен только для площадок.');
             }
 
-            $venueSnapshot = Venue::query()
-                ->with('location.address')
-                ->whereKey($lockedRequest->subject_id)
-                ->first();
+            if ($status === ModerationRequestStatusEnum::APPROVED && $lockedRequest->venue_revision_id !== null) {
+                $revision = VenueRevision::query()
+                    ->whereKey($lockedRequest->venue_revision_id)
+                    ->lockForUpdate()
+                    ->first();
 
-            if ($venueSnapshot === null) {
-                throw new InvalidArgumentException('Площадка для этой заявки не найдена.');
+                if ($revision === null || $revision->venue_id !== $lockedRequest->subject_id) {
+                    throw new InvalidArgumentException('Ревизия площадки для этой заявки не найдена.');
+                }
+
+                $this->revisions->apply($revision);
+                $venueSnapshot->refresh()->load('location.address');
             }
 
             $venuesOfType = Venue::query()

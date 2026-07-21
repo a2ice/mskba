@@ -10,6 +10,7 @@ use App\Modules\Admin\Presentation\Http\Requests\UpdateVenueStatusRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Venue\Application\Services\VenueGalleryManager;
 use App\Modules\Venue\Application\UseCases\AdminUpdateVenueHandler;
 use App\Modules\Venue\Application\UseCases\BulkChangeVenueDeletionStateHandler;
 use App\Modules\Venue\Application\UseCases\BulkUpdateVenueStatusHandler;
@@ -20,6 +21,7 @@ use App\Modules\Venue\Application\UseCases\UpdateVenueStatusHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Presentation\Http\Requests\StoreVenuePhotoRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +39,7 @@ final class AdminVenuesController extends Controller
         ]);
     }
 
-    public function edit(Venue $venue, ListMetrostationsHandler $listMetrostations): Response
+    public function edit(Venue $venue, ListMetrostationsHandler $listMetrostations, VenueGalleryManager $gallery): Response
     {
         $venue->loadMissing('location.address', 'location.metroStations', 'tags');
 
@@ -45,7 +47,39 @@ final class AdminVenuesController extends Controller
             'venue' => $venue,
             'types' => VenueTypeEnum::cases(),
             'metros' => $listMetrostations->handle(),
+            'venuePhotos' => $gallery->editableGallery($venue, forcePublished: true),
         ]);
+    }
+
+    public function storePhoto(StoreVenuePhotoRequest $request, Venue $venue, VenueGalleryManager $gallery): RedirectResponse
+    {
+        $file = $request->file('photo');
+        $path = $file?->getRealPath();
+        $contents = is_string($path) ? file_get_contents($path) : false;
+        if (! is_string($contents)) {
+            return back()->with('photo_error', 'Не удалось прочитать изображение.');
+        }
+        try {
+            $gallery->store($venue, $contents, forcePublished: true);
+        } catch (\InvalidArgumentException|\RuntimeException $exception) {
+            return back()->with('photo_error', $exception->getMessage());
+        }
+
+        return back()->with('photo_status', 'Фотография добавлена.');
+    }
+
+    public function activatePhoto(Venue $venue, int $photo, VenueGalleryManager $gallery): RedirectResponse
+    {
+        $gallery->activate($venue, $photo, forcePublished: true);
+
+        return back()->with('photo_status', 'Основная фотография изменена.');
+    }
+
+    public function destroyPhoto(Venue $venue, int $photo, VenueGalleryManager $gallery): RedirectResponse
+    {
+        $gallery->delete($venue, $photo, forcePublished: true);
+
+        return back()->with('photo_status', 'Фотография удалена.');
     }
 
     public function update(

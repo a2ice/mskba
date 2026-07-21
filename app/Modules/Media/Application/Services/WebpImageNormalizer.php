@@ -16,8 +16,15 @@ final class WebpImageNormalizer
     /**
      * @return array{contents: string, mime: string, width: int, height: int}
      */
-    public function normalize(string $contents): array
+    public function normalize(string $contents, int $maxOutputDimension = self::MAX_OUTPUT_DIMENSION): array
     {
+        if (! extension_loaded('gd') || ! function_exists('imagecreatefromstring') || ! function_exists('imagewebp')) {
+            throw new RuntimeException('Обработка изображений временно недоступна. Расширение GD не установлено.');
+        }
+
+        if ($maxOutputDimension < 1 || $maxOutputDimension > self::MAX_INPUT_DIMENSION) {
+            throw new InvalidArgumentException('Некорректный максимальный размер изображения.');
+        }
         if ($contents === '' || strlen($contents) > self::MAX_INPUT_BYTES) {
             throw new InvalidArgumentException('Изображение должно быть не больше 5 МБ.');
         }
@@ -44,7 +51,7 @@ final class WebpImageNormalizer
         $sourceWidth = imagesx($source);
         $sourceHeight = imagesy($source);
 
-        $scale = min(1, self::MAX_OUTPUT_DIMENSION / max($sourceWidth, $sourceHeight));
+        $scale = min(1, $maxOutputDimension / max($sourceWidth, $sourceHeight));
         $width = max(1, (int) round($sourceWidth * $scale));
         $height = max(1, (int) round($sourceHeight * $scale));
         $target = imagecreatetruecolor($width, $height);

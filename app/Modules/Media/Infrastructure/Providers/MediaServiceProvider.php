@@ -4,6 +4,7 @@ namespace App\Modules\Media\Infrastructure\Providers;
 
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueRevision;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
@@ -14,6 +15,7 @@ class MediaServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'profile' => Profile::class,
             'venue' => Venue::class,
+            'venue_revision' => VenueRevision::class,
         ]);
     }
 }

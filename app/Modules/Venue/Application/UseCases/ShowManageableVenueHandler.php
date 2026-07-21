@@ -22,8 +22,9 @@ final class ShowManageableVenueHandler
                 'canonicalVenue',
                 'creatorActor',
                 'location.metroStations',
+                'draftRevision',
                 'moderationRequests' => fn ($query) => $query
-                    ->with('messages.sender.user')
+                    ->with('messages.sender.user', 'venueRevision')
                     ->latest('id'),
             ])
             ->whereRouteIdentifier($alias)
