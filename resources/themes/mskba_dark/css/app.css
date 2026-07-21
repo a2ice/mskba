@@ -32,6 +32,8 @@ body {
     --panel-muted: #d8d1c2;
     --text: #f7f3ea;
     --muted: #c8c0b2;
+    --placeholder: #aaa69d;
+    --disabled-text: #b7b1a5;
     --ink: #161713;
     --line: rgba(255, 255, 255, 0.18);
     --line-strong: rgba(255, 255, 255, 0.34);
@@ -56,6 +58,11 @@ body {
     --link-color: #fff;
     --link-color-hover: var(--accent);
     --row-highlight: rgba(156, 203, 185, 0.1);
+
+    --bs-secondary-color: var(--muted);
+    --bs-secondary-color-rgb: 200, 192, 178;
+    --bs-tertiary-color: var(--placeholder);
+    --bs-tertiary-color-rgb: 170, 166, 157;
 
     --text-header: rgba(255, 255, 255, 0.72);
 

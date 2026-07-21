@@ -287,6 +287,23 @@ p {
     border-color: rgba(255, 255, 255, 0.36);
 }
 
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder,
+.field input::placeholder {
+    color: var(--placeholder);
+    opacity: 1;
+}
+
+.text-muted,
+.form-text {
+    color: var(--muted) !important;
+}
+
+.form-text {
+    font-size: 12px;
+    line-height: 1.45;
+}
 
 
 .form-control:disabled,
@@ -294,8 +311,13 @@ p {
 .field input:disabled {
     background-color: var(--field-disabled);
     border-color: var(--field-border-disabled);
-    color: var(--muted);
+    color: var(--disabled-text);
     cursor: not-allowed;
+}
+
+.form-control:disabled::placeholder,
+.field input:disabled::placeholder {
+    color: var(--disabled-text);
 }
 
 .form-control:focus,
