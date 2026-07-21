@@ -12,6 +12,7 @@ RUN apt-get update \
         libzip-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install \
+        exif \
         gd \
         intl \
         pdo_pgsql \

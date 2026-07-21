@@ -40,13 +40,16 @@ final class WebpImageNormalizer
             throw new InvalidArgumentException('Не удалось прочитать изображение.');
         }
 
+        $source = $this->applyExifOrientation($source, $contents, $info['mime']);
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+
         $scale = min(1, self::MAX_OUTPUT_DIMENSION / max($sourceWidth, $sourceHeight));
         $width = max(1, (int) round($sourceWidth * $scale));
         $height = max(1, (int) round($sourceHeight * $scale));
         $target = imagecreatetruecolor($width, $height);
 
         if ($target === false) {
-            imagedestroy($source);
             throw new RuntimeException('Не удалось подготовить изображение.');
         }
 
@@ -60,9 +63,6 @@ final class WebpImageNormalizer
         $encoded = imagewebp($target, null, 82);
         $normalized = ob_get_clean();
 
-        imagedestroy($target);
-        imagedestroy($source);
-
         if (! $encoded || ! is_string($normalized) || $normalized === '') {
             throw new RuntimeException('Не удалось сохранить изображение в WebP.');
         }
@@ -73,5 +73,67 @@ final class WebpImageNormalizer
             'width' => $width,
             'height' => $height,
         ];
+    }
+
+    private function applyExifOrientation(\GdImage $source, string $contents, string $mime): \GdImage
+    {
+        $orientation = $this->readExifOrientation($contents, $mime);
+
+        if (in_array($orientation, [5, 6], true)) {
+            $source = $this->rotate($source, -90);
+        } elseif (in_array($orientation, [7, 8], true)) {
+            $source = $this->rotate($source, 90);
+        } elseif ($orientation === 3) {
+            $source = $this->rotate($source, 180);
+        }
+
+        if (in_array($orientation, [2, 5, 7], true)) {
+            imageflip($source, IMG_FLIP_HORIZONTAL);
+        } elseif ($orientation === 4) {
+            imageflip($source, IMG_FLIP_VERTICAL);
+        }
+
+        return $source;
+    }
+
+    private function rotate(\GdImage $source, int $degrees): \GdImage
+    {
+        $transparent = imagecolorallocatealpha($source, 0, 0, 0, 127);
+        $rotated = imagerotate($source, $degrees, $transparent);
+
+        if ($rotated === false) {
+            throw new RuntimeException('Не удалось повернуть изображение.');
+        }
+
+        imagesavealpha($rotated, true);
+
+        return $rotated;
+    }
+
+    private function readExifOrientation(string $contents, string $mime): int
+    {
+        if ($mime !== 'image/jpeg' || ! function_exists('exif_read_data')) {
+            return 1;
+        }
+
+        $temporaryFile = tmpfile();
+
+        if ($temporaryFile === false) {
+            return 1;
+        }
+
+        try {
+            if (fwrite($temporaryFile, $contents) === false) {
+                return 1;
+            }
+
+            $metadata = stream_get_meta_data($temporaryFile);
+            $exif = @exif_read_data($metadata['uri'], 'IFD0');
+            $orientation = is_array($exif) ? (int) ($exif['Orientation'] ?? 1) : 1;
+
+            return in_array($orientation, range(1, 8), true) ? $orientation : 1;
+        } finally {
+            fclose($temporaryFile);
+        }
     }
 }
