@@ -20,6 +20,7 @@ final class StoreVenuePhotoRequest extends FormRequest
     {
         return [
             'photo.required' => 'Выберите изображение.', 'photo.image' => 'Файл должен быть изображением.',
+            'photo.uploaded' => 'Не удалось загрузить изображение. Выберите файл размером не больше 5 МБ.',
             'photo.mimes' => 'Поддерживаются только JPEG, PNG и WebP.', 'photo.max' => 'Изображение должно быть не больше 5 МБ.',
             'photo.dimensions' => 'Размер изображения не должен превышать 6000×6000 пикселей.',
         ];
