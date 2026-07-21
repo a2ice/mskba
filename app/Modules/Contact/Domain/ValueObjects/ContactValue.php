@@ -34,7 +34,7 @@ final readonly class ContactValue
 
     private function normalizeEmail(string $value): string
     {
-        $email = $this->normalizeGeneric($value);
+        $email = mb_strtolower($this->normalizeGeneric($value));
 
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw new InvalidArgumentException('Некорректный формат email адреса.');
@@ -65,7 +65,7 @@ final readonly class ContactValue
             throw new InvalidArgumentException('Некорректный формат Telegram.');
         }
 
-        return '@'.$telegram;
+        return '@'.mb_strtolower($telegram);
     }
 
     private function normalizeVk(string $value): string

@@ -25,8 +25,8 @@
                 <form method="POST" action="{{ route('auth.login') }}">
                     @csrf
                     <div class="form-group mb-3">
-                        <label for="authLogin">Логин</label>
-                        <input id="authLogin" type="text" name="login" placeholder="Логин" class="form-control" value="{{ old('login') }}" required autocomplete="username">
+                        <label for="authLogin">Логин или подтверждённый контакт</label>
+                        <input id="authLogin" type="text" name="login" placeholder="Логин, email, телефон или Telegram" class="form-control" value="{{ old('login') }}" required autocomplete="username">
                     </div>
                     <div class="form-group mb-3">
                         <label for="authPassword">Пароль</label>

@@ -23,7 +23,7 @@ class LoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'login.required' => 'Введите логин или email.',
+            'login.required' => 'Введите логин или подтверждённый контакт.',
             'login.string' => 'Поле логина должно быть строкой.',
             'login.min' => 'Логин должен содержать не менее :min символов.',
             'login.max' => 'Логин не должен превышать :max символов.',

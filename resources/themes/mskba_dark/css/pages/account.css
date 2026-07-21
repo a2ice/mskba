@@ -301,3 +301,10 @@
     background: rgba(10, 10, 10, 0.34);
     color: var(--accent-text);
 }
+.account-settings-card {
+    max-width: 720px;
+}
+
+.account-password-form {
+    max-width: 560px;
+}

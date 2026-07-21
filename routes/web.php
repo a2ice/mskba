@@ -14,6 +14,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
@@ -205,6 +206,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
+        Route::put('/settings/password', UpdateAccountPasswordController::class)
+            ->middleware('throttle:10,1')
+            ->name('account.settings.password.update');
         Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications');
         Route::patch('/notifications/read-all', [AccountController::class, 'readAllNotifications'])
             ->name('account.notifications.read-all');

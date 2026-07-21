@@ -222,10 +222,16 @@ class AccountController extends Controller
 
     public function settings(): Response
     {
-        return ThemeResolver::page('account.settings', ['user' => null, 'error' => [
-            'message' => 'Настройки аккаунта будут реализованы отдельно.',
-            'code' => 501,
-        ]]);
+        try {
+            $user = $this->accountCheckForPresentationService->handle(request()->user());
+        } catch (\Exception $e) {
+            return ThemeResolver::page('account.settings', ['user' => null, 'error' => [
+                'message' => $e->getMessage(),
+                'code' => $e->getCode() ?: 500,
+            ]]);
+        }
+
+        return ThemeResolver::page('account.settings', ['user' => $user]);
     }
 
     public function notifications(

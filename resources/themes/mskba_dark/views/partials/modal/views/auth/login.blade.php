@@ -4,7 +4,7 @@
     <input type="hidden" name="challenge" data-auth-challenge-input>
 
     <label class="auth-form__field">
-        <span>Логин, email или телефон</span>
+        <span>Логин или подтверждённый контакт</span>
         <input type="text" name="login" autocomplete="username" required data-auth-login-input>
     </label>
 
