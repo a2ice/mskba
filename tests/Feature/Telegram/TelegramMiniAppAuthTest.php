@@ -183,6 +183,8 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('Команды')
             ->assertSee('Меню')
             ->assertSee('data-mobile-primary-bar', false)
+            ->assertSee('data-mobile-nav-accordion', false)
+            ->assertSee('Главное меню')
             ->assertSee('mobile-primary-bar__menu', false)
             ->assertSee('data-params="nav-shown;body"', false)
             ->assertSee('data-nav-toggle', false)
