@@ -14,12 +14,11 @@ use App\Modules\Venue\Application\DTO\VenueDetailsDTO;
 use App\Modules\Venue\Application\DTO\VenueMetroStationDTO;
 use App\Modules\Venue\Application\DTO\VenueReviewDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
-use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueReview;
-use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -46,6 +45,7 @@ final class ShowVenueHandler
                     ->orderBy('sort_order')
                     ->orderBy('name'),
                 'schedule.intervals',
+                'schedule.exceptions.intervals',
                 'reviews' => fn ($query) => $query
                     ->where('is_published', true)
                     ->with('user.profile')
@@ -235,18 +235,17 @@ final class ShowVenueHandler
     {
         $schedule = $venue->schedule;
 
-        if ($schedule === null || $schedule->intervals->isEmpty()) {
+        if ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
             return [];
         }
 
-        $intervalsByDay = $schedule->intervals->groupBy('day_of_week');
         $today = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'))->startOfDay();
         $days = [];
 
         for ($offset = 0; $offset < 14; $offset++) {
             $date = $today->addDays($offset);
-            $intervals = ($intervalsByDay->get($date->dayOfWeekIso) ?? collect())
-                ->map(fn (VenueScheduleInterval $interval) => [
+            $intervals = $this->intervalsForDate($venue, $date)
+                ->map(fn ($interval) => [
                     'startsAt' => $this->formatTime($interval->starts_at),
                     'endsAt' => $this->formatTime($interval->ends_at),
                 ])
@@ -271,35 +270,49 @@ final class ShowVenueHandler
      */
     private function openingState(Venue $venue): array
     {
-        if ($venue->status !== VenueStatusEnum::CONFIRMED) {
-            return ['isOpen' => false, 'todayHours' => 'Площадка не подтверждена'];
-        }
-
         $schedule = $venue->schedule;
-        if ($schedule === null || $schedule->intervals->isEmpty()) {
-            return ['isOpen' => true, 'todayHours' => 'Расписание не указано'];
+        if ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
+            return [
+                'isOpen' => $venue->operational_status === VenueOperationalStatusEnum::ACTIVE,
+                'todayHours' => 'Не установлено',
+            ];
         }
 
         $now = CarbonImmutable::now($schedule->timezone ?: config('app.timezone', 'UTC'));
-        $todayIntervals = $schedule->intervals
-            ->where('day_of_week', $now->dayOfWeekIso)
-            ->values();
+        $todayIntervals = $this->intervalsForDate($venue, $now);
 
         if ($todayIntervals->isEmpty()) {
-            return ['isOpen' => false, 'todayHours' => 'Сегодня закрыто'];
+            return ['isOpen' => false, 'todayHours' => 'Закрыто'];
         }
 
-        $isOpen = $todayIntervals->contains(function (VenueScheduleInterval $interval) use ($now): bool {
+        $isWithinWorkingHours = $todayIntervals->contains(function ($interval) use ($now): bool {
             $startsAt = $now->setTimeFromTimeString($this->formatTime($interval->starts_at));
             $endsAt = $now->setTimeFromTimeString($this->formatTime($interval->ends_at));
 
             return $now->greaterThanOrEqualTo($startsAt) && $now->lessThan($endsAt);
         });
         $hours = $todayIntervals
-            ->map(fn (VenueScheduleInterval $interval): string => $this->formatTime($interval->starts_at).'–'.$this->formatTime($interval->ends_at))
+            ->map(fn ($interval): string => $this->formatTime($interval->starts_at).'–'.$this->formatTime($interval->ends_at))
             ->implode(', ');
 
-        return ['isOpen' => $isOpen, 'todayHours' => 'Сегодня: '.$hours];
+        return [
+            'isOpen' => $venue->operational_status === VenueOperationalStatusEnum::ACTIVE && $isWithinWorkingHours,
+            'todayHours' => $hours,
+        ];
+    }
+
+    private function intervalsForDate(Venue $venue, CarbonInterface $date)
+    {
+        $schedule = $venue->schedule;
+        $exception = $schedule?->exceptions->first(
+            fn ($item): bool => $item->date->toDateString() === $date->toDateString()
+        );
+
+        if ($exception !== null) {
+            return $exception->is_closed ? collect() : $exception->intervals->values();
+        }
+
+        return $schedule?->intervals->where('day_of_week', $date->dayOfWeekIso)->values() ?? collect();
     }
 
     private function formatTime(mixed $time): string

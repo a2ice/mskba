@@ -12,6 +12,7 @@ use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueFactory;
@@ -37,6 +38,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'requires_payment',
     'requires_booking_approval',
     'status',
+    'operational_status',
     'status_info',
     'short_description',
     'full_description',
@@ -54,6 +56,7 @@ class Venue extends Model
         'requires_payment' => false,
         'requires_booking_approval' => false,
         'content_version' => 0,
+        'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
     ];
 
     protected static function newFactory(): VenueFactory
@@ -201,6 +204,7 @@ class Venue extends Model
             'requires_payment' => 'boolean',
             'requires_booking_approval' => 'boolean',
             'status' => VenueStatusEnum::class,
+            'operational_status' => VenueOperationalStatusEnum::class,
             'canonical_venue_id' => 'integer',
             'content_version' => 'integer',
         ];

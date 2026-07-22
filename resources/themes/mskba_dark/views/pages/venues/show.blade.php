@@ -6,6 +6,9 @@
         $hasCoordinates = $address?->latitude && $address?->longitude;
         $hasMap = $hasCoordinates && $venue->about->mapApiKey;
         $nearestMetro = $venue->metroStations[0] ?? null;
+        $nearestMetroColor = $nearestMetro?->lineColor && preg_match('/^#[0-9a-fA-F]{3,8}$/', $nearestMetro->lineColor)
+            ? $nearestMetro->lineColor
+            : '#ec7f12';
         $yandexMapUrl = $displayAddress
             ? 'https://yandex.ru/maps/?text=' . urlencode($displayAddress)
             : null;
@@ -74,10 +77,15 @@
 
         <div class="section-sidebar-block">
             <h2 class="section-sidebar-block__title">Управление</h2>
-            @if($venue->canEdit)
+            @if($venue->canEdit || $venue->canEditSchedule)
                 <div class="venue-management-actions">
-                    <a href="{{ route('venues.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Редактировать</a>
-                    <a href="{{ route('venues.status', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Статус</a>
+                    @if($venue->canEdit)
+                        <a href="{{ route('venues.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+                        <a href="{{ route('venues.status', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Статус</a>
+                    @endif
+                    @if($venue->canEditSchedule)
+                        <a href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Расписание</a>
+                    @endif
                 </div>
             @else
                 <p class="section-sidebar-block__text">
@@ -175,40 +183,42 @@
                 <div class="venue-hero__summary">
                     <div class="venue-hero__status-row">
                         <span class="venue-pill">{{ $venue->type }}</span>
-                    </div>
-
-                    <div @class(['venue-opening-state', 'is-open' => $venue->isOpen, 'is-closed' => ! $venue->isOpen])>
-                        <span class="venue-opening-state__dot" aria-hidden="true"></span>
-                        <strong>{{ $venue->isOpen ? 'Открыта' : 'Закрыта' }}</strong>
+                        <div @class(['venue-opening-state', 'is-open' => $venue->isOpen, 'is-closed' => ! $venue->isOpen])>
+                            <span class="venue-opening-state__dot" aria-hidden="true"></span>
+                            <strong>{{ $venue->isOpen ? 'Открыта' : 'Закрыта' }}</strong>
+                        </div>
                     </div>
 
                     <div class="venue-hero__details">
                         <div>
                             <span class="venue-hero__detail-label">Адрес</span>
                             @if ($displayAddress)
-                                <p class="venue-hero__text">{{ $displayAddress }} <br><a href="#address" class="venue-hero__map-link fc-link">На карте</a></p>
+                                <p class="venue-hero__text">
+                                    {{ $displayAddress }}
+                                    @if($nearestMetro)
+                                        <span class="venue-hero__address-metro">
+                                            <span class="venue-hero__metro-bullet" style="background-color: {{ $nearestMetroColor }}" aria-hidden="true"></span>
+                                            <span>{{ $nearestMetro->name }}@if($nearestMetro->lineName), {{ $nearestMetro->lineName }}@endif</span>
+                                        </span>
+                                    @endif
+                                    <br><a href="#address" class="venue-hero__map-link fc-link">На карте</a>
+                                </p>
                             @else
                                 <p class="venue-hero__text">Адрес пока не указан.</p>
                             @endif
                         </div>
                         <div>
-                            <span class="venue-hero__detail-label">Ближайшее метро</span>
+                            <span class="venue-hero__detail-label">Часы работы</span>
                             <p class="venue-hero__text">
-                                @if($nearestMetro)
-                                    {{ $nearestMetro->name }}@if($nearestMetro->lineName), {{ $nearestMetro->lineName }}@endif
-                                    @if($nearestMetro->walkingTimeMinutes) · {{ $nearestMetro->walkingTimeMinutes }} мин пешком @endif
-                                @else
-                                    Ближайшее метро пока не указано.
+                                {{ $venue->todayHours }}
+                                @if($venue->about->scheduleDays !== [])
+                                    <br><a href="#schedule" class="venue-hero__map-link fc-link">Смотреть расписание</a>
                                 @endif
                             </p>
                         </div>
                         <div>
-                            <span class="venue-hero__detail-label">Часы работы</span>
-                            <p class="venue-hero__text">{{ $venue->todayHours }}</p>
-                        </div>
-                        <div>
                             <span class="venue-hero__detail-label">Текущие слоты</span>
-                            <p class="venue-hero__text">Свободные слоты появятся после запуска бронирования.</p>
+                            <p class="venue-hero__text">—</p>
                         </div>
                     </div>
                 </div>

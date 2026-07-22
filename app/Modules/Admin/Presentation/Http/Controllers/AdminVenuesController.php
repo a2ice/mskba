@@ -17,11 +17,13 @@ use App\Modules\Venue\Application\UseCases\BulkUpdateVenueStatusHandler;
 use App\Modules\Venue\Application\UseCases\DeleteVenueHandler;
 use App\Modules\Venue\Application\UseCases\RestoreVenueHandler;
 use App\Modules\Venue\Application\UseCases\ReviewModerationRequestHandler;
+use App\Modules\Venue\Application\UseCases\UpdateVenueScheduleHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueStatusHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Presentation\Http\Requests\StoreVenuePhotoRequest;
+use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueScheduleRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,6 +51,39 @@ final class AdminVenuesController extends Controller
             'metros' => $listMetrostations->handle(),
             'venuePhotos' => $gallery->editableGallery($venue, forcePublished: true),
         ]);
+    }
+
+    public function editSchedule(Venue $venue): Response
+    {
+        $venue->loadMissing('schedule.intervals', 'schedule.exceptions.intervals');
+
+        return ThemeResolver::page('admin.venue-schedule', [
+            'venue' => $venue,
+            'weekDays' => $this->weekDays(),
+            'scheduleRows' => $this->venueScheduleRows($venue),
+            'scheduleExceptions' => $this->venueScheduleExceptions($venue),
+        ]);
+    }
+
+    public function updateSchedule(
+        UpdateVenueScheduleRequest $request,
+        Venue $venue,
+        UpdateVenueScheduleHandler $updateSchedule,
+    ): RedirectResponse {
+        try {
+            $updateSchedule->handle(
+                alias: $venue->routeIdentifier(),
+                user: $request->user(),
+                timezone: $request->timezone(),
+                intervalsByDay: $request->intervalsByDay(),
+                exceptions: $request->exceptions(),
+                operationalStatus: $request->operationalStatus(),
+            );
+        } catch (\Exception $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Расписание сохранено.');
     }
 
     public function storePhoto(StoreVenuePhotoRequest $request, Venue $venue, VenueGalleryManager $gallery): RedirectResponse
@@ -105,6 +140,38 @@ final class AdminVenuesController extends Controller
         return redirect()
             ->route('admin.venues.edit', $venue)
             ->with('success', 'Площадка сохранена.');
+    }
+
+    /** @return array<int, string> */
+    private function weekDays(): array
+    {
+        return [1 => 'Понедельник', 2 => 'Вторник', 3 => 'Среда', 4 => 'Четверг', 5 => 'Пятница', 6 => 'Суббота', 7 => 'Воскресенье'];
+    }
+
+    private function venueScheduleRows(Venue $venue): array
+    {
+        $rows = [];
+        foreach (array_keys($this->weekDays()) as $dayOfWeek) {
+            $intervals = $venue->schedule?->intervals->where('day_of_week', $dayOfWeek)->values()->map(fn ($interval): array => [
+                'starts_at' => substr((string) $interval->starts_at, 0, 5),
+                'ends_at' => substr((string) $interval->ends_at, 0, 5),
+            ])->all() ?? [];
+            $rows[$dayOfWeek] = array_pad(array_slice($intervals, 0, 3), 3, ['starts_at' => '', 'ends_at' => '']);
+        }
+
+        return $rows;
+    }
+
+    private function venueScheduleExceptions(Venue $venue): array
+    {
+        return $venue->schedule?->exceptions->map(fn ($exception): array => [
+            'date' => $exception->date->format('Y-m-d'),
+            'is_closed' => (bool) $exception->is_closed,
+            'intervals' => $exception->intervals->map(fn ($interval): array => [
+                'starts_at' => substr((string) $interval->starts_at, 0, 5),
+                'ends_at' => substr((string) $interval->ends_at, 0, 5),
+            ])->values()->all(),
+        ])->values()->all() ?? [];
     }
 
     public function approve(

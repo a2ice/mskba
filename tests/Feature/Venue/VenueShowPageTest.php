@@ -10,12 +10,14 @@ use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Location\Domain\Models\MetroLine;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
+use App\Modules\Venue\Domain\Models\VenueScheduleException;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -65,7 +67,7 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Баскетбольный зал для тренировок и игр.')
             ->assertSee('Полное описание зала, покрытия и условий игры.')
             ->assertSee('О площадке')
-            ->assertSee('Ближайшее метро')
+            ->assertSee('venue-hero__address-metro', false)
             ->assertSee('href="#address"', false)
             ->assertSee('data-venue-mobile-nav', false)
             ->assertSee('section-sidebar-layout__mobile-sticky-navigation', false)
@@ -87,8 +89,8 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Посты')
             ->assertSee('Отзывы')
             ->assertSee('Открыта')
-            ->assertSee('Расписание не указано')
-            ->assertSee('Свободные слоты появятся')
+            ->assertSee('Не установлено')
+            ->assertDontSee('Свободные слоты появятся')
             ->assertSee('Забронировать')
             ->assertSee('venue-star-rating', false)
             ->assertSee('venue-star-rating__compact', false)
@@ -128,7 +130,7 @@ class VenueShowPageTest extends TestCase
             ->assertSee('hidden', false);
     }
 
-    public function test_unconfirmed_venue_is_closed_even_without_schedule(): void
+    public function test_unconfirmed_active_venue_is_open_without_schedule(): void
     {
         $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $venue = Venue::factory()->create([
@@ -140,11 +142,36 @@ class VenueShowPageTest extends TestCase
             ->actingAs($owner)
             ->get(route('venues.show', $venue->alias))
             ->assertOk()
-            ->assertSee('Закрыта')
-            ->assertSee('Площадка не подтверждена')
+            ->assertSee('Открыта')
+            ->assertSee('Не установлено')
             ->assertSee('venue-heading-status--unconfirmed', false)
             ->assertSee('ti-clock', false)
             ->assertSee('data-tooltip-variant="title"', false);
+    }
+
+    public function test_temporarily_closed_venue_is_closed_even_during_working_hours(): void
+    {
+        Carbon::setTestNow('2026-06-15 10:00:00');
+
+        try {
+            $venue = Venue::factory()->create([
+                'status' => VenueStatusEnum::CONFIRMED,
+                'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED,
+            ]);
+            $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
+            VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
+                'day_of_week' => 1,
+                'starts_at' => '09:00',
+                'ends_at' => '22:00',
+            ]);
+
+            $this->get(route('venues.show', $venue->routeIdentifier()))
+                ->assertOk()
+                ->assertSee('Закрыта')
+                ->assertSee('09:00–22:00');
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_public_venue_show_page_renders_featured_media_gallery(): void
@@ -286,7 +313,8 @@ class VenueShowPageTest extends TestCase
                 ->assertSee('Расписание')
                 ->assertSee('14 дней')
                 ->assertSee('Открыта')
-                ->assertSee('Сегодня: 10:00–12:30')
+                ->assertSee('10:00–12:30')
+                ->assertSee('Смотреть расписание')
                 ->assertSee('Нажмите на день, чтобы посмотреть интервалы.')
                 ->assertSee('data-venue-day-card', false)
                 ->assertSee('data-venue-day-modal', false)
@@ -306,7 +334,30 @@ class VenueShowPageTest extends TestCase
                 ->get(route('venues.show', $venue->alias))
                 ->assertOk()
                 ->assertSee('Закрыта')
-                ->assertSee('Сегодня: 10:00–12:30');
+                ->assertSee('10:00–12:30');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_date_exception_overrides_regular_schedule_on_public_page(): void
+    {
+        Carbon::setTestNow('2026-06-15 10:00:00');
+
+        try {
+            $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+            $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
+            VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
+                'day_of_week' => 1, 'starts_at' => '08:00', 'ends_at' => '22:00',
+            ]);
+            VenueScheduleException::query()->create([
+                'venue_schedule_id' => $schedule->id, 'date' => '2026-06-15', 'is_closed' => true,
+            ]);
+
+            $this->get(route('venues.show', $venue->routeIdentifier()))
+                ->assertOk()
+                ->assertSee('Закрыта')
+                ->assertSee('Закрыто');
         } finally {
             Carbon::setTestNow();
         }

@@ -96,6 +96,27 @@ final class AdminVenueEditingTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_superadmin_can_manage_venue_schedule_from_admin_panel(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+
+        $this->actingAs($superadmin)
+            ->get(route('admin.venues.schedule.edit', $venue))
+            ->assertOk()
+            ->assertSee('Расписание площадки');
+
+        $this->actingAs($superadmin)
+            ->put(route('admin.venues.schedule.update', $venue), [
+                'timezone' => 'Europe/Moscow',
+                'intervals' => [1 => [['starts_at' => '08:00', 'ends_at' => '22:00']]],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('venue_schedules', ['venue_id' => $venue->id]);
+    }
+
     public function test_superadmin_can_edit_venue_while_moderation_is_pending(): void
     {
         $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);

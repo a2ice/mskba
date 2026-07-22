@@ -4,6 +4,7 @@ namespace Tests\Feature\Venue;
 
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
@@ -64,6 +65,7 @@ class VenueScheduleManagementTest extends TestCase
             ->actingAs($user)
             ->put(route('account.venues.schedule.update', $venue->alias), [
                 'timezone' => 'Europe/Moscow',
+                'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED->value,
                 'intervals' => [
                     1 => [
                         ['starts_at' => '10:00', 'ends_at' => '12:30'],
@@ -79,6 +81,7 @@ class VenueScheduleManagementTest extends TestCase
         $schedule = $venue->schedule()->firstOrFail();
 
         $this->assertSame('Europe/Moscow', $schedule->timezone);
+        $this->assertSame(VenueOperationalStatusEnum::TEMPORARILY_CLOSED, $venue->refresh()->operational_status);
         $this->assertDatabaseHas('venue_schedule_intervals', [
             'venue_schedule_id' => $schedule->id,
             'day_of_week' => 1,
@@ -159,6 +162,45 @@ class VenueScheduleManagementTest extends TestCase
                 ],
             ])
             ->assertSessionHasErrors(['intervals.1.0.ends_at']);
+    }
+
+    public function test_schedule_update_rejects_overlapping_intervals(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['created_by_actor_id' => $this->actorIdFor($user)]);
+
+        $this->actingAs($user)->put(route('account.venues.schedule.update', $venue->routeIdentifier()), [
+            'timezone' => 'Europe/Moscow',
+            'intervals' => [1 => [
+                ['starts_at' => '10:00', 'ends_at' => '13:00'],
+                ['starts_at' => '12:00', 'ends_at' => '14:00'],
+            ]],
+        ])->assertSessionHasErrors(['intervals.1.1.starts_at']);
+    }
+
+    public function test_owner_can_store_closed_and_changed_hours_exceptions(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['created_by_actor_id' => $this->actorIdFor($user)]);
+
+        $this->actingAs($user)->put(route('account.venues.schedule.update', $venue->routeIdentifier()), [
+            'timezone' => 'Europe/Moscow',
+            'exceptions' => [
+                ['date' => '2026-08-01', 'is_closed' => '1', 'intervals' => []],
+                ['date' => '2026-08-02', 'is_closed' => '0', 'intervals' => [
+                    ['starts_at' => '12:00', 'ends_at' => '16:00'],
+                ]],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $schedule = $venue->schedule()->firstOrFail();
+        $this->assertDatabaseHas('venue_schedule_exceptions', [
+            'venue_schedule_id' => $schedule->id, 'date' => '2026-08-01', 'is_closed' => true,
+        ]);
+        $exceptionId = $schedule->exceptions()->whereDate('date', '2026-08-02')->value('id');
+        $this->assertDatabaseHas('venue_schedule_exception_intervals', [
+            'venue_schedule_exception_id' => $exceptionId, 'starts_at' => '12:00', 'ends_at' => '16:00',
+        ]);
     }
 
     public function test_user_cannot_update_another_venue_schedule(): void

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Application\Services;
 
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\ActorClaim;
 use App\Modules\Identity\Domain\Models\User;
@@ -73,6 +74,10 @@ final class VenueAccessResolver
     {
         if (! $venue->allowsOperationalChanges()) {
             return false;
+        }
+
+        if ($user?->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
+            return true;
         }
 
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT_SCHEDULE)) {

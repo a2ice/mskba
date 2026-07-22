@@ -16,6 +16,14 @@
             >Редактировать</a>
         @endif
 
+        @if($venue->allowsOperationalChanges())
+            <a
+                href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}"
+                @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'schedule'])
+                @if(($venueSidebarActive ?? null) === 'schedule') aria-current="page" @endif
+            >Расписание</a>
+        @endif
+
         <a
             href="{{ route('venues.status', $venue->routeIdentifier()) }}"
             @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'status'])

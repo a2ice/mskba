@@ -57,7 +57,6 @@
             <section class="venue-edit-moderation-callout">
                 <div>
                     <strong>{{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED ? 'Изменения готовы к отправке' : 'Площадка готова к проверке' }}</strong>
-                    <p>Отправьте данные модератору прямо с этой страницы.</p>
                 </div>
                 <form method="POST" action="{{ route('venues.moderation.submit', $venue->routeIdentifier()) }}">
                     @csrf

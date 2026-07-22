@@ -102,6 +102,41 @@ function setupVenueScheduleForm() {
             applyValuesToDay(day, []);
         });
     });
+
+    setupScheduleExceptions();
+}
+
+function setupScheduleExceptions() {
+    const list = document.querySelector('[data-schedule-exception-list]');
+    const template = document.querySelector('[data-schedule-exception-template]');
+    const addButton = document.querySelector('[data-schedule-exception-add]');
+    if (!list || !template || !addButton) {
+        return;
+    }
+
+    let nextIndex = list.querySelectorAll('[data-schedule-exception]').length;
+    const bindRow = (row) => {
+        const closed = row.querySelector('[data-schedule-exception-closed]');
+        const intervals = row.querySelector('[data-schedule-exception-intervals]');
+        const sync = () => {
+            if (intervals) intervals.hidden = Boolean(closed?.checked);
+            intervals?.querySelectorAll('input').forEach((input) => { input.disabled = Boolean(closed?.checked); });
+        };
+        closed?.addEventListener('change', sync);
+        row.querySelector('[data-schedule-exception-remove]')?.addEventListener('click', () => row.remove());
+        sync();
+    };
+
+    list.querySelectorAll('[data-schedule-exception]').forEach(bindRow);
+    addButton.addEventListener('click', () => {
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = template.innerHTML.replaceAll('__INDEX__', String(nextIndex++));
+        const row = wrapper.firstElementChild;
+        if (!row) return;
+        list.append(row);
+        bindRow(row);
+        row.querySelector('input[type="date"]')?.focus();
+    });
 }
 
 function intervalValues(interval) {

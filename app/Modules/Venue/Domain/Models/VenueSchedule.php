@@ -37,4 +37,9 @@ class VenueSchedule extends Model
             ->orderBy('sort_order')
             ->orderBy('starts_at');
     }
+
+    public function exceptions(): HasMany
+    {
+        return $this->hasMany(VenueScheduleException::class)->orderBy('date');
+    }
 }

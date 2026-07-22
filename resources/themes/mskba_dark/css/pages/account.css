@@ -166,6 +166,38 @@
     gap: 10px;
 }
 
+.account-venue-schedule__exceptions,
+.account-venue-schedule__exception-list {
+    display: grid;
+    gap: 14px;
+}
+
+.account-venue-schedule__section-head,
+.account-venue-schedule-exception__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.account-venue-schedule__section-head h2,
+.account-venue-schedule__section-head p { margin: 0; }
+.account-venue-schedule__section-head p { margin-top: 6px; color: var(--text-muted); }
+
+.account-venue-schedule-exception {
+    display: grid;
+    gap: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.account-venue-schedule-exception__head label,
+.account-venue-schedule-exception__intervals { display: grid; gap: 8px; }
+.account-venue-schedule-exception__closed { display: flex !important; align-items: center; }
+
 @media (max-width: 560px) {
     .account-venue-schedule-interval {
         grid-template-columns: 1fr;

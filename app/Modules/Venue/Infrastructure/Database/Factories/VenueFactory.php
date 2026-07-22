@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Infrastructure\Database\Factories;
 
 use App\Modules\Location\Domain\Models\Location;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -30,6 +31,7 @@ class VenueFactory extends Factory
             'alias' => Str::slug($name).'-'.fake()->unique()->numberBetween(1000, 9999),
             'type' => fake()->randomElement(VenueTypeEnum::cases())->value,
             'status' => VenueStatusEnum::UNCONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
             'location_id' => Location::factory(),
             'short_description' => fake()->optional()->sentence(),
             'full_description' => fake()->optional()->paragraph(),

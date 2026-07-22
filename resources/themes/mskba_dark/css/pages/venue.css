@@ -122,6 +122,7 @@
 .venue-hero__status-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 10px;
 }
 
@@ -216,6 +217,23 @@
 
 .venue-hero__details .venue-hero__text {
     margin: 0;
+}
+
+.venue-hero__address-metro {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    color: rgba(247, 243, 234, 0.72);
+    white-space: normal;
+}
+
+.venue-hero__metro-bullet {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
 }
 
 .venue-address-card__actions {

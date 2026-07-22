@@ -109,6 +109,13 @@ Route::prefix('admin')
         Route::put('/venues/{venue}', [AdminVenuesController::class, 'update'])
             ->middleware('can:edit-venues-as-superadmin')
             ->name('admin.venues.update');
+        Route::get('/venues/{venue}/schedule', [AdminVenuesController::class, 'editSchedule'])
+            ->middleware('can:edit-venues-as-superadmin')
+            ->name('admin.venues.schedule.edit')
+            ->defaults('breadcrumb', 'Расписание площадки');
+        Route::put('/venues/{venue}/schedule', [AdminVenuesController::class, 'updateSchedule'])
+            ->middleware('can:edit-venues-as-superadmin')
+            ->name('admin.venues.schedule.update');
         Route::post('/venues/{venue}/photos', [AdminVenuesController::class, 'storePhoto'])
             ->middleware('can:edit-venues-as-superadmin', 'throttle:10,1')->name('admin.venues.photos.store');
         Route::patch('/venues/{venue}/photos/{photo}/active', [AdminVenuesController::class, 'activatePhoto'])

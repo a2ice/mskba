@@ -549,6 +549,7 @@ class AccountController extends Controller
         return ThemeResolver::page('account.venue-schedule', [
             'venue' => $venue,
             'scheduleRows' => $this->venueScheduleRows($venue),
+            'scheduleExceptions' => $this->venueScheduleExceptions($venue),
             'weekDays' => $this->weekDays(),
         ]);
     }
@@ -566,6 +567,8 @@ class AccountController extends Controller
                 user: $user,
                 timezone: $request->timezone(),
                 intervalsByDay: $request->intervalsByDay(),
+                exceptions: $request->exceptions(),
+                operationalStatus: $request->operationalStatus(),
             );
         } catch (\Exception $e) {
             return redirect()
@@ -619,5 +622,18 @@ class AccountController extends Controller
         }
 
         return $rows;
+    }
+
+    /** @return array<int, array{date: string, is_closed: bool, intervals: array<int, array{starts_at: string, ends_at: string}>}> */
+    private function venueScheduleExceptions($venue): array
+    {
+        return $venue->schedule?->exceptions->map(fn ($exception): array => [
+            'date' => $exception->date->format('Y-m-d'),
+            'is_closed' => (bool) $exception->is_closed,
+            'intervals' => $exception->intervals->map(fn ($interval): array => [
+                'starts_at' => substr((string) $interval->starts_at, 0, 5),
+                'ends_at' => substr((string) $interval->ends_at, 0, 5),
+            ])->values()->all(),
+        ])->values()->all() ?? [];
     }
 }

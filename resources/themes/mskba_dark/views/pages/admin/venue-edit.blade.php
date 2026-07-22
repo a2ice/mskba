@@ -15,6 +15,7 @@
     @endif
 
     <div class="admin-card">
+        <div class="mb-4"><a href="{{ route('admin.venues.schedule.edit', $venue) }}" class="btn btn--secondary btn--sm">Расписание</a></div>
         @include('theme::partials.venues.gallery-editor', [
             'venue' => $venue,
             'photos' => $venuePhotos ?? [],
