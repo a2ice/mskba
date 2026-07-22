@@ -8,7 +8,7 @@
     'sectionId' => 'events',
     'sectionClass' => 'events-section',
     'contentTitle' => $title,
-    'contentSubtitle' => 'Выберите площадку и свободное время. Без расписания площадка доступна круглосуточно.',
+    'contentSubtitle' => 'Выберите площадку и свободное время.',
     'sidebarLabel' => 'Навигация мероприятий',
 ])
 
@@ -51,7 +51,21 @@
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-md-6 form-group field"><label class="form-label" for="eventStartsAt">Начало</label><input id="eventStartsAt" type="datetime-local" class="form-control @error('starts_at') is-invalid @enderror" name="starts_at" value="{{ old('starts_at', $defaultStartsAt) }}" min="{{ $defaultStartsAt }}" required data-event-start>@error('starts_at') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>
-                <div class="col-md-6 form-group field"><label class="form-label" for="eventEndsAt">Окончание</label><input id="eventEndsAt" type="datetime-local" class="form-control @error('ends_at') is-invalid @enderror" name="ends_at" value="{{ old('ends_at', $defaultEndsAt) }}" min="{{ $defaultEndsAt }}" data-event-end><small class="form-text">Можно не указывать — установим через час после начала.</small>@error('ends_at') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="eventDuration">Длительность</label>
+                    <select id="eventDuration" class="form-select @error('duration_minutes') is-invalid @enderror" name="duration_minutes" required>
+                        @foreach($durationOptions as $minutes)
+                            @php
+                                $hours = $minutes / 60;
+                                $durationLabel = $minutes === 30
+                                    ? '30 минут'
+                                    : number_format($hours, $minutes % 60 === 0 ? 0 : 1, ',', '').' '.($hours === 1.0 ? 'час' : ($minutes % 60 !== 0 || $hours < 5 ? 'часа' : 'часов'));
+                            @endphp
+                            <option value="{{ $minutes }}" @selected((int) old('duration_minutes', $defaultDuration) === $minutes)>{{ $durationLabel }}</option>
+                        @endforeach
+                    </select>
+                    @error('duration_minutes') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-md-6 form-group field"><label class="form-label" for="eventCapacity">Количество участников</label><input id="eventCapacity" type="number" min="2" max="500" class="form-control @error('max_participants') is-invalid @enderror" name="max_participants" value="{{ old('max_participants') }}" placeholder="Без ограничения">@error('max_participants') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>

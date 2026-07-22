@@ -79,15 +79,43 @@ final class EventWorkflowTest extends TestCase
             ->get(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
             ->assertSee('Новая игровая тренировка')
+            ->assertSee('Выберите площадку и свободное время.')
+            ->assertDontSee('Без расписания площадка доступна круглосуточно.')
             ->assertSee('value="game_training" data-title-prefix="Игровая тренировка" selected', false)
             ->assertSee('Игровая тренировка - 20260722')
-            ->assertSee('value="2026-07-22T12:30"', false)
-            ->assertSee('value="2026-07-22T13:30"', false)
+            ->assertSee('value="2026-07-22T12:15"', false)
+            ->assertSee('name="duration_minutes"', false)
+            ->assertSee('value="60" selected', false)
+            ->assertSee('1,5 часа')
+            ->assertSee('8 часов')
+            ->assertDontSee('name="ends_at"', false)
             ->assertSee('Избранные площадки')
             ->assertSee('Функционал находится в разработке.');
     }
 
-    public function test_event_times_have_minimum_boundaries_and_missing_end_defaults_to_one_hour(): void
+    public function test_tournament_cannot_be_selected_or_created_as_an_event(): void
+    {
+        $user = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($user)
+            ->get(route('events.create'))
+            ->assertOk()
+            ->assertDontSee('value="tournament"', false);
+
+        $payload = $this->payload($venue, $start, $end);
+        $payload['type'] = 'tournament';
+
+        $this->actingAs($user)
+            ->from(route('events.create'))
+            ->post(route('events.store'), $payload)
+            ->assertRedirect(route('events.create'))
+            ->assertSessionHasErrors('type');
+
+        $this->assertDatabaseCount('events', 0);
+    }
+
+    public function test_event_start_and_duration_have_boundaries_and_end_is_calculated(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-22 12:00:00', 'Europe/Moscow'));
         $user = User::factory()->create();
@@ -96,26 +124,29 @@ final class EventWorkflowTest extends TestCase
             'requires_payment' => false,
             'requires_booking_approval' => false,
         ]);
-        $minimumStart = CarbonImmutable::parse('2026-07-22 12:30:00', 'Europe/Moscow');
+        $minimumStart = CarbonImmutable::parse('2026-07-22 12:15:00', 'Europe/Moscow');
 
         $this->actingAs($user)
             ->from(route('events.create'))
             ->post(route('events.store'), $this->payload($venue, $minimumStart->subMinute(), $minimumStart->addHour()))
             ->assertRedirect(route('events.create'))
-            ->assertSessionHasErrors(['starts_at' => 'Начало должно быть не раньше чем через 30 минут.']);
+            ->assertSessionHasErrors(['starts_at' => 'Начало должно быть не раньше чем через 15 минут.']);
 
         $this->actingAs($user)
             ->from(route('events.create'))
-            ->post(route('events.store'), $this->payload($venue, $minimumStart, $minimumStart->addMinutes(59)))
+            ->post(route('events.store'), array_merge(
+                $this->payload($venue, $minimumStart, $minimumStart->addHour()),
+                ['duration_minutes' => 45],
+            ))
             ->assertRedirect(route('events.create'))
-            ->assertSessionHasErrors(['ends_at' => 'Окончание должно быть не раньше чем через час после начала.']);
+            ->assertSessionHasErrors(['duration_minutes' => 'Выберите длительность от 30 минут до 8 часов с шагом 30 минут.']);
 
         $payload = $this->payload($venue, $minimumStart, $minimumStart->addHour());
-        unset($payload['ends_at']);
+        $payload['duration_minutes'] = 90;
         $this->actingAs($user)->post(route('events.store'), $payload)->assertRedirect();
 
         $event = $venue->events()->firstOrFail();
-        $this->assertSame(60, (int) $event->starts_at->diffInMinutes($event->ends_at));
+        $this->assertSame(90, (int) $event->starts_at->diffInMinutes($event->ends_at));
     }
 
     public function test_event_can_be_created_on_venue_without_schedule(): void
@@ -359,7 +390,7 @@ final class EventWorkflowTest extends TestCase
             'visibility' => 'public',
             'description' => 'Собираемся играть в баскетбол.',
             'starts_at' => $start->format('Y-m-d\TH:i'),
-            'ends_at' => $end->format('Y-m-d\TH:i'),
+            'duration_minutes' => (int) $start->diffInMinutes($end),
             'max_participants' => $capacity,
         ];
     }

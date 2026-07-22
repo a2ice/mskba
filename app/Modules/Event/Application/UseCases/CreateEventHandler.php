@@ -25,7 +25,7 @@ final class CreateEventHandler
         private readonly CyrillicTransliterator $transliterator,
     ) {}
 
-    /** @param array{venue_id: int, title: string, type: string, visibility: string, description?: string|null, starts_at: string, ends_at?: string|null, max_participants?: int|null} $data */
+    /** @param array{venue_id: int, title: string, type: string, visibility: string, description?: string|null, starts_at: string, duration_minutes: int, max_participants?: int|null} $data */
     public function handle(Actor $actor, array $data): Event
     {
         if ($actor->user_id === null) {
@@ -37,10 +37,14 @@ final class CreateEventHandler
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             $localStart = CarbonImmutable::parse($data['starts_at'], $timezone);
+            $durationMinutes = (int) $data['duration_minutes'];
+
+            if ($durationMinutes < 30 || $durationMinutes > 480 || $durationMinutes % 30 !== 0) {
+                throw new InvalidArgumentException('Длительность должна быть от 30 минут до 8 часов с шагом 30 минут.');
+            }
+
             $startsAt = $localStart->utc();
-            $endsAt = isset($data['ends_at']) && $data['ends_at'] !== ''
-                ? CarbonImmutable::parse($data['ends_at'], $timezone)->utc()
-                : $localStart->addHour()->utc();
+            $endsAt = $localStart->addMinutes($durationMinutes)->utc();
 
             $this->availability->assertAvailable($venue, $startsAt, $endsAt);
 

@@ -56,8 +56,7 @@ final class EventController extends Controller
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
-        $defaultStartsAt = $now->addMinutes(30)->ceilMinute();
-        $defaultEndsAt = $defaultStartsAt->addHour();
+        $defaultStartsAt = $now->addMinutes(15)->ceilMinute();
 
         return ThemeResolver::page('events.create', [
             'venues' => $venues->handle(),
@@ -68,7 +67,8 @@ final class EventController extends Controller
             'currentDate' => $now->format('Ymd'),
             'defaultTitle' => $defaultType->label().' - '.$now->format('Ymd'),
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
-            'defaultEndsAt' => $defaultEndsAt->format('Y-m-d\TH:i'),
+            'durationOptions' => range(30, 480, 30),
+            'defaultDuration' => 60,
         ]);
     }
 
