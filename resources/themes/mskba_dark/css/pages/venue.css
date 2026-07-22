@@ -61,7 +61,8 @@
 
 .venue-hero__media {
     position: relative;
-    height: 280px;
+    min-height: 280px;
+    max-height: 440px;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);

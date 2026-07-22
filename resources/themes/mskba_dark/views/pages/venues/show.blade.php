@@ -108,7 +108,7 @@
             $headingStatus = match ($venue->statusSlug) {
                 'confirmed' => ['modifier' => 'confirmed', 'icon' => 'ti-check'],
                 'blocked' => ['modifier' => 'blocked', 'icon' => 'ti-lock'],
-                default => ['modifier' => 'unconfirmed', 'icon' => 'ti-help'],
+                default => ['modifier' => 'unconfirmed', 'icon' => 'ti-clock'],
             };
         @endphp
         <span
@@ -116,6 +116,7 @@
             role="img"
             aria-label="Статус площадки: {{ $venue->status }}"
             title="{{ $venue->status }}"
+            data-tooltip-variant="title"
         >
             <i class="ti {{ $headingStatus['icon'] }}" aria-hidden="true"></i>
         </span>

@@ -143,7 +143,8 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Закрыта')
             ->assertSee('Площадка не подтверждена')
             ->assertSee('venue-heading-status--unconfirmed', false)
-            ->assertSee('ti-help', false);
+            ->assertSee('ti-clock', false)
+            ->assertSee('data-tooltip-variant="title"', false);
     }
 
     public function test_public_venue_show_page_renders_featured_media_gallery(): void

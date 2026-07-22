@@ -44,9 +44,32 @@ function enhanceTitleTooltip(element, title) {
         .addClass('ui-tooltip-source ui-tooltip-source--title')
         .attr('data-tooltip', title);
 
+    if (isIconOnlyTooltipSource(element)) {
+        element.addClass('ui-tooltip-source--icon');
+    }
+
     if (!isFocusable(element)) {
         element.attr('tabindex', '0');
     }
+}
+
+function isIconOnlyTooltipSource(element) {
+    const containsIcon = element.is('i, svg, img, picture')
+        || element.find('i, svg, img, picture').length > 0;
+
+    if (!containsIcon) {
+        return false;
+    }
+
+    const textContent = element
+        .clone()
+        .find('i, svg, img, picture')
+        .remove()
+        .end()
+        .text()
+        .trim();
+
+    return textContent === '';
 }
 
 function enhanceQuestionTooltip(element, title) {
