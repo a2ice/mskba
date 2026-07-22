@@ -25,6 +25,7 @@ const handlers = {
         const action = triggerElement.data('modalAction') || triggerElement.data('modal-action') || 'open';
         const modalTarget = triggerElement.data('modalTarget') || triggerElement.data('modal-target');
         const modalSection = triggerElement.data('modalSection') || triggerElement.data('modal-section') || '';
+        const modalRedirectUrl = triggerElement.data('authRedirectUrl') || triggerElement.data('auth-redirect-url') || '';
         const modal = modalTarget ? $('[data-modal="' + modalTarget + '"]') : triggerElement.closest('[data-modal]');
 
         if (!modal.length) {
@@ -37,6 +38,7 @@ const handlers = {
         }
 
         modal.data('modalInitialSection', modalSection);
+        modal.data('authRedirectUrl', modalRedirectUrl);
         $('body').removeClass('nav-shown');
         openModal(modal);
     },

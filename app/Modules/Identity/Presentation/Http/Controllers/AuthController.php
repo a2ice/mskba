@@ -9,6 +9,7 @@ use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
 use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
@@ -22,26 +23,26 @@ class AuthController extends Controller
             remember: $request->boolean('remember'),
         );
 
-        $redirectedFrom = url()->previous();
-        $redirectTo = url('/');
-
-        // Prevent open redirect vulnerabilities
-        if ($redirectedFrom && str_starts_with($redirectedFrom, url('/'))) {
-            $redirectTo = $redirectedFrom;
-        }
-
-        if ($this->shouldReturnJson($request)) {
+        if ($result->status === 'error' && $this->shouldReturnJson($request)) {
             return response()->json([
                 'status' => $result->status,
                 'message' => $result->message,
-                'redirect_url' => $result->status === 'error'
-                    ? null
-                    : $redirectTo,
+                'redirect_url' => null,
             ], $result->httpStatus);
         }
 
         if ($result->status === 'error') {
             return back()->withInput($request->only('login', 'remember'))->withErrors(['login' => $result->message]);
+        }
+
+        $redirectTo = $this->safeRedirectUrl($request, $validated['redirect_to'] ?? null);
+
+        if ($this->shouldReturnJson($request)) {
+            return response()->json([
+                'status' => $result->status,
+                'message' => $result->message,
+                'redirect_url' => $redirectTo,
+            ], $result->httpStatus);
         }
 
         if ($result->status === 'warning') {
@@ -58,8 +59,11 @@ class AuthController extends Controller
         return redirect('/')->with('success', 'Вы успешно вышли из системы.');
     }
 
-    public function register(RegisterRequest $request, RegisterUserHandler $registerUser): RedirectResponse|JsonResponse
-    {
+    public function register(
+        RegisterRequest $request,
+        RegisterUserHandler $registerUser,
+        AuthHandler $authHandler,
+    ): RedirectResponse|JsonResponse {
         $validated = $request->validated();
 
         $user = $registerUser->handle(
@@ -69,17 +73,28 @@ class AuthController extends Controller
             profile: $request->profile(),
         );
 
+        $authHandler->login(
+            login: $user->username,
+            password: $validated['password'],
+            remember: false,
+        );
+
+        $redirectTo = $this->safeRedirectUrl(
+            request: $request,
+            requestedUrl: $validated['redirect_to'] ?? null,
+            fallbackUrl: route('account'),
+        );
+
         if ($this->shouldReturnJson($request)) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'Регистрация завершена. Теперь можно войти.',
+                'message' => 'Регистрация завершена.',
                 'login' => $user->username,
+                'redirect_url' => $redirectTo,
             ], 201);
         }
 
-        return redirect()
-            ->route('login')
-            ->with('success', 'Регистрация завершена. Теперь можно войти.');
+        return redirect()->to($redirectTo)->with('success', 'Регистрация завершена.');
     }
 
     public function restore(): void
@@ -104,5 +119,48 @@ class AuthController extends Controller
         return $request->expectsJson()
             || $request->ajax()
             || $request->wantsJson();
+    }
+
+    private function safeRedirectUrl(Request $request, mixed $requestedUrl, ?string $fallbackUrl = null): string
+    {
+        if (is_string($requestedUrl)) {
+            $requestedUrl = trim($requestedUrl);
+
+            if (str_starts_with($requestedUrl, '/') && ! str_starts_with($requestedUrl, '//')) {
+                return url($requestedUrl);
+            }
+
+            if ($this->isSameOriginUrl($requestedUrl)) {
+                return $requestedUrl;
+            }
+        }
+
+        $intendedUrl = $request->session()->pull('url.intended');
+
+        if (is_string($intendedUrl) && $this->isSameOriginUrl($intendedUrl)) {
+            return $intendedUrl;
+        }
+
+        if ($fallbackUrl !== null && $this->isSameOriginUrl($fallbackUrl)) {
+            return $fallbackUrl;
+        }
+
+        $redirectedFrom = url()->previous();
+
+        return $this->isSameOriginUrl($redirectedFrom) ? $redirectedFrom : url('/');
+    }
+
+    private function isSameOriginUrl(string $url): bool
+    {
+        $target = parse_url($url);
+        $origin = parse_url(url('/'));
+
+        if ($target === false || $origin === false) {
+            return false;
+        }
+
+        return ($target['scheme'] ?? null) === ($origin['scheme'] ?? null)
+            && ($target['host'] ?? null) === ($origin['host'] ?? null)
+            && ($target['port'] ?? null) === ($origin['port'] ?? null);
     }
 }

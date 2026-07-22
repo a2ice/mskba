@@ -1,8 +1,9 @@
 @php
     $title = $venue?->name ?? 'Редактирование площадки';
     $breadcrumbs = $venue === null ? null : [
-        ['label' => 'Площадки', 'url' => route('venues')],
-        ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои площадки', 'url' => route('account.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.show', $venue->routeIdentifier())],
         ['label' => 'Редактирование'],
     ];
     $venueSidebarActive = 'edit';
@@ -17,10 +18,10 @@
 
 @extends('theme::layouts.section-sidebar', [
     'title' => $title,
-    'sectionId' => 'venues',
-    'sectionClass' => 'venues-section',
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
     'contentTitle' => $title,
-    'sidebarLabel' => 'Навигация площадок',
+    'sidebarLabel' => 'Управление площадкой',
 ])
 
 @section('section-sidebar')
@@ -58,7 +59,7 @@
                 <div>
                     <strong>{{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED ? 'Изменения готовы к отправке' : 'Площадка готова к проверке' }}</strong>
                 </div>
-                <form method="POST" action="{{ route('venues.moderation.submit', $venue->routeIdentifier()) }}">
+                <form method="POST" action="{{ route('account.venues.moderation.submit', $venue->routeIdentifier()) }}">
                     @csrf
                     <button type="submit" class="btn btn--primary btn--sm">
                         {{ $venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED ? 'Отправить изменения на модерацию' : 'Отправить на модерацию' }}
@@ -77,9 +78,9 @@
             'venue' => $venue,
             'types' => $types,
             'metros' => $metros,
-            'action' => route('venues.update', $venue->routeIdentifier()),
+            'action' => route('account.venues.update', $venue->routeIdentifier()),
             'method' => 'PUT',
-            'cancelUrl' => route('venues.show', $venue->routeIdentifier()),
+            'cancelUrl' => route('account.venues.show', $venue->routeIdentifier()),
             'submitLabel' => 'Сохранить',
             'venueRevision' => $venueRevision ?? null,
             'readOnly' => $hasPendingModeration,

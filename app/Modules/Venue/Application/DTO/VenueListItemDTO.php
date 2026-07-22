@@ -9,6 +9,7 @@ final readonly class VenueListItemDTO
         public string $name,
         public string $alias,
         public string $status,
+        public string $statusSlug,
         public string $type,
         public bool $requiresPayment,
         public bool $requiresBookingApproval,

@@ -1,23 +1,24 @@
 @php
-    $title = $venue?->name ?? 'Статус площадки';
+    $title = $venue?->name ?? 'Модерация площадки';
     $latestModerationRequest = $venue?->moderationRequests?->first();
     $hasPendingModeration = $venue?->moderationRequests
         ?->contains(fn ($request) => $request->status === \App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum::PENDING) ?? false;
     $hasDraftRevision = $venue?->draftRevision !== null;
     $breadcrumbs = $venue === null ? null : [
-        ['label' => 'Площадки', 'url' => route('venues')],
-        ['label' => $venue->name, 'url' => route('venues.show', $venue->routeIdentifier())],
-        ['label' => 'Статус'],
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои площадки', 'url' => route('account.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.show', $venue->routeIdentifier())],
+        ['label' => 'Модерация'],
     ];
     $venueSidebarActive = 'status';
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
     'title' => $title,
-    'sectionId' => 'venues',
-    'sectionClass' => 'venues-section',
-    'contentTitle' => 'Статус площадки',
-    'sidebarLabel' => 'Навигация площадок',
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
+    'contentTitle' => 'Модерация площадки',
+    'sidebarLabel' => 'Управление площадкой',
 ])
 
 @section('section-sidebar')
@@ -63,7 +64,7 @@
         @elseif($venue->status === \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED && ! $hasDraftRevision)
             <div class="alert alert-success">Площадка подтверждена. Сохраните изменения, чтобы сформировать новую заявку.</div>
         @else
-            <form method="POST" action="{{ route('venues.moderation.submit', $venue->routeIdentifier()) }}" class="mt-4">
+            <form method="POST" action="{{ route('account.venues.moderation.submit', $venue->routeIdentifier()) }}" class="mt-4">
                 @csrf
                 <div class="mb-3">
                     <label for="moderationMessage" class="form-label">Комментарий для модера</label>

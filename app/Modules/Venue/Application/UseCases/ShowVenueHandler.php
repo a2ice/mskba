@@ -204,10 +204,6 @@ final class ShowVenueHandler
             return 2;
         }
 
-        if ($actor?->user_fingerprint_id !== null && $creator->user_fingerprint_id === $actor->user_fingerprint_id) {
-            return 1;
-        }
-
         return 0;
     }
 

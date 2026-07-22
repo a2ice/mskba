@@ -4,7 +4,6 @@ namespace App\Modules\Venue\Application\Services;
 
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
-use App\Modules\Identity\Domain\Models\ActorClaim;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -27,7 +26,6 @@ final class VenueAccessResolver
         }
 
         return $this->isBootstrapCreator($user, $venue)
-            || $this->isClaimedCreator($user, $venue)
             || $this->isActorCreator($actor, $venue);
     }
 
@@ -51,7 +49,6 @@ final class VenueAccessResolver
         }
 
         return $this->isBootstrapCreator($user, $venue)
-            || $this->isClaimedCreator($user, $venue)
             || $this->isActorCreator($actor, $venue);
     }
 
@@ -66,7 +63,6 @@ final class VenueAccessResolver
         }
 
         return $this->isBootstrapCreator($user, $venue)
-            || $this->isClaimedCreator($user, $venue)
             || $this->isActorCreator($actor, $venue);
     }
 
@@ -85,7 +81,6 @@ final class VenueAccessResolver
         }
 
         return $this->isBootstrapCreator($user, $venue)
-            || $this->isClaimedCreator($user, $venue)
             || $this->isActorCreator($actor, $venue);
     }
 
@@ -118,36 +113,10 @@ final class VenueAccessResolver
      */
     public function actorOwnedVenueIdsFor(?Actor $actor): array
     {
-        $claimedActorIds = $this->claimedActorIdsFor($actor);
-
-        return $actor === null
+        return $actor?->user_id === null
             ? []
             : Venue::query()
-                ->where(function (Builder $query) use ($actor, $claimedActorIds): void {
-                    $query->where('created_by_actor_id', $actor->id);
-
-                    if ($claimedActorIds !== []) {
-                        $query->orWhereIn('created_by_actor_id', $claimedActorIds);
-                    }
-
-                    if ($actor->user_id !== null || $actor->user_fingerprint_id !== null) {
-                        $query->orWhereHas('creatorActor', function (Builder $query) use ($actor): void {
-                            $query->where(function (Builder $query) use ($actor): void {
-                                if ($actor->user_id !== null) {
-                                    $query->where('user_id', $actor->user_id);
-                                }
-
-                                if ($actor->user_fingerprint_id !== null) {
-                                    if ($actor->user_id === null) {
-                                        $query->where('user_fingerprint_id', $actor->user_fingerprint_id);
-                                    } else {
-                                        $query->orWhere('user_fingerprint_id', $actor->user_fingerprint_id);
-                                    }
-                                }
-                            });
-                        });
-                    }
-                })
+                ->whereHas('creatorActor', fn (Builder $query) => $query->where('user_id', $actor->user_id))
                 ->whereNotIn('id', $this->memberships->activeOwnerVenueIds())
                 ->pluck('id')
                 ->map(fn (mixed $id): int => (int) $id)
@@ -177,49 +146,14 @@ final class VenueAccessResolver
             && ! $this->memberships->hasActiveOwner($venue);
     }
 
-    private function isClaimedCreator(?User $user, Venue $venue): bool
-    {
-        return $user !== null
-            && $venue->created_by_actor_id !== null
-            && ! $this->memberships->hasActiveOwner($venue)
-            && ActorClaim::query()
-                ->where('claimed_actor_id', $venue->created_by_actor_id)
-                ->where('claimed_by_user_id', $user->id)
-                ->exists();
-    }
-
     private function isActorCreator(?Actor $actor, Venue $venue): bool
     {
-        if ($actor === null || $this->memberships->hasActiveOwner($venue)) {
+        if ($actor?->user_id === null || $this->memberships->hasActiveOwner($venue)) {
             return false;
-        }
-
-        if ($venue->created_by_actor_id === $actor->id) {
-            return true;
         }
 
         $creator = $venue->creatorActor;
 
-        return $creator !== null
-            && (
-                ($actor->user_id !== null && $creator->user_id === $actor->user_id)
-                || ($actor->user_fingerprint_id !== null && $creator->user_fingerprint_id === $actor->user_fingerprint_id)
-            );
-    }
-
-    /**
-     * @return array<int>
-     */
-    private function claimedActorIdsFor(?Actor $actor): array
-    {
-        if ($actor?->user_id === null) {
-            return [];
-        }
-
-        return ActorClaim::query()
-            ->where('claimed_by_user_id', $actor->user_id)
-            ->pluck('claimed_actor_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
+        return $creator?->user_id === $actor->user_id;
     }
 }

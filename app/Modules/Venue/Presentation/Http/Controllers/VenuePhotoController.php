@@ -85,8 +85,8 @@ final class VenuePhotoController extends Controller
         return [
             'message' => $message,
             'photos' => collect($gallery->editableGallery($venue))->map(fn (array $photo): array => $photo + [
-                'activate_url' => route('venues.photos.activate', [$venue->routeIdentifier(), $photo['id']]),
-                'delete_url' => route('venues.photos.destroy', [$venue->routeIdentifier(), $photo['id']]),
+                'activate_url' => route('account.venues.photos.activate', [$venue->routeIdentifier(), $photo['id']]),
+                'delete_url' => route('account.venues.photos.destroy', [$venue->routeIdentifier(), $photo['id']]),
             ])->all(),
         ];
     }

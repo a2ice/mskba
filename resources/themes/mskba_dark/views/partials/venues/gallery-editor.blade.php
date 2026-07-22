@@ -3,7 +3,7 @@
     $adminMode = $adminMode ?? false;
     $readOnly = $readOnly ?? false;
     $routeKey = $adminMode ? $venue : $venue->routeIdentifier();
-    $storeRoute = $adminMode ? route('admin.venues.photos.store', $routeKey) : route('venues.photos.store', $routeKey);
+    $storeRoute = $adminMode ? route('admin.venues.photos.store', $routeKey) : route('account.venues.photos.store', $routeKey);
     $canManagePhotos = ! $readOnly && ($adminMode || $venue->status !== \App\Modules\Venue\Domain\Enums\VenueStatusEnum::BLOCKED);
 @endphp
 
@@ -40,10 +40,10 @@
                 @php
                     $activateRoute = $adminMode
                         ? route('admin.venues.photos.activate', [$venue, $photo['id']])
-                        : route('venues.photos.activate', [$venue->routeIdentifier(), $photo['id']]);
+                        : route('account.venues.photos.activate', [$venue->routeIdentifier(), $photo['id']]);
                     $deleteRoute = $adminMode
                         ? route('admin.venues.photos.destroy', [$venue, $photo['id']])
-                        : route('venues.photos.destroy', [$venue->routeIdentifier(), $photo['id']]);
+                        : route('account.venues.photos.destroy', [$venue->routeIdentifier(), $photo['id']]);
                 @endphp
                 <article @class(['venue-gallery-editor__item', 'is-active' => $photo['is_featured']])>
                     <form action="{{ $activateRoute }}" method="post">

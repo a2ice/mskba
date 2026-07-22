@@ -49,6 +49,7 @@ class RegisterRequest extends FormRequest
             'gender' => ['nullable', Rule::enum(UserGenderEnum::class)],
             'birth_date' => ['nullable', 'date_format:Y-m-d', 'before:today'],
             'role' => ['nullable', 'string', Rule::enum(UserParticipationRoleEnum::class)],
+            'redirect_to' => ['nullable', 'string', 'max:2048'],
         ];
     }
 

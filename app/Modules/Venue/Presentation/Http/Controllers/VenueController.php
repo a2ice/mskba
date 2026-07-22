@@ -150,7 +150,7 @@ class VenueController extends Controller
         }
 
         return redirect()
-            ->route('venues.edit', $venue->routeIdentifier())
+            ->route('account.venues.edit', $venue->routeIdentifier())
             ->with('status', 'Площадка создана. Проверьте и дополните данные.');
     }
 
@@ -219,7 +219,7 @@ class VenueController extends Controller
             }
 
             return redirect()
-                ->route('venues.edit', $alias)
+                ->route('account.venues.edit', $alias)
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
@@ -242,7 +242,7 @@ class VenueController extends Controller
             : 'Площадка сохранена.';
 
         return redirect()
-            ->route('venues.edit', $venue->routeIdentifier())
+            ->route('account.venues.edit', $venue->routeIdentifier())
             ->with('status', $message);
     }
 
@@ -333,7 +333,7 @@ class VenueController extends Controller
             }
 
             return redirect()
-                ->route('venues.status', $alias)
+                ->route('account.venues.status', $alias)
                 ->withInput()
                 ->with('error', $e->getMessage());
         }
@@ -343,7 +343,7 @@ class VenueController extends Controller
         }
 
         return redirect()
-            ->route('venues.status', $alias)
+            ->route('account.venues.status', $alias)
             ->with('status', 'Площадка отправлена на модерацию.');
     }
 
@@ -383,10 +383,10 @@ class VenueController extends Controller
                 ])
                 ->values()
                 ->all(),
-            'update_url' => route('venues.update', $venue->routeIdentifier()),
-            'moderation_url' => route('venues.moderation.submit', $venue->routeIdentifier()),
-            'moderation_state_url' => route('venues.moderation.state', $venue->routeIdentifier()),
-            'photos_store_url' => route('venues.photos.store', $venue->routeIdentifier()),
+            'update_url' => route('account.venues.update', $venue->routeIdentifier()),
+            'moderation_url' => route('account.venues.moderation.submit', $venue->routeIdentifier()),
+            'moderation_state_url' => route('account.venues.moderation.state', $venue->routeIdentifier()),
+            'photos_store_url' => route('account.venues.photos.store', $venue->routeIdentifier()),
         ];
     }
 }

@@ -160,10 +160,8 @@ final class VenueProximityService
                 function (Builder $query) use ($actor): void {
                     if ($actor->user_id !== null) {
                         $query->where('user_id', $actor->user_id);
-                    } elseif ($actor->user_fingerprint_id !== null) {
-                        $query->where('user_fingerprint_id', $actor->user_fingerprint_id);
                     } else {
-                        $query->whereKey($actor->id);
+                        $query->whereRaw('1 = 0');
                     }
                 },
             ));

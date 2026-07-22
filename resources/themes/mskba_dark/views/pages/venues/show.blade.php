@@ -80,8 +80,8 @@
             @if($venue->canEdit || $venue->canEditSchedule)
                 <div class="venue-management-actions">
                     @if($venue->canEdit)
-                        <a href="{{ route('venues.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Редактировать</a>
-                        <a href="{{ route('venues.status', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Статус</a>
+                        <a href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Редактировать</a>
+                        <a href="{{ route('account.venues.status', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Модерация</a>
                     @endif
                     @if($venue->canEditSchedule)
                         <a href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Расписание</a>

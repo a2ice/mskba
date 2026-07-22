@@ -12,7 +12,20 @@
 ])
 
 @section('section-heading-action')
-    <a href="{{ route('venues.create') }}" class="btn btn--primary-bordered btn--sm">Добавить площадку</a>
+    @auth
+        <a href="{{ route('venues.create') }}" class="btn btn--primary-bordered btn--sm">Добавить площадку</a>
+    @else
+        <button
+            type="button"
+            class="btn btn--primary-bordered btn--sm js-handler"
+            data-handler="modal"
+            data-modal-action="open"
+            data-modal-target="auth-entry-classic"
+            data-auth-redirect-url="{{ route('venues.create', [], false) }}"
+        >
+            Добавить площадку
+        </button>
+    @endauth
 @endsection
 
 @section('section-sidebar')
@@ -50,10 +63,10 @@
                     <div class="d-flex gap-2">
                         <a href="{{ route('venues.show', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Подробнее</a>
                         @if ($venue->canEdit)
-                            <a href="{{ route('venues.edit', $venue->routeIdentifier()) }}" class="btn btn--primary btn--sm">Редактировать</a>
+                            <a href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}" class="btn btn--primary btn--sm">Редактировать</a>
                         @endif
                         @if ($venue->canRemove)
-                            <a href="{{ route('venues.remove', $venue->routeIdentifier()) }}" class="btn btn--danger btn--sm">Удалить</a>
+                            <a href="{{ route('account.venues.remove', $venue->routeIdentifier()) }}" class="btn btn--danger btn--sm">Удалить</a>
                         @endif
                     </div>
                 </article>

@@ -21,9 +21,12 @@ class AuditLogTest extends TestCase
         config()->set('audit.ignore_console', false);
     }
 
-    public function test_guest_venue_creation_writes_actor_aware_audit_log(): void
+    public function test_authenticated_venue_creation_writes_actor_aware_audit_log(): void
     {
+        $user = User::factory()->create();
+
         $response = $this
+            ->actingAs($user)
             ->post(route('venues.store'), [
                 'name' => 'Аудируемая площадка',
                 'type' => VenueTypeEnum::STREET_COURT->value,
@@ -51,8 +54,8 @@ class AuditLogTest extends TestCase
 
         $this->assertSame('Аудируемая площадка', $log->new_values['name']);
         $this->assertArrayNotHasKey('created_at', $log->new_values);
-        $this->assertSame(ActorTypeEnum::GUEST, $log->actor->type);
-        $this->assertNull($log->actor->user_id);
+        $this->assertSame(ActorTypeEnum::USER, $log->actor->type);
+        $this->assertSame($user->id, $log->actor->user_id);
         $this->assertNotNull($log->actor->user_fingerprint_id);
         $this->assertSame('POST', $log->metadata['method']);
         $this->assertSame('venues.store', $log->metadata['route']);

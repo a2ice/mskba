@@ -28,12 +28,12 @@ $(document).on('submit', '[data-auth-classic-form]', function(event) {
     forms.submitForm(form, {
         onSuccess(response) {
             if (kind === 'register') {
-                prepareLoginAfterRegistration(form.closest('[data-modal]'), response);
+                redirectAfterAuthentication(response);
                 return;
             }
 
             if (kind === 'login') {
-                location.reload();
+                redirectAfterAuthentication(response);
             }
         },
         onError(jqXHR) {
@@ -50,6 +50,7 @@ $(document).on('modal:opened', function(_event, modal) {
     }
 
     resetClassicModalState(modal);
+    modal.find('[data-auth-redirect-input]').val(String(modal.data('authRedirectUrl') || '').trim());
     activateSection(modal, getInitialSection(modal));
     modal.removeData('modalInitialSection');
 });
@@ -60,6 +61,7 @@ $(document).on('modal:closed', function(_event, modal) {
     }
 
     resetClassicModalState(modal);
+    modal.removeData('authRedirectUrl');
 });
 
 function isClassicAuthModal(modal) {
@@ -85,20 +87,15 @@ function resetClassicFormStates(modal) {
     });
 }
 
-function prepareLoginAfterRegistration(modal, response) {
-    const login = String(response.login || '').trim();
-    const message = response.message || 'Мы отправили временный пароль на email. Введите его для входа.';
-    const loginForm = modal.find('[data-auth-classic-form][data-auth-classic-kind="login"]');
-    const passwordInput = loginForm.find('input[name="password"]');
+function redirectAfterAuthentication(response) {
+    const redirectUrl = String(response.redirect_url || '').trim();
 
-    forms.resetFormState(loginForm);
-
-    if (login) {
-        loginForm.find('input[name="login"]').val(login);
+    if (redirectUrl) {
+        window.location.assign(redirectUrl);
+        return;
     }
 
-    forms.setFormMessage(loginForm, message, 'success');
-    activateSection(modal, 'login', ()=> passwordInput.trigger('focus'));
+    window.location.reload();
 }
 
 function activateSection(modal, target, callback) {

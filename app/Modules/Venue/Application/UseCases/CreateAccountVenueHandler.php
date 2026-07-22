@@ -29,6 +29,10 @@ final class CreateAccountVenueHandler
      */
     public function handle(?Actor $actor, array $data, ?CreateLocationDTO $locationData = null, array $tagNames = []): Venue
     {
+        if ($actor?->user_id === null) {
+            throw new InvalidArgumentException('Войдите в аккаунт, чтобы добавить площадку.');
+        }
+
         $venue = DB::transaction(function () use ($actor, $data, $locationData, $tagNames): Venue {
             $rawAddress = $locationData?->rawAddress ?? $data['raw_address'] ?? null;
             $type = VenueTypeEnum::from($data['type']);

@@ -220,13 +220,7 @@ final class VenueUniquenessChecker
                     return;
                 }
 
-                if ($actor->user_fingerprint_id !== null) {
-                    $query->where('user_fingerprint_id', $actor->user_fingerprint_id);
-
-                    return;
-                }
-
-                $query->whereKey($actor->id);
+                $query->whereRaw('1 = 0');
             })
             ->when($statuses !== [], fn ($query) => $query->whereIn(
                 'status',

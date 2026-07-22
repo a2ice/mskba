@@ -29,11 +29,11 @@ class VenueModerationWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->post(route('venues.moderation.submit', $venue->alias))
-            ->assertRedirect(route('venues.status', $venue->alias));
+            ->post(route('account.venues.moderation.submit', $venue->alias))
+            ->assertRedirect(route('account.venues.status', $venue->alias));
 
         $this->actingAs($owner)
-            ->get(route('venues.edit', $venue->alias))
+            ->get(route('account.venues.edit', $venue->alias))
             ->assertOk()
             ->assertSee('Площадка находится на модерации')
             ->assertSee('Дождитесь результата модерации')
@@ -42,11 +42,11 @@ class VenueModerationWorkflowTest extends TestCase
             ->assertDontSee('Добавить фотографию');
 
         $this->actingAs($owner)
-            ->put(route('venues.update', $venue->alias), [
+            ->put(route('account.venues.update', $venue->alias), [
                 'name' => 'Подменённое название',
                 'type' => $venue->type->value,
             ])
-            ->assertRedirect(route('venues.edit', $venue->alias))
+            ->assertRedirect(route('account.venues.edit', $venue->alias))
             ->assertSessionHas('error', 'Площадка находится на модерации. Дождитесь решения перед редактированием.');
 
         $this->assertSame('Площадка на проверке', $venue->refresh()->name);
@@ -64,7 +64,7 @@ class VenueModerationWorkflowTest extends TestCase
             'status' => VenueStatusEnum::UNCONFIRMED,
         ]);
 
-        $this->actingAs($owner)->post(route('venues.moderation.submit', $venue->alias));
+        $this->actingAs($owner)->post(route('account.venues.moderation.submit', $venue->alias));
         $request = ModerationRequest::query()->firstOrFail();
 
         $this->actingAs($admin)
@@ -72,7 +72,7 @@ class VenueModerationWorkflowTest extends TestCase
             ->assertRedirect(route('admin.venues'));
 
         $this->actingAs($owner)
-            ->get(route('venues.edit', $venue->alias))
+            ->get(route('account.venues.edit', $venue->alias))
             ->assertOk();
     }
 
@@ -93,27 +93,27 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->get(route('venues.status', $venue->alias))
+            ->get(route('account.venues.status', $venue->alias))
             ->assertOk()
             ->assertSee('Отправить на модерацию');
 
         $this
             ->actingAs($owner)
-            ->get(route('venues.edit', $venue->alias))
+            ->get(route('account.venues.edit', $venue->alias))
             ->assertOk()
             ->assertSee('Внутренняя навигация площадки')
-            ->assertSee('К просмотру')
+            ->assertSee('Обзор')
             ->assertSee('Редактировать')
-            ->assertSee('Статус')
+            ->assertSee('Модерация')
             ->assertDontSee('Комментарий для модератора')
             ->assertSee('Отправить на модерацию');
 
         $this
             ->actingAs($owner)
-            ->post(route('venues.moderation.submit', $venue->alias), [
+            ->post(route('account.venues.moderation.submit', $venue->alias), [
                 'message' => 'Проверьте, пожалуйста.',
             ])
-            ->assertRedirect(route('venues.status', $venue->alias));
+            ->assertRedirect(route('account.venues.status', $venue->alias));
 
         $request = ModerationRequest::query()->firstOrFail();
 
@@ -162,7 +162,7 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->get(route('venues.status', $venue->alias))
+            ->get(route('account.venues.status', $venue->alias))
             ->assertOk()
             ->assertSee('Отклонена')
             ->assertSee('История запросов')
@@ -227,7 +227,7 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->get(route('venues.status', $venue->alias))
+            ->get(route('account.venues.status', $venue->alias))
             ->assertOk()
             ->assertSee('Площадка заблокирована')
             ->assertDontSee('Отправить на модерацию');
@@ -249,8 +249,8 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->post(route('venues.moderation.submit', $venue->alias))
-            ->assertRedirect(route('venues.status', $venue->alias));
+            ->post(route('account.venues.moderation.submit', $venue->alias))
+            ->assertRedirect(route('account.venues.status', $venue->alias));
 
         $request = ModerationRequest::query()->firstOrFail();
 
@@ -274,7 +274,7 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->get(route('venues.status', $venue->alias))
+            ->get(route('account.venues.status', $venue->alias))
             ->assertOk()
             ->assertSee('Площадка подтверждена')
             ->assertSee('Проверено, всё в порядке.')
@@ -285,18 +285,18 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->get(route('venues.edit', $venue->alias))
+            ->get(route('account.venues.edit', $venue->alias))
             ->assertOk()
             ->assertSee('Фотографии')
             ->assertSee('Изменения фотографий появятся на странице после модерации.');
 
         $this
             ->actingAs($owner)
-            ->put(route('venues.update', $venue->alias), [
+            ->put(route('account.venues.update', $venue->alias), [
                 'name' => 'Изменённое название',
                 'type' => VenueTypeEnum::STREET_COURT->value,
             ])
-            ->assertRedirect(route('venues.edit', $venue->routeIdentifier()))
+            ->assertRedirect(route('account.venues.edit', $venue->routeIdentifier()))
             ->assertSessionHas('status', 'Изменения сохранены в черновик. Отправьте их на модерацию.');
 
         $this->assertDatabaseHas('venues', [
@@ -456,7 +456,7 @@ class VenueModerationWorkflowTest extends TestCase
 
         $this
             ->actingAs($owner)
-            ->get(route('venues.edit', $ownVenue->alias))
+            ->get(route('account.venues.edit', $ownVenue->alias))
             ->assertOk()
             ->assertSee('Моя версия')
             ->assertDontSee('Чужая версия');

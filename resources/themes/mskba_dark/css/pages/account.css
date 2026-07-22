@@ -56,6 +56,137 @@
     max-width: 345px;
 }
 
+.account-venue-list__item {
+    display: grid;
+    gap: 12px;
+}
+
+.account-venue-list__heading {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px 18px;
+}
+
+.account-venue-list__heading > div {
+    min-width: 0;
+}
+
+.account-venue-list__type,
+.account-venue-list__address {
+    color: var(--text-muted);
+}
+
+.account-venue-list__type {
+    margin: 0 0 5px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-venue-list__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.account-venue-status {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-control);
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.account-venue-status i {
+    font-size: 16px;
+}
+
+.account-venue-status--unconfirmed {
+    background: rgba(236, 127, 18, 0.1);
+    color: var(--accent-text);
+}
+
+.account-venue-status--confirmed {
+    background: rgba(47, 140, 105, 0.12);
+    color: #58d19f;
+}
+
+.account-venue-status--blocked {
+    background: rgba(226, 89, 70, 0.12);
+    color: #ef8177;
+}
+
+.account-venue-detail {
+    display: grid;
+    gap: 24px;
+}
+
+.account-venue-detail__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 0;
+}
+
+.account-venue-detail__fact {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.account-venue-detail__fact--wide {
+    grid-column: 1 / -1;
+}
+
+.account-venue-detail__fact dt {
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-venue-detail__fact dd {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.account-venue-detail__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+}
+
+@media (max-width: 560px) {
+    .account-venue-list__heading {
+        flex-direction: column;
+    }
+
+    .account-venue-detail__facts {
+        grid-template-columns: 1fr;
+    }
+
+    .account-venue-detail__fact--wide {
+        grid-column: auto;
+    }
+}
+
 .account-confirmation-step[hidden] {
     display: none;
 }

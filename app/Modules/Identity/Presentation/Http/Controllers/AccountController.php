@@ -529,11 +529,6 @@ class AccountController extends Controller
         ]);
     }
 
-    public function editVenue(string $alias): RedirectResponse
-    {
-        return redirect()->route('venues.edit', $alias);
-    }
-
     public function editVenueSchedule(string $alias, ShowAccountVenueScheduleHandler $showVenueSchedule): Response
     {
         try {

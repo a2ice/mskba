@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Venue;
 
+use App\Modules\Identity\Domain\Enums\ActorTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Domain\Models\MetroLine;
@@ -100,15 +102,16 @@ class VenueRawAddressTest extends TestCase
     public function test_can_create_venue_of_different_type_with_same_confirmed_name_and_address(): void
     {
         $createVenue = app(CreateAccountVenueHandler::class);
+        $actor = $this->userActor();
 
-        $indoorVenue = $createVenue->handle(null, [
+        $indoorVenue = $createVenue->handle($actor, [
             'name' => 'Школьная площадка',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
             'short_description' => 'Спортивный зал',
         ], $this->locationDto('Москва, Школьная улица, 1', 55.7000000, 37.6000000));
         $indoorVenue->forceFill(['status' => VenueStatusEnum::CONFIRMED])->save();
 
-        $outdoorVenue = $createVenue->handle(null, [
+        $outdoorVenue = $createVenue->handle($actor, [
             'name' => 'Школьная площадка',
             'type' => VenueTypeEnum::STREET_COURT->value,
             'short_description' => 'Уличная площадка',
@@ -122,15 +125,16 @@ class VenueRawAddressTest extends TestCase
     public function test_create_handler_allows_duplicate_name_at_another_location_without_alias_suffix(): void
     {
         $createVenue = app(CreateAccountVenueHandler::class);
+        $actor = $this->userActor();
 
-        $venue = $createVenue->handle(null, [
+        $venue = $createVenue->handle($actor, [
             'name' => 'test',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
             'short_description' => 'Первая площадка',
         ], $this->locationDto('Москва, ул. Летниковская, 12', 55.7280000, 37.6440000));
         $venue->forceFill(['status' => VenueStatusEnum::CONFIRMED])->save();
 
-        $secondVenue = $createVenue->handle(null, [
+        $secondVenue = $createVenue->handle($actor, [
             'name' => 'TEST',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
             'short_description' => 'Одноименная площадка',
@@ -144,14 +148,15 @@ class VenueRawAddressTest extends TestCase
         Queue::fake();
 
         $createVenue = app(CreateAccountVenueHandler::class);
+        $actor = $this->userActor();
 
-        $firstVenue = $createVenue->handle(null, [
+        $firstVenue = $createVenue->handle($actor, [
             'name' => 'test',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
             'short_description' => 'Первая площадка',
         ], $this->locationDto('Москва, ул. Летниковская, 12', 55.7280000, 37.6440000));
 
-        $secondVenue = $createVenue->handle(null, [
+        $secondVenue = $createVenue->handle($actor, [
             'name' => 'TEST',
             'type' => VenueTypeEnum::SPORTS_HALL->value,
             'short_description' => 'Дубль названия',
@@ -319,5 +324,15 @@ class VenueRawAddressTest extends TestCase
             latitude: $latitude,
             longitude: $longitude,
         );
+    }
+
+    private function userActor(): Actor
+    {
+        $user = User::factory()->create();
+
+        return Actor::factory()->create([
+            'type' => ActorTypeEnum::USER,
+            'user_id' => $user->id,
+        ]);
     }
 }

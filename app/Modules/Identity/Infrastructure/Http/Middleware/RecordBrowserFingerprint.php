@@ -2,8 +2,6 @@
 
 namespace App\Modules\Identity\Infrastructure\Http\Middleware;
 
-use App\Modules\Identity\Application\Services\CurrentActorResolver;
-use App\Modules\Identity\Application\UseCases\ClaimGuestActorsForUserHandler;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
 use Closure;
@@ -19,11 +17,6 @@ final class RecordBrowserFingerprint
     private const COOKIE_NAME = 'mskba_browser_fp';
 
     private const COOKIE_LIFETIME_MINUTES = 60 * 24 * 365 * 5;
-
-    public function __construct(
-        private readonly ClaimGuestActorsForUserHandler $claimGuestActors,
-        private readonly CurrentActorResolver $actors,
-    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -41,11 +34,6 @@ final class RecordBrowserFingerprint
 
         if ($fingerprint !== null && $user instanceof User) {
             $this->recordAuthenticatedUser($fingerprint, $user->id);
-            $this->claimGuestActors->handle(
-                user: $user,
-                fingerprint: $fingerprint,
-                claimedByActor: $this->actors->resolveForRequest($request),
-            );
         }
 
         if (! $request->cookies->has(self::COOKIE_NAME)) {

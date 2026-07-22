@@ -2,14 +2,20 @@
     $venue = isset($venue) ? $venue : null;
     $title = $venue ? 'Расписание: ' . $venue->name : 'Расписание площадки';
     $venueSidebarActive = 'schedule';
+    $breadcrumbs = $venue === null ? null : [
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Мои площадки', 'url' => route('account.venues')],
+        ['label' => $venue->name, 'url' => route('account.venues.show', $venue->routeIdentifier())],
+        ['label' => 'Расписание'],
+    ];
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
     'title' => $title,
-    'sectionId' => 'venues',
-    'sectionClass' => 'venues-section',
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
     'contentTitle' => $title,
-    'sidebarLabel' => 'Навигация площадки',
+    'sidebarLabel' => 'Управление площадкой',
 ])
 
 @section('section-sidebar')

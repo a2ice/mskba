@@ -8,6 +8,7 @@
         <h2 class="modal-auth__title modal_title" id="modal-title-auth-entry-classic">Вход в аккаунт</h2>
 
         <form class="auth-form" action="{{ route('auth.login', [], false) }}" method="POST" data-auth-classic-form data-auth-classic-kind="login">
+            <input type="hidden" name="redirect_to" value="" data-auth-redirect-input>
 
             <label class="auth-form__field">
                 <span>Логин или подтверждённый контакт</span>
@@ -39,6 +40,7 @@
         <h2 class="modal-auth__title modal_title" id="modal-title-auth-entry-classic">Регистрация</h2>
 
         <form class="auth-form" data-auth-classic-form data-auth-classic-kind="register" action="{{ route('auth.register', [], false) }}" method="POST">
+            <input type="hidden" name="redirect_to" value="" data-auth-redirect-input>
             <label class="auth-form__field">
                 <span>Логин</span>
                 <input type="text" name="username" autocomplete="username" required autofocus>

@@ -23,7 +23,7 @@ class VenueAccessServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $canCreateVenue = fn ($user): bool => $user->isConfirmed();
+        $canCreateVenue = fn ($user): bool => ! $user->isBlocked();
 
         Gate::define('add_venue', $canCreateVenue);
         Gate::define('venue-create-venue', $canCreateVenue);

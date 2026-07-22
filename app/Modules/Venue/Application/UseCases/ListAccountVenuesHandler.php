@@ -40,6 +40,7 @@ final class ListAccountVenuesHandler
                     requiresPayment: $venue->requires_payment,
                     requiresBookingApproval: $venue->requires_booking_approval,
                     status: $venue->status->label(),
+                    statusSlug: $venue->status->value,
                     shortDescription: $venue->short_description,
                     rawAddress: $venue->raw_address,
                     canView: $isBootstrapOwned || in_array($venue->id, $contractViewableVenueIds, true),

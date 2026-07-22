@@ -328,13 +328,13 @@ class TelegramMiniAppAuthTest extends TestCase
         $venue = Venue::query()->where('name', 'Площадка Telegram')->firstOrFail();
 
         $this
-            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->getJson(route('account.venues.moderation.state', $venue->alias))
             ->assertOk()
             ->assertJsonPath('moderation.can_submit', true)
             ->assertJsonCount(0, 'moderation.history');
 
         $this
-            ->putJson(route('venues.update', $venue->alias), array_replace_recursive($venueData, [
+            ->putJson(route('account.venues.update', $venue->alias), array_replace_recursive($venueData, [
                 'short_description' => 'Площадка рядом с центром',
                 'tags' => 'крытая, бесплатная',
                 'requires_payment' => '1',
@@ -355,12 +355,12 @@ class TelegramMiniAppAuthTest extends TestCase
         ]);
 
         $this
-            ->postJson(route('venues.moderation.submit', $venue->alias))
+            ->postJson(route('account.venues.moderation.submit', $venue->alias))
             ->assertOk()
             ->assertJsonPath('message', 'Площадка отправлена на модерацию.');
 
         $this
-            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->getJson(route('account.venues.moderation.state', $venue->alias))
             ->assertOk()
             ->assertJsonPath('moderation.can_submit', false)
             ->assertJsonPath('moderation.state', 'pending')
@@ -379,14 +379,14 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertRedirect(route('admin.venues'));
 
         $this->actingAs($user)
-            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->getJson(route('account.venues.moderation.state', $venue->alias))
             ->assertOk()
             ->assertJsonPath('moderation.can_submit', true)
             ->assertJsonPath('moderation.state', 'rejected')
             ->assertJsonPath('moderation.history.0.messages.0.message', 'Добавьте больше информации.');
 
         $this->actingAs(User::factory()->create())
-            ->getJson(route('venues.moderation.state', $venue->alias))
+            ->getJson(route('account.venues.moderation.state', $venue->alias))
             ->assertForbidden();
     }
 

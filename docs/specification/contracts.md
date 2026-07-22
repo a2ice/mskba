@@ -193,7 +193,7 @@ access level template
 - `created_by_actor_id` остается полем происхождения записи;
 - владение площадкой задается `membership_contract` со `scope_type = venue` и `access_level = owner`;
 - проверка доступа идет через effective permissions;
-- если у площадки еще нет действующего owner membership contract, actor-создатель или связанный с ним user/fingerprint получает полный управленческий доступ как bootstrap-owner;
+- если у площадки еще нет действующего owner membership contract, user, связанный с actor-создателем, получает полный управленческий доступ как bootstrap-owner;
 - после появления действующего owner membership contract права управления определяются контрактами, а не фактом создания записи;
 - creator fallback удаляется после backfill и проверки owner contracts либо остается только как явно ограниченное bootstrap-правило для сущностей без владельца.
 

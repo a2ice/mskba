@@ -31,7 +31,7 @@ final class VenuePhotoManagementTest extends TestCase
         Storage::fake('public');
         [$owner, $venue] = $this->ownedVenue();
 
-        $this->actingAs($owner)->post(route('venues.photos.store', $venue->routeIdentifier()), [
+        $this->actingAs($owner)->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
             'photo' => UploadedFile::fake()->image('court.jpg', 1200, 600),
         ])->assertRedirect()->assertSessionHas('photo_status', 'Фотография добавлена.');
 
@@ -42,13 +42,13 @@ final class VenuePhotoManagementTest extends TestCase
         $this->assertSame(500, $info[0]);
         $this->assertSame(250, $info[1]);
 
-        $this->actingAs($owner)->get(route('venues.edit', $venue->routeIdentifier()))
+        $this->actingAs($owner)->get(route('account.venues.edit', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee($photo->publicUrl(), false)
             ->assertSee('data-image-upload-auto-submit', false)
             ->assertSee('Загружаем фотографию…')
-            ->assertSee(route('venues.photos.activate', [$venue->routeIdentifier(), $photo->id]), false)
-            ->assertSee(route('venues.photos.destroy', [$venue->routeIdentifier(), $photo->id]), false);
+            ->assertSee(route('account.venues.photos.activate', [$venue->routeIdentifier(), $photo->id]), false)
+            ->assertSee(route('account.venues.photos.destroy', [$venue->routeIdentifier(), $photo->id]), false);
     }
 
     public function test_only_three_photos_are_kept_and_owner_can_activate_and_delete_them(): void
@@ -57,7 +57,7 @@ final class VenuePhotoManagementTest extends TestCase
         [$owner, $venue] = $this->ownedVenue();
 
         foreach (range(1, 4) as $index) {
-            $this->actingAs($owner)->post(route('venues.photos.store', $venue->routeIdentifier()), [
+            $this->actingAs($owner)->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
                 'photo' => UploadedFile::fake()->image("court-{$index}.jpg", 640, 480),
             ])->assertRedirect();
         }
@@ -67,11 +67,11 @@ final class VenuePhotoManagementTest extends TestCase
         $this->assertSame(1, $photos->where('is_featured', true)->count());
 
         $target = $photos->last();
-        $this->actingAs($owner)->patch(route('venues.photos.activate', [$venue->routeIdentifier(), $target->id]))->assertRedirect();
+        $this->actingAs($owner)->patch(route('account.venues.photos.activate', [$venue->routeIdentifier(), $target->id]))->assertRedirect();
         $this->assertTrue($target->refresh()->is_featured);
 
         $path = $target->path;
-        $this->actingAs($owner)->delete(route('venues.photos.destroy', [$venue->routeIdentifier(), $target->id]))->assertRedirect();
+        $this->actingAs($owner)->delete(route('account.venues.photos.destroy', [$venue->routeIdentifier(), $target->id]))->assertRedirect();
         $this->assertSoftDeleted('media', ['id' => $target->id]);
         Storage::disk('public')->assertMissing($path);
         $this->assertSame(1, $venue->media()->where('collection', 'gallery')->where('is_featured', true)->count());
@@ -82,16 +82,16 @@ final class VenuePhotoManagementTest extends TestCase
         Storage::fake('public');
         [$owner, $venue] = $this->ownedVenue();
 
-        $response = $this->actingAs($owner)->withHeader('Accept', 'application/json')->post(route('venues.photos.store', $venue->routeIdentifier()), [
+        $response = $this->actingAs($owner)->withHeader('Accept', 'application/json')->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
             'photo' => UploadedFile::fake()->image('telegram-court.jpg', 800, 600),
         ])->assertOk()->assertJsonPath('message', 'Фотография добавлена.')->assertJsonCount(1, 'photos');
 
         $photo = $venue->media()->where('collection', 'gallery')->sole();
         $response->assertJsonPath('photos.0.id', $photo->id)
             ->assertJsonPath('photos.0.is_featured', true)
-            ->assertJsonPath('photos.0.activate_url', route('venues.photos.activate', [$venue->routeIdentifier(), $photo->id]));
+            ->assertJsonPath('photos.0.activate_url', route('account.venues.photos.activate', [$venue->routeIdentifier(), $photo->id]));
 
-        $this->actingAs($owner)->deleteJson(route('venues.photos.destroy', [$venue->routeIdentifier(), $photo->id]))
+        $this->actingAs($owner)->deleteJson(route('account.venues.photos.destroy', [$venue->routeIdentifier(), $photo->id]))
             ->assertOk()->assertJsonCount(0, 'photos');
     }
 
@@ -102,7 +102,7 @@ final class VenuePhotoManagementTest extends TestCase
         $published = $venue->media()->create($this->mediaAttributes('venues/published.webp', true));
         Storage::disk('public')->put($published->path, 'published');
 
-        $this->actingAs($owner)->post(route('venues.photos.store', $venue->routeIdentifier()), [
+        $this->actingAs($owner)->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
             'photo' => UploadedFile::fake()->image('proposal.jpg', 1000, 800),
         ])->assertRedirect()->assertSessionHas('photo_status', 'Фотография добавлена.');
 
@@ -111,7 +111,7 @@ final class VenuePhotoManagementTest extends TestCase
         $this->assertSame(1, $venue->media()->where('collection', 'gallery')->count());
 
         $this->actingAs($owner)
-            ->post(route('venues.moderation.submit', $venue->routeIdentifier()), ['message' => 'Новая фотография.'])
+            ->post(route('account.venues.moderation.submit', $venue->routeIdentifier()), ['message' => 'Новая фотография.'])
             ->assertRedirect();
         $request = ModerationRequest::query()->latest('id')->firstOrFail();
         $this->assertSame($revision->id, $request->venue_revision_id);
@@ -140,7 +140,7 @@ final class VenuePhotoManagementTest extends TestCase
         $originalName = $venue->name;
         $address = $venue->location->address;
 
-        $this->actingAs($owner)->put(route('venues.update', $venue->routeIdentifier()), [
+        $this->actingAs($owner)->put(route('account.venues.update', $venue->routeIdentifier()), [
             'name' => 'Новое название после проверки', 'type' => $venue->type->value, 'short_description' => 'Новый текст',
             'location' => [
                 'raw_address' => $address->full_address, 'address_selected' => '1', 'city' => $address->city,
@@ -153,15 +153,15 @@ final class VenuePhotoManagementTest extends TestCase
         $this->assertSame('Новое название после проверки', $venue->revisions()->whereNull('applied_at')->sole()->payload['details']['name']);
 
         $this->actingAs($owner)
-            ->get(route('venues.edit', $venue->routeIdentifier()))
+            ->get(route('account.venues.edit', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('Изменения готовы к отправке')
             ->assertSee('Отправить изменения на модерацию')
             ->assertSee('Новое название после проверки');
 
         $this->actingAs($owner)
-            ->post(route('venues.moderation.submit', $venue->routeIdentifier()), ['message' => 'Проверьте правки.'])
-            ->assertRedirect(route('venues.status', $venue->routeIdentifier()));
+            ->post(route('account.venues.moderation.submit', $venue->routeIdentifier()), ['message' => 'Проверьте правки.'])
+            ->assertRedirect(route('account.venues.status', $venue->routeIdentifier()));
 
         $request = ModerationRequest::query()->latest('id')->firstOrFail();
         $admin = User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::ADMIN]);
@@ -179,7 +179,7 @@ final class VenuePhotoManagementTest extends TestCase
             ->assertSee('Новый текст');
 
         $this->actingAs($owner)
-            ->get(route('venues.edit', $venue->routeIdentifier()))
+            ->get(route('account.venues.edit', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('Площадка находится на модерации')
             ->assertSee('Новое название после проверки')
@@ -194,7 +194,7 @@ final class VenuePhotoManagementTest extends TestCase
         [$owner, $venue] = $this->ownedVenue(VenueStatusEnum::CONFIRMED);
         $address = $venue->location->address;
 
-        $this->actingAs($owner)->put(route('venues.update', $venue->routeIdentifier()), [
+        $this->actingAs($owner)->put(route('account.venues.update', $venue->routeIdentifier()), [
             'name' => 'Название из отклонённой ревизии', 'type' => $venue->type->value,
             'location' => [
                 'raw_address' => $address->full_address, 'address_selected' => '1', 'city' => $address->city,
@@ -202,7 +202,7 @@ final class VenuePhotoManagementTest extends TestCase
                 'latitude' => $address->latitude, 'longitude' => $address->longitude, 'metro_station_ids' => [],
             ],
         ]);
-        $this->actingAs($owner)->post(route('venues.moderation.submit', $venue->routeIdentifier()));
+        $this->actingAs($owner)->post(route('account.venues.moderation.submit', $venue->routeIdentifier()));
         $request = ModerationRequest::query()->latest('id')->firstOrFail();
         $admin = User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'system_role' => UserSystemRoleEnum::ADMIN]);
 
@@ -210,7 +210,7 @@ final class VenuePhotoManagementTest extends TestCase
 
         $this->assertNotSame('Название из отклонённой ревизии', $venue->refresh()->name);
         $this->assertNull($venue->revisions()->whereNull('applied_at')->sole()->applied_at);
-        $this->actingAs($owner)->get(route('venues.edit', $venue->routeIdentifier()))->assertOk()->assertSee('Название из отклонённой ревизии');
+        $this->actingAs($owner)->get(route('account.venues.edit', $venue->routeIdentifier()))->assertOk()->assertSee('Название из отклонённой ревизии');
     }
 
     public function test_other_user_cannot_manage_venue_photos(): void
@@ -219,7 +219,7 @@ final class VenuePhotoManagementTest extends TestCase
         [, $venue] = $this->ownedVenue();
         $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
 
-        $this->actingAs($other)->post(route('venues.photos.store', $venue->routeIdentifier()), [
+        $this->actingAs($other)->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
             'photo' => UploadedFile::fake()->image('foreign.jpg'),
         ])->assertForbidden();
         $this->assertDatabaseCount('media', 0);
@@ -230,13 +230,13 @@ final class VenuePhotoManagementTest extends TestCase
         Storage::fake('public');
         [$owner, $venue] = $this->ownedVenue(VenueStatusEnum::CONFIRMED);
 
-        $this->actingAs($owner)->post(route('venues.photos.store', $venue->routeIdentifier()), [
+        $this->actingAs($owner)->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
             'photo' => UploadedFile::fake()->image('proposal.jpg'),
         ])->assertRedirect()->assertSessionHas('photo_status', 'Фотография добавлена.');
         $venue->increment('content_version');
 
-        $this->actingAs($owner)->post(route('venues.moderation.submit', $venue->routeIdentifier()))
-            ->assertRedirect(route('venues.status', $venue->routeIdentifier()))
+        $this->actingAs($owner)->post(route('account.venues.moderation.submit', $venue->routeIdentifier()))
+            ->assertRedirect(route('account.venues.status', $venue->routeIdentifier()))
             ->assertSessionHas('error', 'Опубликованная площадка изменилась после создания ревизии. Сохраните изменения заново.');
 
         $this->assertDatabaseCount('moderation_requests', 0);

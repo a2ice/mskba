@@ -142,29 +142,19 @@ Route::prefix('venues')->group(function () {
     Route::get('/', [VenueController::class, 'index'])
         ->name('venues')
         ->defaults('breadcrumb', 'Площадки');
-    Route::get('/create', [VenueController::class, 'create'])
-        ->name('venues.create')
-        ->defaults('breadcrumb', 'Добавить площадку');
     Route::get('/search', [VenueController::class, 'search'])
         ->name('venues.search');
     Route::get('/proximity-check', [VenueController::class, 'proximityCheck'])
         ->middleware('throttle:30,1')
         ->name('venues.proximity-check');
-    Route::post('/', [VenueController::class, 'store'])
-        ->name('venues.store');
-    Route::get('/{alias}/status', [VenueController::class, 'status'])
-        ->name('venues.status')
-        ->defaults('breadcrumb', 'Статус площадки');
-    Route::get('/{alias}/moderation-state', [VenueController::class, 'moderationState'])
-        ->name('venues.moderation.state');
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [VenueController::class, 'create'])
+            ->name('venues.create')
+            ->defaults('breadcrumb', 'Добавить площадку');
+        Route::post('/', [VenueController::class, 'store'])
+            ->name('venues.store');
+    });
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
-    Route::get('/{alias}/edit', [VenueController::class, 'edit'])->name('venues.edit');
-    Route::put('/{alias}', [VenueController::class, 'update'])->name('venues.update');
-    Route::post('/{alias}/photos', [VenuePhotoController::class, 'store'])->middleware('throttle:10,1')->name('venues.photos.store');
-    Route::patch('/{alias}/photos/{photo}/active', [VenuePhotoController::class, 'activate'])->middleware('throttle:20,1')->whereNumber('photo')->name('venues.photos.activate');
-    Route::delete('/{alias}/photos/{photo}', [VenuePhotoController::class, 'destroy'])->middleware('throttle:20,1')->whereNumber('photo')->name('venues.photos.destroy');
-    Route::post('/{alias}/moderation', [VenueController::class, 'submitModeration'])->name('venues.moderation.submit');
-    Route::get('/{alias}/remove', [VenueController::class, 'remove'])->name('venues.remove');
 });
 
 Route::get('/integrations/address-suggest', AddressSuggestController::class)
@@ -247,10 +237,30 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
         Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
+        Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
+        Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');
+        Route::get('/venues/{alias}/status', [VenueController::class, 'status'])
+            ->name('account.venues.status')
+            ->defaults('breadcrumb', 'Модерация площадки');
+        Route::get('/venues/{alias}/moderation-state', [VenueController::class, 'moderationState'])
+            ->name('account.venues.moderation.state');
+        Route::post('/venues/{alias}/moderation', [VenueController::class, 'submitModeration'])
+            ->name('account.venues.moderation.submit');
+        Route::post('/venues/{alias}/photos', [VenuePhotoController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('account.venues.photos.store');
+        Route::patch('/venues/{alias}/photos/{photo}/active', [VenuePhotoController::class, 'activate'])
+            ->middleware('throttle:20,1')
+            ->whereNumber('photo')
+            ->name('account.venues.photos.activate');
+        Route::delete('/venues/{alias}/photos/{photo}', [VenuePhotoController::class, 'destroy'])
+            ->middleware('throttle:20,1')
+            ->whereNumber('photo')
+            ->name('account.venues.photos.destroy');
+        Route::get('/venues/{alias}/remove', [VenueController::class, 'remove'])->name('account.venues.remove');
         Route::get('/venues/{alias}/schedule', [AccountController::class, 'editVenueSchedule'])
             ->name('account.venues.schedule.edit');
         Route::put('/venues/{alias}/schedule', [AccountController::class, 'updateVenueSchedule'])
             ->name('account.venues.schedule.update');
-        Route::get('/venues/{alias}/edit', [AccountController::class, 'editVenue'])->name('account.venues.edit');
     });
 });

@@ -4,12 +4,17 @@ namespace App\Presentation\Navigation\Menus;
 
 use App\Modules\Identity\Domain\Models\UserParticipationRole;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
+use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Presentation\Navigation\MenuHandler;
 use Illuminate\Support\Collection;
 
 final class AccountMenu implements MenuHandler
 {
     use MenuHelper;
+
+    public function __construct(
+        private readonly VenueAccessResolver $venueAccessResolver,
+    ) {}
 
     /**
      * @return array<int, array{label: string, url: string, active: bool, visible: bool, divider?: bool, badge?: int}>
@@ -33,6 +38,18 @@ final class AccountMenu implements MenuHandler
 
             foreach ($this->participationRoleItems($user->participationRoles) as $item) {
                 $items[] = $item;
+            }
+
+            if (
+                $this->venueAccessResolver->bootstrapOwnedVenueIdsFor($user) !== []
+                || $this->venueAccessResolver->contractedVenueIdsFor($user) !== []
+            ) {
+                $items[] = [
+                    'label' => 'Мои площадки',
+                    'url' => $this->routeUrl('account.venues'),
+                    'active' => $this->isActiveRoute('account.venues, account.venues.*'),
+                    'visible' => true,
+                ];
             }
 
             $items[] = [
@@ -65,14 +82,6 @@ final class AccountMenu implements MenuHandler
                     'visible' => true,
                 ];
 
-                if ($user->hasRole('venue_related')) {
-                    $items[] = [
-                        'label' => 'Мои площадки',
-                        'url' => $this->routeUrl('account.venues'),
-                        'active' => $this->isActiveRoute('account.venues, account.venues.*'),
-                        'visible' => true,
-                    ];
-                }
             }
 
             $items[] = [
