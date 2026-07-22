@@ -853,7 +853,7 @@ body.telegram-mini-app {
 }
 
 .layout-content-title {
-    margin: 0 0 15px;
+    /* margin: 0 0 15px; */
     color: var(--text);
     font-family: var(--font-display);
     font-size: clamp(24px, 2.5vw, 36px);

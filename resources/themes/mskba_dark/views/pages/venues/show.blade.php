@@ -102,6 +102,26 @@
     @endif
 @endsection
 
+@section('section-heading-leading')
+    @if(!empty($venue))
+        @php
+            $headingStatus = match ($venue->statusSlug) {
+                'confirmed' => ['modifier' => 'confirmed', 'icon' => 'ti-check'],
+                'blocked' => ['modifier' => 'blocked', 'icon' => 'ti-lock'],
+                default => ['modifier' => 'unconfirmed', 'icon' => 'ti-help'],
+            };
+        @endphp
+        <span
+            class="venue-heading-status venue-heading-status--{{ $headingStatus['modifier'] }}"
+            role="img"
+            aria-label="Статус площадки: {{ $venue->status }}"
+            title="{{ $venue->status }}"
+        >
+            <i class="ti {{ $headingStatus['icon'] }}" aria-hidden="true"></i>
+        </span>
+    @endif
+@endsection
+
 @section('section-heading-action')
     @if(!empty($venue))
         <div class="venue-heading-actions">
@@ -116,11 +136,11 @@
                 <span class="venue-star-rating__fill" style="width: {{ $ratingPercent }}%" aria-hidden="true">★★★★★</span>
                 <span class="venue-star-rating__compact" aria-hidden="true">
                     <span class="venue-star-rating__compact-star">★</span>
-                    <span>{{ number_format($venue->about->rating ?? 0, 1, ',', ' ') }}</span>
+                    <span>{{ number_format($venue->about->rating ?? 0, 1, '.', ' ') }}</span>
                 </span>
             </div>
             <button type="button" class="btn btn--primary btn--sm venue-booking-action" aria-label="Забронировать" disabled>
-                <i class="ti ti-calendar-plus venue-booking-action__icon" aria-hidden="true"></i>
+                <i class="ti ti-player-play venue-booking-action__icon" aria-hidden="true"></i>
                 <span class="venue-booking-action__label">Забронировать</span>
             </button>
         </div>
@@ -176,7 +196,6 @@
                 <div class="venue-hero__summary">
                     <div class="venue-hero__status-row">
                         <span class="venue-pill">{{ $venue->type }}</span>
-                        <span class="venue-pill venue-pill--muted">{{ $venue->status }}</span>
                     </div>
 
                     <div @class(['venue-opening-state', 'is-open' => $venue->isOpen, 'is-closed' => ! $venue->isOpen])>

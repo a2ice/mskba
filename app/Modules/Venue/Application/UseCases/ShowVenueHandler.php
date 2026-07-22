@@ -146,6 +146,7 @@ final class ShowVenueHandler
             type: $venue->type->label(),
             typeSlug: $venue->type->publicSlug(),
             status: $venue->status->label(),
+            statusSlug: $venue->status->value,
             isOpen: $openingState['isOpen'],
             todayHours: $openingState['todayHours'],
             shortDescription: $venue->short_description,

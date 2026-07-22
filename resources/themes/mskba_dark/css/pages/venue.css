@@ -165,6 +165,34 @@
     gap: 10px;
 }
 
+.venue-heading-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.venue-heading-status--confirmed {
+    color: #3ac67a;
+    background: rgba(58, 198, 122, .12);
+}
+
+.venue-heading-status--unconfirmed {
+    color: #a9aaa4;
+    background: rgba(169, 170, 164, .1);
+}
+
+.venue-heading-status--blocked {
+    color: #df6666;
+    background: rgba(223, 102, 102, .12);
+}
+
 .venue-pill {
     display: inline-flex;
     align-items: center;

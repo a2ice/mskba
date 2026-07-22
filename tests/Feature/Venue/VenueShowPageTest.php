@@ -94,6 +94,10 @@ class VenueShowPageTest extends TestCase
             ->assertSee('venue-star-rating__compact', false)
             ->assertSee('venue-booking-action__icon', false)
             ->assertSee('aria-label="Забронировать"', false)
+            ->assertSee('venue-heading-status--confirmed', false)
+            ->assertSee('ti-check', false)
+            ->assertSee('Статус площадки: Подтверждён')
+            ->assertDontSee('venue-pill venue-pill--muted', false)
             ->assertSee('data-venue-hero-image', false)
             ->assertSee('data-venue-hero-thumbnail', false)
             ->assertSee('venue-hero-thumbnail is-active', false)
@@ -137,7 +141,9 @@ class VenueShowPageTest extends TestCase
             ->get(route('venues.show', $venue->alias))
             ->assertOk()
             ->assertSee('Закрыта')
-            ->assertSee('Площадка не подтверждена');
+            ->assertSee('Площадка не подтверждена')
+            ->assertSee('venue-heading-status--unconfirmed', false)
+            ->assertSee('ti-help', false);
     }
 
     public function test_public_venue_show_page_renders_featured_media_gallery(): void

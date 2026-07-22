@@ -34,6 +34,14 @@
     margin-bottom: 16px;
 }
 
+.section-content-heading__title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
 .section-content-heading__action {
     display: flex;
     justify-content: flex-end;

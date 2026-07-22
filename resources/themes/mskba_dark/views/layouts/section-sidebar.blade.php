@@ -52,7 +52,13 @@
                         <div class="section-sidebar-layout__content">
                             <div class="section-content-heading">
                                 <div class="section-content-heading__row">
-                                    <h1 class="layout-content-title section-sidebar-layout__title">{{ $contentTitle }}</h1>
+                                    <div class="section-content-heading__title-group">
+                                        @hasSection('section-heading-leading')
+                                            @yield('section-heading-leading')
+                                        @endif
+
+                                        <h1 class="layout-content-title section-sidebar-layout__title">{{ $contentTitle }}</h1>
+                                    </div>
 
                                     @hasSection('section-heading-action')
                                         <div class="section-content-heading__action">
