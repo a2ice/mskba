@@ -5,15 +5,19 @@
     'sectionId' => 'events',
     'sectionClass' => 'events-section',
     'contentTitle' => $period === 'past' ? 'Состоявшиеся мероприятия' : 'Предстоящие мероприятия',
-    'contentSubtitle' => 'Игры, тренировки и турниры на баскетбольных площадках.',
+    'contentSubtitle' => 'Игры, тренировки, игровые тренировки и турниры на баскетбольных площадках.',
     'sidebarLabel' => 'Навигация мероприятий',
 ])
 
 @section('section-heading-action')
+    @php
+        $createLabel = $selectedType?->createLabel() ?? 'Создать мероприятие';
+        $createUrl = route('events.create', array_filter(['type' => $selectedType?->value]));
+    @endphp
     @auth
-        <a href="{{ route('events.create') }}" class="btn btn--primary btn--sm">Создать мероприятие</a>
+        <a href="{{ $createUrl }}" class="btn btn--primary btn--sm">{{ $createLabel }}</a>
     @else
-        <button type="button" class="btn btn--primary btn--sm js-handler" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('events.create', [], false) }}">Создать мероприятие</button>
+        <button type="button" class="btn btn--primary btn--sm js-handler" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('events.create', array_filter(['type' => $selectedType?->value]), false) }}">{{ $createLabel }}</button>
     @endauth
 @endsection
 

@@ -4,6 +4,7 @@ namespace Tests\Feature\Event;
 
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -11,6 +12,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
+use App\Modules\Venue\Domain\Models\VenueScheduleException;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -59,6 +61,108 @@ final class EventWorkflowTest extends TestCase
         $event = $venue->events()->firstOrFail();
         $this->assertSame(EventStatusEnum::DRAFT, $event->status);
         $this->assertSame(VenueBookingStatusEnum::PENDING, $event->booking->status);
+    }
+
+    public function test_selected_event_type_is_used_by_create_action_and_form(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-07-22 12:00:00', 'Europe/Moscow'));
+        $user = User::factory()->create();
+        Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+
+        $this->actingAs($user)
+            ->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
+            ->assertOk()
+            ->assertSee('Создать игровую тренировку')
+            ->assertSee(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]), false);
+
+        $this->actingAs($user)
+            ->get(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]))
+            ->assertOk()
+            ->assertSee('Новая игровая тренировка')
+            ->assertSee('value="game_training" data-title-prefix="Игровая тренировка" selected', false)
+            ->assertSee('Игровая тренировка - 20260722')
+            ->assertSee('value="2026-07-22T12:30"', false)
+            ->assertSee('value="2026-07-22T13:30"', false)
+            ->assertSee('Избранные площадки')
+            ->assertSee('Функционал находится в разработке.');
+    }
+
+    public function test_event_times_have_minimum_boundaries_and_missing_end_defaults_to_one_hour(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-07-22 12:00:00', 'Europe/Moscow'));
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $minimumStart = CarbonImmutable::parse('2026-07-22 12:30:00', 'Europe/Moscow');
+
+        $this->actingAs($user)
+            ->from(route('events.create'))
+            ->post(route('events.store'), $this->payload($venue, $minimumStart->subMinute(), $minimumStart->addHour()))
+            ->assertRedirect(route('events.create'))
+            ->assertSessionHasErrors(['starts_at' => 'Начало должно быть не раньше чем через 30 минут.']);
+
+        $this->actingAs($user)
+            ->from(route('events.create'))
+            ->post(route('events.store'), $this->payload($venue, $minimumStart, $minimumStart->addMinutes(59)))
+            ->assertRedirect(route('events.create'))
+            ->assertSessionHasErrors(['ends_at' => 'Окончание должно быть не раньше чем через час после начала.']);
+
+        $payload = $this->payload($venue, $minimumStart, $minimumStart->addHour());
+        unset($payload['ends_at']);
+        $this->actingAs($user)->post(route('events.store'), $payload)->assertRedirect();
+
+        $event = $venue->events()->firstOrFail();
+        $this->assertSame(60, (int) $event->starts_at->diffInMinutes($event->ends_at));
+    }
+
+    public function test_event_can_be_created_on_venue_without_schedule(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(5)->startOfDay()->setTime(21, 0);
+        $end = $start->addHours(2);
+        $payload = $this->payload($venue, $start, $end);
+        $payload['type'] = EventTypeEnum::GAME_TRAINING->value;
+
+        $this->actingAs($user)
+            ->get(route('events.create'))
+            ->assertOk()
+            ->assertSee($venue->name);
+
+        $this->actingAs($user)->post(route('events.store'), $payload)->assertRedirect();
+
+        $event = $venue->events()->firstOrFail();
+        $this->assertSame(EventTypeEnum::GAME_TRAINING, $event->type);
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $event->booking->status);
+    }
+
+    public function test_closed_exception_applies_to_venue_without_regular_hours(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED->value]);
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(6)->startOfDay()->setTime(12, 0);
+        $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
+        VenueScheduleException::query()->create([
+            'venue_schedule_id' => $schedule->id,
+            'date' => $start->format('Y-m-d'),
+            'is_closed' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('events.create'))
+            ->post(route('events.store'), $this->payload($venue, $start, $start->addHours(2)))
+            ->assertRedirect(route('events.create'))
+            ->assertSessionHas('error', 'В выбранную дату площадка закрыта.');
+
+        $this->assertDatabaseCount('events', 0);
     }
 
     public function test_overlapping_event_cannot_be_created_but_adjacent_event_can(): void

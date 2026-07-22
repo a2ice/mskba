@@ -32,11 +32,7 @@ final class VenueEventAvailability
 
         $schedule = $venue->schedule()->with(['intervals', 'exceptions.intervals'])->first();
 
-        if ($schedule === null || ($schedule->intervals->isEmpty() && $schedule->exceptions->isEmpty())) {
-            throw new InvalidArgumentException('У площадки не настроено расписание.');
-        }
-
-        $timezone = $schedule->timezone ?: 'Europe/Moscow';
+        $timezone = $schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
         $localStart = $startsAt->setTimezone($timezone);
         $localEnd = $endsAt->setTimezone($timezone);
 
@@ -44,7 +40,7 @@ final class VenueEventAvailability
             throw new InvalidArgumentException('В первой версии мероприятие должно завершаться в тот же день.');
         }
 
-        $exception = $schedule->exceptions->first(
+        $exception = $schedule?->exceptions->first(
             fn ($item): bool => $item->date->format('Y-m-d') === $localStart->format('Y-m-d')
         );
 
@@ -52,19 +48,23 @@ final class VenueEventAvailability
             throw new InvalidArgumentException('В выбранную дату площадка закрыта.');
         }
 
-        $intervals = $exception !== null
-            ? $exception->intervals
-            : $schedule->intervals->where('day_of_week', $localStart->isoWeekday());
+        $hasRegularHours = $schedule?->intervals->isNotEmpty() ?? false;
+        $applicableIntervals = $exception?->intervals
+            ?? ($hasRegularHours
+                ? $schedule->intervals->where('day_of_week', $localStart->isoWeekday())
+                : null);
 
-        $startTime = $localStart->format('H:i:s');
-        $endTime = $localEnd->format('H:i:s');
-        $insideWorkingInterval = $intervals->contains(
-            fn ($interval): bool => $startTime >= (string) $interval->starts_at
-                && $endTime <= (string) $interval->ends_at
-        );
+        if ($applicableIntervals !== null) {
+            $startTime = $localStart->format('H:i:s');
+            $endTime = $localEnd->format('H:i:s');
+            $insideWorkingInterval = $applicableIntervals->contains(
+                fn ($interval): bool => $startTime >= (string) $interval->starts_at
+                    && $endTime <= (string) $interval->ends_at
+            );
 
-        if (! $insideWorkingInterval) {
-            throw new InvalidArgumentException('Выбранное время не входит в часы работы площадки.');
+            if (! $insideWorkingInterval) {
+                throw new InvalidArgumentException('Выбранное время не входит в часы работы площадки.');
+            }
         }
 
         $hasOverlap = VenueBooking::query()

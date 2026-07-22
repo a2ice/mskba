@@ -53,7 +53,7 @@ final class AdminMenu implements MenuHandler
             ],
             [
                 'label' => 'Мероприятия',
-                'description' => 'Игры, тренировки и турниры.',
+                'description' => 'Игры, тренировки, игровые тренировки и турниры.',
                 'url' => $this->routeUrl('admin.events'),
                 'active' => $this->isActiveRoute('admin.events'),
                 'visible' => true,

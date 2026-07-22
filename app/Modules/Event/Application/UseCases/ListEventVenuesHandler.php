@@ -15,7 +15,6 @@ final class ListEventVenuesHandler
         return Venue::query()
             ->where('status', VenueStatusEnum::CONFIRMED->value)
             ->where('operational_status', VenueOperationalStatusEnum::ACTIVE->value)
-            ->whereHas('schedule', fn ($query) => $query->whereHas('intervals')->orWhereHas('exceptions.intervals'))
             ->orderBy('name')
             ->get(['id', 'name', 'alias', 'raw_address']);
     }

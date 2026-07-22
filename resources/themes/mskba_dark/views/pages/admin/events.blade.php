@@ -2,7 +2,7 @@
 
 @extends('theme::partials.admin.list-shell', [
     'title' => $title,
-    'subtitle' => 'Игры, тренировки и турниры.',
+    'subtitle' => 'Игры, тренировки, игровые тренировки и турниры.',
 ])
 
 @section('section-content')
