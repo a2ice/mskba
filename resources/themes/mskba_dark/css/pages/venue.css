@@ -328,9 +328,9 @@
     gap: 8px;
     overflow-x: auto;
     border: 1px solid var(--line);
-    border-radius: var(--radius-control);
+    border-radius: 0 0 var(--radius-control) var(--radius-control);
     padding: 8px;
-    background: rgba(21, 25, 20, 0.96);
+    background: rgba(21, 25, 20, 0.75);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
     backdrop-filter: blur(12px);
     overscroll-behavior-inline: contain;

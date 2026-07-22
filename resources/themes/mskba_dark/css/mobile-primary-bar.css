@@ -101,7 +101,7 @@
         flex-direction: column;
         gap: 5px;
         padding: 8px 3px;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        /* border-right: 1px solid rgba(255, 255, 255, 0.08); */
         color: #fff;
         font-size: clamp(10px, 3vw, 13px);
         font-weight: 700;
