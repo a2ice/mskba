@@ -235,7 +235,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.contacts.verification.confirm');
         Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
         Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
-        Route::get('/venues', [AccountController::class, 'venues'])->name('account.venues');
+        Route::get('/venues', [AccountController::class, 'venues'])
+            ->name('account.venues')
+            ->defaults('breadcrumb', 'Мои площадки');
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');

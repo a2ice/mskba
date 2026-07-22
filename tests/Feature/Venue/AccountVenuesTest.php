@@ -76,6 +76,8 @@ final class AccountVenuesTest extends TestCase
             ->assertSee('account-venue-detail', false)
             ->assertSee('account-venue-status--unconfirmed', false)
             ->assertSee('Не подтверждён')
+            ->assertSee('Мои площадки')
+            ->assertDontSee('Venues')
             ->assertSee('btn--secondary', false)
             ->assertSee('Модерация')
             ->assertSee('target="_blank"', false)
