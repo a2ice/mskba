@@ -99,8 +99,8 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Статус площадки: Подтверждён')
             ->assertDontSee('venue-pill venue-pill--muted', false)
             ->assertSee('data-venue-hero-image', false)
-            ->assertSee('data-venue-hero-thumbnail', false)
-            ->assertSee('venue-hero-thumbnail is-active', false)
+            ->assertDontSee('data-venue-hero-thumbnail', false)
+            ->assertDontSee('venue-hero-thumbnail', false)
             ->assertDontSee('venue-hero__placeholder-content', false)
             ->assertSee('Ключ Яндекс Карт не настроен.');
     }
@@ -183,7 +183,38 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Вид на игровую площадку')
             ->assertSee('data-venue-gallery-item', false)
             ->assertSee('data-venue-gallery-modal', false)
+            ->assertSee('data-venue-gallery-prev', false)
+            ->assertSee('data-venue-gallery-next', false)
             ->assertSee('2 фото');
+    }
+
+    public function test_venue_heading_is_only_shortened_after_thirty_characters(): void
+    {
+        $longName = 'Площадка с очень длинным понятным названием';
+        $venue = Venue::factory()->create([
+            'name' => $longName,
+            'alias' => 'venue-with-long-name',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+
+        $longResponse = $this->get(route('venues.show', $venue->alias))->assertOk();
+        $this->assertMatchesRegularExpression(
+            '/<h1[^>]*title="'.preg_quote($longName, '/').'"[^>]*>\s*'.preg_quote(mb_substr($longName, 0, 30).'…', '/').'\s*<\/h1>/',
+            $longResponse->getContent(),
+        );
+
+        $shortName = str_repeat('А', 30);
+        $shortVenue = Venue::factory()->create([
+            'name' => $shortName,
+            'alias' => 'venue-with-short-name',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+
+        $shortResponse = $this->get(route('venues.show', $shortVenue->alias))->assertOk();
+        $this->assertMatchesRegularExpression(
+            '/<h1(?![^>]*title=)[^>]*>\s*'.preg_quote($shortName, '/').'\s*<\/h1>/',
+            $shortResponse->getContent(),
+        );
     }
 
     public function test_public_venue_show_page_renders_active_amenities(): void

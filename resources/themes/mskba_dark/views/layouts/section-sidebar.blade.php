@@ -3,6 +3,7 @@
     $sectionId = $sectionId ?? 'section';
     $sectionClass = $sectionClass ?? $sectionId . '-section';
     $contentTitle = $contentTitle ?? $title;
+    $contentTitleTooltip = $contentTitleTooltip ?? null;
     $contentSubtitle = $contentSubtitle ?? null;
     $wrapSidebarPanel = $wrapSidebarPanel ?? true;
     $sidebarPartial = $sidebarPartial ?? null;
@@ -57,7 +58,13 @@
                                             @yield('section-heading-leading')
                                         @endif
 
-                                        <h1 class="layout-content-title section-sidebar-layout__title">{{ $contentTitle }}</h1>
+                                        <h1
+                                            class="layout-content-title section-sidebar-layout__title"
+                                            @if($contentTitleTooltip)
+                                                title="{{ $contentTitleTooltip }}"
+                                                data-tooltip-variant="title"
+                                            @endif
+                                        >{{ $contentTitle }}</h1>
                                     </div>
 
                                     @hasSection('section-heading-action')

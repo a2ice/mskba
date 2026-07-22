@@ -17,6 +17,10 @@
         $ratingLabel = $venue->about->rating
             ? 'Рейтинг: ' . number_format($venue->about->rating, 1, ',', ' ') . ' из 5'
             : 'Рейтинг пока не сформирован';
+        $headingTitleIsTruncated = mb_strlen($venue->name) > 30;
+        $headingTitle = $headingTitleIsTruncated
+            ? mb_substr($venue->name, 0, 30) . '…'
+            : $venue->name;
     } else {
         $title = 'Ошибка';
         $error_message = isset($error['message']) ? $error['message'] : 'Неизвестная ошибка';
@@ -28,7 +32,8 @@
     'title' => $title,
     'sectionId' => 'venue',
     'sectionClass' => 'venue-section',
-    'contentTitle' => isset($venue) ? $venue->name : 'Площадка',
+    'contentTitle' => isset($venue) ? $headingTitle : 'Площадка',
+    'contentTitleTooltip' => isset($venue) && $headingTitleIsTruncated ? $venue->name : null,
     'contentSubtitle' => isset($venue) ? $venue->shortDescription : null,
     'sidebarLabel' => 'Навигация площадки',
 ])
@@ -165,33 +170,6 @@
                         </div>
                     @endif
 
-                    <div class="venue-hero-thumbnails" aria-label="Фотографии площадки">
-                        @forelse($venue->featuredMedia as $index => $media)
-                            <button
-                                type="button"
-                                @class(['venue-hero-thumbnail', 'is-active' => $index === 0])
-                                data-venue-hero-thumbnail
-                                data-url="{{ $media['url'] }}"
-                                data-alt="{{ $media['title'] ?: $venue->name }}"
-                                aria-label="Показать фото {{ $index + 1 }}"
-                                aria-pressed="{{ $index === 0 ? 'true' : 'false' }}"
-                            >
-                                <img src="{{ $media['url'] }}" alt="">
-                            </button>
-                        @empty
-                            <button
-                                type="button"
-                                class="venue-hero-thumbnail is-active"
-                                data-venue-hero-thumbnail
-                                data-url="{{ asset('images/venue-placeholder.png') }}"
-                                data-alt="Фото площадки {{ $venue->name }}"
-                                aria-label="Показать фото площадки"
-                                aria-pressed="true"
-                            >
-                                <img src="{{ asset('images/venue-placeholder.png') }}" alt="">
-                            </button>
-                        @endforelse
-                    </div>
                 </div>
 
                 <div class="venue-hero__summary">

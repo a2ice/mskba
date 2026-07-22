@@ -3,30 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initVenueGalleryModal();
     initVenueDayModal();
     initVenueNearbyModal();
-    initVenueHeroGallery();
 });
-
-function initVenueHeroGallery() {
-    const mainImage = document.querySelector('[data-venue-hero-image]');
-    const thumbnails = Array.from(document.querySelectorAll('[data-venue-hero-thumbnail]'));
-
-    if (!mainImage || thumbnails.length === 0) {
-        return;
-    }
-
-    thumbnails.forEach((thumbnail) => {
-        thumbnail.addEventListener('click', () => {
-            mainImage.src = thumbnail.dataset.url || '';
-            mainImage.alt = thumbnail.dataset.alt || '';
-
-            thumbnails.forEach((item) => {
-                const isActive = item === thumbnail;
-                item.classList.toggle('is-active', isActive);
-                item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-            });
-        });
-    });
-}
 
 function initVenueAnchors() {
     const links = Array.from(document.querySelectorAll('[data-venue-anchor-link]'));
@@ -146,6 +123,11 @@ function initVenueGalleryModal() {
     const prevButton = modal.querySelector('[data-venue-gallery-prev]');
     const nextButton = modal.querySelector('[data-venue-gallery-next]');
     let currentIndex = 0;
+
+    if (items.length < 2) {
+        prevButton?.setAttribute('hidden', '');
+        nextButton?.setAttribute('hidden', '');
+    }
 
     const show = (index) => {
         currentIndex = (index + items.length) % items.length;
