@@ -5,7 +5,7 @@
     'sectionId' => 'events',
     'sectionClass' => 'events-section',
     'contentTitle' => $period === 'past' ? 'Состоявшиеся мероприятия' : 'Предстоящие мероприятия',
-    'contentSubtitle' => 'Игры, тренировки, игровые тренировки и турниры на баскетбольных площадках.',
+    'contentSubtitle' => 'Игры и тренировки на баскетбольных площадках.',
     'sidebarLabel' => 'Навигация мероприятий',
 ])
 
