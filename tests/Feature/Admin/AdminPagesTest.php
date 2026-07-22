@@ -30,7 +30,7 @@ class AdminPagesTest extends TestCase
             ->assertOk()
             ->assertSee('Пользователи')
             ->assertSee('Площадки')
-            ->assertSee('События')
+            ->assertSee('Мероприятия')
             ->assertSee('Команды')
             ->assertSee('Контент')
             ->assertSee('Аудит')

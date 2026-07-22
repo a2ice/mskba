@@ -1,0 +1,208 @@
+<?php
+
+namespace App\Modules\Event\Presentation\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventResultGalleryManager;
+use App\Modules\Event\Application\UseCases\CancelEventHandler;
+use App\Modules\Event\Application\UseCases\CompleteEventHandler;
+use App\Modules\Event\Application\UseCases\CreateEventHandler;
+use App\Modules\Event\Application\UseCases\JoinEventHandler;
+use App\Modules\Event\Application\UseCases\LeaveEventHandler;
+use App\Modules\Event\Application\UseCases\ListEventsHandler;
+use App\Modules\Event\Application\UseCases\ListEventVenuesHandler;
+use App\Modules\Event\Application\UseCases\ShowEventHandler;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Presentation\Http\Requests\CancelEventRequest;
+use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
+use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
+use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Validation\Rule;
+use InvalidArgumentException;
+
+final class EventController extends Controller
+{
+    public function index(Request $request, ListEventsHandler $events, CurrentActorResolver $actors): Response
+    {
+        $validated = $request->validate([
+            'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'period' => ['nullable', Rule::in(['upcoming', 'past'])],
+        ]);
+        $type = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
+        $period = $validated['period'] ?? 'upcoming';
+
+        return ThemeResolver::page('events.index', [
+            'events' => $events->handle($actors->resolveForRequest($request), $type, $period),
+            'types' => EventTypeEnum::cases(),
+            'selectedType' => $type,
+            'period' => $period,
+        ]);
+    }
+
+    public function create(ListEventVenuesHandler $venues): Response
+    {
+        return ThemeResolver::page('events.create', [
+            'venues' => $venues->handle(),
+            'types' => EventTypeEnum::cases(),
+            'visibilities' => EventVisibilityEnum::cases(),
+        ]);
+    }
+
+    public function store(
+        CreateEventRequest $request,
+        CreateEventHandler $events,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+
+        if ($actor === null) {
+            return redirect()->route('login');
+        }
+
+        try {
+            $event = $events->handle($actor, $request->validated());
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        $message = $event->booking?->status->value === 'confirmed'
+            ? 'Мероприятие создано, площадка забронирована.'
+            : 'Мероприятие сохранено. Бронирование ожидает подтверждения площадки.';
+
+        return redirect()->route('events.show', $event->routeIdentifier())->with('status', $message);
+    }
+
+    public function show(
+        Request $request,
+        string $event,
+        ShowEventHandler $events,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+    ): Response {
+        $item = $events->handle($event, $actors->resolveForRequest($request));
+        $currentParticipant = $request->user() === null
+            ? null
+            : $item->participants->firstWhere('user_id', $request->user()->id);
+
+        $actor = $actors->resolveForRequest($request);
+
+        return ThemeResolver::page('events.show', [
+            'event' => $item,
+            'currentParticipant' => $currentParticipant,
+            'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED,
+            'canManage' => $actor !== null && $access->canManage($item, $actor),
+        ]);
+    }
+
+    public function cancel(
+        CancelEventRequest $request,
+        string $event,
+        CancelEventHandler $events,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $events->handle($event, $actor, $request->validated('reason'));
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Мероприятие отменено, время площадки освобождено.');
+    }
+
+    public function complete(
+        UpdateEventResultRequest $request,
+        string $event,
+        CompleteEventHandler $events,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $events->handle($event, $actor, $request->validated('result_description'));
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Итоги мероприятия сохранены.');
+    }
+
+    public function storeResultPhoto(
+        StoreEventResultPhotoRequest $request,
+        string $event,
+        ShowEventHandler $events,
+        EventResultGalleryManager $gallery,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $item = $events->handle($event, $actor);
+        $path = $request->file('photo')?->getRealPath();
+        $contents = is_string($path) ? file_get_contents($path) : false;
+
+        if (! is_string($contents)) {
+            return back()->with('photo_error', 'Не удалось прочитать изображение.');
+        }
+
+        try {
+            $gallery->store($item, $actor, $contents);
+        } catch (InvalidArgumentException|\RuntimeException $exception) {
+            return back()->with('photo_error', $exception->getMessage());
+        }
+
+        return back()->with('photo_status', 'Фотография добавлена.');
+    }
+
+    public function destroyResultPhoto(
+        Request $request,
+        string $event,
+        int $photo,
+        ShowEventHandler $events,
+        EventResultGalleryManager $gallery,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $item = $events->handle($event, $actor);
+        try {
+            $gallery->delete($item, $actor, $photo);
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('photo_error', $exception->getMessage());
+        }
+
+        return back()->with('photo_status', 'Фотография удалена.');
+    }
+
+    public function join(Request $request, string $event, JoinEventHandler $events): RedirectResponse
+    {
+        try {
+            $events->handle($event, $request->user());
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Вы присоединились к мероприятию.');
+    }
+
+    public function leave(Request $request, string $event, LeaveEventHandler $events): RedirectResponse
+    {
+        try {
+            $events->handle($event, $request->user());
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Вы вышли из состава участников.');
+    }
+}

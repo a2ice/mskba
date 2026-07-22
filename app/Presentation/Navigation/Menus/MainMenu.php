@@ -50,20 +50,20 @@ final class MainMenu implements MenuHandler
         $moreGames = [
             [
                 'label' => 'Игры',
-                'url' => $this->routeUrl('/#games'),
-                'active' => $this->isActiveRoute('games, games.*'),
+                'url' => route('events.index', ['type' => 'game']),
+                'active' => $this->isActiveRoute('events.*') && request('type') === 'game',
                 'visible' => true,
             ],
             [
                 'label' => 'Тренировки',
-                'url' => $this->routeUrl('/#training'),
-                'active' => $this->isActiveRoute('training, training.*'),
+                'url' => route('events.index', ['type' => 'training']),
+                'active' => $this->isActiveRoute('events.*') && request('type') === 'training',
                 'visible' => true,
             ],
             [
                 'label' => 'Турниры',
-                'url' => $this->routeUrl('/#tournaments'),
-                'active' => $this->isActiveRoute('tournaments, tournaments.*'),
+                'url' => route('events.index', ['type' => 'tournament']),
+                'active' => $this->isActiveRoute('events.*') && request('type') === 'tournament',
                 'visible' => true,
             ],
         ];
@@ -77,8 +77,8 @@ final class MainMenu implements MenuHandler
             ],
             [
                 'label' => 'Мероприятия',
-                'url' => $this->routeUrl('/#games'),
-                'active' => $this->isActiveRoute('games, games.*'),
+                'url' => $this->routeUrl('events.index'),
+                'active' => $this->isActiveRoute('events.*'),
                 'visible' => true,
                 'children' => $moreGames,
             ],

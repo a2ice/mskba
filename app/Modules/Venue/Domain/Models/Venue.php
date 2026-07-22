@@ -6,6 +6,8 @@ use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
@@ -185,6 +187,16 @@ class Venue extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(VenueReview::class);
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class);
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(VenueBooking::class);
     }
 
     public function tags(): HasMany

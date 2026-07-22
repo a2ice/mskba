@@ -12,7 +12,7 @@
     </div>
 
     <nav class="mobile-primary-bar__actions" aria-label="Основные действия">
-        <a class="mobile-primary-bar__action js-handler" href="#games" data-handler="modal" data-modal-action="open" data-modal-target="games">
+        <a class="mobile-primary-bar__action" href="{{ route('events.index', ['type' => 'game']) }}">
             <i class="ti ti-ball-basketball" aria-hidden="true"></i>
             <span>Играть</span>
         </a>
@@ -22,7 +22,7 @@
             <span>Площадки</span>
         </a>
 
-        <a class="mobile-primary-bar__action js-handler" href="#trainings" data-handler="modal" data-modal-action="open" data-modal-target="trainings">
+        <a class="mobile-primary-bar__action" href="{{ route('events.index', ['type' => 'training']) }}">
             <i class="ti ti-barbell" aria-hidden="true"></i>
             <span>Тренировки</span>
         </a>
