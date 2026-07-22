@@ -25,7 +25,7 @@ final class CreateEventHandler
         private readonly CyrillicTransliterator $transliterator,
     ) {}
 
-    /** @param array{venue_id: int, title: string, type: string, visibility: string, description?: string|null, starts_at: string, ends_at: string, max_participants?: int|null} $data */
+    /** @param array{venue_id: int, title: string, type: string, visibility: string, description?: string|null, starts_at: string, ends_at?: string|null, max_participants?: int|null} $data */
     public function handle(Actor $actor, array $data): Event
     {
         if ($actor->user_id === null) {
@@ -36,8 +36,11 @@ final class CreateEventHandler
             // Единый порядок блокировок для бронирований: сначала venue, затем bookings/event.
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
-            $startsAt = CarbonImmutable::parse($data['starts_at'], $timezone)->utc();
-            $endsAt = CarbonImmutable::parse($data['ends_at'], $timezone)->utc();
+            $localStart = CarbonImmutable::parse($data['starts_at'], $timezone);
+            $startsAt = $localStart->utc();
+            $endsAt = isset($data['ends_at']) && $data['ends_at'] !== ''
+                ? CarbonImmutable::parse($data['ends_at'], $timezone)->utc()
+                : $localStart->addHour()->utc();
 
             $this->availability->assertAvailable($venue, $startsAt, $endsAt);
 

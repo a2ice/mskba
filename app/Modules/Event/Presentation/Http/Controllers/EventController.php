@@ -22,6 +22,7 @@ use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Presentation\Theming\ThemeResolver;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -47,12 +48,27 @@ final class EventController extends Controller
         ]);
     }
 
-    public function create(ListEventVenuesHandler $venues): Response
+    public function create(Request $request, ListEventVenuesHandler $venues): Response
     {
+        $validated = $request->validate([
+            'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+        ]);
+        $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
+        $defaultType = $selectedType ?? EventTypeEnum::GAME;
+        $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
+        $defaultStartsAt = $now->addMinutes(30)->ceilMinute();
+        $defaultEndsAt = $defaultStartsAt->addHour();
+
         return ThemeResolver::page('events.create', [
             'venues' => $venues->handle(),
             'types' => EventTypeEnum::cases(),
             'visibilities' => EventVisibilityEnum::cases(),
+            'selectedType' => $selectedType,
+            'defaultType' => $defaultType,
+            'currentDate' => $now->format('Ymd'),
+            'defaultTitle' => $defaultType->label().' - '.$now->format('Ymd'),
+            'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
+            'defaultEndsAt' => $defaultEndsAt->format('Y-m-d\TH:i'),
         ]);
     }
 

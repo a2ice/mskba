@@ -24,6 +24,7 @@ import './features/address-suggest.js';
 import './features/venue-map.js';
 import './features/venue-show.js';
 import './features/venue-schedule-form.js';
+import './features/event-create-form.js';
 import './features/admin-action-modals.js';
 import './features/admin-venue-bulk-actions.js';
 import './features/admin-user-bulk-actions.js';
