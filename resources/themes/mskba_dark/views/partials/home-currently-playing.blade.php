@@ -45,7 +45,7 @@
             @endforeach
         </div>
 
-        <a class="home-live__all" href="#games">
+        <a class="home-live__all" href="{{ route('events.index', ['type' => 'game']) }}">
             <span class="home-inline-icon home-inline-icon--calendar" aria-hidden="true"></span>
             <span>Смотреть все игры</span>
             <span class="home-live__all-arrow" aria-hidden="true">→</span>

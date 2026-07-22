@@ -9,6 +9,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
+use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
@@ -131,7 +132,7 @@ Route::prefix('admin')
         Route::post('/venues/{venueId}/restore', [AdminVenuesController::class, 'restore'])->whereNumber('venueId')->name('admin.venues.restore');
         Route::post('/venues/moderation/{moderationRequest}/approve', [AdminVenuesController::class, 'approve'])->name('admin.venues.moderation.approve');
         Route::post('/venues/moderation/{moderationRequest}/reject', [AdminVenuesController::class, 'reject'])->name('admin.venues.moderation.reject');
-        Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'События');
+        Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'Мероприятия');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
         Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
@@ -155,6 +156,32 @@ Route::prefix('venues')->group(function () {
             ->name('venues.store');
     });
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
+});
+
+Route::prefix('events')->group(function () {
+    Route::get('/', [EventController::class, 'index'])
+        ->name('events.index')
+        ->defaults('breadcrumb', 'Мероприятия');
+
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [EventController::class, 'create'])
+            ->name('events.create')
+            ->defaults('breadcrumb', 'Новое мероприятие');
+        Route::post('/', [EventController::class, 'store'])->name('events.store');
+        Route::post('/{event}/participants', [EventController::class, 'join'])
+            ->name('events.join');
+        Route::delete('/{event}/participants/me', [EventController::class, 'leave'])
+            ->name('events.leave');
+        Route::post('/{event}/cancel', [EventController::class, 'cancel'])->name('events.cancel');
+        Route::put('/{event}/result', [EventController::class, 'complete'])->name('events.result.update');
+        Route::post('/{event}/result/photos', [EventController::class, 'storeResultPhoto'])
+            ->middleware('throttle:10,1')->name('events.result.photos.store');
+        Route::delete('/{event}/result/photos/{photo}', [EventController::class, 'destroyResultPhoto'])
+            ->middleware('throttle:20,1')->whereNumber('photo')->name('events.result.photos.destroy');
+    });
+
+    Route::get('/{event}', [EventController::class, 'show'])
+        ->name('events.show');
 });
 
 Route::get('/integrations/address-suggest', AddressSuggestController::class)
