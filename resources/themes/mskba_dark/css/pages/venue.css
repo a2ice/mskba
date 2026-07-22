@@ -50,6 +50,9 @@
 .venue-show {
     display: grid;
     gap: 28px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .venue-hero {
@@ -468,6 +471,8 @@
 
 .venue-show-section {
     scroll-margin-top: 150px;
+    min-width: 0;
+    max-width: 100%;
     border-top: 1px solid var(--line);
     padding-top: 28px;
 }
@@ -511,6 +516,9 @@
 .venue-gallery {
     display: flex;
     gap: 16px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     overflow-x: auto;
     padding: 2px 2px 12px;
     scroll-snap-type: x proximity;

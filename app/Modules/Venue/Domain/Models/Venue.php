@@ -189,11 +189,6 @@ class Venue extends Model
         return $this->hasMany(VenueTag::class);
     }
 
-    public function getRouteKeyName(): string
-    {
-        return 'alias';
-    }
-
     /**
      * Get the attributes that should be cast.
      *

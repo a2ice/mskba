@@ -56,6 +56,29 @@ final class AdminVenueEditingTest extends TestCase
         $this->assertEqualsCanonicalizing(['паркет', 'раздевалки'], $venue->tags()->pluck('name')->all());
     }
 
+    public function test_admin_routes_identify_venues_by_id_when_aliases_match(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        Venue::factory()->create([
+            'name' => 'Первая площадка',
+            'alias' => 'shared-alias',
+        ]);
+        $secondVenue = Venue::factory()->create([
+            'name' => 'Вторая площадка',
+            'alias' => 'shared-alias',
+        ]);
+
+        $editUrl = route('admin.venues.edit', $secondVenue);
+
+        $this->assertStringEndsWith("/admin/venues/{$secondVenue->id}/edit", $editUrl);
+
+        $this->actingAs($superadmin)
+            ->get($editUrl)
+            ->assertOk()
+            ->assertSee('Вторая площадка')
+            ->assertDontSee('Первая площадка');
+    }
+
     public function test_admin_cannot_use_superadmin_venue_editing_routes(): void
     {
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
