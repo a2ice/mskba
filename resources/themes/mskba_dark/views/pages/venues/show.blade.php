@@ -217,8 +217,15 @@
                             </p>
                         </div>
                         <div>
-                            <span class="venue-hero__detail-label">Текущие слоты</span>
-                            <p class="venue-hero__text">—</p>
+                            <span class="venue-hero__detail-label">Занятые слоты</span>
+                            @forelse($venue->occupiedSlots as $slot)
+                                <p class="venue-hero__text">
+                                    {{ $slot['label'] }}
+                                    @if($slot['eventUrl'])<br><a class="fc-link" href="{{ $slot['eventUrl'] }}">{{ $slot['eventTitle'] }}</a>@endif
+                                </p>
+                            @empty
+                                <p class="venue-hero__text">—</p>
+                            @endforelse
                         </div>
                     </div>
                 </div>

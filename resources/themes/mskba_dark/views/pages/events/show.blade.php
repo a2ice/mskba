@@ -17,7 +17,7 @@
 ])
 
 @section('section-sidebar')
-    <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Мероприятия</h2><ul class="sidebar-nav nav flex-column"><li class="nav-item"><a class="nav-link" href="{{ route('events.index') }}">Все мероприятия</a></li><li class="nav-item"><a class="nav-link" href="{{ route('events.create') }}">Создать</a></li></ul></div>
+    <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Мероприятия</h2><ul class="sidebar-nav nav flex-column"><li class="nav-item"><a class="nav-link" href="{{ route('events.index') }}">Все мероприятия</a></li><li class="nav-item"><a class="nav-link" href="{{ route('events.create') }}">Создать</a></li>@if($canManage && $event->ends_at->isFuture() && ! in_array($event->status->value, ['cancelled', 'completed'], true))<li class="nav-item"><a class="nav-link" href="{{ route('events.edit', $event->routeIdentifier()) }}">Редактировать</a></li>@endif</ul></div>
 @endsection
 
 @section('section-content')

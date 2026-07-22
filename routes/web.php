@@ -168,6 +168,10 @@ Route::prefix('events')->group(function () {
             ->name('events.create')
             ->defaults('breadcrumb', 'Новое мероприятие');
         Route::post('/', [EventController::class, 'store'])->name('events.store');
+        Route::get('/{event}/edit', [EventController::class, 'edit'])
+            ->name('events.edit')
+            ->defaults('breadcrumb', 'Редактирование мероприятия');
+        Route::put('/{event}', [EventController::class, 'update'])->name('events.update');
         Route::post('/{event}/participants', [EventController::class, 'join'])
             ->name('events.join');
         Route::delete('/{event}/participants/me', [EventController::class, 'leave'])

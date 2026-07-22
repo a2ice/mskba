@@ -13,12 +13,15 @@ use App\Modules\Event\Application\UseCases\LeaveEventHandler;
 use App\Modules\Event\Application\UseCases\ListEventsHandler;
 use App\Modules\Event\Application\UseCases\ListEventVenuesHandler;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
+use App\Modules\Event\Application\UseCases\UpdateEventHandler;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Presentation\Http\Requests\CancelEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
+use App\Modules\Event\Presentation\Http\Requests\UpdateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Presentation\Theming\ThemeResolver;
@@ -116,6 +119,50 @@ final class EventController extends Controller
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
         ]);
+    }
+
+    public function edit(
+        Request $request,
+        string $event,
+        ShowEventHandler $events,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+    ): Response|RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $item = $events->handle($event, $actor);
+        abort_unless($access->canManage($item, $actor), 403);
+
+        if (in_array($item->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
+            || $item->ends_at->lessThanOrEqualTo(now())) {
+            return redirect()->route('events.show', $item->routeIdentifier())
+                ->with('error', 'Завершённое или отменённое мероприятие нельзя редактировать.');
+        }
+
+        return ThemeResolver::page('events.edit', [
+            'event' => $item,
+            'types' => EventTypeEnum::cases(),
+            'visibilities' => EventVisibilityEnum::cases(),
+        ]);
+    }
+
+    public function update(
+        UpdateEventRequest $request,
+        string $event,
+        UpdateEventHandler $events,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $item = $events->handle($event, $actor, $request->validated());
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('events.show', $item->routeIdentifier())
+            ->with('status', 'Мероприятие обновлено.');
     }
 
     public function cancel(

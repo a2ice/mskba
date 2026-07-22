@@ -2,6 +2,9 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Address;
@@ -117,6 +120,33 @@ final class ShowVenueHandler
             ->all();
         $scheduleDays = $this->scheduleDays($venue);
         $openingState = $this->openingState($venue);
+        $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
+        $occupiedSlots = $venue->bookings()
+            ->whereIn('status', [
+                VenueBookingStatusEnum::PENDING->value,
+                VenueBookingStatusEnum::CONFIRMED->value,
+            ])
+            ->where('ends_at', '>', now())
+            ->with('event')
+            ->orderBy('starts_at')
+            ->limit(5)
+            ->get()
+            ->map(function ($booking) use ($timezone): array {
+                $startsAt = $booking->starts_at->setTimezone($timezone);
+                $endsAt = $booking->ends_at->setTimezone($timezone);
+                $event = $booking->event;
+                $isPublicEvent = $event !== null
+                    && $event->status === EventStatusEnum::PUBLISHED
+                    && $event->visibility === EventVisibilityEnum::PUBLIC;
+
+                return [
+                    'label' => $startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i'),
+                    'eventTitle' => $isPublicEvent ? $event->title : null,
+                    'eventUrl' => $isPublicEvent ? route('events.show', $event->routeIdentifier()) : null,
+                ];
+            })
+            ->values()
+            ->all();
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
@@ -178,6 +208,7 @@ final class ShowVenueHandler
             amenities: $amenities,
             featuredMedia: $featuredMedia,
             reviews: $reviews,
+            occupiedSlots: $occupiedSlots,
             canEdit: $this->access->canEdit($user, $venue, $actor),
             canEditSchedule: $this->access->canEditSchedule($user, $venue, $actor),
             canRemove: $this->access->canRemove($user, $venue, $actor),

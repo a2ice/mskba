@@ -49,6 +49,13 @@ final class EventWorkflowTest extends TestCase
         $this->get(route('events.index', ['type' => 'game']))
             ->assertOk()
             ->assertSee('Вечерняя игра');
+        $slotStart = $event->booking->starts_at->setTimezone('Europe/Moscow');
+        $slotEnd = $event->booking->ends_at->setTimezone('Europe/Moscow');
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Занятые слоты')
+            ->assertSee($slotStart->format('d.m.Y H:i').'–'.$slotEnd->format('H:i'))
+            ->assertSee('Вечерняя игра');
     }
 
     public function test_booking_that_requires_approval_creates_draft_event(): void
@@ -307,6 +314,87 @@ final class EventWorkflowTest extends TestCase
         $this->assertSame(EventStatusEnum::CANCELLED, $event->refresh()->status);
     }
 
+    public function test_organizer_and_superadmin_can_edit_event_details_but_unrelated_user_cannot(): void
+    {
+        $organizer = User::factory()->create();
+        $stranger = User::factory()->create();
+        $superadmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+        $booking = $event->booking()->firstOrFail();
+        $originalEventStart = $event->starts_at;
+        $originalEventEnd = $event->ends_at;
+        $originalBookingStart = $booking->starts_at;
+        $originalBookingEnd = $booking->ends_at;
+
+        $this->actingAs($organizer)
+            ->get(route('events.edit', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Редактирование мероприятия')
+            ->assertSee('Площадка и время не изменяются в этой форме');
+
+        $this->actingAs($stranger)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload())
+            ->assertSessionHas('error', 'У вас нет права управлять этим мероприятием.');
+
+        $this->actingAs($organizer)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'title' => 'Обновлённая тренировка',
+                'description' => 'Новое описание встречи.',
+                'type' => EventTypeEnum::GAME_TRAINING->value,
+                'max_participants' => 12,
+            ]))
+            ->assertRedirect();
+
+        $event->refresh();
+        $this->assertSame('Обновлённая тренировка', $event->title);
+        $this->assertSame('Новое описание встречи.', $event->description);
+        $this->assertSame(EventTypeEnum::GAME_TRAINING, $event->type);
+        $this->assertSame(12, $event->max_participants);
+        $this->assertTrue($event->starts_at->equalTo($originalEventStart));
+        $this->assertTrue($event->ends_at->equalTo($originalEventEnd));
+        $this->assertTrue($booking->refresh()->starts_at->equalTo($originalBookingStart));
+        $this->assertTrue($booking->ends_at->equalTo($originalBookingEnd));
+
+        $this->actingAs($superadmin)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'title' => 'Изменено администратором',
+            ]))
+            ->assertSessionHas('status', 'Мероприятие обновлено.');
+
+        $this->assertSame('Изменено администратором', $event->refresh()->title);
+    }
+
+    public function test_participant_limit_cannot_be_reduced_below_current_participants(): void
+    {
+        $organizer = User::factory()->create();
+        $firstParticipant = User::factory()->create();
+        $secondParticipant = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end, 10));
+        $event = $venue->events()->firstOrFail();
+        $this->actingAs($firstParticipant)->post(route('events.join', $event->routeIdentifier()));
+        $this->actingAs($secondParticipant)->post(route('events.join', $event->routeIdentifier()));
+
+        $this->actingAs($organizer)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'max_participants' => null,
+            ]))
+            ->assertSessionHas('status');
+
+        $this->actingAs($organizer)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'max_participants' => 2,
+            ]))
+            ->assertSessionHas('error', 'Лимит участников не может быть меньше числа уже записавшихся.');
+
+        $this->assertNull($event->refresh()->max_participants);
+    }
+
     public function test_organizer_completes_event_adds_result_and_photos(): void
     {
         Storage::fake('public');
@@ -393,5 +481,17 @@ final class EventWorkflowTest extends TestCase
             'duration_minutes' => (int) $start->diffInMinutes($end),
             'max_participants' => $capacity,
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function updatePayload(array $overrides = []): array
+    {
+        return array_merge([
+            'title' => 'Вечерняя игра',
+            'type' => EventTypeEnum::GAME->value,
+            'visibility' => 'public',
+            'description' => 'Собираемся играть в баскетбол.',
+            'max_participants' => 10,
+        ], $overrides);
     }
 }
