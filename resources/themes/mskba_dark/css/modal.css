@@ -238,7 +238,8 @@ body.content-modal-open .site-content {
 		--telegram-modal-safe-top: max(
 			16px,
 			env(safe-area-inset-top, 0px),
-			var(--tg-content-safe-area-inset-top, 0px)
+			var(--tg-content-safe-area-inset-top, 0px),
+			var(--telegram-content-top, 0px)
 		);
 		--telegram-modal-safe-right: max(
 			12px,
@@ -267,11 +268,6 @@ body.content-modal-open .site-content {
 	}
 
 	body.telegram-mini-app .modal__dialog {
-		max-height: calc(
-			100dvh
-			- var(--telegram-modal-safe-top)
-			- var(--telegram-modal-safe-bottom)
-			- 8px
-		);
+		max-height: 100%;
 	}
 }

@@ -43,6 +43,16 @@
     white-space: nowrap;
 }
 
+.events-section input[type='datetime-local'] {
+    text-align: left;
+}
+
+.events-section input[type='datetime-local']::-webkit-date-and-time-value {
+    display: block;
+    min-width: 100%;
+    text-align: left;
+}
+
 @media (max-width: 1100px) {
     .event-filters__grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
