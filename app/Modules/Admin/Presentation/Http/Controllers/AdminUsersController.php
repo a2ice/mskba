@@ -11,6 +11,8 @@ use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Portal\Application\Services\OnlineUserPresence;
+use App\Modules\Portal\Application\Services\SiteSummaryService;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,13 +20,19 @@ use Illuminate\Http\Response;
 
 final class AdminUsersController extends Controller
 {
-    public function index(Request $request, ListAdminUsersHandler $users): Response
-    {
+    public function index(
+        Request $request,
+        ListAdminUsersHandler $users,
+        OnlineUserPresence $presence,
+        SiteSummaryService $summary,
+    ): Response {
         return ThemeResolver::page('admin.users', [
             'users' => $users->handle($request->query()),
             'filters' => $request->query(),
             'statuses' => UserStatusEnum::cases(),
             'roles' => UserSystemRoleEnum::cases(),
+            'onlinePresence' => $presence->snapshot(),
+            'onlineSummary' => $summary->get(),
         ]);
     }
 

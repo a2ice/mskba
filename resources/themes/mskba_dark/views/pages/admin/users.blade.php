@@ -2,7 +2,7 @@
 
 @extends('theme::partials.admin.list-shell', [
     'title' => $title,
-    'subtitle' => 'Аккаунты, статусы подтверждения и системные роли.',
+    'subtitle' => 'Аккаунты, статусы подтверждения и системные роли. Онлайн: '.count($onlinePresence).'/'.$onlineSummary->totalUsers,
 ])
 
 @section('section-content')
@@ -84,6 +84,7 @@
                         @endif
                         <th>ID</th>
                         <th>Логин</th>
+                        <th class="admin-table__presence-cell">Онлайн</th>
                         <th>Статус</th>
                         <th>Системная роль</th>
                         <th>Имя</th>
@@ -107,6 +108,23 @@
                             @endif
                             <td>{{ $user->id }}</td>
                             <td>{{ $user->username }}</td>
+                            <td class="admin-table__presence-cell">
+                                @php
+                                    $lastSeenTimestamp = $onlinePresence[$user->id] ?? null;
+                                    $lastSeen = $lastSeenTimestamp
+                                        ? \Illuminate\Support\Carbon::createFromTimestamp($lastSeenTimestamp, config('app.timezone'))
+                                        : null;
+                                    $presenceTooltip = $lastSeen
+                                        ? 'Онлайн. Последняя активность: '.$lastSeen->format('d.m.Y H:i:s')
+                                        : 'Не в сети';
+                                @endphp
+                                <span
+                                    class="admin-user-presence {{ $lastSeen ? 'admin-user-presence--online' : 'admin-user-presence--offline' }}"
+                                    title="{{ $presenceTooltip }}"
+                                    data-tooltip-variant="title"
+                                    aria-label="{{ $presenceTooltip }}"
+                                ><i aria-hidden="true"></i></span>
+                            </td>
                             <td>
                                 @if($canManageUsers && ! $showDeleted && ! $user->is(auth()->user()))
                                     <button

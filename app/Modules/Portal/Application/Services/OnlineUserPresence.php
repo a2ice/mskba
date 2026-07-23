@@ -47,9 +47,44 @@ final class OnlineUserPresence
                 return (int) $redis->zcard(self::CACHE_KEY);
             }
 
-            return $this->updateCachePresence();
+            return count($this->updateCachePresence());
         } catch (Throwable) {
             return 0;
+        }
+    }
+
+    /** @return array<int, int> User ID indexed timestamps of the last activity. */
+    public function snapshot(): array
+    {
+        try {
+            if ($this->usesRedis()) {
+                $redis = Redis::connection($this->redisConnection());
+                $redis->zremrangebyscore(self::CACHE_KEY, '-inf', (string) $this->expirationTimestamp());
+                $members = $redis->zrangebyscore(
+                    self::CACHE_KEY,
+                    (string) ($this->expirationTimestamp() + 1),
+                    '+inf',
+                    ['withscores' => true],
+                );
+
+                if (! is_array($members)) {
+                    return [];
+                }
+
+                $snapshot = [];
+
+                foreach ($members as $userId => $timestamp) {
+                    if (is_numeric($userId) && is_numeric($timestamp)) {
+                        $snapshot[(int) $userId] = (int) $timestamp;
+                    }
+                }
+
+                return $snapshot;
+            }
+
+            return $this->updateCachePresence();
+        } catch (Throwable) {
+            return [];
         }
     }
 
@@ -65,7 +100,8 @@ final class OnlineUserPresence
         }
     }
 
-    private function updateCachePresence(?int $touchUserId = null, ?int $forgetUserId = null): int
+    /** @return array<int, int> */
+    private function updateCachePresence(?int $touchUserId = null, ?int $forgetUserId = null): array
     {
         $repository = $this->cacheRepository();
         $presence = $repository->get(self::CACHE_KEY, []);
@@ -87,7 +123,10 @@ final class OnlineUserPresence
 
         $repository->put(self::CACHE_KEY, $presence, $this->windowSeconds() * 2);
 
-        return count($presence);
+        return array_map(
+            static fn (mixed $timestamp): int => (int) $timestamp,
+            $presence,
+        );
     }
 
     private function usesRedis(): bool

@@ -244,6 +244,40 @@
     font-weight: 600;
 }
 
+.admin-table .admin-table__presence-cell {
+    width: 76px;
+    min-width: 76px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.admin-user-presence {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 50%;
+}
+
+.admin-user-presence i {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.admin-user-presence--online i {
+    background: #32d583;
+    box-shadow:
+        0 0 0 4px rgba(50, 213, 131, 0.13),
+        0 0 14px rgba(50, 213, 131, 0.42);
+}
+
+.admin-user-presence--offline i {
+    background: rgba(200, 202, 194, 0.36);
+    box-shadow: 0 0 0 4px rgba(200, 202, 194, 0.07);
+}
+
 .admin-muted {
     color: var(--muted);
 }

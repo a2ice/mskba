@@ -7,6 +7,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Portal\Application\Services\OnlineUserPresence;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateMatchTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -57,6 +58,32 @@ class AdminPagesTest extends TestCase
             ->assertOk()
             ->assertSee('visible-user')
             ->assertDontSee('hidden-user');
+    }
+
+    public function test_users_page_shows_online_summary_and_presence_for_each_user(): void
+    {
+        $admin = $this->admin();
+        $onlineUser = User::factory()->create([
+            'username' => 'online-user',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        User::factory()->create([
+            'username' => 'offline-user',
+            'status' => UserStatusEnum::UNCONFIRMED,
+        ]);
+
+        app(OnlineUserPresence::class)->touch((int) $onlineUser->id);
+
+        $this
+            ->actingAs($admin)
+            ->get(route('admin.users'))
+            ->assertOk()
+            ->assertSee('Онлайн: 2/3')
+            ->assertSee('admin-table__presence-cell', false)
+            ->assertSee('admin-user-presence--online', false)
+            ->assertSee('admin-user-presence--offline', false)
+            ->assertSee('Последняя активность:')
+            ->assertSee('Не в сети');
     }
 
     public function test_venues_page_filters_by_status_and_type(): void
