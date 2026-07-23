@@ -51,44 +51,51 @@
 @section('section-content')
     @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
 
-    <form method="GET" action="{{ route('events.index') }}" class="section-list-item event-filters event-filters--{{ $period }} mb-4">
-        <input type="hidden" name="period" value="{{ $period }}">
-        <div class="event-filters__grid">
-            <div class="form-group field event-filters__field--type">
-                <label class="form-label" for="eventFilterType">Тип</label>
-                <select id="eventFilterType" class="form-select" name="type">
-                    <option value="">Все типы</option>
-                    @foreach($types as $type)
-                        <option value="{{ $type->value }}" @selected($selectedType === $type)>{{ $type->label() }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="form-group field event-filters__field--date">
-                <label class="form-label" for="eventFilterDateFrom">Дата с</label>
-                <input id="eventFilterDateFrom" type="date" class="form-control" name="date_from" value="{{ $dateFrom }}">
-            </div>
-            <div class="form-group field event-filters__field--date">
-                <label class="form-label" for="eventFilterDateTo">Дата по</label>
-                <input id="eventFilterDateTo" type="date" class="form-control" name="date_to" value="{{ $dateTo }}">
-            </div>
-            @if($period === 'past')
-                <div class="form-group field event-filters__field--outcome">
-                    <label class="form-label" for="eventFilterOutcome">Итог</label>
-                    <select id="eventFilterOutcome" class="form-select" name="outcome">
-                        <option value="">Все итоги</option>
-                        <option value="completed" @selected($outcome === 'completed')>Состоялось</option>
-                        <option value="cancelled" @selected($outcome === 'cancelled')>Отменено</option>
-                        <option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option>
+    <details class="section-list-item event-filters-shell mb-4">
+        <summary class="event-filters-shell__summary">
+            <span>Поиск</span>
+            <span class="event-filters-shell__indicator" aria-hidden="true"></span>
+        </summary>
+
+        <form method="GET" action="{{ route('events.index') }}" class="event-filters event-filters--{{ $period }}">
+            <input type="hidden" name="period" value="{{ $period }}">
+            <div class="event-filters__grid">
+                <div class="form-group field event-filters__field--type">
+                    <label class="form-label" for="eventFilterType">Тип</label>
+                    <select id="eventFilterType" class="form-select" name="type">
+                        <option value="">Все типы</option>
+                        @foreach($types as $type)
+                            <option value="{{ $type->value }}" @selected($selectedType === $type)>{{ $type->label() }}</option>
+                        @endforeach
                     </select>
                 </div>
-            @endif
-            <div class="event-filters__actions">
-                <button class="btn btn--primary btn--sm" type="submit">Применить</button>
-                <a class="btn btn--secondary btn--sm" href="{{ route('events.index', $period === 'past' ? ['period' => 'past'] : []) }}">Сбросить</a>
+                <div class="form-group field event-filters__field--date">
+                    <label class="form-label" for="eventFilterDateFrom">Дата с</label>
+                    <input id="eventFilterDateFrom" type="date" class="form-control" name="date_from" value="{{ $dateFrom }}">
+                </div>
+                <div class="form-group field event-filters__field--date">
+                    <label class="form-label" for="eventFilterDateTo">Дата по</label>
+                    <input id="eventFilterDateTo" type="date" class="form-control" name="date_to" value="{{ $dateTo }}">
+                </div>
+                @if($period === 'past')
+                    <div class="form-group field event-filters__field--outcome">
+                        <label class="form-label" for="eventFilterOutcome">Итог</label>
+                        <select id="eventFilterOutcome" class="form-select" name="outcome">
+                            <option value="">Все итоги</option>
+                            <option value="completed" @selected($outcome === 'completed')>Состоялось</option>
+                            <option value="cancelled" @selected($outcome === 'cancelled')>Отменено</option>
+                            <option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option>
+                        </select>
+                    </div>
+                @endif
+                <div class="event-filters__actions">
+                    <button class="btn btn--primary btn--sm" type="submit">Применить</button>
+                    <a class="btn btn--secondary btn--sm" href="{{ route('events.index', $period === 'past' ? ['period' => 'past'] : []) }}">Сбросить</a>
+                </div>
             </div>
-        </div>
-        @error('date_to') <div class="invalid-feedback d-block mt-2">{{ $message }}</div> @enderror
-    </form>
+            @error('date_to') <div class="invalid-feedback d-block mt-2">{{ $message }}</div> @enderror
+        </form>
+    </details>
 
     @if($events->isEmpty())
         <div class="alert alert-info">Подходящих мероприятий пока нет.</div>

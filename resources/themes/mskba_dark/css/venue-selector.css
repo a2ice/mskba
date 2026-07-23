@@ -2,6 +2,11 @@
     min-width: 0;
 }
 
+.venue-selector > .form-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
 .venue-selector__input-wrap > [data-venue-selector-input] {
     padding-right: 44px;
 }
