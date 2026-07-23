@@ -99,6 +99,11 @@ function bindModalEscClose() {
 function openModal(modal) {
     modal.removeAttr('hidden').addClass('is-open');
     $('body').addClass('modal-open');
+
+    if (modal.closest('.site-content').length) {
+        $('body').addClass('content-modal-open');
+    }
+
     $(document).trigger('modal:opened', [modal]);
     modal.find('[autofocus]').first().focus();
 }
@@ -107,7 +112,9 @@ function closeModal(modal) {
     modal.attr('hidden', true).removeClass('is-open');
 
     if (!$('.modal.is-open').length) {
-        $('body').removeClass('modal-open');
+        $('body').removeClass('modal-open content-modal-open');
+    } else if (!$('.site-content .modal.is-open').length) {
+        $('body').removeClass('content-modal-open');
     }
 
     $(document).trigger('modal:closed', [modal]);

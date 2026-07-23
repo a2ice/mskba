@@ -1,7 +1,7 @@
 .modal {
 	position: fixed;
 	inset: 0;
-	z-index: 120;
+	z-index: 320;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -227,4 +227,51 @@
 
 body.modal-open {
 	overflow: hidden;
+}
+
+body.content-modal-open .site-content {
+	z-index: 310;
+}
+
+@media (max-width: 768px) {
+	body.telegram-mini-app {
+		--telegram-modal-safe-top: max(
+			16px,
+			env(safe-area-inset-top, 0px),
+			var(--tg-content-safe-area-inset-top, 0px)
+		);
+		--telegram-modal-safe-right: max(
+			12px,
+			env(safe-area-inset-right, 0px),
+			var(--tg-content-safe-area-inset-right, 0px)
+		);
+		--telegram-modal-safe-bottom: max(
+			12px,
+			env(safe-area-inset-bottom, 0px),
+			var(--tg-content-safe-area-inset-bottom, 0px)
+		);
+		--telegram-modal-safe-left: max(
+			12px,
+			env(safe-area-inset-left, 0px),
+			var(--tg-content-safe-area-inset-left, 0px)
+		);
+	}
+
+	body.telegram-mini-app .modal {
+		align-items: flex-start;
+		padding:
+			calc(var(--telegram-modal-safe-top) + 8px)
+			var(--telegram-modal-safe-right)
+			var(--telegram-modal-safe-bottom)
+			var(--telegram-modal-safe-left);
+	}
+
+	body.telegram-mini-app .modal__dialog {
+		max-height: calc(
+			100dvh
+			- var(--telegram-modal-safe-top)
+			- var(--telegram-modal-safe-bottom)
+			- 8px
+		);
+	}
 }

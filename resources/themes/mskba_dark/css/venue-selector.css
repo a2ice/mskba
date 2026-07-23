@@ -134,4 +134,26 @@
         height: 60vh;
         min-height: 320px;
     }
+
+    body.telegram-mini-app .venue-selector-map-modal__dialog {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    body.telegram-mini-app .venue-selector-map-modal__dialog .venue-selector-map__message {
+        flex: 0 0 auto;
+    }
+
+    body.telegram-mini-app .venue-selector-map {
+        min-height: 240px;
+        flex: 1 1 auto;
+        height: auto;
+    }
+
+    body.telegram-mini-app .venue-selector-preview-modal__dialog {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
 }
