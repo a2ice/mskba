@@ -1,10 +1,19 @@
 <?php
 
+use App\Modules\Contact\Infrastructure\Providers\ContactServiceProvider;
+use App\Modules\Media\Infrastructure\Providers\MediaServiceProvider;
+use App\Modules\Notification\Infrastructure\Providers\NotificationServiceProvider;
+use App\Modules\Telegram\Infrastructure\Providers\TelegramServiceProvider;
+use App\Modules\Venue\Infrastructure\Providers\VenueAccessServiceProvider;
+use App\Providers\AccessServiceProvider;
+use App\Providers\AppServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\AccessServiceProvider::class,
-    App\Modules\Contact\Infrastructure\Providers\ContactServiceProvider::class,
-    App\Modules\Media\Infrastructure\Providers\MediaServiceProvider::class,
-    App\Modules\Notification\Infrastructure\Providers\NotificationServiceProvider::class,
-    App\Modules\Venue\Infrastructure\Providers\VenueAccessServiceProvider::class,
+    AppServiceProvider::class,
+    AccessServiceProvider::class,
+    ContactServiceProvider::class,
+    MediaServiceProvider::class,
+    NotificationServiceProvider::class,
+    TelegramServiceProvider::class,
+    VenueAccessServiceProvider::class,
 ];

@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -32,7 +33,7 @@ final class CreateEventHandler
             throw new InvalidArgumentException('Войдите в аккаунт, чтобы создать мероприятие.');
         }
 
-        return DB::transaction(function () use ($actor, $data): Event {
+        $event = DB::transaction(function () use ($actor, $data): Event {
             // Единый порядок блокировок для бронирований: сначала venue, затем bookings/event.
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
@@ -85,5 +86,9 @@ final class CreateEventHandler
 
             return $event->load(['venue', 'booking', 'participants.user']);
         });
+
+        event(new EventChanged($event->id));
+
+        return $event;
     }
 }

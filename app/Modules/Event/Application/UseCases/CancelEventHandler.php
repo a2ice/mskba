@@ -5,6 +5,7 @@ namespace App\Modules\Event\Application\UseCases;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -19,7 +20,7 @@ final class CancelEventHandler
     {
         $reference = Event::query()->whereRouteIdentifier($identifier)->firstOrFail(['id', 'venue_id']);
 
-        return DB::transaction(function () use ($reference, $actor, $reason): Event {
+        $event = DB::transaction(function () use ($reference, $actor, $reason): Event {
             // Соблюдаем общий порядок блокировок бронирования: venue -> event -> booking.
             Venue::query()->whereKey($reference->venue_id)->lockForUpdate()->firstOrFail();
             $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
@@ -45,5 +46,9 @@ final class CancelEventHandler
 
             return $event->refresh()->load('booking');
         });
+
+        event(new EventChanged($event->id));
+
+        return $event;
     }
 }

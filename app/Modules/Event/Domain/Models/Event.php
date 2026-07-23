@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Infrastructure\Database\Factories\EventFactory;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -82,6 +83,11 @@ class Event extends Model
     public function booking(): HasOne
     {
         return $this->hasOne(VenueBooking::class);
+    }
+
+    public function telegramPublication(): HasOne
+    {
+        return $this->hasOne(TelegramEventPublication::class);
     }
 
     public function completedByActor(): BelongsTo

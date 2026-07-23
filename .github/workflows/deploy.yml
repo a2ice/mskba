@@ -75,3 +75,4 @@ jobs:
             $COMPOSE up -d --force-recreate phpfpm nginx queue
 
             $COMPOSE restart phpfpm nginx queue
+            $COMPOSE exec -T phpfpm php artisan telegram:configure-webhook --if-configured

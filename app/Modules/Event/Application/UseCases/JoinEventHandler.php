@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ final class JoinEventHandler
 {
     public function handle(string $identifier, User $user): Event
     {
-        return DB::transaction(function () use ($identifier, $user): Event {
+        $event = DB::transaction(function () use ($identifier, $user): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
 
             if ($event->status !== EventStatusEnum::PUBLISHED || $event->visibility !== EventVisibilityEnum::PUBLIC) {
@@ -52,5 +53,9 @@ final class JoinEventHandler
 
             return $event->load('participants.user');
         });
+
+        event(new EventChanged($event->id));
+
+        return $event;
     }
 }

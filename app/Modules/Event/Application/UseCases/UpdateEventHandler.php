@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -45,7 +46,7 @@ final class UpdateEventHandler
         $requestedVenueId = (int) ($data['venue_id'] ?? $reference->venue_id);
         $venueIds = collect([$reference->venue_id, $requestedVenueId])->unique()->sort()->values();
 
-        return DB::transaction(function () use ($reference, $requestedVenueId, $venueIds, $actor, $data): Event {
+        $event = DB::transaction(function () use ($reference, $requestedVenueId, $venueIds, $actor, $data): Event {
             // Общий порядок для бронирований: venue(s) по id -> event -> booking.
             $venues = Venue::query()
                 ->whereKey($venueIds)
@@ -160,5 +161,9 @@ final class UpdateEventHandler
 
             return $event->refresh()->load(['venue.schedule', 'booking']);
         });
+
+        event(new EventChanged($event->id));
+
+        return $event;
     }
 }

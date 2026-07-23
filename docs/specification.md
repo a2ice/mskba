@@ -121,7 +121,11 @@ Telegram Mini App интеграция находится в `App\Modules\Telegr
 - `TELEGRAM_BOT_USERNAME`;
 - `TELEGRAM_BOT_DOMAIN`;
 - `TELEGRAM_MAIN_CHAT_ID`;
-- `TELEGRAM_INIT_DATA_MAX_AGE`.
+- `TELEGRAM_INIT_DATA_MAX_AGE`;
+- `TELEGRAM_API_BASE_URL`;
+- `TELEGRAM_API_IP`;
+- `TELEGRAM_HTTP_PROXY`;
+- `TELEGRAM_WEBHOOK_SECRET`.
 
 Основной маршрут Telegram Mini App `GET /telegram` показывает общую страницу `welcome` в layout `theme::layouts.app` с флагом Telegram-контекста. Флаг добавляет `viewport-fit=cover`, CSS safe-area, data-атрибуты авторизации и асинхронную загрузку Telegram WebApp SDK. Прежняя отдельная страница остаётся на `GET /integrations/main` как временный legacy-интерфейс переходного периода.
 
@@ -146,6 +150,8 @@ Backend не доверяет данным Telegram-пользователя с 
 Если Telegram передал `photo_url`, после успешной авторизации ставится асинхронная задача `SyncTelegramProfileAvatarJob`. Она скачивает изображение после ответа пользователю, проверяет ограничение размера и передаёт его в общий сценарий хранения аватара. Одинаковая ссылка не обрабатывается повторно, а активный аватар с источником `upload` имеет приоритет и не заменяется Telegram-копией.
 
 Для публикации закрепленной кнопки Mini App в Telegram-чате или канале используется artisan-команда `telegram:publish-main-link`. Она отправляет сообщение с URL-кнопкой `https://t.me/{bot_username}?startapp=mskba_chat` и закрепляет его через Bot API. Для закрепления бот должен быть администратором чата/канала с правом pin messages.
+
+`TelegramBotApiClient` является общей точкой исходящих Bot API-вызовов и скрывает токен из исключений. При сетевой блокировке можно передать HTTP proxy через `TELEGRAM_HTTP_PROXY` либо сохранить TLS-hostname и принудительно направить cURL на доступный адрес через `TELEGRAM_API_IP`. Команда `telegram:configure-webhook` регистрирует `POST /api/integrations/telegram/webhook` и разрешает только `callback_query`; автодеплой запускает её в безопасном режиме `--if-configured`. Telegram подписывает доставку настроенным `secret_token`, backend сравнивает заголовок `X-Telegram-Bot-Api-Secret-Token` через `hash_equals`.
 
 ## Площадки
 
@@ -287,6 +293,10 @@ HTTP-журнал передаёт в `ListEventsHandler` необязатель
 `CancelEventHandler` разрешает организатору или подтверждённому superadmin отменить мероприятие до `starts_at`. Он соблюдает порядок `venue -> event -> booking` и атомарно переводит мероприятие и бронь в `cancelled`, сохраняет actor, время и необязательную причину. Организатор определяется по user связанного actor, а не по равенству `actor_id`, поскольку один пользователь может действовать через разные устройства и каналы.
 
 Наступление `ends_at` не завершает мероприятие автоматически. `CompleteEventHandler` явно переводит опубликованное мероприятие в `completed`, сохраняет `completed_at`, actor и отдельное `result_description`, не заменяя исходный текст анонса. Итоговые изображения хранятся в polymorphic `media` с morph alias `event` и collection `event_results`: до 12 JPEG/PNG/WebP по 5 МБ нормализуются в WebP с максимальной стороной 1200 пикселей. Видео, фактическая посещаемость, подтверждение ожидающих броней и перенос мероприятия остаются следующими расширениями.
+
+После успешного transaction boundary обработчики создания, изменения, отмены, завершения и участия публикуют `EventChanged`. `QueueTelegramEventPublicationSync` ставит немедленную и отложенную до начала мероприятия `SyncTelegramEventPublicationJob`; поэтому внешняя сеть не входит в транзакцию и не удерживает блокировки базы. Job под cache lock создаёт либо обновляет одну запись `telegram_event_publications` на мероприятие и соответствующее сообщение основного чата. Черновик не публикуется, перевод в приватный режим удаляет прежнее сообщение, отмена и завершение закрывают действия участия.
+
+Telegram-карточка использует inline callbacks `event:{id}:join|leave`, а не нативный poll: сайт может атомарно принять или отклонить действие и показать пользователю результат, не создавая второе независимое состояние голосования. Защищённый webhook быстро ставит `ProcessTelegramCallbackJob` в очередь. Обработчик сверяет `chat_id`, `message_id`, `event_id` с сохранённой публикацией, находит пользователя только по стабильному `telegram_user_id` и переиспользует `JoinEventHandler`/`LeaveEventHandler`. Повторная доставка безопасна; блокировка строки `events` сохраняет корректность лимита при конкурентных кликах. Несвязанный Telegram-профиль не объединяется по изменяемому username и получает предложение открыть Mini App.
 
 ## Админка
 

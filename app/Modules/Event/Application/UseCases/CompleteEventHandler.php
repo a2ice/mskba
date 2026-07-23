@@ -4,6 +4,7 @@ namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ final class CompleteEventHandler
 
     public function handle(string $identifier, Actor $actor, ?string $description): Event
     {
-        return DB::transaction(function () use ($identifier, $actor, $description): Event {
+        $event = DB::transaction(function () use ($identifier, $actor, $description): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertCanManage($event, $actor);
 
@@ -36,5 +37,9 @@ final class CompleteEventHandler
 
             return $event->refresh();
         });
+
+        event(new EventChanged($event->id));
+
+        return $event;
     }
 }

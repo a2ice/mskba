@@ -4,6 +4,7 @@ namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,7 @@ final class LeaveEventHandler
 {
     public function handle(string $identifier, User $user): Event
     {
-        return DB::transaction(function () use ($identifier, $user): Event {
+        $event = DB::transaction(function () use ($identifier, $user): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $participant = $event->participants()->where('user_id', $user->id)->first();
 
@@ -36,5 +37,9 @@ final class LeaveEventHandler
 
             return $event;
         });
+
+        event(new EventChanged($event->id));
+
+        return $event;
     }
 }
