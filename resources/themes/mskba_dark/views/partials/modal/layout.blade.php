@@ -3,6 +3,7 @@
     'defaultPanel' => null,
     'activePanel' => null,
     'openOnLoad' => false,
+    'dialogClass' => null,
 ])
 
 <div
@@ -14,7 +15,7 @@
     hidden
 >
     <div
-        class="modal__dialog"
+        class="modal__dialog{{ $dialogClass ? ' '.$dialogClass : '' }}"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title-{{ $id }}"

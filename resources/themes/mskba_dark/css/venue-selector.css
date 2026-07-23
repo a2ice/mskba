@@ -29,7 +29,15 @@
     color: var(--muted);
 }
 
+.venue-selector-map-modal__dialog {
+    width: min(1040px, 100%);
+}
+
 @media (max-width: 768px) {
+    .venue-selector-map-modal__dialog {
+        padding: 22px 16px 16px;
+    }
+
     .venue-selector-map {
         height: 60vh;
         min-height: 320px;

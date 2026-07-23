@@ -58,7 +58,10 @@
     </div>
 </div>
 
-@component('theme::partials.modal.layout', ['id' => $mapModalId])
+@component('theme::partials.modal.layout', [
+    'id' => $mapModalId,
+    'dialogClass' => 'venue-selector-map-modal__dialog',
+])
     <h2 class="modal_title" id="modal-title-{{ $mapModalId }}">Выбрать площадку на карте</h2>
     <p class="venue-selector-map__message" data-venue-selector-map-message>Загружаем площадки…</p>
     <div
