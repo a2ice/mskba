@@ -16,6 +16,7 @@
 @import './pages/venue';
 @import './pages/admin';
 @import './pages/integrations';
+@import './pages/events';
 @import './mobile-primary-bar';
 @import './image-upload';
 

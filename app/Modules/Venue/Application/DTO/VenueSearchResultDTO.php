@@ -20,6 +20,7 @@ final readonly class VenueSearchResultDTO
         public bool $requiresBookingApproval,
         public ?string $shortDescription,
         public ?string $rawAddress,
+        public ?string $displayAddress,
         public ?float $latitude,
         public ?float $longitude,
         public array $metroStations,

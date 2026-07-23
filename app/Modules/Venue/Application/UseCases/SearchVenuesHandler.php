@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\DTO\VenueSearchResultDTO;
 use App\Modules\Venue\Application\Services\VenueSearchCache;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
@@ -23,6 +24,7 @@ final readonly class SearchVenuesHandler
         private ListVenuesHandler $listVenues,
         private VenueSearchCache $cache,
         private VenueEventAvailability $availability,
+        private AddressDisplayFormatter $addressFormatter,
     ) {}
 
     /**
@@ -75,6 +77,7 @@ final readonly class SearchVenuesHandler
                 requiresBookingApproval: $venue['requires_booking_approval'],
                 shortDescription: $venue['short_description'],
                 rawAddress: $venue['raw_address'],
+                displayAddress: $this->addressFormatter->format($venue['raw_address']),
                 latitude: $venue['latitude'],
                 longitude: $venue['longitude'],
                 metroStations: $venue['metro_stations'],

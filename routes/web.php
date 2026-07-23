@@ -156,6 +156,9 @@ Route::prefix('venues')->group(function () {
         Route::post('/', [VenueController::class, 'store'])
             ->name('venues.store');
     });
+    Route::get('/{alias}/preview', [VenueController::class, 'preview'])
+        ->middleware('throttle:60,1')
+        ->name('venues.preview');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
 

@@ -174,7 +174,10 @@ final class EventWorkflowTest extends TestCase
             ->get(route('events.create'))
             ->assertOk()
             ->assertSee('data-venue-selector', false)
+            ->assertSee('data-venue-selector-input', false)
+            ->assertSee('data-venue-selector-clear', false)
             ->assertSee('data-venue-map-selector-open', false)
+            ->assertSee('data-venue-preview-open', false)
             ->assertSee('Начните вводить название, улицу, метро или тег...');
 
         $this->actingAs($user)->post(route('events.store'), $payload)->assertRedirect();
@@ -188,7 +191,10 @@ final class EventWorkflowTest extends TestCase
     public function test_event_venue_selector_filters_by_slot_and_invalidates_cached_conditions(): void
     {
         $organizer = User::factory()->create();
-        [$available, $start, $end] = $this->availableVenue(['name' => 'Арбатская свободная площадка']);
+        [$available, $start, $end] = $this->availableVenue([
+            'name' => 'Арбатская свободная площадка',
+            'raw_address' => 'Россия, Москва, улица Арбат, 10',
+        ]);
         [$occupied] = $this->availableVenue(['name' => 'Арбатская занятая площадка']);
 
         $this->actingAs($organizer)
@@ -208,8 +214,16 @@ final class EventWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'venues')
             ->assertJsonPath('venues.0.id', $available->id)
+            ->assertJsonPath('venues.0.address', 'Москва, улица Арбат, 10')
             ->assertJsonPath('venues.0.latitude', (float) $available->location->address->latitude)
+            ->assertJsonPath('venues.0.preview_url', route('venues.preview', $available->routeIdentifier()))
             ->assertJsonMissing(['id' => $occupied->id]);
+
+        $this->getJson(route('venues.preview', $available->routeIdentifier()))
+            ->assertOk()
+            ->assertJsonPath('venue.id', $available->id)
+            ->assertJsonPath('venue.name', 'Арбатская свободная площадка')
+            ->assertJsonPath('venue.url', route('venues.show', $available->routeIdentifier()));
 
         $available->update([
             'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED->value,

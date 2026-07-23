@@ -121,7 +121,8 @@ class VenueController extends Controller
                 'status' => $venue->status,
                 'is_confirmed' => $venue->status === VenueStatusEnum::CONFIRMED->label(),
                 'description' => $venue->shortDescription,
-                'address' => $venue->rawAddress,
+                'address' => $venue->displayAddress,
+                'raw_address' => $venue->rawAddress,
                 'requires_payment' => $venue->requiresPayment,
                 'requires_booking_approval' => $venue->requiresBookingApproval,
                 'has_free_access' => $venue->hasFreeAccess(),
@@ -131,7 +132,45 @@ class VenueController extends Controller
                 'latitude' => $venue->latitude,
                 'longitude' => $venue->longitude,
                 'url' => route('venues.show', $venue->routeIdentifier()),
+                'preview_url' => route('venues.preview', $venue->routeIdentifier()),
             ])->all(),
+        ]);
+    }
+
+    public function preview(
+        Request $request,
+        string $alias,
+        ShowVenueHandler $useCase,
+        CurrentActorResolver $actors,
+    ): JsonResponse {
+        try {
+            $venue = $useCase->handle($alias, $request->user(), $actors->resolveForRequest($request));
+        } catch (\Exception $exception) {
+            $status = in_array($exception->getCode(), [403, 404], true)
+                ? $exception->getCode()
+                : 404;
+
+            return response()->json(['message' => $exception->getMessage()], $status);
+        }
+
+        return response()->json([
+            'venue' => [
+                'id' => $venue->id,
+                'name' => $venue->name,
+                'type' => $venue->type,
+                'status' => $venue->status,
+                'is_open' => $venue->isOpen,
+                'today_hours' => $venue->todayHours,
+                'description' => $venue->shortDescription ?: $venue->fullDescription,
+                'address' => $venue->address?->display ?: $venue->rawAddress,
+                'metro_stations' => collect($venue->metroStations)->map(fn ($station): array => [
+                    'name' => $station->name,
+                    'line_name' => $station->lineName,
+                    'line_color' => $station->lineColor,
+                ])->all(),
+                'image_url' => $venue->featuredMedia[0]['url'] ?? null,
+                'url' => route('venues.show', $venue->routeIdentifier()),
+            ],
         ]);
     }
 

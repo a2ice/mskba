@@ -1,3 +1,11 @@
+.venue-selector {
+    min-width: 0;
+}
+
+.venue-selector__input-wrap > [data-venue-selector-input] {
+    padding-right: 44px;
+}
+
 .venue-selector__links {
     display: flex;
     flex-wrap: wrap;
@@ -5,14 +13,94 @@
 }
 
 .venue-selector-option {
-    display: grid;
-    gap: 4px;
+    gap: 3px;
 }
 
-.venue-selector-option span {
-    color: var(--muted);
-    font-size: 0.85rem;
+.venue-selector-option__name {
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.venue-selector-option__address {
     white-space: normal;
+}
+
+.venue-selector-preview-modal__dialog {
+    width: min(720px, 100%);
+}
+
+.venue-selector-preview__message {
+    margin: 0;
+    color: var(--muted);
+}
+
+.venue-selector-preview {
+    display: grid;
+    gap: 14px;
+}
+
+.venue-selector-preview__image-wrap {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    aspect-ratio: 16 / 9;
+    background: var(--surface);
+}
+
+.venue-selector-preview__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.venue-selector-preview__badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.venue-selector-preview__badge {
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 5px 10px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.venue-selector-preview__state {
+    color: #71c985;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.venue-selector-preview__state.is-closed {
+    color: #d77a70;
+}
+
+.venue-selector-preview__state::before {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+}
+
+.venue-selector-preview__address,
+.venue-selector-preview__metro,
+.venue-selector-preview__hours,
+.venue-selector-preview__description {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.45;
+}
+
+.venue-selector-preview__address {
+    color: var(--text);
+    font-weight: 700;
 }
 
 .venue-selector-map {
@@ -35,6 +123,10 @@
 
 @media (max-width: 768px) {
     .venue-selector-map-modal__dialog {
+        padding: 22px 16px 16px;
+    }
+
+    .venue-selector-preview-modal__dialog {
         padding: 22px 16px 16px;
     }
 

@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Media\Domain\Models\Media;
@@ -29,6 +30,7 @@ final class ShowVenueHandler
 {
     public function __construct(
         private readonly VenueAccessResolver $access,
+        private readonly AddressDisplayFormatter $addressFormatter,
     ) {}
 
     public function handle(string $alias, ?User $user, ?Actor $actor = null): VenueDetailsDTO
@@ -240,19 +242,12 @@ final class ShowVenueHandler
 
     private function displayAddress(?Address $address, ?string $rawAddress): string
     {
-        if ($address?->full_address) {
-            return $address->full_address;
-        }
-
-        $parts = array_filter([
+        return $this->addressFormatter->format(
+            $address?->full_address ?? $rawAddress,
             $address?->city,
             $address?->street,
             $address?->building,
-        ]);
-
-        return $parts === []
-            ? (string) ($rawAddress ?? '')
-            : implode(', ', $parts);
+        ) ?? '';
     }
 
     /**

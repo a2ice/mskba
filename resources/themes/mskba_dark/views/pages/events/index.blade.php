@@ -51,10 +51,10 @@
 @section('section-content')
     @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
 
-    <form method="GET" action="{{ route('events.index') }}" class="section-list-item mb-4">
+    <form method="GET" action="{{ route('events.index') }}" class="section-list-item event-filters event-filters--{{ $period }} mb-4">
         <input type="hidden" name="period" value="{{ $period }}">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-{{ $period === 'past' ? '3' : '4' }} form-group field">
+        <div class="event-filters__grid">
+            <div class="form-group field event-filters__field--type">
                 <label class="form-label" for="eventFilterType">Тип</label>
                 <select id="eventFilterType" class="form-select" name="type">
                     <option value="">Все типы</option>
@@ -63,16 +63,16 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-{{ $period === 'past' ? '2' : '3' }} form-group field">
+            <div class="form-group field event-filters__field--date">
                 <label class="form-label" for="eventFilterDateFrom">Дата с</label>
                 <input id="eventFilterDateFrom" type="date" class="form-control" name="date_from" value="{{ $dateFrom }}">
             </div>
-            <div class="col-md-{{ $period === 'past' ? '2' : '3' }} form-group field">
+            <div class="form-group field event-filters__field--date">
                 <label class="form-label" for="eventFilterDateTo">Дата по</label>
                 <input id="eventFilterDateTo" type="date" class="form-control" name="date_to" value="{{ $dateTo }}">
             </div>
             @if($period === 'past')
-                <div class="col-md-3 form-group field">
+                <div class="form-group field event-filters__field--outcome">
                     <label class="form-label" for="eventFilterOutcome">Итог</label>
                     <select id="eventFilterOutcome" class="form-select" name="outcome">
                         <option value="">Все итоги</option>
@@ -82,7 +82,7 @@
                     </select>
                 </div>
             @endif
-            <div class="col-md-2 d-flex gap-2">
+            <div class="event-filters__actions">
                 <button class="btn btn--primary btn--sm" type="submit">Применить</button>
                 <a class="btn btn--secondary btn--sm" href="{{ route('events.index', $period === 'past' ? ['period' => 'past'] : []) }}">Сбросить</a>
             </div>

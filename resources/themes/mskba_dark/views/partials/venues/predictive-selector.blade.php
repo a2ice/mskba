@@ -14,6 +14,23 @@
 
 @php
     $mapModalId = $mapModal ?: $id.'-map';
+    $previewModalId = $id.'-preview';
+    $selectedId = data_get($selectedVenue, 'id');
+    $selectedAddressModel = data_get($selectedVenue, 'location.address');
+    $selectedAddress = $selectedVenue
+        ? app(\App\Modules\Location\Application\Services\AddressDisplayFormatter::class)->format(
+            data_get($selectedVenue, 'raw_address'),
+            data_get($selectedAddressModel, 'city'),
+            data_get($selectedAddressModel, 'street'),
+            data_get($selectedAddressModel, 'building'),
+        )
+        : null;
+    $selectedLabel = $selectedVenue
+        ? data_get($selectedVenue, 'name').($selectedAddress ? ' — '.$selectedAddress : '')
+        : '';
+    $selectedIdentifier = $selectedVenue
+        ? data_get($selectedVenue, 'id').'-'.data_get($selectedVenue, 'alias')
+        : null;
 @endphp
 
 <div
@@ -25,23 +42,43 @@
     @if($startInput) data-start-input="{{ $startInput }}" @endif
     @if($durationInput) data-duration-input="{{ $durationInput }}" @endif
     data-map-modal="{{ $mapModalId }}"
+    data-preview-modal="{{ $previewModalId }}"
 >
-    <label class="form-label" for="{{ $id }}">{{ $label }}</label>
-    <select
-        id="{{ $id }}"
-        class="form-select {{ $errors->has($name) ? 'is-invalid' : '' }}"
-        name="{{ $name }}"
-        required
-        data-venue-selector-select
-        data-placeholder="Начните вводить название, улицу, метро или тег..."
-    >
-        @if($selectedVenue)
-            <option value="{{ $selectedVenue->id }}" selected>
-                {{ $selectedVenue->name }}{{ $selectedVenue->raw_address ? ' — '.$selectedVenue->raw_address : '' }}
-            </option>
-        @endif
-    </select>
-    @error($name) <div class="invalid-feedback">{{ $message }}</div> @enderror
+    <label class="form-label" for="{{ $id }}Search">{{ $label }}</label>
+
+    <div class="address-suggest__input-wrap venue-selector__input-wrap">
+        <input
+            id="{{ $id }}Search"
+            class="form-control input-predictive @error($name) is-invalid @enderror"
+            type="text"
+            value="{{ $selectedLabel }}"
+            placeholder="Начните вводить название, улицу, метро или тег..."
+            autocomplete="off"
+            required
+            data-venue-selector-input
+        >
+        <input
+            type="hidden"
+            name="{{ $name }}"
+            value="{{ $selectedId }}"
+            data-venue-selector-value
+        >
+        <button
+            class="address-suggest__control venue-selector__control"
+            type="button"
+            aria-label="Очистить площадку"
+            data-venue-selector-clear
+            @if(!$selectedVenue) hidden @endif
+        ></button>
+        <div
+            class="address-suggest__list venue-selector__list d-none"
+            role="listbox"
+            data-venue-selector-list
+        ></div>
+    </div>
+
+    <div class="address-suggest__message text-danger d-none" data-venue-selector-message></div>
+    @error($name) <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
 
     <div class="venue-selector__links mt-2">
         @if($showFavorites)
@@ -55,6 +92,16 @@
             data-modal-target="{{ $mapModalId }}"
             data-venue-map-selector-open
         >На карте</a>
+        <a
+            href="#venue-preview"
+            class="fc-link js-handler"
+            data-handler="modal"
+            data-modal-action="open"
+            data-modal-target="{{ $previewModalId }}"
+            data-preview-url="{{ $selectedIdentifier ? route('venues.preview', $selectedIdentifier) : '' }}"
+            data-venue-preview-open
+            @if(!$selectedVenue) hidden @endif
+        >Посмотреть площадку</a>
     </div>
 </div>
 
@@ -70,4 +117,26 @@
         data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"
         aria-label="Карта площадок"
     ></div>
+@endcomponent
+
+@component('theme::partials.modal.layout', [
+    'id' => $previewModalId,
+    'dialogClass' => 'venue-selector-preview-modal__dialog',
+])
+    <h2 class="modal_title" id="modal-title-{{ $previewModalId }}" data-venue-preview-title>Площадка</h2>
+    <p class="venue-selector-preview__message" data-venue-preview-message>Загружаем информацию…</p>
+    <article class="venue-selector-preview" data-venue-preview-content hidden>
+        <div class="venue-selector-preview__image-wrap" data-venue-preview-image-wrap hidden>
+            <img class="venue-selector-preview__image" src="" alt="" data-venue-preview-image>
+        </div>
+        <div class="venue-selector-preview__badges">
+            <span class="venue-selector-preview__badge" data-venue-preview-type></span>
+            <span class="venue-selector-preview__state" data-venue-preview-state></span>
+        </div>
+        <p class="venue-selector-preview__address" data-venue-preview-address></p>
+        <p class="venue-selector-preview__metro" data-venue-preview-metro hidden></p>
+        <p class="venue-selector-preview__hours" data-venue-preview-hours></p>
+        <p class="venue-selector-preview__description" data-venue-preview-description hidden></p>
+        <a class="btn" href="#" target="_blank" rel="noopener" data-venue-preview-page>Открыть площадку</a>
+    </article>
 @endcomponent

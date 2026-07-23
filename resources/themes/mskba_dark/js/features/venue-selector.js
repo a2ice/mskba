@@ -1,8 +1,14 @@
-import TomSelect from 'tom-select';
 import { loadYandexMaps } from '../core/yandex-maps.js';
 
-document.querySelectorAll('[data-venue-selector]').forEach((container) => {
-    const select = container.querySelector('[data-venue-selector-select]');
+document.querySelectorAll('[data-venue-selector]').forEach(initVenueSelector);
+
+function initVenueSelector(container) {
+    const input = container.querySelector('[data-venue-selector-input]');
+    const valueInput = container.querySelector('[data-venue-selector-value]');
+    const clearButton = container.querySelector('[data-venue-selector-clear]');
+    const list = container.querySelector('[data-venue-selector-list]');
+    const message = container.querySelector('[data-venue-selector-message]');
+    const previewOpen = container.querySelector('[data-venue-preview-open]');
     const startInput = container.dataset.startInput
         ? document.querySelector(container.dataset.startInput)
         : null;
@@ -13,57 +19,100 @@ document.querySelectorAll('[data-venue-selector]').forEach((container) => {
     const mapModal = document.querySelector(`[data-modal="${container.dataset.mapModal}"]`);
     const mapElement = mapModal?.querySelector('[data-venue-selector-map]');
     const mapMessage = mapModal?.querySelector('[data-venue-selector-map-message]');
-    let activeRequest = 0;
+    const previewModal = document.querySelector(`[data-modal="${container.dataset.previewModal}"]`);
+    let searchTimer = null;
+    let searchController = null;
+    let previewController = null;
     let yandexMap = null;
 
-    if (!select) {
+    if (!input || !valueInput || !clearButton || !list || !message) {
         return;
     }
 
-    const picker = new TomSelect(select, {
-        valueField: 'id',
-        labelField: 'name',
-        searchField: [],
-        create: false,
-        maxItems: 1,
-        preload: 'focus',
-        loadThrottle: 300,
-        placeholder: select.dataset.placeholder || 'Начните вводить название, улицу, метро или тег...',
-        shouldLoad() {
-            return true;
-        },
-        load(query, callback) {
-            loadVenues(query, 30)
-                .then(callback)
-                .catch(() => callback());
-        },
-        render: {
-            option(data, escape) {
-                const details = [
-                    data.address,
-                    Array.isArray(data.metro_stations) ? data.metro_stations.join(', ') : '',
-                    Array.isArray(data.tags) ? data.tags.join(', ') : '',
-                ].filter(Boolean).join(' · ');
+    input.setCustomValidity(valueInput.value ? '' : 'Выберите площадку из списка.');
 
-                return `<div class="venue-selector-option">
-                    <strong>${escape(data.name)}</strong>
-                    ${details ? `<span>${escape(details)}</span>` : ''}
-                </div>`;
-            },
-            item(data, escape) {
-                return `<div>${escape(data.name)}${data.address ? ` — ${escape(data.address)}` : ''}</div>`;
-            },
-            no_results() {
-                return '<div class="no-results">Подходящие площадки не найдены</div>';
-            },
-        },
+    input.addEventListener('input', () => {
+        clearSelectedVenue();
+        hideMessage();
+        hideList();
+        updateControl();
+
+        window.clearTimeout(searchTimer);
+        searchController?.abort();
+        searchController = null;
+
+        const query = input.value.trim();
+        if (!query) {
+            input.setCustomValidity('Выберите площадку из списка.');
+            return;
+        }
+
+        input.setCustomValidity('Выберите площадку из списка.');
+        setControlState('loading');
+        searchTimer = window.setTimeout(() => search(query), 300);
     });
 
-    [startInput, durationInput].filter(Boolean).forEach((input) => {
-        input.addEventListener('change', () => {
-            picker.clear(true);
-            picker.clearOptions();
-            picker.load('');
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+            const firstOption = list.querySelector('[data-venue-selector-option]');
+            if (firstOption) {
+                event.preventDefault();
+                firstOption.focus();
+            }
+        }
+
+        if (event.key === 'Escape') {
+            hideList();
+        }
+    });
+
+    clearButton.addEventListener('click', () => {
+        searchController?.abort();
+        searchController = null;
+        window.clearTimeout(searchTimer);
+        input.value = '';
+        clearSelectedVenue();
+        hideList();
+        hideMessage();
+        updateControl();
+        input.setCustomValidity('Выберите площадку из списка.');
+        input.focus();
+    });
+
+    list.addEventListener('click', (event) => {
+        const option = event.target.closest('[data-venue-selector-option]');
+        if (!option) {
+            return;
+        }
+
+        const venues = JSON.parse(list.dataset.venues || '[]');
+        const venue = venues[Number(option.dataset.venueSelectorOption)];
+        if (venue) {
+            selectVenue(venue);
+        }
+    });
+
+    list.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            hideList();
+            input.focus();
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!container.contains(event.target)) {
+            hideList();
+        }
+    });
+
+    [startInput, durationInput].filter(Boolean).forEach((field) => {
+        field.addEventListener('change', () => {
+            input.value = '';
+            clearSelectedVenue();
+            hideList();
+            hideMessage();
+            updateControl();
+            input.setCustomValidity('Выберите площадку из списка.');
         });
     });
 
@@ -71,18 +120,43 @@ document.querySelectorAll('[data-venue-selector]').forEach((container) => {
         window.setTimeout(loadMap, 0);
     });
 
-    async function loadVenues(query = '', limit = 30) {
-        const requestId = ++activeRequest;
+    previewOpen?.addEventListener('click', () => {
+        window.setTimeout(loadPreview, 0);
+    });
+
+    async function search(query) {
+        searchController?.abort();
+        const controller = new AbortController();
+        searchController = controller;
+        setControlState('loading');
+
+        try {
+            const venues = await fetchVenues(query, 30, controller.signal);
+            renderOptions(venues);
+
+            if (venues.length === 0) {
+                showMessage('Варианты не найдены.');
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                showMessage(error.message || 'Не удалось загрузить площадки.');
+            }
+        } finally {
+            if (searchController === controller) {
+                searchController = null;
+                updateControl();
+            }
+        }
+    }
+
+    async function fetchVenues(query = '', limit = 30, signal = null) {
         const parameters = buildParameters(query, limit);
         const response = await fetch(`${container.dataset.searchUrl}?${parameters.toString()}`, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
+            signal,
         });
         const payload = await response.json().catch(() => ({}));
-
-        if (requestId !== activeRequest) {
-            return [];
-        }
 
         if (!response.ok) {
             throw new Error(payload.message || 'Не удалось загрузить площадки.');
@@ -110,6 +184,89 @@ document.querySelectorAll('[data-venue-selector]').forEach((container) => {
         return parameters;
     }
 
+    function renderOptions(venues) {
+        list.dataset.venues = JSON.stringify(venues);
+        list.replaceChildren();
+
+        venues.forEach((venue, index) => {
+            const option = document.createElement('button');
+            const title = document.createElement('strong');
+            const address = document.createElement('span');
+
+            option.type = 'button';
+            option.className = 'address-suggest__item venue-selector-option';
+            option.dataset.venueSelectorOption = String(index);
+            option.setAttribute('role', 'option');
+
+            title.className = 'venue-selector-option__name';
+            title.textContent = venue.name;
+            option.append(title);
+
+            if (venue.address) {
+                address.className = 'address-suggest__metro venue-selector-option__address';
+                address.textContent = displayAddress(venue.address);
+                option.append(address);
+            }
+
+            list.append(option);
+        });
+
+        list.classList.toggle('d-none', venues.length === 0);
+    }
+
+    function selectVenue(venue) {
+        const address = displayAddress(venue.address);
+        input.value = `${venue.name}${address ? ` — ${address}` : ''}`;
+        valueInput.value = String(venue.id);
+        input.setCustomValidity('');
+        hideList();
+        hideMessage();
+        updateControl();
+
+        if (previewOpen) {
+            previewOpen.dataset.previewUrl = venue.preview_url || '';
+            previewOpen.hidden = !venue.preview_url;
+        }
+
+        valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function clearSelectedVenue() {
+        valueInput.value = '';
+        if (previewOpen) {
+            previewOpen.dataset.previewUrl = '';
+            previewOpen.hidden = true;
+        }
+    }
+
+    function updateControl() {
+        setControlState(input.value ? 'clear' : 'hidden');
+    }
+
+    function setControlState(state) {
+        clearButton.hidden = state === 'hidden';
+        clearButton.disabled = state === 'loading';
+        clearButton.classList.toggle('is-loading', state === 'loading');
+        clearButton.setAttribute(
+            'aria-label',
+            state === 'loading' ? 'Загрузка площадок' : 'Очистить площадку',
+        );
+    }
+
+    function hideList() {
+        list.classList.add('d-none');
+    }
+
+    function showMessage(text) {
+        message.textContent = text;
+        message.classList.remove('d-none');
+    }
+
+    function hideMessage() {
+        message.textContent = '';
+        message.classList.add('d-none');
+    }
+
     async function loadMap() {
         if (!mapElement || !mapMessage) {
             return;
@@ -119,7 +276,7 @@ document.querySelectorAll('[data-venue-selector]').forEach((container) => {
         mapMessage.hidden = false;
 
         try {
-            const venues = (await loadVenues('', 200)).filter(
+            const venues = (await fetchVenues('', 200)).filter(
                 (venue) => Number.isFinite(Number(venue.latitude)) && Number.isFinite(Number(venue.longitude)),
             );
 
@@ -149,15 +306,14 @@ document.querySelectorAll('[data-venue-selector]').forEach((container) => {
                     {
                         hintContent: venue.name,
                         balloonContentHeader: venue.name,
-                        balloonContentBody: venue.address || '',
+                        balloonContentBody: displayAddress(venue.address),
                     },
                     { preset: 'islands#orangeSportIcon' },
                 );
 
                 placemark.events.add('click', () => {
-                    picker.addOption(venue);
-                    picker.setValue(String(venue.id));
-                    mapModal.querySelector('[data-modal-action="close"]')?.click();
+                    selectVenue(venue);
+                    mapModal?.querySelector('[data-modal-action="close"]')?.click();
                 });
                 yandexMap.geoObjects.add(placemark);
             });
@@ -171,4 +327,102 @@ document.querySelectorAll('[data-venue-selector]').forEach((container) => {
             mapMessage.textContent = error.message || 'Не удалось загрузить карту площадок.';
         }
     }
-});
+
+    async function loadPreview() {
+        const url = previewOpen?.dataset.previewUrl;
+        const previewMessage = previewModal?.querySelector('[data-venue-preview-message]');
+        const previewContent = previewModal?.querySelector('[data-venue-preview-content]');
+
+        if (!url || !previewModal || !previewMessage || !previewContent) {
+            return;
+        }
+
+        previewController?.abort();
+        const controller = new AbortController();
+        previewController = controller;
+        previewMessage.textContent = 'Загружаем информацию…';
+        previewMessage.hidden = false;
+        previewContent.hidden = true;
+
+        try {
+            const response = await fetch(url, {
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+                signal: controller.signal,
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok || !payload.venue) {
+                throw new Error(payload.message || 'Не удалось загрузить площадку.');
+            }
+
+            renderPreview(payload.venue);
+            previewMessage.hidden = true;
+            previewContent.hidden = false;
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                previewMessage.textContent = error.message || 'Не удалось загрузить площадку.';
+            }
+        } finally {
+            if (previewController === controller) {
+                previewController = null;
+            }
+        }
+    }
+
+    function renderPreview(venue) {
+        const image = previewModal.querySelector('[data-venue-preview-image]');
+        const imageWrap = previewModal.querySelector('[data-venue-preview-image-wrap]');
+        const metro = Array.isArray(venue.metro_stations)
+            ? venue.metro_stations.map((station) => station.name).filter(Boolean).join(', ')
+            : '';
+
+        setText('[data-venue-preview-title]', venue.name || 'Площадка');
+        setText('[data-venue-preview-type]', venue.type || '');
+        setText('[data-venue-preview-state]', venue.is_open ? 'Открыта' : 'Закрыта');
+        setText('[data-venue-preview-address]', venue.address || 'Адрес не указан');
+        setText('[data-venue-preview-hours]', venue.today_hours ? `Часы работы: ${venue.today_hours}` : '');
+        setOptionalText('[data-venue-preview-metro]', metro ? `Метро: ${metro}` : '');
+        setOptionalText('[data-venue-preview-description]', venue.description || '');
+
+        const pageLink = previewModal.querySelector('[data-venue-preview-page]');
+        const state = previewModal.querySelector('[data-venue-preview-state]');
+        state?.classList.toggle('is-closed', !venue.is_open);
+
+        if (pageLink) {
+            pageLink.href = venue.url || '#';
+        }
+
+        if (image && imageWrap) {
+            imageWrap.hidden = !venue.image_url;
+            if (venue.image_url) {
+                image.src = venue.image_url;
+                image.alt = venue.name || 'Площадка';
+            } else {
+                image.removeAttribute('src');
+                image.alt = '';
+            }
+        }
+    }
+
+    function setText(selector, text) {
+        const element = previewModal?.querySelector(selector);
+        if (element) {
+            element.textContent = text;
+        }
+    }
+
+    function setOptionalText(selector, text) {
+        const element = previewModal?.querySelector(selector);
+        if (element) {
+            element.textContent = text;
+            element.hidden = !text;
+        }
+    }
+}
+
+function displayAddress(address) {
+    return String(address || '')
+        .replace(/^(?:Россия|Российская Федерация)\s*,\s*/iu, '')
+        .trim();
+}

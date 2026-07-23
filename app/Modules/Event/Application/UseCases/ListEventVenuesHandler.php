@@ -13,6 +13,7 @@ final class ListEventVenuesHandler
     public function handle(bool $freeOnly = false): Collection
     {
         return Venue::query()
+            ->with('location.address')
             ->where('status', VenueStatusEnum::CONFIRMED->value)
             ->where('operational_status', VenueOperationalStatusEnum::ACTIVE->value)
             ->when($freeOnly, fn ($query) => $query
@@ -21,6 +22,7 @@ final class ListEventVenuesHandler
             ->orderBy('name')
             ->get([
                 'id',
+                'location_id',
                 'name',
                 'alias',
                 'raw_address',
