@@ -43,7 +43,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('data-mobile-nav-section-toggle="sidebar"', false)
             ->assertSee('data-mobile-section-sidebar', false)
             ->assertSee('data-mobile-section-sidebar-title="Навигация площадок"', false)
-            ->assertSee('37 игр сегодня')
+            ->assertSee('0 игр сегодня')
             ->assertSee('Личный кабинет')
             ->assertSee('Добавить площадку')
             ->assertSee('data-modal-target="auth-entry-classic"', false)

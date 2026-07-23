@@ -2,10 +2,15 @@
 
 namespace App\Providers;
 
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Location\Domain\Models\MetroStation;
+use App\Modules\Portal\Application\Services\SiteSummaryService;
+use App\Modules\Portal\Infrastructure\Observers\EventSiteSummaryObserver;
+use App\Modules\Portal\Infrastructure\Observers\UserSiteSummaryObserver;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleException;
@@ -41,6 +46,15 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register the theme's view namespace
         View::addNamespace('theme', app(ThemeResolver::class)->viewsPath());
+        View::composer([
+            'theme::pages.welcome',
+            'theme::partials.mobile-primary-bar',
+        ], function ($view): void {
+            $view->with('siteSummary', app(SiteSummaryService::class)->get());
+        });
+
+        Event::observe(EventSiteSummaryObserver::class);
+        User::observe(UserSiteSummaryObserver::class);
 
         foreach ([
             Venue::class,

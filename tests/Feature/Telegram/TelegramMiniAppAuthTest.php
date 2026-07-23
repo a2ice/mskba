@@ -191,7 +191,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('Закрыть')
             ->assertSee('Личный кабинет')
             ->assertSee('site-nav__mobile-account-link', false)
-            ->assertSee('37 игр сегодня')
+            ->assertSee('0 игр сегодня')
             ->assertSee('онлайн')
             ->assertSee('data-online-users-count', false)
             ->assertDontSee('Найти игру')

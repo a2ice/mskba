@@ -2,12 +2,12 @@
     <div class="mobile-primary-bar__stats" aria-label="Статистика сайта">
         <p class="mobile-primary-bar__stat">
             <span class="mobile-primary-bar__dot" aria-hidden="true"></span>
-            <span>37 игр сегодня</span>
+            <span data-today-events-text>{{ $siteSummary->todayEventsText() }}</span>
         </p>
 
         <p class="mobile-primary-bar__stat">
             <span class="mobile-primary-bar__dot mobile-primary-bar__dot--online" aria-hidden="true"></span>
-            <span><span data-online-users-count>5</span>/<span data-online-total-count>10</span> онлайн</span>
+            <span><span data-online-users-count>{{ $siteSummary->onlineUsers }}</span>/<span data-online-total-count>{{ $siteSummary->totalUsers }}</span> онлайн</span>
         </p>
     </div>
 

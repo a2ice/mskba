@@ -18,6 +18,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarContro
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
+use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
@@ -29,6 +30,10 @@ $themeResolver = app(ThemeResolver::class);
 Route::get('/', function () use ($themeResolver) {
     return $themeResolver->page('welcome');
 })->name('welcome');
+
+Route::post('/site-summary/heartbeat', SiteSummaryController::class)
+    ->middleware('throttle:30,1')
+    ->name('site-summary.heartbeat');
 
 Route::get('/login', function () use ($themeResolver) {
     return $themeResolver->page('auth.login');
