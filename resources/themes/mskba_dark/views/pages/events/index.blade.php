@@ -22,26 +22,73 @@
 @endsection
 
 @section('section-sidebar')
+    @php
+        $persistentFilters = array_filter([
+            'period' => $period,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'outcome' => $outcome,
+        ]);
+    @endphp
     <div class="section-sidebar-block">
         <h2 class="section-sidebar-block__title">Мероприятия</h2>
         <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item {{ $selectedType === null ? 'active' : '' }}"><a class="nav-link {{ $selectedType === null ? 'active' : '' }}" href="{{ route('events.index', ['period' => $period]) }}">Все</a></li>
+            <li class="nav-item {{ $selectedType === null ? 'active' : '' }}"><a class="nav-link {{ $selectedType === null ? 'active' : '' }}" href="{{ route('events.index', $persistentFilters) }}">Все</a></li>
             @foreach($types as $type)
-                <li class="nav-item {{ $selectedType === $type ? 'active' : '' }}"><a class="nav-link {{ $selectedType === $type ? 'active' : '' }}" href="{{ route('events.index', ['type' => $type->value, 'period' => $period]) }}">{{ $type->label() }}</a></li>
+                <li class="nav-item {{ $selectedType === $type ? 'active' : '' }}"><a class="nav-link {{ $selectedType === $type ? 'active' : '' }}" href="{{ route('events.index', array_merge($persistentFilters, ['type' => $type->value])) }}">{{ $type->label() }}</a></li>
             @endforeach
         </ul>
     </div>
     <div class="section-sidebar-block">
         <h2 class="section-sidebar-block__title">Период</h2>
         <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item {{ $period === 'upcoming' ? 'active' : '' }}"><a class="nav-link {{ $period === 'upcoming' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value])) }}">Предстоящие</a></li>
-            <li class="nav-item {{ $period === 'past' ? 'active' : '' }}"><a class="nav-link {{ $period === 'past' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value, 'period' => 'past'])) }}">Прошедшие</a></li>
+            <li class="nav-item {{ $period === 'upcoming' ? 'active' : '' }}"><a class="nav-link {{ $period === 'upcoming' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value, 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Предстоящие</a></li>
+            <li class="nav-item {{ $period === 'past' ? 'active' : '' }}"><a class="nav-link {{ $period === 'past' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value, 'period' => 'past', 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Прошедшие</a></li>
         </ul>
     </div>
 @endsection
 
 @section('section-content')
     @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
+
+    <form method="GET" action="{{ route('events.index') }}" class="section-list-item mb-4">
+        <input type="hidden" name="period" value="{{ $period }}">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-{{ $period === 'past' ? '3' : '4' }} form-group field">
+                <label class="form-label" for="eventFilterType">Тип</label>
+                <select id="eventFilterType" class="form-select" name="type">
+                    <option value="">Все типы</option>
+                    @foreach($types as $type)
+                        <option value="{{ $type->value }}" @selected($selectedType === $type)>{{ $type->label() }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-{{ $period === 'past' ? '2' : '3' }} form-group field">
+                <label class="form-label" for="eventFilterDateFrom">Дата с</label>
+                <input id="eventFilterDateFrom" type="date" class="form-control" name="date_from" value="{{ $dateFrom }}">
+            </div>
+            <div class="col-md-{{ $period === 'past' ? '2' : '3' }} form-group field">
+                <label class="form-label" for="eventFilterDateTo">Дата по</label>
+                <input id="eventFilterDateTo" type="date" class="form-control" name="date_to" value="{{ $dateTo }}">
+            </div>
+            @if($period === 'past')
+                <div class="col-md-3 form-group field">
+                    <label class="form-label" for="eventFilterOutcome">Итог</label>
+                    <select id="eventFilterOutcome" class="form-select" name="outcome">
+                        <option value="">Все итоги</option>
+                        <option value="completed" @selected($outcome === 'completed')>Состоялось</option>
+                        <option value="cancelled" @selected($outcome === 'cancelled')>Отменено</option>
+                        <option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option>
+                    </select>
+                </div>
+            @endif
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn--primary btn--sm" type="submit">Применить</button>
+                <a class="btn btn--secondary btn--sm" href="{{ route('events.index', $period === 'past' ? ['period' => 'past'] : []) }}">Сбросить</a>
+            </div>
+        </div>
+        @error('date_to') <div class="invalid-feedback d-block mt-2">{{ $message }}</div> @enderror
+    </form>
 
     @if($events->isEmpty())
         <div class="alert alert-info">Подходящих мероприятий пока нет.</div>

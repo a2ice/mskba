@@ -7,13 +7,28 @@ use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class ListEventsHandler
 {
     /** @return LengthAwarePaginator<Event> */
-    public function handle(?Actor $actor, ?EventTypeEnum $type = null, string $period = 'upcoming'): LengthAwarePaginator
-    {
+    public function handle(
+        ?Actor $actor,
+        ?EventTypeEnum $type = null,
+        string $period = 'upcoming',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        ?string $outcome = null,
+    ): LengthAwarePaginator {
+        $timezone = (string) config('app.timezone', 'Europe/Moscow');
+        $startsFrom = $dateFrom === null
+            ? null
+            : CarbonImmutable::parse($dateFrom, $timezone)->startOfDay()->utc();
+        $startsTo = $dateTo === null
+            ? null
+            : CarbonImmutable::parse($dateTo, $timezone)->endOfDay()->utc();
+
         return Event::query()
             ->with(['venue.schedule', 'booking'])
             ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
@@ -41,6 +56,18 @@ final class ListEventsHandler
                 }
             })
             ->when($type, fn ($query) => $query->where('type', $type->value))
+            ->when($startsFrom, fn ($query) => $query->where('starts_at', '>=', $startsFrom))
+            ->when($startsTo, fn ($query) => $query->where('starts_at', '<=', $startsTo))
+            ->when($period === 'past' && $outcome !== null, function ($query) use ($outcome): void {
+                match ($outcome) {
+                    'completed' => $query->where('status', EventStatusEnum::COMPLETED->value),
+                    'cancelled' => $query->where('status', EventStatusEnum::CANCELLED->value),
+                    'unmarked' => $query->whereNotIn('status', [
+                        EventStatusEnum::COMPLETED->value,
+                        EventStatusEnum::CANCELLED->value,
+                    ]),
+                };
+            })
             ->paginate(12)
             ->withQueryString();
     }

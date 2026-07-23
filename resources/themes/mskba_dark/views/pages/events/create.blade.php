@@ -27,6 +27,11 @@
     @if($venues->isEmpty())
         <div class="alert alert-info">Нет доступных подтверждённых площадок.</div>
     @else
+        @php
+            $selectedVenue = old('venue_id')
+                ? $venues->firstWhere('id', (int) old('venue_id'))
+                : null;
+        @endphp
         <form method="POST" action="{{ route('events.store') }}" data-event-create-form data-current-date="{{ $currentDate }}">
             @csrf
             <div class="form-group field mb-3">
@@ -41,13 +46,16 @@
                 </select>
             </div>
             <div class="form-group field mb-3">
-                <label class="form-label" for="eventVenue">Площадка</label>
-                <select id="eventVenue" class="form-select @error('venue_id') is-invalid @enderror" name="venue_id" required>
-                    <option value="">Выберите площадку</option>
-                    @foreach($venues as $venue)<option value="{{ $venue->id }}" @selected((string) old('venue_id') === (string) $venue->id)>{{ $venue->name }}{{ $venue->raw_address ? ' — '.$venue->raw_address : '' }}</option>@endforeach
-                </select>
-                @error('venue_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                <a href="#favorite-venues" class="fc-link d-inline-block mt-2 js-handler" data-handler="modal" data-modal-action="open" data-modal-target="event-favorite-venues">Избранные площадки</a>
+                @include('theme::partials.venues.predictive-selector', [
+                    'id' => 'eventVenue',
+                    'selectedVenue' => $selectedVenue,
+                    'confirmedOnly' => true,
+                    'operationalStatus' => 'active',
+                    'startInput' => '#eventStartsAt',
+                    'durationInput' => '#eventDuration',
+                    'mapModal' => 'event-venue-map',
+                    'showFavorites' => true,
+                ])
             </div>
             <div class="row g-3 mb-3">
                 <div class="col-md-6 form-group field"><label class="form-label" for="eventStartsAt">Начало</label><input id="eventStartsAt" type="datetime-local" class="form-control @error('starts_at') is-invalid @enderror" name="starts_at" value="{{ old('starts_at', $defaultStartsAt) }}" min="{{ $defaultStartsAt }}" required data-event-start>@error('starts_at') <div class="invalid-feedback">{{ $message }}</div> @enderror</div>

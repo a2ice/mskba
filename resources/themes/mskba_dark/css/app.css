@@ -8,6 +8,7 @@
 @import './tooltip';
 @import './tom-select';
 @import './address-suggest';
+@import './venue-selector';
 
 @import './pages/home';
 @import './pages/account';

@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
@@ -172,7 +173,9 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($user)
             ->get(route('events.create'))
             ->assertOk()
-            ->assertSee($venue->name);
+            ->assertSee('data-venue-selector', false)
+            ->assertSee('data-venue-map-selector-open', false)
+            ->assertSee('Начните вводить название, улицу, метро или тег...');
 
         $this->actingAs($user)->post(route('events.store'), $payload)->assertRedirect();
 
@@ -180,6 +183,41 @@ final class EventWorkflowTest extends TestCase
         $this->assertSame(EventTypeEnum::GAME_TRAINING, $event->type);
         $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
         $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $event->booking->status);
+    }
+
+    public function test_event_venue_selector_filters_by_slot_and_invalidates_cached_conditions(): void
+    {
+        $organizer = User::factory()->create();
+        [$available, $start, $end] = $this->availableVenue(['name' => 'Арбатская свободная площадка']);
+        [$occupied] = $this->availableVenue(['name' => 'Арбатская занятая площадка']);
+
+        $this->actingAs($organizer)
+            ->post(route('events.store'), $this->payload($occupied, $start, $end))
+            ->assertRedirect();
+
+        $parameters = [
+            'query' => 'арбатская',
+            'confirmed_only' => '1',
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+            'starts_at' => $start->format('Y-m-d\TH:i'),
+            'duration_minutes' => 120,
+            'limit' => 200,
+        ];
+
+        $this->getJson(route('venues.search', $parameters))
+            ->assertOk()
+            ->assertJsonCount(1, 'venues')
+            ->assertJsonPath('venues.0.id', $available->id)
+            ->assertJsonPath('venues.0.latitude', (float) $available->location->address->latitude)
+            ->assertJsonMissing(['id' => $occupied->id]);
+
+        $available->update([
+            'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED->value,
+        ]);
+
+        $this->getJson(route('venues.search', $parameters))
+            ->assertOk()
+            ->assertJsonCount(0, 'venues');
     }
 
     public function test_closed_exception_applies_to_venue_without_regular_hours(): void
@@ -579,12 +617,12 @@ final class EventWorkflowTest extends TestCase
         $event = $venue->events()->firstOrFail();
         $this->travelTo($end->addMinute());
 
-        $this->actingAs($organizer)
-            ->get(route('events.index', ['period' => 'past']))
-            ->assertOk()
-            ->assertSee('Прошедшие мероприятия')
-            ->assertSee('Вечерняя игра')
-            ->assertSee('Итог не указан');
+        $pastEvents = $this->actingAs($organizer)
+            ->get(route('events.index', ['period' => 'past']));
+        $pastEvents->assertOk();
+        $pastEvents->assertSee('Прошедшие мероприятия');
+        $pastEvents->assertSee('Вечерняя игра');
+        $pastEvents->assertSee('<span class="badge badge--warning">Итог не указан</span>', false);
 
         $this->actingAs($organizer)
             ->get(route('events.show', $event->routeIdentifier()))
@@ -597,11 +635,70 @@ final class EventWorkflowTest extends TestCase
             ])
             ->assertSessionHas('status');
 
+        $completedEvents = $this->actingAs($organizer)
+            ->get(route('events.index', ['period' => 'past']));
+        $completedEvents->assertOk();
+        $completedEvents->assertSee('<span class="badge badge--success">Состоялось</span>', false);
+        $completedEvents->assertDontSee('<span class="badge badge--warning">Итог не указан</span>', false);
+    }
+
+    public function test_event_journals_can_be_filtered_by_type_dates_and_past_outcome(): void
+    {
+        $organizer = User::factory()->create();
+        [$gameVenue, $start, $end] = $this->availableVenue();
+        [$trainingVenue] = $this->availableVenue();
+
+        $gamePayload = $this->payload($gameVenue, $start, $end);
+        $gamePayload['title'] = 'Игра для фильтра';
+        $this->actingAs($organizer)->post(route('events.store'), $gamePayload);
+        $game = $gameVenue->events()->firstOrFail();
+
+        $trainingPayload = $this->payload($trainingVenue, $start, $end);
+        $trainingPayload['title'] = 'Тренировка для фильтра';
+        $trainingPayload['type'] = EventTypeEnum::TRAINING->value;
+        $this->actingAs($organizer)->post(route('events.store'), $trainingPayload);
+        $training = $trainingVenue->events()->firstOrFail();
+        $eventDate = $start->format('Y-m-d');
+
         $this->actingAs($organizer)
-            ->get(route('events.index', ['period' => 'past']))
+            ->get(route('events.index', [
+                'type' => EventTypeEnum::GAME->value,
+                'date_from' => $eventDate,
+                'date_to' => $eventDate,
+            ]))
             ->assertOk()
-            ->assertSee('Состоялось')
-            ->assertDontSee('Итог не указан');
+            ->assertSee('Игра для фильтра')
+            ->assertDontSee('Тренировка для фильтра')
+            ->assertDontSee('name="outcome"', false);
+
+        $this->actingAs($organizer)
+            ->get(route('events.index', ['date_to' => $eventDate]))
+            ->assertOk()
+            ->assertSee('Игра для фильтра')
+            ->assertSee('Тренировка для фильтра');
+
+        $this->travelTo($end->addMinute());
+        $this->actingAs($organizer)
+            ->put(route('events.result.update', $game->routeIdentifier()), [
+                'result_description' => 'Игра состоялась.',
+            ])
+            ->assertSessionHas('status');
+
+        $this->actingAs($organizer)
+            ->get(route('events.index', ['period' => 'past', 'outcome' => 'completed']))
+            ->assertOk()
+            ->assertSee('Игра для фильтра')
+            ->assertDontSee('Тренировка для фильтра')
+            ->assertSee('name="outcome"', false);
+
+        $this->actingAs($organizer)
+            ->get(route('events.index', ['period' => 'past', 'outcome' => 'unmarked']))
+            ->assertOk()
+            ->assertDontSee('Игра для фильтра')
+            ->assertSee('Тренировка для фильтра')
+            ->assertSee('<span class="badge badge--warning">Итог не указан</span>', false);
+
+        $this->assertSame(EventStatusEnum::PUBLISHED, $training->refresh()->status);
     }
 
     /** @return array{Venue, CarbonImmutable, CarbonImmutable} */

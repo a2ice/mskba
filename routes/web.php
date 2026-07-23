@@ -144,6 +144,7 @@ Route::prefix('venues')->group(function () {
         ->name('venues')
         ->defaults('breadcrumb', 'Площадки');
     Route::get('/search', [VenueController::class, 'search'])
+        ->middleware('throttle:60,1')
         ->name('venues.search');
     Route::get('/proximity-check', [VenueController::class, 'proximityCheck'])
         ->middleware('throttle:30,1')

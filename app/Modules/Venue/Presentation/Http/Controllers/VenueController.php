@@ -16,6 +16,7 @@ use App\Modules\Venue\Application\UseCases\ShowManageableVenueHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -24,6 +25,7 @@ use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Modules\Venue\Presentation\Http\Requests\SubmitModerationRequest;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueRequest;
 use App\Presentation\Theming\ThemeResolver;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -79,7 +81,19 @@ class VenueController extends Controller
             'metro_station_id' => ['nullable', 'integer', 'exists:metro_stations,id'],
             'requires_payment' => ['nullable', 'boolean'],
             'requires_booking_approval' => ['nullable', 'boolean'],
+            'confirmed_only' => ['nullable', 'boolean'],
+            'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
+            'starts_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
+            'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:480', 'required_with:starts_at'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
+        $startsAt = isset($validated['starts_at'])
+            ? CarbonImmutable::createFromFormat(
+                'Y-m-d\TH:i',
+                $validated['starts_at'],
+                (string) config('app.timezone', 'Europe/Moscow'),
+            )->utc()
+            : null;
 
         $venues = $searchVenues->handle(
             user: $request->user(),
@@ -88,8 +102,15 @@ class VenueController extends Controller
             type: isset($validated['type']) ? VenueTypeEnum::from($validated['type']) : null,
             status: isset($validated['status']) ? VenueStatusEnum::from($validated['status']) : null,
             metroStationId: isset($validated['metro_station_id']) ? (int) $validated['metro_station_id'] : null,
-            requiresPayment: isset($validated['requires_payment']) ? (bool) $validated['requires_payment'] : null,
-            requiresBookingApproval: isset($validated['requires_booking_approval']) ? (bool) $validated['requires_booking_approval'] : null,
+            requiresPayment: isset($validated['requires_payment']) ? $request->boolean('requires_payment') : null,
+            requiresBookingApproval: isset($validated['requires_booking_approval']) ? $request->boolean('requires_booking_approval') : null,
+            confirmedOnly: $request->boolean('confirmed_only'),
+            operationalStatus: isset($validated['operational_status'])
+                ? VenueOperationalStatusEnum::from($validated['operational_status'])
+                : null,
+            startsAt: $startsAt,
+            durationMinutes: isset($validated['duration_minutes']) ? (int) $validated['duration_minutes'] : null,
+            limit: isset($validated['limit']) ? (int) $validated['limit'] : 20,
         );
 
         return response()->json([
@@ -104,6 +125,11 @@ class VenueController extends Controller
                 'requires_payment' => $venue->requiresPayment,
                 'requires_booking_approval' => $venue->requiresBookingApproval,
                 'has_free_access' => $venue->hasFreeAccess(),
+                'operational_status' => $venue->operationalStatus,
+                'metro_stations' => $venue->metroStations,
+                'tags' => $venue->tags,
+                'latitude' => $venue->latitude,
+                'longitude' => $venue->longitude,
                 'url' => route('venues.show', $venue->routeIdentifier()),
             ])->all(),
         ]);

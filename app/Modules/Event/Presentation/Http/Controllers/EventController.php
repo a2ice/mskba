@@ -39,15 +39,35 @@ final class EventController extends Controller
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
             'period' => ['nullable', Rule::in(['upcoming', 'past'])],
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => [
+                'nullable',
+                'date_format:Y-m-d',
+                Rule::when($request->filled('date_from'), ['after_or_equal:date_from']),
+            ],
+            'outcome' => ['nullable', Rule::in(['completed', 'cancelled', 'unmarked'])],
         ]);
         $type = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
         $period = $validated['period'] ?? 'upcoming';
+        $dateFrom = $validated['date_from'] ?? null;
+        $dateTo = $validated['date_to'] ?? null;
+        $outcome = $period === 'past' ? ($validated['outcome'] ?? null) : null;
 
         return ThemeResolver::page('events.index', [
-            'events' => $events->handle($actors->resolveForRequest($request), $type, $period),
+            'events' => $events->handle(
+                $actors->resolveForRequest($request),
+                $type,
+                $period,
+                $dateFrom,
+                $dateTo,
+                $outcome,
+            ),
             'types' => EventTypeEnum::cases(),
             'selectedType' => $type,
             'period' => $period,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'outcome' => $outcome,
         ]);
     }
 

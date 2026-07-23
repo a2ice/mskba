@@ -17,6 +17,7 @@ final class VenueEventAvailability
         CarbonImmutable $startsAt,
         CarbonImmutable $endsAt,
         ?int $excludedBookingId = null,
+        bool $checkBookings = true,
     ): void {
         if ($venue->status !== VenueStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('Создать мероприятие можно только на подтверждённой площадке.');
@@ -34,7 +35,9 @@ final class VenueEventAvailability
             throw new InvalidArgumentException('Время окончания должно быть позже времени начала.');
         }
 
-        $schedule = $venue->schedule()->with(['intervals', 'exceptions.intervals'])->first();
+        $schedule = $venue->relationLoaded('schedule')
+            ? $venue->schedule
+            : $venue->schedule()->with(['intervals', 'exceptions.intervals'])->first();
 
         $timezone = $schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
         $localStart = $startsAt->setTimezone($timezone);
@@ -71,7 +74,7 @@ final class VenueEventAvailability
             }
         }
 
-        $hasOverlap = VenueBooking::query()
+        $hasOverlap = $checkBookings && VenueBooking::query()
             ->where('venue_id', $venue->id)
             ->when(
                 $excludedBookingId !== null,
