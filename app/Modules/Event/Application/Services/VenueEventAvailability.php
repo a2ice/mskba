@@ -12,8 +12,12 @@ use InvalidArgumentException;
 
 final class VenueEventAvailability
 {
-    public function assertAvailable(Venue $venue, CarbonImmutable $startsAt, CarbonImmutable $endsAt): void
-    {
+    public function assertAvailable(
+        Venue $venue,
+        CarbonImmutable $startsAt,
+        CarbonImmutable $endsAt,
+        ?int $excludedBookingId = null,
+    ): void {
         if ($venue->status !== VenueStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('Создать мероприятие можно только на подтверждённой площадке.');
         }
@@ -69,6 +73,10 @@ final class VenueEventAvailability
 
         $hasOverlap = VenueBooking::query()
             ->where('venue_id', $venue->id)
+            ->when(
+                $excludedBookingId !== null,
+                fn ($query) => $query->whereKeyNot($excludedBookingId),
+            )
             ->whereIn('status', [
                 VenueBookingStatusEnum::PENDING->value,
                 VenueBookingStatusEnum::CONFIRMED->value,

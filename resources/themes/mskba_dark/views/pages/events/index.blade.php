@@ -4,7 +4,7 @@
     'title' => $title,
     'sectionId' => 'events',
     'sectionClass' => 'events-section',
-    'contentTitle' => $period === 'past' ? 'Состоявшиеся мероприятия' : 'Предстоящие мероприятия',
+    'contentTitle' => $period === 'past' ? 'Прошедшие мероприятия' : 'Предстоящие мероприятия',
     'contentSubtitle' => 'Игры и тренировки на баскетбольных площадках.',
     'sidebarLabel' => 'Навигация мероприятий',
 ])
@@ -35,7 +35,7 @@
         <h2 class="section-sidebar-block__title">Период</h2>
         <ul class="sidebar-nav nav flex-column">
             <li class="nav-item {{ $period === 'upcoming' ? 'active' : '' }}"><a class="nav-link {{ $period === 'upcoming' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value])) }}">Предстоящие</a></li>
-            <li class="nav-item {{ $period === 'past' ? 'active' : '' }}"><a class="nav-link {{ $period === 'past' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value, 'period' => 'past'])) }}">Состоявшиеся</a></li>
+            <li class="nav-item {{ $period === 'past' ? 'active' : '' }}"><a class="nav-link {{ $period === 'past' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value, 'period' => 'past'])) }}">Прошедшие</a></li>
         </ul>
     </div>
 @endsection
@@ -48,10 +48,24 @@
     @else
         <div class="section-list">
             @foreach($events as $event)
-                @php $timezone = $event->venue->schedule?->timezone ?: config('app.timezone'); @endphp
+                @php
+                    $timezone = $event->venue->schedule?->timezone ?: config('app.timezone');
+                    $outcome = match($event->status->value) {
+                        'completed' => ['Состоялось', 'success'],
+                        'cancelled' => ['Отменено', 'danger'],
+                        default => ['Итог не указан', 'warning'],
+                    };
+                @endphp
                 <article class="section-list-item">
                     <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
-                        <span class="badge badge--{{ $event->status->value === 'published' ? 'success' : 'warning' }}">{{ $event->type->label() }} · {{ $event->status->label() }}</span>
+                        <span>
+                            <span class="badge">{{ $event->type->label() }}</span>
+                            @if($period === 'past')
+                                <span class="badge badge--{{ $outcome[1] }}">{{ $outcome[0] }}</span>
+                            @else
+                                <span class="badge badge--{{ $event->status->value === 'published' ? 'success' : 'warning' }}">{{ $event->status->label() }}</span>
+                            @endif
+                        </span>
                         <time datetime="{{ $event->starts_at->toIso8601String() }}">{{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}</time>
                     </div>
                     <h2 class="h4 mb-2"><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>

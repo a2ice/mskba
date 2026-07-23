@@ -335,7 +335,9 @@ final class EventWorkflowTest extends TestCase
             ->get(route('events.edit', $event->routeIdentifier()))
             ->assertOk()
             ->assertSee('Редактирование мероприятия')
-            ->assertSee('Площадка и время не изменяются в этой форме');
+            ->assertSee('name="venue_id"', false)
+            ->assertSee('name="starts_at"', false)
+            ->assertSee('name="duration_minutes"', false);
 
         $this->actingAs($stranger)
             ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload())
@@ -367,6 +369,128 @@ final class EventWorkflowTest extends TestCase
             ->assertSessionHas('status', 'Мероприятие обновлено.');
 
         $this->assertSame('Изменено администратором', $event->refresh()->title);
+    }
+
+    public function test_organizer_can_move_event_and_booking_between_free_venues(): void
+    {
+        $organizer = User::factory()->create();
+        [$sourceVenue, $start, $end] = $this->availableVenue();
+        [$targetVenue] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($sourceVenue, $start, $end));
+        $event = $sourceVenue->events()->firstOrFail();
+        $booking = $event->booking()->firstOrFail();
+        $newStart = $start->addHours(2);
+
+        $this->actingAs($organizer)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'venue_id' => $targetVenue->id,
+                'starts_at' => $newStart->format('Y-m-d\TH:i'),
+                'duration_minutes' => 60,
+            ]))
+            ->assertSessionHas('status', 'Мероприятие обновлено.');
+
+        $event->refresh();
+        $booking->refresh();
+        $this->assertSame($targetVenue->id, $event->venue_id);
+        $this->assertSame($targetVenue->id, $booking->venue_id);
+        $this->assertStringStartsWith(
+            $newStart->utc()->format('Y-m-d H:i'),
+            (string) $event->getRawOriginal('starts_at'),
+        );
+        $this->assertStringStartsWith(
+            $newStart->addHour()->utc()->format('Y-m-d H:i'),
+            (string) $event->getRawOriginal('ends_at'),
+        );
+        $this->assertTrue($booking->starts_at->equalTo($event->starts_at));
+        $this->assertTrue($booking->ends_at->equalTo($event->ends_at));
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $booking->status);
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
+    }
+
+    public function test_current_booking_is_excluded_when_duration_changes_inside_its_interval(): void
+    {
+        $organizer = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+
+        $this->actingAs($organizer)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'venue_id' => $venue->id,
+                'starts_at' => $start->format('Y-m-d\TH:i'),
+                'duration_minutes' => 60,
+            ]))
+            ->assertSessionHas('status', 'Мероприятие обновлено.');
+
+        $this->assertSame(
+            60,
+            (int) $event->refresh()->starts_at->diffInMinutes($event->ends_at),
+        );
+    }
+
+    public function test_conflicting_transfer_keeps_original_event_and_booking_unchanged(): void
+    {
+        $organizer = User::factory()->create();
+        $otherOrganizer = User::factory()->create();
+        [$sourceVenue, $start, $end] = $this->availableVenue();
+        [$targetVenue] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($sourceVenue, $start, $end));
+        $event = $sourceVenue->events()->firstOrFail();
+        $booking = $event->booking()->firstOrFail();
+        $occupiedStart = $start->addHour();
+        $this->actingAs($otherOrganizer)->post(
+            route('events.store'),
+            $this->payload($targetVenue, $occupiedStart, $occupiedStart->addHours(2)),
+        );
+
+        $this->actingAs($organizer)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'venue_id' => $targetVenue->id,
+                'starts_at' => $occupiedStart->format('Y-m-d\TH:i'),
+                'duration_minutes' => 60,
+            ]))
+            ->assertSessionHas('error', 'Выбранное время уже занято другим мероприятием.');
+
+        $event->refresh();
+        $booking->refresh();
+        $this->assertSame($sourceVenue->id, $event->venue_id);
+        $this->assertSame($sourceVenue->id, $booking->venue_id);
+        $this->assertStringStartsWith(
+            $start->utc()->format('Y-m-d H:i'),
+            (string) $event->getRawOriginal('starts_at'),
+        );
+        $this->assertStringStartsWith(
+            $start->utc()->format('Y-m-d H:i'),
+            (string) $booking->getRawOriginal('starts_at'),
+        );
+    }
+
+    public function test_booking_cannot_be_moved_when_current_or_target_venue_is_not_free(): void
+    {
+        $organizer = User::factory()->create();
+        [$managedVenue, $start, $end] = $this->availableVenue(['requires_booking_approval' => true]);
+        [$freeVenue] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($managedVenue, $start, $end));
+        $event = $managedVenue->events()->firstOrFail();
+
+        $this->actingAs($organizer)
+            ->get(route('events.edit', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Для площадок с оплатой или подтверждением бронирования');
+
+        $this->actingAs($organizer)
+            ->put(route('events.update', $event->routeIdentifier()), $this->updatePayload([
+                'venue_id' => $freeVenue->id,
+                'starts_at' => $start->addHour()->format('Y-m-d\TH:i'),
+                'duration_minutes' => 60,
+            ]))
+            ->assertSessionHas(
+                'error',
+                'Площадку и время пока можно менять только для мероприятий на свободных площадках.',
+            );
+
+        $this->assertSame($managedVenue->id, $event->refresh()->venue_id);
+        $this->assertSame($managedVenue->id, $event->booking->refresh()->venue_id);
     }
 
     public function test_participant_limit_cannot_be_reduced_below_current_participants(): void
@@ -445,6 +569,39 @@ final class EventWorkflowTest extends TestCase
             ->assertSessionHas('error', 'Подвести итог можно после окончания мероприятия.');
 
         $this->assertSame(EventStatusEnum::PUBLISHED, $event->refresh()->status);
+    }
+
+    public function test_ended_event_is_listed_as_past_and_can_be_completed_later(): void
+    {
+        $organizer = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+        $this->travelTo($end->addMinute());
+
+        $this->actingAs($organizer)
+            ->get(route('events.index', ['period' => 'past']))
+            ->assertOk()
+            ->assertSee('Прошедшие мероприятия')
+            ->assertSee('Вечерняя игра')
+            ->assertSee('Итог не указан');
+
+        $this->actingAs($organizer)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Отметить состоявшимся');
+
+        $this->actingAs($organizer)
+            ->put(route('events.result.update', $event->routeIdentifier()), [
+                'result_description' => 'Итог добавлен позже.',
+            ])
+            ->assertSessionHas('status');
+
+        $this->actingAs($organizer)
+            ->get(route('events.index', ['period' => 'past']))
+            ->assertOk()
+            ->assertSee('Состоялось')
+            ->assertDontSee('Итог не указан');
     }
 
     /** @return array{Venue, CarbonImmutable, CarbonImmutable} */

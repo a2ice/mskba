@@ -25,10 +25,6 @@
 @section('section-content')
     @if(session('error')) <div class="alert alert-danger mb-3">{{ session('error') }}</div> @endif
 
-    <div class="alert alert-info mb-4">
-        Площадка и время не изменяются в этой форме: {{ $event->venue->name }}, {{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}–{{ $event->ends_at->setTimezone($timezone)->format('H:i') }}.
-    </div>
-
     <form method="POST" action="{{ route('events.update', $event->routeIdentifier()) }}">
         @csrf @method('PUT')
         <div class="form-group field mb-3">
@@ -36,6 +32,46 @@
             <input id="eventTitle" class="form-control @error('title') is-invalid @enderror" name="title" value="{{ old('title', $event->title) }}" maxlength="150" required>
             @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
+        @if($canReschedule)
+            <div class="form-group field mb-3">
+                <label class="form-label" for="eventVenue">Площадка</label>
+                <select id="eventVenue" class="form-select @error('venue_id') is-invalid @enderror" name="venue_id" required>
+                    @foreach($venues as $venue)
+                        <option value="{{ $venue->id }}" @selected((string) old('venue_id', $event->venue_id) === (string) $venue->id)>{{ $venue->name }}{{ $venue->raw_address ? ' — '.$venue->raw_address : '' }}</option>
+                    @endforeach
+                </select>
+                @error('venue_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="eventStartsAt">Начало</label>
+                    <input id="eventStartsAt" type="datetime-local" class="form-control @error('starts_at') is-invalid @enderror" name="starts_at" value="{{ old('starts_at', $event->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i')) }}" required>
+                    @error('starts_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="eventDuration">Длительность</label>
+                    <select id="eventDuration" class="form-select @error('duration_minutes') is-invalid @enderror" name="duration_minutes" required>
+                        @foreach($durationOptions as $minutes)
+                            @php
+                                $hours = $minutes / 60;
+                                $durationLabel = $minutes === 30
+                                    ? '30 минут'
+                                    : number_format($hours, $minutes % 60 === 0 ? 0 : 1, ',', '').' '.($hours === 1.0 ? 'час' : ($minutes % 60 !== 0 || $hours < 5 ? 'часа' : 'часов'));
+                            @endphp
+                            <option value="{{ $minutes }}" @selected((int) old('duration_minutes', $currentDuration) === $minutes)>{{ $durationLabel }}</option>
+                        @endforeach
+                    </select>
+                    @error('duration_minutes') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+            </div>
+        @else
+            <div class="alert alert-info mb-3">
+                Для площадок с оплатой или подтверждением бронирования изменение места и времени будет доступно в отдельном сценарии.
+            </div>
+            <input type="hidden" name="venue_id" value="{{ $event->venue_id }}">
+            <input type="hidden" name="starts_at" value="{{ $event->starts_at->setTimezone($timezone)->format('Y-m-d\TH:i') }}">
+            <input type="hidden" name="duration_minutes" value="{{ $currentDuration }}">
+        @endif
         <div class="row g-3 mb-3">
             <div class="col-md-6 form-group field">
                 <label class="form-label" for="eventType">Тип</label>

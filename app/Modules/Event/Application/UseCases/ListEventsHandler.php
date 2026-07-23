@@ -25,19 +25,18 @@ final class ListEventsHandler
             ->where(function ($query) use ($actor, $period): void {
                 $query->where(function ($public) use ($period): void {
                     $public
-                        ->where('status', $period === 'past'
-                            ? EventStatusEnum::COMPLETED->value
-                            : EventStatusEnum::PUBLISHED->value)
+                        ->whereIn('status', $period === 'past'
+                            ? [
+                                EventStatusEnum::PUBLISHED->value,
+                                EventStatusEnum::COMPLETED->value,
+                            ]
+                            : [EventStatusEnum::PUBLISHED->value])
                         ->where('visibility', EventVisibilityEnum::PUBLIC->value);
                 });
 
                 if ($actor?->user_id !== null) {
-                    $query->orWhere(function ($own) use ($actor, $period): void {
+                    $query->orWhere(function ($own) use ($actor): void {
                         $own->whereHas('organizerActor', fn ($organizer) => $organizer->where('user_id', $actor->user_id));
-
-                        if ($period === 'past') {
-                            $own->where('status', EventStatusEnum::COMPLETED->value);
-                        }
                     });
                 }
             })

@@ -125,6 +125,7 @@ final class EventController extends Controller
         Request $request,
         string $event,
         ShowEventHandler $events,
+        ListEventVenuesHandler $venues,
         CurrentActorResolver $actors,
         EventManagementAccess $access,
     ): Response|RedirectResponse {
@@ -139,10 +140,21 @@ final class EventController extends Controller
                 ->with('error', 'Завершённое или отменённое мероприятие нельзя редактировать.');
         }
 
+        $freeVenues = $venues->handle(freeOnly: true);
+
+        if ($item->venue->hasFreeAccess() && ! $freeVenues->contains('id', $item->venue_id)) {
+            $freeVenues->push($item->venue);
+            $freeVenues = $freeVenues->sortBy('name')->values();
+        }
+
         return ThemeResolver::page('events.edit', [
             'event' => $item,
+            'venues' => $freeVenues,
             'types' => EventTypeEnum::cases(),
             'visibilities' => EventVisibilityEnum::cases(),
+            'canReschedule' => $item->venue->hasFreeAccess(),
+            'durationOptions' => range(30, 480, 30),
+            'currentDuration' => (int) $item->starts_at->diffInMinutes($item->ends_at),
         ]);
     }
 
