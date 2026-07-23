@@ -8,18 +8,19 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('telegram:configure-webhook
+#[Signature('telegram:configure-updates
     {--url= : Override the public webhook URL}
     {--if-configured : Exit successfully when Telegram settings are incomplete}')]
-#[Description('Configure the protected Telegram Bot API webhook')]
-final class ConfigureTelegramWebhookCommand extends Command
+#[Description('Configure Telegram updates transport')]
+final class ConfigureTelegramUpdatesCommand extends Command
 {
     public function handle(TelegramBotApiClient $telegram): int
     {
+        $transport = (string) config('telegram.updates_transport', 'webhook');
         $secret = (string) config('telegram.webhook_secret');
 
-        if (! $telegram->isConfigured() || $secret === '') {
-            $message = 'Configure TELEGRAM_BOT_TOKEN, TELEGRAM_MAIN_CHAT_ID and TELEGRAM_WEBHOOK_SECRET first.';
+        if (! $telegram->isConfigured() || ($transport === 'webhook' && $secret === '')) {
+            $message = 'Configure Telegram bot, chat and updates transport settings first.';
 
             if ($this->option('if-configured')) {
                 $this->warn($message.' Skipped.');
@@ -32,9 +33,23 @@ final class ConfigureTelegramWebhookCommand extends Command
             return self::FAILURE;
         }
 
-        $url = (string) ($this->option('url') ?: route('integrations.telegram.webhook'));
-
         try {
+            if ($transport === 'polling') {
+                $telegram->call('deleteWebhook', [
+                    'drop_pending_updates' => false,
+                ]);
+                $this->info('Telegram long polling configured; pending updates were preserved.');
+
+                return self::SUCCESS;
+            }
+
+            if ($transport !== 'webhook') {
+                $this->error("Unsupported Telegram updates transport: {$transport}");
+
+                return self::FAILURE;
+            }
+
+            $url = (string) ($this->option('url') ?: route('integrations.telegram.webhook'));
             $telegram->call('setWebhook', [
                 'url' => $url,
                 'secret_token' => $secret,

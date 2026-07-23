@@ -15,8 +15,9 @@ final class SyncVerifiedTelegramContactHandler
         ?string $username,
         ?string $firstName,
         ?string $lastName,
+        string $source = 'telegram_mini_app',
     ): Contact {
-        return DB::transaction(function () use ($user, $telegramUserId, $username, $firstName, $lastName): Contact {
+        return DB::transaction(function () use ($user, $telegramUserId, $username, $firstName, $lastName, $source): Contact {
             $lockedUser = User::query()
                 ->whereKey($user->getKey())
                 ->lockForUpdate()
@@ -47,7 +48,7 @@ final class SyncVerifiedTelegramContactHandler
                 'is_public' => $wasDeleted ? false : $contact->is_public,
                 'verified_at' => now(),
                 'meta' => [
-                    'source' => 'telegram_mini_app',
+                    'source' => $source,
                     'telegram_user_id' => $telegramUserId,
                     'username' => $username === null ? null : mb_strtolower(ltrim($username, '@')),
                     'first_name' => $firstName,

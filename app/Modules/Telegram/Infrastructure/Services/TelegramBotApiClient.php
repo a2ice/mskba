@@ -19,7 +19,7 @@ final class TelegramBotApiClient
     /** @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
-    public function call(string $method, array $payload = []): array
+    public function call(string $method, array $payload = [], ?int $timeoutSeconds = null): array
     {
         $token = (string) config('telegram.bot_token');
 
@@ -28,10 +28,16 @@ final class TelegramBotApiClient
         }
 
         try {
-            return $this->request()
+            $response = $this->request($timeoutSeconds)
                 ->post($this->apiUrl($token, $method), $payload)
                 ->throw()
                 ->json();
+
+            if (! is_array($response) || data_get($response, 'ok') !== true) {
+                throw new TelegramBotApiException('Telegram API returned an invalid response.');
+            }
+
+            return $response;
         } catch (ConnectionException|RequestException $exception) {
             throw new TelegramBotApiException(
                 $this->safeError($exception, $token),
@@ -40,7 +46,7 @@ final class TelegramBotApiClient
         }
     }
 
-    private function request(): PendingRequest
+    private function request(?int $timeoutSeconds = null): PendingRequest
     {
         $options = [];
         $proxy = trim((string) config('telegram.http_proxy'));
@@ -60,7 +66,7 @@ final class TelegramBotApiClient
 
         return Http::asJson()
             ->withOptions($options)
-            ->timeout(15)
+            ->timeout($timeoutSeconds ?? 15)
             ->connectTimeout(8);
     }
 

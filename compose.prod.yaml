@@ -10,6 +10,9 @@ services:
   queue:
     container_name: mskbanew-queue
 
+  telegram:
+    container_name: mskbanew-telegram
+
   db:
     container_name: mskbanew-db
     ports:

@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Application\UseCases\HandleEventParticipationCallback;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
@@ -13,6 +14,7 @@ use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramEventPublicationJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
@@ -31,7 +33,10 @@ final class TelegramEventIntegrationTest extends TestCase
             'telegram.webhook_secret' => 'webhook-test-secret',
             'telegram.api_ip' => null,
             'telegram.http_proxy' => null,
+            'telegram.updates_transport' => 'webhook',
         ]);
+
+        Cache::forget('telegram:updates:offset');
     }
 
     public function test_public_event_is_published_to_main_chat_with_participation_actions(): void
@@ -160,7 +165,7 @@ final class TelegramEventIntegrationTest extends TestCase
             === 'https://api.telegram.org/bot123456:test-token/answerCallbackQuery');
     }
 
-    public function test_unlinked_telegram_user_is_asked_to_open_mini_app(): void
+    public function test_unlinked_telegram_user_is_created_and_joined_from_chat_callback(): void
     {
         Queue::fake();
         Http::fake([
@@ -179,9 +184,57 @@ final class TelegramEventIntegrationTest extends TestCase
 
         app(HandleEventParticipationCallback::class)->handle($this->callbackPayload($event->id));
 
-        $this->assertDatabaseCount('event_participants', 0);
-        Http::assertSent(fn ($request): bool => $request['show_alert'] === true
-            && str_contains($request['text'], 'откройте приложение MSKBA'));
+        $user = User::query()->where('username', 'tg_777')->firstOrFail();
+
+        $this->assertSame(UserRegistrationChannelEnum::TELEGRAM_CHAT, $user->registration_channel);
+        $this->assertDatabaseHas('telegram_accounts', [
+            'telegram_user_id' => 777,
+            'user_id' => $user->id,
+            'username' => 'chat_player',
+        ]);
+        $this->assertDatabaseHas('contacts', [
+            'contactable_type' => 'user',
+            'contactable_id' => $user->id,
+            'type' => 'telegram',
+            'value' => '777',
+        ]);
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+        ]);
+        Http::assertSent(fn ($request): bool => $request['show_alert'] === false
+            && str_contains($request['text'], 'Аккаунт MSKBA создан'));
+    }
+
+    public function test_unlinked_telegram_user_can_decline_and_response_is_saved(): void
+    {
+        Queue::fake();
+        Http::fake([
+            'https://api.telegram.org/bot123456:test-token/answerCallbackQuery' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+        $event = Event::factory()->create();
+        TelegramEventPublication::query()->create([
+            'event_id' => $event->id,
+            'chat_id' => '-1002136558099',
+            'message_id' => 501,
+            'status' => 'published',
+        ]);
+
+        app(HandleEventParticipationCallback::class)->handle($this->callbackPayload($event->id, 'leave'));
+
+        $user = User::query()->where('username', 'tg_777')->firstOrFail();
+
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $user->id,
+            'status' => EventParticipantStatusEnum::LEFT->value,
+        ]);
+        Http::assertSent(fn ($request): bool => str_contains($request['text'], 'Не пойду')
+            && str_contains($request['text'], 'Аккаунт MSKBA создан'));
     }
 
     public function test_full_event_rejects_telegram_participation(): void
@@ -231,7 +284,7 @@ final class TelegramEventIntegrationTest extends TestCase
             ]),
         ]);
 
-        $this->artisan('telegram:configure-webhook')
+        $this->artisan('telegram:configure-updates')
             ->expectsOutputToContain('Telegram webhook configured:')
             ->assertSuccessful();
 
@@ -240,12 +293,65 @@ final class TelegramEventIntegrationTest extends TestCase
             && $request['allowed_updates'] === ['callback_query']);
     }
 
+    public function test_polling_configuration_removes_webhook_without_dropping_updates(): void
+    {
+        config(['telegram.updates_transport' => 'polling']);
+        Http::fake([
+            'https://api.telegram.org/bot123456:test-token/deleteWebhook' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+        ]);
+
+        $this->artisan('telegram:configure-updates')
+            ->expectsOutputToContain('Telegram long polling configured')
+            ->assertSuccessful();
+
+        Http::assertSent(fn ($request): bool => $request->url()
+            === 'https://api.telegram.org/bot123456:test-token/deleteWebhook'
+            && $request['drop_pending_updates'] === false);
+    }
+
+    public function test_long_polling_queues_telegram_callback(): void
+    {
+        config([
+            'telegram.updates_transport' => 'polling',
+            'telegram.polling_timeout' => 1,
+        ]);
+        Queue::fake();
+        Http::fake([
+            'https://api.telegram.org/bot123456:test-token/getUpdates' => Http::response([
+                'ok' => true,
+                'result' => [[
+                    'update_id' => 9001,
+                    'callback_query' => $this->callbackPayload(10),
+                ]],
+            ]),
+        ]);
+
+        $this->artisan('telegram:poll-updates', ['--once' => true])
+            ->expectsOutput('Telegram updates processed: 1')
+            ->assertSuccessful();
+
+        Queue::assertPushed(
+            ProcessTelegramCallbackJob::class,
+            fn (ProcessTelegramCallbackJob $job): bool => $job->callback['id'] === 'callback-1',
+        );
+        $this->assertSame(9002, Cache::get('telegram:updates:offset'));
+    }
+
     /** @return array<string, mixed> */
     private function callbackPayload(int $eventId, string $action = 'join'): array
     {
         return [
             'id' => 'callback-1',
-            'from' => ['id' => 777],
+            'from' => [
+                'id' => 777,
+                'username' => 'chat_player',
+                'first_name' => 'Chat',
+                'last_name' => 'Player',
+                'language_code' => 'ru',
+            ],
             'message' => [
                 'message_id' => 501,
                 'chat' => ['id' => -1002136558099],

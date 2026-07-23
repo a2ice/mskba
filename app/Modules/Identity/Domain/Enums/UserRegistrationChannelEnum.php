@@ -6,6 +6,7 @@ enum UserRegistrationChannelEnum: string
 {
     case SITE_CONTACT_FIRST = 'site_contact_first';
     case SITE_FULL_REGISTRATION = 'site_full_registration';
+    case TELEGRAM_CHAT = 'telegram_chat';
     case TELEGRAM_MINI_APP = 'telegram_mini_app';
     case OTHER = 'other';
     case SEED = 'seed';
@@ -15,6 +16,7 @@ enum UserRegistrationChannelEnum: string
         return match ($this) {
             self::SITE_CONTACT_FIRST => 'Регистрация через контакт',
             self::SITE_FULL_REGISTRATION => 'Полная регистрация',
+            self::TELEGRAM_CHAT => 'Telegram-чат',
             self::TELEGRAM_MINI_APP => 'Telegram Mini App',
             self::OTHER => 'Другое',
             self::SEED => 'Сидирование базы данных',

@@ -10,4 +10,7 @@ return [
     'api_ip' => env('TELEGRAM_API_IP'),
     'http_proxy' => env('TELEGRAM_HTTP_PROXY'),
     'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+    'updates_transport' => env('TELEGRAM_UPDATES_TRANSPORT', 'webhook'),
+    'polling_timeout' => (int) env('TELEGRAM_POLLING_TIMEOUT', 25),
+    'polling_retry_delay' => (int) env('TELEGRAM_POLLING_RETRY_DELAY', 5),
 ];
