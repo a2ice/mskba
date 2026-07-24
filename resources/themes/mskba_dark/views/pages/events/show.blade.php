@@ -73,6 +73,19 @@
         $isFull => ['label' => 'Мест нет', 'class' => 'is-closed'],
         default => ['label' => 'Идёт набор', 'class' => 'is-open'],
     };
+    $resultState = match (true) {
+        $event->status === EventStatusEnum::COMPLETED => ['label' => 'Состоялось', 'class' => 'is-complete'],
+        $event->status === EventStatusEnum::CANCELLED => ['label' => 'Отменено', 'class' => 'is-cancelled'],
+        $event->ends_at->isPast() => ['label' => 'Итог не указан', 'class' => 'is-pending'],
+        $isFull => ['label' => 'Набор закрыт', 'class' => 'is-neutral'],
+        default => ['label' => 'Запись закрыта', 'class' => 'is-neutral'],
+    };
+    $closedState = match (true) {
+        $event->status === EventStatusEnum::CANCELLED => ['label' => 'Отменено', 'icon' => 'ti-circle-x'],
+        $event->status === EventStatusEnum::COMPLETED || $event->ends_at->isPast() => ['label' => 'Завершено', 'icon' => 'ti-circle-check'],
+        $isFull => ['label' => 'Запись закрыта', 'icon' => 'ti-users-minus'],
+        default => ['label' => 'Запись недоступна', 'icon' => 'ti-lock'],
+    };
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -99,27 +112,39 @@
                 </div>
 
                 <span class="event-hero__counter" data-event-hero-counter>1 / {{ max(1, $venuePhotos->count()) }}</span>
+                @if($venuePhotos->count() > 1)
+                    <div class="event-hero-dots" aria-label="Фотографии площадки">
+                        @foreach($venuePhotos as $index => $photo)
+                            <button type="button" class="{{ $index === 0 ? 'is-active' : '' }}" data-event-hero-dot="{{ $index }}" aria-label="Фото {{ $index + 1 }}"></button>
+                        @endforeach
+                    </div>
+                @endif
             </section>
-
-            @if($venuePhotos->count() > 1)
-                <div class="event-hero-dots" aria-label="Фотографии площадки">
-                    @foreach($venuePhotos as $index => $photo)
-                        <button type="button" class="{{ $index === 0 ? 'is-active' : '' }}" data-event-hero-dot="{{ $index }}" aria-label="Фото {{ $index + 1 }}"></button>
-                    @endforeach
-                </div>
-            @endif
 
             <section class="event-hero-info">
                 <div class="event-hero-info__copy">
-                    <h1>{{ $event->title }}</h1>
+                    <div class="event-hero-info__title">
+                        <span class="event-state-dot {{ $recruitment['class'] }}" title="{{ $recruitment['label'] }}" aria-label="{{ $recruitment['label'] }}"></span>
+                        <h1>{{ $event->title }}</h1>
+                    </div>
                     <div class="event-hero__meta">
                         <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $startsAt->format('d.m.Y') }}<b>·</b>{{ $startsAt->format('H:i') }}–{{ $endsAt->format('H:i') }}</span>
-                        <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $locationName }}</span>
+                        @if($mapUrl)
+                            <button
+                                type="button"
+                                class="event-hero__location js-handler"
+                                data-handler="modal"
+                                data-modal-action="open"
+                                data-modal-target="event-venue-map"
+                                data-event-map-open
+                            >
+                                <i class="ti ti-map-pin" aria-hidden="true"></i>{{ $locationName }}
+                            </button>
+                        @else
+                            <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $locationName }}</span>
+                        @endif
                     </div>
                 </div>
-                <span class="event-recruitment {{ $recruitment['class'] }}">
-                    <span aria-hidden="true"></span>{{ $recruitment['label'] }}
-                </span>
             </section>
 
             @if($isRegistrationOpen)
@@ -161,14 +186,16 @@
                 <p class="event-response__hint">Участники видят, кто уже идёт — так проще понять состав игры.</p>
             @else
                 <div class="event-response-closed" role="status">
-                    <i class="ti ti-circle-check" aria-hidden="true"></i>
-                    <strong>Завершено</strong>
+                    <span class="event-response-closed__main">
+                        <i class="ti {{ $closedState['icon'] }}" aria-hidden="true"></i>
+                        <strong>{{ $closedState['label'] }}</strong>
+                    </span>
+                    <span class="event-response-closed__result {{ $resultState['class'] }}">{{ $resultState['label'] }}</span>
                 </div>
             @endif
 
             <section class="event-stat-grid">
-                <div><i class="ti ti-users" aria-hidden="true"></i><span>Участники</span><strong>{{ $confirmedCount }}{{ $event->max_participants ? ' / '.$event->max_participants : '' }}</strong></div>
-                <div><i class="ti ti-user-plus" aria-hidden="true"></i><span>Свободно</span><strong>{{ $remainingPlaces ?? 'Без лимита' }}</strong></div>
+                <div><i class="ti ti-users" aria-hidden="true"></i><span>Участники</span><strong>{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></div>
                 <div><i class="ti ti-ball-basketball" aria-hidden="true"></i><span>Тип</span><strong>{{ $event->type->label() }}</strong></div>
                 <div><i class="ti ti-shield-check" aria-hidden="true"></i><span>Бронирование</span><strong>{{ $bookingLabel }}</strong></div>
             </section>
@@ -353,4 +380,24 @@
             @endif
         </div>
     </section>
+
+    @if($mapUrl)
+        @component('theme::partials.modal.layout', [
+            'id' => 'event-venue-map',
+            'dialogClass' => 'venue-selector-map-modal__dialog event-venue-map-modal__dialog',
+        ])
+            <h2 class="modal_title" id="modal-title-event-venue-map">{{ $locationName }}</h2>
+            <p class="venue-selector-map__message" data-event-map-message>Загружаем карту…</p>
+            <div
+                class="venue-selector-map"
+                data-event-map
+                data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"
+                data-latitude="{{ $coordinates->latitude }}"
+                data-longitude="{{ $coordinates->longitude }}"
+                data-title="{{ $locationName }}"
+                data-address="{{ $address }}"
+                aria-label="Площадка {{ $locationName }} на карте"
+            ></div>
+        @endcomponent
+    @endif
 @endsection

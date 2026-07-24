@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -94,7 +95,33 @@ final class EventWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('event-response-closed', false)
             ->assertSee('Завершено')
+            ->assertSee('Итог не указан')
             ->assertDontSee('event-response__button', false);
+    }
+
+    public function test_event_location_opens_map_and_summary_uses_compact_participant_count(): void
+    {
+        config(['integrations.yandex.api_key' => 'test-yandex-key']);
+
+        $organizer = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $location = Location::factory()->create();
+        $venue->update(['location_id' => $location->id]);
+
+        $this->actingAs($organizer)->post(
+            route('events.store'),
+            $this->payload($venue, $start, $end, 10),
+        );
+
+        $event = $venue->events()->firstOrFail();
+
+        $this->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('data-event-map-open', false)
+            ->assertSee('data-event-map', false)
+            ->assertSee('data-yandex-map-api-key="test-yandex-key"', false)
+            ->assertSee('1/10')
+            ->assertDontSee('<span>Свободно</span>', false);
     }
 
     public function test_selected_event_type_is_used_by_create_action_and_form(): void

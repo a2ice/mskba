@@ -1,5 +1,8 @@
+import { loadYandexMaps } from '../core/yandex-maps.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     initEventHero();
+    initEventVenueMap();
     initEventDescription();
     initEventShare();
 });
@@ -43,6 +46,77 @@ function initEventHero() {
             select(index);
         });
     });
+}
+
+function initEventVenueMap() {
+    const openButton = document.querySelector('[data-event-map-open]');
+    const mapElement = document.querySelector('[data-event-map]');
+    const message = document.querySelector('[data-event-map-message]');
+    let yandexMap = null;
+    let loading = null;
+
+    if (!openButton || !mapElement || !message) {
+        return;
+    }
+
+    openButton.addEventListener('click', () => {
+        window.setTimeout(loadMap, 0);
+    });
+
+    async function loadMap() {
+        if (yandexMap) {
+            yandexMap.container.fitToViewport();
+            return;
+        }
+
+        if (loading) {
+            return loading;
+        }
+
+        message.textContent = 'Загружаем карту…';
+        message.hidden = false;
+        loading = createMap();
+
+        try {
+            await loading;
+            message.hidden = true;
+        } catch (error) {
+            message.textContent = error?.message || 'Не удалось загрузить карту.';
+        } finally {
+            loading = null;
+        }
+    }
+
+    async function createMap() {
+        const apiKey = mapElement.dataset.yandexMapApiKey;
+        const latitude = Number.parseFloat(mapElement.dataset.latitude || '');
+        const longitude = Number.parseFloat(mapElement.dataset.longitude || '');
+
+        if (!apiKey) {
+            throw new Error('Ключ Яндекс Карт не настроен.');
+        }
+
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            throw new Error('Координаты площадки пока не указаны.');
+        }
+
+        await loadYandexMaps(apiKey);
+        await new Promise((resolve) => window.ymaps.ready(resolve));
+
+        const center = [latitude, longitude];
+        yandexMap = new window.ymaps.Map(mapElement, {
+            center,
+            zoom: 15,
+            controls: ['zoomControl', 'fullscreenControl'],
+        });
+        yandexMap.geoObjects.add(new window.ymaps.Placemark(center, {
+            balloonContentHeader: mapElement.dataset.title || 'Площадка',
+            balloonContentBody: mapElement.dataset.address || '',
+            hintContent: mapElement.dataset.title || 'Площадка',
+        }, {
+            preset: 'islands#orangeSportIcon',
+        }));
+    }
 }
 
 function initEventDescription() {

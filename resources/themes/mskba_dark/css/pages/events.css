@@ -131,10 +131,6 @@
 }
 
 .event-hero-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
     margin: 18px 0 0;
     padding: 22px 26px;
     border: 1px solid var(--line);
@@ -146,29 +142,74 @@
     min-width: 0;
 }
 
+.event-hero-info__title {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+
 .event-hero-info h1 {
-    margin: 0 0 10px;
+    margin: 0;
     font-family: var(--font-ui);
     font-size: clamp(28px, 4vw, 42px);
     font-weight: 800;
     line-height: 1.12;
 }
 
+.event-state-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #e7ab32;
+    box-shadow: 0 0 15px rgba(231, 171, 50, 0.48);
+}
+
+.event-state-dot.is-open {
+    background: #2ed080;
+    box-shadow: 0 0 15px rgba(46, 208, 128, 0.56);
+}
+
+.event-state-dot.is-closed,
+.event-state-dot.is-complete {
+    background: #f06060;
+    box-shadow: 0 0 15px rgba(240, 96, 96, 0.5);
+}
+
 .event-hero__meta {
     display: grid;
-    gap: 8px;
+    gap: 14px;
     color: var(--muted);
     font-size: 17px;
 }
 
-.event-hero__meta span {
+.event-hero__meta span,
+.event-hero__location {
     display: flex;
     min-width: 0;
     align-items: center;
     gap: 10px;
 }
 
-.event-hero__meta .ti {
+.event-hero__location {
+    width: fit-content;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.event-hero__location:hover,
+.event-hero__location:focus-visible {
+    color: var(--text);
+}
+
+.event-hero__meta .ti,
+.event-hero__location .ti {
     color: var(--accent);
     font-size: 22px;
 }
@@ -177,69 +218,37 @@
     color: rgba(255, 255, 255, 0.45);
 }
 
-.event-recruitment {
-    display: inline-flex;
-    flex: 0 0 auto;
-    min-height: 54px;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 24px;
-    border: 1px solid currentColor;
-    border-radius: 999px;
-    background: rgba(8, 24, 17, 0.82);
-    color: #2ed080;
-    font-size: 17px;
-    font-weight: 700;
-    box-shadow: 0 0 28px rgba(28, 196, 111, 0.16);
-    backdrop-filter: blur(8px);
-}
-
-.event-recruitment > span {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: currentColor;
-    box-shadow: 0 0 16px currentColor;
-}
-
-.event-recruitment.is-closed {
-    background: rgba(36, 11, 11, 0.82);
-    color: #f06060;
-}
-
-.event-recruitment.is-pending {
-    background: rgba(42, 31, 8, 0.82);
-    color: #e9ae32;
-}
-
-.event-recruitment.is-complete {
-    background: rgba(15, 27, 40, 0.82);
-    color: #68b7ef;
-}
-
 .event-hero-dots {
+    position: absolute;
+    z-index: 3;
+    right: 0;
+    bottom: 16px;
+    left: 0;
     display: flex;
     justify-content: center;
     gap: 6px;
-    padding: 8px 0 0;
+    pointer-events: none;
 }
 
 .event-hero-dots button {
     display: grid;
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     place-items: center;
     padding: 0;
     border: 0;
     border-radius: 50%;
     background: transparent;
+    pointer-events: auto;
 }
 
 .event-hero-dots button::before {
-    width: 11px;
-    height: 11px;
+    width: 13px;
+    height: 13px;
+    border: 3px solid #080a08;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.28);
+    box-sizing: border-box;
     content: '';
     transition: 160ms ease;
 }
@@ -332,8 +341,9 @@
     display: flex;
     min-height: 72px;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 14px 24px;
     margin: 22px 0;
     border: 1px solid var(--line);
     border-radius: 22px;
@@ -342,14 +352,44 @@
     font-size: 18px;
 }
 
-.event-response-closed .ti {
+.event-response-closed__main {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.event-response-closed__main .ti {
     color: var(--muted);
     font-size: 28px;
 }
 
+.event-response-closed__result {
+    padding: 7px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.event-response-closed__result.is-complete {
+    border-color: rgba(46, 208, 128, 0.48);
+    color: #2ed080;
+}
+
+.event-response-closed__result.is-cancelled {
+    border-color: rgba(240, 96, 96, 0.5);
+    color: #f06060;
+}
+
+.event-response-closed__result.is-pending {
+    border-color: rgba(231, 171, 50, 0.5);
+    color: #e7ab32;
+}
+
 .event-stat-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     overflow: hidden;
     margin-bottom: 16px;
     border: 1px solid var(--line);
@@ -359,12 +399,12 @@
 
 .event-stat-grid > div {
     position: relative;
-    display: flex;
+    display: grid;
+    grid-template-rows: 38px 22px minmax(42px, auto);
     min-width: 0;
     min-height: 140px;
-    align-items: center;
+    align-content: center;
     justify-content: center;
-    flex-direction: column;
     gap: 7px;
     padding: 18px;
     text-align: center;
@@ -381,16 +421,20 @@
 }
 
 .event-stat-grid .ti {
+    align-self: center;
+    justify-self: center;
     color: var(--accent);
     font-size: 32px;
 }
 
 .event-stat-grid span {
+    align-self: start;
     color: var(--muted);
     font-size: 14px;
 }
 
 .event-stat-grid strong {
+    align-self: start;
     max-width: 100%;
     font-size: 17px;
     line-height: 1.15;
@@ -808,53 +852,45 @@ body.telegram-mini-app .event-show {
     }
 
     .event-hero-info {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
         margin-top: 12px;
         padding: 16px;
         border-radius: 18px;
     }
 
     .event-hero-info h1 {
-        margin-bottom: 8px;
         font-size: 25px;
     }
 
+    .event-hero-info__title {
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
     .event-hero__meta {
-        gap: 6px;
+        gap: 12px;
         font-size: 13px;
     }
 
-    .event-hero__meta span {
+    .event-hero__meta span,
+    .event-hero__location {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
     }
 
-    .event-hero__meta .ti {
+    .event-hero__meta .ti,
+    .event-hero__location .ti {
         font-size: 17px;
-    }
-
-    .event-recruitment {
-        min-height: 42px;
-        padding: 7px 15px;
-        font-size: 13px;
-    }
-
-    .event-recruitment > span {
-        width: 9px;
-        height: 9px;
     }
 
     .event-hero-dots {
         gap: 4px;
-        padding-top: 4px;
+        bottom: 16px;
     }
 
     .event-hero-dots button {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
     }
 
     .event-hero-dots button::before {
@@ -888,9 +924,16 @@ body.telegram-mini-app .event-show {
 
     .event-response-closed {
         min-height: 58px;
+        gap: 10px;
+        padding: 11px 14px;
         margin: 14px 0 16px;
         border-radius: 17px;
         font-size: 14px;
+    }
+
+    .event-response-closed__result {
+        padding: 6px 9px;
+        font-size: 11px;
     }
 
     .event-stat-grid {
@@ -898,6 +941,7 @@ body.telegram-mini-app .event-show {
     }
 
     .event-stat-grid > div {
+        grid-template-rows: 30px 16px minmax(34px, auto);
         min-height: 112px;
         gap: 5px;
         padding: 11px 5px;
