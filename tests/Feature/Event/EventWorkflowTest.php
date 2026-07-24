@@ -72,6 +72,31 @@ final class EventWorkflowTest extends TestCase
         $this->assertSame(VenueBookingStatusEnum::PENDING, $event->booking->status);
     }
 
+    public function test_participation_actions_are_replaced_after_registration_closes(): void
+    {
+        $organizer = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+
+        $this->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('event-response__button', false)
+            ->assertSee('Думаю')
+            ->assertDontSee('event-response-closed', false);
+
+        $event->forceFill([
+            'starts_at' => CarbonImmutable::now()->subHours(2),
+            'ends_at' => CarbonImmutable::now()->subHour(),
+        ])->save();
+
+        $this->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('event-response-closed', false)
+            ->assertSee('Завершено')
+            ->assertDontSee('event-response__button', false);
+    }
+
     public function test_selected_event_type_is_used_by_create_action_and_form(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-22 12:00:00', 'Europe/Moscow'));
@@ -329,7 +354,7 @@ final class EventWorkflowTest extends TestCase
             ->patch(route('events.participation', $event->routeIdentifier()), [
                 'status' => EventParticipantStatusEnum::TENTATIVE->value,
             ])
-            ->assertSessionHas('status', 'Ответ «Под вопросом» сохранён.');
+            ->assertSessionHas('status', 'Ответ «Думаю» сохранён.');
 
         $this->assertDatabaseHas('event_participants', [
             'event_id' => $event->id,

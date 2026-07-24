@@ -327,7 +327,7 @@ final class EventController extends Controller
 
         return back()->with('status', match ($status) {
             EventParticipantStatusEnum::CONFIRMED => 'Вы присоединились к мероприятию.',
-            EventParticipantStatusEnum::TENTATIVE => 'Ответ «Под вопросом» сохранён.',
+            EventParticipantStatusEnum::TENTATIVE => 'Ответ «Думаю» сохранён.',
             EventParticipantStatusEnum::LEFT => 'Ответ «Не пойду» сохранён.',
         });
     }

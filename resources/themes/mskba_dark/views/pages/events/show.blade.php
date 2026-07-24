@@ -27,10 +27,11 @@
     $isOrganizer = $currentParticipant?->role === EventParticipantRoleEnum::ORGANIZER;
     $isFuture = $event->starts_at->isFuture();
     $isCompleted = $event->status === EventStatusEnum::COMPLETED;
-    $canRespond = $event->status === EventStatusEnum::PUBLISHED
+    $isRegistrationOpen = $event->status === EventStatusEnum::PUBLISHED
         && $event->visibility === EventVisibilityEnum::PUBLIC
         && $isFuture
-        && ! $isOrganizer;
+        && ($remainingPlaces === null || $remainingPlaces > 0);
+    $canRespond = $isRegistrationOpen && ! $isOrganizer;
     $currentResponse = $currentParticipant?->status;
     $isFull = $remainingPlaces !== null && $remainingPlaces <= 0;
     $venuePhotos = $event->venue->media->values();
@@ -98,17 +99,6 @@
                 </div>
 
                 <span class="event-hero__counter" data-event-hero-counter>1 / {{ max(1, $venuePhotos->count()) }}</span>
-                <div class="event-hero__shade" aria-hidden="true"></div>
-                <div class="event-hero__content">
-                    <h1>{{ $event->title }}</h1>
-                    <div class="event-hero__meta">
-                        <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $startsAt->format('d.m.Y') }}<b>·</b>{{ $startsAt->format('H:i') }}–{{ $endsAt->format('H:i') }}</span>
-                        <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $locationName }}@if($address)<b>·</b>{{ $address }}@endif</span>
-                    </div>
-                </div>
-                <span class="event-recruitment {{ $recruitment['class'] }}">
-                    <span aria-hidden="true"></span>{{ $recruitment['label'] }}
-                </span>
             </section>
 
             @if($venuePhotos->count() > 1)
@@ -119,43 +109,62 @@
                 </div>
             @endif
 
-            <section class="event-response" aria-label="Ответ на приглашение">
-                @foreach([
-                    EventParticipantStatusEnum::CONFIRMED->value => ['Пойду', 'ti-circle-check', 'is-going'],
-                    EventParticipantStatusEnum::LEFT->value => ['Не пойду', 'ti-circle-x', 'is-declined'],
-                    EventParticipantStatusEnum::TENTATIVE->value => ['Под вопросом', 'ti-help-circle', 'is-tentative'],
-                ] as $statusValue => [$label, $icon, $class])
-                    @auth
-                        <form method="POST" action="{{ route('events.participation', $event->routeIdentifier()) }}">
-                            @csrf @method('PATCH')
-                            <input type="hidden" name="status" value="{{ $statusValue }}">
+            <section class="event-hero-info">
+                <div class="event-hero-info__copy">
+                    <h1>{{ $event->title }}</h1>
+                    <div class="event-hero__meta">
+                        <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $startsAt->format('d.m.Y') }}<b>·</b>{{ $startsAt->format('H:i') }}–{{ $endsAt->format('H:i') }}</span>
+                        <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $locationName }}</span>
+                    </div>
+                </div>
+                <span class="event-recruitment {{ $recruitment['class'] }}">
+                    <span aria-hidden="true"></span>{{ $recruitment['label'] }}
+                </span>
+            </section>
+
+            @if($isRegistrationOpen)
+                <section class="event-response" aria-label="Ответ на приглашение">
+                    @foreach([
+                        EventParticipantStatusEnum::CONFIRMED->value => ['Пойду', 'ti-circle-check', 'is-going'],
+                        EventParticipantStatusEnum::LEFT->value => ['Не пойду', 'ti-circle-x', 'is-declined'],
+                        EventParticipantStatusEnum::TENTATIVE->value => ['Думаю', 'ti-help-circle', 'is-tentative'],
+                    ] as $statusValue => [$label, $icon, $class])
+                        @auth
+                            <form method="POST" action="{{ route('events.participation', $event->routeIdentifier()) }}">
+                                @csrf @method('PATCH')
+                                <input type="hidden" name="status" value="{{ $statusValue }}">
+                                <button
+                                    type="submit"
+                                    @class([
+                                        'event-response__button',
+                                        $class,
+                                        'is-active' => $currentResponse?->value === $statusValue,
+                                    ])
+                                    @disabled(! $canRespond || ($statusValue === EventParticipantStatusEnum::CONFIRMED->value && $isFull && $currentResponse !== EventParticipantStatusEnum::CONFIRMED))
+                                >
+                                    <i class="ti {{ $icon }}" aria-hidden="true"></i><span>{{ $label }}</span>
+                                </button>
+                            </form>
+                        @else
                             <button
-                                type="submit"
-                                @class([
-                                    'event-response__button',
-                                    $class,
-                                    'is-active' => $currentResponse?->value === $statusValue,
-                                ])
-                                @disabled(! $canRespond || ($statusValue === EventParticipantStatusEnum::CONFIRMED->value && $isFull && $currentResponse !== EventParticipantStatusEnum::CONFIRMED))
+                                type="button"
+                                class="event-response__button {{ $class }} js-handler"
+                                data-handler="modal"
+                                data-modal-action="open"
+                                data-modal-target="auth-entry-classic"
                             >
                                 <i class="ti {{ $icon }}" aria-hidden="true"></i><span>{{ $label }}</span>
                             </button>
-                        </form>
-                    @else
-                        <button
-                            type="button"
-                            class="event-response__button {{ $class }} js-handler"
-                            data-handler="modal"
-                            data-modal-action="open"
-                            data-modal-target="auth-entry-classic"
-                            @disabled(! $canRespond)
-                        >
-                            <i class="ti {{ $icon }}" aria-hidden="true"></i><span>{{ $label }}</span>
-                        </button>
-                    @endauth
-                @endforeach
-            </section>
-            <p class="event-response__hint">Участники видят, кто уже идёт — так проще понять состав игры.</p>
+                        @endauth
+                    @endforeach
+                </section>
+                <p class="event-response__hint">Участники видят, кто уже идёт — так проще понять состав игры.</p>
+            @else
+                <div class="event-response-closed" role="status">
+                    <i class="ti ti-circle-check" aria-hidden="true"></i>
+                    <strong>Завершено</strong>
+                </div>
+            @endif
 
             <section class="event-stat-grid">
                 <div><i class="ti ti-users" aria-hidden="true"></i><span>Участники</span><strong>{{ $confirmedCount }}{{ $event->max_participants ? ' / '.$event->max_participants : '' }}</strong></div>
@@ -237,10 +246,14 @@
                             <div><strong>{{ $participantName }}</strong><span>{{ $participant->role === EventParticipantRoleEnum::ORGANIZER ? 'Организатор' : 'Идёт' }}</span></div>
                         </article>
                     @endforeach
-                    @if($remainingPlaces === null || $remainingPlaces > 0)
+                    @if($remainingPlaces === null)
+                        <article class="event-participant-chip event-participant-chip--remaining event-participant-chip--unlimited">
+                            <strong>Без лимита</strong>
+                        </article>
+                    @elseif($remainingPlaces > 0)
                         <article class="event-participant-chip event-participant-chip--remaining">
-                            <span class="event-participant-chip__plus">+</span>
-                            <strong>{{ $remainingPlaces === null ? 'Без лимита' : 'Ещё '.$remainingPlaces.' '.$remainingPlacesWord }}</strong>
+                            <span class="event-participant-chip__plus" aria-hidden="true">+</span>
+                            <strong>Ещё {{ $remainingPlaces }} {{ $remainingPlacesWord }}</strong>
                         </article>
                     @endif
                 </div>

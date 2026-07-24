@@ -83,6 +83,7 @@
     position: relative;
     min-height: clamp(380px, 52vw, 540px);
     overflow: hidden;
+    margin-top: 12px;
     border: 1px solid var(--line);
     border-radius: 28px;
     background: #111;
@@ -115,13 +116,6 @@
     object-fit: cover;
 }
 
-.event-hero__shade {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.04) 30%, rgba(3, 5, 4, 0.9) 100%);
-}
-
 .event-hero__counter {
     position: absolute;
     z-index: 2;
@@ -133,18 +127,26 @@
     background: rgba(8, 10, 8, 0.76);
     font-weight: 700;
     backdrop-filter: blur(8px);
+    pointer-events: none;
 }
 
-.event-hero__content {
-    position: absolute;
-    z-index: 2;
-    right: 28px;
-    bottom: 24px;
-    left: 28px;
-    padding-right: 230px;
+.event-hero-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin: 18px 0 0;
+    padding: 22px 26px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(24, 27, 24, 0.97), rgba(10, 12, 10, 0.98));
 }
 
-.event-hero__content h1 {
+.event-hero-info__copy {
+    min-width: 0;
+}
+
+.event-hero-info h1 {
     margin: 0 0 10px;
     font-family: var(--font-ui);
     font-size: clamp(28px, 4vw, 42px);
@@ -176,11 +178,8 @@
 }
 
 .event-recruitment {
-    position: absolute;
-    z-index: 2;
-    right: 28px;
-    bottom: 30px;
     display: inline-flex;
+    flex: 0 0 auto;
     min-height: 54px;
     align-items: center;
     gap: 12px;
@@ -221,22 +220,34 @@
 .event-hero-dots {
     display: flex;
     justify-content: center;
-    gap: 24px;
-    padding: 18px 0 22px;
+    gap: 6px;
+    padding: 8px 0 0;
 }
 
 .event-hero-dots button {
-    width: 11px;
-    height: 11px;
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
     padding: 0;
     border: 0;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.28);
+    background: transparent;
 }
 
-.event-hero-dots button.is-active {
+.event-hero-dots button::before {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.28);
+    content: '';
+    transition: 160ms ease;
+}
+
+.event-hero-dots button.is-active::before {
     background: var(--accent);
     box-shadow: 0 0 16px rgba(236, 127, 18, 0.72);
+    transform: scale(1.18);
 }
 
 .event-response {
@@ -244,10 +255,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
     margin-top: 22px;
-}
-
-.event-hero-dots + .event-response {
-    margin-top: 0;
 }
 
 .event-response form {
@@ -319,6 +326,25 @@
     margin: 12px 16px 22px;
     color: var(--placeholder);
     font-size: 14px;
+}
+
+.event-response-closed {
+    display: flex;
+    min-height: 72px;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 22px 0;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: rgba(18, 20, 18, 0.82);
+    color: var(--muted);
+    font-size: 18px;
+}
+
+.event-response-closed .ti {
+    color: var(--muted);
+    font-size: 28px;
 }
 
 .event-stat-grid {
@@ -781,14 +807,16 @@ body.telegram-mini-app .event-show {
         font-size: 13px;
     }
 
-    .event-hero__content {
-        right: 18px;
-        bottom: 74px;
-        left: 18px;
-        padding-right: 0;
+    .event-hero-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        margin-top: 12px;
+        padding: 16px;
+        border-radius: 18px;
     }
 
-    .event-hero__content h1 {
+    .event-hero-info h1 {
         margin-bottom: 8px;
         font-size: 25px;
     }
@@ -799,8 +827,8 @@ body.telegram-mini-app .event-show {
     }
 
     .event-hero__meta span {
-        display: grid;
-        grid-template-columns: auto max-content auto minmax(0, 1fr);
+        display: flex;
+        flex-wrap: wrap;
         gap: 6px;
     }
 
@@ -809,8 +837,6 @@ body.telegram-mini-app .event-show {
     }
 
     .event-recruitment {
-        right: 16px;
-        bottom: 16px;
         min-height: 42px;
         padding: 7px 15px;
         font-size: 13px;
@@ -822,22 +848,23 @@ body.telegram-mini-app .event-show {
     }
 
     .event-hero-dots {
-        gap: 20px;
-        padding: 13px 0 16px;
+        gap: 4px;
+        padding-top: 4px;
     }
 
     .event-hero-dots button {
-        width: 9px;
-        height: 9px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .event-hero-dots button::before {
+        width: 13px;
+        height: 13px;
     }
 
     .event-response {
         gap: 8px;
         margin-top: 14px;
-    }
-
-    .event-hero-dots + .event-response {
-        margin-top: 0;
     }
 
     .event-response__button {
@@ -857,6 +884,13 @@ body.telegram-mini-app .event-show {
         margin: 10px 8px 16px;
         font-size: 11px;
         line-height: 1.35;
+    }
+
+    .event-response-closed {
+        min-height: 58px;
+        margin: 14px 0 16px;
+        border-radius: 17px;
+        font-size: 14px;
     }
 
     .event-stat-grid {
@@ -997,9 +1031,18 @@ body.telegram-mini-app .event-show {
         min-width: 148px;
     }
 
+    .event-participant-chip--unlimited {
+        min-width: 128px;
+        justify-content: center;
+    }
+
     .event-participant-chip__plus {
+        display: flex;
         width: 45px;
         height: 45px;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
     }
 
     .event-share {

@@ -12,7 +12,7 @@ enum EventParticipantStatusEnum: string
     {
         return match ($this) {
             self::CONFIRMED => 'Участвует',
-            self::TENTATIVE => 'Под вопросом',
+            self::TENTATIVE => 'Думаю',
             self::LEFT => 'Отказался',
         };
     }
