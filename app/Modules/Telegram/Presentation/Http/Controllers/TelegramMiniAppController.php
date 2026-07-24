@@ -4,6 +4,7 @@ namespace App\Modules\Telegram\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
+use App\Modules\Telegram\Application\Services\TelegramMiniAppStartDestinationResolver;
 use App\Modules\Telegram\Application\UseCases\AuthenticateTelegramMiniAppUserHandler;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -37,8 +38,11 @@ final class TelegramMiniAppController extends Controller
         ]);
     }
 
-    public function authenticate(Request $request, AuthenticateTelegramMiniAppUserHandler $authenticate): JsonResponse
-    {
+    public function authenticate(
+        Request $request,
+        AuthenticateTelegramMiniAppUserHandler $authenticate,
+        TelegramMiniAppStartDestinationResolver $destinations,
+    ): JsonResponse {
         $validated = $request->validate([
             'init_data' => ['required', 'string'],
         ]);
@@ -54,10 +58,12 @@ final class TelegramMiniAppController extends Controller
 
         $user = $result['user'];
         $telegramAccount = $result['telegram_account'];
+        $startParam = $telegramAccount->raw_data['start_param'] ?? null;
 
         return response()->json([
             'status' => 'success',
             'created' => $result['created'],
+            'start_destination' => $destinations->resolve(is_string($startParam) ? $startParam : null),
             'user' => [
                 'id' => $user->id,
                 'username' => $user->username,
@@ -70,7 +76,7 @@ final class TelegramMiniAppController extends Controller
                 'first_name' => $telegramAccount->first_name,
                 'last_name' => $telegramAccount->last_name,
                 'photo_url' => $telegramAccount->photo_url,
-                'start_param' => $telegramAccount->raw_data['start_param'] ?? null,
+                'start_param' => $startParam,
                 'chat_type' => $telegramAccount->raw_data['chat_type'] ?? null,
                 'chat_instance' => $telegramAccount->raw_data['chat_instance'] ?? null,
             ],

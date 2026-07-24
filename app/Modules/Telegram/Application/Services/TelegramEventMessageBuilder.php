@@ -4,7 +4,9 @@ namespace App\Modules\Telegram\Application\Services;
 
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
+use Illuminate\Support\Str;
 
 final class TelegramEventMessageBuilder
 {
@@ -19,10 +21,14 @@ final class TelegramEventMessageBuilder
         $capacity = $event->max_participants === null
             ? (string) $participants
             : "{$participants}/{$event->max_participants}";
+        $description = trim((string) $event->description);
 
         $lines = [
-            '🏀 <b>'.$this->escape($event->title).'</b>',
-            $this->escape($event->type->label()),
+            '🏀 <b>'.$this->escape($this->title($event)).'</b>',
+            'Тип активности: '.$this->escape($event->type->label()),
+            'Описание: '.$this->escape(
+                $description === '' ? '—' : Str::limit($description, 1000),
+            ),
             '',
             '📍 '.$this->escape($event->venue->name),
             '🗓 '.$startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i').' (МСК)',
@@ -63,10 +69,34 @@ final class TelegramEventMessageBuilder
 
         $rows[] = [[
             'text' => '🏀 Открыть мероприятие',
-            'url' => route('events.show', $event->routeIdentifier()),
+            'url' => $this->eventUrl($event),
         ]];
 
         return ['inline_keyboard' => $rows];
+    }
+
+    private function title(Event $event): string
+    {
+        return match ($event->type) {
+            EventTypeEnum::GAME,
+            EventTypeEnum::GAME_TRAINING => 'Играем на '.$event->venue->name,
+            default => $event->title,
+        };
+    }
+
+    private function eventUrl(Event $event): string
+    {
+        $botUsername = ltrim(trim((string) config('telegram.bot_username')), '@');
+
+        if ($botUsername === '') {
+            return route('events.show', $event->routeIdentifier());
+        }
+
+        return sprintf(
+            'https://t.me/%s?startapp=%s',
+            rawurlencode($botUsername),
+            rawurlencode("event_{$event->id}"),
+        );
     }
 
     private function escape(string $value): string

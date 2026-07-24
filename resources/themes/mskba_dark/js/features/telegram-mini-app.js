@@ -102,6 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
             root.dataset.telegramAuthState = 'authenticated';
             updateMobileProfile(payload);
 
+            if (
+                typeof payload.start_destination === 'string'
+                && payload.start_destination.startsWith('/')
+                && !payload.start_destination.startsWith('//')
+            ) {
+                window.location.assign(payload.start_destination);
+
+                return;
+            }
+
             if (dashboard) {
                 dashboard.hidden = false;
             }

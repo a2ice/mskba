@@ -4,6 +4,7 @@ namespace Tests\Feature\Telegram;
 
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -80,6 +81,41 @@ class TelegramMiniAppAuthTest extends TestCase
         ]);
 
         Queue::assertPushed(SyncTelegramProfileAvatarJob::class);
+    }
+
+    public function test_telegram_mini_app_auth_resolves_event_start_destination(): void
+    {
+        config(['telegram.bot_token' => '123456:test-token']);
+        $event = Event::factory()->create();
+
+        $this
+            ->postJson(route('integrations.telegram.auth'), [
+                'init_data' => $this->signedInitData([
+                    'id' => 778,
+                    'username' => 'event_guest',
+                ], "event_{$event->id}"),
+            ])
+            ->assertOk()
+            ->assertJsonPath('telegram_user.start_param', "event_{$event->id}")
+            ->assertJsonPath(
+                'start_destination',
+                route('events.show', $event->routeIdentifier(), false),
+            );
+    }
+
+    public function test_telegram_mini_app_auth_ignores_unknown_start_destination(): void
+    {
+        config(['telegram.bot_token' => '123456:test-token']);
+
+        $this
+            ->postJson(route('integrations.telegram.auth'), [
+                'init_data' => $this->signedInitData([
+                    'id' => 779,
+                    'username' => 'unsafe_guest',
+                ], 'https_example_com'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('start_destination', null);
     }
 
     public function test_legacy_telegram_integration_page_remains_available(): void
@@ -529,13 +565,13 @@ class TelegramMiniAppAuthTest extends TestCase
     /**
      * @param  array<string, mixed>  $telegramUser
      */
-    private function signedInitData(array $telegramUser): string
+    private function signedInitData(array $telegramUser, string $startParam = 'mskba_chat'): string
     {
         $params = [
             'auth_date' => (string) now()->timestamp,
             'chat_type' => 'sender',
             'query_id' => 'AAHdF6IQAAAAAN0XohDhrOrc',
-            'start_param' => 'mskba_chat',
+            'start_param' => $startParam,
             'user' => json_encode($telegramUser, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 

@@ -4,6 +4,7 @@ namespace Tests\Feature\Telegram;
 
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
@@ -29,6 +30,7 @@ final class TelegramEventIntegrationTest extends TestCase
 
         config([
             'telegram.bot_token' => '123456:test-token',
+            'telegram.bot_username' => 'MSKBABot',
             'telegram.main_chat_id' => '-1002136558099',
             'telegram.webhook_secret' => 'webhook-test-secret',
             'telegram.api_ip' => null,
@@ -43,6 +45,8 @@ final class TelegramEventIntegrationTest extends TestCase
     {
         $event = Event::factory()->create([
             'title' => 'Игра у метро',
+            'type' => EventTypeEnum::GAME,
+            'description' => null,
             'max_participants' => 10,
         ]);
         $organizer = User::factory()->create();
@@ -74,11 +78,13 @@ final class TelegramEventIntegrationTest extends TestCase
 
             return $request->url() === 'https://api.telegram.org/bot123456:test-token/sendMessage'
                 && $request['chat_id'] === '-1002136558099'
-                && str_contains($request['text'], '<b>Игра у метро</b>')
+                && str_contains($request['text'], '<b>Играем на '.$event->venue->name.'</b>')
+                && str_contains($request['text'], 'Тип активности: Игра')
+                && str_contains($request['text'], 'Описание: —')
                 && str_contains($request['text'], 'Участники: 1/10')
                 && $buttons[0][0]['callback_data'] === "event:{$event->id}:join"
                 && $buttons[0][1]['callback_data'] === "event:{$event->id}:leave"
-                && $buttons[1][0]['url'] === route('events.show', $event->routeIdentifier());
+                && $buttons[1][0]['url'] === "https://t.me/MSKBABot?startapp=event_{$event->id}";
         });
     }
 
@@ -233,7 +239,7 @@ final class TelegramEventIntegrationTest extends TestCase
             'user_id' => $user->id,
             'status' => EventParticipantStatusEnum::LEFT->value,
         ]);
-        Http::assertSent(fn ($request): bool => str_contains($request['text'], 'Не пойду')
+        Http::assertSent(fn ($request): bool => str_contains($request['text'], 'Жаль. Тогда в следующий раз!')
             && str_contains($request['text'], 'Аккаунт MSKBA создан'));
     }
 
