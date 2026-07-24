@@ -76,14 +76,22 @@ final class EventWorkflowTest extends TestCase
     public function test_participation_actions_are_replaced_after_registration_closes(): void
     {
         $organizer = User::factory()->create();
+        $participant = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
         $event = $venue->events()->firstOrFail();
 
-        $this->get(route('events.show', $event->routeIdentifier()))
+        $this->actingAs($participant)
+            ->get(route('events.show', $event->routeIdentifier()))
             ->assertOk()
             ->assertSee('event-response__button', false)
             ->assertSee('Думаю')
+            ->assertDontSee('event-response-closed', false);
+
+        $this->actingAs($organizer)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('event-response__button', false)
             ->assertDontSee('event-response-closed', false);
 
         $event->forceFill([
@@ -122,6 +130,70 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('data-yandex-map-api-key="test-yandex-key"', false)
             ->assertSee('1/10')
             ->assertDontSee('<span>Свободно</span>', false);
+    }
+
+    public function test_tentative_and_declined_participants_are_rendered_in_separate_sections(): void
+    {
+        $organizer = User::factory()->create(['username' => 'event-organizer']);
+        $tentativeUser = User::factory()->create(['username' => 'thinking-player']);
+        $declinedUser = User::factory()->create(['username' => 'declined-player']);
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+
+        $this->actingAs($tentativeUser)->patch(
+            route('events.participation', $event->routeIdentifier()),
+            ['status' => EventParticipantStatusEnum::TENTATIVE->value],
+        );
+        $this->actingAs($declinedUser)->patch(
+            route('events.participation', $event->routeIdentifier()),
+            ['status' => EventParticipantStatusEnum::LEFT->value],
+        );
+
+        $this->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Думают (1)')
+            ->assertSee('thinking-player')
+            ->assertSee('Думает')
+            ->assertSee('Не идут (1)')
+            ->assertSee('declined-player')
+            ->assertSee('Не идёт')
+            ->assertSee('data-tooltip-variant="title"', false)
+            ->assertSee('data-tooltip-icon', false);
+    }
+
+    public function test_full_event_keeps_response_changes_available_without_offering_a_new_place(): void
+    {
+        $organizer = User::factory()->create();
+        $participant = User::factory()->create();
+        $observer = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end, 2));
+        $event = $venue->events()->firstOrFail();
+        $this->actingAs($participant)->post(route('events.join', $event->routeIdentifier()));
+
+        $this->actingAs($participant)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('value="confirmed"', false)
+            ->assertSee('value="tentative"', false)
+            ->assertSee('value="left"', false);
+
+        $this->actingAs($observer)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('value="confirmed"', false)
+            ->assertSee('value="tentative"', false)
+            ->assertSee('value="left"', false)
+            ->assertSee('--event-response-columns: 2', false);
+
+        $this->actingAs($participant)
+            ->patch(route('events.participation', $event->routeIdentifier()), [
+                'status' => EventParticipantStatusEnum::LEFT->value,
+            ])
+            ->assertSessionHas('status', 'Ответ «Не пойду» сохранён.');
     }
 
     public function test_selected_event_type_is_used_by_create_action_and_form(): void

@@ -13,6 +13,12 @@
         ->where('status', EventParticipantStatusEnum::CONFIRMED)
         ->sortBy(fn ($participant) => $participant->role === EventParticipantRoleEnum::ORGANIZER ? 0 : 1)
         ->values();
+    $tentativeParticipants = $event->participants
+        ->where('status', EventParticipantStatusEnum::TENTATIVE)
+        ->values();
+    $declinedParticipants = $event->participants
+        ->where('status', EventParticipantStatusEnum::LEFT)
+        ->values();
     $confirmedCount = $confirmedParticipants->count();
     $remainingPlaces = $event->max_participants === null
         ? null
@@ -27,13 +33,23 @@
     $isOrganizer = $currentParticipant?->role === EventParticipantRoleEnum::ORGANIZER;
     $isFuture = $event->starts_at->isFuture();
     $isCompleted = $event->status === EventStatusEnum::COMPLETED;
-    $isRegistrationOpen = $event->status === EventStatusEnum::PUBLISHED
+    $isParticipationWindowOpen = $event->status === EventStatusEnum::PUBLISHED
         && $event->visibility === EventVisibilityEnum::PUBLIC
-        && $isFuture
+        && $isFuture;
+    $isRegistrationOpen = $isParticipationWindowOpen
         && ($remainingPlaces === null || $remainingPlaces > 0);
-    $canRespond = $isRegistrationOpen && ! $isOrganizer;
+    $canRespond = $isParticipationWindowOpen && ! $isOrganizer;
     $currentResponse = $currentParticipant?->status;
     $isFull = $remainingPlaces !== null && $remainingPlaces <= 0;
+    $canConfirm = ! $isFull || $currentResponse === EventParticipantStatusEnum::CONFIRMED;
+    $participationOptions = collect([
+        EventParticipantStatusEnum::CONFIRMED->value => ['Пойду', 'ti-circle-check', 'is-going'],
+        EventParticipantStatusEnum::LEFT->value => ['Не пойду', 'ti-circle-x', 'is-declined'],
+        EventParticipantStatusEnum::TENTATIVE->value => ['Думаю', 'ti-help-circle', 'is-tentative'],
+    ])->when(! $canConfirm, fn ($options) => $options->forget(EventParticipantStatusEnum::CONFIRMED->value));
+    $showParticipationActions = auth()->guest()
+        ? $isRegistrationOpen
+        : $canRespond && $participationOptions->isNotEmpty();
     $venuePhotos = $event->venue->media->values();
     $address = preg_replace('/^Россия,\\s*/u', '', $event->venue->location?->address?->full_address ?: $event->venue->raw_address ?: '');
     $locationName = $event->venue->name;
@@ -124,7 +140,13 @@
             <section class="event-hero-info">
                 <div class="event-hero-info__copy">
                     <div class="event-hero-info__title">
-                        <span class="event-state-dot {{ $recruitment['class'] }}" title="{{ $recruitment['label'] }}" aria-label="{{ $recruitment['label'] }}"></span>
+                        <span
+                            class="event-state-dot {{ $recruitment['class'] }}"
+                            title="{{ $recruitment['label'] }}"
+                            data-tooltip-variant="title"
+                            data-tooltip-icon
+                            aria-label="{{ $recruitment['label'] }}"
+                        ></span>
                         <h1>{{ $event->title }}</h1>
                     </div>
                     <div class="event-hero__meta">
@@ -147,13 +169,13 @@
                 </div>
             </section>
 
-            @if($isRegistrationOpen)
-                <section class="event-response" aria-label="Ответ на приглашение">
-                    @foreach([
-                        EventParticipantStatusEnum::CONFIRMED->value => ['Пойду', 'ti-circle-check', 'is-going'],
-                        EventParticipantStatusEnum::LEFT->value => ['Не пойду', 'ti-circle-x', 'is-declined'],
-                        EventParticipantStatusEnum::TENTATIVE->value => ['Думаю', 'ti-help-circle', 'is-tentative'],
-                    ] as $statusValue => [$label, $icon, $class])
+            @if($showParticipationActions)
+                <section
+                    class="event-response"
+                    style="--event-response-columns: {{ $participationOptions->count() }}"
+                    aria-label="Ответ на приглашение"
+                >
+                    @foreach($participationOptions as $statusValue => [$label, $icon, $class])
                         @auth
                             <form method="POST" action="{{ route('events.participation', $event->routeIdentifier()) }}">
                                 @csrf @method('PATCH')
@@ -165,7 +187,6 @@
                                         $class,
                                         'is-active' => $currentResponse?->value === $statusValue,
                                     ])
-                                    @disabled(! $canRespond || ($statusValue === EventParticipantStatusEnum::CONFIRMED->value && $isFull && $currentResponse !== EventParticipantStatusEnum::CONFIRMED))
                                 >
                                     <i class="ti {{ $icon }}" aria-hidden="true"></i><span>{{ $label }}</span>
                                 </button>
@@ -184,7 +205,7 @@
                     @endforeach
                 </section>
                 <p class="event-response__hint">Участники видят, кто уже идёт — так проще понять состав игры.</p>
-            @else
+            @elseif(! $isRegistrationOpen)
                 <div class="event-response-closed" role="status">
                     <span class="event-response-closed__main">
                         <i class="ti {{ $closedState['icon'] }}" aria-hidden="true"></i>
@@ -250,41 +271,57 @@
                 @endif
             </section>
 
-            <section class="event-participants">
-                <div class="event-participants__heading">
-                    <h2>Участники ({{ $confirmedCount }}) <span>Идут</span></h2>
-                </div>
-                <div class="event-participants__row">
-                    @foreach($confirmedParticipants as $participant)
-                        @php
-                            $profile = $participant->user->profile;
-                            $participantName = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
-                                ?: $participant->user->username;
-                            $participantAvatar = $profile?->avatarUrl();
-                        @endphp
-                        <article class="event-participant-chip">
-                            <div class="event-person-avatar">
-                                @if($participantAvatar)
-                                    <img src="{{ $participantAvatar }}" alt="{{ $participantName }}">
-                                @else
-                                    <span>{{ mb_strtoupper(mb_substr($participantName, 0, 2)) }}</span>
+            @foreach([
+                ['class' => 'is-going', 'title' => 'Участники', 'state' => 'Идут', 'memberState' => 'Идёт', 'items' => $confirmedParticipants],
+                ['class' => 'is-tentative', 'title' => 'Думают', 'state' => null, 'memberState' => 'Думает', 'items' => $tentativeParticipants],
+                ['class' => 'is-declined', 'title' => 'Не идут', 'state' => null, 'memberState' => 'Не идёт', 'items' => $declinedParticipants],
+            ] as $group)
+                @if($group['items']->isNotEmpty())
+                    <section class="event-participants {{ $group['class'] }}">
+                        <div class="event-participants__heading">
+                            <h2>
+                                {{ $group['title'] }} ({{ $group['items']->count() }})
+                                @if($group['state']) <span>{{ $group['state'] }}</span> @endif
+                            </h2>
+                        </div>
+                        <div class="event-participants__row">
+                            @foreach($group['items'] as $participant)
+                                @php
+                                    $profile = $participant->user->profile;
+                                    $participantName = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+                                        ?: $participant->user->username;
+                                    $participantAvatar = $profile?->avatarUrl();
+                                @endphp
+                                <article class="event-participant-chip">
+                                    <div class="event-person-avatar">
+                                        @if($participantAvatar)
+                                            <img src="{{ $participantAvatar }}" alt="{{ $participantName }}">
+                                        @else
+                                            <span>{{ mb_strtoupper(mb_substr($participantName, 0, 2)) }}</span>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <strong>{{ $participantName }}</strong>
+                                        <span>{{ $participant->role === EventParticipantRoleEnum::ORGANIZER ? 'Организатор' : $group['memberState'] }}</span>
+                                    </div>
+                                </article>
+                            @endforeach
+                            @if($group['class'] === 'is-going')
+                                @if($remainingPlaces === null)
+                                    <article class="event-participant-chip event-participant-chip--remaining event-participant-chip--unlimited">
+                                        <strong>Без лимита</strong>
+                                    </article>
+                                @elseif($remainingPlaces > 0)
+                                    <article class="event-participant-chip event-participant-chip--remaining">
+                                        <span class="event-participant-chip__plus" aria-hidden="true">+</span>
+                                        <strong>Ещё {{ $remainingPlaces }} {{ $remainingPlacesWord }}</strong>
+                                    </article>
                                 @endif
-                            </div>
-                            <div><strong>{{ $participantName }}</strong><span>{{ $participant->role === EventParticipantRoleEnum::ORGANIZER ? 'Организатор' : 'Идёт' }}</span></div>
-                        </article>
-                    @endforeach
-                    @if($remainingPlaces === null)
-                        <article class="event-participant-chip event-participant-chip--remaining event-participant-chip--unlimited">
-                            <strong>Без лимита</strong>
-                        </article>
-                    @elseif($remainingPlaces > 0)
-                        <article class="event-participant-chip event-participant-chip--remaining">
-                            <span class="event-participant-chip__plus" aria-hidden="true">+</span>
-                            <strong>Ещё {{ $remainingPlaces }} {{ $remainingPlacesWord }}</strong>
-                        </article>
-                    @endif
-                </div>
-            </section>
+                            @endif
+                        </div>
+                    </section>
+                @endif
+            @endforeach
 
             <button type="button" class="event-share" data-event-share data-share-url="{{ route('events.show', $event->routeIdentifier()) }}" data-share-title="{{ $event->title }}">
                 <i class="ti ti-message-share" aria-hidden="true"></i>

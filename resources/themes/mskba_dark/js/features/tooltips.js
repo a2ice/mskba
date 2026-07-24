@@ -54,6 +54,10 @@ function enhanceTitleTooltip(element, title) {
 }
 
 function isIconOnlyTooltipSource(element) {
+    if (element.is('[data-tooltip-icon]')) {
+        return true;
+    }
+
     const containsIcon = element.is('i, svg, img, picture')
         || element.find('i, svg, img, picture').length > 0;
 

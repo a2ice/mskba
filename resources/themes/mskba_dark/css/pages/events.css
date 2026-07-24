@@ -143,9 +143,10 @@
 }
 
 .event-hero-info__title {
+    --event-title-size: clamp(28px, 4vw, 42px);
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
+    align-items: start;
     gap: 14px;
     margin-bottom: 10px;
 }
@@ -153,17 +154,21 @@
 .event-hero-info h1 {
     margin: 0;
     font-family: var(--font-ui);
-    font-size: clamp(28px, 4vw, 42px);
+    font-size: var(--event-title-size);
     font-weight: 800;
     line-height: 1.12;
 }
 
 .event-state-dot {
+    align-self: start;
     width: 12px;
     height: 12px;
+    margin-top: 0.56em;
     border-radius: 50%;
     background: #e7ab32;
+    font-size: var(--event-title-size);
     box-shadow: 0 0 15px rgba(231, 171, 50, 0.48);
+    transform: translateY(-50%);
 }
 
 .event-state-dot.is-open {
@@ -261,7 +266,7 @@
 
 .event-response {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--event-response-columns, 3), minmax(0, 1fr));
     gap: 16px;
     margin-top: 22px;
 }
@@ -659,6 +664,16 @@
     font-size: 15px;
 }
 
+.event-participants.is-tentative .event-participants__heading h2,
+.event-participants.is-tentative .event-participant-chip > div:last-child span {
+    color: #e7ab32;
+}
+
+.event-participants.is-declined .event-participants__heading h2,
+.event-participants.is-declined .event-participant-chip > div:last-child span {
+    color: #f06060;
+}
+
 .event-participants__row {
     display: flex;
     gap: 10px;
@@ -862,6 +877,7 @@ body.telegram-mini-app .event-show {
     }
 
     .event-hero-info__title {
+        --event-title-size: 25px;
         gap: 10px;
         margin-bottom: 8px;
     }
