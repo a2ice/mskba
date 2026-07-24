@@ -83,10 +83,10 @@ final class HandleEventParticipationCallback
 
             if ($action === 'join') {
                 $this->join->handle($event->routeIdentifier(), $user);
-                $message = 'Вы записаны на мероприятие.';
+                $message = 'Отлично, что и ты с нами!';
             } else {
                 $this->decline->handle($event->routeIdentifier(), $user);
-                $message = 'Ответ «Не пойду» сохранён.';
+                $message = 'Жаль. Тогда в следующий раз!';
             }
 
             if ($resolved['created']) {
