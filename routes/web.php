@@ -185,6 +185,8 @@ Route::prefix('events')->group(function () {
             ->name('events.join');
         Route::delete('/{event}/participants/me', [EventController::class, 'leave'])
             ->name('events.leave');
+        Route::patch('/{event}/participants/me', [EventController::class, 'participation'])
+            ->name('events.participation');
         Route::post('/{event}/cancel', [EventController::class, 'cancel'])->name('events.cancel');
         Route::put('/{event}/result', [EventController::class, 'complete'])->name('events.result.update');
         Route::post('/{event}/result/photos', [EventController::class, 'storeResultPhoto'])

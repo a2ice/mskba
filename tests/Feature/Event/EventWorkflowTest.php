@@ -3,6 +3,7 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
@@ -314,6 +315,82 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($lateUser)
             ->post(route('events.join', $event->routeIdentifier()))
             ->assertSessionHas('status');
+    }
+
+    public function test_user_can_switch_between_tentative_declined_and_confirmed_responses(): void
+    {
+        $organizer = User::factory()->create();
+        $participant = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end, 2));
+        $event = $venue->events()->firstOrFail();
+
+        $this->actingAs($participant)
+            ->patch(route('events.participation', $event->routeIdentifier()), [
+                'status' => EventParticipantStatusEnum::TENTATIVE->value,
+            ])
+            ->assertSessionHas('status', 'Ответ «Под вопросом» сохранён.');
+
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $participant->id,
+            'status' => EventParticipantStatusEnum::TENTATIVE->value,
+            'joined_at' => null,
+            'left_at' => null,
+        ]);
+
+        $this->actingAs($participant)
+            ->patch(route('events.participation', $event->routeIdentifier()), [
+                'status' => EventParticipantStatusEnum::CONFIRMED->value,
+            ])
+            ->assertSessionHas('status', 'Вы присоединились к мероприятию.');
+
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $participant->id,
+            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+        ]);
+
+        $this->actingAs($participant)
+            ->patch(route('events.participation', $event->routeIdentifier()), [
+                'status' => EventParticipantStatusEnum::LEFT->value,
+            ])
+            ->assertSessionHas('status', 'Ответ «Не пойду» сохранён.');
+
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $participant->id,
+            'status' => EventParticipantStatusEnum::LEFT->value,
+        ]);
+    }
+
+    public function test_tentative_response_does_not_consume_last_available_place(): void
+    {
+        $organizer = User::factory()->create();
+        $tentativeUser = User::factory()->create();
+        $confirmedUser = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end, 2));
+        $event = $venue->events()->firstOrFail();
+
+        $this->actingAs($tentativeUser)
+            ->patch(route('events.participation', $event->routeIdentifier()), [
+                'status' => EventParticipantStatusEnum::TENTATIVE->value,
+            ])
+            ->assertSessionHas('status');
+
+        $this->actingAs($confirmedUser)
+            ->patch(route('events.participation', $event->routeIdentifier()), [
+                'status' => EventParticipantStatusEnum::CONFIRMED->value,
+            ])
+            ->assertSessionHas('status');
+
+        $this->assertSame(
+            2,
+            $event->participants()
+                ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+                ->count(),
+        );
     }
 
     public function test_guest_cannot_create_event(): void

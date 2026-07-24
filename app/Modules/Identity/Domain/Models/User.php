@@ -13,6 +13,7 @@ use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
 use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
 use App\Modules\Identity\Infrastructure\Database\Factories\UserFactory;
+use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -57,6 +58,11 @@ class User extends Authenticatable
     public function profile(): HasOne
     {
         return $this->hasOne(Profile::class);
+    }
+
+    public function telegramAccount(): HasOne
+    {
+        return $this->hasOne(TelegramAccount::class);
     }
 
     public function playerProfile(): HasOne

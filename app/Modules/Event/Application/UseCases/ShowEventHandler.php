@@ -19,9 +19,19 @@ final class ShowEventHandler
             ->whereRouteIdentifier($identifier)
             ->with([
                 'venue.schedule',
+                'venue.location.address',
+                'venue.location.metroStations.line',
+                'venue.amenities',
+                'venue.media' => fn ($query) => $query
+                    ->where('collection', 'gallery')
+                    ->orderByDesc('is_featured')
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
                 'booking',
-                'organizerActor.user.profile',
-                'participants.user.profile',
+                'organizerActor.user.profile.activeAvatar',
+                'organizerActor.user.telegramAccount',
+                'organizerActor.user.contacts',
+                'participants.user.profile.activeAvatar',
                 'media' => fn ($query) => $query->where('collection', 'event_results')->orderBy('sort_order')->orderBy('id'),
             ])
             ->firstOrFail();

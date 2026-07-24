@@ -12,6 +12,7 @@ use App\Modules\Event\Application\UseCases\JoinEventHandler;
 use App\Modules\Event\Application\UseCases\LeaveEventHandler;
 use App\Modules\Event\Application\UseCases\ListEventsHandler;
 use App\Modules\Event\Application\UseCases\ListEventVenuesHandler;
+use App\Modules\Event\Application\UseCases\SetEventParticipationHandler;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Application\UseCases\UpdateEventHandler;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
@@ -299,5 +300,35 @@ final class EventController extends Controller
         }
 
         return back()->with('status', 'Вы вышли из состава участников.');
+    }
+
+    public function participation(
+        Request $request,
+        string $event,
+        SetEventParticipationHandler $events,
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'status' => [
+                'required',
+                Rule::in([
+                    EventParticipantStatusEnum::CONFIRMED->value,
+                    EventParticipantStatusEnum::TENTATIVE->value,
+                    EventParticipantStatusEnum::LEFT->value,
+                ]),
+            ],
+        ]);
+        $status = EventParticipantStatusEnum::from($validated['status']);
+
+        try {
+            $events->handle($event, $request->user(), $status);
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', match ($status) {
+            EventParticipantStatusEnum::CONFIRMED => 'Вы присоединились к мероприятию.',
+            EventParticipantStatusEnum::TENTATIVE => 'Ответ «Под вопросом» сохранён.',
+            EventParticipantStatusEnum::LEFT => 'Ответ «Не пойду» сохранён.',
+        });
     }
 }
