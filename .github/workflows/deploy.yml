@@ -71,8 +71,8 @@ jobs:
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
             $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:www-data" storage bootstrap/cache </dev/null
             $COMPOSE run -T --rm phpfpm chmod -R ug+rwX storage bootstrap/cache </dev/null
+            $COMPOSE run -T --rm phpfpm php artisan telegram:configure-updates --if-configured </dev/null
 
             $COMPOSE up -d --force-recreate phpfpm nginx queue telegram
 
             $COMPOSE restart phpfpm nginx queue telegram
-            $COMPOSE exec -T phpfpm php artisan telegram:configure-updates --if-configured

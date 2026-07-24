@@ -337,7 +337,7 @@ final class TelegramEventIntegrationTest extends TestCase
             ProcessTelegramCallbackJob::class,
             fn (ProcessTelegramCallbackJob $job): bool => $job->callback['id'] === 'callback-1',
         );
-        $this->assertSame(9002, Cache::get('telegram:updates:offset'));
+        $this->assertSame(9002, (int) Cache::get('telegram:updates:offset'));
     }
 
     /** @return array<string, mixed> */

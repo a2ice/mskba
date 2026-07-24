@@ -39,10 +39,7 @@ final class TelegramBotApiClient
 
             return $response;
         } catch (ConnectionException|RequestException $exception) {
-            throw new TelegramBotApiException(
-                $this->safeError($exception, $token),
-                previous: $exception,
-            );
+            throw new TelegramBotApiException($this->safeError($exception, $token));
         }
     }
 
