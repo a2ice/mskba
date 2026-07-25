@@ -9,9 +9,14 @@ final class UserOperationalPermissionChecker
 {
     public function allows(User $user, UserOperationalPermissionEnum $permission): bool
     {
-        // Первая версия намеренно разрешает все известные операционные права.
-        // Эта точка будет читать персональный snapshot permissions, когда появится
-        // административное управление ими.
-        return ! $user->isBlocked() && ! $user->trashed();
+        if ($user->isBlocked() || $user->trashed()) {
+            return false;
+        }
+
+        $snapshot = $user->operationalPermissions()
+            ->where('permission', $permission->value)
+            ->first();
+
+        return $snapshot?->is_allowed ?? true;
     }
 }

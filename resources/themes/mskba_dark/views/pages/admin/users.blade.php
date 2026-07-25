@@ -87,6 +87,7 @@
                         <th class="admin-table__presence-cell">Онлайн</th>
                         <th>Статус</th>
                         <th>Системная роль</th>
+                        <th>Операционные права</th>
                         <th>Имя</th>
                         <th>Дата регистрации</th>
                     </tr>
@@ -137,6 +138,26 @@
                                 @endif
                             </td>
                             <td>{{ $user->system_role->label() }}</td>
+                            <td>
+                                @php
+                                    $permissionSnapshot = $user->operationalPermissions
+                                        ->keyBy(fn ($entry) => $entry->permission->value);
+                                    $allowedPermissionCount = collect($operationalPermissions)
+                                        ->filter(fn ($permission) => $permissionSnapshot->get($permission->value)?->is_allowed ?? true)
+                                        ->count();
+                                    $canManageOperationalPermissions = ! $showDeleted
+                                        && auth()->user()?->can('manage-user-operational-permissions', $user);
+                                @endphp
+                                @if($canManageOperationalPermissions)
+                                    <button
+                                        type="button"
+                                        class="admin-badge admin-badge--button"
+                                        data-admin-action-modal-open="user-permissions-{{ $user->id }}"
+                                    >{{ $allowedPermissionCount }}/{{ count($operationalPermissions) }}</button>
+                                @else
+                                    <span class="admin-badge">{{ $allowedPermissionCount }}/{{ count($operationalPermissions) }}</span>
+                                @endif
+                            </td>
                             <td>{{ trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: '—' }}</td>
                             <td>{{ $user->created_at?->format('d.m.Y H:i') }}</td>
                         </tr>
@@ -171,6 +192,48 @@
                                 </form>
                             @endforeach
                         </div>
+                    </section>
+                </div>
+            @endforeach
+        @endif
+
+        @if(! $showDeleted)
+            @foreach($users->filter(fn ($user) => auth()->user()?->can('manage-user-operational-permissions', $user)) as $user)
+                @php
+                    $permissionSnapshot = $user->operationalPermissions
+                        ->keyBy(fn ($entry) => $entry->permission->value);
+                @endphp
+                <div class="admin-action-modal" data-admin-action-modal="user-permissions-{{ $user->id }}" hidden>
+                    <div class="admin-action-modal__backdrop" data-admin-action-modal-close></div>
+                    <section class="admin-action-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="user-permissions-title-{{ $user->id }}">
+                        <button type="button" class="admin-action-modal__close" data-admin-action-modal-close aria-label="Закрыть"></button>
+                        <p class="admin-kicker">Операционные права</p>
+                        <h3 id="user-permissions-title-{{ $user->id }}" class="admin-action-modal__title">{{ $user->username ?: 'Пользователь #'.$user->id }}</h3>
+                        <p class="admin-action-modal__description">Новые права по умолчанию включены. Здесь можно изменить персональный набор пользователя.</p>
+
+                        <form method="POST" action="{{ route('admin.users.operational-permissions.update', $user) }}">
+                            @csrf
+                            <div class="admin-permission-list">
+                                @foreach($operationalPermissions as $permission)
+                                    <label class="admin-permission-option">
+                                        <input
+                                            type="checkbox"
+                                            name="permissions[]"
+                                            value="{{ $permission->value }}"
+                                            @checked($permissionSnapshot->get($permission->value)?->is_allowed ?? true)
+                                        >
+                                        <span>
+                                            <strong>{{ $permission->label() }}</strong>
+                                            <small>{{ $permission->value }}</small>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="admin-action-modal__actions">
+                                <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
+                                <button type="button" class="btn btn--secondary btn--sm" data-admin-action-modal-close>Отмена</button>
+                            </div>
+                        </form>
                     </section>
                 </div>
             @endforeach

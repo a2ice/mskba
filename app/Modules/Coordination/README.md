@@ -74,7 +74,6 @@ session делают переход идемпотентным: повторны
 ## Права
 
 Gate `coordination-create` обращается к
-`UserOperationalPermissionChecker`. Сейчас все активные пользователи имеют
-операционное право `coordination.create` по умолчанию. Сервис является точкой
-расширения для будущего персонального набора permissions, управляемого
-администратором, без изменения HTTP-контрактов модуля.
+`UserOperationalPermissionChecker`. Активные пользователи имеют операционное
+право `coordination.create` по умолчанию, но `admin+` может отключить его в
+персональном snapshot на странице `/admin/users`.

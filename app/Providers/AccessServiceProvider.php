@@ -26,6 +26,13 @@ class AccessServiceProvider extends ServiceProvider
     {
         Gate::define('access-admin-panel', fn (User $user): bool => $user->isAdmin());
         Gate::define(
+            'manage-user-operational-permissions',
+            fn (User $actor, User $target): bool => $actor->isConfirmed()
+                && $actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)
+                && ! $actor->is($target)
+                && $actor->system_role->numericValue() > $target->system_role->numericValue(),
+        );
+        Gate::define(
             'coordination-create',
             fn (User $user): bool => app(UserOperationalPermissionChecker::class)
                 ->allows($user, UserOperationalPermissionEnum::CREATE_COORDINATION),

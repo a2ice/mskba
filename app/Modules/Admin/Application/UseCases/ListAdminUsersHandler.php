@@ -14,7 +14,9 @@ final class ListAdminUsersHandler
      */
     public function handle(array $filters): LengthAwarePaginator
     {
-        $query = User::query()->with('profile')->latest('id');
+        $query = User::query()
+            ->with(['profile', 'operationalPermissions'])
+            ->latest('id');
 
         if (($filters['deleted'] ?? '') === '1') {
             $query->onlyTrashed();

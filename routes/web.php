@@ -105,6 +105,9 @@ Route::prefix('admin')
         Route::post('/users/{user}/status', [AdminUsersController::class, 'updateStatus'])
             ->middleware('can:manage-users-as-superadmin')
             ->name('admin.users.status.update');
+        Route::post('/users/{user}/operational-permissions', [AdminUsersController::class, 'updateOperationalPermissions'])
+            ->middleware('can:manage-user-operational-permissions,user')
+            ->name('admin.users.operational-permissions.update');
         Route::redirect('/venues/dublicates', '/admin/venues/duplicates')->name('admin.venues.dublicates');
         Route::get('/venues/duplicates', [AdminVenueDuplicatesController::class, 'index'])->name('admin.venues.duplicates')->defaults('breadcrumb', 'Дубли площадок');
         Route::post('/venues/duplicates/merge', [AdminVenueDuplicatesController::class, 'mergeBatch'])->name('admin.venues.duplicates.merge-batch');
