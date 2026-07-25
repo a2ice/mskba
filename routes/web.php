@@ -9,6 +9,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
+use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
@@ -197,6 +198,34 @@ Route::prefix('events')->group(function () {
 
     Route::get('/{event}', [EventController::class, 'show'])
         ->name('events.show');
+});
+
+Route::prefix('coordination')->group(function () {
+    Route::get('/', [CoordinationController::class, 'index'])
+        ->name('coordination.index')
+        ->defaults('breadcrumb', 'Опросы');
+
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [CoordinationController::class, 'create'])
+            ->middleware('can:coordination-create')
+            ->name('coordination.create')
+            ->defaults('breadcrumb', 'Новый опрос');
+        Route::post('/', [CoordinationController::class, 'store'])
+            ->middleware('can:coordination-create')
+            ->name('coordination.store');
+        Route::post('/{coordination}/vote', [CoordinationController::class, 'vote'])
+            ->name('coordination.vote');
+        Route::post('/{coordination}/close', [CoordinationController::class, 'close'])
+            ->name('coordination.close');
+        Route::post('/{coordination}/decision', [CoordinationController::class, 'decide'])
+            ->name('coordination.decision');
+        Route::post('/{coordination}/cancel', [CoordinationController::class, 'cancel'])
+            ->name('coordination.cancel');
+    });
+
+    Route::get('/{coordination}', [CoordinationController::class, 'show'])
+        ->name('coordination.show')
+        ->defaults('breadcrumb', 'Опрос');
 });
 
 Route::get('/integrations/address-suggest', AddressSuggestController::class)
