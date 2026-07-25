@@ -164,6 +164,78 @@
     overflow-y: auto;
 }
 
+.coordination-telegram-chats {
+    display: grid;
+    gap: 10px;
+}
+
+.field .coordination-checkbox {
+    position: relative;
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    margin: 0;
+    color: var(--text);
+    cursor: pointer;
+    text-transform: none;
+}
+
+.field .coordination-checkbox__input {
+    position: absolute;
+    width: 1px;
+    min-height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+}
+
+.field .coordination-checkbox__control {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--field-border);
+    border-radius: 6px;
+    background: var(--field);
+    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.field .coordination-checkbox__control::after {
+    position: absolute;
+    top: 3px;
+    left: 7px;
+    width: 6px;
+    height: 11px;
+    border-right: 2px solid var(--text);
+    border-bottom: 2px solid var(--text);
+    content: '';
+    opacity: 0;
+    transform: rotate(45deg);
+}
+
+.coordination-checkbox__input:checked + .coordination-checkbox__control {
+    border-color: var(--accent);
+    background: var(--accent);
+}
+
+.coordination-checkbox__input:checked + .coordination-checkbox__control::after {
+    opacity: 1;
+}
+
+.coordination-checkbox__input:focus-visible + .coordination-checkbox__control {
+    box-shadow: 0 0 0 3px rgba(246, 95, 42, 0.18);
+}
+
+.field .coordination-checkbox__label {
+    padding-top: 1px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: none;
+}
+
 .coordination-vote,
 .coordination-results {
     display: grid;

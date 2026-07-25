@@ -180,15 +180,16 @@
                 <legend class="form-label">Площадки-кандидаты</legend>
                 <div class="coordination-chain-venues">
                     @foreach($optionVenues as $venue)
-                        <label class="form-check">
+                        <label class="coordination-checkbox">
                             <input
-                                class="form-check-input"
+                                class="coordination-checkbox__input"
                                 type="checkbox"
                                 name="venue_options[]"
                                 value="{{ $venue->id }}"
                                 @checked(in_array((string) $venue->id, array_map('strval', old('venue_options', [])), true))
                             >
-                            <span class="form-check-label">{{ $venue->name }} — {{ $venue->raw_address }}</span>
+                            <span class="coordination-checkbox__control" aria-hidden="true"></span>
+                            <span class="coordination-checkbox__label">{{ $venue->name }} — {{ $venue->raw_address }}</span>
                         </label>
                     @endforeach
                 </div>
@@ -236,15 +237,16 @@
                 </label>
                 <div class="coordination-telegram-chats mt-3">
                     @foreach($telegramChats as $chat)
-                        <label class="form-check">
+                        <label class="coordination-checkbox">
                             <input
-                                class="form-check-input"
+                                class="coordination-checkbox__input"
                                 type="checkbox"
                                 name="telegram_chat_ids[]"
                                 value="{{ $chat->id }}"
                                 @checked(in_array((string) $chat->id, $selectedTelegramChatIds, true))
                             >
-                            <span class="form-check-label">{{ $chat->title ?: 'Чат '.$chat->telegram_chat_id }}</span>
+                            <span class="coordination-checkbox__control" aria-hidden="true"></span>
+                            <span class="coordination-checkbox__label">{{ $chat->title ?: 'Чат '.$chat->telegram_chat_id }}</span>
                         </label>
                     @endforeach
                 </div>
