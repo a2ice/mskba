@@ -9,12 +9,15 @@ use App\Modules\Coordination\Application\UseCases\ClosePollHandler;
 use App\Modules\Coordination\Application\UseCases\CreateCoordinationHandler;
 use App\Modules\Coordination\Application\UseCases\CreateEventFromCoordinationHandler;
 use App\Modules\Coordination\Application\UseCases\DecideCoordinationHandler;
+use App\Modules\Coordination\Application\UseCases\SuggestPollOptionHandler;
 use App\Modules\Coordination\Application\UseCases\VoteInPollHandler;
 use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
 use App\Modules\Coordination\Domain\Enums\PollSelectionModeEnum;
+use App\Modules\Coordination\Domain\Enums\PollSubjectTypeEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Coordination\Presentation\Http\Requests\CreateCoordinationRequest;
 use App\Modules\Coordination\Presentation\Http\Requests\DecideCoordinationRequest;
+use App\Modules\Coordination\Presentation\Http\Requests\SuggestPollOptionRequest;
 use App\Modules\Coordination\Presentation\Http\Requests\VoteInPollRequest;
 use App\Modules\Event\Application\UseCases\ListEventVenuesHandler;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
@@ -44,13 +47,19 @@ final class CoordinationController extends Controller
         ]);
     }
 
-    public function create(TelegramChatRegistry $telegramChats): Response
-    {
+    public function create(
+        TelegramChatRegistry $telegramChats,
+        ListEventVenuesHandler $eventVenues,
+    ): Response {
         return ThemeResolver::page('coordination.create', [
             'selectionModes' => PollSelectionModeEnum::cases(),
+            'subjectTypes' => collect(PollSubjectTypeEnum::cases())
+                ->reject(fn (PollSubjectTypeEnum $type): bool => $type === PollSubjectTypeEnum::PARTICIPATION)
+                ->values(),
             'resultsVisibilities' => PollResultsVisibilityEnum::cases(),
             'defaultClosesAt' => now()->addHour()->format('Y-m-d\TH:i'),
             'telegramChats' => $telegramChats->activeCoordinationChats(),
+            'optionVenues' => $eventVenues->handle(),
         ]);
     }
 
@@ -119,6 +128,7 @@ final class CoordinationController extends Controller
         $poll->load([
             'options' => fn ($query) => $query
                 ->withCount('selections')
+                ->with('proposer.profile')
                 ->when(
                     $canSeeResults && ! $poll->is_anonymous,
                     fn ($optionQuery) => $optionQuery->with([
@@ -145,6 +155,9 @@ final class CoordinationController extends Controller
             'canSeeResults' => $canSeeResults,
             'canCreateEvent' => $canCreateEvent,
             'venues' => $canCreateEvent ? $eventVenues->handle() : collect(),
+            'suggestionVenues' => $poll->allows_suggestions && $poll->subject_type === PollSubjectTypeEnum::VENUE
+                ? $eventVenues->handle()
+                : collect(),
             'types' => EventTypeEnum::cases(),
             'visibilities' => EventVisibilityEnum::cases(),
             'defaultType' => EventTypeEnum::GAME_TRAINING,
@@ -174,6 +187,22 @@ final class CoordinationController extends Controller
         }
 
         return back()->with('status', 'Ваш голос сохранён.');
+    }
+
+    public function suggest(
+        SuggestPollOptionRequest $request,
+        CoordinationSession $coordination,
+        SuggestPollOptionHandler $handler,
+    ): RedirectResponse {
+        $poll = $coordination->polls()->oldest('id')->firstOrFail();
+
+        try {
+            $handler->handle($poll->id, $request->user(), $request->validated('option'));
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Вариант добавлен.');
     }
 
     public function close(

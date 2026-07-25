@@ -15,6 +15,10 @@ final class CreateCoordinationRequest extends FormRequest
         if (! $this->has('publish_to_telegram')) {
             $this->merge(['publish_to_telegram' => false]);
         }
+
+        if (! $this->has('allows_suggestions')) {
+            $this->merge(['allows_suggestions' => false]);
+        }
     }
 
     public function authorize(): bool
@@ -29,14 +33,22 @@ final class CreateCoordinationRequest extends FormRequest
             'title' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],
             'question' => ['required', 'string', 'max:500'],
-            // The first web slice creates free-text polls only. Other subject
-            // types already exist in the domain, but require dedicated typed
-            // editors instead of silently accepting a string payload.
-            'subject_type' => ['required', Rule::in([PollSubjectTypeEnum::TEXT->value])],
+            'subject_type' => [
+                'required',
+                Rule::in([
+                    PollSubjectTypeEnum::TEXT->value,
+                    PollSubjectTypeEnum::DATE->value,
+                    PollSubjectTypeEnum::TIME->value,
+                    PollSubjectTypeEnum::DATETIME->value,
+                    PollSubjectTypeEnum::TIME_INTERVAL->value,
+                    PollSubjectTypeEnum::VENUE->value,
+                ]),
+            ],
             'selection_mode' => ['required', Rule::enum(PollSelectionModeEnum::class)],
             'results_visibility' => ['required', Rule::enum(PollResultsVisibilityEnum::class)],
             'allows_vote_changes' => ['required', 'boolean'],
             'is_anonymous' => ['required', 'boolean'],
+            'allows_suggestions' => ['required', 'boolean'],
             'publish_to_telegram' => ['required', 'boolean'],
             'telegram_chat_ids' => ['nullable', 'required_if:publish_to_telegram,1', 'array', 'min:1'],
             'telegram_chat_ids.*' => [
@@ -50,8 +62,35 @@ final class CreateCoordinationRequest extends FormRequest
             ],
             'closes_at' => ['required', 'date', 'after:now'],
             'options' => ['required', 'array', 'min:2', 'max:20'],
-            'options.*' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
+            ...$this->optionRules(),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function optionRules(): array
+    {
+        return match ($this->input('subject_type')) {
+            PollSubjectTypeEnum::DATE->value => [
+                'options.*' => ['required', 'date_format:Y-m-d', 'distinct'],
+            ],
+            PollSubjectTypeEnum::TIME->value => [
+                'options.*' => ['required', 'date_format:H:i', 'distinct'],
+            ],
+            PollSubjectTypeEnum::DATETIME->value => [
+                'options.*' => ['required', 'date_format:Y-m-d\TH:i', 'distinct'],
+            ],
+            PollSubjectTypeEnum::TIME_INTERVAL->value => [
+                'options.*' => ['required', 'array:starts_at,ends_at'],
+                'options.*.starts_at' => ['required', 'date_format:H:i'],
+                'options.*.ends_at' => ['required', 'date_format:H:i'],
+            ],
+            PollSubjectTypeEnum::VENUE->value => [
+                'options.*' => ['required', 'integer', 'distinct', 'exists:venues,id'],
+            ],
+            default => [
+                'options.*' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
+            ],
+        };
     }
 
     /** @return array<string, string> */

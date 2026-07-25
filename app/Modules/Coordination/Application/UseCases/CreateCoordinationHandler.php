@@ -2,6 +2,7 @@
 
 namespace App\Modules\Coordination\Application\UseCases;
 
+use App\Modules\Coordination\Application\Services\PollOptionValueFactory;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
 use App\Modules\Coordination\Domain\Enums\PollSelectionModeEnum;
@@ -15,6 +16,8 @@ use InvalidArgumentException;
 
 final class CreateCoordinationHandler
 {
+    public function __construct(private readonly PollOptionValueFactory $optionValues) {}
+
     /** @param array<string, mixed> $data */
     public function handle(Actor $actor, array $data): CoordinationSession
     {
@@ -24,8 +27,8 @@ final class CreateCoordinationHandler
 
         $subjectType = PollSubjectTypeEnum::tryFrom((string) ($data['subject_type'] ?? ''));
 
-        if ($subjectType !== PollSubjectTypeEnum::TEXT) {
-            throw new InvalidArgumentException('Для этого типа вариантов пока нет редактора.');
+        if ($subjectType === null) {
+            throw new InvalidArgumentException('Неизвестный тип вариантов.');
         }
 
         $selectionMode = PollSelectionModeEnum::tryFrom((string) ($data['selection_mode'] ?? ''));
@@ -40,7 +43,7 @@ final class CreateCoordinationHandler
             throw new InvalidArgumentException('Время завершения должно быть в будущем.');
         }
 
-        $options = $this->normalizeTextOptions($data['options'] ?? []);
+        $options = $this->optionValues->many($subjectType, $data['options'] ?? []);
 
         return DB::transaction(function () use (
             $actor,
@@ -63,7 +66,7 @@ final class CreateCoordinationHandler
                 'selection_mode' => $selectionMode,
                 'results_visibility' => $data['results_visibility'] ?? PollResultsVisibilityEnum::AFTER_VOTE,
                 'status' => PollStatusEnum::OPEN,
-                'allows_suggestions' => false,
+                'allows_suggestions' => (bool) ($data['allows_suggestions'] ?? false),
                 'allows_vote_changes' => (bool) $data['allows_vote_changes'],
                 'is_anonymous' => (bool) $data['is_anonymous'],
                 'closes_at' => $closesAt,
@@ -71,8 +74,8 @@ final class CreateCoordinationHandler
 
             foreach ($options as $position => $option) {
                 $poll->options()->create([
-                    'label' => $option,
-                    'value' => ['value' => $option],
+                    'label' => $option->label,
+                    'value' => $option->value,
                     'sort_order' => $position,
                     'is_active' => true,
                 ]);
@@ -80,30 +83,5 @@ final class CreateCoordinationHandler
 
             return $session->load(['polls.options', 'organizerActor.user']);
         });
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function normalizeTextOptions(mixed $rawOptions): array
-    {
-        if (! is_array($rawOptions)) {
-            throw new InvalidArgumentException('Добавьте варианты ответа.');
-        }
-
-        $options = array_map(
-            static fn (mixed $option): string => trim((string) $option),
-            array_values($rawOptions),
-        );
-        $unique = array_unique(array_map(
-            static fn (string $option): string => mb_strtolower($option),
-            $options,
-        ));
-
-        if (count($options) < 2 || in_array('', $options, true) || count($unique) !== count($options)) {
-            throw new InvalidArgumentException('Нужно указать хотя бы два неповторяющихся варианта.');
-        }
-
-        return $options;
     }
 }

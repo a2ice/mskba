@@ -5,6 +5,7 @@ namespace Tests\Feature\Coordination;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
+use App\Modules\Coordination\Domain\Models\PollOption;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -44,6 +45,7 @@ final class CoordinationWorkflowTest extends TestCase
         $this->assertSame(PollStatusEnum::OPEN, $session->polls()->firstOrFail()->status);
         $this->assertFalse($session->polls()->firstOrFail()->allows_vote_changes);
         $this->assertFalse($session->polls()->firstOrFail()->is_anonymous);
+        $this->assertFalse($session->polls()->firstOrFail()->allows_suggestions);
         $this->assertDatabaseCount('coordination_poll_options', 3);
         $this->get(route('coordination.index'))->assertOk()->assertSee('Игра вечером');
         $this->get(route('coordination.show', $session))->assertOk()->assertSee('Во сколько играем?');
@@ -53,9 +55,12 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Разрешить менять голос')
             ->assertSee('Анонимный опрос')
+            ->assertSee('Разрешить свои варианты')
             ->assertDontSee('name="allows_vote_changes" value="1" checked', false)
             ->assertDontSee('name="is_anonymous" value="1" checked', false)
-            ->assertDontSee('Тип вариантов')
+            ->assertSee('Тип вариантов')
+            ->assertSee('Интервал времени')
+            ->assertSee('Площадка')
             ->assertSee('value="2026-07-25T13:34"', false);
         $this->travelBack();
 
@@ -65,18 +70,139 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_first_web_slice_rejects_subject_types_without_typed_editor(): void
+    public function test_typed_poll_options_are_normalized_for_web_and_telegram_labels(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'name' => 'Школа №1794',
+        ]);
+        $secondVenue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'name' => 'Около Дегунино',
+        ]);
+        $cases = [
+            'date' => [
+                'options' => ['2026-08-01', '2026-08-02'],
+                'labels' => ['01.08.2026', '02.08.2026'],
+                'values' => [['date' => '2026-08-01'], ['date' => '2026-08-02']],
+            ],
+            'time' => [
+                'options' => ['19:00', '20:30'],
+                'labels' => ['19:00', '20:30'],
+                'values' => [['time' => '19:00'], ['time' => '20:30']],
+            ],
+            'datetime' => [
+                'options' => ['2026-08-01T19:00', '2026-08-02T20:30'],
+                'labels' => ['01.08.2026 19:00', '02.08.2026 20:30'],
+                'values' => [
+                    ['datetime' => '2026-08-01T19:00'],
+                    ['datetime' => '2026-08-02T20:30'],
+                ],
+            ],
+            'time_interval' => [
+                'options' => [
+                    ['starts_at' => '19:00', 'ends_at' => '20:00'],
+                    ['starts_at' => '20:00', 'ends_at' => '21:30'],
+                ],
+                'labels' => ['19:00–20:00', '20:00–21:30'],
+                'values' => [
+                    ['starts_at' => '19:00', 'ends_at' => '20:00'],
+                    ['starts_at' => '20:00', 'ends_at' => '21:30'],
+                ],
+            ],
+            'venue' => [
+                'options' => [$venue->id, $secondVenue->id],
+                'labels' => ['Школа №1794', 'Около Дегунино'],
+                'values' => [['venue_id' => $venue->id], ['venue_id' => $secondVenue->id]],
+            ],
+        ];
+
+        foreach ($cases as $subjectType => $case) {
+            $this->actingAs($user)->post(route('coordination.store'), [
+                ...$this->payload(),
+                'title' => 'Опрос '.$subjectType,
+                'subject_type' => $subjectType,
+                'options' => $case['options'],
+            ])->assertRedirect();
+
+            $poll = CoordinationSession::query()->latest('id')->firstOrFail()->polls()->firstOrFail();
+            $this->assertSame($subjectType, $poll->subject_type->value);
+            $this->assertSame($case['labels'], $poll->options()->pluck('label')->all());
+            $this->assertSame($case['values'], $poll->options()->get()->pluck('value')->all());
+        }
+    }
+
+    public function test_typed_option_invariants_reject_invalid_interval_and_unavailable_venue(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
             ->post(route('coordination.store'), [
                 ...$this->payload(),
-                'subject_type' => 'venue',
+                'subject_type' => 'time_interval',
+                'options' => [
+                    ['starts_at' => '20:00', 'ends_at' => '19:00'],
+                    ['starts_at' => '21:00', 'ends_at' => '22:00'],
+                ],
             ])
-            ->assertSessionHasErrors('subject_type');
+            ->assertSessionHas('error', 'Окончание интервала должно быть позже начала.');
+
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::UNCONFIRMED->value]);
+        $this->actingAs($user)
+            ->post(route('coordination.store'), [
+                ...$this->payload(),
+                'subject_type' => 'venue',
+                'options' => [$venue->id, Venue::factory()->create()->id],
+            ])
+            ->assertSessionHas('error', 'Выбранная площадка недоступна.');
 
         $this->assertDatabaseCount('coordination_sessions', 0);
+    }
+
+    public function test_participant_can_suggest_typed_unique_option_when_creator_allows_it(): void
+    {
+        $organizer = User::factory()->create();
+        $participant = User::factory()->create();
+        $this->actingAs($organizer)->post(route('coordination.store'), [
+            ...$this->payload(),
+            'subject_type' => 'date',
+            'options' => ['2026-08-01', '2026-08-02'],
+            'allows_suggestions' => '1',
+        ])->assertRedirect();
+        $session = CoordinationSession::query()->latest('id')->firstOrFail();
+
+        $this->actingAs($participant)
+            ->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertSee('Предложить вариант');
+        $this->actingAs($participant)
+            ->post(route('coordination.suggestion', $session), ['option' => '2026-08-03'])
+            ->assertSessionHas('status', 'Вариант добавлен.');
+
+        $suggested = PollOption::query()->where('poll_id', $session->polls()->firstOrFail()->id)
+            ->where('proposed_by_user_id', $participant->id)
+            ->firstOrFail();
+        $this->assertSame('03.08.2026', $suggested->label);
+        $this->assertSame(['date' => '2026-08-03'], $suggested->value);
+
+        $this->actingAs($participant)
+            ->post(route('coordination.suggestion', $session), ['option' => '2026-08-03'])
+            ->assertSessionHas('error', 'Такой вариант уже есть в опросе.');
+        $this->assertDatabaseCount('coordination_poll_options', 3);
+    }
+
+    public function test_suggestion_is_refused_when_creator_did_not_allow_it(): void
+    {
+        $organizer = User::factory()->create();
+        $participant = User::factory()->create();
+        $session = $this->createSession($organizer);
+
+        $this->actingAs($participant)
+            ->post(route('coordination.suggestion', $session), ['option' => '22:00'])
+            ->assertSessionHas('error', 'В этом опросе нельзя предлагать варианты.');
+
+        $this->assertDatabaseCount('coordination_poll_options', 3);
     }
 
     public function test_user_changes_single_choice_ballot_without_duplicate(): void

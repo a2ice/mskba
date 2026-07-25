@@ -58,6 +58,9 @@
                             >
                             <span class="coordination-vote-option__copy">
                                 <span>{{ $option->label }}</span>
+                                @if($option->proposer)
+                                    <small class="coordination-option-proposer">Предложил {{ $option->proposer->profile?->first_name ?: $option->proposer->username }}</small>
+                                @endif
                                 @include('theme::pages.coordination.partials.option-voters', compact('poll', 'option', 'canSeeResults'))
                             </span>
                             @if($canSeeResults)<strong>{{ $option->selections_count }}</strong>@endif
@@ -75,6 +78,9 @@
                         <div class="coordination-result">
                             <span class="coordination-vote-option__copy">
                                 <span>{{ $option->label }}</span>
+                                @if($option->proposer)
+                                    <small class="coordination-option-proposer">Предложил {{ $option->proposer->profile?->first_name ?: $option->proposer->username }}</small>
+                                @endif
                                 @include('theme::pages.coordination.partials.option-voters', compact('poll', 'option', 'canSeeResults'))
                             </span>
                             <strong>{{ $canSeeResults ? $option->selections_count : '—' }}</strong>
@@ -86,6 +92,51 @@
             <div class="alert alert-info mt-3">Войдите, чтобы проголосовать.</div>
         @endauth
     </article>
+
+    @auth
+        @if($isOpen && $poll->allows_suggestions)
+            <section class="section-list-item mt-4">
+                <h2 class="h4 mb-2">Предложить вариант</h2>
+                <p>Новый вариант сразу появится в этом опросе и в его публикациях.</p>
+                <form method="POST" action="{{ route('coordination.suggestion', $coordination) }}" class="coordination-suggestion-form">
+                    @csrf
+                    @switch($poll->subject_type->value)
+                        @case('date')
+                            <input class="form-control" type="date" name="option" value="{{ old('option') }}" required>
+                            @break
+                        @case('time')
+                            <input class="form-control" type="time" name="option" value="{{ old('option') }}" required>
+                            @break
+                        @case('datetime')
+                            <input class="form-control" type="datetime-local" name="option" value="{{ old('option') }}" required>
+                            @break
+                        @case('time_interval')
+                            <div class="coordination-suggestion-form__interval">
+                                <input class="form-control" type="time" name="option[starts_at]" value="{{ old('option.starts_at') }}" aria-label="Начало интервала" required>
+                                <span>—</span>
+                                <input class="form-control" type="time" name="option[ends_at]" value="{{ old('option.ends_at') }}" aria-label="Окончание интервала" required>
+                            </div>
+                            @break
+                        @case('venue')
+                            <select class="form-select" name="option" required>
+                                <option value="">Выберите площадку</option>
+                                @foreach($suggestionVenues as $venue)
+                                    <option value="{{ $venue->id }}" @selected((string) old('option') === (string) $venue->id)>
+                                        {{ $venue->name }} — {{ $venue->raw_address }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @break
+                        @default
+                            <input class="form-control" name="option" value="{{ old('option') }}" maxlength="255" required>
+                    @endswitch
+                    @error('option') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    @error('option.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    <button class="btn btn--secondary" type="submit">Добавить вариант</button>
+                </form>
+            </section>
+        @endif
+    @endauth
 
     @if($coordination->decision)
         <div class="section-list-item mt-4">

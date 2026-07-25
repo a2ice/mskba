@@ -20,6 +20,14 @@
 @endsection
 
 @section('section-content')
+    @php
+        $selectedSubjectType = old('subject_type', 'text');
+        $oldOptions = old('options', ['', '']);
+        $venueEditorOptions = $optionVenues->map(fn ($venue) => [
+            'id' => $venue->id,
+            'label' => $venue->name.' — '.$venue->raw_address,
+        ])->values();
+    @endphp
     @if(session('error')) <div class="alert alert-danger mb-3">{{ session('error') }}</div> @endif
 
     <form method="POST" action="{{ route('coordination.store') }}" data-coordination-form>
@@ -34,8 +42,16 @@
             <input id="coordinationQuestion" class="form-control @error('question') is-invalid @enderror" name="question" value="{{ old('question') }}" maxlength="500" required>
             @error('question') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
-        <input type="hidden" name="subject_type" value="text">
         <div class="row g-3 mb-3">
+            <div class="col-md-6 form-group field">
+                <label class="form-label" for="coordinationSubjectType">Тип вариантов</label>
+                <select id="coordinationSubjectType" class="form-select" name="subject_type" data-coordination-subject-type required>
+                    @foreach($subjectTypes as $subjectType)
+                        <option value="{{ $subjectType->value }}" @selected($selectedSubjectType === $subjectType->value)>{{ $subjectType->label() }}</option>
+                    @endforeach
+                </select>
+                @error('subject_type') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            </div>
             <div class="col-md-6 form-group field">
                 <label class="form-label" for="coordinationSelectionMode">Количество ответов</label>
                 <select id="coordinationSelectionMode" class="form-select" name="selection_mode" required>
@@ -44,6 +60,8 @@
                     @endforeach
                 </select>
             </div>
+        </div>
+        <div class="row g-3 mb-3">
             <div class="col-md-6 form-group field">
                 <label class="form-label" for="coordinationResultsVisibility">Результаты видны</label>
                 <select id="coordinationResultsVisibility" class="form-select" name="results_visibility" required>
@@ -52,13 +70,13 @@
                     @endforeach
                 </select>
             </div>
-        </div>
-        <div class="row g-3 mb-3">
             <div class="col-md-6 form-group field">
                 <label class="form-label" for="coordinationClosesAt">Голосование до</label>
                 <input id="coordinationClosesAt" type="datetime-local" class="form-control @error('closes_at') is-invalid @enderror" name="closes_at" value="{{ old('closes_at', $defaultClosesAt) }}" required>
                 @error('closes_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
+        </div>
+        <div class="row g-3 mb-3">
             <div class="col-md-6 form-group field">
                 <input type="hidden" name="allows_vote_changes" value="0">
                 <label class="coordination-setting-toggle">
@@ -75,8 +93,6 @@
                 </label>
                 @error('allows_vote_changes') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </div>
-        </div>
-        <div class="row g-3 mb-3">
             <div class="col-md-6 form-group field">
                 <input type="hidden" name="is_anonymous" value="0">
                 <label class="coordination-setting-toggle">
@@ -96,17 +112,35 @@
         </div>
         <div class="form-group field mb-3">
             <label class="form-label">Варианты ответа</label>
-            <div class="coordination-options" data-coordination-options>
-                @foreach(old('options', ['', '']) as $option)
-                    <div class="coordination-option-row">
-                        <input class="form-control" name="options[]" value="{{ $option }}" maxlength="255" required>
-                        <button class="btn btn--secondary btn--sm" type="button" data-coordination-option-remove aria-label="Удалить вариант">×</button>
-                    </div>
+            <div class="coordination-options" data-coordination-options data-subject-type="{{ $selectedSubjectType }}">
+                @foreach($oldOptions as $index => $option)
+                    @include('theme::pages.coordination.partials.option-editor-row', [
+                        'index' => $index,
+                        'subjectType' => $selectedSubjectType,
+                        'option' => $option,
+                    ])
                 @endforeach
             </div>
             @error('options') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             @error('options.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             <button class="btn btn--secondary btn--sm mt-2" type="button" data-coordination-option-add>Добавить вариант</button>
+            <script type="application/json" data-coordination-venue-options>@json($venueEditorOptions)</script>
+        </div>
+        <div class="form-group field mb-3">
+            <input type="hidden" name="allows_suggestions" value="0">
+            <label class="coordination-setting-toggle">
+                <input
+                    class="coordination-setting-toggle__input"
+                    type="checkbox"
+                    name="allows_suggestions"
+                    value="1"
+                    @checked((bool) old('allows_suggestions', false))
+                >
+                <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
+                <strong class="coordination-setting-toggle__title">Разрешить свои варианты</strong>
+                <small class="coordination-setting-toggle__description">Участники смогут добавить вариант того же типа до закрытия опроса</small>
+            </label>
+            @error('allows_suggestions') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
         </div>
         <div class="form-group field mb-4">
             <label class="form-label" for="coordinationDescription">Описание</label>

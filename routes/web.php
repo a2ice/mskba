@@ -223,6 +223,8 @@ Route::prefix('coordination')->group(function () {
             ->name('coordination.store');
         Route::post('/{coordination}/vote', [CoordinationController::class, 'vote'])
             ->name('coordination.vote');
+        Route::post('/{coordination}/suggestion', [CoordinationController::class, 'suggest'])
+            ->name('coordination.suggestion');
         Route::post('/{coordination}/close', [CoordinationController::class, 'close'])
             ->name('coordination.close');
         Route::post('/{coordination}/decision', [CoordinationController::class, 'decide'])

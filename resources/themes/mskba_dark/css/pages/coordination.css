@@ -12,8 +12,40 @@
 .coordination-option-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
     gap: 10px;
     margin-bottom: 10px;
+}
+
+.coordination-option-row__fields,
+.coordination-suggestion-form__interval {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.coordination-option-row__fields--interval,
+.coordination-suggestion-form__interval {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.coordination-option-row__separator {
+    color: var(--muted);
+}
+
+.coordination-option-proposer {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.coordination-suggestion-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
 }
 
 .field .coordination-setting-toggle {
@@ -153,6 +185,14 @@
 }
 
 @media (max-width: 768px) {
+    .coordination-suggestion-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .coordination-suggestion-form .btn {
+        width: 100%;
+    }
+
     .coordination-poll__heading {
         align-items: flex-start;
         flex-direction: column;
