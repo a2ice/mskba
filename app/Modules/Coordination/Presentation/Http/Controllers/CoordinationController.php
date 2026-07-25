@@ -7,6 +7,7 @@ use App\Modules\Coordination\Application\Services\CoordinationAccess;
 use App\Modules\Coordination\Application\UseCases\CancelCoordinationHandler;
 use App\Modules\Coordination\Application\UseCases\ClosePollHandler;
 use App\Modules\Coordination\Application\UseCases\CreateCoordinationHandler;
+use App\Modules\Coordination\Application\UseCases\CreateEventFromCoordinationHandler;
 use App\Modules\Coordination\Application\UseCases\DecideCoordinationHandler;
 use App\Modules\Coordination\Application\UseCases\VoteInPollHandler;
 use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
@@ -15,10 +16,15 @@ use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Coordination\Presentation\Http\Requests\CreateCoordinationRequest;
 use App\Modules\Coordination\Presentation\Http\Requests\DecideCoordinationRequest;
 use App\Modules\Coordination\Presentation\Http\Requests\VoteInPollRequest;
+use App\Modules\Event\Application\UseCases\ListEventVenuesHandler;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramCoordinationPublicationsHandler;
 use App\Presentation\Theming\ThemeResolver;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -91,10 +97,12 @@ final class CoordinationController extends Controller
         CoordinationSession $coordination,
         CurrentActorResolver $actors,
         CoordinationAccess $access,
+        ListEventVenuesHandler $eventVenues,
     ): Response {
         $coordination->load([
             'organizerActor.user.profile.activeAvatar',
             'decision.option',
+            'eventTransition.event',
             'polls',
         ]);
         $poll = $coordination->polls->firstOrFail();
@@ -118,14 +126,37 @@ final class CoordinationController extends Controller
                     ]),
                 ),
         ]);
+        $canManage = $actor !== null && $access->canManage($coordination, $actor);
+        $canCreateEvent = $canManage
+            && $coordination->decision !== null
+            && $coordination->eventTransition === null;
+        $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
+        $defaultStartsAt = $now->addMinutes(15)->ceilMinute();
+        $decisionDescription = $coordination->decision === null
+            ? null
+            : 'Согласованный вариант: '.$coordination->decision->option->label;
 
         return ThemeResolver::page('coordination.show', [
             'coordination' => $coordination,
             'poll' => $poll,
             'ballot' => $ballot,
             'selectedOptionIds' => $ballot?->selections->pluck('option_id')->all() ?? [],
-            'canManage' => $actor !== null && $access->canManage($coordination, $actor),
+            'canManage' => $canManage,
             'canSeeResults' => $canSeeResults,
+            'canCreateEvent' => $canCreateEvent,
+            'venues' => $canCreateEvent ? $eventVenues->handle() : collect(),
+            'types' => EventTypeEnum::cases(),
+            'visibilities' => EventVisibilityEnum::cases(),
+            'defaultType' => EventTypeEnum::GAME_TRAINING,
+            'currentDate' => $now->format('Ymd'),
+            'defaultTitle' => $coordination->title,
+            'defaultDescription' => collect([
+                $coordination->description,
+                $decisionDescription,
+            ])->filter()->implode("\n\n"),
+            'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
+            'durationOptions' => range(30, 480, 30),
+            'defaultDuration' => 60,
         ]);
     }
 
@@ -197,5 +228,28 @@ final class CoordinationController extends Controller
         }
 
         return back()->with('status', 'Согласование отменено.');
+    }
+
+    public function createEvent(
+        CreateEventRequest $request,
+        CoordinationSession $coordination,
+        CreateEventFromCoordinationHandler $handler,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $event = $handler->handle($coordination->id, $actor, $request->validated());
+        } catch (InvalidArgumentException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        $message = $event->booking?->status->value === 'confirmed'
+            ? 'Мероприятие создано, площадка забронирована.'
+            : 'Мероприятие создано. Бронирование ожидает подтверждения площадки.';
+
+        return redirect()->route('events.show', $event->routeIdentifier())
+            ->with('status', $message);
     }
 }

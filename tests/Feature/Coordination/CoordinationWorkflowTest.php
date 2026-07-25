@@ -5,10 +5,16 @@ namespace Tests\Feature\Coordination;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Telegram\Domain\Models\TelegramCoordinationPublication;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueSchedule;
+use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -245,6 +251,100 @@ final class CoordinationWorkflowTest extends TestCase
         $this->assertCount(1, $secondChat->coordinationPublications);
     }
 
+    public function test_creator_explicitly_creates_event_from_accepted_decision_idempotently(): void
+    {
+        $organizer = User::factory()->create();
+        $session = $this->createSession($organizer);
+        $poll = $session->polls()->firstOrFail();
+        $option = $poll->options()->where('label', '20:00')->firstOrFail();
+        [$venue, $startsAt] = $this->availableVenue();
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.close', $session))
+            ->assertSessionHas('status');
+        $this->actingAs($organizer)
+            ->post(route('coordination.decision', $session), ['option_id' => $option->id])
+            ->assertSessionHas('status');
+        $this->actingAs($organizer)
+            ->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertSee('Создать мероприятие')
+            ->assertSee('Согласованный вариант: 20:00')
+            ->assertSee('name="venue_id"', false);
+
+        $payload = $this->eventPayload($venue, $startsAt);
+        $firstResponse = $this->actingAs($organizer)
+            ->post(route('coordination.event.store', $session), $payload);
+        $event = $session->fresh()->eventTransition()->firstOrFail()->event()->firstOrFail();
+
+        $firstResponse->assertRedirect(route('events.show', $event->routeIdentifier()));
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->status);
+        $this->assertSame(VenueBookingStatusEnum::CONFIRMED, $event->booking->status);
+        $this->assertDatabaseHas('coordination_event_transitions', [
+            'session_id' => $session->id,
+            'decision_id' => $session->decision()->firstOrFail()->id,
+            'event_id' => $event->id,
+        ]);
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.event.store', $session), $payload)
+            ->assertRedirect(route('events.show', $event->routeIdentifier()));
+
+        $this->assertDatabaseCount('events', 1);
+        $this->assertDatabaseCount('venue_bookings', 1);
+        $this->assertDatabaseCount('coordination_event_transitions', 1);
+        $this->actingAs($organizer)
+            ->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertSee('По этому решению уже создано мероприятие.')
+            ->assertDontSee('Перед созданием система повторно проверит');
+    }
+
+    public function test_event_transition_requires_accepted_decision_and_creator(): void
+    {
+        $organizer = User::factory()->create();
+        $stranger = User::factory()->create();
+        $session = $this->createSession($organizer);
+        [$venue, $startsAt] = $this->availableVenue();
+        $payload = $this->eventPayload($venue, $startsAt);
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.event.store', $session), $payload)
+            ->assertSessionHas('error', 'Сначала закройте голосование и примите итоговый вариант.');
+
+        $this->actingAs($organizer)->post(route('coordination.close', $session));
+        $this->actingAs($organizer)->post(route('coordination.decision', $session), [
+            'option_id' => $session->polls()->firstOrFail()->options()->firstOrFail()->id,
+        ]);
+
+        $this->actingAs($stranger)
+            ->post(route('coordination.event.store', $session), $payload)
+            ->assertSessionHas('error', 'Создать мероприятие может только создатель опроса.');
+
+        $this->assertDatabaseCount('events', 0);
+        $this->assertDatabaseCount('coordination_event_transitions', 0);
+    }
+
+    public function test_failed_event_invariants_do_not_create_transition(): void
+    {
+        $organizer = User::factory()->create();
+        $session = $this->createSession($organizer);
+        $poll = $session->polls()->firstOrFail();
+        $this->actingAs($organizer)->post(route('coordination.close', $session));
+        $this->actingAs($organizer)->post(route('coordination.decision', $session), [
+            'option_id' => $poll->options()->firstOrFail()->id,
+        ]);
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::UNCONFIRMED->value]);
+        $startsAt = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(12, 0);
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.event.store', $session), $this->eventPayload($venue, $startsAt))
+            ->assertSessionHas('error', 'Создать мероприятие можно только на подтверждённой площадке.');
+
+        $this->assertDatabaseCount('events', 0);
+        $this->assertDatabaseCount('coordination_event_transitions', 0);
+    }
+
     private function createSession(User $organizer): CoordinationSession
     {
         $this->actingAs($organizer)->post(route('coordination.store'), $this->payload())->assertRedirect();
@@ -266,6 +366,41 @@ final class CoordinationWorkflowTest extends TestCase
             'is_anonymous' => '0',
             'closes_at' => CarbonImmutable::now()->addDay()->format('Y-m-d H:i:s'),
             'options' => ['19:00', '20:00', '21:00'],
+        ];
+    }
+
+    /** @return array{Venue, CarbonImmutable} */
+    private function availableVenue(): array
+    {
+        $startsAt = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(12, 0);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
+        VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
+            'day_of_week' => $startsAt->isoWeekday(),
+            'starts_at' => '09:00',
+            'ends_at' => '18:00',
+            'sort_order' => 0,
+        ]);
+
+        return [$venue, $startsAt];
+    }
+
+    /** @return array<string, mixed> */
+    private function eventPayload(Venue $venue, CarbonImmutable $startsAt): array
+    {
+        return [
+            'venue_id' => $venue->id,
+            'title' => 'Игра после опроса',
+            'type' => 'game_training',
+            'visibility' => 'public',
+            'description' => 'Согласованный вариант: 20:00',
+            'starts_at' => $startsAt->format('Y-m-d\TH:i'),
+            'duration_minutes' => 60,
+            'max_participants' => 10,
         ];
     }
 }

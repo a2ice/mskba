@@ -44,6 +44,11 @@ class CoordinationSession extends Model
         return $this->hasOne(CoordinationDecision::class, 'session_id');
     }
 
+    public function eventTransition(): HasOne
+    {
+        return $this->hasOne(CoordinationEventTransition::class, 'session_id');
+    }
+
     protected function casts(): array
     {
         return [

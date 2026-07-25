@@ -91,8 +91,30 @@
         <div class="section-list-item mt-4">
             <span class="badge badge--success">Решение принято</span>
             <h2 class="h4 mt-2 mb-1">{{ $coordination->decision->option->label }}</h2>
-            <p class="mb-0">Итоговый вариант зафиксирован.</p>
+            @if($coordination->eventTransition?->event)
+                <p class="mb-2">По этому решению уже создано мероприятие.</p>
+                <a class="btn btn--secondary btn--sm" href="{{ route('events.show', $coordination->eventTransition->event->routeIdentifier()) }}">Открыть мероприятие</a>
+            @else
+                <p class="mb-0">Итоговый вариант зафиксирован.</p>
+            @endif
         </div>
+    @endif
+
+    @if($canCreateEvent)
+        <section class="section-list-item mt-4">
+            <h2 class="h3 mb-2">Создать мероприятие</h2>
+            <p>Уточните площадку, время и остальные параметры. Перед созданием система повторно проверит доступность слота и правила бронирования.</p>
+            @if($venues->isEmpty())
+                <div class="alert alert-info">Нет доступных подтверждённых площадок.</div>
+            @else
+                @include('theme::pages.events.partials.create-form', [
+                    'formAction' => route('coordination.event.store', $coordination),
+                    'formIdPrefix' => 'coordinationEvent',
+                    'submitLabel' => 'Создать мероприятие',
+                    'confirmMessage' => 'Создать мероприятие по принятому решению?',
+                ])
+            @endif
+        </section>
     @endif
 
     @if($canManage && !in_array($coordination->status->value, ['completed', 'cancelled'], true))
