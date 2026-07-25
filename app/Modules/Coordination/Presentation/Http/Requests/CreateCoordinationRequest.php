@@ -2,6 +2,7 @@
 
 namespace App\Modules\Coordination\Presentation\Http\Requests;
 
+use App\Modules\Coordination\Domain\Enums\CoordinationFlowTypeEnum;
 use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
 use App\Modules\Coordination\Domain\Enums\PollSelectionModeEnum;
 use App\Modules\Coordination\Domain\Enums\PollSubjectTypeEnum;
@@ -12,6 +13,10 @@ final class CreateCoordinationRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        if (! $this->has('flow_type')) {
+            $this->merge(['flow_type' => CoordinationFlowTypeEnum::SINGLE->value]);
+        }
+
         if (! $this->has('publish_to_telegram')) {
             $this->merge(['publish_to_telegram' => false]);
         }
@@ -32,8 +37,14 @@ final class CreateCoordinationRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'question' => ['required', 'string', 'max:500'],
+            'flow_type' => ['required', Rule::in([
+                CoordinationFlowTypeEnum::SINGLE->value,
+                CoordinationFlowTypeEnum::EVENT_SCHEDULING->value,
+            ])],
+            'context_event_id' => ['nullable', 'integer', 'exists:events,id'],
+            'question' => ['exclude_unless:flow_type,single', 'required', 'string', 'max:500'],
             'subject_type' => [
+                'exclude_unless:flow_type,single',
                 'required',
                 Rule::in([
                     PollSubjectTypeEnum::TEXT->value,
@@ -44,7 +55,7 @@ final class CreateCoordinationRequest extends FormRequest
                     PollSubjectTypeEnum::VENUE->value,
                 ]),
             ],
-            'selection_mode' => ['required', Rule::enum(PollSelectionModeEnum::class)],
+            'selection_mode' => ['exclude_unless:flow_type,single', 'required', Rule::enum(PollSelectionModeEnum::class)],
             'results_visibility' => ['required', Rule::enum(PollResultsVisibilityEnum::class)],
             'allows_vote_changes' => ['required', 'boolean'],
             'is_anonymous' => ['required', 'boolean'],
@@ -61,7 +72,21 @@ final class CreateCoordinationRequest extends FormRequest
                 ),
             ],
             'closes_at' => ['required', 'date', 'after:now'],
-            'options' => ['required', 'array', 'min:2', 'max:20'],
+            'options' => ['exclude_unless:flow_type,single', 'required', 'array', 'min:2', 'max:20'],
+            'step_duration_minutes' => [
+                'exclude_unless:flow_type,event_scheduling',
+                'required',
+                'integer',
+                Rule::in([15, 30, 60, 120, 240, 480, 1440]),
+            ],
+            'date_options' => ['exclude_unless:flow_type,event_scheduling', 'required', 'array', 'min:2', 'max:20'],
+            'date_options.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today', 'distinct'],
+            'time_options' => ['exclude_unless:flow_type,event_scheduling', 'required', 'array', 'min:2', 'max:20'],
+            'time_options.*' => ['required', 'array:starts_at,ends_at'],
+            'time_options.*.starts_at' => ['required', 'date_format:H:i'],
+            'time_options.*.ends_at' => ['required', 'date_format:H:i'],
+            'venue_options' => ['exclude_unless:flow_type,event_scheduling', 'required', 'array', 'min:2', 'max:20'],
+            'venue_options.*' => ['required', 'integer', 'distinct', 'exists:venues,id'],
             ...$this->optionRules(),
         ];
     }
@@ -69,6 +94,10 @@ final class CreateCoordinationRequest extends FormRequest
     /** @return array<string, mixed> */
     private function optionRules(): array
     {
+        if ($this->input('flow_type') !== CoordinationFlowTypeEnum::SINGLE->value) {
+            return [];
+        }
+
         return match ($this->input('subject_type')) {
             PollSubjectTypeEnum::DATE->value => [
                 'options.*' => ['required', 'date_format:Y-m-d', 'distinct'],

@@ -40,6 +40,7 @@ final class DeclineEventHandler
                     'status' => EventParticipantStatusEnum::LEFT,
                     'joined_at' => null,
                     'left_at' => now(),
+                    'confirmation_version' => $event->participation_confirmation_version,
                 ],
             );
 

@@ -236,6 +236,8 @@ Route::prefix('coordination')->group(function () {
             ->name('coordination.cancel');
         Route::post('/{coordination}/event', [CoordinationController::class, 'createEvent'])
             ->name('coordination.event.store');
+        Route::post('/{coordination}/event-change', [CoordinationController::class, 'applyEventChange'])
+            ->name('coordination.event-change.apply');
     });
 
     Route::get('/{coordination}', [CoordinationController::class, 'show'])

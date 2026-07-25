@@ -35,6 +35,15 @@
     @if(session('error')) <div class="alert alert-danger mb-3">{{ session('error') }}</div> @endif
 
     <article class="coordination-poll">
+        @if($coordination->polls->count() > 1)
+            <div class="coordination-flow-progress mb-3" aria-label="Этапы согласования">
+                @foreach($coordination->polls as $step)
+                    <span class="coordination-flow-progress__step @if($step->id === $poll->id) is-current @elseif($step->decision) is-completed @endif">
+                        {{ $step->step_order }}. {{ $step->subject_type->label() }}
+                    </span>
+                @endforeach
+            </div>
+        @endif
         <div class="coordination-poll__heading">
             <div>
                 <span class="badge badge--{{ $isOpen ? 'success' : ($poll->status->value === 'cancelled' ? 'danger' : 'warning') }}">{{ $poll->status->label() }}</span>
@@ -141,7 +150,18 @@
     @if($coordination->decision)
         <div class="section-list-item mt-4">
             <span class="badge badge--success">Решение принято</span>
-            <h2 class="h4 mt-2 mb-1">{{ $coordination->decision->option->label }}</h2>
+            <div class="coordination-decisions mt-2">
+                @foreach($coordination->decisions as $decision)
+                    <p class="mb-1">
+                        @if($coordination->flow_type->value === 'single')
+                            Согласованный вариант: {{ $decision->option->label }}
+                        @else
+                            <strong>{{ $decision->poll->subject_type->label() }}:</strong>
+                            {{ $decision->option->label }}
+                        @endif
+                    </p>
+                @endforeach
+            </div>
             @if($coordination->eventTransition?->event)
                 <p class="mb-2">По этому решению уже создано мероприятие.</p>
                 <a class="btn btn--secondary btn--sm" href="{{ route('events.show', $coordination->eventTransition->event->routeIdentifier()) }}">Открыть мероприятие</a>
@@ -163,8 +183,24 @@
                     'formIdPrefix' => 'coordinationEvent',
                     'submitLabel' => 'Создать мероприятие',
                     'confirmMessage' => 'Создать мероприятие по принятому решению?',
+                    'defaultVenueId' => $coordinatedVenueId,
+                    'coordinatedStartsAt' => $coordinatedStartsAt,
+                    'coordinatedDuration' => $coordinatedDuration,
                 ])
             @endif
+        </section>
+    @endif
+
+    @if($canApplyEventChange)
+        <section class="section-list-item mt-4">
+            <h2 class="h3 mb-2">Применить согласованный перенос</h2>
+            <p>Площадка и время будут проверены повторно. После переноса прежним участникам потребуется подтвердить участие ещё раз.</p>
+            <form method="POST" action="{{ route('coordination.event-change.apply', $coordination) }}">
+                @csrf
+                <button class="btn btn--primary" type="submit" onclick="return confirm('Перенести мероприятие по согласованному решению?')">
+                    Применить к мероприятию
+                </button>
+            </form>
         </section>
     @endif
 

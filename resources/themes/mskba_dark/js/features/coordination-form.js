@@ -4,10 +4,32 @@ function initCoordinationForm(form) {
     const container = form.querySelector('[data-coordination-options]');
     const subjectType = form.querySelector('[data-coordination-subject-type]');
     const venueData = form.querySelector('[data-coordination-venue-options]');
+    const flowType = form.querySelector('[data-coordination-flow-type]');
+    const singleFlow = form.querySelector('[data-coordination-single-flow]');
+    const chainFlow = form.querySelector('[data-coordination-chain-flow]');
 
     if (!container || !subjectType) {
         return;
     }
+
+    const syncFlow = () => {
+        const chainSelected = flowType?.value === 'event_scheduling';
+        if (singleFlow) {
+            singleFlow.hidden = chainSelected;
+            singleFlow.querySelectorAll('input, select, textarea, button').forEach((field) => {
+                field.disabled = chainSelected;
+            });
+        }
+        if (chainFlow) {
+            chainFlow.hidden = !chainSelected;
+            chainFlow.querySelectorAll('input, select, textarea, button').forEach((field) => {
+                field.disabled = !chainSelected;
+            });
+        }
+    };
+
+    flowType?.addEventListener('change', syncFlow);
+    syncFlow();
 
     let venues = [];
 

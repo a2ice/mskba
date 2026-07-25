@@ -137,7 +137,8 @@ final class EventController extends Controller
         return ThemeResolver::page('events.show', [
             'event' => $item,
             'currentParticipant' => $currentParticipant,
-            'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED,
+            'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED
+                && $currentParticipant->confirmation_version === $item->participation_confirmation_version,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
         ]);
     }

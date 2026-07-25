@@ -133,6 +133,37 @@
     background: var(--surface);
 }
 
+.coordination-flow-progress {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+}
+
+.coordination-flow-progress__step {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+}
+
+.coordination-flow-progress__step.is-current {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.coordination-flow-progress__step.is-completed {
+    border-color: #20ca72;
+    color: #20ca72;
+}
+
+.coordination-chain-venues {
+    display: grid;
+    gap: 10px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
 .coordination-vote,
 .coordination-results {
     display: grid;

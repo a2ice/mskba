@@ -22,6 +22,7 @@
 @section('section-content')
     @php
         $selectedSubjectType = old('subject_type', 'text');
+        $selectedFlowType = old('flow_type', $contextEvent ? 'event_scheduling' : 'single');
         $oldOptions = old('options', ['', '']);
         $venueEditorOptions = $optionVenues->map(fn ($venue) => [
             'id' => $venue->id,
@@ -32,11 +33,27 @@
 
     <form method="POST" action="{{ route('coordination.store') }}" data-coordination-form>
         @csrf
+        @if($contextEvent)
+            <input type="hidden" name="context_event_id" value="{{ $contextEvent->id }}">
+            <div class="alert alert-info mb-3">
+                Согласование переноса мероприятия «{{ $contextEvent->title }}». После выбора всех этапов примените решение на странице опроса.
+            </div>
+        @endif
         <div class="form-group field mb-3">
             <label class="form-label" for="coordinationTitle">Название</label>
-            <input id="coordinationTitle" class="form-control @error('title') is-invalid @enderror" name="title" value="{{ old('title') }}" maxlength="150" required>
+            <input id="coordinationTitle" class="form-control @error('title') is-invalid @enderror" name="title" value="{{ old('title', $contextEvent ? 'Перенос: '.$contextEvent->title : '') }}" maxlength="150" required>
             @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
+        <div class="form-group field mb-3">
+            <label class="form-label" for="coordinationFlowType">Сценарий</label>
+            <select id="coordinationFlowType" class="form-select" name="flow_type" data-coordination-flow-type required @disabled($contextEvent)>
+                @foreach($flowTypes as $flowType)
+                    <option value="{{ $flowType->value }}" @selected($selectedFlowType === $flowType->value)>{{ $flowType->label() }}</option>
+                @endforeach
+            </select>
+            @if($contextEvent)<input type="hidden" name="flow_type" value="event_scheduling">@endif
+        </div>
+        <div data-coordination-single-flow @if($selectedFlowType !== 'single') hidden @endif>
         <div class="form-group field mb-3">
             <label class="form-label" for="coordinationQuestion">Вопрос</label>
             <input id="coordinationQuestion" class="form-control @error('question') is-invalid @enderror" name="question" value="{{ old('question') }}" maxlength="500" required>
@@ -125,6 +142,58 @@
             @error('options.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             <button class="btn btn--secondary btn--sm mt-2" type="button" data-coordination-option-add>Добавить вариант</button>
             <script type="application/json" data-coordination-venue-options>@json($venueEditorOptions)</script>
+        </div>
+        </div>
+        <div class="coordination-chain-editor mb-4" data-coordination-chain-flow @if($selectedFlowType !== 'event_scheduling') hidden @endif>
+            <div class="alert alert-info mb-3">
+                Сначала участники выберут дату, затем время. Перед финальным голосованием система оставит только свободные площадки.
+            </div>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="coordinationStepDuration">Время на каждый следующий этап</label>
+                <select id="coordinationStepDuration" class="form-select" name="step_duration_minutes">
+                    @foreach([15 => '15 минут', 30 => '30 минут', 60 => '1 час', 120 => '2 часа', 240 => '4 часа', 480 => '8 часов', 1440 => '1 день'] as $minutes => $label)
+                        <option value="{{ $minutes }}" @selected((int) old('step_duration_minutes', 60) === $minutes)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="row g-3 mb-3">
+                @foreach(old('date_options', $defaultDates) as $index => $date)
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="coordinationDate{{ $index }}">Вариант даты {{ $index + 1 }}</label>
+                        <input id="coordinationDate{{ $index }}" class="form-control" type="date" name="date_options[]" value="{{ $date }}">
+                    </div>
+                @endforeach
+            </div>
+            <div class="row g-3 mb-3">
+                @foreach(old('time_options', $defaultTimes) as $index => $interval)
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label">Вариант времени {{ $index + 1 }}</label>
+                        <div class="coordination-option-interval">
+                            <input class="form-control" type="time" name="time_options[{{ $index }}][starts_at]" value="{{ $interval['starts_at'] ?? '' }}">
+                            <span>—</span>
+                            <input class="form-control" type="time" name="time_options[{{ $index }}][ends_at]" value="{{ $interval['ends_at'] ?? '' }}">
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            <fieldset class="form-group field">
+                <legend class="form-label">Площадки-кандидаты</legend>
+                <div class="coordination-chain-venues">
+                    @foreach($optionVenues as $venue)
+                        <label class="form-check">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="venue_options[]"
+                                value="{{ $venue->id }}"
+                                @checked(in_array((string) $venue->id, array_map('strval', old('venue_options', [])), true))
+                            >
+                            <span class="form-check-label">{{ $venue->name }} — {{ $venue->raw_address }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                @error('venue_options') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            </fieldset>
         </div>
         <div class="form-group field mb-3">
             <input type="hidden" name="allows_suggestions" value="0">

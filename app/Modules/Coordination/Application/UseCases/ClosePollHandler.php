@@ -47,7 +47,7 @@ final class ClosePollHandler
             ])->save();
             $session->forceFill([
                 'status' => CoordinationSessionStatusEnum::DECISION_PENDING,
-                'closed_at' => $closedAt,
+                'closed_at' => null,
             ])->save();
 
             return $poll;

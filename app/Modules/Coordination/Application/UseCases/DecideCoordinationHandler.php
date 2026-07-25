@@ -3,8 +3,10 @@
 namespace App\Modules\Coordination\Application\UseCases;
 
 use App\Modules\Coordination\Application\Services\CoordinationAccess;
+use App\Modules\Coordination\Application\Services\CoordinationFlowAdvancer;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
+use App\Modules\Coordination\Domain\Events\PollActivated;
 use App\Modules\Coordination\Domain\Events\PollChanged;
 use App\Modules\Coordination\Domain\Models\CoordinationDecision;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
@@ -16,11 +18,22 @@ use InvalidArgumentException;
 
 final class DecideCoordinationHandler
 {
-    public function __construct(private readonly CoordinationAccess $access) {}
+    public function __construct(
+        private readonly CoordinationAccess $access,
+        private readonly CoordinationFlowAdvancer $flow,
+    ) {}
 
     public function handle(int $sessionId, int $optionId, Actor $actor): CoordinationDecision
     {
-        $decision = DB::transaction(function () use ($sessionId, $optionId, $actor): CoordinationDecision {
+        $activatedPollId = null;
+        $previousPollId = null;
+        $decision = DB::transaction(function () use (
+            $sessionId,
+            $optionId,
+            $actor,
+            &$activatedPollId,
+            &$previousPollId,
+        ): CoordinationDecision {
             /** @var CoordinationSession $session */
             $session = CoordinationSession::query()->lockForUpdate()->findOrFail($sessionId);
 
@@ -28,7 +41,7 @@ final class DecideCoordinationHandler
                 throw new InvalidArgumentException('Принять решение может только создатель опроса.');
             }
 
-            if ($session->decision()->exists()) {
+            if ($session->status === CoordinationSessionStatusEnum::COMPLETED) {
                 return $session->decision()->firstOrFail();
             }
 
@@ -37,7 +50,11 @@ final class DecideCoordinationHandler
             }
 
             /** @var Poll $poll */
-            $poll = $session->polls()->lockForUpdate()->firstOrFail();
+            $poll = $session->polls()
+                ->where('status', PollStatusEnum::CLOSED->value)
+                ->whereDoesntHave('decision')
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if ($poll->status !== PollStatusEnum::CLOSED) {
                 throw new InvalidArgumentException('Сначала закройте голосование.');
@@ -57,12 +74,29 @@ final class DecideCoordinationHandler
                 'decided_by_actor_id' => $actor->id,
                 'decided_at' => now(),
             ]);
-            $session->forceFill(['status' => CoordinationSessionStatusEnum::COMPLETED])->save();
+            $nextPoll = $this->flow->activateNext($session, $poll);
+
+            if ($nextPoll === null) {
+                $session->forceFill([
+                    'status' => CoordinationSessionStatusEnum::COMPLETED,
+                    'closed_at' => now(),
+                ])->save();
+            } else {
+                $session->forceFill([
+                    'status' => CoordinationSessionStatusEnum::OPEN,
+                    'closed_at' => null,
+                ])->save();
+                $previousPollId = $poll->id;
+                $activatedPollId = $nextPoll->id;
+            }
 
             return $decision->load('option');
         });
 
         event(new PollChanged((int) $decision->poll_id));
+        if ($activatedPollId !== null && $previousPollId !== null) {
+            event(new PollActivated($previousPollId, $activatedPollId));
+        }
 
         return $decision;
     }

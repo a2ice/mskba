@@ -11,9 +11,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'session_id',
+    'step_order',
+    'depends_on_poll_id',
     'question',
     'subject_type',
     'selection_mode',
@@ -22,6 +25,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'allows_suggestions',
     'allows_vote_changes',
     'is_anonymous',
+    'voting_duration_minutes',
+    'configuration',
     'closes_at',
     'closed_at',
     'closed_by_actor_id',
@@ -33,6 +38,16 @@ class Poll extends Model
     public function session(): BelongsTo
     {
         return $this->belongsTo(CoordinationSession::class, 'session_id');
+    }
+
+    public function dependency(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'depends_on_poll_id');
+    }
+
+    public function decision(): HasOne
+    {
+        return $this->hasOne(CoordinationDecision::class, 'poll_id');
     }
 
     public function options(): HasMany
@@ -60,6 +75,9 @@ class Poll extends Model
             'allows_suggestions' => 'boolean',
             'allows_vote_changes' => 'boolean',
             'is_anonymous' => 'boolean',
+            'step_order' => 'integer',
+            'voting_duration_minutes' => 'integer',
+            'configuration' => 'array',
             'closes_at' => 'immutable_datetime',
             'closed_at' => 'immutable_datetime',
         ];

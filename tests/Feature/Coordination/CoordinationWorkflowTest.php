@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Coordination;
 
+use App\Modules\Coordination\Domain\Enums\CoordinationFlowTypeEnum;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Coordination\Domain\Models\PollOption;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -18,6 +20,7 @@ use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 final class CoordinationWorkflowTest extends TestCase
@@ -131,6 +134,163 @@ final class CoordinationWorkflowTest extends TestCase
             $this->assertSame($case['labels'], $poll->options()->pluck('label')->all());
             $this->assertSame($case['values'], $poll->options()->get()->pluck('value')->all());
         }
+    }
+
+    public function test_event_scheduling_chain_activates_steps_and_filters_occupied_venues(): void
+    {
+        Queue::fake();
+        $organizer = User::factory()->create();
+        $otherOrganizer = User::factory()->create();
+        [$availableVenue, $startsAt] = $this->availableVenue();
+        [$occupiedVenue] = $this->availableVenue();
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001,
+            'title' => 'Основной',
+        ]);
+
+        $this->actingAs($otherOrganizer)
+            ->post(route('events.store'), $this->eventPayload($occupiedVenue, $startsAt))
+            ->assertRedirect();
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.store'), array_replace(
+                $this->chainPayload([$availableVenue, $occupiedVenue], $startsAt),
+                [
+                    'publish_to_telegram' => '1',
+                    'telegram_chat_ids' => [$chat->id],
+                ],
+            ))
+            ->assertRedirect();
+
+        $session = CoordinationSession::query()->latest('id')->firstOrFail();
+        $polls = $session->polls()->with('options')->get();
+        $this->assertSame(CoordinationFlowTypeEnum::EVENT_SCHEDULING, $session->flow_type);
+        $this->assertSame(
+            [PollStatusEnum::OPEN, PollStatusEnum::DRAFT, PollStatusEnum::DRAFT],
+            $polls->pluck('status')->all(),
+        );
+
+        $this->actingAs($organizer)->post(route('coordination.close', $session));
+        $this->actingAs($organizer)
+            ->post(route('coordination.decision', $session), [
+                'option_id' => $polls[0]->options[0]->id,
+            ])
+            ->assertSessionHas('status');
+
+        $polls = $session->fresh()->polls()->with('options')->get();
+        $this->assertSame(PollStatusEnum::OPEN, $polls[1]->status);
+        $this->assertSame(PollStatusEnum::DRAFT, $polls[2]->status);
+        $this->assertDatabaseHas('telegram_coordination_publications', [
+            'poll_id' => $polls[1]->id,
+            'chat_id' => $chat->id,
+            'status' => 'pending',
+        ]);
+        $this->actingAs($organizer)
+            ->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertDontSee('Создать мероприятие');
+
+        $this->actingAs($organizer)->post(route('coordination.close', $session));
+        $this->actingAs($organizer)
+            ->post(route('coordination.decision', $session), [
+                'option_id' => $polls[1]->options[0]->id,
+            ])
+            ->assertSessionHas('status');
+
+        $venuePoll = $session->fresh()->polls()->with('options')->get()[2];
+        $this->assertSame(PollStatusEnum::OPEN, $venuePoll->status);
+        $this->assertSame(
+            [$availableVenue->id],
+            $venuePoll->options
+                ->where('is_active', true)
+                ->pluck('value')
+                ->map(fn (array $value): int => (int) $value['venue_id'])
+                ->values()
+                ->all(),
+        );
+
+        $this->actingAs($organizer)->post(route('coordination.close', $session));
+        $this->actingAs($organizer)
+            ->post(route('coordination.decision', $session), [
+                'option_id' => $venuePoll->options->firstWhere('is_active', true)->id,
+            ])
+            ->assertSessionHas('status');
+
+        $session->refresh();
+        $this->assertSame(CoordinationSessionStatusEnum::COMPLETED, $session->status);
+        $this->assertDatabaseCount('coordination_decisions', 3);
+        $this->actingAs($organizer)
+            ->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertSee('Создать мероприятие')
+            ->assertSee($startsAt->format('Y-m-d\TH:i'), false)
+            ->assertSee('value="'.$availableVenue->id.'"', false);
+    }
+
+    public function test_accepted_event_change_moves_booking_and_requires_participant_reconfirmation(): void
+    {
+        $organizer = User::factory()->create();
+        $participant = User::factory()->create();
+        [$sourceVenue, $startsAt] = $this->availableVenue();
+        [$targetVenue] = $this->availableVenue();
+
+        $this->actingAs($organizer)
+            ->post(route('events.store'), $this->eventPayload($sourceVenue, $startsAt))
+            ->assertRedirect();
+        $event = $sourceVenue->events()->firstOrFail();
+        $this->actingAs($participant)
+            ->post(route('events.join', $event->routeIdentifier()))
+            ->assertSessionHas('status');
+
+        $newStartsAt = $startsAt->addHours(2);
+        $this->actingAs($organizer)
+            ->post(route('coordination.store'), [
+                ...$this->chainPayload([$sourceVenue, $targetVenue], $newStartsAt),
+                'context_event_id' => $event->id,
+            ])
+            ->assertRedirect();
+
+        $session = CoordinationSession::query()->latest('id')->firstOrFail();
+        $this->assertSame(CoordinationFlowTypeEnum::EVENT_CHANGE, $session->flow_type);
+        $polls = $session->polls()->with('options')->get();
+
+        foreach ([0, 1, 2] as $index) {
+            $this->actingAs($organizer)->post(route('coordination.close', $session));
+            $option = $index === 2
+                ? $polls[$index]->options->first(
+                    fn (PollOption $item): bool => (int) $item->value['venue_id'] === $targetVenue->id,
+                )
+                : $polls[$index]->options[0];
+            $this->actingAs($organizer)
+                ->post(route('coordination.decision', $session), ['option_id' => $option->id])
+                ->assertSessionHas('status');
+            $polls = $session->fresh()->polls()->with('options')->get();
+        }
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.event-change.apply', $session))
+            ->assertRedirect();
+
+        $event->refresh();
+        $this->assertSame($targetVenue->id, $event->venue_id);
+        $this->assertSame(2, $event->participation_confirmation_version);
+        $this->assertSame(
+            1,
+            $event->participants()->where('user_id', $participant->id)->value('confirmation_version'),
+        );
+        $this->actingAs($participant)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Время или площадка изменились. Подтвердите участие повторно.');
+        $this->actingAs($participant)
+            ->patch(route('events.participation', $event->routeIdentifier()), [
+                'status' => EventParticipantStatusEnum::CONFIRMED->value,
+            ])
+            ->assertSessionHas('status');
+        $this->assertSame(
+            2,
+            $event->participants()->where('user_id', $participant->id)->value('confirmation_version'),
+        );
     }
 
     public function test_typed_option_invariants_reject_invalid_interval_and_unavailable_venue(): void
@@ -492,6 +652,43 @@ final class CoordinationWorkflowTest extends TestCase
             'is_anonymous' => '0',
             'closes_at' => CarbonImmutable::now()->addDay()->format('Y-m-d H:i:s'),
             'options' => ['19:00', '20:00', '21:00'],
+        ];
+    }
+
+    /**
+     * @param  array<int, Venue>  $venues
+     * @return array<string, mixed>
+     */
+    private function chainPayload(array $venues, CarbonImmutable $startsAt): array
+    {
+        return [
+            'flow_type' => CoordinationFlowTypeEnum::EVENT_SCHEDULING->value,
+            'title' => 'Согласование мероприятия',
+            'description' => 'Выбираем дату, время и площадку.',
+            'results_visibility' => 'after_vote',
+            'allows_vote_changes' => '0',
+            'is_anonymous' => '0',
+            'publish_to_telegram' => '0',
+            'closes_at' => CarbonImmutable::now()->addHour()->format('Y-m-d H:i:s'),
+            'step_duration_minutes' => 60,
+            'date_options' => [
+                $startsAt->format('Y-m-d'),
+                $startsAt->addDay()->format('Y-m-d'),
+            ],
+            'time_options' => [
+                [
+                    'starts_at' => $startsAt->format('H:i'),
+                    'ends_at' => $startsAt->addHour()->format('H:i'),
+                ],
+                [
+                    'starts_at' => $startsAt->addHours(2)->format('H:i'),
+                    'ends_at' => $startsAt->addHours(3)->format('H:i'),
+                ],
+            ],
+            'venue_options' => array_map(
+                static fn (Venue $venue): int => $venue->id,
+                $venues,
+            ),
         ];
     }
 

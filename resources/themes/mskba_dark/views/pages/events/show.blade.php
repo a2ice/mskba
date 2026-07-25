@@ -11,13 +11,20 @@
     $endsAt = $event->ends_at->setTimezone($timezone);
     $confirmedParticipants = $event->participants
         ->where('status', EventParticipantStatusEnum::CONFIRMED)
+        ->where('confirmation_version', $event->participation_confirmation_version)
         ->sortBy(fn ($participant) => $participant->role === EventParticipantRoleEnum::ORGANIZER ? 0 : 1)
+        ->values();
+    $needsReconfirmationParticipants = $event->participants
+        ->filter(fn ($participant) => $participant->role !== EventParticipantRoleEnum::ORGANIZER
+            && $participant->confirmation_version < $event->participation_confirmation_version)
         ->values();
     $tentativeParticipants = $event->participants
         ->where('status', EventParticipantStatusEnum::TENTATIVE)
+        ->where('confirmation_version', $event->participation_confirmation_version)
         ->values();
     $declinedParticipants = $event->participants
         ->where('status', EventParticipantStatusEnum::LEFT)
+        ->where('confirmation_version', $event->participation_confirmation_version)
         ->values();
     $confirmedCount = $confirmedParticipants->count();
     $remainingPlaces = $event->max_participants === null
@@ -39,7 +46,10 @@
     $isRegistrationOpen = $isParticipationWindowOpen
         && ($remainingPlaces === null || $remainingPlaces > 0);
     $canRespond = $isParticipationWindowOpen && ! $isOrganizer;
-    $currentResponse = $currentParticipant?->status;
+    $needsReconfirmation = $currentParticipant !== null
+        && ! $isOrganizer
+        && $currentParticipant->confirmation_version < $event->participation_confirmation_version;
+    $currentResponse = $needsReconfirmation ? null : $currentParticipant?->status;
     $isFull = $remainingPlaces !== null && $remainingPlaces <= 0;
     $canConfirm = ! $isFull || $currentResponse === EventParticipantStatusEnum::CONFIRMED;
     $participationOptions = collect([
@@ -170,6 +180,9 @@
             </section>
 
             @if($showParticipationActions)
+                @if($needsReconfirmation)
+                    <div class="alert alert-warning">Время или площадка изменились. Подтвердите участие повторно.</div>
+                @endif
                 <section
                     class="event-response"
                     style="--event-response-columns: {{ $participationOptions->count() }}"
@@ -273,6 +286,7 @@
 
             @foreach([
                 ['class' => 'is-going', 'title' => 'Участники', 'state' => 'Идут', 'memberState' => 'Идёт', 'items' => $confirmedParticipants],
+                ['class' => 'is-tentative', 'title' => 'Подтверждение', 'state' => 'Ожидают', 'memberState' => 'Подтвердить повторно', 'items' => $needsReconfirmationParticipants],
                 ['class' => 'is-tentative', 'title' => 'Думают', 'state' => null, 'memberState' => 'Думает', 'items' => $tentativeParticipants],
                 ['class' => 'is-declined', 'title' => 'Не идут', 'state' => null, 'memberState' => 'Не идёт', 'items' => $declinedParticipants],
             ] as $group)

@@ -3,6 +3,7 @@
 namespace App\Modules\Coordination\Domain\Models;
 
 use App\Modules\Coordination\Domain\Enums\CoordinationContextTypeEnum;
+use App\Modules\Coordination\Domain\Enums\CoordinationFlowTypeEnum;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'title',
     'description',
     'status',
+    'flow_type',
     'context_type',
     'context_id',
     'closed_at',
@@ -36,12 +38,17 @@ class CoordinationSession extends Model
 
     public function polls(): HasMany
     {
-        return $this->hasMany(Poll::class, 'session_id');
+        return $this->hasMany(Poll::class, 'session_id')->orderBy('step_order')->orderBy('id');
     }
 
     public function decision(): HasOne
     {
-        return $this->hasOne(CoordinationDecision::class, 'session_id');
+        return $this->hasOne(CoordinationDecision::class, 'session_id')->latestOfMany('id');
+    }
+
+    public function decisions(): HasMany
+    {
+        return $this->hasMany(CoordinationDecision::class, 'session_id');
     }
 
     public function eventTransition(): HasOne
@@ -53,6 +60,7 @@ class CoordinationSession extends Model
     {
         return [
             'status' => CoordinationSessionStatusEnum::class,
+            'flow_type' => CoordinationFlowTypeEnum::class,
             'context_type' => CoordinationContextTypeEnum::class,
             'context_id' => 'integer',
             'closed_at' => 'immutable_datetime',
