@@ -99,5 +99,11 @@
             @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
         <button class="btn btn--primary" type="submit">Сохранить</button>
+        @if($canReschedule)
+            <a
+                class="btn btn--secondary"
+                href="{{ route('coordination.create', ['event' => $event->routeIdentifier()]) }}"
+            >Согласовать перенос</a>
+        @endif
     </form>
 @endsection

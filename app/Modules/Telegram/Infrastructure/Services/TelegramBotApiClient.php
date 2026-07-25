@@ -13,7 +13,12 @@ final class TelegramBotApiClient
 {
     public function isConfigured(): bool
     {
-        return filled(config('telegram.bot_token')) && filled(config('telegram.main_chat_id'));
+        return $this->isBotConfigured() && filled(config('telegram.main_chat_id'));
+    }
+
+    public function isBotConfigured(): bool
+    {
+        return filled(config('telegram.bot_token'));
     }
 
     /** @param array<string, mixed> $payload
@@ -76,9 +81,13 @@ final class TelegramBotApiClient
 
     private function safeError(Throwable $exception, string $token): string
     {
-        $message = $exception instanceof RequestException && $exception->response !== null
-            ? 'Telegram API returned HTTP '.$exception->response->status().'.'
-            : 'Telegram API connection failed.';
+        if ($exception instanceof RequestException && $exception->response !== null) {
+            $description = $exception->response->json('description');
+            $message = 'Telegram API returned HTTP '.$exception->response->status().'.'
+                .(is_string($description) && $description !== '' ? ' '.$description : '');
+        } else {
+            $message = 'Telegram API connection failed.';
+        }
 
         return str_replace($token, '***', $message);
     }

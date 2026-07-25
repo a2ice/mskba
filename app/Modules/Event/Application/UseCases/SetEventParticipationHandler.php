@@ -43,6 +43,7 @@ final class SetEventParticipationHandler
                 && $participant?->status !== EventParticipantStatusEnum::CONFIRMED) {
                 $confirmedCount = $event->participants()
                     ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+                    ->where('confirmation_version', $event->participation_confirmation_version)
                     ->count();
 
                 if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {
@@ -57,6 +58,7 @@ final class SetEventParticipationHandler
                     'status' => $status,
                     'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
                     'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,
+                    'confirmation_version' => $event->participation_confirmation_version,
                 ],
             );
 

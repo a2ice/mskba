@@ -17,6 +17,7 @@
 @import './pages/admin';
 @import './pages/integrations';
 @import './pages/events';
+@import './pages/coordination';
 @import './mobile-primary-bar';
 @import './image-upload';
 

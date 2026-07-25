@@ -4,6 +4,7 @@ namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
+use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
@@ -147,6 +148,9 @@ final class UpdateEventHandler
                 'venue_id' => $targetVenue->id,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
+                'participation_confirmation_version' => $bookingChanged
+                    ? $event->participation_confirmation_version + 1
+                    : $event->participation_confirmation_version,
             ])->save();
 
             if ($bookingChanged) {
@@ -157,6 +161,9 @@ final class UpdateEventHandler
                     'ends_at' => $endsAt,
                 ])->save();
                 $event->forceFill(['status' => EventStatusEnum::PUBLISHED])->save();
+                $event->participants()
+                    ->where('role', EventParticipantRoleEnum::ORGANIZER->value)
+                    ->update(['confirmation_version' => $event->participation_confirmation_version]);
             }
 
             return $event->refresh()->load(['venue.schedule', 'booking']);

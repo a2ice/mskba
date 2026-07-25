@@ -2,9 +2,13 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -86,6 +90,95 @@ final class AdminUserManagementTest extends TestCase
 
         $this->assertNull($superadmin->fresh()->deleted_at);
         $this->assertSame(UserStatusEnum::CONFIRMED, $superadmin->fresh()->status);
+    }
+
+    public function test_operational_permissions_are_allowed_by_default_and_admin_can_disable_them(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $checker = app(UserOperationalPermissionChecker::class);
+
+        $this->assertTrue($checker->allows($target, UserOperationalPermissionEnum::CREATE_COORDINATION));
+        $this->assertDatabaseMissing('user_operational_permissions', ['user_id' => $target->id]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.operational-permissions.update', $target), [
+                'permissions' => [],
+            ])
+            ->assertRedirect(route('admin.users'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('user_operational_permissions', [
+            'user_id' => $target->id,
+            'permission' => UserOperationalPermissionEnum::CREATE_COORDINATION->value,
+            'is_allowed' => false,
+        ]);
+        $this->assertFalse($checker->allows($target, UserOperationalPermissionEnum::CREATE_COORDINATION));
+    }
+
+    public function test_operational_permission_management_respects_role_hierarchy(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $peer = $this->user(UserSystemRoleEnum::ADMIN);
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.operational-permissions.update', $peer), [
+                'permissions' => [],
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.operational-permissions.update', $admin), [
+                'permissions' => [],
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($superadmin)
+            ->post(route('admin.users.operational-permissions.update', $admin), [
+                'permissions' => [],
+            ])
+            ->assertRedirect(route('admin.users'));
+    }
+
+    public function test_operational_permission_changes_are_audited(): void
+    {
+        config()->set('audit.ignore_console', false);
+
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.operational-permissions.update', $target), [
+                'permissions' => [],
+            ])
+            ->assertRedirect(route('admin.users'));
+
+        $permission = UserOperationalPermission::query()
+            ->whereBelongsTo($target)
+            ->firstOrFail();
+
+        $audit = AuditLog::query()
+            ->where('auditable_type', UserOperationalPermission::class)
+            ->where('auditable_id', $permission->id)
+            ->where('event', 'created')
+            ->firstOrFail();
+
+        $this->assertFalse($audit->new_values['is_allowed']);
+        $this->assertNotNull($audit->actor_id);
+    }
+
+    public function test_admin_user_list_displays_operational_permissions(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users'))
+            ->assertOk()
+            ->assertSee('Операционные права')
+            ->assertSee(UserOperationalPermissionEnum::CREATE_COORDINATION->label())
+            ->assertSee(route('admin.users.operational-permissions.update', $target));
     }
 
     private function user(

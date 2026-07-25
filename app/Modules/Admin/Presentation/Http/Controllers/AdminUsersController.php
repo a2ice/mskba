@@ -5,9 +5,12 @@ namespace App\Modules\Admin\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Admin\Application\UseCases\ListAdminUsersHandler;
 use App\Modules\Admin\Presentation\Http\Requests\BulkChangeUsersRequest;
+use App\Modules\Admin\Presentation\Http\Requests\UpdateUserOperationalPermissionsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserStatusRequest;
 use App\Modules\Identity\Application\UseCases\AdminBulkChangeUserDeletionStateHandler;
+use App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -31,9 +34,22 @@ final class AdminUsersController extends Controller
             'filters' => $request->query(),
             'statuses' => UserStatusEnum::cases(),
             'roles' => UserSystemRoleEnum::cases(),
+            'operationalPermissions' => UserOperationalPermissionEnum::cases(),
             'onlinePresence' => $presence->snapshot(),
             'onlineSummary' => $summary->get(),
         ]);
+    }
+
+    public function updateOperationalPermissions(
+        UpdateUserOperationalPermissionsRequest $request,
+        User $user,
+        AdminUpdateUserOperationalPermissionsHandler $updatePermissions,
+    ): RedirectResponse {
+        $updatePermissions->handle($request->user(), $user->id, $request->permissions());
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'Операционные права пользователя обновлены.');
     }
 
     public function updateStatus(

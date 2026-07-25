@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'status',
     'joined_at',
     'left_at',
+    'confirmation_version',
 ])]
 class EventParticipant extends Model
 {
@@ -36,6 +37,7 @@ class EventParticipant extends Model
             'status' => EventParticipantStatusEnum::class,
             'joined_at' => 'immutable_datetime',
             'left_at' => 'immutable_datetime',
+            'confirmation_version' => 'integer',
         ];
     }
 }

@@ -5,10 +5,12 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
+use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
@@ -103,6 +105,9 @@ Route::prefix('admin')
         Route::post('/users/{user}/status', [AdminUsersController::class, 'updateStatus'])
             ->middleware('can:manage-users-as-superadmin')
             ->name('admin.users.status.update');
+        Route::post('/users/{user}/operational-permissions', [AdminUsersController::class, 'updateOperationalPermissions'])
+            ->middleware('can:manage-user-operational-permissions,user')
+            ->name('admin.users.operational-permissions.update');
         Route::redirect('/venues/dublicates', '/admin/venues/duplicates')->name('admin.venues.dublicates');
         Route::get('/venues/duplicates', [AdminVenueDuplicatesController::class, 'index'])->name('admin.venues.duplicates')->defaults('breadcrumb', 'Дубли площадок');
         Route::post('/venues/duplicates/merge', [AdminVenueDuplicatesController::class, 'mergeBatch'])->name('admin.venues.duplicates.merge-batch');
@@ -142,6 +147,13 @@ Route::prefix('admin')
         Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
+        Route::get('/telegram-chats', [AdminTelegramChatsController::class, 'index'])
+            ->name('admin.telegram-chats')
+            ->defaults('breadcrumb', 'Telegram-чаты');
+        Route::post('/telegram-chats', [AdminTelegramChatsController::class, 'store'])
+            ->name('admin.telegram-chats.store');
+        Route::put('/telegram-chats/{telegramChat}', [AdminTelegramChatsController::class, 'update'])
+            ->name('admin.telegram-chats.update');
     });
 
 Route::prefix('venues')->group(function () {
@@ -197,6 +209,40 @@ Route::prefix('events')->group(function () {
 
     Route::get('/{event}', [EventController::class, 'show'])
         ->name('events.show');
+});
+
+Route::prefix('coordination')->group(function () {
+    Route::get('/', [CoordinationController::class, 'index'])
+        ->name('coordination.index')
+        ->defaults('breadcrumb', 'Опросы');
+
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [CoordinationController::class, 'create'])
+            ->middleware('can:coordination-create')
+            ->name('coordination.create')
+            ->defaults('breadcrumb', 'Новый опрос');
+        Route::post('/', [CoordinationController::class, 'store'])
+            ->middleware('can:coordination-create')
+            ->name('coordination.store');
+        Route::post('/{coordination}/vote', [CoordinationController::class, 'vote'])
+            ->name('coordination.vote');
+        Route::post('/{coordination}/suggestion', [CoordinationController::class, 'suggest'])
+            ->name('coordination.suggestion');
+        Route::post('/{coordination}/close', [CoordinationController::class, 'close'])
+            ->name('coordination.close');
+        Route::post('/{coordination}/decision', [CoordinationController::class, 'decide'])
+            ->name('coordination.decision');
+        Route::post('/{coordination}/cancel', [CoordinationController::class, 'cancel'])
+            ->name('coordination.cancel');
+        Route::post('/{coordination}/event', [CoordinationController::class, 'createEvent'])
+            ->name('coordination.event.store');
+        Route::post('/{coordination}/event-change', [CoordinationController::class, 'applyEventChange'])
+            ->name('coordination.event-change.apply');
+    });
+
+    Route::get('/{coordination}', [CoordinationController::class, 'show'])
+        ->name('coordination.show')
+        ->defaults('breadcrumb', 'Опрос');
 });
 
 Route::get('/integrations/address-suggest', AddressSuggestController::class)

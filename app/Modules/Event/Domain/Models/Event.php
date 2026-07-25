@@ -39,6 +39,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'cancelled_at',
     'cancelled_by_actor_id',
     'cancellation_reason',
+    'participation_confirmation_version',
 ])]
 class Event extends Model
 {
@@ -116,6 +117,7 @@ class Event extends Model
             'max_participants' => 'integer',
             'completed_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
+            'participation_confirmation_version' => 'integer',
         ];
     }
 }
