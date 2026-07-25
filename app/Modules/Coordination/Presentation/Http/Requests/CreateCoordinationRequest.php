@@ -10,6 +10,13 @@ use Illuminate\Validation\Rule;
 
 final class CreateCoordinationRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('publish_to_telegram')) {
+            $this->merge(['publish_to_telegram' => false]);
+        }
+    }
+
     public function authorize(): bool
     {
         return $this->user()?->can('coordination-create') === true;
@@ -30,6 +37,17 @@ final class CreateCoordinationRequest extends FormRequest
             'results_visibility' => ['required', Rule::enum(PollResultsVisibilityEnum::class)],
             'allows_vote_changes' => ['required', 'boolean'],
             'is_anonymous' => ['required', 'boolean'],
+            'publish_to_telegram' => ['required', 'boolean'],
+            'telegram_chat_ids' => ['nullable', 'required_if:publish_to_telegram,1', 'array', 'min:1'],
+            'telegram_chat_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('telegram_chats', 'id')->where(
+                    fn ($query) => $query
+                        ->where('is_active', true)
+                        ->where('publishes_coordination', true),
+                ),
+            ],
             'closes_at' => ['required', 'date', 'after:now'],
             'options' => ['required', 'array', 'min:2', 'max:20'],
             'options.*' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
@@ -43,6 +61,7 @@ final class CreateCoordinationRequest extends FormRequest
             'options.min' => 'Добавьте хотя бы два варианта ответа.',
             'options.*.distinct' => 'Варианты ответа не должны повторяться.',
             'closes_at.after' => 'Время завершения должно быть в будущем.',
+            'telegram_chat_ids.required_if' => 'Выберите хотя бы один Telegram-чат.',
         ];
     }
 }

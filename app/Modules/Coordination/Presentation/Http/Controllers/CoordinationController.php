@@ -16,10 +16,13 @@ use App\Modules\Coordination\Presentation\Http\Requests\CreateCoordinationReques
 use App\Modules\Coordination\Presentation\Http\Requests\DecideCoordinationRequest;
 use App\Modules\Coordination\Presentation\Http\Requests\VoteInPollRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
+use App\Modules\Telegram\Application\UseCases\PrepareTelegramCoordinationPublicationsHandler;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class CoordinationController extends Controller
@@ -35,12 +38,13 @@ final class CoordinationController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(TelegramChatRegistry $telegramChats): Response
     {
         return ThemeResolver::page('coordination.create', [
             'selectionModes' => PollSelectionModeEnum::cases(),
             'resultsVisibilities' => PollResultsVisibilityEnum::cases(),
             'defaultClosesAt' => now()->addHour()->format('Y-m-d\TH:i'),
+            'telegramChats' => $telegramChats->activeCoordinationChats(),
         ]);
     }
 
@@ -48,12 +52,32 @@ final class CoordinationController extends Controller
         CreateCoordinationRequest $request,
         CreateCoordinationHandler $handler,
         CurrentActorResolver $actors,
+        TelegramChatRegistry $telegramChats,
+        PrepareTelegramCoordinationPublicationsHandler $prepareTelegramPublications,
     ): RedirectResponse {
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
         try {
-            $session = $handler->handle($actor, $request->validated());
+            $data = $request->validated();
+            $telegramChats->activeCoordinationChats();
+            $session = DB::transaction(function () use (
+                $actor,
+                $data,
+                $handler,
+                $prepareTelegramPublications,
+            ): CoordinationSession {
+                $session = $handler->handle($actor, $data);
+
+                if ((bool) ($data['publish_to_telegram'] ?? false)) {
+                    $prepareTelegramPublications->handle(
+                        $session->polls->firstOrFail(),
+                        $data['telegram_chat_ids'] ?? [],
+                    );
+                }
+
+                return $session;
+            });
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
         }

@@ -5,6 +5,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
@@ -143,6 +144,13 @@ Route::prefix('admin')
         Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
+        Route::get('/telegram-chats', [AdminTelegramChatsController::class, 'index'])
+            ->name('admin.telegram-chats')
+            ->defaults('breadcrumb', 'Telegram-чаты');
+        Route::post('/telegram-chats', [AdminTelegramChatsController::class, 'store'])
+            ->name('admin.telegram-chats.store');
+        Route::put('/telegram-chats/{telegramChat}', [AdminTelegramChatsController::class, 'update'])
+            ->name('admin.telegram-chats.update');
     });
 
 Route::prefix('venues')->group(function () {

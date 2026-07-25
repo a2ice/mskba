@@ -112,6 +112,45 @@
             <label class="form-label" for="coordinationDescription">Описание</label>
             <textarea id="coordinationDescription" class="form-control" name="description" rows="4" maxlength="5000">{{ old('description') }}</textarea>
         </div>
+        @if($telegramChats->isNotEmpty())
+            @php
+                $defaultTelegramChatIds = $telegramChats->pluck('id')->map(fn ($id) => (string) $id)->all();
+                $selectedTelegramChatIds = array_map('strval', old('telegram_chat_ids', $defaultTelegramChatIds));
+            @endphp
+            <div class="form-group field mb-4">
+                <input type="hidden" name="publish_to_telegram" value="0">
+                <label class="coordination-setting-toggle">
+                    <input
+                        class="coordination-setting-toggle__input"
+                        type="checkbox"
+                        name="publish_to_telegram"
+                        value="1"
+                        @checked((bool) old('publish_to_telegram', true))
+                    >
+                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
+                    <strong class="coordination-setting-toggle__title">Опубликовать в Telegram</strong>
+                    <small class="coordination-setting-toggle__description">Опрос появится в выбранных чатах, ответы будут синхронизироваться с порталом</small>
+                </label>
+                <div class="coordination-telegram-chats mt-3">
+                    @foreach($telegramChats as $chat)
+                        <label class="form-check">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="telegram_chat_ids[]"
+                                value="{{ $chat->id }}"
+                                @checked(in_array((string) $chat->id, $selectedTelegramChatIds, true))
+                            >
+                            <span class="form-check-label">{{ $chat->title ?: 'Чат '.$chat->telegram_chat_id }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                @error('telegram_chat_ids') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                @error('telegram_chat_ids.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            </div>
+        @else
+            <input type="hidden" name="publish_to_telegram" value="0">
+        @endif
         <button class="btn btn--primary" type="submit">Открыть голосование</button>
     </form>
 @endsection

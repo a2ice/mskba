@@ -5,6 +5,7 @@ namespace App\Modules\Coordination\Application\UseCases;
 use App\Modules\Coordination\Application\Services\CoordinationAccess;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
+use App\Modules\Coordination\Domain\Events\PollChanged;
 use App\Modules\Coordination\Domain\Models\CoordinationDecision;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Coordination\Domain\Models\Poll;
@@ -19,7 +20,7 @@ final class DecideCoordinationHandler
 
     public function handle(int $sessionId, int $optionId, Actor $actor): CoordinationDecision
     {
-        return DB::transaction(function () use ($sessionId, $optionId, $actor): CoordinationDecision {
+        $decision = DB::transaction(function () use ($sessionId, $optionId, $actor): CoordinationDecision {
             /** @var CoordinationSession $session */
             $session = CoordinationSession::query()->lockForUpdate()->findOrFail($sessionId);
 
@@ -60,5 +61,9 @@ final class DecideCoordinationHandler
 
             return $decision->load('option');
         });
+
+        event(new PollChanged((int) $decision->poll_id));
+
+        return $decision;
     }
 }

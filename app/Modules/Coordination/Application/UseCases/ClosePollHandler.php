@@ -5,6 +5,7 @@ namespace App\Modules\Coordination\Application\UseCases;
 use App\Modules\Coordination\Application\Services\CoordinationAccess;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
+use App\Modules\Coordination\Domain\Events\PollChanged;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Coordination\Domain\Models\Poll;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -19,7 +20,7 @@ final class ClosePollHandler
     {
         $sessionId = (int) Poll::query()->findOrFail($pollId, ['session_id'])->session_id;
 
-        return DB::transaction(function () use ($pollId, $sessionId, $actor): Poll {
+        $poll = DB::transaction(function () use ($pollId, $sessionId, $actor): Poll {
             /** @var CoordinationSession $session */
             $session = CoordinationSession::query()->lockForUpdate()->findOrFail($sessionId);
 
@@ -51,5 +52,9 @@ final class ClosePollHandler
 
             return $poll;
         });
+
+        event(new PollChanged($pollId));
+
+        return $poll;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Modules\Coordination\Application\UseCases;
 
 use App\Modules\Coordination\Domain\Enums\PollSelectionModeEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
+use App\Modules\Coordination\Domain\Events\PollChanged;
 use App\Modules\Coordination\Domain\Models\Poll;
 use App\Modules\Coordination\Domain\Models\PollBallot;
 use App\Modules\Identity\Domain\Models\User;
@@ -21,7 +22,7 @@ final class VoteInPollHandler
 
         $optionIds = array_values(array_unique(array_map('intval', $optionIds)));
 
-        return DB::transaction(function () use ($pollId, $user, $optionIds): PollBallot {
+        $ballot = DB::transaction(function () use ($pollId, $user, $optionIds): PollBallot {
             /** @var Poll $poll */
             $poll = Poll::query()->lockForUpdate()->findOrFail($pollId);
 
@@ -74,5 +75,9 @@ final class VoteInPollHandler
 
             return $ballot->load('selections.option');
         });
+
+        event(new PollChanged($pollId));
+
+        return $ballot;
     }
 }

@@ -96,6 +96,15 @@ final class AdminMenu implements MenuHandler
                 'icon' => 'ti-settings',
                 'data' => ['count' => 0], // TODO: добавить динамическое количество
             ],
+            [
+                'label' => 'Telegram-чаты',
+                'description' => 'Чаты для публикации опросов и согласований.',
+                'url' => $this->routeUrl('admin.telegram-chats'),
+                'active' => $this->isActiveRoute('admin.telegram-chats, admin.telegram-chats.*'),
+                'visible' => true,
+                'icon' => 'ti-brand-telegram',
+                'data' => ['count' => 0],
+            ],
         ];
     }
 }
