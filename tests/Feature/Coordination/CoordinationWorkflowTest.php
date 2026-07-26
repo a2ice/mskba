@@ -39,6 +39,25 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee('data-auth-redirect-url="'.route('coordination.create', [], false).'"', false);
     }
 
+    public function test_create_form_defaults_to_attendance_and_explains_all_scenarios(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('coordination.create'))
+            ->assertOk()
+            ->assertSeeInOrder([
+                'Собрать участников',
+                'Простой опрос',
+                'Выбрать время',
+                'Выбрать площадку',
+                'Дата, время и площадка',
+            ])
+            ->assertSee('value="event_attendance" selected', false)
+            ->assertSee('Описание сценариев опроса')
+            ->assertSee('Простой опрос — произвольный вопрос и варианты ответа.');
+    }
+
     public function test_active_user_can_create_poll_and_blocked_user_cannot(): void
     {
         $user = User::factory()->create();

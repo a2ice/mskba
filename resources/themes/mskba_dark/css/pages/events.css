@@ -52,16 +52,6 @@
     white-space: nowrap;
 }
 
-.events-section input[type='datetime-local'] {
-    text-align: left;
-}
-
-.events-section input[type='datetime-local']::-webkit-date-and-time-value {
-    display: block;
-    min-width: 100%;
-    text-align: left;
-}
-
 .event-show {
     min-height: 100vh;
     padding: calc(var(--site-header-height, 90px) + 26px) 20px 160px;

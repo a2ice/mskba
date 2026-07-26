@@ -22,7 +22,7 @@
 @section('section-content')
     @php
         $selectedSubjectType = old('subject_type', 'text');
-        $selectedFlowType = old('flow_type', $contextEvent ? 'event_scheduling' : 'single');
+        $selectedFlowType = old('flow_type', $contextEvent ? 'event_scheduling' : 'event_attendance');
         $oldOptions = old('options', ['', '']);
         $venueEditorOptions = $optionVenues->map(fn ($venue) => [
             'id' => $venue->id,
@@ -50,11 +50,23 @@
         </div>
         <div class="form-group field mb-3">
             <label class="form-label" for="coordinationFlowType">Сценарий</label>
-            <select id="coordinationFlowType" class="form-select" name="flow_type" data-coordination-flow-type required @disabled($contextEvent)>
-                @foreach($flowTypes as $flowType)
-                    <option value="{{ $flowType->value }}" @selected($selectedFlowType === $flowType->value)>{{ $flowType->label() }}</option>
-                @endforeach
-            </select>
+            <div class="coordination-flow-picker">
+                <select id="coordinationFlowType" class="form-select" name="flow_type" data-coordination-flow-type required @disabled($contextEvent)>
+                    @foreach($flowTypes as $flowType)
+                        <option value="{{ $flowType->value }}" @selected($selectedFlowType === $flowType->value)>{{ $flowType->label() }}</option>
+                    @endforeach
+                </select>
+                <button
+                    type="button"
+                    class="ui-tooltip-trigger coordination-flow-picker__help"
+                    aria-label="Описание сценариев опроса"
+                    data-tooltip="Собрать участников — площадка и время известны; участники отвечают, пойдут ли.
+Простой опрос — произвольный вопрос и варианты ответа.
+Выбрать время — площадка и дата известны; выбирается время начала.
+Выбрать площадку — дата и время известны; выбирается площадка.
+Дата, время и площадка — последовательное согласование всех трёх параметров."
+                >?</button>
+            </div>
             @if($contextEvent)<input type="hidden" name="flow_type" value="event_scheduling">@endif
         </div>
         <div data-coordination-single-flow @if($selectedFlowType !== 'single') hidden @endif>

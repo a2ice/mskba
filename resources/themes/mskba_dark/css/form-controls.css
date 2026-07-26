@@ -74,3 +74,22 @@
     line-height: 1.35;
     text-transform: none;
 }
+
+.form-control:is([type='date'], [type='time'], [type='datetime-local']) {
+    text-align: left;
+}
+
+.form-control:is([type='date'], [type='time'], [type='datetime-local'])::-webkit-date-and-time-value {
+    display: flex;
+    align-items: center;
+    min-width: 100%;
+    min-height: 100%;
+    text-align: left;
+}
+
+.form-control:is([type='date'], [type='time'], [type='datetime-local'])::-webkit-datetime-edit {
+    display: flex;
+    align-items: center;
+    min-height: 100%;
+    padding: 0;
+}

@@ -22,6 +22,7 @@ function initVenueSelector(container) {
     const previewModal = document.querySelector(`[data-modal="${container.dataset.previewModal}"]`);
     let searchTimer = null;
     let searchController = null;
+    let availabilityController = null;
     let previewController = null;
     let yandexMap = null;
 
@@ -32,6 +33,8 @@ function initVenueSelector(container) {
     input.setCustomValidity(valueInput.value ? '' : 'Выберите площадку из списка.');
 
     input.addEventListener('input', () => {
+        availabilityController?.abort();
+        availabilityController = null;
         clearSelectedVenue();
         hideMessage();
         hideList();
@@ -69,6 +72,8 @@ function initVenueSelector(container) {
     clearButton.addEventListener('click', () => {
         searchController?.abort();
         searchController = null;
+        availabilityController?.abort();
+        availabilityController = null;
         window.clearTimeout(searchTimer);
         input.value = '';
         clearSelectedVenue();
@@ -107,12 +112,8 @@ function initVenueSelector(container) {
 
     [startInput, durationInput].filter(Boolean).forEach((field) => {
         field.addEventListener('change', () => {
-            input.value = '';
-            clearSelectedVenue();
             hideList();
-            hideMessage();
-            updateControl();
-            input.setCustomValidity('Выберите площадку из списка.');
+            revalidateSelectedVenue();
         });
     });
 
@@ -149,8 +150,8 @@ function initVenueSelector(container) {
         }
     }
 
-    async function fetchVenues(query = '', limit = 30, signal = null) {
-        const parameters = buildParameters(query, limit);
+    async function fetchVenues(query = '', limit = 30, signal = null, venueId = null) {
+        const parameters = buildParameters(query, limit, venueId);
         const response = await fetch(`${container.dataset.searchUrl}?${parameters.toString()}`, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
@@ -165,12 +166,16 @@ function initVenueSelector(container) {
         return Array.isArray(payload.venues) ? payload.venues : [];
     }
 
-    function buildParameters(query, limit) {
+    function buildParameters(query, limit, venueId = null) {
         const parameters = new URLSearchParams({
             query,
             confirmed_only: container.dataset.confirmedOnly || '0',
             limit: String(limit),
         });
+
+        if (venueId) {
+            parameters.set('venue_id', String(venueId));
+        }
 
         if (container.dataset.operationalStatus) {
             parameters.set('operational_status', container.dataset.operationalStatus);
@@ -182,6 +187,54 @@ function initVenueSelector(container) {
         }
 
         return parameters;
+    }
+
+    async function revalidateSelectedVenue() {
+        availabilityController?.abort();
+        availabilityController = null;
+
+        const venueId = Number(valueInput.value);
+        if (!venueId) {
+            input.setCustomValidity('Выберите площадку из списка.');
+            hideMessage();
+            updateControl();
+            return;
+        }
+
+        if (!startInput?.value || !durationInput?.value) {
+            input.setCustomValidity('');
+            hideMessage();
+            updateControl();
+            return;
+        }
+
+        const controller = new AbortController();
+        availabilityController = controller;
+        input.setCustomValidity('Проверяем доступность площадки.');
+        setControlState('loading');
+
+        try {
+            const venues = await fetchVenues('', 1, controller.signal, venueId);
+            const isAvailable = venues.some((venue) => Number(venue.id) === venueId);
+
+            if (isAvailable) {
+                input.setCustomValidity('');
+                hideMessage();
+            } else {
+                input.setCustomValidity('Площадка недоступна в выбранное время.');
+                showMessage('Площадка недоступна в выбранное время. Измените время или выберите другую площадку.');
+            }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                input.setCustomValidity('Не удалось проверить доступность площадки.');
+                showMessage(error.message || 'Не удалось проверить доступность площадки.');
+            }
+        } finally {
+            if (availabilityController === controller) {
+                availabilityController = null;
+                updateControl();
+            }
+        }
     }
 
     function renderOptions(venues) {
@@ -215,6 +268,8 @@ function initVenueSelector(container) {
     }
 
     function selectVenue(venue) {
+        availabilityController?.abort();
+        availabilityController = null;
         const address = displayAddress(venue.address);
         input.value = `${venue.name}${address ? ` — ${address}` : ''}`;
         valueInput.value = String(venue.id);

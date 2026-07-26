@@ -34,6 +34,7 @@ final readonly class SearchVenuesHandler
         ?User $user,
         ?Actor $actor,
         ?string $query = null,
+        ?int $venueId = null,
         ?VenueTypeEnum $type = null,
         ?VenueStatusEnum $status = null,
         ?int $metroStationId = null,
@@ -47,6 +48,7 @@ final readonly class SearchVenuesHandler
     ): array {
         $parameters = [
             'query' => mb_strtolower(trim((string) $query)),
+            'venue_id' => $venueId,
             'type' => $type?->value,
             'status' => $status?->value,
             'metro_station_id' => $metroStationId,
@@ -100,6 +102,7 @@ final readonly class SearchVenuesHandler
         }
 
         $venues = $venues
+            ->when($parameters['venue_id'], fn (Collection $items, int $value) => $items->where('id', $value))
             ->when($parameters['type'], fn (Collection $items, string $value) => $items->where('type_slug', $value))
             ->when($parameters['status'], fn (Collection $items, string $value) => $items->where('status_slug', $value))
             ->when($parameters['operational_status'], fn (Collection $items, string $value) => $items->where('operational_status', $value))

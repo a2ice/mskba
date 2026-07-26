@@ -76,6 +76,7 @@ class VenueController extends Controller
     ): JsonResponse {
         $validated = $request->validate([
             'query' => ['nullable', 'string', 'max:100'],
+            'venue_id' => ['nullable', 'integer', 'min:1'],
             'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
             'status' => ['nullable', Rule::enum(VenueStatusEnum::class)],
             'metro_station_id' => ['nullable', 'integer', 'exists:metro_stations,id'],
@@ -99,6 +100,7 @@ class VenueController extends Controller
             user: $request->user(),
             actor: $actors->resolveForRequest($request),
             query: $validated['query'] ?? null,
+            venueId: isset($validated['venue_id']) ? (int) $validated['venue_id'] : null,
             type: isset($validated['type']) ? VenueTypeEnum::from($validated['type']) : null,
             status: isset($validated['status']) ? VenueStatusEnum::from($validated['status']) : null,
             metroStationId: isset($validated['metro_station_id']) ? (int) $validated['metro_station_id'] : null,

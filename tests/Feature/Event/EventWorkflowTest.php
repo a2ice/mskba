@@ -367,6 +367,25 @@ final class EventWorkflowTest extends TestCase
             ->assertJsonPath('venue.name', 'Арбатская свободная площадка')
             ->assertJsonPath('venue.url', route('venues.show', $available->routeIdentifier()));
 
+        $this->getJson(route('venues.search', [
+            ...$parameters,
+            'query' => '',
+            'venue_id' => $available->id,
+            'limit' => 1,
+        ]))
+            ->assertOk()
+            ->assertJsonCount(1, 'venues')
+            ->assertJsonPath('venues.0.id', $available->id);
+
+        $this->getJson(route('venues.search', [
+            ...$parameters,
+            'query' => '',
+            'venue_id' => $occupied->id,
+            'limit' => 1,
+        ]))
+            ->assertOk()
+            ->assertJsonCount(0, 'venues');
+
         $available->update([
             'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED->value,
         ]);

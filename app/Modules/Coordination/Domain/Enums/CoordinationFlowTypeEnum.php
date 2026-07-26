@@ -14,7 +14,7 @@ enum CoordinationFlowTypeEnum: string
     public function label(): string
     {
         return match ($this) {
-            self::SINGLE => 'Один вопрос',
+            self::SINGLE => 'Простой опрос',
             self::EVENT_SCHEDULING => 'Дата, время и площадка',
             self::EVENT_ATTENDANCE => 'Собрать участников',
             self::EVENT_TIME_SELECTION => 'Выбрать время',

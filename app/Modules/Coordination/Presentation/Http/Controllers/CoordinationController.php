@@ -80,11 +80,11 @@ final class CoordinationController extends Controller
         return ThemeResolver::page('coordination.create', [
             'selectionModes' => PollSelectionModeEnum::cases(),
             'flowTypes' => [
-                CoordinationFlowTypeEnum::SINGLE,
-                CoordinationFlowTypeEnum::EVENT_SCHEDULING,
                 CoordinationFlowTypeEnum::EVENT_ATTENDANCE,
+                CoordinationFlowTypeEnum::SINGLE,
                 CoordinationFlowTypeEnum::EVENT_TIME_SELECTION,
                 CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION,
+                CoordinationFlowTypeEnum::EVENT_SCHEDULING,
             ],
             'subjectTypes' => collect(PollSubjectTypeEnum::cases())
                 ->reject(fn (PollSubjectTypeEnum $type): bool => $type === PollSubjectTypeEnum::PARTICIPATION)
