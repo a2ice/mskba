@@ -610,6 +610,9 @@ textarea.form-control {
 .badge--danger {
     background: var(--accent-strong);
 }
+.badge--warning {
+    background: var(--accent);
+}
 
 /* table */
 .table {

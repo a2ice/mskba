@@ -72,6 +72,12 @@ final class MainMenu implements MenuHandler
                 'active' => $this->isActiveRoute('events.*') && request('type') === 'game_training',
                 'visible' => true,
             ],
+            [
+                'label' => 'Турниры',
+                'url' => $this->routeUrl('tournaments.index'),
+                'active' => $this->isActiveRoute('tournaments.*'),
+                'visible' => true,
+            ],
         ];
 
         $items = [
@@ -84,7 +90,7 @@ final class MainMenu implements MenuHandler
             [
                 'label' => 'Мероприятия',
                 'url' => $this->routeUrl('events.index'),
-                'active' => $this->isActiveRoute('events.*'),
+                'active' => $this->isActiveRoute('events.*, tournaments.*'),
                 'visible' => true,
                 'children' => $moreGames,
             ],

@@ -165,10 +165,11 @@ final class CoordinationController extends Controller
             : $poll->ballots()->with('selections')->where('user_id', $request->user()->id)->first();
         $actor = $actors->resolveForRequest($request);
         $hasVoted = $ballot !== null;
+        $pollIsOpen = $poll->status === PollStatusEnum::OPEN && $poll->closes_at->isFuture();
         $canSeeResults = match ($poll->results_visibility) {
             PollResultsVisibilityEnum::ALWAYS => true,
-            PollResultsVisibilityEnum::AFTER_VOTE => $hasVoted || $poll->status->value !== 'open',
-            PollResultsVisibilityEnum::AFTER_CLOSE => $poll->status->value !== 'open',
+            PollResultsVisibilityEnum::AFTER_VOTE => $hasVoted || ! $pollIsOpen,
+            PollResultsVisibilityEnum::AFTER_CLOSE => ! $pollIsOpen,
         };
         $poll->load([
             'options' => fn ($query) => $query

@@ -2,6 +2,12 @@
     $title = $coordination->title;
     $isOpen = $poll->status->value === 'open' && $poll->closes_at->isFuture();
     $canSubmitVote = $isOpen && ($ballot === null || $poll->allows_vote_changes);
+    $displayStatusLabel = $isOpen
+        ? 'Открыт'
+        : ($poll->status->value === 'cancelled' ? 'Отменён' : 'Закрыт');
+    $displayStatusVariant = $isOpen
+        ? 'success'
+        : ($poll->status->value === 'cancelled' ? 'danger' : 'warning');
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -46,9 +52,9 @@
         @endif
         <div class="coordination-poll__heading">
             <div>
-                <span class="badge badge--{{ $isOpen ? 'success' : ($poll->status->value === 'cancelled' ? 'danger' : 'warning') }}">{{ $poll->status->label() }}</span>
+                <span class="badge badge--{{ $displayStatusVariant }}">{{ $displayStatusLabel }}</span>
                 <h2 class="h3 mt-2 mb-1">{{ $poll->question }}</h2>
-                <p class="mb-0">{{ $poll->selection_mode->label() }}</p>
+                <p class="mb-0">Режим голосования: {{ $poll->selection_mode->label() }}</p>
             </div>
             <time datetime="{{ $poll->closes_at->toIso8601String() }}">до {{ $poll->closes_at->format('d.m.Y H:i') }}</time>
         </div>
@@ -82,23 +88,14 @@
                 @if($isOpen && $ballot && !$poll->allows_vote_changes)
                     <div class="alert alert-info mt-3">Ваш голос принят и не может быть изменён.</div>
                 @endif
-                <div class="coordination-results">
-                    @foreach($poll->options as $option)
-                        <div class="coordination-result">
-                            <span class="coordination-vote-option__copy">
-                                <span>{{ $option->label }}</span>
-                                @if($option->proposer)
-                                    <small class="coordination-option-proposer">Предложил {{ $option->proposer->profile?->first_name ?: $option->proposer->username }}</small>
-                                @endif
-                                @include('theme::pages.coordination.partials.option-voters', compact('poll', 'option', 'canSeeResults'))
-                            </span>
-                            <strong>{{ $canSeeResults ? $option->selections_count : '—' }}</strong>
-                        </div>
-                    @endforeach
-                </div>
+                @include('theme::pages.coordination.partials.results', compact('poll', 'canSeeResults'))
             @endif
         @else
-            <div class="alert alert-info mt-3">Войдите, чтобы проголосовать.</div>
+            @if($isOpen)
+                <div class="alert alert-info mt-3">Войдите, чтобы проголосовать.</div>
+            @else
+                @include('theme::pages.coordination.partials.results', compact('poll', 'canSeeResults'))
+            @endif
         @endauth
     </article>
 

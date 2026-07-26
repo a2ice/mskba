@@ -691,6 +691,13 @@ final class CoordinationWorkflowTest extends TestCase
         $this->assertSame(PollStatusEnum::CLOSED, $poll->fresh()->status);
         $this->assertSame(CoordinationSessionStatusEnum::DECISION_PENDING, $session->fresh()->status);
         $this->assertDatabaseCount('coordination_ballots', 0);
+
+        $this->app['auth']->logout();
+        $this->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertSee('Закрыт')
+            ->assertSee('Режим голосования: Выбор одного варианта')
+            ->assertDontSee('Войдите, чтобы проголосовать.');
     }
 
     public function test_only_creator_closes_and_accepts_explicit_result(): void

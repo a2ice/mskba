@@ -48,6 +48,13 @@
     grid-column: 1 / -1;
 }
 
+.tournament-filters__grid {
+    grid-template-columns:
+        minmax(260px, 1.6fr)
+        repeat(2, minmax(160px, 1fr))
+        max-content;
+}
+
 .event-filters__actions .btn {
     white-space: nowrap;
 }
@@ -1139,6 +1146,10 @@ body.telegram-mini-app .event-show {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .tournament-filters__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .event-filters__field--type,
     .event-filters__field--outcome,
     .event-filters__actions {
@@ -1204,6 +1215,10 @@ body.telegram-mini-app .event-show {
     }
 
     .event-filters--past .event-filters__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tournament-filters__grid {
         grid-template-columns: minmax(0, 1fr);
     }
 

@@ -25,6 +25,7 @@ use App\Modules\Telegram\Presentation\Http\Controllers\StartTelegramBotLoginCont
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramBotLoginStatusController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebLoginController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Presentation\Theming\ThemeResolver;
@@ -229,6 +230,10 @@ Route::prefix('events')->group(function () {
     Route::get('/{event}', [EventController::class, 'show'])
         ->name('events.show');
 });
+
+Route::get('/tournaments', [TournamentController::class, 'index'])
+    ->name('tournaments.index')
+    ->defaults('breadcrumb', 'Турниры');
 
 Route::prefix('coordination')->group(function () {
     Route::get('/', [CoordinationController::class, 'index'])

@@ -10,8 +10,8 @@ enum PollSelectionModeEnum: string
     public function label(): string
     {
         return match ($this) {
-            self::SINGLE => 'Один вариант',
-            self::MULTIPLE => 'Несколько вариантов',
+            self::SINGLE => 'Выбор одного варианта',
+            self::MULTIPLE => 'Выбор нескольких вариантов',
         };
     }
 }

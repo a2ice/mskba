@@ -96,20 +96,36 @@
 }
 
 .site-summary-create {
-    display: inline-grid;
+    position: relative;
+    display: inline-flex;
     width: 22px;
     height: 22px;
-    place-items: center;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
     padding: 0;
     border: 1px solid rgba(255, 111, 38, 0.58);
     border-radius: 50%;
     background: rgba(255, 111, 38, 0.12);
     color: #fff;
-    font: inherit;
-    font-size: 17px;
-    font-weight: 800;
-    line-height: 1;
     cursor: pointer;
+}
+
+.site-summary-create::before,
+.site-summary-create::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 9px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    content: "";
+    transform: translate(-50%, -50%);
+}
+
+.site-summary-create::after {
+    transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .home-welcome__eyebrow .site-summary-create {
