@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserConsent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,6 +28,13 @@ class RegisterTest extends TestCase
 
         $this->assertDatabaseMissing('user_participation_roles', [
             'user_id' => $user->id,
+        ]);
+
+        $this->assertDatabaseHas('user_consents', [
+            'user_id' => $user->id,
+            'type' => UserConsent::TYPE_PRIVACY_POLICY,
+            'document_version' => config('legal.privacy_policy_version'),
+            'source' => 'site_registration',
         ]);
     }
 
@@ -112,6 +120,20 @@ class RegisterTest extends TestCase
             ->assertJsonPath('redirect_url', route('account'));
     }
 
+    public function test_registration_requires_privacy_consent(): void
+    {
+        $response = $this->post(route('auth.register'), $this->registrationPayload([
+            'username' => 'without_privacy_consent',
+            'privacy_consent' => null,
+        ]));
+
+        $response->assertSessionHasErrors('privacy_consent');
+
+        $this->assertDatabaseMissing('users', [
+            'username' => 'without_privacy_consent',
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      * @return array<string, mixed>
@@ -122,6 +144,7 @@ class RegisterTest extends TestCase
             'username' => 'register_user',
             'password' => 'Password1!',
             'password_confirmation' => 'Password1!',
+            'privacy_consent' => '1',
             'role' => null,
         ], $overrides);
     }

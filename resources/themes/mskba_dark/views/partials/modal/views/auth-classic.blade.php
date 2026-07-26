@@ -66,6 +66,15 @@
                 </select>
             </label>
 
+            <label class="privacy-consent privacy-consent--compact">
+                <input class="privacy-consent__input" type="checkbox" name="privacy_consent" value="1" required>
+                <span class="privacy-consent__control" aria-hidden="true"></span>
+                <span class="privacy-consent__text">
+                    Я даю согласие на обработку персональных данных и принимаю условия
+                    <a href="{{ route('privacy.policy') }}" target="_blank" rel="noopener">Политики обработки персональных данных</a>.
+                </span>
+            </label>
+
             <div class="auth-form__message form-message"></div>
 
             <button type="submit" class="btn btn--primary btn--sm auth-form__submit">Зарегистрироваться</button>

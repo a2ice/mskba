@@ -45,6 +45,10 @@ Route::get('/register', function () use ($themeResolver) {
     return $themeResolver->page('auth.register');
 })->name('register');
 
+Route::get('/privacy', function () use ($themeResolver) {
+    return $themeResolver->page('legal.privacy');
+})->name('privacy.policy')->defaults('breadcrumb', 'Персональные данные');
+
 Route::prefix('faq')->group(function () use ($themeResolver) {
     Route::get('/', fn () => $themeResolver->page('faq.index'))
         ->name('faq.index')

@@ -96,6 +96,27 @@
                                 @enderror
                             </div>
 
+                            <div class="form-group field mb-3">
+                                <label class="privacy-consent">
+                                    <input
+                                        class="privacy-consent__input"
+                                        type="checkbox"
+                                        name="privacy_consent"
+                                        value="1"
+                                        @checked(old('privacy_consent'))
+                                        required
+                                    >
+                                    <span class="privacy-consent__control" aria-hidden="true"></span>
+                                    <span class="privacy-consent__text">
+                                        Я даю согласие на обработку персональных данных и принимаю условия
+                                        <a href="{{ route('privacy.policy') }}" target="_blank" rel="noopener">Политики обработки персональных данных</a>.
+                                    </span>
+                                </label>
+                                @error('privacy_consent')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <button type="submit" class="btn btn--secondary-bordered btn--sm">Зарегистрироваться</button>
                         </form>
 

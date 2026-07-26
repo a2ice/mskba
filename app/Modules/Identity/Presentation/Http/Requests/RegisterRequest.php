@@ -49,6 +49,7 @@ class RegisterRequest extends FormRequest
             'gender' => ['nullable', Rule::enum(UserGenderEnum::class)],
             'birth_date' => ['nullable', 'date_format:Y-m-d', 'before:today'],
             'role' => ['nullable', 'string', Rule::enum(UserParticipationRoleEnum::class)],
+            'privacy_consent' => ['accepted'],
             'redirect_to' => ['nullable', 'string', 'max:2048'],
         ];
     }
@@ -91,6 +92,7 @@ class RegisterRequest extends FormRequest
             'password.confirmed' => 'Пароль и подтверждение пароля не совпадают.',
             'role.string' => 'Роль участия должна быть строкой.',
             'role.enum' => 'Выберите доступную роль участия.',
+            'privacy_consent.accepted' => 'Для регистрации необходимо согласие на обработку персональных данных.',
         ];
     }
 
@@ -104,6 +106,7 @@ class RegisterRequest extends FormRequest
             'password' => 'пароль',
             'password_confirmation' => 'подтверждение пароля',
             'role' => 'роль участия',
+            'privacy_consent' => 'согласие на обработку персональных данных',
         ];
     }
 

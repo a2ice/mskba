@@ -96,6 +96,11 @@ class User extends Authenticatable
         return $this->hasMany(UserOperationalPermission::class);
     }
 
+    public function consents(): HasMany
+    {
+        return $this->hasMany(UserConsent::class);
+    }
+
     public function contacts(): MorphMany
     {
         return $this->morphMany(Contact::class, 'contactable');

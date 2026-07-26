@@ -60,14 +60,105 @@ p {
 .site-footer {
     position: relative;
     overflow: hidden;
-    background: transparent;
-    /* border-top: 1px solid rgba(255, 255, 255, 0.08); */
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background:
+        linear-gradient(90deg, rgba(246, 95, 42, 0.06), transparent 35%),
+        rgba(7, 8, 7, 0.94);
 }
 
 .site-footer__inner {
     position: relative;
     z-index: 1;
+    padding: 48px 0 28px;
     color: rgba(255, 255, 255, 0.84);
+}
+
+.site-footer__grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 1.5fr) repeat(2, minmax(150px, 0.7fr));
+    gap: 42px;
+}
+
+.site-footer__brand {
+    max-width: 390px;
+}
+
+.site-footer__brand .brand {
+    display: inline-flex;
+    width: 150px;
+    margin-bottom: 18px;
+}
+
+.site-footer__brand .brand__mark {
+    width: 100%;
+    height: auto;
+}
+
+.site-footer__brand p,
+.site-footer__disclaimer {
+    color: rgba(247, 243, 234, 0.62);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.site-footer__nav {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+}
+
+.site-footer__nav h2 {
+    margin-bottom: 4px;
+    color: var(--accent-hover);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.site-footer__nav a {
+    width: fit-content;
+    color: rgba(247, 243, 234, 0.82);
+    font-size: 14px;
+    font-weight: 700;
+    transition: color 160ms ease;
+}
+
+.site-footer__nav a:hover,
+.site-footer__nav a:focus-visible {
+    color: #fff;
+}
+
+.site-footer__disclaimer {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 34px;
+    padding-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.site-footer__disclaimer p:first-child {
+    max-width: 760px;
+}
+
+@media (max-width: 768px) {
+    .site-footer__inner {
+        padding: 34px 0 calc(130px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .site-footer__grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 30px 24px;
+    }
+
+    .site-footer__brand {
+        grid-column: 1 / -1;
+    }
+
+    .site-footer__disclaimer {
+        flex-direction: column;
+    }
 }
 
 /* measures */

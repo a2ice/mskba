@@ -1,5 +1,34 @@
 <div class="site-footer__inner partial-wrapper partial-footer">
-     <div class="container text-center py-4">
-         <p class="mb-0">&copy; {{ date('Y') }} MSKBA. Все права защищены.</p>
-     </div>
+    <div class="inner">
+        <div class="site-footer__grid">
+            <div class="site-footer__brand">
+                @include('theme::partials.logo')
+                <p>Баскетбольные площадки, игры, тренировки и сообщество Москвы и области.</p>
+            </div>
+
+            <nav class="site-footer__nav" aria-label="Разделы портала">
+                <h2>Портал</h2>
+                <a href="{{ route('venues') }}">Площадки</a>
+                <a href="{{ route('events.index') }}">Мероприятия</a>
+                <a href="{{ route('coordination.index') }}">Опросы</a>
+                <a href="{{ route('faq.index') }}">FAQ</a>
+            </nav>
+
+            <nav class="site-footer__nav" aria-label="Информация и документы">
+                <h2>Информация</h2>
+                <a href="{{ route('welcome') }}#about">О проекте</a>
+                <a href="{{ route('welcome') }}#partners">Партнёрам</a>
+                <a href="{{ route('privacy.policy') }}">Персональные данные</a>
+                <a href="mailto:{{ config('legal.privacy_email') }}">Связаться с нами</a>
+            </nav>
+        </div>
+
+        <div class="site-footer__disclaimer">
+            <p>
+                Материалы портала носят информационный характер и не являются публичной офертой.
+                Пользователи самостоятельно отвечают за размещаемые сведения и договорённости с другими участниками.
+            </p>
+            <p>&copy; {{ date('Y') }} MSKBA. Все права защищены.</p>
+        </div>
+    </div>
 </div>

@@ -17,6 +17,12 @@ final class MainMenu implements MenuHandler
 
         $moreItems = [
             [
+                'label' => 'Опросы',
+                'url' => $this->routeUrl('coordination.index'),
+                'active' => $this->isActiveRoute('coordination.*'),
+                'visible' => true,
+            ],
+            [
                 'label' => 'FAQ',
                 'url' => $this->routeUrl('faq.index'),
                 'active' => $this->isActiveRoute('faq.*'),
@@ -66,13 +72,6 @@ final class MainMenu implements MenuHandler
                 'active' => $this->isActiveRoute('events.*') && request('type') === 'game_training',
                 'visible' => true,
             ],
-            [
-                'divider' => true,
-                'label' => 'Опросы',
-                'url' => $this->routeUrl('coordination.index'),
-                'active' => $this->isActiveRoute('coordination.*'),
-                'visible' => true,
-            ],
         ];
 
         $items = [
@@ -85,7 +84,7 @@ final class MainMenu implements MenuHandler
             [
                 'label' => 'Мероприятия',
                 'url' => $this->routeUrl('events.index'),
-                'active' => $this->isActiveRoute('events.*') || $this->isActiveRoute('coordination.*'),
+                'active' => $this->isActiveRoute('events.*'),
                 'visible' => true,
                 'children' => $moreGames,
             ],

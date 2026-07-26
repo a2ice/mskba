@@ -3,10 +3,12 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
 use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,6 +73,13 @@ class AuthController extends Controller
             password: $validated['password'],
             participantRole: $request->participantRole(),
             profile: $request->profile(),
+            privacyConsent: new PrivacyConsentDTO(
+                documentVersion: (string) config('legal.privacy_policy_version'),
+                acceptedAt: CarbonImmutable::now(),
+                source: 'site_registration',
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+            ),
         );
 
         $authHandler->login(
