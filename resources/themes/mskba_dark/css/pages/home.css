@@ -744,7 +744,7 @@
     }
 
     .home-welcome__image {
-        height: auto;
+       /* height: auto; */
     }
 
     .home-welcome__main {
