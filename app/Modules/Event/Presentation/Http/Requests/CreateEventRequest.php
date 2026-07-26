@@ -28,6 +28,8 @@ final class CreateEventRequest extends FormRequest
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', Rule::in(range(30, 480, 30))],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
+            'participant_user_ids' => ['nullable', 'array', 'max:499'],
+            'participant_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
         ];
     }
 

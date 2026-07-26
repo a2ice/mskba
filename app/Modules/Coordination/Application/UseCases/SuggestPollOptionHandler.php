@@ -4,16 +4,23 @@ namespace App\Modules\Coordination\Application\UseCases;
 
 use App\Modules\Coordination\Application\Services\PollOptionValueFactory;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
+use App\Modules\Coordination\Domain\Enums\PollSubjectTypeEnum;
 use App\Modules\Coordination\Domain\Events\PollChanged;
 use App\Modules\Coordination\Domain\Models\Poll;
 use App\Modules\Coordination\Domain\Models\PollOption;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Models\Venue;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class SuggestPollOptionHandler
 {
-    public function __construct(private readonly PollOptionValueFactory $optionValues) {}
+    public function __construct(
+        private readonly PollOptionValueFactory $optionValues,
+        private readonly VenueEventAvailability $availability,
+    ) {}
 
     public function handle(int $pollId, User $user, mixed $rawOption): PollOption
     {
@@ -38,6 +45,7 @@ final class SuggestPollOptionHandler
             }
 
             $value = $this->optionValues->one($poll->subject_type, $rawOption);
+            $this->assertSuggestionAvailable($poll, $value->value);
             $duplicate = $poll->options()
                 ->where('is_active', true)
                 ->get(['value'])
@@ -59,5 +67,31 @@ final class SuggestPollOptionHandler
         event(new PollChanged($pollId));
 
         return $option;
+    }
+
+    /** @param array<string, mixed> $value */
+    private function assertSuggestionAvailable(Poll $poll, array $value): void
+    {
+        $configuration = $poll->configuration ?? [];
+        $duration = (int) ($configuration['duration_minutes'] ?? 0);
+
+        if ($poll->subject_type === PollSubjectTypeEnum::TIME
+            && isset($configuration['venue_id'], $configuration['date'], $value['time'])) {
+            $venue = Venue::query()
+                ->with(['schedule.intervals', 'schedule.exceptions.intervals'])
+                ->findOrFail((int) $configuration['venue_id']);
+            $timezone = $venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
+            $startsAt = CarbonImmutable::parse($configuration['date'].' '.$value['time'], $timezone)->utc();
+            $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+        }
+
+        if ($poll->subject_type === PollSubjectTypeEnum::VENUE
+            && isset($configuration['starts_at'], $value['venue_id'])) {
+            $venue = Venue::query()
+                ->with(['schedule.intervals', 'schedule.exceptions.intervals'])
+                ->findOrFail((int) $value['venue_id']);
+            $startsAt = CarbonImmutable::parse((string) $configuration['starts_at'])->utc();
+            $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+        }
     }
 }

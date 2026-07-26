@@ -80,6 +80,9 @@ final class CoordinationController extends Controller
             'flowTypes' => [
                 CoordinationFlowTypeEnum::SINGLE,
                 CoordinationFlowTypeEnum::EVENT_SCHEDULING,
+                CoordinationFlowTypeEnum::EVENT_ATTENDANCE,
+                CoordinationFlowTypeEnum::EVENT_TIME_SELECTION,
+                CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION,
             ],
             'subjectTypes' => collect(PollSubjectTypeEnum::cases())
                 ->reject(fn (PollSubjectTypeEnum $type): bool => $type === PollSubjectTypeEnum::PARTICIPATION)
@@ -206,6 +209,55 @@ final class CoordinationController extends Controller
         $coordinatedDuration = is_array($interval)
             ? CarbonImmutable::parse($interval['starts_at'])->diffInMinutes(CarbonImmutable::parse($interval['ends_at']))
             : null;
+        $configuration = $poll->configuration ?? [];
+
+        if (in_array($coordination->flow_type, [
+            CoordinationFlowTypeEnum::EVENT_ATTENDANCE,
+            CoordinationFlowTypeEnum::EVENT_TIME_SELECTION,
+            CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION,
+        ], true)) {
+            $coordinatedDuration = (int) ($configuration['duration_minutes'] ?? 60);
+            $venueId = $configuration['venue_id'] ?? $venueId;
+
+            if (isset($configuration['starts_at'])) {
+                $coordinatedStartsAt = CarbonImmutable::parse((string) $configuration['starts_at'])
+                    ->setTimezone((string) config('app.timezone', 'Europe/Moscow'))
+                    ->format('Y-m-d\TH:i');
+            }
+
+            if ($coordination->flow_type === CoordinationFlowTypeEnum::EVENT_TIME_SELECTION) {
+                $selectedTime = $decisionByType->get(PollSubjectTypeEnum::TIME->value)?->option?->value['time'] ?? null;
+                $coordinatedStartsAt = is_string($selectedTime) && isset($configuration['date'])
+                    ? $configuration['date'].'T'.$selectedTime
+                    : null;
+            }
+
+            if ($coordination->flow_type === CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION) {
+                $venueId = $decisionByType->get(PollSubjectTypeEnum::VENUE->value)?->option?->value['venue_id'] ?? null;
+            }
+        }
+        $coordinationParticipants = collect();
+
+        if ($canCreateEvent && $coordination->flow_type === CoordinationFlowTypeEnum::EVENT_ATTENDANCE) {
+            $coordinationParticipants = $poll->options
+                ->flatMap(function ($option) {
+                    return $option->selections->map(function ($selection) use ($option): array {
+                        $user = $selection->ballot->user;
+
+                        return [
+                            'id' => $user->id,
+                            'name' => trim(implode(' ', array_filter([
+                                $user->profile?->first_name,
+                                $user->profile?->last_name,
+                            ]))) ?: ($user->username ?: 'Пользователь #'.$user->id),
+                            'answer' => $option->label,
+                            'intent' => $option->value['intent'] ?? null,
+                        ];
+                    });
+                })
+                ->unique('id')
+                ->values();
+        }
 
         return ThemeResolver::page('coordination.show', [
             'coordination' => $coordination,
@@ -236,6 +288,7 @@ final class CoordinationController extends Controller
             'coordinatedDuration' => $coordinatedDuration,
             'durationOptions' => range(30, 480, 30),
             'defaultDuration' => 60,
+            'coordinationParticipants' => $coordinationParticipants,
         ]);
     }
 

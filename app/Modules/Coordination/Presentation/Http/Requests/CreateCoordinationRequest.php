@@ -24,6 +24,10 @@ final class CreateCoordinationRequest extends FormRequest
         if (! $this->has('allows_suggestions')) {
             $this->merge(['allows_suggestions' => false]);
         }
+
+        if (! $this->has('include_thinking_option')) {
+            $this->merge(['include_thinking_option' => false]);
+        }
     }
 
     public function authorize(): bool
@@ -40,6 +44,9 @@ final class CreateCoordinationRequest extends FormRequest
             'flow_type' => ['required', Rule::in([
                 CoordinationFlowTypeEnum::SINGLE->value,
                 CoordinationFlowTypeEnum::EVENT_SCHEDULING->value,
+                CoordinationFlowTypeEnum::EVENT_ATTENDANCE->value,
+                CoordinationFlowTypeEnum::EVENT_TIME_SELECTION->value,
+                CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION->value,
             ])],
             'context_event_id' => ['nullable', 'integer', 'exists:events,id'],
             'question' => ['exclude_unless:flow_type,single', 'required', 'string', 'max:500'],
@@ -60,6 +67,7 @@ final class CreateCoordinationRequest extends FormRequest
             'allows_vote_changes' => ['required', 'boolean'],
             'is_anonymous' => ['required', 'boolean'],
             'allows_suggestions' => ['required', 'boolean'],
+            'include_thinking_option' => ['required', 'boolean'],
             'publish_to_telegram' => ['required', 'boolean'],
             'telegram_chat_ids' => ['nullable', 'required_if:publish_to_telegram,1', 'array', 'min:1'],
             'telegram_chat_ids.*' => [
@@ -87,6 +95,65 @@ final class CreateCoordinationRequest extends FormRequest
             'time_options.*.ends_at' => ['required', 'date_format:H:i'],
             'venue_options' => ['exclude_unless:flow_type,event_scheduling', 'required', 'array', 'min:2', 'max:20'],
             'venue_options.*' => ['required', 'integer', 'distinct', 'exists:venues,id'],
+            'fixed_venue_id' => [
+                Rule::requiredIf(fn (): bool => in_array($this->input('flow_type'), [
+                    CoordinationFlowTypeEnum::EVENT_ATTENDANCE->value,
+                    CoordinationFlowTypeEnum::EVENT_TIME_SELECTION->value,
+                ], true)),
+                'nullable',
+                'integer',
+                'exists:venues,id',
+            ],
+            'fixed_date' => [
+                Rule::requiredIf($this->input('flow_type') === CoordinationFlowTypeEnum::EVENT_TIME_SELECTION->value),
+                'nullable',
+                'date_format:Y-m-d',
+                'after_or_equal:today',
+            ],
+            'fixed_starts_at' => [
+                Rule::requiredIf(fn (): bool => in_array($this->input('flow_type'), [
+                    CoordinationFlowTypeEnum::EVENT_ATTENDANCE->value,
+                    CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION->value,
+                ], true)),
+                'nullable',
+                'date',
+                'after:now',
+            ],
+            'event_duration_minutes' => [
+                Rule::requiredIf(fn (): bool => in_array($this->input('flow_type'), [
+                    CoordinationFlowTypeEnum::EVENT_ATTENDANCE->value,
+                    CoordinationFlowTypeEnum::EVENT_TIME_SELECTION->value,
+                    CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION->value,
+                ], true)),
+                'nullable',
+                'integer',
+                Rule::in(range(30, 480, 30)),
+            ],
+            'going_label' => ['exclude_unless:flow_type,event_attendance', 'required', 'string', 'max:255'],
+            'not_going_label' => ['exclude_unless:flow_type,event_attendance', 'required', 'string', 'max:255'],
+            'thinking_label' => [
+                'exclude_unless:flow_type,event_attendance',
+                Rule::requiredIf($this->boolean('include_thinking_option')),
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'start_time_options' => [
+                'exclude_unless:flow_type,event_time_selection',
+                'required',
+                'array',
+                'min:2',
+                'max:20',
+            ],
+            'start_time_options.*' => ['required', 'date_format:H:i', 'distinct'],
+            'candidate_venue_ids' => [
+                'exclude_unless:flow_type,event_venue_selection',
+                'required',
+                'array',
+                'min:2',
+                'max:20',
+            ],
+            'candidate_venue_ids.*' => ['required', 'integer', 'distinct', 'exists:venues,id'],
             ...$this->optionRules(),
         ];
     }

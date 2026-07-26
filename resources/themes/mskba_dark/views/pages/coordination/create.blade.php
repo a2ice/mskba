@@ -144,6 +144,151 @@
             <script type="application/json" data-coordination-venue-options>@json($venueEditorOptions)</script>
         </div>
         </div>
+        <div data-coordination-event-poll-flow @if(!in_array($selectedFlowType, ['event_attendance', 'event_time_selection', 'event_venue_selection'], true)) hidden @endif>
+            <div class="alert alert-info mb-3">
+                Заданные площадка и время проверяются сейчас и повторно перед созданием мероприятия.
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="eventPollResultsVisibility">Результаты видны</label>
+                    <select id="eventPollResultsVisibility" class="form-select" name="results_visibility">
+                        @foreach($resultsVisibilities as $visibility)
+                            <option value="{{ $visibility->value }}" @selected(old('results_visibility', 'after_vote') === $visibility->value)>{{ $visibility->label() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="eventPollClosesAt">Голосование до</label>
+                    <input id="eventPollClosesAt" type="datetime-local" class="form-control" name="closes_at" value="{{ old('closes_at', $defaultClosesAt) }}">
+                </div>
+            </div>
+
+            <div data-coordination-event-flow="event_attendance" @if($selectedFlowType !== 'event_attendance') hidden @endif>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="attendanceVenue">Площадка</label>
+                        <select id="attendanceVenue" class="form-select" name="fixed_venue_id">
+                            <option value="">Выберите площадку</option>
+                            @foreach($optionVenues as $venue)
+                                <option value="{{ $venue->id }}" @selected((string) old('fixed_venue_id') === (string) $venue->id)>{{ $venue->name }} — {{ $venue->raw_address }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="attendanceStartsAt">Дата и время</label>
+                        <input id="attendanceStartsAt" class="form-control" type="datetime-local" name="fixed_starts_at" value="{{ old('fixed_starts_at', now()->addDay()->setTime(19, 0)->format('Y-m-d\TH:i')) }}">
+                    </div>
+                </div>
+                <div class="form-group field mb-3">
+                    <label class="form-label" for="attendanceDuration">Длительность</label>
+                    <select id="attendanceDuration" class="form-select" name="event_duration_minutes">
+                        @foreach(range(30, 480, 30) as $minutes)
+                            <option value="{{ $minutes }}" @selected((int) old('event_duration_minutes', 60) === $minutes)>{{ $minutes < 60 ? $minutes.' минут' : rtrim(rtrim(number_format($minutes / 60, 1, ',', ''), '0'), ',').' ч' }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="goingLabel">Положительное решение</label>
+                        <input id="goingLabel" class="form-control" name="going_label" value="{{ old('going_label', 'Пойду') }}" maxlength="255">
+                        <small class="form-text">🟢 В системе фиксируется как намерение прийти</small>
+                    </div>
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="notGoingLabel">Отрицательное решение</label>
+                        <input id="notGoingLabel" class="form-control" name="not_going_label" value="{{ old('not_going_label', 'Не пойду') }}" maxlength="255">
+                        <small class="form-text">🔴 В системе фиксируется как отказ</small>
+                    </div>
+                </div>
+                <input type="hidden" name="include_thinking_option" value="0">
+                <label class="coordination-setting-toggle mb-3">
+                    <input class="coordination-setting-toggle__input" type="checkbox" name="include_thinking_option" value="1" data-coordination-thinking-toggle @checked((bool) old('include_thinking_option', false))>
+                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
+                    <strong class="coordination-setting-toggle__title">Добавить вариант «Думаю»</strong>
+                </label>
+                <div class="form-group field mb-3" data-coordination-thinking-label @if(!old('include_thinking_option')) hidden @endif>
+                    <label class="form-label" for="thinkingLabel">Раздумывает</label>
+                    <input id="thinkingLabel" class="form-control" name="thinking_label" value="{{ old('thinking_label', 'Думаю') }}" maxlength="255">
+                    <small class="form-text">🟡 В системе фиксируется как раздумье</small>
+                </div>
+                <p class="form-text mb-3">
+                    Если разрешить свои варианты, ответы вроде «Опоздаю на 15 минут» останутся отдельными пояснениями.
+                    При создании мероприятия вы сами решите, учитывать ли проголосовавшего как участника.
+                </p>
+            </div>
+
+            <div data-coordination-event-flow="event_time_selection" @if($selectedFlowType !== 'event_time_selection') hidden @endif>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="timeVenue">Площадка</label>
+                        <select id="timeVenue" class="form-select" name="fixed_venue_id">
+                            <option value="">Выберите площадку</option>
+                            @foreach($optionVenues as $venue)
+                                <option value="{{ $venue->id }}" @selected((string) old('fixed_venue_id') === (string) $venue->id)>{{ $venue->name }} — {{ $venue->raw_address }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3 form-group field">
+                        <label class="form-label" for="timeDate">Дата</label>
+                        <input id="timeDate" class="form-control" type="date" name="fixed_date" value="{{ old('fixed_date', now()->addDay()->format('Y-m-d')) }}">
+                    </div>
+                    <div class="col-md-3 form-group field">
+                        <label class="form-label" for="timeDuration">Длительность</label>
+                        <select id="timeDuration" class="form-select" name="event_duration_minutes">
+                            @foreach(range(30, 480, 30) as $minutes)
+                                <option value="{{ $minutes }}" @selected((int) old('event_duration_minutes', 60) === $minutes)>{{ $minutes }} мин.</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    @foreach(old('start_time_options', ['18:00', '19:00']) as $index => $time)
+                        <div class="col-md-6 form-group field">
+                            <label class="form-label" for="startTime{{ $index }}">Время начала {{ $index + 1 }}</label>
+                            <input id="startTime{{ $index }}" class="form-control" type="time" name="start_time_options[]" value="{{ $time }}">
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div data-coordination-event-flow="event_venue_selection" @if($selectedFlowType !== 'event_venue_selection') hidden @endif>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="venueStartsAt">Дата и время</label>
+                        <input id="venueStartsAt" class="form-control" type="datetime-local" name="fixed_starts_at" value="{{ old('fixed_starts_at', now()->addDay()->setTime(19, 0)->format('Y-m-d\TH:i')) }}">
+                    </div>
+                    <div class="col-md-6 form-group field">
+                        <label class="form-label" for="venueDuration">Длительность</label>
+                        <select id="venueDuration" class="form-select" name="event_duration_minutes">
+                            @foreach(range(30, 480, 30) as $minutes)
+                                <option value="{{ $minutes }}" @selected((int) old('event_duration_minutes', 60) === $minutes)>{{ $minutes }} мин.</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <fieldset class="form-group field mb-3">
+                    <legend class="form-label">Площадки-кандидаты</legend>
+                    <div class="coordination-chain-venues">
+                        @foreach($optionVenues as $venue)
+                            <label class="coordination-checkbox">
+                                <input class="coordination-checkbox__input" type="checkbox" name="candidate_venue_ids[]" value="{{ $venue->id }}" @checked(in_array((string) $venue->id, array_map('strval', old('candidate_venue_ids', [])), true))>
+                                <span class="coordination-checkbox__control" aria-hidden="true"></span>
+                                <span class="coordination-checkbox__label">{{ $venue->name }} — {{ $venue->raw_address }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="form-group field mb-3">
+                <input type="hidden" name="allows_vote_changes" value="0">
+                <label class="coordination-setting-toggle">
+                    <input class="coordination-setting-toggle__input" type="checkbox" name="allows_vote_changes" value="1" @checked((bool) old('allows_vote_changes', false))>
+                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
+                    <strong class="coordination-setting-toggle__title">Разрешить менять голос</strong>
+                </label>
+            </div>
+            <input type="hidden" name="is_anonymous" value="0">
+        </div>
         <div class="coordination-chain-editor mb-4" data-coordination-chain-flow @if($selectedFlowType !== 'event_scheduling') hidden @endif>
             <div class="alert alert-info mb-3">
                 Сначала участники выберут дату, затем время. Перед финальным голосованием система оставит только свободные площадки.

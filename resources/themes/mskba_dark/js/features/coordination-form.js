@@ -7,17 +7,34 @@ function initCoordinationForm(form) {
     const flowType = form.querySelector('[data-coordination-flow-type]');
     const singleFlow = form.querySelector('[data-coordination-single-flow]');
     const chainFlow = form.querySelector('[data-coordination-chain-flow]');
+    const eventPollFlow = form.querySelector('[data-coordination-event-poll-flow]');
+    const eventFlowSections = [...form.querySelectorAll('[data-coordination-event-flow]')];
+    const thinkingToggle = form.querySelector('[data-coordination-thinking-toggle]');
+    const thinkingLabel = form.querySelector('[data-coordination-thinking-label]');
 
     if (!container || !subjectType) {
         return;
     }
 
+    const syncThinking = () => {
+        if (!thinkingLabel) {
+            return;
+        }
+
+        thinkingLabel.hidden = !thinkingToggle?.checked;
+        thinkingLabel.querySelectorAll('input').forEach((field) => {
+            field.disabled = !thinkingToggle?.checked;
+        });
+    };
+
     const syncFlow = () => {
-        const chainSelected = flowType?.value === 'event_scheduling';
+        const selected = flowType?.value || 'single';
+        const chainSelected = selected === 'event_scheduling';
+        const eventPollSelected = selected.startsWith('event_') && !chainSelected;
         if (singleFlow) {
-            singleFlow.hidden = chainSelected;
+            singleFlow.hidden = selected !== 'single';
             singleFlow.querySelectorAll('input, select, textarea, button').forEach((field) => {
-                field.disabled = chainSelected;
+                field.disabled = selected !== 'single';
             });
         }
         if (chainFlow) {
@@ -26,10 +43,27 @@ function initCoordinationForm(form) {
                 field.disabled = !chainSelected;
             });
         }
+        if (eventPollFlow) {
+            eventPollFlow.hidden = !eventPollSelected;
+            eventPollFlow.querySelectorAll('input, select, textarea, button').forEach((field) => {
+                field.disabled = !eventPollSelected;
+            });
+        }
+        eventFlowSections.forEach((section) => {
+            const active = eventPollSelected && section.dataset.coordinationEventFlow === selected;
+            section.hidden = !active;
+            section.querySelectorAll('input, select, textarea, button').forEach((field) => {
+                field.disabled = !active;
+            });
+        });
+        syncThinking();
     };
 
     flowType?.addEventListener('change', syncFlow);
     syncFlow();
+
+    thinkingToggle?.addEventListener('change', syncThinking);
+    syncThinking();
 
     let venues = [];
 

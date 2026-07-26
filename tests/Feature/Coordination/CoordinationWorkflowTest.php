@@ -227,6 +227,126 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee('value="'.$availableVenue->id.'"', false);
     }
 
+    public function test_attendance_poll_keeps_semantic_intents_and_allows_manual_participant_selection(): void
+    {
+        $organizer = User::factory()->create();
+        $goingUser = User::factory()->create();
+        $customUser = User::factory()->create();
+        [$venue, $startsAt] = $this->availableVenue();
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.store'), [
+                'flow_type' => CoordinationFlowTypeEnum::EVENT_ATTENDANCE->value,
+                'title' => 'Собираем состав',
+                'description' => 'Проверяем, кто сможет прийти.',
+                'fixed_venue_id' => $venue->id,
+                'fixed_starts_at' => $startsAt->format('Y-m-d\TH:i'),
+                'event_duration_minutes' => 60,
+                'going_label' => 'Я в игре',
+                'not_going_label' => 'Пропущу',
+                'include_thinking_option' => '1',
+                'thinking_label' => 'Уточню позже',
+                'results_visibility' => 'after_vote',
+                'allows_vote_changes' => '0',
+                'is_anonymous' => '0',
+                'allows_suggestions' => '1',
+                'publish_to_telegram' => '0',
+                'closes_at' => CarbonImmutable::now()->addHour()->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect();
+
+        $session = CoordinationSession::query()->latest('id')->firstOrFail();
+        $poll = $session->polls()->with('options')->firstOrFail();
+        $this->assertSame(CoordinationFlowTypeEnum::EVENT_ATTENDANCE, $session->flow_type);
+        $this->assertSame(
+            ['going', 'not_going', 'thinking'],
+            $poll->options->pluck('value')->map(fn (array $value): string => $value['intent'])->all(),
+        );
+        $this->assertSame(['Я в игре', 'Пропущу', 'Уточню позже'], $poll->options->pluck('label')->all());
+
+        $this->actingAs($goingUser)->post(route('coordination.vote', $session), [
+            'option_ids' => [$poll->options[0]->id],
+        ])->assertSessionHas('status');
+        $this->actingAs($customUser)->post(route('coordination.suggestion', $session), [
+            'option' => 'Опоздаю на 15 минут',
+        ])->assertSessionHas('status');
+        $customOption = $poll->fresh()->options()->where('proposed_by_user_id', $customUser->id)->firstOrFail();
+        $this->assertSame('custom', $customOption->value['intent']);
+        $this->actingAs($customUser)->post(route('coordination.vote', $session), [
+            'option_ids' => [$customOption->id],
+        ])->assertSessionHas('status');
+
+        $this->actingAs($organizer)->post(route('coordination.close', $session));
+        $this->actingAs($organizer)->post(route('coordination.decision', $session), [
+            'option_id' => $poll->options[0]->id,
+        ])->assertSessionHas('status');
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.event.store', $session), [
+                ...$this->eventPayload($venue, $startsAt),
+                'participant_user_ids' => [$goingUser->id, $customUser->id],
+            ])
+            ->assertRedirect();
+
+        $event = $venue->events()->latest('id')->firstOrFail();
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $goingUser->id,
+            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+        ]);
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $customUser->id,
+            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+        ]);
+    }
+
+    public function test_time_poll_uses_start_times_and_rechecks_user_suggestions(): void
+    {
+        Queue::fake();
+        $organizer = User::factory()->create();
+        $otherOrganizer = User::factory()->create();
+        $participant = User::factory()->create();
+        [$venue, $startsAt] = $this->availableVenue();
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.store'), [
+                'flow_type' => CoordinationFlowTypeEnum::EVENT_TIME_SELECTION->value,
+                'title' => 'Выбираем время сбора',
+                'fixed_venue_id' => $venue->id,
+                'fixed_date' => $startsAt->format('Y-m-d'),
+                'event_duration_minutes' => 60,
+                'start_time_options' => ['12:00', '13:00'],
+                'results_visibility' => 'after_vote',
+                'allows_vote_changes' => '0',
+                'is_anonymous' => '0',
+                'allows_suggestions' => '1',
+                'publish_to_telegram' => '0',
+                'closes_at' => CarbonImmutable::now()->addHour()->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect();
+
+        $session = CoordinationSession::query()->latest('id')->firstOrFail();
+        $poll = $session->polls()->with('options')->firstOrFail();
+        $this->assertSame(CoordinationFlowTypeEnum::EVENT_TIME_SELECTION, $session->flow_type);
+        $this->assertSame([['time' => '12:00'], ['time' => '13:00']], $poll->options->pluck('value')->all());
+        $this->assertSame($venue->id, $poll->configuration['venue_id']);
+        $this->assertSame($startsAt->format('Y-m-d'), $poll->configuration['date']);
+
+        $this->actingAs($otherOrganizer)
+            ->post(route('events.store'), $this->eventPayload($venue, $startsAt->setTime(14, 0)))
+            ->assertRedirect();
+
+        $this->actingAs($participant)
+            ->post(route('coordination.suggestion', $session), ['option' => '14:00'])
+            ->assertSessionHas('error', 'Выбранное время уже занято другим мероприятием.');
+
+        $this->assertDatabaseMissing('coordination_poll_options', [
+            'poll_id' => $poll->id,
+            'label' => '14:00',
+        ]);
+    }
+
     public function test_accepted_event_change_moves_booking_and_requires_participant_reconfirmation(): void
     {
         $organizer = User::factory()->create();

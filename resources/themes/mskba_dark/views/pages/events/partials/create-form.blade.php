@@ -72,6 +72,32 @@
         <textarea id="{{ $formIdPrefix }}Description" class="form-control @error('description') is-invalid @enderror" name="description" rows="5" maxlength="5000">{{ old('description', $defaultDescription ?? null) }}</textarea>
         @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
+    @if(isset($coordinationParticipants) && $coordinationParticipants->isNotEmpty())
+        <fieldset class="form-group field mb-4">
+            <legend class="form-label">Участники по результатам опроса</legend>
+            <p class="form-text mb-2">Отметьте пользователей, которых нужно сразу добавить в мероприятие. Положительные ответы выбраны автоматически.</p>
+            <div class="coordination-participant-selection">
+                @foreach($coordinationParticipants as $participant)
+                    <label class="coordination-checkbox">
+                        <input
+                            class="coordination-checkbox__input"
+                            type="checkbox"
+                            name="participant_user_ids[]"
+                            value="{{ $participant['id'] }}"
+                            @checked(in_array((string) $participant['id'], array_map('strval', old('participant_user_ids', $coordinationParticipants->where('intent', 'going')->pluck('id')->all())), true))
+                        >
+                        <span class="coordination-checkbox__control" aria-hidden="true"></span>
+                        <span class="coordination-checkbox__label">
+                            <strong>{{ $participant['name'] }}</strong>
+                            <small>{{ $participant['answer'] }}</small>
+                        </span>
+                    </label>
+                @endforeach
+            </div>
+            @error('participant_user_ids') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            @error('participant_user_ids.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+        </fieldset>
+    @endif
     <button
         class="btn btn--primary"
         type="submit"

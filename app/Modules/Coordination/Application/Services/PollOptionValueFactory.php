@@ -53,9 +53,7 @@ final class PollOptionValueFactory
             PollSubjectTypeEnum::DATETIME => PollOptionValue::dateTime((string) $rawOption),
             PollSubjectTypeEnum::TIME_INTERVAL => $this->timeInterval($rawOption),
             PollSubjectTypeEnum::VENUE => $this->venue($rawOption),
-            PollSubjectTypeEnum::PARTICIPATION => throw new InvalidArgumentException(
-                'Участие фиксируется в мероприятиях и не является типом свободного опроса.',
-            ),
+            PollSubjectTypeEnum::PARTICIPATION => PollOptionValue::participationSuggestion((string) $rawOption),
         };
     }
 

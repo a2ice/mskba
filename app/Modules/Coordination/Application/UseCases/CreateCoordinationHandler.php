@@ -6,15 +6,19 @@ use App\Modules\Coordination\Application\Services\PollOptionValueFactory;
 use App\Modules\Coordination\Domain\Enums\CoordinationContextTypeEnum;
 use App\Modules\Coordination\Domain\Enums\CoordinationFlowTypeEnum;
 use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
+use App\Modules\Coordination\Domain\Enums\ParticipationIntentEnum;
 use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
 use App\Modules\Coordination\Domain\Enums\PollSelectionModeEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollSubjectTypeEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
+use App\Modules\Coordination\Domain\ValueObjects\PollOptionValue;
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -24,6 +28,7 @@ final class CreateCoordinationHandler
     public function __construct(
         private readonly PollOptionValueFactory $optionValues,
         private readonly EventManagementAccess $eventAccess,
+        private readonly VenueEventAvailability $availability,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -41,6 +46,14 @@ final class CreateCoordinationHandler
 
         if ($flowType === CoordinationFlowTypeEnum::EVENT_SCHEDULING) {
             return $this->createEventSchedulingChain($actor, $data);
+        }
+
+        if (in_array($flowType, [
+            CoordinationFlowTypeEnum::EVENT_ATTENDANCE,
+            CoordinationFlowTypeEnum::EVENT_TIME_SELECTION,
+            CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION,
+        ], true)) {
+            return $this->createEventPoll($actor, $flowType, $data);
         }
 
         $subjectType = PollSubjectTypeEnum::tryFrom((string) ($data['subject_type'] ?? ''));
@@ -104,6 +117,137 @@ final class CreateCoordinationHandler
 
             return $session->load(['polls.options', 'organizerActor.user']);
         });
+    }
+
+    /** @param array<string, mixed> $data */
+    private function createEventPoll(
+        Actor $actor,
+        CoordinationFlowTypeEnum $flowType,
+        array $data,
+    ): CoordinationSession {
+        $closesAt = CarbonImmutable::parse((string) ($data['closes_at'] ?? ''));
+
+        if ($closesAt->isPast()) {
+            throw new InvalidArgumentException('Время завершения должно быть в будущем.');
+        }
+
+        $duration = (int) ($data['event_duration_minutes'] ?? 0);
+        $configuration = ['duration_minutes' => $duration];
+        $question = '';
+        $subjectType = PollSubjectTypeEnum::TEXT;
+        $options = [];
+
+        if ($flowType === CoordinationFlowTypeEnum::EVENT_ATTENDANCE) {
+            $venue = $this->availableVenue((int) $data['fixed_venue_id']);
+            $startsAt = $this->parseVenueDateTime($venue, (string) $data['fixed_starts_at']);
+            $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+            $configuration += ['venue_id' => $venue->id, 'starts_at' => $startsAt->toIso8601String()];
+            $question = 'Вы сможете прийти?';
+            $subjectType = PollSubjectTypeEnum::PARTICIPATION;
+            $options = [
+                PollOptionValue::participation(ParticipationIntentEnum::GOING, (string) $data['going_label']),
+                PollOptionValue::participation(ParticipationIntentEnum::NOT_GOING, (string) $data['not_going_label']),
+            ];
+
+            if ((bool) ($data['include_thinking_option'] ?? false)) {
+                $options[] = PollOptionValue::participation(
+                    ParticipationIntentEnum::THINKING,
+                    (string) $data['thinking_label'],
+                );
+            }
+        } elseif ($flowType === CoordinationFlowTypeEnum::EVENT_TIME_SELECTION) {
+            $venue = $this->availableVenue((int) $data['fixed_venue_id']);
+            $configuration += ['venue_id' => $venue->id, 'date' => (string) $data['fixed_date']];
+            $question = 'Во сколько начинаем?';
+            $subjectType = PollSubjectTypeEnum::TIME;
+            $options = $this->optionValues->many($subjectType, $data['start_time_options'] ?? []);
+
+            foreach ($options as $option) {
+                $startsAt = $this->parseVenueDateTime(
+                    $venue,
+                    $configuration['date'].' '.$option->value['time'],
+                );
+                $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+            }
+        } else {
+            $startsAt = CarbonImmutable::parse(
+                (string) $data['fixed_starts_at'],
+                (string) config('app.timezone', 'Europe/Moscow'),
+            )->utc();
+            $question = 'На какой площадке проводим мероприятие?';
+            $subjectType = PollSubjectTypeEnum::VENUE;
+            $options = $this->optionValues->many($subjectType, $data['candidate_venue_ids'] ?? []);
+            $configuration += ['starts_at' => $startsAt->toIso8601String()];
+
+            foreach ($options as $option) {
+                $venue = $this->availableVenue((int) $option->value['venue_id']);
+                $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+            }
+        }
+
+        return DB::transaction(function () use (
+            $actor,
+            $closesAt,
+            $configuration,
+            $data,
+            $flowType,
+            $options,
+            $question,
+            $subjectType,
+        ): CoordinationSession {
+            $session = CoordinationSession::query()->create([
+                'organizer_actor_id' => $actor->id,
+                'title' => $data['title'],
+                'description' => $data['description'] ?? null,
+                'status' => CoordinationSessionStatusEnum::OPEN,
+                'flow_type' => $flowType,
+            ]);
+            $poll = $session->polls()->create([
+                'question' => $question,
+                'subject_type' => $subjectType,
+                'selection_mode' => PollSelectionModeEnum::SINGLE,
+                'results_visibility' => $data['results_visibility'] ?? PollResultsVisibilityEnum::AFTER_VOTE,
+                'status' => PollStatusEnum::OPEN,
+                'allows_suggestions' => (bool) ($data['allows_suggestions'] ?? false),
+                'allows_vote_changes' => (bool) $data['allows_vote_changes'],
+                'is_anonymous' => false,
+                'closes_at' => $closesAt,
+                'step_order' => 1,
+                'voting_duration_minutes' => max(15, $closesAt->diffInMinutes(now())),
+                'configuration' => $configuration,
+            ]);
+
+            foreach ($options as $position => $option) {
+                $poll->options()->create([
+                    'label' => $option->label,
+                    'value' => $option->value,
+                    'sort_order' => $position,
+                    'is_active' => true,
+                ]);
+            }
+
+            return $session->load(['polls.options', 'organizerActor.user']);
+        });
+    }
+
+    private function availableVenue(int $venueId): Venue
+    {
+        $venue = Venue::query()
+            ->with(['schedule.intervals', 'schedule.exceptions.intervals'])
+            ->find($venueId);
+
+        if ($venue === null) {
+            throw new InvalidArgumentException('Выберите доступную площадку.');
+        }
+
+        return $venue;
+    }
+
+    private function parseVenueDateTime(Venue $venue, string $value): CarbonImmutable
+    {
+        $timezone = $venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
+
+        return CarbonImmutable::parse($value, $timezone)->utc();
     }
 
     /** @param array<string, mixed> $data */

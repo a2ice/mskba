@@ -2,6 +2,7 @@
 
 namespace App\Modules\Coordination\Domain\ValueObjects;
 
+use App\Modules\Coordination\Domain\Enums\ParticipationIntentEnum;
 use App\Modules\Coordination\Domain\Enums\PollSubjectTypeEnum;
 use DateTimeImmutable;
 use InvalidArgumentException;
@@ -90,6 +91,32 @@ final readonly class PollOptionValue
             PollSubjectTypeEnum::VENUE,
             $venueName,
             ['venue_id' => $venueId],
+        );
+    }
+
+    public static function participation(ParticipationIntentEnum $intent, string $label): self
+    {
+        $label = trim($label);
+
+        if ($label === '' || mb_strlen($label) > 255) {
+            throw new InvalidArgumentException('Название варианта должно содержать от 1 до 255 символов.');
+        }
+
+        return new self(
+            PollSubjectTypeEnum::PARTICIPATION,
+            $label,
+            ['intent' => $intent->value],
+        );
+    }
+
+    public static function participationSuggestion(string $label): self
+    {
+        $value = self::participation(ParticipationIntentEnum::CUSTOM, $label);
+
+        return new self(
+            PollSubjectTypeEnum::PARTICIPATION,
+            $value->label,
+            ['intent' => ParticipationIntentEnum::CUSTOM->value, 'text' => $value->label],
         );
     }
 
