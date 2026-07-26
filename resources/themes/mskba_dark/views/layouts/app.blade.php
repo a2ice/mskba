@@ -33,6 +33,7 @@
         <link rel="icon" href="{{ asset('favicon-32x32.png') }}" type="image/png">
         <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+        <meta name="yandex-verification" content="5e74a0d5140e0b49" />
         <title>{{ $pageTitle }}</title>
         @include('partials.analytics.yandex-metrika')
         @if($isTelegramMiniApp)
