@@ -53,7 +53,7 @@ final class ConfigureTelegramUpdatesCommand extends Command
             $telegram->call('setWebhook', [
                 'url' => $url,
                 'secret_token' => $secret,
-                'allowed_updates' => ['callback_query'],
+                'allowed_updates' => ['callback_query', 'message'],
                 'drop_pending_updates' => false,
             ]);
         } catch (TelegramBotApiException $exception) {

@@ -13,6 +13,7 @@ use App\Modules\Telegram\Application\UseCases\HandleEventParticipationCallback;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
+use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramMessageJob;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramEventPublicationJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -104,6 +105,26 @@ final class TelegramEventIntegrationTest extends TestCase
         Queue::assertPushed(
             ProcessTelegramCallbackJob::class,
             fn (ProcessTelegramCallbackJob $job): bool => $job->callback['id'] === 'callback-1',
+        );
+    }
+
+    public function test_webhook_queues_private_bot_message_processing(): void
+    {
+        Queue::fake();
+        $message = [
+            'message_id' => 102,
+            'from' => ['id' => 777],
+            'chat' => ['id' => 777, 'type' => 'private'],
+            'text' => '/start login_'.str_repeat('a', 43),
+        ];
+
+        $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'webhook-test-secret')
+            ->postJson(route('integrations.telegram.webhook'), ['message' => $message])
+            ->assertOk();
+
+        Queue::assertPushed(
+            ProcessTelegramMessageJob::class,
+            fn (ProcessTelegramMessageJob $job): bool => $job->message['message_id'] === 102,
         );
     }
 
@@ -296,7 +317,7 @@ final class TelegramEventIntegrationTest extends TestCase
 
         Http::assertSent(fn ($request): bool => $request['url'] === route('integrations.telegram.webhook')
             && $request['secret_token'] === 'webhook-test-secret'
-            && $request['allowed_updates'] === ['callback_query']);
+            && $request['allowed_updates'] === ['callback_query', 'message']);
     }
 
     public function test_polling_configuration_removes_webhook_without_dropping_updates(): void

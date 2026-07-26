@@ -144,7 +144,11 @@ final class TelegramWebLoginTest extends TestCase
         $this
             ->get(route('welcome'))
             ->assertOk()
+            ->assertSee('data-telegram-bot-login', false)
+            ->assertSee(route('auth.telegram.bot.start', [], false), false)
+            ->assertSee(route('auth.telegram.bot.status', [], false), false)
             ->assertSee('data-telegram-login="MSKBABot"', false)
+            ->assertSee('auth-telegram-login__widget" hidden', false)
             ->assertSee(route('auth.telegram', [], false), false);
 
         $this

@@ -56,6 +56,96 @@ window.mskbaTelegramLogin = function(telegramUser) {
         });
 };
 
+$(document).on('click', '[data-telegram-bot-login]', function(event) {
+    event.preventDefault();
+
+    const container = $(this).closest('[data-telegram-login]');
+    const activeRequest = container.data('telegramBotStartRequest');
+
+    if (!container.length || (activeRequest && activeRequest.readyState !== 4)) {
+        return;
+    }
+
+    stopTelegramBotLoginPolling(container);
+
+    const endpoint = String(container.data('telegramBotStartUrl') || '').trim();
+    const modal = container.closest('[data-modal]');
+    const redirectUrl = modal.length
+        ? String(modal.data('authRedirectUrl') || '').trim()
+        : '';
+    const telegramWindow = window.open('', 'mskba-telegram-login');
+
+    if (telegramWindow) {
+        telegramWindow.opener = null;
+        telegramWindow.document.title = 'Telegram';
+    }
+
+    setTelegramLoginState(container, true, 'Готовим безопасный вход…', 'info');
+
+    const request = $.ajax({
+        url: endpoint,
+        method: 'POST',
+        dataType: 'json',
+        headers: {
+            Accept: 'application/json'
+        },
+        data: {
+            redirect_to: redirectUrl
+        }
+    });
+
+    container.data('telegramBotStartRequest', request);
+
+    request
+        .done(function(response) {
+            const token = String(response.token || '').trim();
+            const botUrl = String(response.bot_url || '').trim();
+
+            if (!token || !botUrl) {
+                if (telegramWindow) {
+                    telegramWindow.close();
+                }
+
+                setTelegramLoginState(container, false, 'Не удалось подготовить вход через Telegram.', 'error');
+                return;
+            }
+
+            container.data('telegramBotLoginToken', token);
+            setTelegramLoginState(
+                container,
+                true,
+                response.message || 'Подтвердите вход в боте. Оставьте страницу открытой.',
+                'info'
+            );
+
+            if (telegramWindow) {
+                telegramWindow.location.replace(botUrl);
+            } else {
+                window.location.assign(botUrl);
+            }
+
+            scheduleTelegramBotLoginPoll(container);
+        })
+        .fail(function(jqXHR) {
+            if (telegramWindow) {
+                telegramWindow.close();
+            }
+
+            const response = jqXHR.responseJSON || {};
+            const validationMessage = Object.values(response.errors || {}).flat().find(Boolean);
+
+            setTelegramLoginState(
+                container,
+                false,
+                response.message || validationMessage || 'Не удалось начать вход через Telegram.',
+                'error'
+            );
+        })
+        .always(function() {
+            container.removeData('telegramBotStartRequest');
+        });
+});
+
 $(document).on('click', '[data-auth-classic-link]', function(event) {
     event.preventDefault();
 
@@ -113,6 +203,9 @@ $(document).on('modal:closed', function(_event, modal) {
     }
 
     resetClassicModalState(modal);
+    modal.find('[data-telegram-login]').each(function() {
+        stopTelegramBotLoginPolling($(this));
+    });
     modal.removeData('authRedirectUrl');
 });
 
@@ -164,6 +257,87 @@ function setTelegramLoginState(container, isSubmitting, message, state) {
     container.find('.auth-telegram-login__message')
         .text(message || '')
         .attr('data-state', state || 'info');
+}
+
+function scheduleTelegramBotLoginPoll(container) {
+    stopTelegramBotLoginPolling(container, false);
+
+    const timer = window.setTimeout(function() {
+        pollTelegramBotLogin(container);
+    }, 1400);
+
+    container.data('telegramBotLoginTimer', timer);
+}
+
+function pollTelegramBotLogin(container) {
+    const endpoint = String(container.data('telegramBotStatusUrl') || '').trim();
+    const token = String(container.data('telegramBotLoginToken') || '').trim();
+
+    if (!endpoint || !token) {
+        stopTelegramBotLoginPolling(container);
+        setTelegramLoginState(container, false, 'Не удалось проверить вход через Telegram.', 'error');
+        return;
+    }
+
+    const request = $.ajax({
+        url: endpoint,
+        method: 'POST',
+        dataType: 'json',
+        headers: {
+            Accept: 'application/json'
+        },
+        data: {
+            token: token
+        }
+    });
+
+    container.data('telegramBotStatusRequest', request);
+
+    request
+        .done(function(response) {
+            if (response.status === 'success') {
+                stopTelegramBotLoginPolling(container);
+                setTelegramLoginState(container, false, response.message || 'Вход выполнен.', 'success');
+                redirectAfterAuthentication(response);
+                return;
+            }
+
+            setTelegramLoginState(container, true, response.message || 'Ожидаем подтверждение в Telegram…', 'info');
+            scheduleTelegramBotLoginPoll(container);
+        })
+        .fail(function(jqXHR) {
+            const response = jqXHR.responseJSON || {};
+
+            if (jqXHR.status === 410 || response.status === 'expired') {
+                stopTelegramBotLoginPolling(container);
+                setTelegramLoginState(
+                    container,
+                    false,
+                    response.message || 'Ссылка для входа истекла. Запустите вход ещё раз.',
+                    'error'
+                );
+                return;
+            }
+
+            scheduleTelegramBotLoginPoll(container);
+        })
+        .always(function() {
+            container.removeData('telegramBotStatusRequest');
+        });
+}
+
+function stopTelegramBotLoginPolling(container, clearToken = true) {
+    const timer = Number(container.data('telegramBotLoginTimer') || 0);
+
+    if (timer) {
+        window.clearTimeout(timer);
+    }
+
+    container.removeData('telegramBotLoginTimer');
+
+    if (clearToken) {
+        container.removeData('telegramBotLoginToken');
+    }
 }
 
 function activateSection(modal, target, callback) {

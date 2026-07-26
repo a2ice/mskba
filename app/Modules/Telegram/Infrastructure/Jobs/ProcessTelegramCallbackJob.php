@@ -4,6 +4,7 @@ namespace App\Modules\Telegram\Infrastructure\Jobs;
 
 use App\Modules\Telegram\Application\UseCases\HandleCoordinationVoteCallback;
 use App\Modules\Telegram\Application\UseCases\HandleEventParticipationCallback;
+use App\Modules\Telegram\Application\UseCases\HandleTelegramBotLoginCallback;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -19,8 +20,15 @@ final class ProcessTelegramCallbackJob implements ShouldQueue
     public function handle(
         HandleEventParticipationCallback $eventHandler,
         HandleCoordinationVoteCallback $coordinationHandler,
+        HandleTelegramBotLoginCallback $loginHandler,
     ): void {
         $data = data_get($this->callback, 'data');
+
+        if (is_string($data) && str_starts_with($data, 'auth:login:')) {
+            $loginHandler->handle($this->callback);
+
+            return;
+        }
 
         if (is_string($data) && str_starts_with($data, 'coord:')) {
             $coordinationHandler->handle($this->callback);

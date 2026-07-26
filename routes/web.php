@@ -21,6 +21,8 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordCont
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
+use App\Modules\Telegram\Presentation\Http\Controllers\StartTelegramBotLoginController;
+use App\Modules\Telegram\Presentation\Http\Controllers\TelegramBotLoginStatusController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebLoginController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
@@ -71,6 +73,14 @@ Route::prefix('auth')->group(function () {
     Route::post('/telegram', TelegramWebLoginController::class)
         ->middleware('guest', 'throttle:10,1')
         ->name('auth.telegram');
+
+    Route::post('/telegram/bot/start', StartTelegramBotLoginController::class)
+        ->middleware('guest', 'throttle:10,1')
+        ->name('auth.telegram.bot.start');
+
+    Route::post('/telegram/bot/status', TelegramBotLoginStatusController::class)
+        ->middleware('guest', 'throttle:60,1')
+        ->name('auth.telegram.bot.status');
 
     Route::post('/restore', [AuthController::class, 'restore'])
         ->middleware('throttle:5,1')
