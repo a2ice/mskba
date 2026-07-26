@@ -3,6 +3,13 @@
 @section('content')
 
 @php
+    $today = now((string) config('app.timezone', 'Europe/Moscow'))->toDateString();
+    $todayGamesUrl = route('events.index', [
+        'type' => 'games',
+        'date_from' => $today,
+        'date_to' => $today,
+    ]);
+    $createGameUrl = route('events.create', ['type' => 'game']);
     $currentGames = [
         [
             'title' => 'OPEN RUN',
@@ -98,17 +105,36 @@
         <div class="home-welcome__main">
             <div class="home-welcome__copy">
                 <div class="home-welcome__badges" aria-label="Статистика сайта">
-                    <p class="home-welcome__eyebrow">
+                    <div class="home-welcome__eyebrow" data-today-events-summary>
                         <span class="home-welcome__eyebrow-dot" aria-hidden="true"></span>
-                        <span data-today-events-text>{{ $siteSummary->todayEventsText() }}</span>
-                    </p>
+                        <a
+                            href="{{ $todayGamesUrl }}"
+                            data-today-events-link
+                            @if($siteSummary->todayEvents === 0) hidden @endif
+                        >{{ $siteSummary->todayEventsText() }}</a>
+                        <span data-today-events-empty @if($siteSummary->todayEvents > 0) hidden @endif>На сегодня игр нет</span>
+                        @auth
+                            <a class="site-summary-create" href="{{ $createGameUrl }}" aria-label="Создать игру">+</a>
+                        @else
+                            <button
+                                class="site-summary-create js-handler"
+                                type="button"
+                                aria-label="Создать игру"
+                                data-handler="modal"
+                                data-modal-action="open"
+                                data-modal-target="auth-entry-classic"
+                                data-auth-redirect-url="{{ route('events.create', ['type' => 'game'], false) }}"
+                            >+</button>
+                        @endauth
+                    </div>
 
-                    <p class="home-welcome__eyebrow home-welcome__eyebrow--online">
+                    <p
+                        class="home-welcome__eyebrow home-welcome__eyebrow--online"
+                        data-online-summary
+                        @if($siteSummary->onlineUsers === 0) hidden @endif
+                    >
                         <span class="home-welcome__eyebrow-dot home-welcome__eyebrow-dot--online" aria-hidden="true"></span>
-                        <span>
-                            <span data-online-users-count>{{ $siteSummary->onlineUsers }}</span>/<span data-online-total-count>{{ $siteSummary->totalUsers }}</span>
-                            онлайн
-                        </span>
+                        <span><span data-online-users-count>{{ $siteSummary->onlineUsers }}</span> онлайн</span>
                     </p>
                 </div>
 

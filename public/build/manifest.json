@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-BIhLAqZr.css",
+    "file": "assets/app-D9SMoAQz.css",
     "name": "app",
     "names": [
       "app.css"
@@ -46,7 +46,7 @@
     "src": "resources/themes/mskba_dark/images/event-about-basketball.webp"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-D4gFTm23.js",
+    "file": "assets/app-BgnvCV9k.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,

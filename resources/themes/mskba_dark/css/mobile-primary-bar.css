@@ -36,11 +36,15 @@
         left: 0;
         z-index: 200;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         height: var(--mobile-primary-stats-height);
         border-top: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(13, 15, 14, 0.96);
         backdrop-filter: blur(18px);
+    }
+
+    .mobile-primary-bar__stats.has-online {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .mobile-primary-bar__stat {
@@ -55,6 +59,24 @@
         font-weight: 600;
         line-height: 1;
         white-space: nowrap;
+    }
+
+    .mobile-primary-bar__stat[hidden],
+    .mobile-primary-bar__stat [hidden] {
+        display: none !important;
+    }
+
+    .mobile-primary-bar__stat a {
+        overflow: hidden;
+        color: inherit;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-primary-bar__stat .site-summary-create {
+        width: 19px;
+        height: 19px;
+        flex: 0 0 19px;
+        font-size: 15px;
     }
 
     .mobile-primary-bar__stat + .mobile-primary-bar__stat {

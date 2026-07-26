@@ -24,6 +24,7 @@
 @section('section-sidebar')
     @php
         $persistentFilters = array_filter([
+            'type' => $typeFilter,
             'period' => $period,
             'date_from' => $dateFrom,
             'date_to' => $dateTo,
@@ -33,7 +34,7 @@
     <div class="section-sidebar-block">
         <h2 class="section-sidebar-block__title">Мероприятия</h2>
         <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item {{ $selectedType === null ? 'active' : '' }}"><a class="nav-link {{ $selectedType === null ? 'active' : '' }}" href="{{ route('events.index', $persistentFilters) }}">Все</a></li>
+            <li class="nav-item {{ $typeFilter === null ? 'active' : '' }}"><a class="nav-link {{ $typeFilter === null ? 'active' : '' }}" href="{{ route('events.index', array_diff_key($persistentFilters, ['type' => true])) }}">Все</a></li>
             @foreach($types as $type)
                 <li class="nav-item {{ $selectedType === $type ? 'active' : '' }}"><a class="nav-link {{ $selectedType === $type ? 'active' : '' }}" href="{{ route('events.index', array_merge($persistentFilters, ['type' => $type->value])) }}">{{ $type->label() }}</a></li>
             @endforeach
@@ -42,8 +43,8 @@
     <div class="section-sidebar-block">
         <h2 class="section-sidebar-block__title">Период</h2>
         <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item {{ $period === 'upcoming' ? 'active' : '' }}"><a class="nav-link {{ $period === 'upcoming' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value, 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Предстоящие</a></li>
-            <li class="nav-item {{ $period === 'past' ? 'active' : '' }}"><a class="nav-link {{ $period === 'past' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $selectedType?->value, 'period' => 'past', 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Прошедшие</a></li>
+            <li class="nav-item {{ $period === 'upcoming' ? 'active' : '' }}"><a class="nav-link {{ $period === 'upcoming' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $typeFilter, 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Предстоящие</a></li>
+            <li class="nav-item {{ $period === 'past' ? 'active' : '' }}"><a class="nav-link {{ $period === 'past' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $typeFilter, 'period' => 'past', 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Прошедшие</a></li>
         </ul>
     </div>
 @endsection
@@ -64,6 +65,7 @@
                     <label class="form-label" for="eventFilterType">Тип</label>
                     <select id="eventFilterType" class="form-select" name="type">
                         <option value="">Все типы</option>
+                        <option value="games" @selected($typeFilter === 'games')>Игры и игровые тренировки</option>
                         @foreach($types as $type)
                             <option value="{{ $type->value }}" @selected($selectedType === $type)>{{ $type->label() }}</option>
                         @endforeach

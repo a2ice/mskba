@@ -37,8 +37,12 @@ final class EventController extends Controller
 {
     public function index(Request $request, ListEventsHandler $events, CurrentActorResolver $actors): Response
     {
+        $eventTypeValues = array_map(
+            static fn (EventTypeEnum $type): string => $type->value,
+            EventTypeEnum::cases(),
+        );
         $validated = $request->validate([
-            'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
+            'type' => ['nullable', Rule::in([...$eventTypeValues, 'games'])],
             'period' => ['nullable', Rule::in(['upcoming', 'past'])],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => [
@@ -48,7 +52,13 @@ final class EventController extends Controller
             ],
             'outcome' => ['nullable', Rule::in(['completed', 'cancelled', 'unmarked'])],
         ]);
-        $type = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
+        $typeFilter = $validated['type'] ?? null;
+        $type = is_string($typeFilter) ? EventTypeEnum::tryFrom($typeFilter) : null;
+        $eventTypes = match ($typeFilter) {
+            'games' => [EventTypeEnum::GAME, EventTypeEnum::GAME_TRAINING],
+            null => [],
+            default => [$type],
+        };
         $period = $validated['period'] ?? 'upcoming';
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
@@ -57,7 +67,7 @@ final class EventController extends Controller
         return ThemeResolver::page('events.index', [
             'events' => $events->handle(
                 $actors->resolveForRequest($request),
-                $type,
+                $eventTypes,
                 $period,
                 $dateFrom,
                 $dateTo,
@@ -65,6 +75,7 @@ final class EventController extends Controller
             ),
             'types' => EventTypeEnum::cases(),
             'selectedType' => $type,
+            'typeFilter' => $typeFilter,
             'period' => $period,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,

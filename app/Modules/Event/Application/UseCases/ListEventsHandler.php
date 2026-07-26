@@ -12,10 +12,13 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class ListEventsHandler
 {
-    /** @return LengthAwarePaginator<Event> */
+    /**
+     * @param  list<EventTypeEnum>  $types
+     * @return LengthAwarePaginator<Event>
+     */
     public function handle(
         ?Actor $actor,
-        ?EventTypeEnum $type = null,
+        array $types = [],
         string $period = 'upcoming',
         ?string $dateFrom = null,
         ?string $dateTo = null,
@@ -55,7 +58,13 @@ final class ListEventsHandler
                     });
                 }
             })
-            ->when($type, fn ($query) => $query->where('type', $type->value))
+            ->when($types !== [], fn ($query) => $query->whereIn(
+                'type',
+                array_map(
+                    static fn (EventTypeEnum $type): string => $type->value,
+                    $types,
+                ),
+            ))
             ->when($startsFrom, fn ($query) => $query->where('starts_at', '>=', $startsFrom))
             ->when($startsTo, fn ($query) => $query->where('starts_at', '<=', $startsTo))
             ->when($period === 'past' && $outcome !== null, function ($query) use ($outcome): void {

@@ -1,13 +1,35 @@
 <div class="mobile-primary-bar" data-mobile-primary-bar>
-    <div class="mobile-primary-bar__stats" aria-label="Статистика сайта">
+    @php
+        $today = now((string) config('app.timezone', 'Europe/Moscow'))->toDateString();
+        $todayGamesUrl = route('events.index', ['type' => 'games', 'date_from' => $today, 'date_to' => $today]);
+    @endphp
+    <div @class(['mobile-primary-bar__stats', 'has-online' => $siteSummary->onlineUsers > 0]) aria-label="Статистика сайта" data-mobile-summary-stats>
         <p class="mobile-primary-bar__stat">
             <span class="mobile-primary-bar__dot" aria-hidden="true"></span>
-            <span data-today-events-text>{{ $siteSummary->todayEventsText() }}</span>
+            <a
+                href="{{ $todayGamesUrl }}"
+                data-today-events-link
+                @if($siteSummary->todayEvents === 0) hidden @endif
+            >{{ $siteSummary->todayEventsText() }}</a>
+            <span data-today-events-empty @if($siteSummary->todayEvents > 0) hidden @endif>На сегодня игр нет</span>
+            @auth
+                <a class="site-summary-create" href="{{ route('events.create', ['type' => 'game']) }}" aria-label="Создать игру">+</a>
+            @else
+                <button
+                    class="site-summary-create js-handler"
+                    type="button"
+                    aria-label="Создать игру"
+                    data-handler="modal"
+                    data-modal-action="open"
+                    data-modal-target="auth-entry-classic"
+                    data-auth-redirect-url="{{ route('events.create', ['type' => 'game'], false) }}"
+                >+</button>
+            @endauth
         </p>
 
-        <p class="mobile-primary-bar__stat">
+        <p class="mobile-primary-bar__stat" data-online-summary @if($siteSummary->onlineUsers === 0) hidden @endif>
             <span class="mobile-primary-bar__dot mobile-primary-bar__dot--online" aria-hidden="true"></span>
-            <span><span data-online-users-count>{{ $siteSummary->onlineUsers }}</span>/<span data-online-total-count>{{ $siteSummary->totalUsers }}</span> онлайн</span>
+            <span><span data-online-users-count>{{ $siteSummary->onlineUsers }}</span> онлайн</span>
         </p>
     </div>
 

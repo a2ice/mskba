@@ -56,7 +56,62 @@ class SiteSummaryTest extends TestCase
         $this->get(route('welcome'))
             ->assertOk()
             ->assertSee('2 игры сегодня')
-            ->assertSee('data-today-events-text', false);
+            ->assertSee('data-today-events-link', false)
+            ->assertSee(route('events.index', [
+                'type' => 'games',
+                'date_from' => '2026-07-23',
+                'date_to' => '2026-07-23',
+            ]))
+            ->assertSee('aria-label="Создать игру"', false);
+    }
+
+    public function test_games_filter_combines_games_and_game_trainings_for_selected_day(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-23 12:00:00', 'Europe/Moscow'));
+
+        Event::factory()->create([
+            'title' => 'Обычная игра',
+            'type' => EventTypeEnum::GAME,
+            'status' => EventStatusEnum::PUBLISHED,
+            'starts_at' => Carbon::parse('2026-07-23 18:00:00', 'Europe/Moscow')->utc(),
+        ]);
+        Event::factory()->create([
+            'title' => 'Игровая тренировка',
+            'type' => EventTypeEnum::GAME_TRAINING,
+            'status' => EventStatusEnum::PUBLISHED,
+            'starts_at' => Carbon::parse('2026-07-23 20:00:00', 'Europe/Moscow')->utc(),
+        ]);
+        Event::factory()->create([
+            'title' => 'Обычная тренировка',
+            'type' => EventTypeEnum::TRAINING,
+            'status' => EventStatusEnum::PUBLISHED,
+            'starts_at' => Carbon::parse('2026-07-23 19:00:00', 'Europe/Moscow')->utc(),
+        ]);
+
+        $this->get(route('events.index', [
+            'type' => 'games',
+            'date_from' => '2026-07-23',
+            'date_to' => '2026-07-23',
+        ]))
+            ->assertOk()
+            ->assertSee('Обычная игра')
+            ->assertSee('Игровая тренировка')
+            ->assertDontSee('Обычная тренировка')
+            ->assertSee('Игры и игровые тренировки');
+    }
+
+    public function test_zero_summary_hides_online_badge_and_uses_empty_games_copy(): void
+    {
+        $response = $this->get(route('welcome'));
+
+        $response
+            ->assertOk()
+            ->assertSee('На сегодня игр нет');
+
+        $this->assertMatchesRegularExpression(
+            '/data-online-summary\s+hidden/u',
+            $response->getContent()
+        );
     }
 
     public function test_heartbeat_counts_unique_active_users_and_excludes_blocked_users_from_total(): void
@@ -70,6 +125,7 @@ class SiteSummaryTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'today_events' => 0,
+                'today_events_text' => 'На сегодня игр нет',
                 'online_users' => 1,
                 'total_users' => 2,
             ]);
