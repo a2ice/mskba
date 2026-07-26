@@ -47,6 +47,7 @@ prod/VDS: mskbanew
 - `phpfpm` - PHP-FPM runtime приложения;
 - `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
 - `queue` - Laravel queue worker;
+- `scheduler` - постоянно работающий Laravel scheduler;
 - `db` - PostgreSQL 17 Alpine, база `mskbabrandnew`, пользователь `mskbabrandnew`;
 - `redis` - Redis 7 для runtime/cache/queue сценариев.
 
@@ -85,6 +86,9 @@ Production/VDS services:
 
 - `phpfpm` - PHP-FPM runtime приложения;
 - `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
+- `queue` - Laravel queue worker;
+- `scheduler` - Laravel scheduler, запускающий due-задачи каждую минуту;
+- `telegram` - long polling Telegram updates;
 - `db` - PostgreSQL 17, использует новый volume `mskbabrandnew_postgres_data`;
 - `redis` - Redis 7 для будущего runtime/cache/queue сценария;
 - `node` - build-only сервис с profile `build` для `npm ci && npm run build`.
@@ -116,7 +120,7 @@ Workflow:
 - push в `main`, кроме изменений только в `docs/**` или `README.md`;
 - ручной запуск через `workflow_dispatch`.
 
-Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`.
+Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`. После обновления workflow пересоздаёт и перезапускает `phpfpm`, `nginx`, `queue`, `scheduler` и `telegram`.
 
 Deploy workflow использует:
 

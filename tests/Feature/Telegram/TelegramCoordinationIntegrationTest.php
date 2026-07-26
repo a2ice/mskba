@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Telegram;
 
+use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -112,10 +113,76 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             $keyboard = $request['reply_markup']['inline_keyboard'];
 
             return str_contains($request['text'], '<b>Игра вечером</b>')
+                && ! str_contains($request['text'], '1. 19:00')
                 && $keyboard[0][0]['callback_data'] === "coord:{$poll->id}:vote:{$option->id}"
                 && $keyboard[array_key_last($keyboard)][0]['url']
                     === "https://t.me/MSKBABot?startapp=coordination_{$poll->session_id}";
         });
+    }
+
+    public function test_expired_poll_is_closed_and_telegram_message_is_queued_for_update(): void
+    {
+        Queue::fake();
+        $session = $this->createSession();
+        $poll = $session->polls()->firstOrFail();
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001,
+            'title' => 'Основной',
+        ]);
+        $publication = TelegramCoordinationPublication::query()->create([
+            'poll_id' => $poll->id,
+            'chat_id' => $chat->id,
+            'message_id' => 501,
+            'status' => 'published',
+        ]);
+        $poll->forceFill(['closes_at' => now()->subMinute()])->save();
+
+        $this->artisan('coordination:close-expired')->assertSuccessful();
+
+        $this->assertSame(PollStatusEnum::CLOSED, $poll->fresh()->status);
+        Queue::assertPushed(
+            SyncTelegramCoordinationPublicationJob::class,
+            fn (SyncTelegramCoordinationPublicationJob $job): bool => $job->publicationId === $publication->id,
+        );
+    }
+
+    public function test_closed_poll_message_shows_closed_status_and_results_without_vote_buttons(): void
+    {
+        $session = $this->createSession();
+        $poll = $session->polls()->firstOrFail();
+        $poll->forceFill([
+            'status' => PollStatusEnum::CLOSED,
+            'closed_at' => now(),
+        ])->save();
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001,
+            'title' => 'Основной',
+        ]);
+        $publication = TelegramCoordinationPublication::query()->create([
+            'poll_id' => $poll->id,
+            'chat_id' => $chat->id,
+            'message_id' => 501,
+            'status' => 'published',
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/bot123456:test-token/editMessageText' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 501],
+            ]),
+        ]);
+
+        app()->call([new SyncTelegramCoordinationPublicationJob($publication->id), 'handle']);
+
+        Http::assertSent(function ($request): bool {
+            $keyboard = $request['reply_markup']['inline_keyboard'];
+
+            return str_contains($request['text'], 'Статус: <b>Закрыт</b>')
+                && str_contains($request['text'], '1. 19:00 — <b>0</b>')
+                && count($keyboard) === 1
+                && $keyboard[0][0]['text'] === '🏀 Открыть опрос';
+        });
+        $this->assertSame('closed', $publication->fresh()->status);
     }
 
     public function test_chat_callback_creates_user_and_saves_vote_idempotently(): void

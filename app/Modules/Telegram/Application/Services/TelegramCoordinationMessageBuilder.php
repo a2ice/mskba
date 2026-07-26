@@ -20,29 +20,34 @@ final class TelegramCoordinationMessageBuilder
         ];
         $showResults = $poll->results_visibility === PollResultsVisibilityEnum::ALWAYS
             || $poll->status !== PollStatusEnum::OPEN;
+        $optionsAreShownAsButtons = $poll->status === PollStatusEnum::OPEN
+            && $poll->closes_at->isFuture()
+            && $poll->selection_mode === PollSelectionModeEnum::SINGLE;
 
-        foreach ($poll->options as $position => $option) {
-            $line = ($position + 1).'. '.$this->escape(mb_strimwidth($option->label, 0, 80, '…'));
+        if (! $optionsAreShownAsButtons) {
+            foreach ($poll->options as $position => $option) {
+                $line = ($position + 1).'. '.$this->escape(mb_strimwidth($option->label, 0, 80, '…'));
 
-            if ($showResults) {
-                $line .= ' — <b>'.$option->selections_count.'</b>';
-            }
+                if ($showResults) {
+                    $line .= ' — <b>'.$option->selections_count.'</b>';
+                }
 
-            $lines[] = $line;
+                $lines[] = $line;
 
-            if ($showResults && ! $poll->is_anonymous) {
-                $voterNames = $option->selections
-                    ->map(fn ($selection): string => $this->userName($selection->ballot->user))
-                    ->filter()
-                    ->unique();
-                $names = $voterNames
-                    ->take(2)
-                    ->implode(', ');
+                if ($showResults && ! $poll->is_anonymous) {
+                    $voterNames = $option->selections
+                        ->map(fn ($selection): string => $this->userName($selection->ballot->user))
+                        ->filter()
+                        ->unique();
+                    $names = $voterNames
+                        ->take(2)
+                        ->implode(', ');
 
-                if ($names !== '') {
-                    $remaining = $voterNames->count() - 2;
-                    $lines[] = '   '.$this->escape($names)
-                        .($remaining > 0 ? " и ещё {$remaining}" : '');
+                    if ($names !== '') {
+                        $remaining = $voterNames->count() - 2;
+                        $lines[] = '   '.$this->escape($names)
+                            .($remaining > 0 ? " и ещё {$remaining}" : '');
+                    }
                 }
             }
         }

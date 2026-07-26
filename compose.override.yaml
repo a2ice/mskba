@@ -14,6 +14,11 @@ services:
     environment:
       MAIL_HOST: mailpit
 
+  scheduler:
+    container_name: mskbabrandnew-scheduler
+    environment:
+      MAIL_HOST: mailpit
+
   db:
     container_name: mskbabrandnew-db
     ports:
