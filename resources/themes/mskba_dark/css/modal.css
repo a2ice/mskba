@@ -260,6 +260,19 @@
 	flex: 0 0 18px;
 }
 
+.auth-telegram-login__option {
+	display: grid;
+	justify-items: center;
+	gap: 7px;
+}
+
+.auth-telegram-login__option-label,
+.auth-telegram-login__alternative {
+	color: rgba(255, 255, 255, 0.58);
+	font-size: 12px;
+	line-height: 1.3;
+}
+
 .auth-telegram-login__widget {
 	min-height: 40px;
 	display: flex;
