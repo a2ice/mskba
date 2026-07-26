@@ -114,12 +114,22 @@
                         >{{ $siteSummary->todayEventsText() }}</a>
                         <span data-today-events-empty @if($siteSummary->todayEvents > 0) hidden @endif>На сегодня игр нет</span>
                         @auth
-                            <a class="site-summary-create" href="{{ $createGameUrl }}" aria-label="Создать игру">+</a>
+                            <a
+                                class="site-summary-create"
+                                href="{{ $createGameUrl }}"
+                                aria-label="Создать игру"
+                                title="Создать игру"
+                                data-tooltip-variant="title"
+                                data-tooltip-icon
+                            >+</a>
                         @else
                             <button
                                 class="site-summary-create js-handler"
                                 type="button"
                                 aria-label="Создать игру"
+                                title="Создать игру"
+                                data-tooltip-variant="title"
+                                data-tooltip-icon
                                 data-handler="modal"
                                 data-modal-action="open"
                                 data-modal-target="auth-entry-classic"

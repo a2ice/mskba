@@ -112,6 +112,10 @@
     cursor: pointer;
 }
 
+.home-welcome__eyebrow .site-summary-create {
+    margin-right: -11px;
+}
+
 .home-welcome__eyebrow[hidden],
 .home-welcome__eyebrow [hidden] {
     display: none !important;

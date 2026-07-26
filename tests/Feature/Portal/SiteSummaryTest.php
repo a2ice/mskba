@@ -62,7 +62,10 @@ class SiteSummaryTest extends TestCase
                 'date_from' => '2026-07-23',
                 'date_to' => '2026-07-23',
             ]))
-            ->assertSee('aria-label="Создать игру"', false);
+            ->assertSee('aria-label="Создать игру"', false)
+            ->assertSee('title="Создать игру"', false)
+            ->assertSee('data-tooltip-variant="title"', false)
+            ->assertSee('data-tooltip-icon', false);
     }
 
     public function test_games_filter_combines_games_and_game_trainings_for_selected_day(): void
