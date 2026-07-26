@@ -168,7 +168,7 @@
                     <div class="col-md-6 form-group field">
                         <label class="form-label" for="attendanceVenue">Площадка</label>
                         <select id="attendanceVenue" class="form-select" name="fixed_venue_id">
-                            <option value="">Выберите площадку</option>
+                            <option value="">{{ $optionVenues->isEmpty() ? 'Нет доступных площадок' : 'Выберите площадку' }}</option>
                             @foreach($optionVenues as $venue)
                                 <option value="{{ $venue->id }}" @selected((string) old('fixed_venue_id') === (string) $venue->id)>{{ $venue->name }} — {{ $venue->raw_address }}</option>
                             @endforeach
@@ -200,11 +200,13 @@
                     </div>
                 </div>
                 <input type="hidden" name="include_thinking_option" value="0">
-                <label class="coordination-setting-toggle mb-3">
-                    <input class="coordination-setting-toggle__input" type="checkbox" name="include_thinking_option" value="1" data-coordination-thinking-toggle @checked((bool) old('include_thinking_option', false))>
-                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
-                    <strong class="coordination-setting-toggle__title">Добавить вариант «Думаю»</strong>
-                </label>
+                <div class="form-group field mb-3">
+                    <label class="coordination-setting-toggle">
+                        <input class="coordination-setting-toggle__input" type="checkbox" name="include_thinking_option" value="1" data-coordination-thinking-toggle @checked((bool) old('include_thinking_option', false))>
+                        <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
+                        <strong class="coordination-setting-toggle__title">Добавить вариант «Думаю»</strong>
+                    </label>
+                </div>
                 <div class="form-group field mb-3" data-coordination-thinking-label @if(!old('include_thinking_option')) hidden @endif>
                     <label class="form-label" for="thinkingLabel">Раздумывает</label>
                     <input id="thinkingLabel" class="form-control" name="thinking_label" value="{{ old('thinking_label', 'Думаю') }}" maxlength="255">
@@ -221,7 +223,7 @@
                     <div class="col-md-6 form-group field">
                         <label class="form-label" for="timeVenue">Площадка</label>
                         <select id="timeVenue" class="form-select" name="fixed_venue_id">
-                            <option value="">Выберите площадку</option>
+                            <option value="">{{ $optionVenues->isEmpty() ? 'Нет доступных площадок' : 'Выберите площадку' }}</option>
                             @foreach($optionVenues as $venue)
                                 <option value="{{ $venue->id }}" @selected((string) old('fixed_venue_id') === (string) $venue->id)>{{ $venue->name }} — {{ $venue->raw_address }}</option>
                             @endforeach

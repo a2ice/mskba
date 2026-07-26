@@ -64,6 +64,7 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee('Тип вариантов')
             ->assertSee('Интервал времени')
             ->assertSee('Площадка')
+            ->assertSee('Нет доступных площадок')
             ->assertSee('value="2026-07-25T13:34"', false);
         $this->travelBack();
 
@@ -71,6 +72,26 @@ final class CoordinationWorkflowTest extends TestCase
         $this->actingAs($blocked)
             ->post(route('coordination.store'), $this->payload())
             ->assertForbidden();
+    }
+
+    public function test_poll_form_lists_only_available_event_venues(): void
+    {
+        $user = User::factory()->create();
+        $availableVenue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'name' => 'Доступная площадка',
+        ]);
+        Venue::factory()->create([
+            'status' => VenueStatusEnum::UNCONFIRMED->value,
+            'name' => 'Неподтверждённая площадка',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('coordination.create'))
+            ->assertOk()
+            ->assertSee($availableVenue->name)
+            ->assertDontSee('Неподтверждённая площадка')
+            ->assertDontSee('Нет доступных площадок');
     }
 
     public function test_typed_poll_options_are_normalized_for_web_and_telegram_labels(): void
