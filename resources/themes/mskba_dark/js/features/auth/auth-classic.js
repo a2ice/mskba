@@ -3,6 +3,8 @@ import * as forms from '../../core/forms.js';
 
 const CLASSIC_MODAL = 'auth-entry-classic';
 const DEFAULT_SECTION = 'login';
+const TELEGRAM_LOGIN_DEFAULT_LABEL = 'Войти через Telegram';
+const TELEGRAM_LOGIN_RETRY_LABEL = 'Повторить вход через Telegram';
 
 window.mskbaTelegramLogin = function(telegramUser) {
     const container = getActiveTelegramLoginContainer();
@@ -67,6 +69,7 @@ $(document).on('click', '[data-telegram-bot-login]', function(event) {
     }
 
     stopTelegramBotLoginPolling(container);
+    setTelegramBotLoginLabel(container, 'Открываем Telegram…');
 
     const endpoint = String(container.data('telegramBotStartUrl') || '').trim();
     const modal = container.closest('[data-modal]');
@@ -106,17 +109,15 @@ $(document).on('click', '[data-telegram-bot-login]', function(event) {
                     telegramWindow.close();
                 }
 
-                setTelegramLoginState(container, false, 'Не удалось подготовить вход через Telegram.', 'error');
+                setTelegramBotLoginLabel(container, TELEGRAM_LOGIN_RETRY_LABEL);
+                setTelegramLoginState(container, false, 'Не удалось подготовить вход через Telegram. Попробуйте ещё раз.', 'error');
                 return;
             }
 
             container.data('telegramBotLoginToken', token);
-            setTelegramLoginState(
-                container,
-                true,
-                response.message || 'Подтвердите вход в боте. Оставьте страницу открытой.',
-                'info'
-            );
+            container.data('telegramBotLoginExpiresAt', Number(response.expires_at || 0));
+            setTelegramBotLoginLabel(container, 'Ожидаем подтверждения…');
+            updateTelegramBotLoginWaitingState(container);
 
             if (telegramWindow) {
                 telegramWindow.location.replace(botUrl);
@@ -134,10 +135,11 @@ $(document).on('click', '[data-telegram-bot-login]', function(event) {
             const response = jqXHR.responseJSON || {};
             const validationMessage = Object.values(response.errors || {}).flat().find(Boolean);
 
+            setTelegramBotLoginLabel(container, TELEGRAM_LOGIN_RETRY_LABEL);
             setTelegramLoginState(
                 container,
                 false,
-                response.message || validationMessage || 'Не удалось начать вход через Telegram.',
+                response.message || validationMessage || 'Не удалось начать вход через Telegram. Попробуйте ещё раз.',
                 'error'
             );
         })
@@ -203,9 +205,6 @@ $(document).on('modal:closed', function(_event, modal) {
     }
 
     resetClassicModalState(modal);
-    modal.find('[data-telegram-login]').each(function() {
-        stopTelegramBotLoginPolling($(this));
-    });
     modal.removeData('authRedirectUrl');
 });
 
@@ -223,6 +222,10 @@ function resetClassicModalState(modal) {
     modal.find('[data-auth-classic-form]').each(function() {
         this.reset();
         forms.resetFormState(this);
+    });
+
+    modal.find('[data-telegram-login]').each(function() {
+        resetTelegramBotLoginState($(this));
     });
 }
 
@@ -254,17 +257,92 @@ function setTelegramLoginState(container, isSubmitting, message, state) {
         .toggleClass('is-submitting', isSubmitting)
         .attr('aria-busy', isSubmitting ? 'true' : 'false');
 
+    container.find('[data-telegram-bot-login]').prop('disabled', isSubmitting);
+
     container.find('.auth-telegram-login__message')
         .text(message || '')
         .attr('data-state', state || 'info');
 }
 
+function setTelegramBotLoginLabel(container, label) {
+    container.find('[data-telegram-bot-login-label]').text(label || TELEGRAM_LOGIN_DEFAULT_LABEL);
+}
+
+function resetTelegramBotLoginState(container) {
+    stopTelegramBotLoginPolling(container);
+    container.removeData('telegramBotLoginExpiresAt');
+
+    ['telegramBotStartRequest', 'telegramBotStatusRequest'].forEach(function(requestKey) {
+        const request = container.data(requestKey);
+
+        if (request && request.readyState !== 4) {
+            request.abort();
+        }
+
+        container.removeData(requestKey);
+    });
+
+    setTelegramBotLoginLabel(container, TELEGRAM_LOGIN_DEFAULT_LABEL);
+    setTelegramLoginState(container, false, '', 'info');
+}
+
+function getTelegramBotLoginRemainingSeconds(container) {
+    const expiresAt = Number(container.data('telegramBotLoginExpiresAt') || 0);
+
+    if (!expiresAt) {
+        return 0;
+    }
+
+    return Math.max(0, Math.ceil(expiresAt - (Date.now() / 1000)));
+}
+
+function formatTelegramBotLoginCountdown(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainder = String(seconds % 60).padStart(2, '0');
+
+    return minutes + ':' + remainder;
+}
+
+function updateTelegramBotLoginWaitingState(container) {
+    const remainingSeconds = getTelegramBotLoginRemainingSeconds(container);
+
+    if (remainingSeconds <= 0) {
+        expireTelegramBotLogin(container);
+        return false;
+    }
+
+    setTelegramLoginState(
+        container,
+        true,
+        'Ожидаем подтверждения в Telegram — ' + formatTelegramBotLoginCountdown(remainingSeconds),
+        'info'
+    );
+
+    return true;
+}
+
+function expireTelegramBotLogin(container, message = '') {
+    stopTelegramBotLoginPolling(container);
+    container.removeData('telegramBotLoginExpiresAt');
+    setTelegramBotLoginLabel(container, TELEGRAM_LOGIN_RETRY_LABEL);
+    setTelegramLoginState(
+        container,
+        false,
+        message || 'Не дождались подтверждения в Telegram. Попробуйте ещё раз.',
+        'error'
+    );
+}
+
 function scheduleTelegramBotLoginPoll(container) {
     stopTelegramBotLoginPolling(container, false);
 
+    if (!updateTelegramBotLoginWaitingState(container)) {
+        return;
+    }
+
     const timer = window.setTimeout(function() {
         pollTelegramBotLogin(container);
-    }, 1400);
+    }, 1000);
 
     container.data('telegramBotLoginTimer', timer);
 }
@@ -275,7 +353,12 @@ function pollTelegramBotLogin(container) {
 
     if (!endpoint || !token) {
         stopTelegramBotLoginPolling(container);
+        setTelegramBotLoginLabel(container, TELEGRAM_LOGIN_RETRY_LABEL);
         setTelegramLoginState(container, false, 'Не удалось проверить вход через Telegram.', 'error');
+        return;
+    }
+
+    if (!updateTelegramBotLoginWaitingState(container)) {
         return;
     }
 
@@ -302,19 +385,15 @@ function pollTelegramBotLogin(container) {
                 return;
             }
 
-            setTelegramLoginState(container, true, response.message || 'Ожидаем подтверждение в Telegram…', 'info');
             scheduleTelegramBotLoginPoll(container);
         })
         .fail(function(jqXHR) {
             const response = jqXHR.responseJSON || {};
 
             if (jqXHR.status === 410 || response.status === 'expired') {
-                stopTelegramBotLoginPolling(container);
-                setTelegramLoginState(
+                expireTelegramBotLogin(
                     container,
-                    false,
-                    response.message || 'Ссылка для входа истекла. Запустите вход ещё раз.',
-                    'error'
+                    response.message || 'Не дождались подтверждения в Telegram. Попробуйте ещё раз.'
                 );
                 return;
             }

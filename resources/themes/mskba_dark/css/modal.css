@@ -237,6 +237,27 @@
 
 .auth-telegram-login__button {
 	min-width: min(100%, 230px);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 9px;
+	border-color: #229ed9;
+	background: #229ed9;
+	color: #fff;
+	box-shadow: 0 7px 22px rgba(34, 158, 217, 0.2);
+}
+
+.auth-telegram-login__button:hover,
+.auth-telegram-login__button:focus-visible {
+	border-color: #1d8fc4;
+	background: #1d8fc4;
+	color: #fff;
+}
+
+.auth-telegram-login__icon {
+	width: 18px;
+	height: 18px;
+	flex: 0 0 18px;
 }
 
 .auth-telegram-login__widget {
