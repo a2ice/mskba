@@ -131,8 +131,13 @@ final class CreateCoordinationHandler
             throw new InvalidArgumentException('Время завершения должно быть в будущем.');
         }
 
-        $duration = (int) ($data['event_duration_minutes'] ?? 0);
-        $configuration = ['duration_minutes' => $duration];
+        $duration = isset($data['event_duration_minutes']) && $data['event_duration_minutes'] !== ''
+            ? (int) $data['event_duration_minutes']
+            : null;
+        $configuration = [
+            'duration_minutes' => $duration,
+            'automatic_duration' => $duration === null,
+        ];
         $question = '';
         $subjectType = PollSubjectTypeEnum::TEXT;
         $options = [];
@@ -140,7 +145,8 @@ final class CreateCoordinationHandler
         if ($flowType === CoordinationFlowTypeEnum::EVENT_ATTENDANCE) {
             $venue = $this->availableVenue((int) $data['fixed_venue_id']);
             $startsAt = $this->parseVenueDateTime($venue, (string) $data['fixed_starts_at']);
-            $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+            $endsAt = $this->availability->resolveEndsAt($venue, $startsAt, $duration);
+            $configuration['duration_minutes'] = (int) $startsAt->diffInMinutes($endsAt);
             $configuration += ['venue_id' => $venue->id, 'starts_at' => $startsAt->toIso8601String()];
             $question = 'Вы сможете прийти?';
             $subjectType = PollSubjectTypeEnum::PARTICIPATION;
@@ -167,7 +173,7 @@ final class CreateCoordinationHandler
                     $venue,
                     $configuration['date'].' '.$option->value['time'],
                 );
-                $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+                $this->availability->resolveEndsAt($venue, $startsAt, $duration);
             }
         } else {
             $startsAt = CarbonImmutable::parse(
@@ -181,7 +187,7 @@ final class CreateCoordinationHandler
 
             foreach ($options as $option) {
                 $venue = $this->availableVenue((int) $option->value['venue_id']);
-                $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+                $this->availability->resolveEndsAt($venue, $startsAt, $duration);
             }
         }
 

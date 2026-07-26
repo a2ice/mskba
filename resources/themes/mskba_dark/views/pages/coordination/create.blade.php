@@ -28,6 +28,10 @@
             'id' => $venue->id,
             'label' => $venue->name.' — '.$venue->raw_address,
         ])->values();
+        $selectedFixedVenueId = old('fixed_venue_id');
+        $selectedFixedVenue = $selectedFixedVenueId
+            ? $optionVenues->firstWhere('id', (int) $selectedFixedVenueId)
+            : null;
     @endphp
     @if(session('error')) <div class="alert alert-danger mb-3">{{ session('error') }}</div> @endif
 
@@ -94,38 +98,22 @@
             </div>
         </div>
         <div class="row g-3 mb-3">
-            <div class="col-md-6 form-group field">
-                <input type="hidden" name="allows_vote_changes" value="0">
-                <label class="coordination-setting-toggle">
-                    <input
-                        class="coordination-setting-toggle__input"
-                        type="checkbox"
-                        name="allows_vote_changes"
-                        value="1"
-                        @checked((bool) old('allows_vote_changes', false))
-                    >
-                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
-                    <strong class="coordination-setting-toggle__title">Разрешить менять голос</strong>
-                    <small class="coordination-setting-toggle__description">До закрытия опроса участник сможет выбрать другой ответ</small>
-                </label>
-                @error('allows_vote_changes') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-            </div>
-            <div class="col-md-6 form-group field">
-                <input type="hidden" name="is_anonymous" value="0">
-                <label class="coordination-setting-toggle">
-                    <input
-                        class="coordination-setting-toggle__input"
-                        type="checkbox"
-                        name="is_anonymous"
-                        value="1"
-                        @checked((bool) old('is_anonymous', false))
-                    >
-                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
-                    <strong class="coordination-setting-toggle__title">Анонимный опрос</strong>
-                    <small class="coordination-setting-toggle__description">Показывать количество голосов без имён участников</small>
-                </label>
-                @error('is_anonymous') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-            </div>
+            @include('theme::partials.forms.toggle', [
+                'name' => 'allows_vote_changes',
+                'id' => 'coordinationAllowsVoteChanges',
+                'title' => 'Разрешить менять голос',
+                'description' => 'До закрытия опроса участник сможет выбрать другой ответ',
+                'checked' => old('allows_vote_changes', false),
+                'wrapperClass' => 'col-md-6 form-group field',
+            ])
+            @include('theme::partials.forms.toggle', [
+                'name' => 'is_anonymous',
+                'id' => 'coordinationIsAnonymous',
+                'title' => 'Анонимный опрос',
+                'description' => 'Показывать количество голосов без имён участников',
+                'checked' => old('is_anonymous', false),
+                'wrapperClass' => 'col-md-6 form-group field',
+            ])
         </div>
         <div class="form-group field mb-3">
             <label class="form-label">Варианты ответа</label>
@@ -166,13 +154,17 @@
             <div data-coordination-event-flow="event_attendance" @if($selectedFlowType !== 'event_attendance') hidden @endif>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6 form-group field">
-                        <label class="form-label" for="attendanceVenue">Площадка</label>
-                        <select id="attendanceVenue" class="form-select" name="fixed_venue_id">
-                            <option value="">{{ $optionVenues->isEmpty() ? 'Нет доступных площадок' : 'Выберите площадку' }}</option>
-                            @foreach($optionVenues as $venue)
-                                <option value="{{ $venue->id }}" @selected((string) old('fixed_venue_id') === (string) $venue->id)>{{ $venue->name }} — {{ $venue->raw_address }}</option>
-                            @endforeach
-                        </select>
+                        @include('theme::partials.venues.predictive-selector', [
+                            'id' => 'attendanceVenue',
+                            'name' => 'fixed_venue_id',
+                            'selectedVenue' => $selectedFixedVenue,
+                            'confirmedOnly' => true,
+                            'operationalStatus' => 'active',
+                            'startInput' => '#attendanceStartsAt',
+                            'durationInput' => '#attendanceDuration',
+                            'mapModal' => 'attendance-venue-map',
+                            'showFavorites' => true,
+                        ])
                     </div>
                     <div class="col-md-6 form-group field">
                         <label class="form-label" for="attendanceStartsAt">Дата и время</label>
@@ -182,10 +174,12 @@
                 <div class="form-group field mb-3">
                     <label class="form-label" for="attendanceDuration">Длительность</label>
                     <select id="attendanceDuration" class="form-select" name="event_duration_minutes">
+                        <option value="" @selected(old('event_duration_minutes') === null || old('event_duration_minutes') === '')>Автоматически</option>
                         @foreach(range(30, 480, 30) as $minutes)
-                            <option value="{{ $minutes }}" @selected((int) old('event_duration_minutes', 60) === $minutes)>{{ $minutes < 60 ? $minutes.' минут' : rtrim(rtrim(number_format($minutes / 60, 1, ',', ''), '0'), ',').' ч' }}</option>
+                            <option value="{{ $minutes }}" @selected((string) old('event_duration_minutes') === (string) $minutes)>{{ $minutes < 60 ? $minutes.' минут' : rtrim(rtrim(number_format($minutes / 60, 1, ',', ''), '0'), ',').' ч' }}</option>
                         @endforeach
                     </select>
+                    <small class="form-text">Если не указывать длительность, она будет рассчитана до ближайшего ограничения: конца дня, окончания работы площадки или следующего занятого слота.</small>
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6 form-group field">
@@ -199,14 +193,13 @@
                         <small class="form-text">🔴 В системе фиксируется как отказ</small>
                     </div>
                 </div>
-                <input type="hidden" name="include_thinking_option" value="0">
-                <div class="form-group field mb-3">
-                    <label class="coordination-setting-toggle">
-                        <input class="coordination-setting-toggle__input" type="checkbox" name="include_thinking_option" value="1" data-coordination-thinking-toggle @checked((bool) old('include_thinking_option', false))>
-                        <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
-                        <strong class="coordination-setting-toggle__title">Добавить вариант «Думаю»</strong>
-                    </label>
-                </div>
+                @include('theme::partials.forms.toggle', [
+                    'name' => 'include_thinking_option',
+                    'id' => 'includeThinkingOption',
+                    'title' => 'Добавить вариант «Думаю»',
+                    'checked' => old('include_thinking_option', false),
+                    'inputAttributes' => ['data-coordination-thinking-toggle' => true],
+                ])
                 <div class="form-group field mb-3" data-coordination-thinking-label @if(!old('include_thinking_option')) hidden @endif>
                     <label class="form-label" for="thinkingLabel">Раздумывает</label>
                     <input id="thinkingLabel" class="form-control" name="thinking_label" value="{{ old('thinking_label', 'Думаю') }}" maxlength="255">
@@ -221,13 +214,16 @@
             <div data-coordination-event-flow="event_time_selection" @if($selectedFlowType !== 'event_time_selection') hidden @endif>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6 form-group field">
-                        <label class="form-label" for="timeVenue">Площадка</label>
-                        <select id="timeVenue" class="form-select" name="fixed_venue_id">
-                            <option value="">{{ $optionVenues->isEmpty() ? 'Нет доступных площадок' : 'Выберите площадку' }}</option>
-                            @foreach($optionVenues as $venue)
-                                <option value="{{ $venue->id }}" @selected((string) old('fixed_venue_id') === (string) $venue->id)>{{ $venue->name }} — {{ $venue->raw_address }}</option>
-                            @endforeach
-                        </select>
+                        @include('theme::partials.venues.predictive-selector', [
+                            'id' => 'timeVenue',
+                            'name' => 'fixed_venue_id',
+                            'selectedVenue' => $selectedFixedVenue,
+                            'confirmedOnly' => true,
+                            'operationalStatus' => 'active',
+                            'durationInput' => '#timeDuration',
+                            'mapModal' => 'time-venue-map',
+                            'showFavorites' => true,
+                        ])
                     </div>
                     <div class="col-md-3 form-group field">
                         <label class="form-label" for="timeDate">Дата</label>
@@ -236,10 +232,12 @@
                     <div class="col-md-3 form-group field">
                         <label class="form-label" for="timeDuration">Длительность</label>
                         <select id="timeDuration" class="form-select" name="event_duration_minutes">
+                            <option value="" @selected(old('event_duration_minutes') === null || old('event_duration_minutes') === '')>Автоматически</option>
                             @foreach(range(30, 480, 30) as $minutes)
-                                <option value="{{ $minutes }}" @selected((int) old('event_duration_minutes', 60) === $minutes)>{{ $minutes }} мин.</option>
+                                <option value="{{ $minutes }}" @selected((string) old('event_duration_minutes') === (string) $minutes)>{{ $minutes }} мин.</option>
                             @endforeach
                         </select>
+                        <small class="form-text">Без длительности каждый вариант проверяется до ближайшего ограничения площадки.</small>
                     </div>
                 </div>
                 <div class="row g-3 mb-3">
@@ -261,10 +259,12 @@
                     <div class="col-md-6 form-group field">
                         <label class="form-label" for="venueDuration">Длительность</label>
                         <select id="venueDuration" class="form-select" name="event_duration_minutes">
+                            <option value="" @selected(old('event_duration_minutes') === null || old('event_duration_minutes') === '')>Автоматически</option>
                             @foreach(range(30, 480, 30) as $minutes)
-                                <option value="{{ $minutes }}" @selected((int) old('event_duration_minutes', 60) === $minutes)>{{ $minutes }} мин.</option>
+                                <option value="{{ $minutes }}" @selected((string) old('event_duration_minutes') === (string) $minutes)>{{ $minutes }} мин.</option>
                             @endforeach
                         </select>
+                        <small class="form-text">Без длительности для выбранной площадки будет использовано ближайшее ограничение.</small>
                     </div>
                 </div>
                 <fieldset class="form-group field mb-3">
@@ -281,14 +281,12 @@
                 </fieldset>
             </div>
 
-            <div class="form-group field mb-3">
-                <input type="hidden" name="allows_vote_changes" value="0">
-                <label class="coordination-setting-toggle">
-                    <input class="coordination-setting-toggle__input" type="checkbox" name="allows_vote_changes" value="1" @checked((bool) old('allows_vote_changes', false))>
-                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
-                    <strong class="coordination-setting-toggle__title">Разрешить менять голос</strong>
-                </label>
-            </div>
+            @include('theme::partials.forms.toggle', [
+                'name' => 'allows_vote_changes',
+                'id' => 'eventPollAllowsVoteChanges',
+                'title' => 'Разрешить менять голос',
+                'checked' => old('allows_vote_changes', false),
+            ])
             <input type="hidden" name="is_anonymous" value="0">
         </div>
         <div class="coordination-chain-editor mb-4" data-coordination-chain-flow @if($selectedFlowType !== 'event_scheduling') hidden @endif>
@@ -343,22 +341,13 @@
                 @error('venue_options') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
             </fieldset>
         </div>
-        <div class="form-group field mb-3">
-            <input type="hidden" name="allows_suggestions" value="0">
-            <label class="coordination-setting-toggle">
-                <input
-                    class="coordination-setting-toggle__input"
-                    type="checkbox"
-                    name="allows_suggestions"
-                    value="1"
-                    @checked((bool) old('allows_suggestions', false))
-                >
-                <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
-                <strong class="coordination-setting-toggle__title">Разрешить свои варианты</strong>
-                <small class="coordination-setting-toggle__description">Участники смогут добавить вариант того же типа до закрытия опроса</small>
-            </label>
-            @error('allows_suggestions') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-        </div>
+        @include('theme::partials.forms.toggle', [
+            'name' => 'allows_suggestions',
+            'id' => 'coordinationAllowsSuggestions',
+            'title' => 'Разрешить свои варианты',
+            'description' => 'Участники смогут добавить вариант того же типа до закрытия опроса',
+            'checked' => old('allows_suggestions', false),
+        ])
         <div class="form-group field mb-4">
             <label class="form-label" for="coordinationDescription">Описание</label>
             <textarea id="coordinationDescription" class="form-control" name="description" rows="4" maxlength="5000">{{ old('description') }}</textarea>
@@ -369,19 +358,14 @@
                 $selectedTelegramChatIds = array_map('strval', old('telegram_chat_ids', $defaultTelegramChatIds));
             @endphp
             <div class="form-group field mb-4">
-                <input type="hidden" name="publish_to_telegram" value="0">
-                <label class="coordination-setting-toggle">
-                    <input
-                        class="coordination-setting-toggle__input"
-                        type="checkbox"
-                        name="publish_to_telegram"
-                        value="1"
-                        @checked((bool) old('publish_to_telegram', true))
-                    >
-                    <span class="coordination-setting-toggle__control" aria-hidden="true"></span>
-                    <strong class="coordination-setting-toggle__title">Опубликовать в Telegram</strong>
-                    <small class="coordination-setting-toggle__description">Опрос появится в выбранных чатах, ответы будут синхронизироваться с порталом</small>
-                </label>
+                @include('theme::partials.forms.toggle', [
+                    'name' => 'publish_to_telegram',
+                    'id' => 'coordinationPublishToTelegram',
+                    'title' => 'Опубликовать в Telegram',
+                    'description' => 'Опрос появится в выбранных чатах, ответы будут синхронизироваться с порталом',
+                    'checked' => old('publish_to_telegram', true),
+                    'wrapperClass' => '',
+                ])
                 <div class="coordination-telegram-chats mt-3">
                     @foreach($telegramChats as $chat)
                         <label class="coordination-checkbox">
@@ -405,4 +389,9 @@
         @endif
         <button class="btn btn--primary" type="submit">Открыть голосование</button>
     </form>
+
+    @component('theme::partials.modal.layout', ['id' => 'event-favorite-venues'])
+        <h2 class="modal_title" id="modal-title-event-favorite-venues">Избранные площадки</h2>
+        <p class="modal-description">Функционал находится в разработке.</p>
+    @endcomponent
 @endsection

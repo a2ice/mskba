@@ -73,7 +73,9 @@ final class SuggestPollOptionHandler
     private function assertSuggestionAvailable(Poll $poll, array $value): void
     {
         $configuration = $poll->configuration ?? [];
-        $duration = (int) ($configuration['duration_minutes'] ?? 0);
+        $duration = isset($configuration['duration_minutes'])
+            ? (int) $configuration['duration_minutes']
+            : null;
 
         if ($poll->subject_type === PollSubjectTypeEnum::TIME
             && isset($configuration['venue_id'], $configuration['date'], $value['time'])) {
@@ -82,7 +84,7 @@ final class SuggestPollOptionHandler
                 ->findOrFail((int) $configuration['venue_id']);
             $timezone = $venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
             $startsAt = CarbonImmutable::parse($configuration['date'].' '.$value['time'], $timezone)->utc();
-            $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+            $this->availability->resolveEndsAt($venue, $startsAt, $duration);
         }
 
         if ($poll->subject_type === PollSubjectTypeEnum::VENUE
@@ -91,7 +93,7 @@ final class SuggestPollOptionHandler
                 ->with(['schedule.intervals', 'schedule.exceptions.intervals'])
                 ->findOrFail((int) $value['venue_id']);
             $startsAt = CarbonImmutable::parse((string) $configuration['starts_at'])->utc();
-            $this->availability->assertAvailable($venue, $startsAt, $startsAt->addMinutes($duration));
+            $this->availability->resolveEndsAt($venue, $startsAt, $duration);
         }
     }
 }

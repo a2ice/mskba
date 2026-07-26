@@ -40,8 +40,8 @@ final class CreateEventHandler
             $localStart = CarbonImmutable::parse($data['starts_at'], $timezone);
             $durationMinutes = (int) $data['duration_minutes'];
 
-            if ($durationMinutes < 30 || $durationMinutes > 480 || $durationMinutes % 30 !== 0) {
-                throw new InvalidArgumentException('Длительность должна быть от 30 минут до 8 часов с шагом 30 минут.');
+            if ($durationMinutes < 1 || $durationMinutes > 1440) {
+                throw new InvalidArgumentException('Мероприятие должно завершиться в течение суток.');
             }
 
             $startsAt = $localStart->utc();

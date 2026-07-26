@@ -7,9 +7,12 @@ use App\Modules\Coordination\Domain\Enums\CoordinationSessionStatusEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Coordination\Domain\Models\PollOption;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
@@ -64,7 +67,7 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee('Тип вариантов')
             ->assertSee('Интервал времени')
             ->assertSee('Площадка')
-            ->assertSee('Нет доступных площадок')
+            ->assertSee('Начните вводить название, улицу, метро или тег')
             ->assertSee('value="2026-07-25T13:34"', false);
         $this->travelBack();
 
@@ -92,6 +95,53 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee($availableVenue->name)
             ->assertDontSee('Неподтверждённая площадка')
             ->assertDontSee('Нет доступных площадок');
+    }
+
+    public function test_attendance_poll_can_resolve_duration_until_next_booking(): void
+    {
+        $organizer = User::factory()->create();
+        [$venue, $startsAt] = $this->availableVenue();
+        $this->assertTrue(
+            $startsAt->addHours(6)->equalTo(
+                app(VenueEventAvailability::class)->resolveEndsAt($venue, $startsAt),
+            ),
+        );
+        $event = Event::factory()->for($venue)->create([
+            'starts_at' => $startsAt->addHours(2),
+            'ends_at' => $startsAt->addHours(3),
+        ]);
+        VenueBooking::query()->create([
+            'venue_id' => $venue->id,
+            'event_id' => $event->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => VenueBookingStatusEnum::CONFIRMED,
+            'starts_at' => $startsAt->addHours(2),
+            'ends_at' => $startsAt->addHours(3),
+        ]);
+
+        $this->actingAs($organizer)
+            ->post(route('coordination.store'), [
+                'flow_type' => CoordinationFlowTypeEnum::EVENT_ATTENDANCE->value,
+                'title' => 'Автоматическая длительность',
+                'fixed_venue_id' => $venue->id,
+                'fixed_starts_at' => $startsAt->format('Y-m-d\TH:i'),
+                'event_duration_minutes' => '',
+                'going_label' => 'Пойду',
+                'not_going_label' => 'Не пойду',
+                'include_thinking_option' => '0',
+                'results_visibility' => 'after_vote',
+                'allows_vote_changes' => '0',
+                'is_anonymous' => '0',
+                'allows_suggestions' => '0',
+                'publish_to_telegram' => '0',
+                'closes_at' => CarbonImmutable::now()->addHour()->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect();
+
+        $poll = CoordinationSession::query()->latest('id')->firstOrFail()->polls()->firstOrFail();
+
+        $this->assertTrue($poll->configuration['automatic_duration']);
+        $this->assertSame(120, $poll->configuration['duration_minutes']);
     }
 
     public function test_typed_poll_options_are_normalized_for_web_and_telegram_labels(): void

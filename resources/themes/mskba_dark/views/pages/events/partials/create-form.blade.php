@@ -5,6 +5,14 @@
     $selectedVenue = $selectedVenueId
         ? $venues->firstWhere('id', (int) $selectedVenueId)
         : null;
+    $selectedDuration = (int) old('duration_minutes', $coordinatedDuration ?? $defaultDuration);
+    $displayDurationOptions = collect($durationOptions)
+        ->when(
+            $selectedDuration > 0 && !in_array($selectedDuration, $durationOptions, true),
+            fn ($options) => $options->push($selectedDuration),
+        )
+        ->sort()
+        ->values();
 @endphp
 
 <form method="POST" action="{{ $formAction }}" data-event-create-form data-current-date="{{ $currentDate }}">
@@ -41,14 +49,14 @@
         <div class="col-md-6 form-group field">
             <label class="form-label" for="{{ $formIdPrefix }}Duration">Длительность</label>
             <select id="{{ $formIdPrefix }}Duration" class="form-select @error('duration_minutes') is-invalid @enderror" name="duration_minutes" required>
-                @foreach($durationOptions as $minutes)
+                @foreach($displayDurationOptions as $minutes)
                     @php
                         $hours = $minutes / 60;
                         $durationLabel = $minutes === 30
                             ? '30 минут'
                             : number_format($hours, $minutes % 60 === 0 ? 0 : 1, ',', '').' '.($hours === 1.0 ? 'час' : ($minutes % 60 !== 0 || $hours < 5 ? 'часа' : 'часов'));
                     @endphp
-                    <option value="{{ $minutes }}" @selected((int) old('duration_minutes', $coordinatedDuration ?? $defaultDuration) === $minutes)>{{ $durationLabel }}</option>
+                    <option value="{{ $minutes }}" @selected($selectedDuration === $minutes)>{{ $durationLabel }}</option>
                 @endforeach
             </select>
             @error('duration_minutes') <div class="invalid-feedback">{{ $message }}</div> @enderror

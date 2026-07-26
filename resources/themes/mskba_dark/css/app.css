@@ -9,6 +9,7 @@
 @import './tom-select';
 @import './address-suggest';
 @import './venue-selector';
+@import './form-controls';
 
 @import './pages/home';
 @import './pages/account';

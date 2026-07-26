@@ -95,8 +95,8 @@ final class UpdateEventHandler
                 ? (int) ($data['duration_minutes'] ?? $event->starts_at->diffInMinutes($event->ends_at))
                 : (int) $event->starts_at->diffInMinutes($event->ends_at);
 
-            if ($durationMinutes < 30 || $durationMinutes > 480 || $durationMinutes % 30 !== 0) {
-                throw new InvalidArgumentException('Длительность должна быть от 30 минут до 8 часов с шагом 30 минут.');
+            if ($durationMinutes < 1 || $durationMinutes > 1440) {
+                throw new InvalidArgumentException('Мероприятие должно завершиться в течение суток.');
             }
 
             $currentDuration = (int) $event->starts_at->diffInMinutes($event->ends_at);

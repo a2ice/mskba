@@ -24,6 +24,7 @@ use App\Modules\Coordination\Presentation\Http\Requests\DecideCoordinationReques
 use App\Modules\Coordination\Presentation\Http\Requests\SuggestPollOptionRequest;
 use App\Modules\Coordination\Presentation\Http\Requests\VoteInPollRequest;
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Application\UseCases\ListEventVenuesHandler;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -32,6 +33,7 @@ use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramCoordinationPublicationsHandler;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -148,6 +150,7 @@ final class CoordinationController extends Controller
         CurrentActorResolver $actors,
         CoordinationAccess $access,
         ListEventVenuesHandler $eventVenues,
+        VenueEventAvailability $availability,
     ): Response {
         $coordination->load([
             'organizerActor.user.profile.activeAvatar',
@@ -234,6 +237,32 @@ final class CoordinationController extends Controller
 
             if ($coordination->flow_type === CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION) {
                 $venueId = $decisionByType->get(PollSubjectTypeEnum::VENUE->value)?->option?->value['venue_id'] ?? null;
+            }
+
+            if (($configuration['automatic_duration'] ?? false)
+                && is_numeric($venueId)
+                && is_string($coordinatedStartsAt)
+                && $coordinatedStartsAt !== '') {
+                $venue = Venue::query()
+                    ->with(['schedule.intervals', 'schedule.exceptions.intervals'])
+                    ->find((int) $venueId);
+
+                if ($venue !== null) {
+                    $timezone = $venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
+                    $startsAt = CarbonImmutable::parse($coordinatedStartsAt, $timezone)->utc();
+
+                    if ($startsAt->isFuture()) {
+                        try {
+                            $coordinatedDuration = (int) $startsAt->diffInMinutes(
+                                $availability->resolveEndsAt($venue, $startsAt),
+                            );
+                        } catch (InvalidArgumentException) {
+                            // Availability is rechecked on event creation; keep the form usable
+                            // so the organizer can choose another venue or start time.
+                            $coordinatedDuration = 60;
+                        }
+                    }
+                }
             }
         }
         $coordinationParticipants = collect();

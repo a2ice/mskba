@@ -120,11 +120,6 @@ final class CreateCoordinationRequest extends FormRequest
                 'after:now',
             ],
             'event_duration_minutes' => [
-                Rule::requiredIf(fn (): bool => in_array($this->input('flow_type'), [
-                    CoordinationFlowTypeEnum::EVENT_ATTENDANCE->value,
-                    CoordinationFlowTypeEnum::EVENT_TIME_SELECTION->value,
-                    CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION->value,
-                ], true)),
                 'nullable',
                 'integer',
                 Rule::in(range(30, 480, 30)),

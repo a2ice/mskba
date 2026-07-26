@@ -24,7 +24,7 @@ final class UpdateEventRequest extends FormRequest
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'description' => ['nullable', 'string', 'max:5000'],
             'starts_at' => ['required_with:venue_id,duration_minutes', 'date'],
-            'duration_minutes' => ['required_with:venue_id,starts_at', 'integer', Rule::in(range(30, 480, 30))],
+            'duration_minutes' => ['required_with:venue_id,starts_at', 'integer', 'min:1', 'max:1440'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
         ];
     }
@@ -36,7 +36,8 @@ final class UpdateEventRequest extends FormRequest
             'venue_id.required_with' => 'Выберите площадку для переноса мероприятия.',
             'starts_at.required_with' => 'Укажите новое время начала.',
             'duration_minutes.required_with' => 'Выберите длительность мероприятия.',
-            'duration_minutes.in' => 'Выберите длительность от 30 минут до 8 часов с шагом 30 минут.',
+            'duration_minutes.min' => 'Длительность должна быть больше нуля.',
+            'duration_minutes.max' => 'Мероприятие должно завершиться в течение суток.',
             'max_participants.min' => 'Вместимость должна учитывать организатора и хотя бы одного участника.',
         ];
     }

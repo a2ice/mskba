@@ -51,7 +51,10 @@
                 <div class="col-md-6 form-group field">
                     <label class="form-label" for="eventDuration">Длительность</label>
                     <select id="eventDuration" class="form-select @error('duration_minutes') is-invalid @enderror" name="duration_minutes" required>
-                        @foreach($durationOptions as $minutes)
+                        @foreach(collect($durationOptions)->when(
+                            !in_array($currentDuration, $durationOptions, true),
+                            fn ($options) => $options->push($currentDuration),
+                        )->sort()->values() as $minutes)
                             @php
                                 $hours = $minutes / 60;
                                 $durationLabel = $minutes === 30

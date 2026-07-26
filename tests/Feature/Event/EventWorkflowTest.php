@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Event;
 
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -26,6 +27,22 @@ use Tests\TestCase;
 final class EventWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_automatic_event_duration_uses_end_of_day_without_schedule(): void
+    {
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+        ]);
+        $startsAt = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(12, 0)->utc();
+
+        $endsAt = app(VenueEventAvailability::class)->resolveEndsAt($venue, $startsAt);
+
+        $this->assertSame(
+            '23:59',
+            $endsAt->setTimezone('Europe/Moscow')->format('H:i'),
+        );
+    }
 
     public function test_user_creates_published_event_and_confirmed_booking_on_free_venue(): void
     {
@@ -269,10 +286,10 @@ final class EventWorkflowTest extends TestCase
             ->from(route('events.create'))
             ->post(route('events.store'), array_merge(
                 $this->payload($venue, $minimumStart, $minimumStart->addHour()),
-                ['duration_minutes' => 45],
+                ['duration_minutes' => 1441],
             ))
             ->assertRedirect(route('events.create'))
-            ->assertSessionHasErrors(['duration_minutes' => 'Выберите длительность от 30 минут до 8 часов с шагом 30 минут.']);
+            ->assertSessionHasErrors(['duration_minutes' => 'Мероприятие должно завершиться в течение суток.']);
 
         $payload = $this->payload($venue, $minimumStart, $minimumStart->addHour());
         $payload['duration_minutes'] = 90;
