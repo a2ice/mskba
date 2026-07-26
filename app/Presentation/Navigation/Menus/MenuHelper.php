@@ -32,6 +32,7 @@ trait MenuHelper
                     return true;
                 }
             }
+
             return false;
         }
 

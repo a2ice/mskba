@@ -209,6 +209,58 @@
 	flex-wrap: wrap;
 }
 
+.auth-telegram-login {
+	margin-top: 18px;
+	display: grid;
+	justify-items: center;
+	gap: 8px;
+}
+
+.auth-telegram-login__separator {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: rgba(255, 255, 255, 0.46);
+	font-size: 11px;
+	line-height: 1;
+	text-transform: uppercase;
+}
+
+.auth-telegram-login__separator::before,
+.auth-telegram-login__separator::after {
+	height: 1px;
+	flex: 1;
+	background: rgba(255, 255, 255, 0.12);
+	content: '';
+}
+
+.auth-telegram-login__title {
+	margin: 0;
+	color: rgba(255, 255, 255, 0.82);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.auth-telegram-login__widget {
+	min-height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: opacity 0.2s ease;
+}
+
+.auth-telegram-login.is-submitting .auth-telegram-login__widget {
+	opacity: 0.45;
+	pointer-events: none;
+}
+
+.auth-telegram-login__message {
+	margin: 0;
+	min-height: 16px;
+	text-align: center;
+}
+
 .auth-classic__link {
 	padding: 0;
 	border: 0;

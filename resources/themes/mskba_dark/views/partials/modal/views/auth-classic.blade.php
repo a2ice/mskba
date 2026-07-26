@@ -30,6 +30,8 @@
             <button type="submit" class="btn btn--primary btn--sm auth-form__submit">Войти</button>
         </form>
 
+        @include('theme::partials.auth.telegram-login')
+
         <p class="auth-classic__links">
             <button type="button" class="auth-classic__link" data-auth-classic-link data-auth-classic-target="restore">Восстановить доступ</button>
             <button type="button" class="auth-classic__link" data-auth-classic-link data-auth-classic-target="register">Регистрация</button>

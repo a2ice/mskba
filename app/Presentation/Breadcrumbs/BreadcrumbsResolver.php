@@ -2,7 +2,9 @@
 
 namespace App\Presentation\Breadcrumbs;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 final class BreadcrumbsResolver
 {
@@ -43,7 +45,7 @@ final class BreadcrumbsResolver
             foreach ($routeNames as $name) {
                 $route = $routes->getByName($name);
                 $items[] = [
-                    'label' => $route?->defaults['breadcrumb'] ?? ($name === $routeName ? $title : \Illuminate\Support\Str::headline(\Illuminate\Support\Str::afterLast($name, '.'))),
+                    'label' => $route?->defaults['breadcrumb'] ?? ($name === $routeName ? $title : Str::headline(Str::afterLast($name, '.'))),
                     'url' => $name === $routeName ? null : route($name),
                 ];
             }
@@ -53,7 +55,7 @@ final class BreadcrumbsResolver
             }
         }
 
-        $items = $items instanceof \Illuminate\Support\Collection ? $items->all() : $items;
+        $items = $items instanceof Collection ? $items->all() : $items;
         $trail = array_merge(
             [['label' => 'Главная', 'url' => route('welcome')]],
             $items

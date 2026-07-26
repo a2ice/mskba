@@ -8,15 +8,18 @@ use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
 use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
+use App\Modules\Identity\Presentation\Http\Support\SafeAuthenticationRedirectResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    public function login(LoginRequest $request, AuthHandler $authHandler): RedirectResponse|JsonResponse
-    {
+    public function login(
+        LoginRequest $request,
+        AuthHandler $authHandler,
+        SafeAuthenticationRedirectResolver $redirects,
+    ): RedirectResponse|JsonResponse {
         $validated = $request->validated();
 
         $result = $authHandler->login(
@@ -37,7 +40,7 @@ class AuthController extends Controller
             return back()->withInput($request->only('login', 'remember'))->withErrors(['login' => $result->message]);
         }
 
-        $redirectTo = $this->safeRedirectUrl($request, $validated['redirect_to'] ?? null);
+        $redirectTo = $redirects->resolve($request, $validated['redirect_to'] ?? null);
 
         if ($this->shouldReturnJson($request)) {
             return response()->json([
@@ -65,6 +68,7 @@ class AuthController extends Controller
         RegisterRequest $request,
         RegisterUserHandler $registerUser,
         AuthHandler $authHandler,
+        SafeAuthenticationRedirectResolver $redirects,
     ): RedirectResponse|JsonResponse {
         $validated = $request->validated();
 
@@ -88,7 +92,7 @@ class AuthController extends Controller
             remember: false,
         );
 
-        $redirectTo = $this->safeRedirectUrl(
+        $redirectTo = $redirects->resolve(
             request: $request,
             requestedUrl: $validated['redirect_to'] ?? null,
             fallbackUrl: route('account'),
@@ -128,48 +132,5 @@ class AuthController extends Controller
         return $request->expectsJson()
             || $request->ajax()
             || $request->wantsJson();
-    }
-
-    private function safeRedirectUrl(Request $request, mixed $requestedUrl, ?string $fallbackUrl = null): string
-    {
-        if (is_string($requestedUrl)) {
-            $requestedUrl = trim($requestedUrl);
-
-            if (str_starts_with($requestedUrl, '/') && ! str_starts_with($requestedUrl, '//')) {
-                return url($requestedUrl);
-            }
-
-            if ($this->isSameOriginUrl($requestedUrl)) {
-                return $requestedUrl;
-            }
-        }
-
-        $intendedUrl = $request->session()->pull('url.intended');
-
-        if (is_string($intendedUrl) && $this->isSameOriginUrl($intendedUrl)) {
-            return $intendedUrl;
-        }
-
-        if ($fallbackUrl !== null && $this->isSameOriginUrl($fallbackUrl)) {
-            return $fallbackUrl;
-        }
-
-        $redirectedFrom = url()->previous();
-
-        return $this->isSameOriginUrl($redirectedFrom) ? $redirectedFrom : url('/');
-    }
-
-    private function isSameOriginUrl(string $url): bool
-    {
-        $target = parse_url($url);
-        $origin = parse_url(url('/'));
-
-        if ($target === false || $origin === false) {
-            return false;
-        }
-
-        return ($target['scheme'] ?? null) === ($origin['scheme'] ?? null)
-            && ($target['host'] ?? null) === ($origin['host'] ?? null)
-            && ($target['port'] ?? null) === ($origin['port'] ?? null);
     }
 }

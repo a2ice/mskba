@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 final class ListPlaceholderAdminItemsHandler
 {
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return LengthAwarePaginator<int, mixed>
      */
     public function handle(string $section, array $filters): LengthAwarePaginator

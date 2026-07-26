@@ -21,7 +21,7 @@ return new class extends Migration
             $table->enum('gender', array_column(UserGenderEnum::cases(), 'value'))->nullable();
             $table->date('birth_date')->nullable();
             $table->timestamps();
-        });            
+        });
     }
 
     /**

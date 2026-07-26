@@ -10,11 +10,20 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Portal\Application\Services\OnlineUserPresence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
 class SiteSummaryTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Redis::connection((string) config('site_summary.presence_redis_connection', 'cache'))
+            ->del('site-summary:online-presence');
+    }
 
     protected function tearDown(): void
     {

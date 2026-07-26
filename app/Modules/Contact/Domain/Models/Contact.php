@@ -54,7 +54,7 @@ class Contact extends Model
 
     public function displayValue(): string
     {
-        if ($this->type !== ContactTypeEnum::TELEGRAM || ($this->meta['source'] ?? null) !== 'telegram_mini_app') {
+        if ($this->type !== ContactTypeEnum::TELEGRAM) {
             return $this->value;
         }
 

@@ -46,6 +46,8 @@
                             <button type="submit" class="btn btn--secondary-bordered btn--sm">Войти</button>
                         </form>
 
+                        @include('theme::partials.auth.telegram-login')
+
                         <hr>
 
                         <div class="links">

@@ -22,6 +22,7 @@ use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeCont
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
+use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebLoginController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Presentation\Theming\ThemeResolver;
@@ -66,6 +67,10 @@ Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])
         ->middleware('guest', 'throttle:5,1')
         ->name('auth.register');
+
+    Route::post('/telegram', TelegramWebLoginController::class)
+        ->middleware('guest', 'throttle:10,1')
+        ->name('auth.telegram');
 
     Route::post('/restore', [AuthController::class, 'restore'])
         ->middleware('throttle:5,1')

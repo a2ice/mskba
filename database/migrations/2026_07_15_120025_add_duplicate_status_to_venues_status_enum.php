@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     private const LEGACY_DUPLICATE = 'duplicate';
+
     private const LEGACY_REMOVED = 'removed';
 
     public function up(): void

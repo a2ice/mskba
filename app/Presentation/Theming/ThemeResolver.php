@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Presentation\Theming;
-use Illuminate\View\View;
+
 use Illuminate\Http\Response;
 
 class ThemeResolver
@@ -40,11 +40,12 @@ class ThemeResolver
         $statusCode = self::normalizeStatusCode($data['error']['code'] ?? 200);
         $view = 'theme::pages.'.$name;
         $viewExists = view()->exists($view);
-        if (!$viewExists) {
+        if (! $viewExists) {
             $view = 'theme::pages.system.view_not_found';
             $data['page'] = $name;
             $data['view_error'] = "View for page '$name' not found.";
         }
+
         return response()->view($view, $data, $statusCode);
     }
 

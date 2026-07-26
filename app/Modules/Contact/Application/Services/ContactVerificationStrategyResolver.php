@@ -9,7 +9,7 @@ use LogicException;
 class ContactVerificationStrategyResolver
 {
     /**
-     * @param iterable<ContactVerificationStrategy> $strategies
+     * @param  iterable<ContactVerificationStrategy>  $strategies
      */
     public function __construct(
         private readonly iterable $strategies,
