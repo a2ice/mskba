@@ -58,6 +58,22 @@
     >
         @include('partials.analytics.yandex-metrika-noscript')
 
+        @if($shouldBootstrapTelegramAuth)
+            <div
+                class="telegram-auth-bootstrap"
+                data-telegram-bootstrap-screen
+                role="status"
+                aria-live="polite"
+                aria-label="Открываем страницу Mini App"
+            >
+                <span class="telegram-auth-bootstrap__spinner" aria-hidden="true"></span>
+                <strong class="telegram-auth-bootstrap__title">Открываем MSKBA</strong>
+                <span class="telegram-auth-bootstrap__status" data-telegram-bootstrap-status>
+                    Проверяем данные Telegram…
+                </span>
+            </div>
+        @endif
+
         <div class="site-frame">
             @include('theme::partials.header')
 

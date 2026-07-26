@@ -169,6 +169,9 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('telegram-mini-app', false)
             ->assertSee('data-telegram-mini-app', false)
             ->assertSee('data-telegram-auth-bootstrap', false)
+            ->assertSee('data-telegram-bootstrap-screen', false)
+            ->assertSee('data-telegram-bootstrap-status', false)
+            ->assertSee('Проверяем данные Telegram')
             ->assertSee('data-telegram-auth-url="'.route('integrations.telegram.auth').'"', false)
             ->assertSee('data-account-url="'.route('account').'"', false)
             ->assertSee('data-mobile-profile', false)
@@ -192,6 +195,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('data-telegram-mini-app', false)
             ->assertSee('https://telegram.org/js/telegram-web-app.js', false)
             ->assertDontSee('data-telegram-auth-bootstrap', false)
+            ->assertDontSee('data-telegram-bootstrap-screen', false)
             ->assertDontSee('data-telegram-auth-url=', false);
     }
 

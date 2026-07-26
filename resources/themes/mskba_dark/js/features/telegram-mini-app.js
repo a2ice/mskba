@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const status = root.querySelector('[data-telegram-status]');
+    const bootstrapScreen = root.querySelector('[data-telegram-bootstrap-screen]');
+    const bootstrapStatus = root.querySelector('[data-telegram-bootstrap-status]');
     const dashboard = root.querySelector('[data-telegram-dashboard]');
     const authUrl = root.dataset.telegramAuthUrl;
     const shouldBootstrapAuth = root.hasAttribute('data-telegram-auth-bootstrap');
@@ -107,10 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 && payload.start_destination.startsWith('/')
                 && !payload.start_destination.startsWith('//')
             ) {
-                window.location.assign(payload.start_destination);
+                window.location.replace(payload.start_destination);
 
                 return;
             }
+
+            finishAuthBootstrap();
 
             if (dashboard) {
                 dashboard.hidden = false;
@@ -195,6 +199,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function setStatus(message) {
         if (status) {
             status.textContent = message;
+        }
+
+        if (bootstrapStatus) {
+            bootstrapStatus.textContent = message;
+        }
+    }
+
+    function finishAuthBootstrap() {
+        root.removeAttribute('data-telegram-auth-bootstrap');
+
+        if (bootstrapScreen) {
+            bootstrapScreen.hidden = true;
         }
     }
 

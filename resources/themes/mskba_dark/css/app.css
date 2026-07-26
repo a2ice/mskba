@@ -30,6 +30,73 @@ body {
     background-color: var(--page);
 }
 
+body[data-telegram-auth-bootstrap] {
+    overflow: hidden;
+}
+
+body[data-telegram-auth-bootstrap] > .site-frame,
+body[data-telegram-auth-bootstrap] > .modal {
+    visibility: hidden;
+}
+
+.telegram-auth-bootstrap {
+    position: fixed;
+    z-index: 20000;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 14px;
+    min-height: 100dvh;
+    padding:
+        calc(24px + env(safe-area-inset-top, 0px))
+        calc(24px + env(safe-area-inset-right, 0px))
+        calc(24px + env(safe-area-inset-bottom, 0px))
+        calc(24px + env(safe-area-inset-left, 0px));
+    color: #f7f4eb;
+    text-align: center;
+    background:
+        radial-gradient(circle at 50% 42%, rgba(255, 103, 24, 0.14), transparent 34%),
+        #0b0d0b;
+}
+
+.telegram-auth-bootstrap[hidden] {
+    display: none;
+}
+
+.telegram-auth-bootstrap__spinner {
+    width: 44px;
+    height: 44px;
+    border: 3px solid rgba(247, 244, 235, 0.24);
+    border-top-color: #ff6718;
+    border-radius: 50%;
+    animation: telegram-auth-bootstrap-spin 0.8s linear infinite;
+}
+
+.telegram-auth-bootstrap__title {
+    font-size: clamp(22px, 6vw, 30px);
+    line-height: 1.1;
+}
+
+.telegram-auth-bootstrap__status {
+    max-width: 320px;
+    color: #c9c5ba;
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+@keyframes telegram-auth-bootstrap-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .telegram-auth-bootstrap__spinner {
+        animation-duration: 1.6s;
+    }
+}
+
 :root {
     --page: #10120f;
     --page-soft: #171a16;
