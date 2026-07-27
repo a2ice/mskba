@@ -8,6 +8,10 @@
     $displayStatusVariant = $isOpen
         ? 'success'
         : ($poll->status->value === 'cancelled' ? 'danger' : 'warning');
+    $breadcrumbs = [
+        ['label' => 'Опросы', 'url' => route('coordination.index')],
+        ['label' => $title],
+    ];
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -32,7 +36,9 @@
     <div class="section-sidebar-block">
         <h2 class="section-sidebar-block__title">Состояние</h2>
         <p class="mb-2">{{ $coordination->status->label() }}</p>
-        <p class="mb-0">до {{ $poll->closes_at->format('d.m.Y H:i') }}</p>
+        @if($isOpen)
+            <p class="mb-0">до {{ $poll->closes_at->format('d.m.Y H:i') }}</p>
+        @endif
     </div>
 @endsection
 
@@ -53,10 +59,14 @@
         <div class="coordination-poll__heading">
             <div>
                 <span class="badge badge--{{ $displayStatusVariant }}">{{ $displayStatusLabel }}</span>
-                <h2 class="h3 mt-2 mb-1">{{ $poll->question }}</h2>
+                @if(trim($poll->question) !== '')
+                    <h2 class="h3 mt-2 mb-1">{{ $poll->question }}</h2>
+                @endif
                 <p class="mb-0">Режим голосования: {{ $poll->selection_mode->label() }}</p>
             </div>
-            <time datetime="{{ $poll->closes_at->toIso8601String() }}">до {{ $poll->closes_at->format('d.m.Y H:i') }}</time>
+            @if($isOpen)
+                <time datetime="{{ $poll->closes_at->toIso8601String() }}">до {{ $poll->closes_at->format('d.m.Y H:i') }}</time>
+            @endif
         </div>
 
         @auth

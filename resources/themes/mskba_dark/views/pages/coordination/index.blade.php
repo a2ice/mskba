@@ -50,13 +50,15 @@
                 <article class="section-list-item coordination-card">
                     <div class="coordination-card__meta">
                         <span class="badge badge--{{ $session->status->value === 'open' ? 'success' : ($session->status->value === 'cancelled' ? 'danger' : 'warning') }}">{{ $session->status->label() }}</span>
-                        @if($poll)
+                        @if($poll && $poll->status->value === 'open' && $poll->closes_at->isFuture())
                             <time datetime="{{ $poll->closes_at->toIso8601String() }}">до {{ $poll->closes_at->format('d.m.Y H:i') }}</time>
                         @endif
                     </div>
                     <h2 class="h4 mb-2"><a href="{{ route('coordination.show', $session) }}">{{ $session->title }}</a></h2>
                     @if($poll)
-                        <p class="mb-2">{{ $poll->question }}</p>
+                        @if(trim($poll->question) !== '')
+                            <p class="mb-2">{{ $poll->question }}</p>
+                        @endif
                         <p class="mb-3">Проголосовали: {{ $poll->ballots_count }}</p>
                     @endif
                     <a class="btn btn--secondary btn--sm" href="{{ route('coordination.show', $session) }}">Подробнее</a>

@@ -696,6 +696,11 @@ final class CoordinationWorkflowTest extends TestCase
         $this->get(route('coordination.show', $session))
             ->assertOk()
             ->assertSee('Закрыт')
+            ->assertSee(
+                '<span class="page-breadcrumbs__current" aria-current="page">'.$session->title.'</span>',
+                false,
+            )
+            ->assertDontSee('до '.$poll->closes_at->format('d.m.Y H:i'))
             ->assertSee('Режим голосования: Выбор одного варианта')
             ->assertDontSee('Войдите, чтобы проголосовать.');
     }
