@@ -148,7 +148,9 @@ final class CreateCoordinationHandler
             $endsAt = $this->availability->resolveEndsAt($venue, $startsAt, $duration);
             $configuration['duration_minutes'] = (int) $startsAt->diffInMinutes($endsAt);
             $configuration += ['venue_id' => $venue->id, 'starts_at' => $startsAt->toIso8601String()];
-            $question = 'Вы сможете прийти?';
+            // Название опроса достаточно описывает сценарий сбора участников.
+            // Отдельный вопрос можно вернуть позже как редактируемое поле.
+            $question = '';
             $subjectType = PollSubjectTypeEnum::PARTICIPATION;
             $options = [
                 PollOptionValue::participation(ParticipationIntentEnum::GOING, (string) $data['going_label']),

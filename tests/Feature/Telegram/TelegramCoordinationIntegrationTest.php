@@ -172,6 +172,9 @@ final class TelegramCoordinationIntegrationTest extends TestCase
         Http::assertSent(fn ($request): bool => str_contains(
             $request['text'],
             '📍 <b>Школа №1794</b>',
+        ) && ! str_contains(
+            $request['text'],
+            'Вы сможете прийти?',
         ) && str_contains(
             $request['text'],
             '🗓 28.07.2026 19:00–20:30 (МСК)',

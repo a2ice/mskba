@@ -17,11 +17,13 @@ final class TelegramCoordinationMessageBuilder
     public function text(Poll $poll): string
     {
         $session = $poll->session;
-        $lines = [
-            '🏀 <b>'.$this->escape($session->title).'</b>',
-            $this->escape($poll->question),
-            '',
-        ];
+        $lines = ['🏀 <b>'.$this->escape($session->title).'</b>'];
+
+        if (trim($poll->question) !== '') {
+            $lines[] = $this->escape($poll->question);
+        }
+
+        $lines[] = '';
         $showResults = $poll->results_visibility === PollResultsVisibilityEnum::ALWAYS
             || $poll->status !== PollStatusEnum::OPEN;
         $optionsAreShownAsButtons = $poll->status === PollStatusEnum::OPEN
