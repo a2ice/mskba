@@ -11,6 +11,8 @@ use App\Modules\Telegram\Application\UseCases\HandleCoordinationVoteCallback;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Telegram\Domain\Models\TelegramCoordinationPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramCoordinationPublicationJob;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -118,6 +120,62 @@ final class TelegramCoordinationIntegrationTest extends TestCase
                 && $keyboard[array_key_last($keyboard)][0]['url']
                     === "https://t.me/MSKBABot?startapp=coordination_{$poll->session_id}";
         });
+    }
+
+    public function test_attendance_poll_message_shows_venue_and_event_time(): void
+    {
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+        $startsAt = CarbonImmutable::parse('2026-07-28 19:00', 'Europe/Moscow');
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('coordination.store'), [
+                'flow_type' => 'event_attendance',
+                'title' => 'Собираем состав',
+                'description' => 'Проверяем, кто сможет прийти.',
+                'fixed_venue_id' => $venue->id,
+                'fixed_starts_at' => $startsAt->format('Y-m-d\TH:i'),
+                'event_duration_minutes' => 90,
+                'going_label' => 'Пойду',
+                'not_going_label' => 'Не пойду',
+                'include_thinking_option' => '0',
+                'results_visibility' => 'after_vote',
+                'allows_vote_changes' => '0',
+                'is_anonymous' => '0',
+                'allows_suggestions' => '0',
+                'publish_to_telegram' => '0',
+                'closes_at' => CarbonImmutable::now()->addHour()->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect();
+
+        $poll = CoordinationSession::query()->latest('id')->firstOrFail()->polls()->firstOrFail();
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001,
+            'title' => 'Основной',
+        ]);
+        $publication = TelegramCoordinationPublication::query()->create([
+            'poll_id' => $poll->id,
+            'chat_id' => $chat->id,
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/bot123456:test-token/sendMessage' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 502],
+            ]),
+        ]);
+
+        app()->call([new SyncTelegramCoordinationPublicationJob($publication->id), 'handle']);
+
+        Http::assertSent(fn ($request): bool => str_contains(
+            $request['text'],
+            '📍 <b>Школа №1794</b>',
+        ) && str_contains(
+            $request['text'],
+            '🗓 28.07.2026 19:00–20:30 (МСК)',
+        ));
     }
 
     public function test_expired_poll_is_closed_and_telegram_message_is_queued_for_update(): void

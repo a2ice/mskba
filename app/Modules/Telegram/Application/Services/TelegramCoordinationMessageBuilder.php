@@ -2,11 +2,15 @@
 
 namespace App\Modules\Telegram\Application\Services;
 
+use App\Modules\Coordination\Domain\Enums\CoordinationFlowTypeEnum;
 use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
 use App\Modules\Coordination\Domain\Enums\PollSelectionModeEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Models\Poll;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Venue\Domain\Models\Venue;
+use Carbon\CarbonImmutable;
+use Throwable;
 
 final class TelegramCoordinationMessageBuilder
 {
@@ -23,6 +27,8 @@ final class TelegramCoordinationMessageBuilder
         $optionsAreShownAsButtons = $poll->status === PollStatusEnum::OPEN
             && $poll->closes_at->isFuture()
             && $poll->selection_mode === PollSelectionModeEnum::SINGLE;
+
+        array_push($lines, ...$this->eventAttendanceContext($poll));
 
         if (! $optionsAreShownAsButtons) {
             foreach ($poll->options as $position => $option) {
@@ -89,6 +95,48 @@ final class TelegramCoordinationMessageBuilder
         ]];
 
         return ['inline_keyboard' => $keyboard];
+    }
+
+    /** @return list<string> */
+    private function eventAttendanceContext(Poll $poll): array
+    {
+        if ($poll->session->flow_type !== CoordinationFlowTypeEnum::EVENT_ATTENDANCE) {
+            return [];
+        }
+
+        $configuration = $poll->configuration ?? [];
+        $venueId = (int) ($configuration['venue_id'] ?? 0);
+        $startsAtValue = $configuration['starts_at'] ?? null;
+
+        if ($venueId < 1 || ! is_string($startsAtValue) || $startsAtValue === '') {
+            return [];
+        }
+
+        $venue = Venue::withTrashed()->find($venueId);
+
+        if ($venue === null) {
+            return [];
+        }
+
+        try {
+            $startsAt = CarbonImmutable::parse($startsAtValue)
+                ->timezone((string) config('app.timezone', 'Europe/Moscow'));
+        } catch (Throwable) {
+            return [];
+        }
+
+        $duration = max(0, (int) ($configuration['duration_minutes'] ?? 0));
+        $time = $startsAt->format('d.m.Y H:i');
+
+        if ($duration > 0) {
+            $time .= '–'.$startsAt->addMinutes($duration)->format('H:i');
+        }
+
+        return [
+            '📍 <b>'.$this->escape($venue->name).'</b>',
+            '🗓 '.$time.' (МСК)',
+            '',
+        ];
     }
 
     private function miniAppUrl(Poll $poll): string
