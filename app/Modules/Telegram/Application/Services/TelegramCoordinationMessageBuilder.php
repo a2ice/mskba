@@ -61,10 +61,15 @@ final class TelegramCoordinationMessageBuilder
                             .($remaining > 0 ? " и ещё {$remaining}" : '');
                     }
                 }
+
+                $lines[] = '';
             }
         }
 
-        $lines[] = '';
+        if ($lines[array_key_last($lines)] !== '') {
+            $lines[] = '';
+        }
+
         $lines[] = '⏱ До '.$poll->closes_at->timezone(config('app.timezone'))->format('d.m.Y H:i').' (МСК)';
         $lines[] = 'Статус: <b>'.$this->escape($poll->status->label()).'</b>';
 
@@ -112,10 +117,10 @@ final class TelegramCoordinationMessageBuilder
         $intent = ParticipationIntentEnum::tryFrom((string) ($option->value['intent'] ?? ''));
 
         return match ($intent) {
-            ParticipationIntentEnum::GOING => '✔️',
+            ParticipationIntentEnum::GOING => '✅',
             ParticipationIntentEnum::NOT_GOING => '❌',
             ParticipationIntentEnum::THINKING => '👀',
-            default => '😏',
+            default => 'ℹ️',
         };
     }
 

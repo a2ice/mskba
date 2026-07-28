@@ -178,7 +178,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             $keyboard = $request['reply_markup']['inline_keyboard'];
 
             return str_contains($request['text'], '• 19:00 — <b>1</b>')
-                && str_contains($request['text'], 'Видимый')
+                && str_contains($request['text'], "Видимый\n\n")
                 && $keyboard[0][0]['callback_data'] === "coord:{$poll->id}:vote:{$option->id}";
         });
     }
@@ -245,13 +245,13 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             $expectedEventTime,
         ) && str_contains(
             $request['text'],
-            '🟢 Пойду — <b>0</b>',
+            "✅ Пойду — <b>0</b>\n\n",
         ) && str_contains(
             $request['text'],
-            '🔴 Не пойду — <b>0</b>',
+            "❌ Не пойду — <b>0</b>\n\n",
         ) && str_contains(
             $request['text'],
-            '🟡 Думаю — <b>0</b>',
+            "👀 Думаю — <b>0</b>\n\n",
         ));
     }
 
