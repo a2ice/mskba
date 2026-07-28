@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Telegram;
 
+use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -119,6 +120,66 @@ final class TelegramCoordinationIntegrationTest extends TestCase
                 && $keyboard[0][0]['callback_data'] === "coord:{$poll->id}:vote:{$option->id}"
                 && $keyboard[array_key_last($keyboard)][0]['url']
                     === "https://t.me/MSKBABot?startapp=coordination_{$poll->session_id}";
+        });
+    }
+
+    public function test_open_poll_with_always_visible_results_updates_counts_and_keeps_vote_buttons(): void
+    {
+        Queue::fake();
+        $session = $this->createSession();
+        $poll = $session->polls()->firstOrFail();
+        $poll->forceFill([
+            'results_visibility' => PollResultsVisibilityEnum::ALWAYS,
+        ])->save();
+        $option = $poll->options()->firstOrFail();
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001,
+            'title' => 'Основной',
+        ]);
+        $publication = TelegramCoordinationPublication::query()->create([
+            'poll_id' => $poll->id,
+            'chat_id' => $chat->id,
+            'message_id' => 501,
+            'status' => 'published',
+        ]);
+
+        Http::fake([
+            'https://api.telegram.org/bot123456:test-token/answerCallbackQuery' => Http::response([
+                'ok' => true,
+                'result' => true,
+            ]),
+            'https://api.telegram.org/bot123456:test-token/editMessageText' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 501],
+            ]),
+        ]);
+
+        app(HandleCoordinationVoteCallback::class)->handle([
+            'id' => 'callback-visible-results',
+            'from' => [
+                'id' => 778,
+                'username' => 'visible_voter',
+                'first_name' => 'Видимый',
+            ],
+            'message' => [
+                'message_id' => 501,
+                'chat' => ['id' => -1001],
+            ],
+            'data' => "coord:{$poll->id}:vote:{$option->id}",
+        ]);
+
+        app()->call([new SyncTelegramCoordinationPublicationJob($publication->id), 'handle']);
+
+        Http::assertSent(function ($request) use ($poll, $option): bool {
+            if (! str_ends_with($request->url(), '/editMessageText')) {
+                return false;
+            }
+
+            $keyboard = $request['reply_markup']['inline_keyboard'];
+
+            return str_contains($request['text'], '1. 19:00 — <b>1</b>')
+                && str_contains($request['text'], 'Видимый')
+                && $keyboard[0][0]['callback_data'] === "coord:{$poll->id}:vote:{$option->id}";
         });
     }
 

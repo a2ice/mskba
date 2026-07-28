@@ -32,7 +32,7 @@ final class TelegramCoordinationMessageBuilder
 
         array_push($lines, ...$this->eventAttendanceContext($poll));
 
-        if (! $optionsAreShownAsButtons) {
+        if (! $optionsAreShownAsButtons || $showResults) {
             foreach ($poll->options as $position => $option) {
                 $line = ($position + 1).'. '.$this->escape(mb_strimwidth($option->label, 0, 80, '…'));
 
