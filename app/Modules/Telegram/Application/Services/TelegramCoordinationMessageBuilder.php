@@ -3,10 +3,13 @@
 namespace App\Modules\Telegram\Application\Services;
 
 use App\Modules\Coordination\Domain\Enums\CoordinationFlowTypeEnum;
+use App\Modules\Coordination\Domain\Enums\ParticipationIntentEnum;
 use App\Modules\Coordination\Domain\Enums\PollResultsVisibilityEnum;
 use App\Modules\Coordination\Domain\Enums\PollSelectionModeEnum;
 use App\Modules\Coordination\Domain\Enums\PollStatusEnum;
+use App\Modules\Coordination\Domain\Enums\PollSubjectTypeEnum;
 use App\Modules\Coordination\Domain\Models\Poll;
+use App\Modules\Coordination\Domain\Models\PollOption;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
@@ -33,8 +36,9 @@ final class TelegramCoordinationMessageBuilder
         array_push($lines, ...$this->eventAttendanceContext($poll));
 
         if (! $optionsAreShownAsButtons || $showResults) {
-            foreach ($poll->options as $position => $option) {
-                $line = ($position + 1).'. '.$this->escape(mb_strimwidth($option->label, 0, 80, '…'));
+            foreach ($poll->options as $option) {
+                $line = $this->optionMarker($poll, $option).' '
+                    .$this->escape(mb_strimwidth($option->label, 0, 80, '…'));
 
                 if ($showResults) {
                     $line .= ' — <b>'.$option->selections_count.'</b>';
@@ -97,6 +101,22 @@ final class TelegramCoordinationMessageBuilder
         ]];
 
         return ['inline_keyboard' => $keyboard];
+    }
+
+    private function optionMarker(Poll $poll, PollOption $option): string
+    {
+        if ($poll->subject_type !== PollSubjectTypeEnum::PARTICIPATION) {
+            return '•';
+        }
+
+        $intent = ParticipationIntentEnum::tryFrom((string) ($option->value['intent'] ?? ''));
+
+        return match ($intent) {
+            ParticipationIntentEnum::GOING => '🟢',
+            ParticipationIntentEnum::NOT_GOING => '🔴',
+            ParticipationIntentEnum::THINKING => '🟡',
+            default => '⚪',
+        };
     }
 
     /** @return list<string> */

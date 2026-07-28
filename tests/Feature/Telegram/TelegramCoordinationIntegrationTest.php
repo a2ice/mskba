@@ -177,7 +177,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
 
             $keyboard = $request['reply_markup']['inline_keyboard'];
 
-            return str_contains($request['text'], '1. 19:00 — <b>1</b>')
+            return str_contains($request['text'], '• 19:00 — <b>1</b>')
                 && str_contains($request['text'], 'Видимый')
                 && $keyboard[0][0]['callback_data'] === "coord:{$poll->id}:vote:{$option->id}";
         });
@@ -189,7 +189,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             'name' => 'Школа №1794',
             'status' => VenueStatusEnum::CONFIRMED,
         ]);
-        $startsAt = CarbonImmutable::parse('2026-07-28 19:00', 'Europe/Moscow');
+        $startsAt = CarbonImmutable::now('Europe/Moscow')->addDay()->setTime(19, 0);
 
         $this->actingAs(User::factory()->create())
             ->post(route('coordination.store'), [
@@ -201,15 +201,17 @@ final class TelegramCoordinationIntegrationTest extends TestCase
                 'event_duration_minutes' => 90,
                 'going_label' => 'Пойду',
                 'not_going_label' => 'Не пойду',
-                'include_thinking_option' => '0',
-                'results_visibility' => 'after_vote',
+                'include_thinking_option' => '1',
+                'thinking_label' => 'Думаю',
+                'results_visibility' => 'always',
                 'allows_vote_changes' => '0',
                 'is_anonymous' => '0',
                 'allows_suggestions' => '0',
                 'publish_to_telegram' => '0',
                 'closes_at' => CarbonImmutable::now()->addHour()->format('Y-m-d H:i:s'),
             ])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $poll = CoordinationSession::query()->latest('id')->firstOrFail()->polls()->firstOrFail();
         $chat = TelegramChat::query()->create([
@@ -230,6 +232,8 @@ final class TelegramCoordinationIntegrationTest extends TestCase
 
         app()->call([new SyncTelegramCoordinationPublicationJob($publication->id), 'handle']);
 
+        $expectedEventTime = '🗓 '.$startsAt->format('d.m.Y').' 19:00–20:30 (МСК)';
+
         Http::assertSent(fn ($request): bool => str_contains(
             $request['text'],
             '📍 <b>Школа №1794</b>',
@@ -238,7 +242,16 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             'Вы сможете прийти?',
         ) && str_contains(
             $request['text'],
-            '🗓 28.07.2026 19:00–20:30 (МСК)',
+            $expectedEventTime,
+        ) && str_contains(
+            $request['text'],
+            '🟢 Пойду — <b>0</b>',
+        ) && str_contains(
+            $request['text'],
+            '🔴 Не пойду — <b>0</b>',
+        ) && str_contains(
+            $request['text'],
+            '🟡 Думаю — <b>0</b>',
         ));
     }
 
@@ -300,7 +313,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             $keyboard = $request['reply_markup']['inline_keyboard'];
 
             return str_contains($request['text'], 'Статус: <b>Закрыт</b>')
-                && str_contains($request['text'], '1. 19:00 — <b>0</b>')
+                && str_contains($request['text'], '• 19:00 — <b>0</b>')
                 && count($keyboard) === 1
                 && $keyboard[0][0]['text'] === '🏀 Открыть опрос';
         });
