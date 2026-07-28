@@ -52,7 +52,10 @@ final class CreateEventFromCoordinationHandler
                 throw new InvalidArgumentException('Сначала закройте голосование и примите итоговый вариант.');
             }
 
-            $decision = $session->decision()->lockForUpdate()->first();
+            $decision = $session->decisions()
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
 
             if ($decision === null) {
                 throw new InvalidArgumentException('У согласования нет принятого решения.');
