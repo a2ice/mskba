@@ -112,10 +112,10 @@ final class TelegramCoordinationMessageBuilder
         $intent = ParticipationIntentEnum::tryFrom((string) ($option->value['intent'] ?? ''));
 
         return match ($intent) {
-            ParticipationIntentEnum::GOING => '🟢',
-            ParticipationIntentEnum::NOT_GOING => '🔴',
-            ParticipationIntentEnum::THINKING => '🟡',
-            default => '⚪',
+            ParticipationIntentEnum::GOING => '✔️',
+            ParticipationIntentEnum::NOT_GOING => '❌',
+            ParticipationIntentEnum::THINKING => '👀',
+            default => '😏',
         };
     }
 

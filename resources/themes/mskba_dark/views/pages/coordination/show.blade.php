@@ -113,7 +113,7 @@
         @if($isOpen && $poll->allows_suggestions)
             <section class="section-list-item mt-4">
                 <h2 class="h4 mb-2">Предложить вариант</h2>
-                <p>Новый вариант сразу появится в этом опросе и в его публикациях.</p>
+                <p>^.^</p>
                 <form method="POST" action="{{ route('coordination.suggestion', $coordination) }}" class="coordination-suggestion-form">
                     @csrf
                     @switch($poll->subject_type->value)
