@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Portal\Application\Services\OnlineUserPresence;
+use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateMatchTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueDuplicateStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -24,8 +25,22 @@ class AdminPagesTest extends TestCase
     public function test_dashboard_shows_admin_tiles(): void
     {
         $admin = $this->admin();
+        TelegramChat::query()->create([
+            'telegram_chat_id' => -1001000000001,
+            'title' => 'Основной чат',
+            'type' => 'supergroup',
+            'is_active' => true,
+            'publishes_coordination' => true,
+        ]);
+        TelegramChat::query()->create([
+            'telegram_chat_id' => -1001000000002,
+            'title' => 'Дополнительный чат',
+            'type' => 'supergroup',
+            'is_active' => false,
+            'publishes_coordination' => false,
+        ]);
 
-        $this
+        $response = $this
             ->actingAs($admin)
             ->get(route('admin.dashboard'))
             ->assertOk()
@@ -35,7 +50,19 @@ class AdminPagesTest extends TestCase
             ->assertSee('Команды')
             ->assertSee('Контент')
             ->assertSee('Аудит')
-            ->assertSee('Настройки');
+            ->assertSee('Настройки')
+            ->assertSee('Telegram-чаты');
+
+        $tiles = collect($response->viewData('tiles'))->keyBy('label');
+
+        $this->assertSame(1, $tiles['Пользователи']['data']['count']);
+        $this->assertSame(0, $tiles['Площадки']['data']['count']);
+        $this->assertSame(0, $tiles['Дубли площадок']['data']['count']);
+        $this->assertSame(0, $tiles['Мероприятия']['data']['count']);
+        $this->assertSame(0, $tiles['Команды']['data']['count']);
+        $this->assertSame(4, $tiles['Контент']['data']['count']);
+        $this->assertSame(4, $tiles['Настройки']['data']['count']);
+        $this->assertSame(2, $tiles['Telegram-чаты']['data']['count']);
     }
 
     public function test_users_page_filters_by_search(): void

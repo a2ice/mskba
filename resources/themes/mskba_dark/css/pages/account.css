@@ -95,8 +95,8 @@
     grid-column: 1 / -1;
     min-width: 0;
     margin: 2px 0 0;
-    border: 1px solid var(--border);
-    border-radius: calc(var(--radius-card) - 4px);
+    border: 1px solid rgba(255,255,255,.25);
+    border-radius: 12px;
     padding: 18px;
 }
 
