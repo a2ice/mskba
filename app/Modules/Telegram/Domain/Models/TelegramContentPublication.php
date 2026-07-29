@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'content_item_id',
     'chat_id',
     'message_id',
+    'message_type',
     'is_enabled',
     'status',
     'last_error',

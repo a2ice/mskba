@@ -9,8 +9,10 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Application\Services\TelegramContentMessageBuilder;
 use App\Modules\Telegram\Application\Services\TelegramMiniAppStartDestinationResolver;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
+use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramContentPublicationJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -202,6 +204,161 @@ MARKDOWN,
         ]);
         Queue::assertPushed(SyncTelegramContentPublicationJob::class);
         $this->get(route('news.show', $content->alias))->assertNotFound();
+    }
+
+    public function test_content_with_cover_is_sent_to_telegram_as_photo(): void
+    {
+        $this->configureTelegram();
+        Http::fake([
+            'https://api.telegram.org/*/sendPhoto' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 501],
+            ]),
+        ]);
+        [$content, $publication] = $this->contentPublication();
+
+        $content->media()->create([
+            'collection' => 'content_cover',
+            'disk' => 'public',
+            'path' => 'content/1/cover.webp',
+            'mime_type' => 'image/webp',
+            'size_bytes' => 1024,
+            'position' => 1,
+            'is_primary' => true,
+        ]);
+
+        app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
+
+        $this->assertDatabaseHas('telegram_content_publications', [
+            'id' => $publication->id,
+            'message_id' => 501,
+            'message_type' => 'photo',
+            'status' => 'published',
+        ]);
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/sendPhoto')
+            && $request['photo'] === 'http://localhost/storage/content/1/cover.webp'
+            && str_contains($request['caption'], '<b>Материал с обложкой</b>')
+            && $request['reply_markup']['inline_keyboard'][0][0]['text'] === 'Открыть материал');
+    }
+
+    public function test_existing_text_publication_is_replaced_when_cover_is_added(): void
+    {
+        $this->configureTelegram();
+        Http::fake([
+            'https://api.telegram.org/*/deleteMessage' => Http::response(['ok' => true, 'result' => true]),
+            'https://api.telegram.org/*/sendPhoto' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 502],
+            ]),
+        ]);
+        [$content, $publication] = $this->contentPublication([
+            'message_id' => 401,
+            'message_type' => 'text',
+            'status' => 'published',
+        ]);
+
+        $content->media()->create([
+            'collection' => 'content_cover',
+            'disk' => 'public',
+            'path' => 'content/1/replacement.webp',
+            'mime_type' => 'image/webp',
+            'size_bytes' => 1024,
+            'position' => 1,
+            'is_primary' => true,
+        ]);
+
+        app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
+
+        $this->assertDatabaseHas('telegram_content_publications', [
+            'id' => $publication->id,
+            'message_id' => 502,
+            'message_type' => 'photo',
+            'status' => 'published',
+        ]);
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/deleteMessage')
+            && $request['message_id'] === 401);
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/sendPhoto')
+            && $request['photo'] === 'http://localhost/storage/content/1/replacement.webp');
+    }
+
+    public function test_existing_photo_publication_is_edited_in_place(): void
+    {
+        $this->configureTelegram();
+        Http::fake([
+            'https://api.telegram.org/*/editMessageMedia' => Http::response([
+                'ok' => true,
+                'result' => ['message_id' => 503],
+            ]),
+        ]);
+        [$content, $publication] = $this->contentPublication([
+            'message_id' => 503,
+            'message_type' => 'photo',
+            'status' => 'published',
+        ]);
+
+        $content->media()->create([
+            'collection' => 'content_cover',
+            'disk' => 'public',
+            'path' => 'content/1/updated.webp',
+            'mime_type' => 'image/webp',
+            'size_bytes' => 1024,
+            'position' => 1,
+            'is_primary' => true,
+        ]);
+
+        app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
+
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/editMessageMedia')
+            && $request['message_id'] === 503
+            && $request['media']['type'] === 'photo'
+            && $request['media']['media'] === 'http://localhost/storage/content/1/updated.webp'
+            && str_contains($request['media']['caption'], '<b>Материал с обложкой</b>'));
+        Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/deleteMessage'));
+    }
+
+    private function configureTelegram(): void
+    {
+        config()->set('app.url', 'http://localhost');
+        config()->set('telegram.bot_token', 'test-token');
+        config()->set('telegram.bot_username', 'MSKBABot');
+        config()->set('telegram.api_ip', null);
+        config()->set('telegram.proxy', null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $publicationAttributes
+     * @return array{ContentItem, TelegramContentPublication}
+     */
+    private function contentPublication(array $publicationAttributes = []): array
+    {
+        $editor = $this->editor();
+        $chat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001234567890,
+            'title' => 'Редакционный чат',
+            'type' => 'supergroup',
+            'is_active' => true,
+            'publishes_coordination' => false,
+        ]);
+        $content = ContentItem::query()->create([
+            'created_by_user_id' => $editor->id,
+            'updated_by_user_id' => $editor->id,
+            'type' => 'material',
+            'title' => 'Материал с обложкой',
+            'alias' => 'material-s-oblozhkoi',
+            'short_description' => 'Краткое описание.',
+            'full_description' => 'Полное описание.',
+            'publish_in_feed' => false,
+            'publish_in_telegram' => true,
+        ]);
+        $publication = TelegramContentPublication::query()->create([
+            'content_item_id' => $content->id,
+            'chat_id' => $chat->id,
+            'is_enabled' => true,
+            'status' => 'pending',
+            ...$publicationAttributes,
+        ]);
+
+        return [$content, $publication];
     }
 
     private function editor(): User

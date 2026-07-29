@@ -607,6 +607,8 @@ Telegram-доставка работает асинхронно. Для кажд
 
 Кнопка Telegram-сниппета использует Mini App start parameter `content_{id}` и всегда открывает страницу материала. Отдельная ссылка действия и Markdown-ссылки работают уже внутри статьи, поэтому Telegram-переход не обходит редакционный текст.
 
+Материал с обложкой публикуется через Telegram `sendPhoto`: нормализованная обложка передаётся по публичному URL, а краткий текст и Mini App-кнопка остаются в caption. Повторная синхронизация использует `editMessageMedia`; переход между публикацией с обложкой и без неё заменяет прежнее сообщение и сохраняет новое состояние в `telegram_content_publications.message_type`.
+
 ## Breadcrumbs
 
 Partial `theme::partials.breadcrumbs` строит цепочку навигации через `App\Presentation\Breadcrumbs\BreadcrumbsResolver`.

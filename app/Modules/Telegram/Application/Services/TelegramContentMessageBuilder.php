@@ -9,10 +9,31 @@ final class TelegramContentMessageBuilder
 {
     public function text(ContentItem $content): string
     {
+        return $this->message($content, 1000);
+    }
+
+    public function caption(ContentItem $content): string
+    {
+        return $this->message($content, 750);
+    }
+
+    public function photoUrl(ContentItem $content): ?string
+    {
+        $cover = $content->relationLoaded('cover')
+            ? $content->cover->first()
+            : $content->cover()->first();
+
+        return $cover === null
+            ? null
+            : url($cover->publicUrl());
+    }
+
+    private function message(ContentItem $content, int $descriptionLimit): string
+    {
         return implode("\n", [
             '🏀 <b>'.$this->escape($content->title).'</b>',
             '',
-            $this->escape(Str::limit($content->short_description, 1000)),
+            $this->escape(Str::limit($content->short_description, $descriptionLimit)),
         ]);
     }
 
