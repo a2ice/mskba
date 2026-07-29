@@ -23,14 +23,14 @@ final class UpdatePlayerProfileRequest extends FormRequest
     {
         $rules = [
             'height_cm' => ['nullable', 'integer', 'between:150,220'],
-            'weight_kg' => ['nullable', 'integer', 'between:40,120'],
+            'weight_kg' => ['nullable', 'integer', 'between:40,140'],
             'body_type' => ['nullable', Rule::enum(PlayerBodyTypeEnum::class)],
             'positions' => ['nullable', 'array', 'max:5'],
             'positions.*' => ['required', 'distinct', Rule::enum(PlayerPositionEnum::class)],
             'experience_started_year' => [
                 'nullable',
                 'integer',
-                'between:'.max(1960, now()->year - 70).','.(now()->year - 10),
+                'between:'.(now()->year - 50).','.(now()->year - 10),
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],

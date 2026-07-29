@@ -132,7 +132,7 @@ final class AccountPlayerProfileTest extends TestCase
         $this->actingAs($user)
             ->patch(route('account.player-profile.update'), [
                 'height_cm' => 300,
-                'weight_kg' => 121,
+                'weight_kg' => 141,
                 'experience_started_year' => now()->year - 9,
                 'positions' => ['forward'],
                 'self_assessment' => ['stamina' => 11],

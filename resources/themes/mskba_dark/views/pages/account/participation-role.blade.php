@@ -3,6 +3,13 @@
 @endphp
 
 @php $title = $title ?? 'Роль в проекте'; @endphp
+@php
+    $breadcrumbs = isset($role) ? [
+        ['label' => 'Аккаунт', 'url' => route('account')],
+        ['label' => 'Роли в проекте', 'url' => route('account.roles')],
+        ['label' => $role->label()],
+    ] : null;
+@endphp
 
 @extends('theme::layouts.section-sidebar', [
     'title' => $title,
@@ -108,7 +115,7 @@
                                 name="weight_kg"
                             >
                                 <option value="">Не указан</option>
-                                @for($weight = 40; $weight <= 120; $weight++)
+                                @for($weight = 40; $weight <= 140; $weight++)
                                     <option
                                         value="{{ $weight }}"
                                         @selected((string) $currentWeight === (string) $weight)
@@ -140,7 +147,7 @@
                                 name="experience_started_year"
                             >
                                 <option value="">Не указано</option>
-                                @for($year = now()->year - 10; $year >= max(1960, now()->year - 70); $year--)
+                                @for($year = now()->year - 10; $year >= now()->year - 50; $year--)
                                     <option
                                         value="{{ $year }}"
                                         @selected((string) old('experience_started_year', $profile?->experience_started_year) === (string) $year)
