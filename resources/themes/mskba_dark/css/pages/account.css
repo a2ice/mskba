@@ -56,6 +56,91 @@
     max-width: 345px;
 }
 
+.account-player-profile {
+    display: grid;
+    gap: 28px;
+}
+
+.account-player-profile__section {
+    display: grid;
+    gap: 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 22px;
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.account-player-profile__grid,
+.account-player-profile__skills {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.account-player-profile__field {
+    max-width: none;
+    margin: 0;
+}
+
+.account-player-profile__field label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.account-player-profile__field--wide {
+    width: 100%;
+}
+
+.account-player-profile__positions {
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    padding: 0;
+}
+
+.account-player-profile__positions legend {
+    margin-bottom: 4px;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.account-player-profile__position-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 18px;
+    margin-top: 14px;
+}
+
+.account-player-profile__position {
+    min-width: 0;
+}
+
+.account-player-profile__position .form-toggle {
+    align-items: center;
+}
+
+.account-player-profile__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    justify-self: start;
+}
+
+@media (max-width: 760px) {
+    .account-player-profile__section {
+        padding: 18px;
+    }
+
+    .account-player-profile__grid,
+    .account-player-profile__skills,
+    .account-player-profile__position-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .account-venue-list__item {
     display: grid;
     gap: 12px;

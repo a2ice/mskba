@@ -11,6 +11,9 @@
 ])
 
 @section('section-content')
+    @if(session('status'))
+        <div class="alert alert-success">{{ session('status') }}</div>
+    @endif
 
     @if(isset($error))
         <div class="alert alert-danger">
@@ -55,9 +58,14 @@
             </li>
             <li class="list-unstyled mb-2">
                 Роли в проекте:
-                <a href="{{ route('account.roles') }}" class="fc-link fw-bold">
-                    {{ $user->participation_role_labels !== '' ? $user->participation_role_labels : 'Выбрать роль' }}
-                </a>
+                @forelse($user->participationRoles as $participationRole)
+                    <a
+                        href="{{ route('account.participation-role', ['role' => $participationRole->role->value]) }}"
+                        class="fc-link fw-bold"
+                    >{{ $participationRole->role->label() }}</a>@if(!$loop->last),@endif
+                @empty
+                    <a href="{{ route('account.roles') }}" class="fc-link fw-bold">Выбрать роль</a>
+                @endforelse
             </li>
             <li class="list-unstyled mb-2">
                 Основной контакт:

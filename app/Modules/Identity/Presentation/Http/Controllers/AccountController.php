@@ -21,9 +21,12 @@ use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
 use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
 use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
@@ -59,13 +62,6 @@ class AccountController extends Controller
         }
 
         $user->load('contacts', 'profile', 'participationRoles');
-
-        if ($user->participationRoles) {
-            $participationRoleLabels = $user->participationRoles
-                ->map(fn ($participationRole) => $participationRole->role->label())
-                ->join(', ');
-            $user->participation_role_labels = $participationRoleLabels;
-        }
 
         $data = [
             'user' => $user,
@@ -431,7 +427,7 @@ class AccountController extends Controller
             ]]);
         }
 
-        $user->loadMissing('playerProfile');
+        $user->loadMissing('playerProfile.positions', 'playerProfile.selfAssessment');
 
         $participationRole = $user->participationRoles()
             ->where('role', $roleEnum->value)
@@ -443,7 +439,10 @@ class AccountController extends Controller
             'user' => $user,
             'participationRole' => $participationRole,
             'role' => $roleEnum,
-            'title' => $roleEnum->label(),
+            'title' => 'Роль в проекте',
+            'playerPositions' => PlayerPositionEnum::cases(),
+            'playerBodyTypes' => PlayerBodyTypeEnum::cases(),
+            'playerSkills' => PlayerSelfAssessment::SKILLS,
         ]);
     }
 

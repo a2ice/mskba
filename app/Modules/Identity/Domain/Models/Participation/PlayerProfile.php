@@ -3,7 +3,7 @@
 namespace App\Modules\Identity\Domain\Models\Participation;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
-use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Infrastructure\Database\Factories\Participation\PlayerProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,12 +11,14 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'user_id',
     'height_cm',
     'weight_kg',
-    'position',
+    'body_type',
     'experience_started_year',
     'comment',
     'extra',
@@ -34,6 +36,16 @@ class PlayerProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function positions(): HasMany
+    {
+        return $this->hasMany(PlayerProfilePosition::class)->orderBy('id');
+    }
+
+    public function selfAssessment(): HasOne
+    {
+        return $this->hasOne(PlayerSelfAssessment::class);
     }
 
     protected function experienceYears(): Attribute
@@ -55,7 +67,7 @@ class PlayerProfile extends Model
         return [
             'height_cm' => 'integer',
             'weight_kg' => 'decimal:1',
-            'position' => PlayerPositionEnum::class,
+            'body_type' => PlayerBodyTypeEnum::class,
             'experience_started_year' => 'integer',
             'extra' => 'array',
         ];

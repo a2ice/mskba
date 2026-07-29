@@ -4,17 +4,21 @@
     $description = $description ?? null;
     $wrapperClass = $wrapperClass ?? 'form-group field mb-3';
     $inputAttributes = $inputAttributes ?? [];
+    $includeHiddenInput = $includeHiddenInput ?? true;
+    $value = $value ?? '1';
 @endphp
 
 <div class="{{ $wrapperClass }}">
-    <input type="hidden" name="{{ $name }}" value="0">
+    @if($includeHiddenInput)
+        <input type="hidden" name="{{ $name }}" value="0">
+    @endif
     <label class="form-toggle" for="{{ $id }}">
         <input
             id="{{ $id }}"
             class="form-toggle__input"
             type="checkbox"
             name="{{ $name }}"
-            value="1"
+            value="{{ $value }}"
             @checked($checked)
             @foreach($inputAttributes as $attribute => $attributeValue)
                 @if($attributeValue === true)

@@ -19,6 +19,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarCont
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
@@ -330,6 +331,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.roles.update');
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
+        Route::patch('/participation/player/profile', UpdatePlayerProfileController::class)
+            ->name('account.player-profile.update');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')

@@ -213,6 +213,12 @@ p {
     font-size: 13px;
 }
 
+.btn--xs {
+    min-height: 34px;
+    padding: 0 13px;
+    font-size: 12px;
+}
+
 .btn--lg {
     min-height: 50px;
     padding: 0 22px;

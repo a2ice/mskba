@@ -2,7 +2,7 @@
 
 namespace App\Modules\Identity\Infrastructure\Database\Factories\Participation;
 
-use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -21,10 +21,10 @@ class PlayerProfileFactory extends Factory
     public function definition(): array
     {
         return [
-            'height_cm' => fake()->optional()->numberBetween(155, 220),
-            'weight_kg' => fake()->optional()->randomFloat(1, 50, 140),
-            'position' => fake()->optional()->randomElement(PlayerPositionEnum::cases())?->value,
-            'experience_started_year' => fake()->optional()->numberBetween(1990, now()->year),
+            'height_cm' => fake()->optional()->numberBetween(150, 220),
+            'weight_kg' => fake()->optional()->numberBetween(40, 120),
+            'body_type' => fake()->optional()->randomElement(PlayerBodyTypeEnum::cases())?->value,
+            'experience_started_year' => fake()->optional()->numberBetween(now()->year - 70, now()->year - 10),
             'comment' => fake()->optional()->sentence(),
             'extra' => null,
         ];
