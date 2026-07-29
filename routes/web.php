@@ -14,6 +14,7 @@ use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationControlle
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
+use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
@@ -322,6 +323,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/confirmation/contacts/{contact}/verification/confirm', [AccountController::class, 'confirmConfirmationContactVerification'])
             ->middleware('throttle:20,1')
             ->name('account.confirmation.contacts.verification.confirm');
+        Route::get('/roles', [AccountParticipationRolesController::class, 'index'])
+            ->name('account.roles')
+            ->defaults('breadcrumb', 'Роли в проекте');
+        Route::patch('/roles', [AccountParticipationRolesController::class, 'update'])
+            ->name('account.roles.update');
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');

@@ -471,3 +471,52 @@
 .account-password-form {
     max-width: 560px;
 }
+
+.account-roles-form {
+    max-width: 900px;
+}
+
+.account-role-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.account-role-card {
+    display: flex;
+    min-width: 0;
+    min-height: 132px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface-raised);
+    flex-direction: column;
+}
+
+.account-role-card__toggle {
+    margin: 0;
+}
+
+.account-role-card__toggle .form-toggle {
+    padding-top: 0;
+}
+
+.account-role-card__details {
+    align-self: flex-start;
+    margin-top: auto;
+    padding-top: 14px;
+}
+
+.account-roles-form__hint {
+    margin: 20px 0;
+}
+
+@media (width <= 720px) {
+    .account-role-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-role-card {
+        min-height: 0;
+    }
+}

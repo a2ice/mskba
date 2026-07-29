@@ -55,7 +55,9 @@
             </li>
             <li class="list-unstyled mb-2">
                 Роли в проекте:
-                <span class="fw-bold">{{ $user->participation_role_labels }}</span>
+                <a href="{{ route('account.roles') }}" class="fc-link fw-bold">
+                    {{ $user->participation_role_labels !== '' ? $user->participation_role_labels : 'Выбрать роль' }}
+                </a>
             </li>
             <li class="list-unstyled mb-2">
                 Основной контакт:

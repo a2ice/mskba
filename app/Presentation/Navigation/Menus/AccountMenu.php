@@ -2,11 +2,9 @@
 
 namespace App\Presentation\Navigation\Menus;
 
-use App\Modules\Identity\Domain\Models\UserParticipationRole;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Presentation\Navigation\MenuHandler;
-use Illuminate\Support\Collection;
 
 final class AccountMenu implements MenuHandler
 {
@@ -33,12 +31,14 @@ final class AccountMenu implements MenuHandler
         ];
 
         if ($user) {
-            $user->loadMissing('participationRoles');
             $newNotificationsCount = app(CountNewUserNotificationsHandler::class)->handle($user);
 
-            foreach ($this->participationRoleItems($user->participationRoles) as $item) {
-                $items[] = $item;
-            }
+            $items[] = [
+                'label' => 'Роли в проекте',
+                'url' => $this->routeUrl('account.roles'),
+                'active' => $this->isActiveRoute('account.roles, account.roles.*, account.participation-role'),
+                'visible' => true,
+            ];
 
             if (
                 $this->venueAccessResolver->bootstrapOwnedVenueIdsFor($user) !== []
@@ -94,27 +94,5 @@ final class AccountMenu implements MenuHandler
         }
 
         return $items;
-    }
-
-    /**
-     * @param  Collection<int, UserParticipationRole>  $participationRoles
-     * @return array<int, array{label: string, url: string, active: bool, visible: bool}>
-     */
-    private function participationRoleItems(Collection $participationRoles): array
-    {
-        return $participationRoles
-            ->map(function ($participationRole) {
-                $role = $participationRole->role;
-
-                return [
-                    'label' => $role->label(),
-                    'url' => route('account.participation-role', ['role' => $role->value]),
-                    'active' => request()->routeIs('account.participation-role')
-                        && request()->route('role') === $role->value,
-                    'visible' => true,
-                ];
-            })
-            ->values()
-            ->all();
     }
 }
