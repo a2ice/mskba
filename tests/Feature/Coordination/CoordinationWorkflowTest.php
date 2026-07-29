@@ -773,6 +773,14 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertDontSee('Войдите, чтобы проголосовать.');
     }
 
+    public function test_postgres_session_timezone_matches_application_timezone(): void
+    {
+        $this->assertSame(
+            config('app.timezone'),
+            config('database.connections.pgsql.timezone'),
+        );
+    }
+
     public function test_only_creator_closes_and_accepts_explicit_result(): void
     {
         $organizer = User::factory()->create();

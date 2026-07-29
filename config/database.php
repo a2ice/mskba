@@ -97,6 +97,10 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Laravel serializes Carbon bindings without their UTC offset.
+            // PostgreSQL must therefore interpret them in the same timezone
+            // as the application before storing/comparing timestamptz values.
+            'timezone' => env('DB_TIMEZONE', env('APP_TIMEZONE', 'UTC')),
         ],
 
         'sqlsrv' => [
