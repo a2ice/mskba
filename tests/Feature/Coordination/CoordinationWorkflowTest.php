@@ -752,14 +752,18 @@ final class CoordinationWorkflowTest extends TestCase
         $this->assertSame(CoordinationSessionStatusEnum::DECISION_PENDING, $session->fresh()->status);
         $this->assertDatabaseCount('coordination_ballots', 0);
 
+        $session->forceFill(['title' => 'Очень длинное название опроса'])->save();
+        $shortBreadcrumbTitle = mb_substr($session->title, 0, 10).'...';
+
         $this->app['auth']->logout();
         $this->get(route('coordination.show', $session))
             ->assertOk()
             ->assertSee('Закрыт')
             ->assertSee(
-                '<span class="page-breadcrumbs__current" aria-current="page">'.$session->title.'</span>',
-                false,
+                $shortBreadcrumbTitle,
             )
+            ->assertSee('title="'.$session->title.'"', false)
+            ->assertSee('data-handler="historyBack"', false)
             ->assertDontSee('до '.$poll->closes_at->format('d.m.Y H:i'))
             ->assertSeeInOrder([
                 'Детали опроса',

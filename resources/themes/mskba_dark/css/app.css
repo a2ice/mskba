@@ -779,6 +779,12 @@ body.telegram-mini-app {
 }
 
 .page-breadcrumbs {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     margin: 0 0 18px;
     color: rgba(247, 243, 234, 0.62);
     font-size: 12px;
@@ -790,6 +796,7 @@ body.telegram-mini-app {
 
 .page-breadcrumbs__list {
     display: flex;
+    flex: 1 1 auto;
     width: 100%;
     min-width: 0;
     align-items: center;
@@ -846,14 +853,36 @@ body.telegram-mini-app {
 
 .page-breadcrumbs__current {
     overflow: hidden;
-    max-width: min(56vw, 520px);
     color: #fff;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.page-breadcrumbs__back {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 4px 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    color: rgba(247, 243, 234, 0.72);
+    font: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        color 160ms ease;
+}
+
+.page-breadcrumbs__back:hover,
+.page-breadcrumbs__back:focus-visible {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+}
+
 @media (max-width: 560px) {
     .page-breadcrumbs {
+        gap: 10px;
         margin-bottom: 14px;
         font-size: 11px;
     }
@@ -864,10 +893,9 @@ body.telegram-mini-app {
     }
 
     .page-breadcrumbs__current {
-        overflow: visible;
-        max-width: 100%;
-        text-overflow: clip;
-        white-space: normal;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }
 

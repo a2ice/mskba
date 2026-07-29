@@ -51,6 +51,10 @@ const handlers = {
 
         alert.remove();
     },
+
+    historyBack() {
+        window.history.back();
+    },
 };
 
 function bindActionHandlers() {
