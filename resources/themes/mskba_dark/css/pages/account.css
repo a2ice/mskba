@@ -576,8 +576,118 @@
     max-width: 720px;
 }
 
+.account-settings-card + .account-settings-card {
+    margin-top: 28px;
+}
+
 .account-password-form {
     max-width: 560px;
+}
+
+.account-privacy__form {
+    display: grid;
+    gap: 18px;
+}
+
+.account-privacy__rule {
+    min-width: 0;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.account-privacy__rule legend {
+    padding: 0;
+    color: var(--text);
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.account-privacy__description {
+    margin: 6px 0 16px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.account-privacy__visibility {
+    max-width: 360px;
+}
+
+.account-privacy__users {
+    margin-top: 18px;
+}
+
+.account-privacy__users[hidden] {
+    display: none;
+}
+
+.account-privacy__search-message {
+    min-height: 18px;
+    margin: 6px 0 0;
+    font-size: 12px;
+}
+
+.account-privacy__results {
+    z-index: 80;
+}
+
+.account-privacy__selected {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.account-privacy__chip {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 8px 6px 11px;
+    background: var(--surface-raised);
+    color: var(--text);
+    font-size: 13px;
+}
+
+.account-privacy__chip small {
+    color: var(--muted);
+}
+
+.account-privacy__chip button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 50%;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.account-privacy__chip button:hover,
+.account-privacy__chip button:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+
+@media (max-width: 760px) {
+    .account-privacy__rule {
+        padding: 16px;
+    }
+
+    .account-privacy__visibility {
+        max-width: none;
+    }
 }
 
 .account-roles-form {

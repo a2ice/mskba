@@ -16,6 +16,7 @@ import './core/ui-handlers.js';
 import './features/auth.js';
 import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
+import './features/account-privacy.js';
 import './features/tooltips.js';
 import './features/mobile-sidebar-navigation.js';
 import './features/image-upload.js';

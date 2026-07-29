@@ -1,0 +1,38 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('user_privacy_settings', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->string('type', 50);
+            $table->string('visibility', 30);
+            $table->timestampsTz();
+
+            $table->unique(['user_id', 'type']);
+        });
+
+        Schema::create('user_privacy_setting_allowed_users', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('privacy_setting_id')
+                ->constrained('user_privacy_settings')
+                ->cascadeOnDelete();
+            $table->foreignId('allowed_user_id')->constrained('users')->cascadeOnDelete();
+            $table->timestampsTz();
+
+            $table->unique(['privacy_setting_id', 'allowed_user_id']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('user_privacy_setting_allowed_users');
+        Schema::dropIfExists('user_privacy_settings');
+    }
+};

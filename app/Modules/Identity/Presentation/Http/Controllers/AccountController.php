@@ -25,8 +25,11 @@ use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
@@ -227,7 +230,58 @@ class AccountController extends Controller
             ]]);
         }
 
-        return ThemeResolver::page('account.settings', ['user' => $user]);
+        $user->load([
+            'privacySettings.allowedUsers.profile',
+        ]);
+        $privacySettings = $user->privacySettings->keyBy(
+            fn ($setting): string => $setting->type->value,
+        );
+        $oldPrivacy = request()->old('privacy');
+        $oldAllowedUserIds = collect(is_array($oldPrivacy) ? $oldPrivacy : [])
+            ->flatMap(fn (mixed $setting): array => is_array($setting)
+                ? array_map('intval', (array) ($setting['allowed_user_ids'] ?? []))
+                : [])
+            ->unique()
+            ->values();
+        $oldAllowedUsers = $oldAllowedUserIds->isEmpty()
+            ? collect()
+            : User::query()
+                ->with('profile')
+                ->whereKey($oldAllowedUserIds->all())
+                ->get()
+                ->keyBy(fn (User $allowedUser): int => (int) $allowedUser->getKey());
+        $privacyAllowedUsers = collect(UserPrivacySettingTypeEnum::cases())
+            ->mapWithKeys(function (UserPrivacySettingTypeEnum $type) use (
+                $oldPrivacy,
+                $oldAllowedUsers,
+                $privacySettings,
+            ): array {
+                if (is_array($oldPrivacy) && array_key_exists($type->value, $oldPrivacy)) {
+                    $ids = array_map(
+                        'intval',
+                        (array) ($oldPrivacy[$type->value]['allowed_user_ids'] ?? []),
+                    );
+
+                    return [
+                        $type->value => collect($ids)
+                            ->map(fn (int $id) => $oldAllowedUsers->get($id))
+                            ->filter()
+                            ->values(),
+                    ];
+                }
+
+                return [
+                    $type->value => $privacySettings->get($type->value)?->allowedUsers ?? collect(),
+                ];
+            });
+
+        return ThemeResolver::page('account.settings', [
+            'user' => $user,
+            'privacySettingTypes' => UserPrivacySettingTypeEnum::cases(),
+            'privacyVisibilities' => UserPrivacyVisibilityEnum::cases(),
+            'privacySettings' => $privacySettings,
+            'privacyAllowedUsers' => $privacyAllowedUsers,
+        ]);
     }
 
     public function notifications(

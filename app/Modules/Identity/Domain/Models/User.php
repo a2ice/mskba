@@ -96,6 +96,11 @@ class User extends Authenticatable
         return $this->hasMany(UserOperationalPermission::class);
     }
 
+    public function privacySettings(): HasMany
+    {
+        return $this->hasMany(UserPrivacySetting::class);
+    }
+
     public function consents(): HasMany
     {
         return $this->hasMany(UserConsent::class);

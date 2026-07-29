@@ -18,7 +18,9 @@ use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRoles
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
+use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
@@ -337,6 +339,12 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')
             ->name('account.settings.password.update');
+        Route::put('/settings/privacy', UpdateAccountPrivacySettingsController::class)
+            ->middleware('throttle:20,1')
+            ->name('account.settings.privacy.update');
+        Route::get('/settings/privacy/users', SearchPrivacyUsersController::class)
+            ->middleware('throttle:60,1')
+            ->name('account.settings.privacy.users');
         Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications');
         Route::patch('/notifications/read-all', [AccountController::class, 'readAllNotifications'])
             ->name('account.notifications.read-all');
