@@ -2,6 +2,7 @@
 
 namespace App\Modules\Telegram\Application\Services;
 
+use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Event\Domain\Models\Event;
 
@@ -27,6 +28,16 @@ final class TelegramMiniAppStartDestinationResolver
             return $coordination === null
                 ? null
                 : route('coordination.show', $coordination, false);
+        }
+
+        if (preg_match('/\Acontent_(\d+)\z/D', $startParam, $matches) === 1) {
+            $content = ContentItem::query()
+                ->publishedInFeed()
+                ->find((int) $matches[1]);
+
+            return $content === null
+                ? null
+                : route('news.show', $content->alias, false);
         }
 
         return null;

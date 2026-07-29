@@ -10,6 +10,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
+use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
@@ -66,6 +67,14 @@ Route::prefix('faq')->group(function () use ($themeResolver) {
         ->defaults('breadcrumb', 'Первые шаги');
 });
 
+Route::prefix('news')->group(function () {
+    Route::get('/', [NewsController::class, 'index'])
+        ->name('news.index')
+        ->defaults('breadcrumb', 'Новости');
+    Route::get('/{contentItem:alias}', [NewsController::class, 'show'])
+        ->name('news.show');
+});
+
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('guest', 'throttle:5,1')
@@ -114,6 +123,23 @@ Route::prefix('auth')->group(function () {
     /* trashed routes ends here */
 
 });
+
+Route::prefix('admin/content')
+    ->middleware('auth', 'can:manage-content')
+    ->group(function () {
+        Route::get('/', [AdminContentController::class, 'index'])
+            ->name('admin.content')
+            ->defaults('breadcrumb', 'Контент');
+        Route::get('/create', [AdminContentController::class, 'create'])
+            ->name('admin.content.create')
+            ->defaults('breadcrumb', 'Новый материал');
+        Route::post('/', [AdminContentController::class, 'store'])
+            ->name('admin.content.store');
+        Route::get('/{contentItem:alias}', [AdminContentController::class, 'edit'])
+            ->name('admin.content.edit');
+        Route::put('/{contentItem:alias}', [AdminContentController::class, 'update'])
+            ->name('admin.content.update');
+    });
 
 Route::prefix('admin')
     ->middleware('auth', 'can:access-admin-panel')
@@ -168,7 +194,6 @@ Route::prefix('admin')
         Route::post('/venues/moderation/{moderationRequest}/reject', [AdminVenuesController::class, 'reject'])->name('admin.venues.moderation.reject');
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'Мероприятия');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
-        Route::get('/content', [AdminContentController::class, 'index'])->name('admin.content')->defaults('breadcrumb', 'Контент');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
         Route::get('/telegram-chats', [AdminTelegramChatsController::class, 'index'])

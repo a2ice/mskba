@@ -42,11 +42,11 @@ final class MainMenu implements MenuHandler
             ],
         ];
 
-        if ($user?->isAdmin()) {
+        if ($user?->can('manage-content')) {
             $moreItems[] = [
                 'divider' => true,
-                'label' => 'Админка',
-                'url' => $this->routeUrl('admin.dashboard'),
+                'label' => $user->isAdmin() ? 'Админка' : 'Контент',
+                'url' => $this->routeUrl($user->isAdmin() ? 'admin.dashboard' : 'admin.content'),
                 'active' => $this->isActiveRoute('admin.*'),
                 'visible' => true,
             ];
@@ -102,7 +102,7 @@ final class MainMenu implements MenuHandler
             ],
             [
                 'label' => 'Новости',
-                'url' => $this->routeUrl('/#news'),
+                'url' => $this->routeUrl('news.index'),
                 'active' => $this->isActiveRoute('news, news.*'),
                 'visible' => true,
             ],

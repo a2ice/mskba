@@ -1,0 +1,218 @@
+.content-admin-form {
+    display: grid;
+    gap: 20px;
+}
+
+.content-admin-section,
+.news-card,
+.news-article {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+}
+
+.content-admin-section {
+    padding: clamp(18px, 3vw, 28px);
+}
+
+.content-admin-section__title,
+.content-chat-options__title {
+    margin: 0 0 18px;
+    font-family: var(--font-display);
+    font-weight: 600;
+}
+
+.content-admin-section__title {
+    font-size: 28px;
+}
+
+.content-admin-cover {
+    display: block;
+    width: min(100%, 420px);
+    height: auto;
+    aspect-ratio: 16 / 9;
+    margin-bottom: 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.content-publication-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.content-chat-options {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+}
+
+.content-chat-options__title {
+    font-size: 20px;
+}
+
+.content-chat-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    cursor: pointer;
+}
+
+.content-chat-option input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+}
+
+.content-admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.content-admin-form .form-text,
+.admin-table__muted {
+    color: var(--muted);
+}
+
+.admin-table__muted {
+    margin-top: 4px;
+    font-size: 12px;
+}
+
+.admin-badge--success {
+    border-color: rgba(58, 190, 118, .72);
+    background: rgba(58, 190, 118, .12);
+    color: #6ee7a5;
+}
+
+.admin-badge--danger {
+    border-color: rgba(235, 87, 87, .72);
+    background: rgba(235, 87, 87, .12);
+    color: #ff8e8e;
+}
+
+.news-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+}
+
+.news-card {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.news-card__media {
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+}
+
+.news-card__media img,
+.news-card__placeholder {
+    width: 100%;
+    height: 100%;
+}
+
+.news-card__media img {
+    display: block;
+    object-fit: cover;
+    transition: transform .25s ease;
+}
+
+.news-card:hover .news-card__media img {
+    transform: scale(1.02);
+}
+
+.news-card__placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+    font-size: 52px;
+    background: radial-gradient(circle, rgba(236, 127, 18, .18), transparent 58%);
+}
+
+.news-card__body {
+    padding: 20px;
+}
+
+.news-card__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.news-card__title {
+    margin: 14px 0 10px;
+    font-family: var(--font-display);
+    font-size: clamp(26px, 3vw, 34px);
+    line-height: 1.05;
+}
+
+.news-card__description {
+    margin-bottom: 18px;
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.news-article-shell {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.news-article {
+    padding: clamp(22px, 5vw, 54px);
+}
+
+.news-article__header h1 {
+    margin: 16px 0;
+    font-family: var(--font-display);
+    font-size: clamp(42px, 7vw, 76px);
+    line-height: 1;
+}
+
+.news-article__lead {
+    max-width: 850px;
+    color: var(--muted);
+    font-size: clamp(18px, 2.5vw, 24px);
+    line-height: 1.5;
+}
+
+.news-article__cover {
+    display: block;
+    width: 100%;
+    max-height: 650px;
+    margin: 30px 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    object-fit: cover;
+}
+
+.news-article__content {
+    color: var(--text);
+    font-size: clamp(17px, 2vw, 20px);
+    line-height: 1.75;
+}
+
+.news-article__action {
+    margin-top: 30px;
+}
+
+@media (max-width: 767px) {
+    .content-publication-options,
+    .news-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .news-card__body {
+        padding: 16px;
+    }
+}

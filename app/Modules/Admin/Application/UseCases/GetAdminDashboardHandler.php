@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Application\UseCases;
 
 use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
@@ -14,7 +15,6 @@ final class GetAdminDashboardHandler
 {
     public function __construct(
         private readonly MenuResolver $menuResolver,
-        private readonly ListAdminContentPagesHandler $contentPages,
         private readonly GetAdminSettingsHandler $settings,
     ) {}
 
@@ -46,7 +46,7 @@ final class GetAdminDashboardHandler
                     $item['data']['count'] = 0;
                     break;
                 case route('admin.content'):
-                    $item['data']['count'] = count($this->contentPages->handle());
+                    $item['data']['count'] = ContentItem::query()->count();
                     break;
                 case route('admin.audit'):
                     $item['data']['count'] = AuditLog::query()->count();

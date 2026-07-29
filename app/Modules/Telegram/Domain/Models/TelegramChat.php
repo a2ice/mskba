@@ -20,6 +20,11 @@ class TelegramChat extends Model
         return $this->hasMany(TelegramCoordinationPublication::class, 'chat_id');
     }
 
+    public function contentPublications(): HasMany
+    {
+        return $this->hasMany(TelegramContentPublication::class, 'chat_id');
+    }
+
     protected function casts(): array
     {
         return [

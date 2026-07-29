@@ -26,6 +26,11 @@ class AccessServiceProvider extends ServiceProvider
     {
         Gate::define('access-admin-panel', fn (User $user): bool => $user->isAdmin());
         Gate::define(
+            'manage-content',
+            fn (User $user): bool => $user->isConfirmed()
+                && $user->system_role->atLeast(UserSystemRoleEnum::EDITOR),
+        );
+        Gate::define(
             'manage-user-operational-permissions',
             fn (User $actor, User $target): bool => $actor->isConfirmed()
                 && $actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)

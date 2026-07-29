@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -39,6 +40,15 @@ class AdminPagesTest extends TestCase
             'is_active' => false,
             'publishes_coordination' => false,
         ]);
+        ContentItem::query()->create([
+            'created_by_user_id' => $admin->id,
+            'updated_by_user_id' => $admin->id,
+            'type' => 'material',
+            'title' => 'Редакционный материал',
+            'alias' => 'redaktsionnyy-material',
+            'short_description' => 'Краткое описание.',
+            'full_description' => 'Полное описание.',
+        ]);
 
         $response = $this
             ->actingAs($admin)
@@ -60,7 +70,7 @@ class AdminPagesTest extends TestCase
         $this->assertSame(0, $tiles['Дубли площадок']['data']['count']);
         $this->assertSame(0, $tiles['Мероприятия']['data']['count']);
         $this->assertSame(0, $tiles['Команды']['data']['count']);
-        $this->assertSame(4, $tiles['Контент']['data']['count']);
+        $this->assertSame(1, $tiles['Контент']['data']['count']);
         $this->assertSame(4, $tiles['Настройки']['data']['count']);
         $this->assertSame(2, $tiles['Telegram-чаты']['data']['count']);
     }

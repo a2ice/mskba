@@ -19,6 +19,7 @@
 @import './pages/integrations';
 @import './pages/events';
 @import './pages/coordination';
+@import './pages/content';
 @import './mobile-primary-bar';
 @import './image-upload';
 
