@@ -56,6 +56,52 @@
     background: var(--surface);
 }
 
+.coordination-poll-context {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin: 0 0 24px;
+    padding: 0 0 24px;
+    border-bottom: 1px solid var(--line);
+}
+
+.coordination-poll-context__item {
+    display: grid;
+    align-content: start;
+    gap: 5px;
+    min-width: 0;
+}
+
+.coordination-poll-context__item dt {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.coordination-poll-context__item dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.coordination-poll-context__item a {
+    color: var(--text);
+}
+
+.coordination-poll-context__item a:hover {
+    color: var(--accent);
+}
+
+.coordination-poll-context__item small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
+}
+
 .coordination-flow-progress {
     display: flex;
     gap: 10px;

@@ -319,10 +319,18 @@ final class CoordinationWorkflowTest extends TestCase
 
     public function test_attendance_poll_keeps_semantic_intents_and_allows_manual_participant_selection(): void
     {
-        $organizer = User::factory()->create();
+        $organizer = User::factory()->create(['username' => 'poll_organizer']);
+        $organizer->profile()->create([
+            'first_name' => 'Дмитрий',
+            'last_name' => 'Организатор',
+        ]);
         $goingUser = User::factory()->create();
         $customUser = User::factory()->create();
         [$venue, $startsAt] = $this->availableVenue();
+        $venue->update([
+            'name' => 'Площадка для опроса',
+            'raw_address' => 'Москва, Тестовая улица, 10',
+        ]);
 
         $this->actingAs($organizer)
             ->post(route('coordination.store'), [
@@ -353,6 +361,14 @@ final class CoordinationWorkflowTest extends TestCase
             $poll->options->pluck('value')->map(fn (array $value): string => $value['intent'])->all(),
         );
         $this->assertSame(['Я в игре', 'Пропущу', 'Уточню позже'], $poll->options->pluck('label')->all());
+        $this->actingAs($organizer)
+            ->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertSee('Создал опрос')
+            ->assertSee('Дмитрий Организатор')
+            ->assertSee('Площадка для опроса')
+            ->assertSee('Москва, Тестовая улица, 10')
+            ->assertSee($startsAt->format('d.m.Y H:i').'–'.$startsAt->addHour()->format('H:i'));
 
         $this->actingAs($goingUser)->post(route('coordination.vote', $session), [
             'option_ids' => [$poll->options[0]->id],
@@ -462,6 +478,13 @@ final class CoordinationWorkflowTest extends TestCase
 
         $session = CoordinationSession::query()->latest('id')->firstOrFail();
         $this->assertSame(CoordinationFlowTypeEnum::EVENT_CHANGE, $session->flow_type);
+        $eventTimeLabel = $event->starts_at->setTimezone('Europe/Moscow')->format('d.m.Y H:i')
+            .'–'.$event->ends_at->setTimezone('Europe/Moscow')->format('H:i');
+        $this->actingAs($organizer)
+            ->get(route('coordination.show', $session))
+            ->assertOk()
+            ->assertSee($sourceVenue->name)
+            ->assertSee($eventTimeLabel);
         $polls = $session->polls()->with('options')->get();
 
         foreach ([0, 1, 2] as $index) {

@@ -121,7 +121,7 @@
                                 title="Создать игру"
                                 data-tooltip-variant="title"
                                 data-tooltip-icon
-                            ></a>
+                            >+</a>
                         @else
                             <button
                                 class="site-summary-create js-handler"
@@ -134,7 +134,7 @@
                                 data-modal-action="open"
                                 data-modal-target="auth-entry-classic"
                                 data-auth-redirect-url="{{ route('events.create', ['type' => 'game'], false) }}"
-                            ></button>
+                            >+</button>
                         @endauth
                     </div>
 

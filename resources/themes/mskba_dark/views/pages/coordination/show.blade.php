@@ -8,6 +8,16 @@
     $displayStatusVariant = $isOpen
         ? 'success'
         : ($poll->status->value === 'cancelled' ? 'danger' : 'warning');
+    $eventVotingTimeLabel = null;
+    if ($eventVotingStartsAt) {
+        $eventVotingTimeLabel = $eventVotingStartsAt->format('d.m.Y H:i');
+
+        if ($eventVotingEndsAt) {
+            $eventVotingTimeLabel .= $eventVotingStartsAt->isSameDay($eventVotingEndsAt)
+                ? '–'.$eventVotingEndsAt->format('H:i')
+                : ' — '.$eventVotingEndsAt->format('d.m.Y H:i');
+        }
+    }
     $breadcrumbs = [
         ['label' => 'Опросы', 'url' => route('coordination.index')],
         ['label' => $title],
@@ -47,6 +57,45 @@
     @if(session('error')) <div class="alert alert-danger mb-3">{{ session('error') }}</div> @endif
 
     <article class="coordination-poll">
+        <dl class="coordination-poll-context">
+            <div class="coordination-poll-context__item">
+                <dt>Создал опрос</dt>
+                <dd>{{ $organizerName }}</dd>
+            </div>
+            @if($eventVotingVenue)
+                <div class="coordination-poll-context__item">
+                    <dt>Площадка</dt>
+                    <dd>
+                        <a href="{{ route('venues.show', $eventVotingVenue->routeIdentifier()) }}">
+                            {{ $eventVotingVenue->name }}
+                        </a>
+                        @if($eventVotingVenue->raw_address)
+                            <small>{{ $eventVotingVenue->raw_address }}</small>
+                        @endif
+                    </dd>
+                </div>
+            @endif
+            @if($eventVotingTimeLabel)
+                <div class="coordination-poll-context__item">
+                    <dt>Дата и время</dt>
+                    <dd>
+                        <time datetime="{{ $eventVotingStartsAt->toIso8601String() }}">
+                            {{ $eventVotingTimeLabel }}
+                        </time>
+                    </dd>
+                </div>
+            @elseif($eventVotingDate)
+                <div class="coordination-poll-context__item">
+                    <dt>Дата</dt>
+                    <dd>
+                        <time datetime="{{ $eventVotingDate->format('Y-m-d') }}">
+                            {{ $eventVotingDate->format('d.m.Y') }}
+                        </time>
+                    </dd>
+                </div>
+            @endif
+        </dl>
+
         @if($coordination->polls->count() > 1)
             <div class="coordination-flow-progress mb-3" aria-label="Этапы согласования">
                 @foreach($coordination->polls as $step)
@@ -113,7 +162,7 @@
         @if($isOpen && $poll->allows_suggestions)
             <section class="section-list-item mt-4">
                 <h2 class="h4 mb-2">Предложить вариант</h2>
-                <p>^.^</p>
+                <p>&nbsp;</p>
                 <form method="POST" action="{{ route('coordination.suggestion', $coordination) }}" class="coordination-suggestion-form">
                     @csrf
                     @switch($poll->subject_type->value)

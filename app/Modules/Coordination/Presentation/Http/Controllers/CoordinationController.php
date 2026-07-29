@@ -189,7 +189,7 @@ final class CoordinationController extends Controller
             && $coordination->decision !== null
             && $coordination->eventTransition === null;
         $contextEvent = $coordination->context_type?->value === 'event' && $coordination->context_id
-            ? Event::query()->find($coordination->context_id)
+            ? Event::query()->with('venue')->find($coordination->context_id)
             : null;
         $canApplyEventChange = $canManage
             && $contextEvent !== null
@@ -266,6 +266,46 @@ final class CoordinationController extends Controller
                 }
             }
         }
+        $organizerUser = $coordination->organizerActor?->user;
+        $organizerName = $organizerUser === null
+            ? 'Пользователь не найден'
+            : (trim(implode(' ', array_filter([
+                $organizerUser->profile?->first_name,
+                $organizerUser->profile?->last_name,
+            ]))) ?: ($organizerUser->username ?: 'Пользователь #'.$organizerUser->id));
+        $eventVotingVenue = null;
+        $eventVotingStartsAt = null;
+        $eventVotingEndsAt = null;
+        $eventVotingDate = null;
+
+        if ($contextEvent !== null) {
+            $eventVotingVenue = $contextEvent->venue;
+            $eventTimezone = $eventVotingVenue?->schedule()->value('timezone')
+                ?: config('app.timezone', 'Europe/Moscow');
+            $eventVotingStartsAt = $contextEvent->starts_at?->setTimezone($eventTimezone);
+            $eventVotingEndsAt = $contextEvent->ends_at?->setTimezone($eventTimezone);
+        } elseif (in_array($coordination->flow_type, [
+            CoordinationFlowTypeEnum::EVENT_ATTENDANCE,
+            CoordinationFlowTypeEnum::EVENT_TIME_SELECTION,
+            CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION,
+        ], true)) {
+            if (is_numeric($venueId)) {
+                $eventVotingVenue = Venue::query()->find((int) $venueId);
+            }
+
+            $eventTimezone = $eventVotingVenue?->schedule()->value('timezone')
+                ?: config('app.timezone', 'Europe/Moscow');
+
+            if (is_string($coordinatedStartsAt) && $coordinatedStartsAt !== '') {
+                $eventVotingStartsAt = CarbonImmutable::parse($coordinatedStartsAt, $eventTimezone);
+
+                if (is_numeric($coordinatedDuration) && (int) $coordinatedDuration > 0) {
+                    $eventVotingEndsAt = $eventVotingStartsAt->addMinutes((int) $coordinatedDuration);
+                }
+            } elseif (isset($configuration['date'])) {
+                $eventVotingDate = CarbonImmutable::parse((string) $configuration['date'], $eventTimezone);
+            }
+        }
         $coordinationParticipants = collect();
 
         if ($canCreateEvent && $coordination->flow_type === CoordinationFlowTypeEnum::EVENT_ATTENDANCE) {
@@ -299,6 +339,11 @@ final class CoordinationController extends Controller
             'canCreateEvent' => $canCreateEvent,
             'canApplyEventChange' => $canApplyEventChange,
             'contextEvent' => $contextEvent,
+            'organizerName' => $organizerName,
+            'eventVotingVenue' => $eventVotingVenue,
+            'eventVotingStartsAt' => $eventVotingStartsAt,
+            'eventVotingEndsAt' => $eventVotingEndsAt,
+            'eventVotingDate' => $eventVotingDate,
             'venues' => $canCreateEvent ? $eventVenues->handle() : collect(),
             'suggestionVenues' => $poll->allows_suggestions && $poll->subject_type === PollSubjectTypeEnum::VENUE
                 ? $eventVenues->handle()
