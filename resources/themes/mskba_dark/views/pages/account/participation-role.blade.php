@@ -123,7 +123,7 @@
                                 @for($weight = 40; $weight <= 140; $weight++)
                                     <option
                                         value="{{ $weight }}"
-                                        @selected((string) $currentWeight === (string) $weight)
+                                        @selected($currentWeight !== null && (int) $currentWeight === $weight)
                                     >{{ $weight }} кг</option>
                                 @endfor
                             </select>

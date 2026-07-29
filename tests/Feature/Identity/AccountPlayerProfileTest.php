@@ -66,6 +66,7 @@ final class AccountPlayerProfileTest extends TestCase
         $this->assertDatabaseHas('player_profiles', [
             'user_id' => $user->id,
             'height_cm' => 191,
+            'weight_kg' => 88,
             'body_type' => PlayerBodyTypeEnum::ATHLETIC->value,
         ]);
         $this->assertDatabaseHas('player_profile_positions', [
@@ -81,6 +82,15 @@ final class AccountPlayerProfileTest extends TestCase
             'long_range_shooting' => 6,
             'basketball_iq' => 9,
         ]);
+
+        $profilePage = $this->actingAs($user->fresh())
+            ->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
+            ->assertOk();
+
+        $this->assertMatchesRegularExpression(
+            '/<option[^>]*value="88"[^>]*selected[^>]*>/',
+            $profilePage->getContent(),
+        );
     }
 
     public function test_updating_profile_replaces_positions_and_allows_partial_values(): void
