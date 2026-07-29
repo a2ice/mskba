@@ -31,6 +31,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramCoordinationPublicationsHandler;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -151,6 +152,7 @@ final class CoordinationController extends Controller
         CoordinationAccess $access,
         ListEventVenuesHandler $eventVenues,
         VenueEventAvailability $availability,
+        AddressDisplayFormatter $addressFormatter,
     ): Response {
         $coordination->load([
             'organizerActor.user.profile.activeAvatar',
@@ -189,7 +191,7 @@ final class CoordinationController extends Controller
             && $coordination->decision !== null
             && $coordination->eventTransition === null;
         $contextEvent = $coordination->context_type?->value === 'event' && $coordination->context_id
-            ? Event::query()->with('venue')->find($coordination->context_id)
+            ? Event::query()->with('venue.location.address')->find($coordination->context_id)
             : null;
         $canApplyEventChange = $canManage
             && $contextEvent !== null
@@ -290,7 +292,9 @@ final class CoordinationController extends Controller
             CoordinationFlowTypeEnum::EVENT_VENUE_SELECTION,
         ], true)) {
             if (is_numeric($venueId)) {
-                $eventVotingVenue = Venue::query()->find((int) $venueId);
+                $eventVotingVenue = Venue::query()
+                    ->with('location.address')
+                    ->find((int) $venueId);
             }
 
             $eventTimezone = $eventVotingVenue?->schedule()->value('timezone')
@@ -306,6 +310,18 @@ final class CoordinationController extends Controller
                 $eventVotingDate = CarbonImmutable::parse((string) $configuration['date'], $eventTimezone);
             }
         }
+        $eventVotingAddressModel = $eventVotingVenue?->location?->address;
+        $eventVotingAddress = $addressFormatter->format(
+            $eventVotingAddressModel?->full_address ?? $eventVotingVenue?->raw_address,
+            $eventVotingAddressModel?->city,
+            $eventVotingAddressModel?->street,
+            $eventVotingAddressModel?->building,
+        );
+        $eventVotingLatitude = $eventVotingAddressModel?->latitude;
+        $eventVotingLongitude = $eventVotingAddressModel?->longitude;
+        $pollClosesAt = $poll->closes_at->setTimezone(
+            (string) config('app.timezone', 'Europe/Moscow'),
+        );
         $coordinationParticipants = collect();
 
         if ($canCreateEvent && $coordination->flow_type === CoordinationFlowTypeEnum::EVENT_ATTENDANCE) {
@@ -344,6 +360,10 @@ final class CoordinationController extends Controller
             'eventVotingStartsAt' => $eventVotingStartsAt,
             'eventVotingEndsAt' => $eventVotingEndsAt,
             'eventVotingDate' => $eventVotingDate,
+            'eventVotingAddress' => $eventVotingAddress,
+            'eventVotingLatitude' => $eventVotingLatitude,
+            'eventVotingLongitude' => $eventVotingLongitude,
+            'pollClosesAt' => $pollClosesAt,
             'venues' => $canCreateEvent ? $eventVenues->handle() : collect(),
             'suggestionVenues' => $poll->allows_suggestions && $poll->subject_type === PollSubjectTypeEnum::VENUE
                 ? $eventVenues->handle()

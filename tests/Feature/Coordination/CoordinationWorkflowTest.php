@@ -15,6 +15,8 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Telegram\Domain\Models\TelegramCoordinationPublication;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -327,9 +329,19 @@ final class CoordinationWorkflowTest extends TestCase
         $goingUser = User::factory()->create();
         $customUser = User::factory()->create();
         [$venue, $startsAt] = $this->availableVenue();
+        $address = Address::factory()->create([
+            'city' => 'Москва',
+            'street' => 'Тестовая улица',
+            'building' => '10',
+            'full_address' => 'Россия, Москва, Тестовая улица, 10',
+            'latitude' => 55.751244,
+            'longitude' => 37.618423,
+        ]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
         $venue->update([
             'name' => 'Площадка для опроса',
-            'raw_address' => 'Москва, Тестовая улица, 10',
+            'raw_address' => 'Россия, Москва, Тестовая улица, 10',
+            'location_id' => $location->id,
         ]);
 
         $this->actingAs($organizer)
@@ -355,6 +367,10 @@ final class CoordinationWorkflowTest extends TestCase
 
         $session = CoordinationSession::query()->latest('id')->firstOrFail();
         $poll = $session->polls()->with('options')->firstOrFail();
+        $pollClosesAtLabel = $poll->closes_at
+            ->setTimezone('Europe/Moscow')
+            ->locale('ru')
+            ->translatedFormat('j F H:i');
         $this->assertSame(CoordinationFlowTypeEnum::EVENT_ATTENDANCE, $session->flow_type);
         $this->assertSame(
             ['going', 'not_going', 'thinking'],
@@ -368,7 +384,13 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee('Дмитрий Организатор')
             ->assertSee('Площадка для опроса')
             ->assertSee('Москва, Тестовая улица, 10')
-            ->assertSee($startsAt->format('d.m.Y H:i').'–'.$startsAt->addHour()->format('H:i'));
+            ->assertDontSee('Россия, Москва, Тестовая улица, 10')
+            ->assertSee(
+                $startsAt->locale('ru')->translatedFormat('j F H:i').'–'.$startsAt->addHour()->format('H:i'),
+            )
+            ->assertSee('до '.$pollClosesAtLabel)
+            ->assertSee('data-modal-target="coordination-venue-map"', false)
+            ->assertSee('data-event-map-open', false);
 
         $this->actingAs($goingUser)->post(route('coordination.vote', $session), [
             'option_ids' => [$poll->options[0]->id],
@@ -478,7 +500,7 @@ final class CoordinationWorkflowTest extends TestCase
 
         $session = CoordinationSession::query()->latest('id')->firstOrFail();
         $this->assertSame(CoordinationFlowTypeEnum::EVENT_CHANGE, $session->flow_type);
-        $eventTimeLabel = $event->starts_at->setTimezone('Europe/Moscow')->format('d.m.Y H:i')
+        $eventTimeLabel = $event->starts_at->setTimezone('Europe/Moscow')->locale('ru')->translatedFormat('j F H:i')
             .'–'.$event->ends_at->setTimezone('Europe/Moscow')->format('H:i');
         $this->actingAs($organizer)
             ->get(route('coordination.show', $session))

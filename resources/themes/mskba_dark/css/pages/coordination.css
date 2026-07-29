@@ -94,6 +94,24 @@
     color: var(--accent);
 }
 
+.coordination-poll-context__location {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.coordination-poll-context__location:hover {
+    color: var(--accent);
+}
+
 .coordination-poll-context__item small {
     display: block;
     margin-top: 3px;

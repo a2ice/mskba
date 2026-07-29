@@ -10,14 +10,18 @@
         : ($poll->status->value === 'cancelled' ? 'danger' : 'warning');
     $eventVotingTimeLabel = null;
     if ($eventVotingStartsAt) {
-        $eventVotingTimeLabel = $eventVotingStartsAt->format('d.m.Y H:i');
+        $eventVotingTimeLabel = $eventVotingStartsAt->locale('ru')->translatedFormat('j F H:i');
 
         if ($eventVotingEndsAt) {
             $eventVotingTimeLabel .= $eventVotingStartsAt->isSameDay($eventVotingEndsAt)
                 ? '–'.$eventVotingEndsAt->format('H:i')
-                : ' — '.$eventVotingEndsAt->format('d.m.Y H:i');
+                : ' — '.$eventVotingEndsAt->locale('ru')->translatedFormat('j F H:i');
         }
     }
+    $eventVotingHasMap = $eventVotingVenue
+        && $eventVotingLatitude !== null
+        && $eventVotingLongitude !== null;
+    $pollClosesAtLabel = $pollClosesAt->locale('ru')->translatedFormat('j F H:i');
     $breadcrumbs = [
         ['label' => 'Опросы', 'url' => route('coordination.index')],
         ['label' => $title],
@@ -47,7 +51,7 @@
         <h2 class="section-sidebar-block__title">Состояние</h2>
         <p class="mb-2">{{ $coordination->status->label() }}</p>
         @if($isOpen)
-            <p class="mb-0">до {{ $poll->closes_at->format('d.m.Y H:i') }}</p>
+            <p class="mb-0">до {{ $pollClosesAtLabel }}</p>
         @endif
     </div>
 @endsection
@@ -66,11 +70,27 @@
                 <div class="coordination-poll-context__item">
                     <dt>Площадка</dt>
                     <dd>
-                        <a href="{{ route('venues.show', $eventVotingVenue->routeIdentifier()) }}">
-                            {{ $eventVotingVenue->name }}
-                        </a>
-                        @if($eventVotingVenue->raw_address)
-                            <small>{{ $eventVotingVenue->raw_address }}</small>
+                        @if($eventVotingHasMap)
+                            <button
+                                type="button"
+                                class="coordination-poll-context__location js-handler"
+                                data-handler="modal"
+                                data-modal-action="open"
+                                data-modal-target="coordination-venue-map"
+                                data-event-map-open
+                            >
+                                <span>{{ $eventVotingVenue->name }}</span>
+                                @if($eventVotingAddress)
+                                    <small>{{ $eventVotingAddress }}</small>
+                                @endif
+                            </button>
+                        @else
+                            <a href="{{ route('venues.show', $eventVotingVenue->routeIdentifier()) }}">
+                                {{ $eventVotingVenue->name }}
+                            </a>
+                            @if($eventVotingAddress)
+                                <small>{{ $eventVotingAddress }}</small>
+                            @endif
                         @endif
                     </dd>
                 </div>
@@ -89,7 +109,7 @@
                     <dt>Дата</dt>
                     <dd>
                         <time datetime="{{ $eventVotingDate->format('Y-m-d') }}">
-                            {{ $eventVotingDate->format('d.m.Y') }}
+                            {{ $eventVotingDate->locale('ru')->translatedFormat('j F') }}
                         </time>
                     </dd>
                 </div>
@@ -114,7 +134,7 @@
                 <p class="mb-0">Режим голосования: {{ $poll->selection_mode->label() }}</p>
             </div>
             @if($isOpen)
-                <time datetime="{{ $poll->closes_at->toIso8601String() }}">до {{ $poll->closes_at->format('d.m.Y H:i') }}</time>
+                <time datetime="{{ $pollClosesAt->toIso8601String() }}">до {{ $pollClosesAtLabel }}</time>
             @endif
         </div>
 
@@ -284,5 +304,25 @@
                 <button class="btn btn--danger" type="submit" onclick="return confirm('Отменить согласование?')">Отменить</button>
             </form>
         </div>
+    @endif
+
+    @if($eventVotingHasMap)
+        @component('theme::partials.modal.layout', [
+            'id' => 'coordination-venue-map',
+            'dialogClass' => 'venue-selector-map-modal__dialog event-venue-map-modal__dialog',
+        ])
+            <h2 class="modal_title" id="modal-title-coordination-venue-map">{{ $eventVotingVenue->name }}</h2>
+            <p class="venue-selector-map__message" data-event-map-message>Загружаем карту…</p>
+            <div
+                class="venue-selector-map"
+                data-event-map
+                data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"
+                data-latitude="{{ $eventVotingLatitude }}"
+                data-longitude="{{ $eventVotingLongitude }}"
+                data-title="{{ $eventVotingVenue->name }}"
+                data-address="{{ $eventVotingAddress }}"
+                aria-label="Площадка {{ $eventVotingVenue->name }} на карте"
+            ></div>
+        @endcomponent
     @endif
 @endsection
