@@ -148,7 +148,8 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
-    gap: 8px;
+    column-gap: 8px;
+    row-gap: 3px;
     width: 100%;
     margin: 0;
     padding: 0;
@@ -168,8 +169,11 @@
 }
 
 .coordination-poll-context__location-copy {
-    display: block;
-    min-width: 0;
+    display: contents;
+}
+
+.coordination-poll-context__location-copy > small {
+    grid-column: 1 / -1;
 }
 
 .coordination-poll-context__location:hover {
