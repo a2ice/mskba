@@ -66,7 +66,7 @@ final class TelegramBotApiClient
         }
 
         try {
-            $request = $this->request($timeoutSeconds)->asMultipart();
+            $request = $this->request($timeoutSeconds, asJson: false)->asMultipart();
 
             foreach ($files as $field => $file) {
                 $request = $request->attach(
@@ -92,7 +92,7 @@ final class TelegramBotApiClient
         }
     }
 
-    private function request(?int $timeoutSeconds = null): PendingRequest
+    private function request(?int $timeoutSeconds = null, bool $asJson = true): PendingRequest
     {
         $options = [];
         $proxy = trim((string) config('telegram.http_proxy'));
@@ -110,10 +110,11 @@ final class TelegramBotApiClient
             ];
         }
 
-        return Http::asJson()
-            ->withOptions($options)
+        $request = Http::withOptions($options)
             ->timeout($timeoutSeconds ?? 15)
             ->connectTimeout(8);
+
+        return $asJson ? $request->asJson() : $request;
     }
 
     private function apiUrl(string $token, string $method): string
