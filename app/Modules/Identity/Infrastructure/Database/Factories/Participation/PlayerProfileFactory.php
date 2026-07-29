@@ -24,7 +24,10 @@ class PlayerProfileFactory extends Factory
             'height_cm' => fake()->optional()->numberBetween(150, 220),
             'weight_kg' => fake()->optional()->numberBetween(40, 120),
             'body_type' => fake()->optional()->randomElement(PlayerBodyTypeEnum::cases())?->value,
-            'experience_started_year' => fake()->optional()->numberBetween(now()->year - 70, now()->year - 10),
+            'experience_started_year' => fake()->optional()->numberBetween(
+                max(1960, now()->year - 70),
+                now()->year - 10,
+            ),
             'comment' => fake()->optional()->sentence(),
             'extra' => null,
         ];

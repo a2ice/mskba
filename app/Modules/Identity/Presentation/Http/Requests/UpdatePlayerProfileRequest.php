@@ -30,7 +30,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'experience_started_year' => [
                 'nullable',
                 'integer',
-                'between:'.(now()->year - 70).','.(now()->year - 10),
+                'between:'.max(1960, now()->year - 70).','.(now()->year - 10),
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],

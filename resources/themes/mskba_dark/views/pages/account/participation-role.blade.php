@@ -140,7 +140,7 @@
                                 name="experience_started_year"
                             >
                                 <option value="">Не указано</option>
-                                @for($year = now()->year - 10; $year >= now()->year - 70; $year--)
+                                @for($year = now()->year - 10; $year >= max(1960, now()->year - 70); $year--)
                                     <option
                                         value="{{ $year }}"
                                         @selected((string) old('experience_started_year', $profile?->experience_started_year) === (string) $year)
