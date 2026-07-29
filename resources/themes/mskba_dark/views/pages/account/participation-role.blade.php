@@ -67,6 +67,11 @@
         @if($role === UserParticipationRoleEnum::PLAYER)
             @php
                 $profile = $user->playerProfile;
+                $shootingSkillKeys = [
+                    'close_range_shooting',
+                    'mid_range_shooting',
+                    'long_range_shooting',
+                ];
                 $selectedPositions = old(
                     'positions',
                     $profile?->positions->map(fn ($item) => $item->position->value)->all() ?? [],
@@ -190,6 +195,7 @@
 
                     <div class="account-player-profile__skills">
                         @foreach($playerSkills as $skill => $label)
+                            @continue(in_array($skill, $shootingSkillKeys, true))
                             <div class="form-group field account-player-profile__field">
                                 <label for="player-skill-{{ $skill }}">{{ $label }}</label>
                                 <select
@@ -210,6 +216,33 @@
                                 @enderror
                             </div>
                         @endforeach
+
+                        <fieldset class="account-player-profile__shooting">
+                            <legend class="eyebrow">Бросок</legend>
+                            <div class="account-player-profile__shooting-grid">
+                                @foreach($shootingSkillKeys as $skill)
+                                    <div class="form-group field account-player-profile__field">
+                                        <label for="player-skill-{{ $skill }}">{{ $playerSkills[$skill] }}</label>
+                                        <select
+                                            id="player-skill-{{ $skill }}"
+                                            class="form-select"
+                                            name="self_assessment[{{ $skill }}]"
+                                        >
+                                            <option value="">Не оценено</option>
+                                            @for($score = 1; $score <= 10; $score++)
+                                                <option
+                                                    value="{{ $score }}"
+                                                    @selected((string) old('self_assessment.'.$skill, $profile?->selfAssessment?->{$skill}) === (string) $score)
+                                                >{{ $score }}</option>
+                                            @endfor
+                                        </select>
+                                        @error('self_assessment.'.$skill)
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                @endforeach
+                            </div>
+                        </fieldset>
                     </div>
                 </section>
 

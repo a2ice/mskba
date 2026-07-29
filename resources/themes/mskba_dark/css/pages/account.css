@@ -91,6 +91,28 @@
     width: 100%;
 }
 
+.account-player-profile__shooting {
+    grid-column: 1 / -1;
+    min-width: 0;
+    margin: 2px 0 0;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-card) - 4px);
+    padding: 18px;
+}
+
+.account-player-profile__shooting > .eyebrow {
+    width: auto;
+    margin: 0;
+    padding: 0;
+    color: var(--accent);
+}
+
+.account-player-profile__shooting-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
 .account-player-profile__positions {
     min-width: 0;
     margin: 0;
@@ -136,6 +158,7 @@
 
     .account-player-profile__grid,
     .account-player-profile__skills,
+    .account-player-profile__shooting-grid,
     .account-player-profile__position-grid {
         grid-template-columns: 1fr;
     }
