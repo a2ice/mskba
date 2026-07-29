@@ -388,7 +388,16 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee(
                 $startsAt->locale('ru')->translatedFormat('j F H:i').'–'.$startsAt->addHour()->format('H:i'),
             )
-            ->assertSee('до '.$pollClosesAtLabel)
+            ->assertSee('Проголосовать до:')
+            ->assertSee($pollClosesAtLabel)
+            ->assertSeeInOrder([
+                'Площадка',
+                'Дата и время',
+                'Детали опроса',
+                'Тип опроса',
+                'Создал опрос',
+                'Я в игре',
+            ])
             ->assertSee('data-modal-target="coordination-venue-map"', false)
             ->assertSee('data-event-map-open', false);
 
@@ -746,7 +755,11 @@ final class CoordinationWorkflowTest extends TestCase
                 false,
             )
             ->assertDontSee('до '.$poll->closes_at->format('d.m.Y H:i'))
-            ->assertSee('Режим голосования: Выбор одного варианта')
+            ->assertSeeInOrder([
+                'Детали опроса',
+                'Тип опроса',
+                'Выбор одного варианта',
+            ])
             ->assertDontSee('Войдите, чтобы проголосовать.');
     }
 

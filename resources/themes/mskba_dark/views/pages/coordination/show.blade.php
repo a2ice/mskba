@@ -61,60 +61,70 @@
     @if(session('error')) <div class="alert alert-danger mb-3">{{ session('error') }}</div> @endif
 
     <article class="coordination-poll">
-        <dl class="coordination-poll-context">
-            <div class="coordination-poll-context__item">
-                <dt>Создал опрос</dt>
-                <dd>{{ $organizerName }}</dd>
+        <div class="coordination-poll__heading">
+            <div>
+                <span class="badge badge--{{ $displayStatusVariant }}">{{ $displayStatusLabel }}</span>
+                @if(trim($poll->question) !== '')
+                    <h2 class="h3 mt-2 mb-1">{{ $poll->question }}</h2>
+                @endif
             </div>
-            @if($eventVotingVenue)
-                <div class="coordination-poll-context__item">
-                    <dt>Площадка</dt>
-                    <dd>
-                        @if($eventVotingHasMap)
-                            <button
-                                type="button"
-                                class="coordination-poll-context__location js-handler"
-                                data-handler="modal"
-                                data-modal-action="open"
-                                data-modal-target="coordination-venue-map"
-                                data-event-map-open
-                            >
-                                <span>{{ $eventVotingVenue->name }}</span>
+            @if($isOpen)
+                <p class="mb-0">Проголосовать до: <time datetime="{{ $pollClosesAt->toIso8601String() }}">{{ $pollClosesAtLabel }}</time></p>
+            @endif
+        </div>
+
+        @if($eventVotingVenue || $eventVotingTimeLabel || $eventVotingDate)
+            <dl class="coordination-poll-context">
+                @if($eventVotingVenue)
+                    <div class="coordination-poll-context__item">
+                        <dt>Площадка</dt>
+                        <dd>
+                            @if($eventVotingHasMap)
+                                <button
+                                    type="button"
+                                    class="coordination-poll-context__location js-handler"
+                                    data-handler="modal"
+                                    data-modal-action="open"
+                                    data-modal-target="coordination-venue-map"
+                                    data-event-map-open
+                                >
+                                    <span>{{ $eventVotingVenue->name }}</span>
+                                    @if($eventVotingAddress)
+                                        <small>{{ $eventVotingAddress }}</small>
+                                    @endif
+                                </button>
+                            @else
+                                <a href="{{ route('venues.show', $eventVotingVenue->routeIdentifier()) }}">
+                                    {{ $eventVotingVenue->name }}
+                                </a>
                                 @if($eventVotingAddress)
                                     <small>{{ $eventVotingAddress }}</small>
                                 @endif
-                            </button>
-                        @else
-                            <a href="{{ route('venues.show', $eventVotingVenue->routeIdentifier()) }}">
-                                {{ $eventVotingVenue->name }}
-                            </a>
-                            @if($eventVotingAddress)
-                                <small>{{ $eventVotingAddress }}</small>
                             @endif
-                        @endif
-                    </dd>
-                </div>
-            @endif
-            @if($eventVotingTimeLabel)
-                <div class="coordination-poll-context__item">
-                    <dt>Дата и время</dt>
-                    <dd>
-                        <time datetime="{{ $eventVotingStartsAt->toIso8601String() }}">
-                            {{ $eventVotingTimeLabel }}
-                        </time>
-                    </dd>
-                </div>
-            @elseif($eventVotingDate)
-                <div class="coordination-poll-context__item">
-                    <dt>Дата</dt>
-                    <dd>
-                        <time datetime="{{ $eventVotingDate->format('Y-m-d') }}">
-                            {{ $eventVotingDate->locale('ru')->translatedFormat('j F') }}
-                        </time>
-                    </dd>
-                </div>
-            @endif
-        </dl>
+                        </dd>
+                    </div>
+                @endif
+                @if($eventVotingTimeLabel)
+                    <div class="coordination-poll-context__item">
+                        <dt>Дата и время</dt>
+                        <dd>
+                            <time datetime="{{ $eventVotingStartsAt->toIso8601String() }}">
+                                {{ $eventVotingTimeLabel }}
+                            </time>
+                        </dd>
+                    </div>
+                @elseif($eventVotingDate)
+                    <div class="coordination-poll-context__item">
+                        <dt>Дата</dt>
+                        <dd>
+                            <time datetime="{{ $eventVotingDate->format('Y-m-d') }}">
+                                {{ $eventVotingDate->locale('ru')->translatedFormat('j F') }}
+                            </time>
+                        </dd>
+                    </div>
+                @endif
+            </dl>
+        @endif
 
         @if($coordination->polls->count() > 1)
             <div class="coordination-flow-progress mb-3" aria-label="Этапы согласования">
@@ -125,18 +135,20 @@
                 @endforeach
             </div>
         @endif
-        <div class="coordination-poll__heading">
-            <div>
-                <span class="badge badge--{{ $displayStatusVariant }}">{{ $displayStatusLabel }}</span>
-                @if(trim($poll->question) !== '')
-                    <h2 class="h3 mt-2 mb-1">{{ $poll->question }}</h2>
-                @endif
-                <p class="mb-0">Режим голосования: {{ $poll->selection_mode->label() }}</p>
-            </div>
-            @if($isOpen)
-                <time datetime="{{ $pollClosesAt->toIso8601String() }}">до {{ $pollClosesAtLabel }}</time>
-            @endif
-        </div>
+
+        <details class="coordination-poll-details">
+            <summary>Детали опроса</summary>
+            <dl class="coordination-poll-details__list">
+                <div class="coordination-poll-context__item">
+                    <dt>Тип опроса</dt>
+                    <dd>{{ $poll->selection_mode->label() }}</dd>
+                </div>
+                <div class="coordination-poll-context__item">
+                    <dt>Создал опрос</dt>
+                    <dd>{{ $organizerName }}</dd>
+                </div>
+            </dl>
+        </details>
 
         @auth
             @if($canSubmitVote)
@@ -182,7 +194,6 @@
         @if($isOpen && $poll->allows_suggestions)
             <section class="section-list-item mt-4">
                 <h2 class="h4 mb-2">Предложить вариант</h2>
-                <p>&nbsp;</p>
                 <form method="POST" action="{{ route('coordination.suggestion', $coordination) }}" class="coordination-suggestion-form">
                     @csrf
                     @switch($poll->subject_type->value)
