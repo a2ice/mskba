@@ -16,7 +16,7 @@ enum CoordinationFlowTypeEnum: string
         return match ($this) {
             self::SINGLE => 'Простой опрос',
             self::EVENT_SCHEDULING => 'Дата, время и площадка',
-            self::EVENT_ATTENDANCE => 'Собрать участников',
+            self::EVENT_ATTENDANCE => 'Сбор участников',
             self::EVENT_TIME_SELECTION => 'Выбрать время',
             self::EVENT_VENUE_SELECTION => 'Выбрать площадку',
             self::EVENT_CHANGE => 'Изменение мероприятия',

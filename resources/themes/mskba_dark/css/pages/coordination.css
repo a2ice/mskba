@@ -145,7 +145,10 @@
 }
 
 .coordination-poll-context__location {
-    display: block;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
     width: 100%;
     margin: 0;
     padding: 0;
@@ -156,6 +159,17 @@
     font-weight: inherit;
     text-align: left;
     cursor: pointer;
+}
+
+.coordination-poll-context__location > .ti {
+    margin-top: 2px;
+    color: var(--accent);
+    font-size: 18px;
+}
+
+.coordination-poll-context__location-copy {
+    display: block;
+    min-width: 0;
 }
 
 .coordination-poll-context__location:hover {

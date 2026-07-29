@@ -49,7 +49,7 @@ final class CoordinationWorkflowTest extends TestCase
             ->get(route('coordination.create'))
             ->assertOk()
             ->assertSeeInOrder([
-                'Собрать участников',
+                'Сбор участников',
                 'Простой опрос',
                 'Выбрать время',
                 'Выбрать площадку',
@@ -371,6 +371,10 @@ final class CoordinationWorkflowTest extends TestCase
             ->setTimezone('Europe/Moscow')
             ->locale('ru')
             ->translatedFormat('j F H:i');
+        $pollClosesAtBadgeLabel = $poll->closes_at
+            ->setTimezone('Europe/Moscow')
+            ->locale('ru')
+            ->translatedFormat('H:i j F');
         $this->assertSame(CoordinationFlowTypeEnum::EVENT_ATTENDANCE, $session->flow_type);
         $this->assertSame(
             ['going', 'not_going', 'thinking'],
@@ -388,13 +392,15 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSee(
                 $startsAt->locale('ru')->translatedFormat('j F H:i').'–'.$startsAt->addHour()->format('H:i'),
             )
-            ->assertSee('Проголосовать до:')
+            ->assertSee('Проголосовать до')
             ->assertSee($pollClosesAtLabel)
+            ->assertSee('Открыт · до '.$pollClosesAtBadgeLabel)
             ->assertSeeInOrder([
                 'Площадка',
                 'Дата и время',
                 'Детали опроса',
                 'Тип опроса',
+                'Сбор участников',
                 'Создал опрос',
                 'Я в игре',
             ])
@@ -758,7 +764,7 @@ final class CoordinationWorkflowTest extends TestCase
             ->assertSeeInOrder([
                 'Детали опроса',
                 'Тип опроса',
-                'Выбор одного варианта',
+                'Простой опрос',
             ])
             ->assertDontSee('Войдите, чтобы проголосовать.');
     }
