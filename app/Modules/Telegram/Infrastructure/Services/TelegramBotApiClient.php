@@ -48,6 +48,50 @@ final class TelegramBotApiClient
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, array{contents: string, filename: string, mime: string}>  $files
+     * @return array<string, mixed>
+     */
+    public function callMultipart(
+        string $method,
+        array $payload,
+        array $files,
+        ?int $timeoutSeconds = null,
+    ): array {
+        $token = (string) config('telegram.bot_token');
+
+        if ($token === '') {
+            throw new TelegramBotApiException('Telegram bot token is not configured.');
+        }
+
+        try {
+            $request = $this->request($timeoutSeconds)->asMultipart();
+
+            foreach ($files as $field => $file) {
+                $request = $request->attach(
+                    $field,
+                    $file['contents'],
+                    $file['filename'],
+                    ['Content-Type' => $file['mime']],
+                );
+            }
+
+            $response = $request
+                ->post($this->apiUrl($token, $method), $payload)
+                ->throw()
+                ->json();
+
+            if (! is_array($response) || data_get($response, 'ok') !== true) {
+                throw new TelegramBotApiException('Telegram API returned an invalid response.');
+            }
+
+            return $response;
+        } catch (ConnectionException|RequestException $exception) {
+            throw new TelegramBotApiException($this->safeError($exception, $token));
+        }
+    }
+
     private function request(?int $timeoutSeconds = null): PendingRequest
     {
         $options = [];

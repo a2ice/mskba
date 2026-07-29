@@ -3,6 +3,7 @@
 namespace App\Modules\Telegram\Application\Services;
 
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Media\Domain\Models\Media;
 use Illuminate\Support\Str;
 
 final class TelegramContentMessageBuilder
@@ -17,15 +18,11 @@ final class TelegramContentMessageBuilder
         return $this->message($content, 750);
     }
 
-    public function photoUrl(ContentItem $content): ?string
+    public function cover(ContentItem $content): ?Media
     {
-        $cover = $content->relationLoaded('cover')
+        return $content->relationLoaded('cover')
             ? $content->cover->first()
             : $content->cover()->first();
-
-        return $cover === null
-            ? null
-            : url($cover->publicUrl());
     }
 
     private function message(ContentItem $content, int $descriptionLimit): string

@@ -4,6 +4,7 @@ namespace App\Modules\Telegram\Infrastructure\Jobs;
 
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Telegram\Application\Services\TelegramContentMessageBuilder;
+use App\Modules\Telegram\Application\Services\TelegramPhotoPreparer;
 use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
 use App\Modules\Telegram\Infrastructure\Exceptions\TelegramBotApiException;
 use App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient;
@@ -26,18 +27,20 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
     public function handle(
         TelegramBotApiClient $telegram,
         TelegramContentMessageBuilder $messages,
+        TelegramPhotoPreparer $photos,
     ): void {
         if (! $telegram->isBotConfigured()) {
             return;
         }
 
         Cache::lock("telegram:content-publication:{$this->publicationId}", 30)
-            ->block(5, fn () => $this->sync($telegram, $messages));
+            ->block(5, fn () => $this->sync($telegram, $messages, $photos));
     }
 
     private function sync(
         TelegramBotApiClient $telegram,
         TelegramContentMessageBuilder $messages,
+        TelegramPhotoPreparer $photos,
     ): void {
         $publication = TelegramContentPublication::query()
             ->with(['contentItem.cover', 'chat'])
@@ -72,8 +75,9 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
                 return;
             }
 
-            $photoUrl = $messages->photoUrl($content);
-            $messageType = $photoUrl === null ? 'text' : 'photo';
+            $cover = $messages->cover($content);
+            $photo = $cover === null ? null : $photos->jpeg($cover);
+            $messageType = $photo === null ? 'text' : 'photo';
 
             if ($publication->message_id !== null && $publication->message_type !== $messageType) {
                 $telegram->call('deleteMessage', [
@@ -94,22 +98,24 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
                         $messages,
                         $content,
                         $publication->chat->telegram_chat_id,
-                        $photoUrl,
+                        $photo,
                     ),
                     'message_type' => $messageType,
                     'published_at' => $publication->published_at ?? now(),
                 ]);
             } elseif ($messageType === 'photo') {
-                $telegram->call('editMessageMedia', [
+                $telegram->callMultipart('editMessageMedia', [
                     'chat_id' => $publication->chat->telegram_chat_id,
                     'message_id' => $publication->message_id,
-                    'media' => [
+                    'media' => json_encode([
                         'type' => 'photo',
-                        'media' => $photoUrl,
+                        'media' => 'attach://photo',
                         'caption' => $messages->caption($content),
                         'parse_mode' => 'HTML',
-                    ],
-                    'reply_markup' => $messages->replyMarkup($content),
+                    ], JSON_THROW_ON_ERROR),
+                    'reply_markup' => json_encode($messages->replyMarkup($content), JSON_THROW_ON_ERROR),
+                ], [
+                    'photo' => $photo,
                 ]);
             } else {
                 $telegram->call('editMessageText', [
@@ -138,14 +144,17 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
         }
     }
 
+    /**
+     * @param  array{contents: string, filename: string, mime: string}|null  $photo
+     */
     private function sendMessage(
         TelegramBotApiClient $telegram,
         TelegramContentMessageBuilder $messages,
         ContentItem $content,
         int|string $chatId,
-        ?string $photoUrl,
+        ?array $photo,
     ): int {
-        $response = $photoUrl === null
+        $response = $photo === null
             ? $telegram->call('sendMessage', [
                 'chat_id' => $chatId,
                 'text' => $messages->text($content),
@@ -153,12 +162,13 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
                 'disable_web_page_preview' => false,
                 'reply_markup' => $messages->replyMarkup($content),
             ])
-            : $telegram->call('sendPhoto', [
+            : $telegram->callMultipart('sendPhoto', [
                 'chat_id' => $chatId,
-                'photo' => $photoUrl,
                 'caption' => $messages->caption($content),
                 'parse_mode' => 'HTML',
-                'reply_markup' => $messages->replyMarkup($content),
+                'reply_markup' => json_encode($messages->replyMarkup($content), JSON_THROW_ON_ERROR),
+            ], [
+                'photo' => $photo,
             ]);
 
         $messageId = data_get($response, 'result.message_id');

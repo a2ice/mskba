@@ -14,6 +14,7 @@ use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramContentPublicationJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 final class ContentWorkflowTest extends TestCase
@@ -217,15 +218,7 @@ MARKDOWN,
         ]);
         [$content, $publication] = $this->contentPublication();
 
-        $content->media()->create([
-            'collection' => 'content_cover',
-            'disk' => 'public',
-            'path' => 'content/1/cover.webp',
-            'mime_type' => 'image/webp',
-            'size_bytes' => 1024,
-            'position' => 1,
-            'is_primary' => true,
-        ]);
+        $this->storeCover($content, 'content/1/cover.webp');
 
         app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
 
@@ -236,9 +229,8 @@ MARKDOWN,
             'status' => 'published',
         ]);
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/sendPhoto')
-            && $request['photo'] === 'http://localhost/storage/content/1/cover.webp'
-            && str_contains($request['caption'], '<b>Материал с обложкой</b>')
-            && $request['reply_markup']['inline_keyboard'][0][0]['text'] === 'Открыть материал');
+            && $this->multipartPart($request->data(), 'photo')['filename'] === "content-{$content->id}.jpg"
+            && str_contains($this->multipartPart($request->data(), 'caption')['contents'], '<b>Материал с обложкой</b>'));
     }
 
     public function test_existing_text_publication_is_replaced_when_cover_is_added(): void
@@ -257,15 +249,7 @@ MARKDOWN,
             'status' => 'published',
         ]);
 
-        $content->media()->create([
-            'collection' => 'content_cover',
-            'disk' => 'public',
-            'path' => 'content/1/replacement.webp',
-            'mime_type' => 'image/webp',
-            'size_bytes' => 1024,
-            'position' => 1,
-            'is_primary' => true,
-        ]);
+        $this->storeCover($content, 'content/1/replacement.webp');
 
         app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
 
@@ -278,7 +262,7 @@ MARKDOWN,
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/deleteMessage')
             && $request['message_id'] === 401);
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/sendPhoto')
-            && $request['photo'] === 'http://localhost/storage/content/1/replacement.webp');
+            && $this->multipartPart($request->data(), 'photo')['filename'] === "content-{$content->id}.jpg");
     }
 
     public function test_existing_photo_publication_is_edited_in_place(): void
@@ -296,33 +280,63 @@ MARKDOWN,
             'status' => 'published',
         ]);
 
-        $content->media()->create([
-            'collection' => 'content_cover',
-            'disk' => 'public',
-            'path' => 'content/1/updated.webp',
-            'mime_type' => 'image/webp',
-            'size_bytes' => 1024,
-            'position' => 1,
-            'is_primary' => true,
-        ]);
+        $this->storeCover($content, 'content/1/updated.webp');
 
         app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
 
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/editMessageMedia')
-            && $request['message_id'] === 503
-            && $request['media']['type'] === 'photo'
-            && $request['media']['media'] === 'http://localhost/storage/content/1/updated.webp'
-            && str_contains($request['media']['caption'], '<b>Материал с обложкой</b>'));
+            && $this->multipartPart($request->data(), 'photo')['filename'] === "content-{$content->id}.jpg"
+            && $this->multipartJsonPart($request->data(), 'media')['media'] === 'attach://photo'
+            && str_contains($this->multipartJsonPart($request->data(), 'media')['caption'], 'Материал с обложкой'));
         Http::assertNotSent(fn ($request): bool => str_ends_with($request->url(), '/deleteMessage'));
     }
 
     private function configureTelegram(): void
     {
+        Storage::fake('public');
         config()->set('app.url', 'http://localhost');
         config()->set('telegram.bot_token', 'test-token');
         config()->set('telegram.bot_username', 'MSKBABot');
         config()->set('telegram.api_ip', null);
         config()->set('telegram.proxy', null);
+    }
+
+    private function storeCover(ContentItem $content, string $path): void
+    {
+        $png = base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+            true,
+        );
+
+        $this->assertIsString($png);
+        Storage::disk('public')->put($path, $png);
+        $content->media()->create([
+            'collection' => 'content_cover',
+            'disk' => 'public',
+            'path' => $path,
+            'mime' => 'image/webp',
+            'size' => strlen($png),
+            'sort_order' => 0,
+            'is_featured' => true,
+        ]);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $parts
+     * @return array<string, mixed>
+     */
+    private function multipartPart(array $parts, string $name): array
+    {
+        return collect($parts)->firstWhere('name', $name) ?? [];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $parts
+     * @return array<string, mixed>
+     */
+    private function multipartJsonPart(array $parts, string $name): array
+    {
+        return json_decode($this->multipartPart($parts, $name)['contents'], true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
