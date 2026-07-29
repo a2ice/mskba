@@ -27,8 +27,7 @@ final class TelegramCoordinationMessageBuilder
         }
 
         $lines[] = '';
-        $showResults = $poll->results_visibility === PollResultsVisibilityEnum::ALWAYS
-            || $poll->status !== PollStatusEnum::OPEN;
+        $showResults = $this->showsResults($poll);
         $optionsAreShownAsButtons = $poll->status === PollStatusEnum::OPEN
             && $poll->closes_at->isFuture()
             && $poll->selection_mode === PollSelectionModeEnum::SINGLE;
@@ -70,7 +69,7 @@ final class TelegramCoordinationMessageBuilder
             $lines[] = '';
         }
 
-        $lines[] = '⏱ До '.$poll->closes_at->timezone(config('app.timezone'))->format('d.m.Y H:i').' (МСК)';
+        $lines[] = '⏱ До '.$this->formatDateTime($poll->closes_at);
         $lines[] = 'Статус: <b>'.$this->escape($poll->status->label()).'</b>';
 
         if ($poll->selection_mode === PollSelectionModeEnum::MULTIPLE && $poll->status === PollStatusEnum::OPEN) {
@@ -93,8 +92,14 @@ final class TelegramCoordinationMessageBuilder
             && $poll->closes_at->isFuture()
             && $poll->selection_mode === PollSelectionModeEnum::SINGLE) {
             foreach ($poll->options as $option) {
+                $label = mb_substr($option->label, 0, 50);
+
+                if ($this->showsResults($poll)) {
+                    $label .= ' ('.$option->selections_count.')';
+                }
+
                 $keyboard[] = [[
-                    'text' => mb_substr($option->label, 0, 50),
+                    'text' => $label,
                     'callback_data' => "coord:{$poll->id}:vote:{$option->id}",
                 ]];
             }
@@ -117,10 +122,10 @@ final class TelegramCoordinationMessageBuilder
         $intent = ParticipationIntentEnum::tryFrom((string) ($option->value['intent'] ?? ''));
 
         return match ($intent) {
-            ParticipationIntentEnum::GOING => '✅',
-            ParticipationIntentEnum::NOT_GOING => '❌',
-            ParticipationIntentEnum::THINKING => '👀',
-            default => 'ℹ️',
+            ParticipationIntentEnum::GOING => '⇢',
+            ParticipationIntentEnum::NOT_GOING => '⇢',
+            ParticipationIntentEnum::THINKING => '⇢',
+            default => '⇢',
         };
     }
 
@@ -153,7 +158,7 @@ final class TelegramCoordinationMessageBuilder
         }
 
         $duration = max(0, (int) ($configuration['duration_minutes'] ?? 0));
-        $time = $startsAt->format('d.m.Y H:i');
+        $time = $startsAt->locale('ru')->translatedFormat('j F H:i');
 
         if ($duration > 0) {
             $time .= '–'.$startsAt->addMinutes($duration)->format('H:i');
@@ -161,9 +166,23 @@ final class TelegramCoordinationMessageBuilder
 
         return [
             '📍 <b>'.$this->escape($venue->name).'</b>',
-            '🗓 '.$time.' (МСК)',
+            '🗓 '.$time,
             '',
         ];
+    }
+
+    private function showsResults(Poll $poll): bool
+    {
+        return $poll->results_visibility === PollResultsVisibilityEnum::ALWAYS
+            || $poll->status !== PollStatusEnum::OPEN;
+    }
+
+    private function formatDateTime(CarbonImmutable $dateTime): string
+    {
+        return $dateTime
+            ->timezone((string) config('app.timezone', 'Europe/Moscow'))
+            ->locale('ru')
+            ->translatedFormat('j F H:i');
     }
 
     private function miniAppUrl(Poll $poll): string

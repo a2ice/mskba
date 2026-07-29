@@ -117,6 +117,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
 
             return str_contains($request['text'], '<b>Игра вечером</b>')
                 && ! str_contains($request['text'], '1. 19:00')
+                && $keyboard[0][0]['text'] === '19:00'
                 && $keyboard[0][0]['callback_data'] === "coord:{$poll->id}:vote:{$option->id}"
                 && $keyboard[array_key_last($keyboard)][0]['url']
                     === "https://t.me/MSKBABot?startapp=coordination_{$poll->session_id}";
@@ -179,6 +180,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
 
             return str_contains($request['text'], '• 19:00 — <b>1</b>')
                 && str_contains($request['text'], "Видимый\n\n")
+                && $keyboard[0][0]['text'] === '19:00 (1)'
                 && $keyboard[0][0]['callback_data'] === "coord:{$poll->id}:vote:{$option->id}";
         });
     }
@@ -232,7 +234,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
 
         app()->call([new SyncTelegramCoordinationPublicationJob($publication->id), 'handle']);
 
-        $expectedEventTime = '🗓 '.$startsAt->format('d.m.Y').' 19:00–20:30 (МСК)';
+        $expectedEventTime = '🗓 '.$startsAt->locale('ru')->translatedFormat('j F').' 19:00–20:30';
 
         Http::assertSent(fn ($request): bool => str_contains(
             $request['text'],
@@ -245,13 +247,19 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             $expectedEventTime,
         ) && str_contains(
             $request['text'],
-            "✅ Пойду — <b>0</b>\n\n",
+            "⇢ Пойду — <b>0</b>\n\n",
         ) && str_contains(
             $request['text'],
-            "❌ Не пойду — <b>0</b>\n\n",
+            "⇢ Не пойду — <b>0</b>\n\n",
         ) && str_contains(
             $request['text'],
-            "👀 Думаю — <b>0</b>\n\n",
+            "⇢ Думаю — <b>0</b>\n\n",
+        ) && $request['reply_markup']['inline_keyboard'][0][0]['text'] === 'Пойду (0)'
+            && $request['reply_markup']['inline_keyboard'][1][0]['text'] === 'Не пойду (0)'
+            && $request['reply_markup']['inline_keyboard'][2][0]['text'] === 'Думаю (0)'
+            && ! str_contains(
+                $request['text'],
+                '(МСК)',
         ));
     }
 
