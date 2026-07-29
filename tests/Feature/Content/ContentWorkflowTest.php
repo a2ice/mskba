@@ -75,6 +75,8 @@ final class ContentWorkflowTest extends TestCase
         $this->get(route('news.show', $content->alias))
             ->assertOk()
             ->assertSee('Рост, амплуа и игровые характеристики')
+            ->assertSee('data-mobile-section-sidebar', false)
+            ->assertSee('news-article-section')
             ->assertSee('/account/participation', false);
     }
 

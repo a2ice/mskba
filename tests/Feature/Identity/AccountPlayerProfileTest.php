@@ -26,7 +26,9 @@ final class AccountPlayerProfileTest extends TestCase
             ->assertSee('Характеристики игрока')
             ->assertSee('Самооценка игровых навыков')
             ->assertSee('Разыгрывающий')
-            ->assertSee('Игровое мышление');
+            ->assertSee('Игровое мышление')
+            ->assertSee('data-score-range', false)
+            ->assertSee('type="range"', false);
 
         $this->actingAs($user)
             ->get(route('account'))
@@ -89,6 +91,10 @@ final class AccountPlayerProfileTest extends TestCase
 
         $this->assertMatchesRegularExpression(
             '/<option[^>]*value="88"[^>]*selected[^>]*>/',
+            $profilePage->getContent(),
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="player-skill-stamina"[^>]*type="range"[^>]*value="8"/s',
             $profilePage->getContent(),
         );
     }

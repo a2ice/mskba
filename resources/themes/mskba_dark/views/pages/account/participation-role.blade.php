@@ -198,19 +198,12 @@
                             @continue(in_array($skill, $shootingSkillKeys, true))
                             <div class="form-group field account-player-profile__field">
                                 <label for="player-skill-{{ $skill }}">{{ $label }}</label>
-                                <select
-                                    id="player-skill-{{ $skill }}"
-                                    class="form-select"
-                                    name="self_assessment[{{ $skill }}]"
-                                >
-                                    <option value="">Не оценено</option>
-                                    @for($score = 1; $score <= 10; $score++)
-                                        <option
-                                            value="{{ $score }}"
-                                            @selected((string) old('self_assessment.'.$skill, $profile?->selfAssessment?->{$skill}) === (string) $score)
-                                        >{{ $score }}</option>
-                                    @endfor
-                                </select>
+                                @include('theme::partials.forms.score-range', [
+                                    'id' => 'player-skill-'.$skill,
+                                    'fieldName' => 'self_assessment['.$skill.']',
+                                    'oldFieldName' => 'self_assessment.'.$skill,
+                                    'value' => $profile?->selfAssessment?->{$skill} ?? 5,
+                                ])
                                 @error('self_assessment.'.$skill)
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
@@ -223,19 +216,12 @@
                                 @foreach($shootingSkillKeys as $skill)
                                     <div class="form-group field account-player-profile__field">
                                         <label for="player-skill-{{ $skill }}">{{ $playerSkills[$skill] }}</label>
-                                        <select
-                                            id="player-skill-{{ $skill }}"
-                                            class="form-select"
-                                            name="self_assessment[{{ $skill }}]"
-                                        >
-                                            <option value="">Не оценено</option>
-                                            @for($score = 1; $score <= 10; $score++)
-                                                <option
-                                                    value="{{ $score }}"
-                                                    @selected((string) old('self_assessment.'.$skill, $profile?->selfAssessment?->{$skill}) === (string) $score)
-                                                >{{ $score }}</option>
-                                            @endfor
-                                        </select>
+                                        @include('theme::partials.forms.score-range', [
+                                            'id' => 'player-skill-'.$skill,
+                                            'fieldName' => 'self_assessment['.$skill.']',
+                                            'oldFieldName' => 'self_assessment.'.$skill,
+                                            'value' => $profile?->selfAssessment?->{$skill} ?? 5,
+                                        ])
                                         @error('self_assessment.'.$skill)
                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                         @enderror
