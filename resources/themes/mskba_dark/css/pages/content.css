@@ -6,9 +6,9 @@
 .content-admin-section,
 .news-card,
 .news-article {
-    border: 1px solid var(--line);
+    /* border: 1px solid var(--line);
     border-radius: var(--radius-control);
-    background: var(--surface);
+    background: var(--surface); */
 }
 
 .content-admin-section {

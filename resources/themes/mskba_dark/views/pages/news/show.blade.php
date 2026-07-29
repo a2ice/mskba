@@ -33,8 +33,8 @@
     <article class="news-article">
         <header class="news-article__header">
             <div class="news-card__meta">
-                <span class="badge">{{ $contentItem->type->label() }}</span>
-                <time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}">{{ $contentItem->feed_published_at->translatedFormat('d F Y') }}</time>
+                <span class="badge badge--primary fs-smaller">{{ $contentItem->type->label() }}</span>
+                <time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}"><span class="fs-smaller">{{ $contentItem->feed_published_at->translatedFormat('d F Y') }}</span></time>
             </div>
             <p class="news-article__lead">{{ $contentItem->short_description }}</p>
         </header>
