@@ -52,7 +52,9 @@ final class AccountPlayerProfileTest extends TestCase
                     'speed' => 7,
                     'ball_handling' => 9,
                     'passing' => 8,
-                    'shooting' => 7,
+                    'close_range_shooting' => 8,
+                    'mid_range_shooting' => 7,
+                    'long_range_shooting' => 6,
                     'defense' => 6,
                     'rebounding' => 5,
                     'basketball_iq' => 9,
@@ -74,6 +76,9 @@ final class AccountPlayerProfileTest extends TestCase
         ]);
         $this->assertDatabaseHas('player_self_assessments', [
             'stamina' => 8,
+            'close_range_shooting' => 8,
+            'mid_range_shooting' => 7,
+            'long_range_shooting' => 6,
             'basketball_iq' => 9,
         ]);
     }
