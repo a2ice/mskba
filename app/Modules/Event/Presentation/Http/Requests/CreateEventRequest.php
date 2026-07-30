@@ -35,6 +35,40 @@ final class CreateEventRequest extends FormRequest
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
+            'team_a_id' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'nullable',
+                'integer',
+                Rule::exists('teams', 'id')->where(fn ($query) => $query
+                    ->whereNull('temporary_for_event_id')
+                    ->where('status', 'active')
+                    ->whereNull('deleted_at')),
+                'different:team_b_id',
+            ],
+            'team_b_id' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'nullable',
+                'integer',
+                Rule::exists('teams', 'id')->where(fn ($query) => $query
+                    ->whereNull('temporary_for_event_id')
+                    ->where('status', 'active')
+                    ->whereNull('deleted_at')),
+                'different:team_a_id',
+            ],
+            'side_a_size' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:7',
+            ],
+            'side_b_size' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'nullable',
+                'integer',
+                'min:1',
+                'max:7',
+            ],
             'participant_user_ids' => ['nullable', 'array', 'max:499'],
             'participant_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
             'publish_to_telegram' => ['required', 'boolean'],
@@ -63,6 +97,9 @@ final class CreateEventRequest extends FormRequest
             'duration_minutes.min' => 'Длительность должна быть больше нуля.',
             'duration_minutes.max' => 'Мероприятие должно завершиться в течение суток.',
             'max_participants.min' => 'Вместимость должна учитывать организатора и хотя бы одного участника.',
+            'team_a_id.required' => 'Выберите первую команду.',
+            'team_b_id.required' => 'Выберите вторую команду.',
+            'team_a_id.different' => 'Для игры нужны две разные команды.',
         ];
     }
 

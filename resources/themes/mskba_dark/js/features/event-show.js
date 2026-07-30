@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initEventVenueMap();
     initEventDescription();
     initEventShare();
-    initEventParticipantManagement();
+    const miniGames = initMiniGameManagement();
+    initEventParticipantManagement(miniGames);
 });
 
 function initEventHero() {
@@ -195,7 +196,151 @@ function initEventShare() {
     });
 }
 
-function initEventParticipantManagement() {
+function initMiniGameManagement() {
+    const section = document.querySelector('[data-event-mini-games]');
+    const form = section?.querySelector('[data-mini-game-form]');
+    const format = section?.querySelector('[data-mini-game-format]');
+    const sideASize = section?.querySelector('[data-mini-game-side-a-size]');
+    const sideBSize = section?.querySelector('[data-mini-game-side-b-size]');
+    const empty = section?.querySelector('[data-mini-game-empty]');
+    const overlay = section?.querySelector('[data-image-upload-overlay]');
+
+    if (!section || !form || !format || !sideASize || !sideBSize || !empty) {
+        return null;
+    }
+
+    let confirmedCount = Number.parseInt(section.dataset.confirmedCount || '0', 10);
+
+    const setLoading = (loading) => {
+        if (!overlay) {
+            return;
+        }
+
+        overlay.hidden = !loading;
+        section.classList.toggle('is-image-upload-loading', loading);
+    };
+
+    const availableFormats = () => {
+        const formats = [];
+        const maximumPlayers = Math.min(11, confirmedCount);
+
+        for (let players = 2; players <= maximumPlayers; players += 1) {
+            const sideA = Math.ceil(players / 2);
+            const sideB = Math.floor(players / 2);
+
+            if (sideA <= 6 && sideB <= 5) {
+                formats.push({ sideA, sideB });
+            }
+        }
+
+        return formats;
+    };
+
+    const syncFormatInputs = () => {
+        const option = format.selectedOptions[0];
+
+        if (!option) {
+            return;
+        }
+
+        sideASize.value = option.dataset.sideA || '';
+        sideBSize.value = option.dataset.sideB || '';
+    };
+
+    const renderFormats = () => {
+        const current = format.value;
+        const formats = availableFormats();
+        format.replaceChildren();
+
+        formats.forEach(({ sideA, sideB }) => {
+            const option = document.createElement('option');
+            option.value = `${sideA}x${sideB}`;
+            option.dataset.sideA = String(sideA);
+            option.dataset.sideB = String(sideB);
+            option.textContent = `${sideA}×${sideB}`;
+            format.append(option);
+        });
+
+        if (formats.some(({ sideA, sideB }) => `${sideA}x${sideB}` === current)) {
+            format.value = current;
+        } else if (formats.length > 0) {
+            const largestFormat = formats[formats.length - 1];
+            format.value = `${largestFormat.sideA}x${largestFormat.sideB}`;
+        }
+
+        const hasEnoughPlayers = formats.length > 0;
+        form.hidden = !hasEnoughPlayers;
+        empty.hidden = hasEnoughPlayers;
+        syncFormatInputs();
+    };
+
+    const createPlayerToggle = (participant, side) => {
+        const wrapper = document.createElement('div');
+        const label = document.createElement('label');
+        const input = document.createElement('input');
+        const control = document.createElement('span');
+        const title = document.createElement('strong');
+        const sideKey = side.toLowerCase();
+
+        wrapper.className = 'game-roster-toggle';
+        label.className = 'form-toggle';
+        label.htmlFor = `mini-game-side-${sideKey}-${participant.user_id}`;
+        input.id = label.htmlFor;
+        input.className = 'form-toggle__input';
+        input.type = 'checkbox';
+        input.name = `side_${sideKey}_user_ids[]`;
+        input.value = String(participant.user_id);
+        input.dataset.miniGamePlayerToggle = '';
+        input.dataset.playerId = String(participant.user_id);
+        input.dataset.side = side;
+        control.className = 'form-toggle__control';
+        control.setAttribute('aria-hidden', 'true');
+        title.className = 'form-toggle__title';
+        title.textContent = participant.name;
+        label.append(input, control, title);
+        wrapper.append(label);
+
+        return wrapper;
+    };
+
+    const addParticipant = (participant) => {
+        ['A', 'B'].forEach((side) => {
+            const roster = section.querySelector(`[data-mini-game-roster="${side}"]`);
+
+            if (roster && !section.querySelector(`[data-mini-game-player-toggle][data-side="${side}"][data-player-id="${participant.user_id}"]`)) {
+                roster.append(createPlayerToggle(participant, side));
+            }
+        });
+        confirmedCount += 1;
+        section.dataset.confirmedCount = String(confirmedCount);
+        renderFormats();
+    };
+
+    format.addEventListener('change', syncFormatInputs);
+    section.addEventListener('change', (event) => {
+        const toggle = event.target instanceof Element
+            ? event.target.closest('[data-mini-game-player-toggle]')
+            : null;
+
+        if (!toggle?.checked) {
+            return;
+        }
+
+        const otherSide = toggle.dataset.side === 'A' ? 'B' : 'A';
+        const otherToggle = section.querySelector(
+            `[data-mini-game-player-toggle][data-side="${otherSide}"][data-player-id="${toggle.dataset.playerId}"]`,
+        );
+
+        if (otherToggle) {
+            otherToggle.checked = false;
+        }
+    });
+    renderFormats();
+
+    return { addParticipant, setLoading };
+}
+
+function initEventParticipantManagement(miniGames) {
     const manager = document.querySelector('[data-event-participant-manager]');
     const form = manager?.querySelector('[data-event-participant-form]');
     const input = manager?.querySelector('[data-event-participant-search]');
@@ -204,12 +349,22 @@ function initEventParticipantManagement() {
     const control = manager?.querySelector('[data-event-participant-control]');
     const message = manager?.querySelector('[data-event-participant-message]');
     const selection = manager?.querySelector('[data-event-participant-selection]');
+    const status = manager?.querySelector('[data-event-participant-status]');
     const submitButton = manager?.querySelector('[data-event-participant-submit]');
     const searchUrl = manager?.dataset.searchUrl;
+    const focusTriggers = document.querySelectorAll('[data-event-participant-focus]');
 
-    if (!form || !input || !userId || !results || !control || !message || !selection || !submitButton || !searchUrl) {
+    if (!form || !input || !userId || !results || !control || !message || !selection || !status || !submitButton || !searchUrl) {
         return;
     }
+
+    focusTriggers.forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+            window.requestAnimationFrame(() => {
+                input.focus({ preventScroll: true });
+            });
+        });
+    });
 
     let debounceTimer = null;
     let requestController = null;
@@ -238,6 +393,11 @@ function initEventParticipantManagement() {
     const hideMessage = () => {
         message.textContent = '';
         message.classList.add('d-none');
+    };
+
+    const showStatus = (text) => {
+        status.textContent = text;
+        status.hidden = false;
     };
 
     const resetSelection = () => {
@@ -406,10 +566,42 @@ function initEventParticipantManagement() {
         }
     });
 
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
         if (userId.value === '') {
-            event.preventDefault();
             input.focus();
+            return;
+        }
+
+        hideMessage();
+        status.hidden = true;
+        submitButton.disabled = true;
+        miniGames?.setLoading(true);
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Не удалось добавить участника.');
+            }
+
+            miniGames?.addParticipant(payload.participant);
+            showStatus(payload.message || 'Участник добавлен в мероприятие.');
+            reset();
+        } catch (error) {
+            showMessage(error?.message || 'Не удалось добавить участника.');
+            submitButton.disabled = userId.value === '';
+        } finally {
+            miniGames?.setLoading(false);
         }
     });
 }

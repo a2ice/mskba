@@ -68,8 +68,11 @@ final class CoordinationFlowAdvancer
             }
 
             $timezone = $venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
-            $startsAt = CarbonImmutable::parse($date.' '.($interval['starts_at'] ?? ''), $timezone)->utc();
-            $endsAt = CarbonImmutable::parse($date.' '.($interval['ends_at'] ?? ''), $timezone)->utc();
+            // PostgreSQL connection uses the application timezone, therefore
+            // bindings must remain in venue-local time instead of being shifted
+            // to UTC and interpreted as local time for a second time.
+            $startsAt = CarbonImmutable::parse($date.' '.($interval['starts_at'] ?? ''), $timezone);
+            $endsAt = CarbonImmutable::parse($date.' '.($interval['ends_at'] ?? ''), $timezone);
 
             try {
                 $this->availability->assertAvailable(

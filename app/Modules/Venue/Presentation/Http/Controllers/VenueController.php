@@ -93,7 +93,7 @@ class VenueController extends Controller
                 'Y-m-d\TH:i',
                 $validated['starts_at'],
                 (string) config('app.timezone', 'Europe/Moscow'),
-            )->utc()
+            )
             : null;
 
         $venues = $searchVenues->handle(

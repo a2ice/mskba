@@ -2,6 +2,7 @@
 
 namespace App\Modules\Contract\Domain\Enums;
 
+use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Venue\Domain\Models\Venue;
 
 enum ContractMembershipScopeTypeEnum: string
@@ -25,9 +26,9 @@ enum ContractMembershipScopeTypeEnum: string
     {
         return match ($this) {
             self::VENUE => Venue::class,
+            self::TEAM => Team::class,
 
             self::EVENT,
-            self::TEAM,
             self::COMPANY => null,
         };
     }
@@ -36,9 +37,9 @@ enum ContractMembershipScopeTypeEnum: string
     {
         return match ($this) {
             self::VENUE => 'venues.show',
+            self::TEAM => 'teams.show',
 
             self::EVENT,
-            self::TEAM,
             self::COMPANY => null,
         };
     }
@@ -46,10 +47,10 @@ enum ContractMembershipScopeTypeEnum: string
     public function titleAttribute(): string
     {
         return match ($this) {
-            self::VENUE => 'name',
+            self::VENUE,
+            self::TEAM => 'name',
 
             self::EVENT,
-            self::TEAM,
             self::COMPANY => 'id',
         };
     }
@@ -58,9 +59,9 @@ enum ContractMembershipScopeTypeEnum: string
     {
         return match ($this) {
             self::VENUE => VenueMembershipAccessLevelEnum::class,
+            self::TEAM => TeamMembershipAccessLevelEnum::class,
 
             self::EVENT,
-            self::TEAM,
             self::COMPANY => null,
         };
     }

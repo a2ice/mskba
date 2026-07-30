@@ -13,6 +13,7 @@ use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
+use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
@@ -26,6 +27,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileContro
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
+use App\Modules\Team\Presentation\Http\Controllers\TeamController;
 use App\Modules\Telegram\Presentation\Http\Controllers\StartTelegramBotLoginController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramBotLoginStatusController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
@@ -268,6 +270,14 @@ Route::prefix('events')->group(function () {
             ->middleware('throttle:10,1')->name('events.result.photos.store');
         Route::delete('/{event}/result/photos/{photo}', [EventController::class, 'destroyResultPhoto'])
             ->middleware('throttle:20,1')->whereNumber('photo')->name('events.result.photos.destroy');
+        Route::get('/{event}/game', [GameController::class, 'manage'])->name('events.game.manage');
+        Route::post('/{event}/games', [GameController::class, 'createMiniGame'])->name('events.games.store');
+        Route::put('/{event}/game', [GameController::class, 'updateMiniGame'])->name('events.game.update');
+        Route::delete('/{event}/game', [GameController::class, 'destroyMiniGame'])->name('events.game.destroy');
+        Route::patch('/{event}/game/roster', [GameController::class, 'roster'])->name('events.game.roster');
+        Route::patch('/{event}/game/statistics', [GameController::class, 'statistics'])->name('events.game.statistics');
+        Route::post('/{event}/game/statistics/confirm', [GameController::class, 'confirmStatistics'])
+            ->name('events.game.statistics.confirm');
     });
 
     Route::get('/{event}', [EventController::class, 'show'])
@@ -277,6 +287,24 @@ Route::prefix('events')->group(function () {
 Route::get('/tournaments', [TournamentController::class, 'index'])
     ->name('tournaments.index')
     ->defaults('breadcrumb', 'Турниры');
+
+Route::prefix('teams')->group(function () {
+    Route::get('/', [TeamController::class, 'index'])->name('teams.index')->defaults('breadcrumb', 'Команды');
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [TeamController::class, 'create'])->name('teams.create')->defaults('breadcrumb', 'Новая команда');
+        Route::post('/', [TeamController::class, 'store'])->name('teams.store');
+        Route::get('/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit')->defaults('breadcrumb', 'Управление командой');
+        Route::put('/{team}', [TeamController::class, 'update'])->name('teams.update');
+        Route::post('/{team}/logo', [TeamController::class, 'storeLogo'])
+            ->middleware('throttle:10,1')->name('teams.logo.store');
+        Route::delete('/{team}/logo', [TeamController::class, 'destroyLogo'])
+            ->middleware('throttle:20,1')->name('teams.logo.destroy');
+        Route::post('/{team}/members', [TeamController::class, 'addMember'])->name('teams.members.store');
+        Route::delete('/{team}/members/{membership}', [TeamController::class, 'removeMember'])
+            ->whereNumber('membership')->name('teams.members.destroy');
+    });
+    Route::get('/{team}', [TeamController::class, 'show'])->name('teams.show');
+});
 
 Route::prefix('coordination')->group(function () {
     Route::get('/', [CoordinationController::class, 'index'])

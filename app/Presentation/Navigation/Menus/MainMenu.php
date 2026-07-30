@@ -96,7 +96,7 @@ final class MainMenu implements MenuHandler
             ],
             [
                 'label' => 'Команды',
-                'url' => $this->routeUrl('/#teams'),
+                'url' => $this->routeUrl('/teams'),
                 'active' => $this->isActiveRoute('teams, teams.*'),
                 'visible' => true,
             ],

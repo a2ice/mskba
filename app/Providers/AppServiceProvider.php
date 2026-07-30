@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Modules\Event\Application\Listeners\RecalculatePlayerObjectiveAssessments;
+use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\User;
@@ -21,6 +23,7 @@ use App\Modules\Venue\Infrastructure\Observers\VenueSearchCacheObserver;
 use App\Presentation\Navigation\ConfigMenuResolver;
 use App\Presentation\Navigation\MenuResolver;
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Support\Facades\Event as EventFacade;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -44,6 +47,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        EventFacade::listen(
+            GameStatisticsConfirmed::class,
+            RecalculatePlayerObjectiveAssessments::class,
+        );
+
         // Register the theme's view namespace
         View::addNamespace('theme', app(ThemeResolver::class)->viewsPath());
         View::composer([

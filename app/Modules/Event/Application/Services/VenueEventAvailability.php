@@ -88,7 +88,7 @@ final class VenueEventAvailability
             }
         }
 
-        $endsAt = $endBoundary->utc()->startOfMinute();
+        $endsAt = $endBoundary->startOfMinute();
 
         if ($endsAt->lessThanOrEqualTo($startsAt)) {
             throw new InvalidArgumentException('После выбранного времени нет свободного интервала.');

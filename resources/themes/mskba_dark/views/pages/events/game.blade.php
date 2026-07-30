@@ -1,0 +1,182 @@
+@extends('theme::layouts.section-sidebar', [
+    'title' => 'Игра · '.$event->title,
+    'sectionId' => 'events',
+    'sectionClass' => 'events-section',
+    'contentTitle' => 'Управление игрой',
+    'contentSubtitle' => $event->title,
+])
+
+@php
+    $sides = $event->gameSides->keyBy('slot');
+    $roster = $event->gameRosterEntries->groupBy('game_side_id');
+    $stats = $event->gamePlayerStatistics->keyBy('user_id');
+    $statisticsConfirmed = $event->gameDetail->statistics_status === \App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum::CONFIRMED;
+    $name = static function ($user): string {
+        $profile = $user->profile;
+        return trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+            ?: $user->username
+            ?: 'Пользователь #'.$user->id;
+    };
+    $parentCandidates = $event->parentEvent === null
+        ? collect()
+        : $event->parentEvent->participants
+            ->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)
+            ->map(fn ($participant) => $participant->user)
+            ->keyBy('id');
+@endphp
+
+@section('section-sidebar')
+    <div class="section-sidebar-block">
+        <h2 class="section-sidebar-block__title">Игра</h2>
+        <ul class="sidebar-nav nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="{{ route('events.show', $event->routeIdentifier()) }}">Обзор</a></li>
+            <li class="nav-item active"><a class="nav-link active" href="{{ route('events.game.manage', $event->routeIdentifier()) }}">Состав и статистика</a></li>
+            @if($event->parentEvent)
+                <li class="nav-item"><a class="nav-link" href="{{ route('events.show', $event->parentEvent->routeIdentifier()) }}">К тренировке</a></li>
+            @endif
+        </ul>
+    </div>
+@endsection
+
+@section('section-content')
+    @if(session('status')) <div class="alert alert-success">{{ session('status') }}</div> @endif
+    @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
+
+    <section class="section-card">
+        <span class="eyebrow">Формат {{ $event->gameDetail->formatLabel() }}</span>
+        @if($event->parentEvent && !$statisticsConfirmed)
+            <details class="event-mini-games__create mb-4">
+                <summary>Параметры мини-игры</summary>
+                <form method="POST" action="{{ route('events.game.update', $event->routeIdentifier()) }}">
+                    @csrf @method('PUT')
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Название</label>
+                            <input class="form-control" name="title" value="{{ old('title', $event->title) }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Начало</label>
+                            <input class="form-control" type="time" name="starts_at" value="{{ old('starts_at', $event->gameDetail->is_time_scheduled ? $event->starts_at->format('H:i') : '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Окончание</label>
+                            <input class="form-control" type="time" name="ends_at" value="{{ old('ends_at', $event->gameDetail->is_time_scheduled ? $event->ends_at->format('H:i') : '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Игроков A</label>
+                            <input class="form-control" type="number" min="1" max="7" name="side_a_size" value="{{ old('side_a_size', $event->gameDetail->side_a_size) }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Игроков B</label>
+                            <input class="form-control" type="number" min="1" max="7" name="side_b_size" value="{{ old('side_b_size', $event->gameDetail->side_b_size) }}" required>
+                        </div>
+                        <div class="col-12"><p class="form-hint mb-0">Время необязательно. Оставьте оба поля пустыми, если мини-игра проходит без заранее заданного интервала.</p></div>
+                        <div class="col-md-6">
+                            <label class="form-label">Название команды A</label>
+                            <input class="form-control" name="side_a_name" value="{{ old('side_a_name', $sides['A']->display_name) }}" maxlength="80" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Название команды B</label>
+                            <input class="form-control" name="side_b_name" value="{{ old('side_b_name', $sides['B']->display_name) }}" maxlength="80" required>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <button class="btn btn--primary btn--sm" type="submit">Сохранить параметры</button>
+                    </div>
+                </form>
+                <form class="mt-2" method="POST" action="{{ route('events.game.destroy', $event->routeIdentifier()) }}" onsubmit="return confirm('Удалить мини-игру? Это действие нельзя отменить.')">
+                    @csrf @method('DELETE')
+                    <button class="btn btn--danger btn--sm" type="submit">Удалить мини-игру</button>
+                </form>
+            </details>
+        @endif
+        <h2>Состав на игру</h2>
+        <p>Это снимок состава именно для этой игры. Изменения здесь не меняют постоянный состав команды.</p>
+        @if($statisticsConfirmed)
+            <div class="alert alert-info">Статистика подтверждена: состав зафиксирован как исторический снимок.</div>
+        @endif
+        <form method="POST" action="{{ route('events.game.roster', $event->routeIdentifier()) }}">
+            @csrf @method('PATCH')
+            <div class="game-roster-grid">
+                @foreach(['A', 'B'] as $slot)
+                    @php
+                        $side = $sides[$slot];
+                        $selected = $roster->get($side->id, collect())->pluck('user_id');
+                        $candidates = $event->parent_event_id
+                            ? $parentCandidates
+                            : $side->team->memberships->map(fn ($membership) => $membership->user)->keyBy('id');
+                    @endphp
+                    <fieldset class="game-side-card">
+                        <legend>{{ $side->display_name }}</legend>
+                        @forelse($candidates as $user)
+                            <label class="form-check">
+                                <input type="checkbox" name="side_{{ strtolower($slot) }}_user_ids[]" value="{{ $user->id }}" @checked($selected->contains($user->id))>
+                                <span>{{ $name($user) }}</span>
+                            </label>
+                        @empty
+                            <p>Доступных игроков пока нет.</p>
+                        @endforelse
+                    </fieldset>
+                @endforeach
+            </div>
+            @unless($statisticsConfirmed)
+                <button class="btn btn--primary btn--sm" type="submit">Сохранить состав</button>
+            @endunless
+        </form>
+    </section>
+
+    <section class="section-card">
+        <span class="eyebrow">{{ $event->gameDetail->statistics_status->label() }}</span>
+        <h2>Результат и статистика</h2>
+        <form method="POST" action="{{ route('events.game.statistics', $event->routeIdentifier()) }}">
+            @csrf @method('PATCH')
+            <div class="game-score-row">
+                @foreach(['A', 'B'] as $slot)
+                    <label>
+                        <span>{{ $sides[$slot]->display_name }}</span>
+                        <input class="form-control" type="number" min="0" max="999" name="scores[{{ $slot }}]" value="{{ old('scores.'.$slot, $sides[$slot]->score) }}">
+                    </label>
+                @endforeach
+            </div>
+            <div class="game-statistics-table-wrap">
+                <table class="game-statistics-table">
+                    <thead><tr><th>Игрок</th>@foreach($statisticsFields as $label)<th>{{ $label }}</th>@endforeach<th>Очки*</th></tr></thead>
+                    <tbody>
+                    @foreach($event->gameRosterEntries as $entry)
+                        @php $stat = $stats->get($entry->user_id); @endphp
+                        <tr>
+                            <th>{{ $name($entry->user) }}</th>
+                            @foreach($statisticsFields as $field => $label)
+                                <td><input type="number" min="0" max="999" name="players[{{ $entry->user_id }}][{{ $field }}]" value="{{ old('players.'.$entry->user_id.'.'.$field, $stat?->{$field} ?? 0) }}" aria-label="{{ $label }} · {{ $name($entry->user) }}"></td>
+                            @endforeach
+                            <td>{{ $stat?->points() ?? 0 }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <p class="form-hint">* Очки игроков считаются по попаданиям. Счёт команды хранится отдельно: расхождение допустимо, но требует проверки.</p>
+            @foreach(['A', 'B'] as $slot)
+                @php
+                    $sidePlayerPoints = $roster->get($sides[$slot]->id, collect())
+                        ->sum(fn ($entry) => $stats->get($entry->user_id)?->points() ?? 0);
+                    $sideScore = $sides[$slot]->score;
+                @endphp
+                @if($sideScore !== null && $sideScore !== $sidePlayerPoints)
+                    <div class="alert alert-warning">
+                        {{ $sides[$slot]->display_name }}: счёт {{ $sideScore }}, сумма очков игроков {{ $sidePlayerPoints }}. Проверьте расхождение перед подтверждением.
+                    </div>
+                @endif
+            @endforeach
+            @unless($statisticsConfirmed)
+                <button class="btn btn--primary btn--sm" type="submit">Сохранить статистику</button>
+            @endunless
+        </form>
+        @if($event->gameDetail->statistics_status === \App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum::READY)
+            <form method="POST" action="{{ route('events.game.statistics.confirm', $event->routeIdentifier()) }}" onsubmit="return confirm('Подтвердить статистику? После этого изменить её будет нельзя.')">
+                @csrf
+                <button class="btn btn--secondary btn--sm" type="submit">Подтвердить статистику</button>
+            </form>
+        @endif
+    </section>
+@endsection

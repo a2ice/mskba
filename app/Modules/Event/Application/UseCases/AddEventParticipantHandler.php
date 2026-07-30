@@ -81,9 +81,8 @@ final class AddEventParticipantHandler
 
     private function assertCanChangeParticipants(Event $event): void
     {
-        if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
-            || $event->starts_at->lessThanOrEqualTo(now())) {
-            throw new InvalidArgumentException('Состав завершённого или отменённого мероприятия менять нельзя.');
+        if (in_array($event->status, [EventStatusEnum::DRAFT, EventStatusEnum::CANCELLED], true)) {
+            throw new InvalidArgumentException('Состав чернового или отменённого мероприятия менять нельзя.');
         }
     }
 }

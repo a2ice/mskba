@@ -70,7 +70,7 @@ final class EventWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Вечерняя игра')
             ->assertSee('Вы организатор');
-        $this->get(route('events.index', ['type' => 'game']))
+        $this->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
             ->assertSee('Вечерняя игра');
         $slotStart = $event->booking->starts_at->setTimezone('Europe/Moscow');
@@ -687,11 +687,11 @@ final class EventWorkflowTest extends TestCase
         $this->assertSame($targetVenue->id, $event->venue_id);
         $this->assertSame($targetVenue->id, $booking->venue_id);
         $this->assertStringStartsWith(
-            $newStart->utc()->format('Y-m-d H:i'),
+            $newStart->format('Y-m-d H:i'),
             (string) $event->getRawOriginal('starts_at'),
         );
         $this->assertStringStartsWith(
-            $newStart->addHour()->utc()->format('Y-m-d H:i'),
+            $newStart->addHour()->format('Y-m-d H:i'),
             (string) $event->getRawOriginal('ends_at'),
         );
         $this->assertTrue($booking->starts_at->equalTo($event->starts_at));
@@ -749,11 +749,11 @@ final class EventWorkflowTest extends TestCase
         $this->assertSame($sourceVenue->id, $event->venue_id);
         $this->assertSame($sourceVenue->id, $booking->venue_id);
         $this->assertStringStartsWith(
-            $start->utc()->format('Y-m-d H:i'),
+            $start->format('Y-m-d H:i'),
             (string) $event->getRawOriginal('starts_at'),
         );
         $this->assertStringStartsWith(
-            $start->utc()->format('Y-m-d H:i'),
+            $start->format('Y-m-d H:i'),
             (string) $booking->getRawOriginal('starts_at'),
         );
     }
@@ -917,7 +917,7 @@ final class EventWorkflowTest extends TestCase
 
         $this->actingAs($organizer)
             ->get(route('events.index', [
-                'type' => EventTypeEnum::GAME->value,
+                'type' => EventTypeEnum::GAME_TRAINING->value,
                 'date_from' => $eventDate,
                 'date_to' => $eventDate,
             ]))
@@ -997,6 +997,47 @@ final class EventWorkflowTest extends TestCase
                 'user_id' => $hiddenUser->id,
             ])
             ->assertSessionHas('error', 'Этот пользователь недоступен для добавления.');
+    }
+
+    public function test_organizer_adds_participant_to_ended_event_via_ajax_for_retrospective_mini_game(): void
+    {
+        $organizer = User::factory()->create(['username' => 'retrospective-owner']);
+        $participant = User::factory()->create(['username' => 'retrospective-player']);
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(
+            route('events.store'),
+            [
+                ...$this->payload($venue, $start, $end),
+                'type' => EventTypeEnum::GAME_TRAINING->value,
+            ],
+        );
+        $event = $venue->events()->firstOrFail();
+
+        $this->actingAs($organizer)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Для создания мини-игры нужны хотя бы два участника.')
+            ->assertSee('href="#event-participant-management"', false);
+
+        $event->forceFill([
+            'starts_at' => now()->subHours(2),
+            'ends_at' => now()->subHour(),
+        ])->save();
+
+        $this->actingAs($organizer)
+            ->postJson(route('events.participants.manage.store', $event->routeIdentifier()), [
+                'user_id' => $participant->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('participant.user_id', $participant->id)
+            ->assertJsonPath('participant.name', 'retrospective-player');
+
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $participant->id,
+            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+            'confirmation_version' => $event->participation_confirmation_version,
+        ]);
     }
 
     public function test_multiple_responsible_participants_accept_invitation_and_organizer_can_remove_them(): void
@@ -1096,7 +1137,7 @@ final class EventWorkflowTest extends TestCase
         return [
             'venue_id' => $venue->id,
             'title' => 'Вечерняя игра',
-            'type' => 'game',
+            'type' => EventTypeEnum::GAME_TRAINING->value,
             'visibility' => 'public',
             'description' => 'Собираемся играть в баскетбол.',
             'starts_at' => $start->format('Y-m-d\TH:i'),
@@ -1110,7 +1151,7 @@ final class EventWorkflowTest extends TestCase
     {
         return array_merge([
             'title' => 'Вечерняя игра',
-            'type' => EventTypeEnum::GAME->value,
+            'type' => EventTypeEnum::GAME_TRAINING->value,
             'visibility' => 'public',
             'description' => 'Собираемся играть в баскетбол.',
             'max_participants' => 10,

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\Services;
 
+use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -20,8 +21,13 @@ final class EventManagementAccess
     {
         $isOrganizer = $actor->user_id !== null
             && $event->organizerActor()->where('user_id', $actor->user_id)->exists();
+        $isResponsible = $actor->user_id !== null
+            && $event->participants()
+                ->where('user_id', $actor->user_id)
+                ->where('responsibility_status', EventResponsibilityStatusEnum::ACCEPTED->value)
+                ->exists();
 
-        return $isOrganizer
+        return $isOrganizer || $isResponsible
             || ($actor->user?->isConfirmed() === true
                 && $actor->user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN));
     }

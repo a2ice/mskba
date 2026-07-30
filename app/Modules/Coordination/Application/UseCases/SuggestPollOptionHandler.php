@@ -83,7 +83,7 @@ final class SuggestPollOptionHandler
                 ->with(['schedule.intervals', 'schedule.exceptions.intervals'])
                 ->findOrFail((int) $configuration['venue_id']);
             $timezone = $venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
-            $startsAt = CarbonImmutable::parse($configuration['date'].' '.$value['time'], $timezone)->utc();
+            $startsAt = CarbonImmutable::parse($configuration['date'].' '.$value['time'], $timezone);
             $this->availability->resolveEndsAt($venue, $startsAt, $duration);
         }
 
@@ -92,7 +92,8 @@ final class SuggestPollOptionHandler
             $venue = Venue::query()
                 ->with(['schedule.intervals', 'schedule.exceptions.intervals'])
                 ->findOrFail((int) $value['venue_id']);
-            $startsAt = CarbonImmutable::parse((string) $configuration['starts_at'])->utc();
+            $startsAt = CarbonImmutable::parse((string) $configuration['starts_at'])
+                ->setTimezone($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
             $this->availability->resolveEndsAt($venue, $startsAt, $duration);
         }
     }

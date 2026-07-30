@@ -1,0 +1,17 @@
+@extends('theme::layouts.section-sidebar', [
+    'title' => 'Новая команда', 'sectionId' => 'teams', 'sectionClass' => 'teams-section',
+    'contentTitle' => 'Новая команда', 'contentSubtitle' => 'Создатель становится владельцем и отвечает за состав.',
+])
+@section('section-sidebar')
+<div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команды</h2><ul class="sidebar-nav nav flex-column">
+<li class="nav-item"><a class="nav-link" href="{{ route('teams.index') }}">Все команды</a></li>
+<li class="nav-item active"><a class="nav-link active" href="{{ route('teams.create') }}">Создать</a></li>
+</ul></div>
+@endsection
+@section('section-content')
+<form method="POST" action="{{ route('teams.store') }}">@csrf
+<div class="form-group field mb-3"><label class="form-label">Название</label><input class="form-control" name="name" value="{{ old('name') }}" required maxlength="150">@error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>
+<div class="form-group field mb-4"><label class="form-label">Описание</label><textarea class="form-control" name="description" rows="6" maxlength="5000">{{ old('description') }}</textarea></div>
+<button class="btn btn--primary">Создать команду</button>
+</form>
+@endsection

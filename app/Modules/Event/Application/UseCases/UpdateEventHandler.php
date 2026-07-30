@@ -63,6 +63,14 @@ final class UpdateEventHandler
             }
 
             $this->access->assertCanManage($event, $actor);
+            $requestedType = EventTypeEnum::from($data['type']);
+
+            if ($requestedType !== $event->type
+                && ($requestedType === EventTypeEnum::GAME || $event->type === EventTypeEnum::GAME)) {
+                throw new InvalidArgumentException(
+                    'Тип «Игра» нельзя назначить или изменить через обычное редактирование мероприятия.'
+                );
+            }
 
             if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
                 || $event->ends_at->lessThanOrEqualTo(now())) {
@@ -105,8 +113,8 @@ final class UpdateEventHandler
                 || $localStart->format('Y-m-d H:i') !== $event->starts_at->setTimezone($timezone)->format('Y-m-d H:i')
                 || $durationMinutes !== $currentDuration
             );
-            $startsAt = $bookingChanged ? $localStart->utc() : $event->starts_at;
-            $endsAt = $bookingChanged ? $localStart->addMinutes($durationMinutes)->utc() : $event->ends_at;
+            $startsAt = $bookingChanged ? $localStart : $event->starts_at;
+            $endsAt = $bookingChanged ? $localStart->addMinutes($durationMinutes) : $event->ends_at;
 
             if ($bookingChanged) {
                 if (! $currentVenue->hasFreeAccess() || ! $targetVenue->hasFreeAccess()) {
@@ -115,7 +123,7 @@ final class UpdateEventHandler
                     );
                 }
 
-                $minimumStartsAt = CarbonImmutable::now('UTC')->addMinutes(15)->ceilMinute();
+                $minimumStartsAt = CarbonImmutable::now($timezone)->addMinutes(15)->ceilMinute();
 
                 if ($startsAt->lessThan($minimumStartsAt)) {
                     throw new InvalidArgumentException('Начало должно быть не раньше чем через 15 минут.');
@@ -141,7 +149,7 @@ final class UpdateEventHandler
             $event->forceFill([
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
-                'type' => EventTypeEnum::from($data['type']),
+                'type' => $requestedType,
                 'visibility' => EventVisibilityEnum::from($data['visibility']),
                 'description' => $data['description'] ?? null,
                 'max_participants' => $maxParticipants,

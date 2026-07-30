@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
+    'parent_event_id',
     'venue_id',
     'organizer_actor_id',
     'title',
@@ -71,6 +72,16 @@ class Event extends Model
         return $this->belongsTo(Venue::class);
     }
 
+    public function parentEvent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_event_id');
+    }
+
+    public function childGames(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_event_id');
+    }
+
     public function organizerActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'organizer_actor_id');
@@ -84,6 +95,26 @@ class Event extends Model
     public function booking(): HasOne
     {
         return $this->hasOne(VenueBooking::class);
+    }
+
+    public function gameDetail(): HasOne
+    {
+        return $this->hasOne(GameDetail::class);
+    }
+
+    public function gameSides(): HasMany
+    {
+        return $this->hasMany(GameSide::class);
+    }
+
+    public function gameRosterEntries(): HasMany
+    {
+        return $this->hasMany(GameRosterEntry::class);
+    }
+
+    public function gamePlayerStatistics(): HasMany
+    {
+        return $this->hasMany(GamePlayerStatistic::class);
     }
 
     public function telegramPublications(): HasMany

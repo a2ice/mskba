@@ -3,6 +3,7 @@
     use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
     use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
     use App\Modules\Event\Domain\Enums\EventStatusEnum;
+    use App\Modules\Event\Domain\Enums\EventTypeEnum;
     use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
     use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 
@@ -28,6 +29,17 @@
         ->where('confirmation_version', $event->participation_confirmation_version)
         ->values();
     $confirmedCount = $confirmedParticipants->count();
+    $miniGameFormats = $confirmedCount < 2
+        ? collect()
+        : collect(range(2, min(11, $confirmedCount)))
+            ->map(fn (int $players): array => [
+                'side_a_size' => (int) ceil($players / 2),
+                'side_b_size' => (int) floor($players / 2),
+            ])
+            ->filter(fn (array $format): bool => $format['side_a_size'] <= 6 && $format['side_b_size'] <= 5)
+            ->values();
+    $defaultMiniGameFormat = $miniGameFormats->last() ?? ['side_a_size' => 1, 'side_b_size' => 1];
+    $canManageComposition = ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::DRAFT], true);
     $remainingPlaces = $event->max_participants === null
         ? null
         : max(0, $event->max_participants - $confirmedCount);
@@ -382,8 +394,132 @@
                         <i class="ti ti-chevron-down"></i>
                     </summary>
                     <div class="event-management__body">
-                        @if($event->starts_at->isFuture() && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
+                        @if($event->type === EventTypeEnum::GAME && $event->gameDetail)
+                            <section class="event-game-management-link">
+                                <div>
+                                    <span class="eyebrow">Игра</span>
+                                    <h3>Состав, счёт и статистика</h3>
+                                    <p>Зафиксируйте участников матча и внесите показатели игроков.</p>
+                                </div>
+                                <a class="btn btn--primary btn--sm" href="{{ route('events.game.manage', $event->routeIdentifier()) }}">Управлять игрой</a>
+                            </section>
+                        @endif
+
+                        @if(in_array($event->type, [EventTypeEnum::TRAINING, EventTypeEnum::GAME_TRAINING], true))
                             <section
+                                class="event-mini-games"
+                                data-event-mini-games
+                                data-confirmed-count="{{ $confirmedCount }}"
+                                data-image-upload-surface
+                            >
+                                @include('theme::partials.image-upload-loading', [
+                                    'text' => 'Обновляем доступный состав и формат игры…',
+                                ])
+                                <div>
+                                    <span class="eyebrow">Мини-игры</span>
+                                    <h3>Игры внутри тренировки</h3>
+                                    <p>Состав выбирается только из подтверждённых участников этого мероприятия.</p>
+                                </div>
+                                @if($event->childGames->isNotEmpty())
+                                    <div class="event-mini-games__list">
+                                        @foreach($event->childGames as $childGame)
+                                            <article>
+                                                <div>
+                                                    <strong>{{ $childGame->title }}</strong>
+                                                    <span>
+                                                        {{ $childGame->gameDetail?->is_time_scheduled
+                                                            ? $childGame->starts_at->format('H:i').'–'.$childGame->ends_at->format('H:i')
+                                                            : 'Время не задано' }}
+                                                        · {{ $childGame->gameDetail?->formatLabel() }}
+                                                    </span>
+                                                </div>
+                                                <a class="btn btn--secondary btn--sm" href="{{ route('events.game.manage', $childGame->routeIdentifier()) }}">Состав и статистика</a>
+                                            </article>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @if($canManageComposition)
+                                    <details class="event-mini-games__create">
+                                        <summary class="btn btn--sm btn--secondary"><span class="fc-white">Добавить мини-игру</span></summary>
+                                        <div class="event-mini-games__empty" data-mini-game-empty @if($confirmedCount >= 2) hidden @endif>
+                                            <p>Для создания мини-игры нужны хотя бы два участника.</p>
+                                            <a href="#event-participant-management" data-event-participant-focus>Добавить игроков</a>
+                                        </div>
+                                        <form
+                                            method="POST"
+                                            action="{{ route('events.games.store', $event->routeIdentifier()) }}"
+                                            data-mini-game-form
+                                            @if($confirmedCount < 2) hidden @endif
+                                        >
+                                            @csrf
+                                            <div class="row g-3">
+                                                <div class="col-12"><label class="form-label">Название</label><input class="form-control" name="title" value="{{ old('title', 'Мини-игра') }}" required></div>
+                                                <div class="col-md-3"><label class="form-label">Начало</label><input class="form-control" type="time" name="starts_at" value="{{ old('starts_at') }}"></div>
+                                                <div class="col-md-3"><label class="form-label">Окончание</label><input class="form-control" type="time" name="ends_at" value="{{ old('ends_at') }}"></div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label" for="miniGameFormat">Формат игры</label>
+                                                    <select id="miniGameFormat" class="form-control" data-mini-game-format>
+                                                        @foreach($miniGameFormats as $format)
+                                                            <option
+                                                                value="{{ $format['side_a_size'] }}x{{ $format['side_b_size'] }}"
+                                                                data-side-a="{{ $format['side_a_size'] }}"
+                                                                data-side-b="{{ $format['side_b_size'] }}"
+                                                                @selected(
+                                                                    (int) old('side_a_size', $defaultMiniGameFormat['side_a_size']) === $format['side_a_size']
+                                                                    && (int) old('side_b_size', $defaultMiniGameFormat['side_b_size']) === $format['side_b_size']
+                                                                )
+                                                            >
+                                                                {{ $format['side_a_size'] }}×{{ $format['side_b_size'] }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                    <input type="hidden" name="side_a_size" value="{{ old('side_a_size', $defaultMiniGameFormat['side_a_size']) }}" data-mini-game-side-a-size>
+                                                    <input type="hidden" name="side_b_size" value="{{ old('side_b_size', $defaultMiniGameFormat['side_b_size']) }}" data-mini-game-side-b-size>
+                                                    <p class="form-hint mb-0">Доступные форматы зависят от количества участников мероприятия.</p>
+                                                </div>
+                                                <div class="col-12"><p class="form-hint mb-0">Время необязательно. Если план неизвестен, оставьте оба поля пустыми.</p></div>
+                                                <div class="col-md-6"><label class="form-label">Название команды A</label><input class="form-control" name="side_a_name" value="{{ old('side_a_name', 'Команда A') }}" maxlength="80" required></div>
+                                                <div class="col-md-6"><label class="form-label">Название команды B</label><input class="form-control" name="side_b_name" value="{{ old('side_b_name', 'Команда B') }}" maxlength="80" required></div>
+                                            </div>
+                                            <div class="game-roster-grid mt-3">
+                                                @foreach(['A', 'B'] as $slot)
+                                                    <fieldset class="game-side-card">
+                                                        <legend>Команда {{ $slot }}</legend>
+                                                        @foreach($confirmedParticipants as $participant)
+                                                            @php
+                                                                $profile = $participant->user->profile;
+                                                                $candidateName = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+                                                                    ?: $participant->user->username;
+                                                            @endphp
+                                                            @include('theme::partials.forms.toggle', [
+                                                                'id' => 'mini-game-side-'.strtolower($slot).'-'.$participant->user_id,
+                                                                'name' => 'side_'.strtolower($slot).'_user_ids[]',
+                                                                'value' => $participant->user_id,
+                                                                'title' => $candidateName,
+                                                                'checked' => in_array($participant->user_id, old('side_'.strtolower($slot).'_user_ids', []), false),
+                                                                'includeHiddenInput' => false,
+                                                                'wrapperClass' => 'game-roster-toggle',
+                                                                'inputAttributes' => [
+                                                                    'data-mini-game-player-toggle' => true,
+                                                                    'data-player-id' => $participant->user_id,
+                                                                    'data-side' => $slot,
+                                                                ],
+                                                            ])
+                                                        @endforeach
+                                                        <div data-mini-game-roster="{{ $slot }}"></div>
+                                                    </fieldset>
+                                                @endforeach
+                                            </div>
+                                            <button class="btn btn--primary btn--sm" type="submit">Создать мини-игру</button>
+                                        </form>
+                                    </details>
+                                @endif
+                            </section>
+                        @endif
+
+                        @if($canManageComposition)
+                            <section
+                                id="event-participant-management"
                                 class="event-participant-manager"
                                 data-event-participant-manager
                                 data-search-url="{{ route('events.participants.candidates', $event->routeIdentifier()) }}"
@@ -421,10 +557,13 @@
                                     <div class="predictive-search__message text-danger d-none" data-event-participant-message></div>
                                     <input type="hidden" name="user_id" data-event-participant-user-id>
                                     <p class="event-participant-search__selection" data-event-participant-selection hidden></p>
+                                    <p class="event-participant-search__status" data-event-participant-status hidden></p>
                                     <button class="btn btn--primary btn--sm" type="submit" data-event-participant-submit disabled>Добавить</button>
                                 </form>
                             </section>
+                        @endif
 
+                        @if($event->starts_at->isFuture() && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
                             @if($confirmedParticipants->where('role', EventParticipantRoleEnum::PARTICIPANT)->isNotEmpty())
                                 <section class="event-responsibility-manager">
                                     <div>

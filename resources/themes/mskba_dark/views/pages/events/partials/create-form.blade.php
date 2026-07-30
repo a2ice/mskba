@@ -28,6 +28,48 @@
             @foreach($types as $type)<option value="{{ $type->value }}" data-title-prefix="{{ $type->label() }}" @selected(old('type', $defaultType->value) === $type->value)>{{ $type->label() }}</option>@endforeach
         </select>
     </div>
+    @if(isset($teams))
+        <fieldset class="form-group field mb-4" data-game-team-fields @if(old('type', $defaultType->value) !== \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME->value) hidden @endif>
+            <legend class="form-label">Команды и формат игры</legend>
+            <p class="form-text mb-3">Выберите две постоянные команды. Текущий активный состав будет сохранён как снимок этой игры и его можно будет скорректировать перед началом.</p>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="{{ $formIdPrefix }}TeamA">Команда A</label>
+                    <select id="{{ $formIdPrefix }}TeamA" class="form-select @error('team_a_id') is-invalid @enderror" name="team_a_id">
+                        <option value="">Выберите команду</option>
+                        @foreach($teams as $team)
+                            <option value="{{ $team->id }}" @selected((string) old('team_a_id') === (string) $team->id)>{{ $team->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('team_a_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="{{ $formIdPrefix }}TeamB">Команда B</label>
+                    <select id="{{ $formIdPrefix }}TeamB" class="form-select @error('team_b_id') is-invalid @enderror" name="team_b_id">
+                        <option value="">Выберите команду</option>
+                        @foreach($teams as $team)
+                            <option value="{{ $team->id }}" @selected((string) old('team_b_id') === (string) $team->id)>{{ $team->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('team_b_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="{{ $formIdPrefix }}SideASize">Игроков на площадке у A</label>
+                    <select id="{{ $formIdPrefix }}SideASize" class="form-select" name="side_a_size">
+                        @foreach(range(1, 7) as $size)<option value="{{ $size }}" @selected((int) old('side_a_size', 5) === $size)>{{ $size }}</option>@endforeach
+                    </select>
+                </div>
+                <div class="col-md-6 form-group field">
+                    <label class="form-label" for="{{ $formIdPrefix }}SideBSize">Игроков на площадке у B</label>
+                    <select id="{{ $formIdPrefix }}SideBSize" class="form-select" name="side_b_size">
+                        @foreach(range(1, 7) as $size)<option value="{{ $size }}" @selected((int) old('side_b_size', 5) === $size)>{{ $size }}</option>@endforeach
+                    </select>
+                </div>
+            </div>
+        </fieldset>
+    @endif
     <div class="form-group field mb-3">
         @include('theme::partials.venues.predictive-selector', [
             'id' => $formIdPrefix.'Venue',

@@ -31,6 +31,8 @@ use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Team\Domain\Enums\TeamStatusEnum;
+use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
 use App\Presentation\Theming\ThemeResolver;
@@ -118,6 +120,11 @@ final class EventController extends Controller
             'durationOptions' => range(30, 480, 30),
             'defaultDuration' => 60,
             'telegramChats' => $telegramChats->activeEventChats(),
+            'teams' => Team::query()
+                ->whereNull('temporary_for_event_id')
+                ->where('status', TeamStatusEnum::ACTIVE->value)
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
@@ -281,15 +288,39 @@ final class EventController extends Controller
         string $event,
         AddEventParticipantHandler $participants,
         CurrentActorResolver $actors,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $validated = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
         try {
-            $participants->handle($event, $actor, (int) $validated['user_id']);
+            $managedEvent = $participants->handle($event, $actor, (int) $validated['user_id']);
         } catch (InvalidArgumentException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
+
             return back()->with('error', $exception->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            $participant = $managedEvent->participants()
+                ->with('user.profile')
+                ->where('user_id', (int) $validated['user_id'])
+                ->firstOrFail();
+            $profile = $participant->user->profile;
+            $name = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+                ?: $participant->user->username
+                ?: 'Пользователь #'.$participant->user_id;
+
+            return response()->json([
+                'message' => 'Участник добавлен в мероприятие.',
+                'participant' => [
+                    'user_id' => $participant->user_id,
+                    'name' => $name,
+                    'username' => $participant->user->username,
+                ],
+            ]);
         }
 
         return back()->with('status', 'Участник добавлен в мероприятие.');

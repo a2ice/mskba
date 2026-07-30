@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
+use App\Modules\Event\Application\Services\GameManagementService;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
@@ -24,9 +25,10 @@ final class CreateEventHandler
     public function __construct(
         private readonly VenueEventAvailability $availability,
         private readonly CyrillicTransliterator $transliterator,
+        private readonly GameManagementService $games,
     ) {}
 
-    /** @param array{venue_id: int, title: string, type: string, visibility: string, description?: string|null, starts_at: string, duration_minutes: int, max_participants?: int|null} $data */
+    /** @param array<string, mixed> $data */
     public function handle(Actor $actor, array $data): Event
     {
         if ($actor->user_id === null) {
@@ -44,8 +46,11 @@ final class CreateEventHandler
                 throw new InvalidArgumentException('Мероприятие должно завершиться в течение суток.');
             }
 
-            $startsAt = $localStart->utc();
-            $endsAt = $localStart->addMinutes($durationMinutes)->utc();
+            // PostgreSQL connection uses the application timezone. Keep the
+            // local value here: Laravel serializes bindings without an offset,
+            // and converting to UTC first would shift the event by three hours.
+            $startsAt = $localStart;
+            $endsAt = $localStart->addMinutes($durationMinutes);
 
             $this->availability->assertAvailable($venue, $startsAt, $endsAt);
 
@@ -83,6 +88,16 @@ final class CreateEventHandler
                 'status' => EventParticipantStatusEnum::CONFIRMED,
                 'joined_at' => now(),
             ]);
+
+            if ($event->type === EventTypeEnum::GAME) {
+                $this->games->initializeStandalone(
+                    $event,
+                    (int) $data['team_a_id'],
+                    (int) $data['team_b_id'],
+                    (int) ($data['side_a_size'] ?? 5),
+                    (int) ($data['side_b_size'] ?? 5),
+                );
+            }
 
             return $event->load(['venue', 'booking', 'participants.user']);
         });

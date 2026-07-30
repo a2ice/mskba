@@ -32,6 +32,11 @@ final class ShowEventHandler
                 'organizerActor.user.telegramAccount',
                 'organizerActor.user.contacts',
                 'participants.user.profile.activeAvatar',
+                'gameDetail',
+                'gameSides.team',
+                'childGames' => fn ($query) => $query
+                    ->with(['gameDetail', 'gameSides.team'])
+                    ->orderBy('starts_at'),
                 'media' => fn ($query) => $query->where('collection', 'event_results')->orderBy('sort_order')->orderBy('id'),
             ])
             ->firstOrFail();
