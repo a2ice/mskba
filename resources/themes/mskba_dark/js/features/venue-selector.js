@@ -247,7 +247,7 @@ function initVenueSelector(container) {
             const address = document.createElement('span');
 
             option.type = 'button';
-            option.className = 'address-suggest__item venue-selector-option';
+            option.className = 'address-suggest__item predictive-search__item venue-selector-option';
             option.dataset.venueSelectorOption = String(index);
             option.setAttribute('role', 'option');
 
@@ -256,7 +256,7 @@ function initVenueSelector(container) {
             option.append(title);
 
             if (venue.address) {
-                address.className = 'address-suggest__metro venue-selector-option__address';
+                address.className = 'address-suggest__metro predictive-search__meta venue-selector-option__address';
                 address.textContent = displayAddress(venue.address);
                 option.append(address);
             }

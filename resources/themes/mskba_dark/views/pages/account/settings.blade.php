@@ -152,22 +152,29 @@
                             <label class="form-label" for="privacy-users-{{ $type->value }}">
                                 Разрешённые пользователи
                             </label>
-                            <div class="address-suggest__input-wrap">
+                            <div class="predictive-search__input-wrap">
                                 <input
                                     id="privacy-users-{{ $type->value }}"
-                                    type="search"
-                                    class="form-control"
+                                    type="text"
+                                    class="form-control predictive-search__input"
                                     placeholder="Начните вводить имя или логин..."
                                     autocomplete="off"
                                     data-privacy-user-search
                                 >
+                                <button
+                                    type="button"
+                                    class="predictive-search__control"
+                                    data-privacy-user-control
+                                    hidden
+                                    aria-label="Очистить поиск"
+                                ></button>
                                 <div
-                                    class="address-suggest__list account-privacy__results d-none"
+                                    class="predictive-search__list account-privacy__results d-none"
                                     role="listbox"
                                     data-privacy-user-results
                                 ></div>
                             </div>
-                            <p class="account-privacy__search-message text-muted" data-privacy-user-message>
+                            <p class="predictive-search__message account-privacy__search-message text-muted" data-privacy-user-message>
                                 Введите не менее двух символов.
                             </p>
                             <div class="account-privacy__selected" data-privacy-selected>

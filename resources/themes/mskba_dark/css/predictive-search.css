@@ -1,0 +1,151 @@
+.predictive-search,
+.address-suggest {
+    position: relative;
+}
+
+.predictive-search__input-wrap,
+.address-suggest__input-wrap {
+    position: relative;
+}
+
+.predictive-search__input-wrap > .predictive-search__input,
+.address-suggest__input-wrap > [data-address-suggest-input] {
+    padding-right: 44px;
+}
+
+.predictive-search__control,
+.address-suggest__control {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+}
+
+.predictive-search__control[hidden],
+.address-suggest__control[hidden] {
+    display: none;
+}
+
+.predictive-search__control::before,
+.predictive-search__control::after,
+.address-suggest__control::before,
+.address-suggest__control::after {
+    position: absolute;
+    top: 12px;
+    left: 5px;
+    width: 16px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    content: '';
+}
+
+.predictive-search__control::before,
+.address-suggest__control::before {
+    transform: rotate(45deg);
+}
+
+.predictive-search__control::after,
+.address-suggest__control::after {
+    transform: rotate(-45deg);
+}
+
+.predictive-search__control:hover,
+.predictive-search__control:focus-visible,
+.address-suggest__control:hover,
+.address-suggest__control:focus-visible {
+    color: var(--text);
+}
+
+.predictive-search__control.is-loading::before,
+.address-suggest__control.is-loading::before {
+    top: 4px;
+    left: 4px;
+    width: 18px;
+    height: 18px;
+    transform: none;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    background: transparent;
+    animation: predictive-search-spin 0.7s linear infinite;
+}
+
+.predictive-search__control.is-loading::after,
+.address-suggest__control.is-loading::after {
+    display: none;
+}
+
+@keyframes predictive-search-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.predictive-search__list,
+.address-suggest__list {
+    position: absolute;
+    z-index: 50;
+    top: 100%;
+    right: 0;
+    left: 0;
+    overflow-y: auto;
+    max-height: 260px;
+    margin-top: 4px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.predictive-search__item,
+.address-suggest__item {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+}
+
+.predictive-search__item:last-child,
+.address-suggest__item:last-child {
+    border-bottom: 0;
+}
+
+.predictive-search__item:hover,
+.predictive-search__item:focus,
+.address-suggest__item:hover,
+.address-suggest__item:focus {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.predictive-search__label,
+.address-suggest__label {
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.predictive-search__meta,
+.address-suggest__metro {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.predictive-search__message,
+.address-suggest__message {
+    margin-top: 6px;
+    font-size: 12px;
+}

@@ -396,21 +396,29 @@
                                 <form method="POST" action="{{ route('events.participants.manage.store', $event->routeIdentifier()) }}" data-event-participant-form>
                                     @csrf
                                     <label class="form-label" for="eventParticipantSearch">Пользователь</label>
-                                    <div class="event-participant-search">
+                                    <div class="predictive-search__input-wrap event-participant-search">
                                         <input
                                             id="eventParticipantSearch"
-                                            class="form-control"
-                                            type="search"
+                                            class="form-control predictive-search__input"
+                                            type="text"
                                             autocomplete="off"
                                             placeholder="Введите имя или логин"
                                             data-event-participant-search
                                         >
-                                        <span class="event-participant-search__loader" data-event-participant-loader hidden aria-label="Идёт поиск"></span>
-                                        <button type="button" class="event-participant-search__clear" data-event-participant-clear hidden aria-label="Очистить поиск">
-                                            <i class="ti ti-x" aria-hidden="true"></i>
-                                        </button>
-                                        <div class="event-participant-search__results" data-event-participant-results hidden></div>
+                                        <button
+                                            type="button"
+                                            class="predictive-search__control"
+                                            data-event-participant-control
+                                            hidden
+                                            aria-label="Очистить поиск"
+                                        ></button>
+                                        <div
+                                            class="predictive-search__list event-participant-search__results d-none"
+                                            role="listbox"
+                                            data-event-participant-results
+                                        ></div>
                                     </div>
+                                    <div class="predictive-search__message text-danger d-none" data-event-participant-message></div>
                                     <input type="hidden" name="user_id" data-event-participant-user-id>
                                     <p class="event-participant-search__selection" data-event-participant-selection hidden></p>
                                     <button class="btn btn--primary btn--sm" type="submit" data-event-participant-submit disabled>Добавить</button>

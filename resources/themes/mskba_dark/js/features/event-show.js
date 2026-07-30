@@ -201,13 +201,13 @@ function initEventParticipantManagement() {
     const input = manager?.querySelector('[data-event-participant-search]');
     const userId = manager?.querySelector('[data-event-participant-user-id]');
     const results = manager?.querySelector('[data-event-participant-results]');
-    const loader = manager?.querySelector('[data-event-participant-loader]');
-    const clearButton = manager?.querySelector('[data-event-participant-clear]');
+    const control = manager?.querySelector('[data-event-participant-control]');
+    const message = manager?.querySelector('[data-event-participant-message]');
     const selection = manager?.querySelector('[data-event-participant-selection]');
     const submitButton = manager?.querySelector('[data-event-participant-submit]');
     const searchUrl = manager?.dataset.searchUrl;
 
-    if (!form || !input || !userId || !results || !loader || !clearButton || !selection || !submitButton || !searchUrl) {
+    if (!form || !input || !userId || !results || !control || !message || !selection || !submitButton || !searchUrl) {
         return;
     }
 
@@ -215,10 +215,29 @@ function initEventParticipantManagement() {
     let requestController = null;
     let selectedName = '';
 
-    const setLoading = (isLoading) => {
-        loader.hidden = !isLoading;
-        clearButton.hidden = isLoading || input.value === '';
-        input.setAttribute('aria-busy', String(isLoading));
+    const setControlState = (state) => {
+        control.hidden = state === 'hidden';
+        control.disabled = state === 'loading';
+        control.classList.toggle('is-loading', state === 'loading');
+        control.setAttribute(
+            'aria-label',
+            state === 'loading' ? 'Идёт поиск пользователей' : 'Очистить поиск',
+        );
+        input.setAttribute('aria-busy', String(state === 'loading'));
+    };
+
+    const updateControl = () => {
+        setControlState(input.value ? 'clear' : 'hidden');
+    };
+
+    const showMessage = (text) => {
+        message.textContent = text;
+        message.classList.remove('d-none');
+    };
+
+    const hideMessage = () => {
+        message.textContent = '';
+        message.classList.add('d-none');
     };
 
     const resetSelection = () => {
@@ -230,7 +249,7 @@ function initEventParticipantManagement() {
     };
 
     const hideResults = () => {
-        results.hidden = true;
+        results.classList.add('d-none');
         results.replaceChildren();
     };
 
@@ -240,7 +259,8 @@ function initEventParticipantManagement() {
         input.value = '';
         resetSelection();
         hideResults();
-        setLoading(false);
+        hideMessage();
+        updateControl();
         input.focus();
     };
 
@@ -252,17 +272,17 @@ function initEventParticipantManagement() {
         selection.hidden = false;
         submitButton.disabled = false;
         hideResults();
-        setLoading(false);
+        hideMessage();
+        updateControl();
     };
 
     const renderResults = (users) => {
         results.replaceChildren();
 
         if (!users.length) {
-            const empty = document.createElement('p');
-            empty.className = 'event-participant-search__empty';
-            empty.textContent = 'Доступные пользователи не найдены.';
-            results.append(empty);
+            hideResults();
+            showMessage('Варианты не найдены.');
+            return;
         } else {
             users.forEach((user) => {
                 const option = document.createElement('button');
@@ -270,8 +290,11 @@ function initEventParticipantManagement() {
                 const username = document.createElement('span');
 
                 option.type = 'button';
-                option.className = 'event-participant-search__option';
+                option.className = 'predictive-search__item event-participant-search__option';
+                option.setAttribute('role', 'option');
+                name.className = 'predictive-search__label';
                 name.textContent = user.name;
+                username.className = 'predictive-search__meta';
                 username.textContent = user.username ? `@${user.username}` : `ID ${user.id}`;
                 option.append(name, username);
                 option.addEventListener('click', () => selectUser(user));
@@ -279,7 +302,8 @@ function initEventParticipantManagement() {
             });
         }
 
-        results.hidden = false;
+        hideMessage();
+        results.classList.remove('d-none');
     };
 
     const search = async () => {
@@ -287,20 +311,23 @@ function initEventParticipantManagement() {
 
         if (query.length < 2) {
             hideResults();
-            setLoading(false);
+            hideMessage();
+            updateControl();
             return;
         }
 
         requestController?.abort();
-        requestController = new AbortController();
-        setLoading(true);
+        const controller = new AbortController();
+        requestController = controller;
+        hideMessage();
+        setControlState('loading');
 
         try {
             const url = new URL(searchUrl, window.location.origin);
             url.searchParams.set('query', query);
             const response = await fetch(url, {
                 headers: { Accept: 'application/json' },
-                signal: requestController.signal,
+                signal: controller.signal,
             });
             const payload = await response.json();
 
@@ -314,14 +341,13 @@ function initEventParticipantManagement() {
                 return;
             }
 
-            results.replaceChildren();
-            const message = document.createElement('p');
-            message.className = 'event-participant-search__empty is-error';
-            message.textContent = error?.message || 'Не удалось выполнить поиск.';
-            results.append(message);
-            results.hidden = false;
+            hideResults();
+            showMessage(error?.message || 'Не удалось выполнить поиск.');
         } finally {
-            setLoading(false);
+            if (requestController === controller) {
+                requestController = null;
+                updateControl();
+            }
         }
     };
 
@@ -330,26 +356,50 @@ function initEventParticipantManagement() {
             resetSelection();
         }
 
-        clearButton.hidden = input.value === '';
+        requestController?.abort();
+        requestController = null;
+        hideMessage();
+        updateControl();
         window.clearTimeout(debounceTimer);
 
         if (input.value.trim().length < 2) {
-            requestController?.abort();
             hideResults();
-            setLoading(false);
+            updateControl();
             return;
         }
 
+        setControlState('loading');
         debounceTimer = window.setTimeout(search, 250);
     });
 
     input.addEventListener('focus', () => {
         if (results.childElementCount > 0 && userId.value === '') {
-            results.hidden = false;
+            results.classList.remove('d-none');
         }
     });
 
-    clearButton.addEventListener('click', reset);
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+            const firstOption = results.querySelector('.predictive-search__item');
+            if (firstOption) {
+                event.preventDefault();
+                firstOption.focus();
+            }
+        }
+
+        if (event.key === 'Escape') {
+            hideResults();
+        }
+    });
+
+    results.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            hideResults();
+            input.focus();
+        }
+    });
+
+    control.addEventListener('click', reset);
     document.addEventListener('click', (event) => {
         if (!manager.contains(event.target)) {
             hideResults();

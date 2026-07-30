@@ -46,10 +46,10 @@
 >
     <label class="form-label" for="{{ $id }}Search">{{ $label }}</label>
 
-    <div class="address-suggest__input-wrap venue-selector__input-wrap">
+    <div class="address-suggest__input-wrap predictive-search__input-wrap venue-selector__input-wrap">
         <input
             id="{{ $id }}Search"
-            class="form-control input-predictive @error($name) is-invalid @enderror"
+            class="form-control input-predictive predictive-search__input @error($name) is-invalid @enderror"
             type="text"
             value="{{ $selectedLabel }}"
             placeholder="Начните вводить название, улицу, метро или тег..."
@@ -64,20 +64,20 @@
             data-venue-selector-value
         >
         <button
-            class="address-suggest__control venue-selector__control"
+            class="address-suggest__control predictive-search__control venue-selector__control"
             type="button"
             aria-label="Очистить площадку"
             data-venue-selector-clear
             @if(!$selectedVenue) hidden @endif
         ></button>
         <div
-            class="address-suggest__list venue-selector__list d-none"
+            class="address-suggest__list predictive-search__list venue-selector__list d-none"
             role="listbox"
             data-venue-selector-list
         ></div>
     </div>
 
-    <div class="address-suggest__message text-danger d-none" data-venue-selector-message></div>
+    <div class="address-suggest__message predictive-search__message text-danger d-none" data-venue-selector-message></div>
     @error($name) <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
 
     <div class="venue-selector__links mt-2">

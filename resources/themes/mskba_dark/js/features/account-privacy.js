@@ -4,6 +4,7 @@ function initPrivacyRule(rule) {
     const visibility = rule.querySelector('[data-privacy-visibility]');
     const usersSection = rule.querySelector('[data-privacy-users]');
     const input = rule.querySelector('[data-privacy-user-search]');
+    const control = rule.querySelector('[data-privacy-user-control]');
     const results = rule.querySelector('[data-privacy-user-results]');
     const selected = rule.querySelector('[data-privacy-selected]');
     const message = rule.querySelector('[data-privacy-user-message]');
@@ -11,7 +12,7 @@ function initPrivacyRule(rule) {
     let timer = null;
     let controller = null;
 
-    if (!visibility || !usersSection || !input || !results || !selected || !message || !searchUrl) {
+    if (!visibility || !usersSection || !input || !control || !results || !selected || !message || !searchUrl) {
         return;
     }
 
@@ -28,18 +29,39 @@ function initPrivacyRule(rule) {
         const query = input.value.trim();
         if (query.length < 2) {
             message.textContent = 'Введите не менее двух символов.';
+            message.classList.remove('text-danger');
+            updateControl();
             return;
         }
 
-        message.textContent = 'Ищем пользователей…';
+        message.textContent = '';
+        message.classList.remove('text-danger');
+        setControlState('loading');
         timer = window.setTimeout(() => search(query), 300);
     });
 
     input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+            const firstOption = results.querySelector('[data-privacy-user-option]');
+            if (firstOption) {
+                event.preventDefault();
+                firstOption.focus();
+            }
+        }
+
         if (event.key === 'Escape') {
             hideResults();
         }
     });
+
+    results.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            hideResults();
+            input.focus();
+        }
+    });
+
+    control.addEventListener('click', resetSearch);
 
     results.addEventListener('click', (event) => {
         const option = event.target.closest('[data-privacy-user-option]');
@@ -76,7 +98,8 @@ function initPrivacyRule(rule) {
 
     async function search(query) {
         controller?.abort();
-        controller = new AbortController();
+        const requestController = new AbortController();
+        controller = requestController;
 
         try {
             const url = new URL(searchUrl, window.location.origin);
@@ -85,7 +108,7 @@ function initPrivacyRule(rule) {
             const response = await fetch(url, {
                 headers: { Accept: 'application/json' },
                 credentials: 'same-origin',
-                signal: controller.signal,
+                signal: requestController.signal,
             });
             const payload = await response.json().catch(() => ({}));
 
@@ -97,6 +120,13 @@ function initPrivacyRule(rule) {
         } catch (error) {
             if (error.name !== 'AbortError') {
                 message.textContent = error.message || 'Не удалось найти пользователей.';
+                message.classList.add('text-danger');
+                hideResults();
+            }
+        } finally {
+            if (controller === requestController) {
+                controller = null;
+                updateControl();
             }
         }
     }
@@ -117,13 +147,15 @@ function initPrivacyRule(rule) {
             const username = document.createElement('span');
 
             option.type = 'button';
-            option.className = 'address-suggest__item';
+            option.className = 'predictive-search__item';
             option.dataset.privacyUserOption = String(index);
+            option.setAttribute('role', 'option');
+            name.className = 'predictive-search__label';
             name.textContent = user.name;
             option.append(name);
 
             if (user.username) {
-                username.className = 'address-suggest__metro';
+                username.className = 'predictive-search__meta';
                 username.textContent = `@${user.username}`;
                 option.append(username);
             }
@@ -133,13 +165,15 @@ function initPrivacyRule(rule) {
 
         if (availableUsers.length === 0) {
             message.textContent = users.length === 0
-                ? 'Пользователи не найдены.'
+                ? 'Варианты не найдены.'
                 : 'Все найденные пользователи уже выбраны.';
+            message.classList.add('text-danger');
             hideResults();
             return;
         }
 
         message.textContent = '';
+        message.classList.remove('text-danger');
         results.classList.remove('d-none');
     }
 
@@ -174,8 +208,37 @@ function initPrivacyRule(rule) {
         selected.append(chip);
         input.value = '';
         message.textContent = 'Введите не менее двух символов.';
+        message.classList.remove('text-danger');
         hideResults();
+        updateControl();
         input.focus();
+    }
+
+    function resetSearch() {
+        window.clearTimeout(timer);
+        controller?.abort();
+        controller = null;
+        input.value = '';
+        message.textContent = 'Введите не менее двух символов.';
+        message.classList.remove('text-danger');
+        hideResults();
+        updateControl();
+        input.focus();
+    }
+
+    function setControlState(state) {
+        control.hidden = state === 'hidden';
+        control.disabled = state === 'loading';
+        control.classList.toggle('is-loading', state === 'loading');
+        control.setAttribute(
+            'aria-label',
+            state === 'loading' ? 'Идёт поиск пользователей' : 'Очистить поиск',
+        );
+        input.setAttribute('aria-busy', String(state === 'loading'));
+    }
+
+    function updateControl() {
+        setControlState(input.value ? 'clear' : 'hidden');
     }
 
     function hideResults() {

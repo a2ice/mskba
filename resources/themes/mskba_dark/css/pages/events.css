@@ -851,83 +851,13 @@
     min-width: 0;
 }
 
-.event-participant-search .form-control {
-    width: 100%;
-    padding-right: 48px;
-}
-
-.event-participant-search__loader,
-.event-participant-search__clear {
-    position: absolute;
-    z-index: 2;
-    top: 50%;
-    right: 14px;
-    width: 22px;
-    height: 22px;
-    transform: translateY(-50%);
-}
-
-.event-participant-search__loader {
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: event-participant-loading 700ms linear infinite;
-}
-
-.event-participant-search__clear {
-    display: grid;
-    place-items: center;
-    padding: 0;
-    color: var(--muted);
-    font-size: 21px;
-}
-
 .event-participant-search__results {
-    position: absolute;
-    z-index: 20;
-    top: calc(100% + 6px);
-    right: 0;
-    left: 0;
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: #151915;
-    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42);
+    z-index: 80;
 }
 
-.event-participant-search__option {
-    display: grid;
-    width: 100%;
-    gap: 2px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--line);
-    color: var(--text);
-    text-align: left;
-}
-
-.event-participant-search__option:last-child {
-    border-bottom: 0;
-}
-
-.event-participant-search__option:hover,
-.event-participant-search__option:focus-visible {
-    background: rgba(236, 127, 18, 0.13);
-}
-
-.event-participant-search__option span,
-.event-participant-search__selection,
-.event-participant-search__empty {
+.event-participant-search__selection {
     color: var(--muted);
     font-size: 13px;
-}
-
-.event-participant-search__empty {
-    margin: 0;
-    padding: 14px;
-}
-
-.event-participant-search__empty.is-error {
-    color: var(--danger, #ef6b6b);
 }
 
 .event-participant-search__selection {
@@ -982,12 +912,6 @@
 .event-responsibility-manager__item form {
     flex: 0 0 auto;
     margin: 0;
-}
-
-@keyframes event-participant-loading {
-    to {
-        transform: translateY(-50%) rotate(360deg);
-    }
 }
 
 .event-result-gallery {
