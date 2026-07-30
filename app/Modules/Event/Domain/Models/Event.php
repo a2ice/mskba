@@ -86,9 +86,9 @@ class Event extends Model
         return $this->hasOne(VenueBooking::class);
     }
 
-    public function telegramPublication(): HasOne
+    public function telegramPublications(): HasMany
     {
-        return $this->hasOne(TelegramEventPublication::class);
+        return $this->hasMany(TelegramEventPublication::class);
     }
 
     public function completedByActor(): BelongsTo

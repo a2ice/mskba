@@ -106,6 +106,43 @@
             @error('participant_user_ids.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
         </fieldset>
     @endif
+    @if(isset($telegramChats) && $telegramChats->isNotEmpty())
+        @php
+            $defaultTelegramChatIds = $telegramChats->pluck('id')->map(fn ($id) => (string) $id)->all();
+            $selectedTelegramChatIds = array_map('strval', old('telegram_chat_ids', $defaultTelegramChatIds));
+        @endphp
+        <fieldset class="form-group field mb-4">
+            @include('theme::partials.forms.toggle', [
+                'name' => 'publish_to_telegram',
+                'id' => $formIdPrefix.'PublishToTelegram',
+                'title' => 'Опубликовать в Telegram',
+                'description' => 'Мероприятие появится в выбранных чатах, изменения будут синхронизироваться с порталом',
+                'checked' => old('publish_to_telegram', true),
+                'wrapperClass' => '',
+            ])
+            <div class="coordination-participant-selection mt-3">
+                @foreach($telegramChats as $telegramChat)
+                    <label class="coordination-checkbox">
+                        <input
+                            class="coordination-checkbox__input"
+                            type="checkbox"
+                            name="telegram_chat_ids[]"
+                            value="{{ $telegramChat->id }}"
+                            @checked(in_array((string) $telegramChat->id, $selectedTelegramChatIds, true))
+                        >
+                        <span class="coordination-checkbox__control" aria-hidden="true"></span>
+                        <span class="coordination-checkbox__label">
+                            <strong>{{ $telegramChat->title ?: 'Чат '.$telegramChat->telegram_chat_id }}</strong>
+                        </span>
+                    </label>
+                @endforeach
+            </div>
+            @error('telegram_chat_ids') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            @error('telegram_chat_ids.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+        </fieldset>
+    @else
+        <input type="hidden" name="publish_to_telegram" value="0">
+    @endif
     <button
         class="btn btn--primary"
         type="submit"

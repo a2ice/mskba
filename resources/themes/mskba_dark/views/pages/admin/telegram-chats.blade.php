@@ -2,7 +2,7 @@
 
 @extends('theme::partials.admin.list-shell', [
     'title' => $title,
-    'subtitle' => 'Чаты, в которые можно публиковать опросы и согласования.',
+    'subtitle' => 'Чаты, в которые можно публиковать опросы, согласования и мероприятия.',
 ])
 
 @section('section-content')
@@ -46,6 +46,11 @@
                     <label class="form-check">
                         <input class="form-check-input" type="checkbox" name="publishes_coordination" value="1" @checked($chat->publishes_coordination)>
                         <span class="form-check-label">Публиковать опросы</span>
+                    </label>
+                    <input type="hidden" name="publishes_events" value="0">
+                    <label class="form-check">
+                        <input class="form-check-input" type="checkbox" name="publishes_events" value="1" @checked($chat->publishes_events)>
+                        <span class="form-check-label">Публиковать мероприятия</span>
                     </label>
                     <button class="btn btn--secondary btn--sm" type="submit">Сохранить</button>
                 </form>

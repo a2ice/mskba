@@ -44,9 +44,17 @@ final class SyncTelegramEventPublicationJob implements ShouldQueue
         $event = Event::query()
             ->with(['venue.schedule'])
             ->find($this->eventId);
-        $publication = TelegramEventPublication::query()->where('event_id', $this->eventId)->first();
 
         if ($event === null) {
+            return;
+        }
+
+        $publications = TelegramEventPublication::query()
+            ->where('event_id', $this->eventId)
+            ->orderBy('id')
+            ->get();
+
+        if ($publications->isEmpty()) {
             return;
         }
 
@@ -55,12 +63,37 @@ final class SyncTelegramEventPublicationJob implements ShouldQueue
         $canCreate = $event->status === EventStatusEnum::PUBLISHED
             && $event->starts_at->isFuture()
             && $isPublic;
+        $firstException = null;
 
-        if ($publication === null && ! $canCreate) {
-            return;
+        foreach ($publications as $publication) {
+            try {
+                $this->syncPublication(
+                    $telegram,
+                    $messages,
+                    $event,
+                    $publication,
+                    $isVisible,
+                    $canCreate,
+                );
+            } catch (Throwable $exception) {
+                $firstException ??= $exception;
+            }
         }
 
-        if ($publication !== null && ! $isVisible) {
+        if ($firstException !== null) {
+            throw $firstException;
+        }
+    }
+
+    private function syncPublication(
+        TelegramBotApiClient $telegram,
+        TelegramEventMessageBuilder $messages,
+        Event $event,
+        TelegramEventPublication $publication,
+        bool $isVisible,
+        bool $canCreate,
+    ): void {
+        if (! $isVisible) {
             if ($publication->message_id !== null) {
                 $telegram->call('deleteMessage', [
                     'chat_id' => $publication->chat_id,
@@ -78,11 +111,15 @@ final class SyncTelegramEventPublicationJob implements ShouldQueue
             return;
         }
 
-        $publication ??= TelegramEventPublication::query()->create([
-            'event_id' => $event->id,
-            'chat_id' => (string) config('telegram.main_chat_id'),
-            'status' => 'pending',
-        ]);
+        if ($publication->message_id === null && ! $canCreate) {
+            $publication->forceFill([
+                'status' => 'closed',
+                'last_error' => null,
+                'synced_at' => now(),
+            ])->save();
+
+            return;
+        }
 
         try {
             if ($publication->message_id === null) {

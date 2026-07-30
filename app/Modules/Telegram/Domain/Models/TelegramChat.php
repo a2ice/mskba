@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'type',
     'is_active',
     'publishes_coordination',
+    'publishes_events',
 ])]
 class TelegramChat extends Model
 {
@@ -31,6 +32,7 @@ class TelegramChat extends Model
             'telegram_chat_id' => 'integer',
             'is_active' => 'boolean',
             'publishes_coordination' => 'boolean',
+            'publishes_events' => 'boolean',
         ];
     }
 }

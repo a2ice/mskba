@@ -403,6 +403,10 @@
     margin-top: 22px;
 }
 
+.event-hero-info + .event-responsibility-invitation {
+    margin-top: 22px;
+}
+
 .event-stat-grid > div {
     position: relative;
     display: grid;
@@ -1061,6 +1065,10 @@ body.telegram-mini-app .event-show {
     }
 
     .event-hero-info + .event-stat-grid {
+        margin-top: 16px;
+    }
+
+    .event-hero-info + .event-responsibility-invitation {
         margin-top: 16px;
     }
 

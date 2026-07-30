@@ -11,6 +11,13 @@ use Throwable;
 
 final class CreateEventRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'publish_to_telegram' => $this->boolean('publish_to_telegram'),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return $this->user() !== null;
@@ -30,6 +37,21 @@ final class CreateEventRequest extends FormRequest
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
             'participant_user_ids' => ['nullable', 'array', 'max:499'],
             'participant_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'publish_to_telegram' => ['required', 'boolean'],
+            'telegram_chat_ids' => [
+                Rule::requiredIf($this->boolean('publish_to_telegram')),
+                'array',
+                'min:1',
+            ],
+            'telegram_chat_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('telegram_chats', 'id')->where(
+                    fn ($query) => $query
+                        ->where('is_active', true)
+                        ->where('publishes_events', true),
+                ),
+            ],
         ];
     }
 

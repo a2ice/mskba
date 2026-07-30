@@ -20,6 +20,19 @@ final class TelegramChatRegistry
             ->get();
     }
 
+    /** @return Collection<int, TelegramChat> */
+    public function activeEventChats(): Collection
+    {
+        $this->registerConfiguredMainChat();
+
+        return TelegramChat::query()
+            ->where('is_active', true)
+            ->where('publishes_events', true)
+            ->orderBy('title')
+            ->orderBy('id')
+            ->get();
+    }
+
     private function registerConfiguredMainChat(): void
     {
         $chatId = config('telegram.main_chat_id');
@@ -35,6 +48,7 @@ final class TelegramChatRegistry
                 'type' => 'supergroup',
                 'is_active' => true,
                 'publishes_coordination' => true,
+                'publishes_events' => true,
             ],
         );
     }

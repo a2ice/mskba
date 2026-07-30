@@ -34,6 +34,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramCoordinationPublicationsHandler;
+use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
@@ -153,6 +154,7 @@ final class CoordinationController extends Controller
         ListEventVenuesHandler $eventVenues,
         VenueEventAvailability $availability,
         AddressDisplayFormatter $addressFormatter,
+        TelegramChatRegistry $telegramChats,
     ): Response {
         $coordination->load([
             'organizerActor.user.profile.activeAvatar',
@@ -384,6 +386,7 @@ final class CoordinationController extends Controller
             'durationOptions' => range(30, 480, 30),
             'defaultDuration' => 60,
             'coordinationParticipants' => $coordinationParticipants,
+            'telegramChats' => $telegramChats->activeEventChats(),
         ]);
     }
 
@@ -478,12 +481,33 @@ final class CoordinationController extends Controller
         CoordinationSession $coordination,
         CreateEventFromCoordinationHandler $handler,
         CurrentActorResolver $actors,
+        TelegramChatRegistry $telegramChats,
+        PrepareTelegramEventPublicationsHandler $prepareTelegramPublications,
     ): RedirectResponse {
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
         try {
-            $event = $handler->handle($coordination->id, $actor, $request->validated());
+            $data = $request->validated();
+            $telegramChats->activeEventChats();
+            $event = DB::transaction(function () use (
+                $coordination,
+                $actor,
+                $data,
+                $handler,
+                $prepareTelegramPublications,
+            ) {
+                $event = $handler->handle($coordination->id, $actor, $data);
+
+                if ((bool) ($data['publish_to_telegram'] ?? false)) {
+                    $prepareTelegramPublications->handle(
+                        $event,
+                        $data['telegram_chat_ids'] ?? [],
+                    );
+                }
+
+                return $event;
+            });
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
         }

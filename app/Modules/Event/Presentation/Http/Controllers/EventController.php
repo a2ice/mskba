@@ -31,12 +31,15 @@ use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
+use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
@@ -90,8 +93,11 @@ final class EventController extends Controller
         ]);
     }
 
-    public function create(Request $request, ListEventVenuesHandler $venues): Response
-    {
+    public function create(
+        Request $request,
+        ListEventVenuesHandler $venues,
+        TelegramChatRegistry $telegramChats,
+    ): Response {
         $validated = $request->validate([
             'type' => ['nullable', Rule::enum(EventTypeEnum::class)],
         ]);
@@ -111,6 +117,7 @@ final class EventController extends Controller
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
             'durationOptions' => range(30, 480, 30),
             'defaultDuration' => 60,
+            'telegramChats' => $telegramChats->activeEventChats(),
         ]);
     }
 
@@ -118,6 +125,8 @@ final class EventController extends Controller
         CreateEventRequest $request,
         CreateEventHandler $events,
         CurrentActorResolver $actors,
+        TelegramChatRegistry $telegramChats,
+        PrepareTelegramEventPublicationsHandler $prepareTelegramPublications,
     ): RedirectResponse {
         $actor = $actors->resolveForRequest($request);
 
@@ -126,7 +135,25 @@ final class EventController extends Controller
         }
 
         try {
-            $event = $events->handle($actor, $request->validated());
+            $data = $request->validated();
+            $telegramChats->activeEventChats();
+            $event = DB::transaction(function () use (
+                $actor,
+                $data,
+                $events,
+                $prepareTelegramPublications,
+            ) {
+                $event = $events->handle($actor, $data);
+
+                if ((bool) ($data['publish_to_telegram'] ?? false)) {
+                    $prepareTelegramPublications->handle(
+                        $event,
+                        $data['telegram_chat_ids'] ?? [],
+                    );
+                }
+
+                return $event;
+            });
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
         }

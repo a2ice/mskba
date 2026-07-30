@@ -10,7 +10,9 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Application\UseCases\HandleEventParticipationCallback;
+use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramMessageJob;
@@ -57,6 +59,11 @@ final class TelegramEventIntegrationTest extends TestCase
             'status' => EventParticipantStatusEnum::CONFIRMED,
             'joined_at' => now(),
         ]);
+        TelegramEventPublication::query()->create([
+            'event_id' => $event->id,
+            'chat_id' => '-1002136558099',
+            'status' => 'pending',
+        ]);
 
         Http::fake([
             'https://api.telegram.org/bot123456:test-token/sendMessage' => Http::response([
@@ -87,6 +94,45 @@ final class TelegramEventIntegrationTest extends TestCase
                 && $buttons[0][1]['callback_data'] === "event:{$event->id}:leave"
                 && $buttons[1][0]['url'] === "https://t.me/MSKBABot?startapp=event_{$event->id}";
         });
+    }
+
+    public function test_event_publications_are_prepared_for_each_selected_chat(): void
+    {
+        Queue::fake();
+        $event = Event::factory()->create();
+        $firstChat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1001111111111,
+            'title' => 'Первый чат',
+            'type' => 'supergroup',
+            'is_active' => true,
+            'publishes_coordination' => true,
+            'publishes_events' => true,
+        ]);
+        $secondChat = TelegramChat::query()->create([
+            'telegram_chat_id' => -1002222222222,
+            'title' => 'Второй чат',
+            'type' => 'supergroup',
+            'is_active' => true,
+            'publishes_coordination' => true,
+            'publishes_events' => true,
+        ]);
+
+        app(PrepareTelegramEventPublicationsHandler::class)->handle(
+            $event,
+            [$firstChat->id, $secondChat->id],
+        );
+
+        $this->assertDatabaseHas('telegram_event_publications', [
+            'event_id' => $event->id,
+            'chat_id' => '-1001111111111',
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('telegram_event_publications', [
+            'event_id' => $event->id,
+            'chat_id' => '-1002222222222',
+            'status' => 'pending',
+        ]);
+        $this->assertSame(2, TelegramEventPublication::query()->where('event_id', $event->id)->count());
     }
 
     public function test_webhook_requires_secret_and_queues_callback_processing(): void

@@ -260,7 +260,7 @@ final class TelegramCoordinationIntegrationTest extends TestCase
             && ! str_contains(
                 $request['text'],
                 '(МСК)',
-        ));
+            ));
     }
 
     public function test_expired_poll_is_closed_and_telegram_message_is_queued_for_update(): void
@@ -461,11 +461,13 @@ final class TelegramCoordinationIntegrationTest extends TestCase
                 'title' => 'Северный чат',
                 'is_active' => '0',
                 'publishes_coordination' => '0',
+                'publishes_events' => '1',
             ])
             ->assertRedirect();
 
         $this->assertFalse($chat->fresh()->is_active);
         $this->assertFalse($chat->fresh()->publishes_coordination);
+        $this->assertTrue($chat->fresh()->publishes_events);
     }
 
     private function createSession(): CoordinationSession
