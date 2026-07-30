@@ -6,7 +6,9 @@ use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
@@ -102,8 +104,14 @@ final class GameAndTeamWorkflowTest extends TestCase
         ];
 
         $this->actingAs($ownerA)
-            ->patch(route('events.game.statistics', $game->routeIdentifier()), $statistics)
-            ->assertSessionHas('status');
+            ->patchJson(route('events.game.statistics', $game->routeIdentifier()), $statistics)
+            ->assertOk()
+            ->assertJsonPath('scores.A', 12)
+            ->assertJsonPath('scores.B', 8)
+            ->assertJsonPath('calculated_scores.A', 6)
+            ->assertJsonPath('calculated_scores.B', 4)
+            ->assertJsonPath('player_points.'.$ownerA->id, 6)
+            ->assertJsonPath('player_points.'.$ownerB->id, 4);
         $this->actingAs($ownerA)
             ->post(route('events.game.statistics.confirm', $game->routeIdentifier()))
             ->assertSessionHas('status');
@@ -359,6 +367,50 @@ final class GameAndTeamWorkflowTest extends TestCase
             'user_id' => $organizer->id,
             'close_made' => 1,
         ]);
+
+        $training->forceFill([
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHour(),
+        ])->save();
+        $miniGame->forceFill([
+            'starts_at' => $training->starts_at,
+            'ends_at' => $training->ends_at,
+        ])->save();
+
+        $this->actingAs($responsible)
+            ->patchJson(route('events.game.statistics.complete', $miniGame->routeIdentifier()), [
+                'scores' => ['A' => 10, 'B' => 5],
+                'players' => [
+                    $organizer->id => $this->playerStatistics([
+                        'close_made' => 2,
+                        'close_attempted' => 3,
+                        'three_made' => 2,
+                        'three_attempted' => 3,
+                    ]),
+                    $responsible->id => $this->playerStatistics([
+                        'close_made' => 1,
+                        'close_attempted' => 2,
+                    ]),
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('completed', true)
+            ->assertJsonPath('scores.A', 10)
+            ->assertJsonPath('scores.B', 5);
+
+        $miniGame->refresh();
+        $this->assertSame(EventStatusEnum::COMPLETED, $miniGame->status);
+        $this->assertNotNull($miniGame->completed_at);
+        $this->assertSame(
+            GameStatisticsStatusEnum::CONFIRMED,
+            $miniGame->gameDetail()->firstOrFail()->statistics_status,
+        );
+        $this->assertSame(
+            2,
+            $miniGame->gameRosterEntries()
+                ->where('status', GameRosterStatusEnum::PLAYED->value)
+                ->count(),
+        );
     }
 
     public function test_existing_mini_game_responsibility_is_moved_to_parent_event(): void

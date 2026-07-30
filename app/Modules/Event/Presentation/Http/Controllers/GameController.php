@@ -14,6 +14,7 @@ use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -169,23 +170,61 @@ final class GameController extends Controller
         CurrentActorResolver $actors,
         EventManagementAccess $access,
         GameManagementService $games,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
-        $rules = [
-            'scores' => ['required', 'array'],
-            'scores.A' => ['required', 'integer', 'min:0', 'max:999'],
-            'scores.B' => ['required', 'integer', 'min:0', 'max:999'],
-            'players' => ['array'],
-        ];
-        foreach (GamePlayerStatistic::COUNTING_FIELDS as $field) {
-            $rules['players.*.'.$field] = ['nullable', 'integer', 'min:0', 'max:999'];
-        }
-        $data = $request->validate($rules);
+        $data = $this->validatedStatistics($request);
 
-        return $this->perform(
-            fn () => $games->saveStatistics($game, $actor, $data),
-            'Статистика сохранена и готова к подтверждению.',
-        );
+        try {
+            $games->saveStatistics($game, $actor, $data);
+        } catch (InvalidArgumentException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
+
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        $message = 'Статистика сохранена и готова к подтверждению.';
+
+        if (! $request->expectsJson()) {
+            return back()->with('status', $message);
+        }
+
+        return $this->statisticsJson($game, $message);
+    }
+
+    public function completeStatistics(
+        Request $request,
+        string $event,
+        ShowEventHandler $events,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+        GameManagementService $games,
+    ): RedirectResponse|JsonResponse {
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
+        $data = $this->validatedStatistics($request);
+
+        try {
+            $games->saveAndCompleteStatistics($game, $actor, $data);
+        } catch (InvalidArgumentException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
+
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        $message = 'Игра завершена. Статистика подтверждена и учтена в показателях игроков.';
+
+        if (! $request->expectsJson()) {
+            return redirect()->route('events.show', $game->routeIdentifier())
+                ->with('status', $message);
+        }
+
+        return $this->statisticsJson($game, $message, [
+            'completed' => true,
+            'redirect_url' => route('events.show', $game->routeIdentifier()),
+        ]);
     }
 
     public function confirmStatistics(
@@ -230,6 +269,54 @@ final class GameController extends Controller
                 ->with('user.profile.activeAvatar'),
             'gameRosterEntries.user.profile.activeAvatar',
             'gamePlayerStatistics',
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function validatedStatistics(Request $request): array
+    {
+        $rules = [
+            'scores' => ['required', 'array'],
+            'scores.A' => ['required', 'integer', 'min:0', 'max:999'],
+            'scores.B' => ['required', 'integer', 'min:0', 'max:999'],
+            'players' => ['array'],
+        ];
+        foreach (GamePlayerStatistic::COUNTING_FIELDS as $field) {
+            $rules['players.*.'.$field] = ['nullable', 'integer', 'min:0', 'max:999'];
+        }
+
+        return $request->validate($rules);
+    }
+
+    /** @param array<string, mixed> $extra */
+    private function statisticsJson(Event $game, string $message, array $extra = []): JsonResponse
+    {
+        $game->refresh()->load([
+            'gameSides',
+            'gamePlayerStatistics',
+        ]);
+        $scores = $game->gameSides
+            ->mapWithKeys(fn ($side): array => [$side->slot => $side->score])
+            ->all();
+        $playerPoints = $game->gamePlayerStatistics
+            ->mapWithKeys(fn (GamePlayerStatistic $statistic): array => [
+                (string) $statistic->user_id => $statistic->points(),
+            ])
+            ->all();
+        $calculatedScores = $game->gameSides
+            ->mapWithKeys(fn ($side): array => [
+                $side->slot => $game->gamePlayerStatistics
+                    ->where('game_side_id', $side->id)
+                    ->sum(fn (GamePlayerStatistic $statistic): int => $statistic->points()),
+            ])
+            ->all();
+
+        return response()->json([
+            'message' => $message,
+            'scores' => $scores,
+            'calculated_scores' => $calculatedScores,
+            'player_points' => $playerPoints,
+            ...$extra,
         ]);
     }
 

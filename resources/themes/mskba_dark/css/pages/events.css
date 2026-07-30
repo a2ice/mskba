@@ -1419,6 +1419,15 @@ body.telegram-mini-app .event-show {
     gap: 8px;
 }
 
+.game-score-row__calculated {
+    color: var(--muted-color, #b9b6aa);
+    font-size: 12px;
+}
+
+.game-score-row__calculated.is-mismatch {
+    color: #f1b657;
+}
+
 .game-statistics-table-wrap {
     max-width: 100%;
     margin-bottom: 16px;
@@ -1446,6 +1455,19 @@ body.telegram-mini-app .event-show {
     background: #292d29;
     border: 1px solid #5c625e;
     border-radius: 9px;
+}
+
+.game-statistics-table [data-game-player-points] {
+    min-width: 70px;
+    font-weight: 750;
+    text-align: center;
+}
+
+.game-statistics-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
 }
 
 .event-game-management-link,

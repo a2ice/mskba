@@ -174,13 +174,35 @@
     <section class="section-card">
         <span class="eyebrow">{{ $event->gameDetail->statistics_status->label() }}</span>
         <h2>Результат и статистика</h2>
-        <form method="POST" action="{{ route('events.game.statistics', $event->routeIdentifier()) }}">
+        <div class="alert" data-game-statistics-message role="status" aria-live="polite" hidden></div>
+        <form
+            method="POST"
+            action="{{ route('events.game.statistics', $event->routeIdentifier()) }}"
+            data-game-statistics-form
+            data-image-upload-surface
+        >
             @csrf @method('PATCH')
+            @include('theme::partials.image-upload-loading', ['text' => 'Сохраняем статистику…'])
             <div class="game-score-row">
                 @foreach(['A', 'B'] as $slot)
+                    @php
+                        $sidePlayerPoints = $roster->get($sides[$slot]->id, collect())
+                            ->sum(fn ($entry) => $stats->get($entry->user_id)?->points() ?? 0);
+                    @endphp
                     <label>
                         <span>{{ $sides[$slot]->display_name }}</span>
-                        <input class="form-control" type="number" min="0" max="999" name="scores[{{ $slot }}]" value="{{ old('scores.'.$slot, $sides[$slot]->score) }}">
+                        <input
+                            class="form-control"
+                            type="number"
+                            min="0"
+                            max="999"
+                            name="scores[{{ $slot }}]"
+                            value="{{ old('scores.'.$slot, $sides[$slot]->score) }}"
+                            data-game-score="{{ $slot }}"
+                        >
+                        <small class="game-score-row__calculated" data-game-calculated-score="{{ $slot }}">
+                            По игрокам: {{ $sidePlayerPoints }}
+                        </small>
                     </label>
                 @endforeach
             </div>
@@ -198,39 +220,46 @@
                     <tbody>
                     @foreach($event->gameRosterEntries as $entry)
                         @php $stat = $stats->get($entry->user_id); @endphp
-                        <tr>
+                        <tr
+                            data-game-statistics-row
+                            data-player-id="{{ $entry->user_id }}"
+                            data-side="{{ $sides->firstWhere('id', $entry->game_side_id)?->slot }}"
+                        >
                             <th>{{ $name($entry->user) }}</th>
                             @foreach($statisticsFields as $field => $definition)
-                                <td><input type="number" min="0" max="999" name="players[{{ $entry->user_id }}][{{ $field }}]" value="{{ old('players.'.$entry->user_id.'.'.$field, $stat?->{$field} ?? 0) }}" aria-label="{{ $definition['label'] }} · {{ $name($entry->user) }}"></td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="999"
+                                        name="players[{{ $entry->user_id }}][{{ $field }}]"
+                                        value="{{ old('players.'.$entry->user_id.'.'.$field, $stat?->{$field} ?? 0) }}"
+                                        aria-label="{{ $definition['label'] }} · {{ $name($entry->user) }}"
+                                        data-game-statistic-field="{{ $field }}"
+                                    >
+                                </td>
                             @endforeach
-                            <td>{{ $stat?->points() ?? 0 }}</td>
+                            <td data-game-player-points>{{ $stat?->points() ?? 0 }}</td>
                         </tr>
                     @endforeach
                     </tbody>
                 </table>
             </div>
             <p class="form-hint">* Очки игроков считаются по попаданиям. Счёт команды хранится отдельно: расхождение допустимо, но требует проверки.</p>
-            @foreach(['A', 'B'] as $slot)
-                @php
-                    $sidePlayerPoints = $roster->get($sides[$slot]->id, collect())
-                        ->sum(fn ($entry) => $stats->get($entry->user_id)?->points() ?? 0);
-                    $sideScore = $sides[$slot]->score;
-                @endphp
-                @if($sideScore !== null && $sideScore !== $sidePlayerPoints)
-                    <div class="alert alert-warning">
-                        {{ $sides[$slot]->display_name }}: счёт {{ $sideScore }}, сумма очков игроков {{ $sidePlayerPoints }}. Проверьте расхождение перед подтверждением.
-                    </div>
-                @endif
-            @endforeach
             @unless($statisticsConfirmed)
-                <button class="btn btn--primary btn--sm" type="submit">Сохранить статистику</button>
+                <div class="game-statistics-actions">
+                    <button class="btn btn--secondary btn--sm" type="button" data-game-statistics-calculate>Подсчитать</button>
+                    <button class="btn btn--primary btn--sm" type="submit" data-game-statistics-submit>Сохранить</button>
+                    <button
+                        class="btn btn--secondary btn--sm"
+                        type="submit"
+                        data-game-statistics-complete
+                        data-complete-url="{{ route('events.game.statistics.complete', $event->routeIdentifier()) }}"
+                        data-side-a-name="{{ $sides['A']->display_name }}"
+                        data-side-b-name="{{ $sides['B']->display_name }}"
+                    >Сохранить и завершить игру</button>
+                </div>
             @endunless
         </form>
-        @if($event->gameDetail->statistics_status === \App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum::READY)
-            <form method="POST" action="{{ route('events.game.statistics.confirm', $event->routeIdentifier()) }}" onsubmit="return confirm('Подтвердить статистику? После этого изменить её будет нельзя.')">
-                @csrf
-                <button class="btn btn--secondary btn--sm" type="submit">Подтвердить статистику</button>
-            </form>
-        @endif
     </section>
 @endsection

@@ -276,6 +276,8 @@ Route::prefix('events')->group(function () {
         Route::delete('/{event}/game', [GameController::class, 'destroyMiniGame'])->name('events.game.destroy');
         Route::patch('/{event}/game/roster', [GameController::class, 'roster'])->name('events.game.roster');
         Route::patch('/{event}/game/statistics', [GameController::class, 'statistics'])->name('events.game.statistics');
+        Route::patch('/{event}/game/statistics/complete', [GameController::class, 'completeStatistics'])
+            ->name('events.game.statistics.complete');
         Route::post('/{event}/game/statistics/confirm', [GameController::class, 'confirmStatistics'])
             ->name('events.game.statistics.confirm');
     });

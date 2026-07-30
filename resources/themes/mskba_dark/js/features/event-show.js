@@ -6,9 +6,264 @@ document.addEventListener('DOMContentLoaded', () => {
     initEventDescription();
     initEventShare();
     initMiniGameScheduleControls();
+    initGameStatistics();
     const miniGames = initMiniGameManagement();
     initEventParticipantManagement(miniGames);
 });
+
+function initGameStatistics() {
+    const form = document.querySelector('[data-game-statistics-form]');
+
+    if (!form) {
+        return;
+    }
+
+    const rows = Array.from(form.querySelectorAll('[data-game-statistics-row]'));
+    const scoreInputs = new Map(
+        Array.from(form.querySelectorAll('[data-game-score]'))
+            .map((input) => [input.dataset.gameScore, input]),
+    );
+    const calculatedLabels = new Map(
+        Array.from(form.querySelectorAll('[data-game-calculated-score]'))
+            .map((label) => [label.dataset.gameCalculatedScore, label]),
+    );
+    const calculateButton = form.querySelector('[data-game-statistics-calculate]');
+    const submitButton = form.querySelector('[data-game-statistics-submit]');
+    const completeButton = form.querySelector('[data-game-statistics-complete]');
+    const overlay = form.querySelector('[data-image-upload-overlay]');
+    const message = document.querySelector('[data-game-statistics-message]');
+
+    const integerValue = (value) => {
+        const parsed = Number.parseInt(value, 10);
+
+        return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+    };
+
+    const rowPoints = (row) => {
+        const value = (field) => integerValue(
+            row.querySelector(`[data-game-statistic-field="${field}"]`)?.value,
+        );
+        const points = (value('close_made') * 2)
+            + (value('mid_made') * 2)
+            + (value('three_made') * 3)
+            + value('free_throw_made');
+        const output = row.querySelector('[data-game-player-points]');
+
+        if (output) {
+            output.textContent = String(points);
+        }
+
+        return points;
+    };
+
+    const calculatedScores = () => {
+        const scores = { A: 0, B: 0 };
+
+        rows.forEach((row) => {
+            const side = row.dataset.side;
+
+            if (side === 'A' || side === 'B') {
+                scores[side] += rowPoints(row);
+            }
+        });
+
+        return scores;
+    };
+
+    const renderCalculatedScore = (side, calculated) => {
+        const scoreInput = scoreInputs.get(side);
+        const label = calculatedLabels.get(side);
+
+        if (!scoreInput || !label) {
+            return;
+        }
+
+        const differs = integerValue(scoreInput.value) !== calculated;
+        label.classList.toggle('is-mismatch', differs);
+        label.textContent = differs
+            ? `По игрокам: ${calculated} · проверьте расхождение`
+            : `По игрокам: ${calculated}`;
+    };
+
+    const refresh = ({ overwriteScores = false } = {}) => {
+        const scores = calculatedScores();
+
+        Object.entries(scores).forEach(([side, calculated]) => {
+            const scoreInput = scoreInputs.get(side);
+
+            if (scoreInput && (overwriteScores || scoreInput.dataset.manualOverride !== 'true')) {
+                scoreInput.value = String(calculated);
+            }
+
+            if (overwriteScores && scoreInput) {
+                scoreInput.dataset.manualOverride = 'false';
+            }
+
+            renderCalculatedScore(side, calculated);
+        });
+
+        return scores;
+    };
+
+    const setLoading = (loading) => {
+        form.classList.toggle('is-image-upload-loading', loading);
+
+        if (overlay) {
+            overlay.hidden = !loading;
+        }
+
+        [calculateButton, submitButton, completeButton].forEach((button) => {
+            if (button) {
+                button.disabled = loading;
+            }
+        });
+    };
+
+    const showMessage = (text, variant) => {
+        if (!message) {
+            return;
+        }
+
+        message.hidden = false;
+        message.textContent = text;
+        message.classList.remove('alert--success', 'alert--danger');
+        message.classList.add(variant === 'success' ? 'alert--success' : 'alert--danger');
+    };
+
+    const responsePayload = async (response) => {
+        try {
+            return await response.json();
+        } catch {
+            return {};
+        }
+    };
+
+    const responseError = (payload) => {
+        const validationError = Object.values(payload.errors || {}).flat()[0];
+
+        return validationError || payload.message || 'Не удалось сохранить статистику.';
+    };
+
+    const initialCalculated = calculatedScores();
+    Object.entries(initialCalculated).forEach(([side, calculated]) => {
+        const scoreInput = scoreInputs.get(side);
+
+        if (scoreInput) {
+            scoreInput.dataset.manualOverride = integerValue(scoreInput.value) === calculated
+                ? 'false'
+                : 'true';
+        }
+
+        renderCalculatedScore(side, calculated);
+    });
+
+    rows.forEach((row) => {
+        row.querySelectorAll('[data-game-statistic-field]').forEach((input) => {
+            input.addEventListener('input', () => refresh());
+        });
+    });
+
+    scoreInputs.forEach((input, side) => {
+        input.addEventListener('input', () => {
+            input.dataset.manualOverride = 'true';
+            renderCalculatedScore(side, calculatedScores()[side]);
+        });
+    });
+
+    calculateButton?.addEventListener('click', () => {
+        refresh({ overwriteScores: true });
+    });
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const completesGame = event.submitter?.matches('[data-game-statistics-complete]') === true;
+        const action = completesGame
+            ? event.submitter.dataset.completeUrl
+            : form.action;
+
+        if (completesGame) {
+            const scoreA = integerValue(scoreInputs.get('A')?.value);
+            const scoreB = integerValue(scoreInputs.get('B')?.value);
+            const nameA = event.submitter.dataset.sideAName || 'Команда A';
+            const nameB = event.submitter.dataset.sideBName || 'Команда B';
+            let result;
+
+            if (scoreA === scoreB) {
+                result = `${nameA} и ${nameB} сыграли вничью со счётом ${scoreA}:${scoreB}!`;
+            } else {
+                const winner = scoreA > scoreB ? nameA : nameB;
+                const loser = scoreA > scoreB ? nameB : nameA;
+                const winnerScore = Math.max(scoreA, scoreB);
+                const loserScore = Math.min(scoreA, scoreB);
+
+                result = `${winner} выиграла у ${loser} со счётом ${winnerScore}:${loserScore}!`;
+            }
+
+            if (!window.confirm(`${result}\n\nВы уверены, что хотите завершить игру?`)) {
+                return;
+            }
+        }
+
+        setLoading(true);
+
+        if (message) {
+            message.hidden = true;
+        }
+
+        try {
+            const response = await fetch(action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const payload = await responsePayload(response);
+
+            if (!response.ok) {
+                throw new Error(responseError(payload));
+            }
+
+            Object.entries(payload.scores || {}).forEach(([side, score]) => {
+                const input = scoreInputs.get(side);
+
+                if (input) {
+                    input.value = String(score);
+                }
+            });
+            Object.entries(payload.player_points || {}).forEach(([userId, points]) => {
+                const output = rows
+                    .find((row) => row.dataset.playerId === String(userId))
+                    ?.querySelector('[data-game-player-points]');
+
+                if (output) {
+                    output.textContent = String(points);
+                }
+            });
+            Object.entries(payload.calculated_scores || {}).forEach(([side, calculated]) => {
+                const input = scoreInputs.get(side);
+
+                if (input) {
+                    input.dataset.manualOverride = integerValue(input.value) === Number(calculated)
+                        ? 'false'
+                        : 'true';
+                }
+
+                renderCalculatedScore(side, Number(calculated));
+            });
+            showMessage(payload.message || 'Статистика сохранена.', 'success');
+
+            if (payload.completed && payload.redirect_url) {
+                window.location.assign(payload.redirect_url);
+            }
+        } catch (error) {
+            showMessage(error?.message || 'Не удалось сохранить статистику.', 'danger');
+        } finally {
+            setLoading(false);
+        }
+    });
+}
 
 function initEventHero() {
     const hero = document.querySelector('[data-event-hero]');

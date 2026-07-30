@@ -11,6 +11,7 @@ use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\GameDetail;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -384,44 +385,7 @@ final class GameManagementService
         DB::transaction(function () use ($game, $statistics): void {
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
-            if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
-                throw new InvalidArgumentException('Подтверждённую статистику изменять нельзя.');
-            }
-
-            $sides = $lockedGame->gameSides()->lockForUpdate()->get()->keyBy('slot');
-            if (! $sides->has('A') || ! $sides->has('B')) {
-                throw new InvalidArgumentException('Для игры не настроены две стороны.');
-            }
-            foreach (['A', 'B'] as $slot) {
-                $score = $statistics['scores'][$slot] ?? null;
-                $sides[$slot]->update(['score' => $score === null ? null : (int) $score]);
-            }
-
-            $roster = $lockedGame->gameRosterEntries()->get()->keyBy('user_id');
-            foreach (($statistics['players'] ?? []) as $userId => $values) {
-                $entry = $roster->get((int) $userId);
-                if ($entry === null) {
-                    throw new InvalidArgumentException('Статистика передана для игрока вне состава.');
-                }
-                $normalized = [];
-                foreach (GamePlayerStatistic::COUNTING_FIELDS as $field) {
-                    $normalized[$field] = max(0, (int) ($values[$field] ?? 0));
-                }
-                foreach (['close', 'mid', 'three', 'free_throw'] as $range) {
-                    if ($normalized[$range.'_made'] > $normalized[$range.'_attempted']) {
-                        throw new InvalidArgumentException('Попаданий не может быть больше попыток.');
-                    }
-                }
-                $lockedGame->gamePlayerStatistics()->updateOrCreate(
-                    ['user_id' => (int) $userId],
-                    [...$normalized, 'game_side_id' => $entry->game_side_id],
-                );
-            }
-
-            $detail->update([
-                'statistics_status' => GameStatisticsStatusEnum::READY,
-                'statistics_version' => $detail->statistics_version + 1,
-            ]);
+            $this->persistStatistics($lockedGame, $detail, $statistics);
         });
 
         event(new EventChanged($this->aggregateEventId($game)));
@@ -432,50 +396,135 @@ final class GameManagementService
         DB::transaction(function () use ($game, $actor): void {
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
-            if ($detail->statistics_status !== GameStatisticsStatusEnum::READY) {
-                throw new InvalidArgumentException('Сначала сохраните готовую статистику.');
-            }
-            if ($lockedGame->gameSides()->whereNull('score')->exists()) {
-                throw new InvalidArgumentException('Укажите итоговый счёт обеих сторон.');
-            }
             if ($lockedGame->ends_at->isFuture()) {
                 throw new InvalidArgumentException('Подтвердить итоговую статистику можно после окончания игры.');
             }
 
-            $selectedPlayers = $lockedGame->gameRosterEntries()
-                ->where('status', GameRosterStatusEnum::SELECTED->value)
-                ->count();
-            $statisticPlayers = $lockedGame->gamePlayerStatistics()->count();
-            if ($selectedPlayers === 0 || $statisticPlayers !== $selectedPlayers) {
-                throw new InvalidArgumentException('Сохраните статистику для каждого игрока выбранного состава.');
-            }
-            $selectedBySide = $lockedGame->gameRosterEntries()
-                ->selectRaw('game_side_id, count(*) as aggregate')
-                ->where('status', GameRosterStatusEnum::SELECTED->value)
-                ->groupBy('game_side_id')
-                ->pluck('aggregate', 'game_side_id');
-            $sides = $lockedGame->gameSides()->get()->keyBy('slot');
-            if ($sides->count() !== 2
-                || (int) ($selectedBySide[$sides['A']->id] ?? 0) < 1
-                || (int) ($selectedBySide[$sides['B']->id] ?? 0) < 1
-                || (int) ($selectedBySide[$sides['A']->id] ?? 0) > $detail->side_a_size
-                || (int) ($selectedBySide[$sides['B']->id] ?? 0) > $detail->side_b_size) {
-                throw new InvalidArgumentException('Проверьте составы: на каждой стороне должен быть хотя бы один игрок и не больше указанного формата.');
-            }
-
-            $detail->update([
-                'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
-                'statistics_confirmed_at' => now(),
-                'statistics_confirmed_by_actor_id' => $actor->id,
-            ]);
-            $lockedGame->gameRosterEntries()
-                ->where('status', GameRosterStatusEnum::SELECTED->value)
-                ->update(['status' => GameRosterStatusEnum::PLAYED->value]);
-
-            DB::afterCommit(fn () => event(new GameStatisticsConfirmed($lockedGame->id)));
+            $this->confirmLockedStatistics($lockedGame, $detail, $actor);
         });
 
         event(new EventChanged($this->aggregateEventId($game)));
+    }
+
+    /**
+     * Сохраняет текущие значения формы и завершает игру в одной транзакции.
+     *
+     * @param  array<string, mixed>  $statistics
+     */
+    public function saveAndCompleteStatistics(Event $game, Actor $actor, array $statistics): void
+    {
+        DB::transaction(function () use ($game, $actor, $statistics): void {
+            // Для дочерних игр сохраняем единый порядок блокировок: сначала
+            // мероприятие-агрегат, затем мини-игра. Это снижает риск deadlock
+            // при одновременной синхронизации мероприятия и его игр.
+            if ($game->parent_event_id !== null) {
+                Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+            }
+
+            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
+            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+
+            if ($lockedGame->starts_at->isFuture()) {
+                throw new InvalidArgumentException('Завершить игру можно только после её начала.');
+            }
+
+            $this->persistStatistics($lockedGame, $detail, $statistics);
+            $this->confirmLockedStatistics($lockedGame, $detail->fresh(), $actor);
+            $lockedGame->update([
+                'status' => EventStatusEnum::COMPLETED,
+                'completed_at' => now(),
+                'completed_by_actor_id' => $actor->id,
+            ]);
+        });
+
+        event(new EventChanged($this->aggregateEventId($game)));
+    }
+
+    /**
+     * @param  array<string, mixed>  $statistics
+     */
+    private function persistStatistics(Event $game, GameDetail $detail, array $statistics): void
+    {
+        if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+            throw new InvalidArgumentException('Подтверждённую статистику изменять нельзя.');
+        }
+
+        $sides = $game->gameSides()->lockForUpdate()->get()->keyBy('slot');
+        if (! $sides->has('A') || ! $sides->has('B')) {
+            throw new InvalidArgumentException('Для игры не настроены две стороны.');
+        }
+        foreach (['A', 'B'] as $slot) {
+            $score = $statistics['scores'][$slot] ?? null;
+            $sides[$slot]->update(['score' => $score === null ? null : (int) $score]);
+        }
+
+        $roster = $game->gameRosterEntries()->get()->keyBy('user_id');
+        foreach (($statistics['players'] ?? []) as $userId => $values) {
+            $entry = $roster->get((int) $userId);
+            if ($entry === null) {
+                throw new InvalidArgumentException('Статистика передана для игрока вне состава.');
+            }
+            $normalized = [];
+            foreach (GamePlayerStatistic::COUNTING_FIELDS as $field) {
+                $normalized[$field] = max(0, (int) ($values[$field] ?? 0));
+            }
+            foreach (['close', 'mid', 'three', 'free_throw'] as $range) {
+                if ($normalized[$range.'_made'] > $normalized[$range.'_attempted']) {
+                    throw new InvalidArgumentException('Попаданий не может быть больше попыток.');
+                }
+            }
+            $game->gamePlayerStatistics()->updateOrCreate(
+                ['user_id' => (int) $userId],
+                [...$normalized, 'game_side_id' => $entry->game_side_id],
+            );
+        }
+
+        $detail->update([
+            'statistics_status' => GameStatisticsStatusEnum::READY,
+            'statistics_version' => $detail->statistics_version + 1,
+        ]);
+    }
+
+    private function confirmLockedStatistics(Event $game, GameDetail $detail, Actor $actor): void
+    {
+        if ($detail->statistics_status !== GameStatisticsStatusEnum::READY) {
+            throw new InvalidArgumentException('Сначала сохраните готовую статистику.');
+        }
+        if ($game->gameSides()->whereNull('score')->exists()) {
+            throw new InvalidArgumentException('Укажите итоговый счёт обеих сторон.');
+        }
+
+        $selectedPlayers = $game->gameRosterEntries()
+            ->where('status', GameRosterStatusEnum::SELECTED->value)
+            ->count();
+        $statisticPlayers = $game->gamePlayerStatistics()->count();
+        if ($selectedPlayers === 0 || $statisticPlayers !== $selectedPlayers) {
+            throw new InvalidArgumentException('Сохраните статистику для каждого игрока выбранного состава.');
+        }
+        $selectedBySide = $game->gameRosterEntries()
+            ->selectRaw('game_side_id, count(*) as aggregate')
+            ->where('status', GameRosterStatusEnum::SELECTED->value)
+            ->groupBy('game_side_id')
+            ->pluck('aggregate', 'game_side_id');
+        $sides = $game->gameSides()->get()->keyBy('slot');
+        if ($sides->count() !== 2
+            || (int) ($selectedBySide[$sides['A']->id] ?? 0) < 1
+            || (int) ($selectedBySide[$sides['B']->id] ?? 0) < 1
+            || (int) ($selectedBySide[$sides['A']->id] ?? 0) > $detail->side_a_size
+            || (int) ($selectedBySide[$sides['B']->id] ?? 0) > $detail->side_b_size) {
+            throw new InvalidArgumentException('Проверьте составы: на каждой стороне должен быть хотя бы один игрок и не больше указанного формата.');
+        }
+
+        $detail->update([
+            'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
+            'statistics_confirmed_at' => now(),
+            'statistics_confirmed_by_actor_id' => $actor->id,
+        ]);
+        $game->gameRosterEntries()
+            ->where('status', GameRosterStatusEnum::SELECTED->value)
+            ->update(['status' => GameRosterStatusEnum::PLAYED->value]);
+
+        DB::afterCommit(fn () => event(new GameStatisticsConfirmed($game->id)));
     }
 
     /**
