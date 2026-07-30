@@ -5,6 +5,7 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\EventResultGalleryManager;
+use App\Modules\Event\Application\UseCases\AddEventParticipantHandler;
 use App\Modules\Event\Application\UseCases\CancelEventHandler;
 use App\Modules\Event\Application\UseCases\CompleteEventHandler;
 use App\Modules\Event\Application\UseCases\CreateEventHandler;
@@ -12,10 +13,15 @@ use App\Modules\Event\Application\UseCases\JoinEventHandler;
 use App\Modules\Event\Application\UseCases\LeaveEventHandler;
 use App\Modules\Event\Application\UseCases\ListEventsHandler;
 use App\Modules\Event\Application\UseCases\ListEventVenuesHandler;
+use App\Modules\Event\Application\UseCases\RemoveEventResponsibilityHandler;
+use App\Modules\Event\Application\UseCases\RequestEventResponsibilityHandler;
+use App\Modules\Event\Application\UseCases\RespondEventResponsibilityHandler;
+use App\Modules\Event\Application\UseCases\SearchEventParticipantCandidatesHandler;
 use App\Modules\Event\Application\UseCases\SetEventParticipationHandler;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Application\UseCases\UpdateEventHandler;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -27,6 +33,7 @@ use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -208,6 +215,129 @@ final class EventController extends Controller
 
         return redirect()->route('events.show', $item->routeIdentifier())
             ->with('status', 'Мероприятие обновлено.');
+    }
+
+    public function participantCandidates(
+        Request $request,
+        string $event,
+        SearchEventParticipantCandidatesHandler $candidates,
+        CurrentActorResolver $actors,
+    ): JsonResponse {
+        $validated = $request->validate(['query' => ['required', 'string', 'min:2', 'max:100']]);
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $users = $candidates->handle($event, $actor, $validated['query']);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'users' => $users->map(function ($user): array {
+                $name = trim(implode(' ', array_filter([
+                    $user->profile?->first_name,
+                    $user->profile?->last_name,
+                ])));
+
+                return [
+                    'id' => $user->getKey(),
+                    'name' => $name !== '' ? $name : ($user->username ?: "Пользователь #{$user->getKey()}"),
+                    'username' => $user->username,
+                ];
+            })->values(),
+        ]);
+    }
+
+    public function addParticipant(
+        Request $request,
+        string $event,
+        AddEventParticipantHandler $participants,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $validated = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $participants->handle($event, $actor, (int) $validated['user_id']);
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Участник добавлен в мероприятие.');
+    }
+
+    public function requestResponsibility(
+        Request $request,
+        string $event,
+        int $participant,
+        RequestEventResponsibilityHandler $responsibilities,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $responsibilities->handle($event, $participant, $actor);
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Запрос на назначение отправлен участнику.');
+    }
+
+    public function respondResponsibility(
+        Request $request,
+        string $event,
+        int $participant,
+        RespondEventResponsibilityHandler $responsibilities,
+    ): RedirectResponse {
+        $user = $request->user();
+        abort_if($user === null, 403);
+
+        $validated = $request->validate([
+            'decision' => ['required', Rule::in([
+                EventResponsibilityStatusEnum::ACCEPTED->value,
+                EventResponsibilityStatusEnum::DECLINED->value,
+            ])],
+        ]);
+
+        try {
+            $responsibilities->handle(
+                $event,
+                $participant,
+                $user,
+                EventResponsibilityStatusEnum::from($validated['decision']),
+            );
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        $message = $validated['decision'] === EventResponsibilityStatusEnum::ACCEPTED->value
+            ? 'Вы подтвердили назначение ответственным.'
+            : 'Вы отклонили назначение ответственным.';
+
+        return back()->with('status', $message);
+    }
+
+    public function removeResponsibility(
+        Request $request,
+        string $event,
+        int $participant,
+        RemoveEventResponsibilityHandler $responsibilities,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+
+        try {
+            $responsibilities->handle($event, $participant, $actor);
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Назначение ответственного снято.');
     }
 
     public function cancel(

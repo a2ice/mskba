@@ -1,6 +1,7 @@
 @php
     use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
     use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+    use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
     use App\Modules\Event\Domain\Enums\EventStatusEnum;
     use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
     use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
@@ -38,6 +39,9 @@
             default => 'мест',
         };
     $isOrganizer = $currentParticipant?->role === EventParticipantRoleEnum::ORGANIZER;
+    $hasPendingResponsibility = $currentParticipant?->responsibility_status === EventResponsibilityStatusEnum::PENDING
+        && $currentParticipant->status === EventParticipantStatusEnum::CONFIRMED
+        && $currentParticipant->confirmation_version === $event->participation_confirmation_version;
     $isFuture = $event->starts_at->isFuture();
     $isCompleted = $event->status === EventStatusEnum::COMPLETED;
     $isParticipationWindowOpen = $event->status === EventStatusEnum::PUBLISHED
@@ -179,6 +183,28 @@
                 </div>
             </section>
 
+            @if($hasPendingResponsibility)
+                <section class="event-card event-responsibility-invitation">
+                    <div>
+                        <span class="eyebrow">Назначение</span>
+                        <h2>Стать ответственным за мероприятие?</h2>
+                        <p>Организатор приглашает вас помогать в проведении этого мероприятия. Назначение начнёт действовать только после вашего согласия.</p>
+                    </div>
+                    <div class="event-responsibility-invitation__actions">
+                        <form method="POST" action="{{ route('events.participants.responsibility.respond', [$event->routeIdentifier(), $currentParticipant->id]) }}">
+                            @csrf @method('PATCH')
+                            <input type="hidden" name="decision" value="{{ EventResponsibilityStatusEnum::ACCEPTED->value }}">
+                            <button class="btn btn--primary btn--sm" type="submit">Принять</button>
+                        </form>
+                        <form method="POST" action="{{ route('events.participants.responsibility.respond', [$event->routeIdentifier(), $currentParticipant->id]) }}">
+                            @csrf @method('PATCH')
+                            <input type="hidden" name="decision" value="{{ EventResponsibilityStatusEnum::DECLINED->value }}">
+                            <button class="btn btn--secondary btn--sm" type="submit">Отклонить</button>
+                        </form>
+                    </div>
+                </section>
+            @endif
+
             @if($showParticipationActions)
                 @if($needsReconfirmation)
                     <div class="alert alert-warning">Время или площадка изменились. Подтвердите участие повторно.</div>
@@ -316,7 +342,13 @@
                                     </div>
                                     <div>
                                         <strong>{{ $participantName }}</strong>
-                                        <span>{{ $participant->role === EventParticipantRoleEnum::ORGANIZER ? 'Организатор' : $group['memberState'] }}</span>
+                                        <span>
+                                            {{ match (true) {
+                                                $participant->role === EventParticipantRoleEnum::ORGANIZER => 'Организатор',
+                                                $participant->responsibility_status === EventResponsibilityStatusEnum::ACCEPTED => 'Ответственный',
+                                                default => $group['memberState'],
+                                            } }}
+                                        </span>
                                     </div>
                                 </article>
                             @endforeach
@@ -351,6 +383,82 @@
                     </summary>
                     <div class="event-management__body">
                         @if($event->starts_at->isFuture() && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
+                            <section
+                                class="event-participant-manager"
+                                data-event-participant-manager
+                                data-search-url="{{ route('events.participants.candidates', $event->routeIdentifier()) }}"
+                            >
+                                <div>
+                                    <span class="eyebrow">Состав</span>
+                                    <h3>Добавить участника</h3>
+                                    <p>Поиск учитывает настройки видимости пользователей.</p>
+                                </div>
+                                <form method="POST" action="{{ route('events.participants.manage.store', $event->routeIdentifier()) }}" data-event-participant-form>
+                                    @csrf
+                                    <label class="form-label" for="eventParticipantSearch">Пользователь</label>
+                                    <div class="event-participant-search">
+                                        <input
+                                            id="eventParticipantSearch"
+                                            class="form-control"
+                                            type="search"
+                                            autocomplete="off"
+                                            placeholder="Введите имя или логин"
+                                            data-event-participant-search
+                                        >
+                                        <span class="event-participant-search__loader" data-event-participant-loader hidden aria-label="Идёт поиск"></span>
+                                        <button type="button" class="event-participant-search__clear" data-event-participant-clear hidden aria-label="Очистить поиск">
+                                            <i class="ti ti-x" aria-hidden="true"></i>
+                                        </button>
+                                        <div class="event-participant-search__results" data-event-participant-results hidden></div>
+                                    </div>
+                                    <input type="hidden" name="user_id" data-event-participant-user-id>
+                                    <p class="event-participant-search__selection" data-event-participant-selection hidden></p>
+                                    <button class="btn btn--primary btn--sm" type="submit" data-event-participant-submit disabled>Добавить</button>
+                                </form>
+                            </section>
+
+                            @if($confirmedParticipants->where('role', EventParticipantRoleEnum::PARTICIPANT)->isNotEmpty())
+                                <section class="event-responsibility-manager">
+                                    <div>
+                                        <span class="eyebrow">Ответственные</span>
+                                        <h3>Назначения</h3>
+                                        <p>Кандидат должен подтвердить назначение самостоятельно.</p>
+                                    </div>
+                                    <div class="event-responsibility-manager__list">
+                                        @foreach($confirmedParticipants->where('role', EventParticipantRoleEnum::PARTICIPANT) as $participant)
+                                            @php
+                                                $profile = $participant->user->profile;
+                                                $name = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+                                                    ?: $participant->user->username
+                                                    ?: 'Пользователь #'.$participant->user_id;
+                                                $responsibility = $participant->responsibility_status;
+                                            @endphp
+                                            <article class="event-responsibility-manager__item">
+                                                <div>
+                                                    <strong>{{ $name }}</strong>
+                                                    <span class="{{ $responsibility?->value ? 'is-'.$responsibility->value : '' }}">
+                                                        {{ $responsibility?->label() ?: 'Участник' }}
+                                                    </span>
+                                                </div>
+                                                @if($responsibility === null || $responsibility === EventResponsibilityStatusEnum::DECLINED)
+                                                    <form method="POST" action="{{ route('events.participants.responsibility.request', [$event->routeIdentifier(), $participant->id]) }}">
+                                                        @csrf
+                                                        <button class="btn btn--secondary btn--sm" type="submit">Назначить</button>
+                                                    </form>
+                                                @else
+                                                    <form method="POST" action="{{ route('events.participants.responsibility.destroy', [$event->routeIdentifier(), $participant->id]) }}">
+                                                        @csrf @method('DELETE')
+                                                        <button class="btn btn--secondary btn--sm" type="submit">
+                                                            {{ $responsibility === EventResponsibilityStatusEnum::PENDING ? 'Отменить запрос' : 'Снять' }}
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </article>
+                                        @endforeach
+                                    </div>
+                                </section>
+                            @endif
+
                             <a class="btn btn--secondary btn--sm" href="{{ route('events.edit', $event->routeIdentifier()) }}">Редактировать</a>
                             <form method="POST" action="{{ route('events.cancel', $event->routeIdentifier()) }}" onsubmit="return confirm('Вы уверены, что хотите отменить мероприятие и освободить бронь?')">
                                 @csrf

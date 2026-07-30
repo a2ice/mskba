@@ -33,6 +33,10 @@ final class LeaveEventHandler
             $participant->update([
                 'status' => EventParticipantStatusEnum::LEFT,
                 'left_at' => now(),
+                'responsibility_status' => null,
+                'responsibility_requested_by_user_id' => null,
+                'responsibility_requested_at' => null,
+                'responsibility_responded_at' => null,
             ]);
 
             return $event;

@@ -5,12 +5,16 @@ namespace Tests\Feature\Event;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserPrivacySetting;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -950,6 +954,119 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('<span class="badge badge--warning">Итог не указан</span>', false);
 
         $this->assertSame(EventStatusEnum::PUBLISHED, $training->refresh()->status);
+    }
+
+    public function test_organizer_searches_privacy_visible_users_and_adds_participant(): void
+    {
+        $organizer = User::factory()->create(['username' => 'event-owner']);
+        $visibleUser = User::factory()->create(['username' => 'visible-player']);
+        $hiddenUser = User::factory()->create(['username' => 'hidden-player']);
+        UserPrivacySetting::query()->create([
+            'user_id' => $hiddenUser->id,
+            'type' => UserPrivacySettingTypeEnum::DISCOVERABILITY,
+            'visibility' => UserPrivacyVisibilityEnum::NOBODY,
+        ]);
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+
+        $this->actingAs($organizer)
+            ->getJson(route('events.participants.candidates', [
+                'event' => $event->routeIdentifier(),
+                'query' => 'player',
+            ]))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $visibleUser->id, 'username' => 'visible-player'])
+            ->assertJsonMissing(['id' => $hiddenUser->id]);
+
+        $this->actingAs($organizer)
+            ->post(route('events.participants.manage.store', $event->routeIdentifier()), [
+                'user_id' => $visibleUser->id,
+            ])
+            ->assertSessionHas('status', 'Участник добавлен в мероприятие.');
+
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $event->id,
+            'user_id' => $visibleUser->id,
+            'role' => EventParticipantRoleEnum::PARTICIPANT->value,
+            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+        ]);
+
+        $this->actingAs($organizer)
+            ->post(route('events.participants.manage.store', $event->routeIdentifier()), [
+                'user_id' => $hiddenUser->id,
+            ])
+            ->assertSessionHas('error', 'Этот пользователь недоступен для добавления.');
+    }
+
+    public function test_multiple_responsible_participants_accept_invitation_and_organizer_can_remove_them(): void
+    {
+        $organizer = User::factory()->create(['username' => 'event-owner']);
+        $first = User::factory()->create(['username' => 'first-helper']);
+        $second = User::factory()->create(['username' => 'second-helper']);
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+
+        foreach ([$first, $second] as $user) {
+            $this->actingAs($organizer)->post(
+                route('events.participants.manage.store', $event->routeIdentifier()),
+                ['user_id' => $user->id],
+            );
+        }
+
+        $participants = $event->participants()
+            ->whereIn('user_id', [$first->id, $second->id])
+            ->get()
+            ->keyBy('user_id');
+
+        foreach ($participants as $participant) {
+            $this->actingAs($organizer)
+                ->post(route('events.participants.responsibility.request', [
+                    $event->routeIdentifier(),
+                    $participant->id,
+                ]))
+                ->assertSessionHas('status', 'Запрос на назначение отправлен участнику.');
+        }
+
+        $this->assertDatabaseCount('event_participants', 3);
+        $this->assertDatabaseHas('event_participants', [
+            'id' => $participants[$first->id]->id,
+            'responsibility_status' => EventResponsibilityStatusEnum::PENDING->value,
+        ]);
+
+        foreach ([$first, $second] as $user) {
+            $participant = $participants[$user->id];
+            $this->actingAs($user)
+                ->patch(route('events.participants.responsibility.respond', [
+                    $event->routeIdentifier(),
+                    $participant->id,
+                ]), ['decision' => EventResponsibilityStatusEnum::ACCEPTED->value])
+                ->assertSessionHas('status', 'Вы подтвердили назначение ответственным.');
+        }
+
+        $this->assertSame(
+            2,
+            $event->participants()
+                ->where('responsibility_status', EventResponsibilityStatusEnum::ACCEPTED->value)
+                ->count(),
+        );
+
+        $this->actingAs($organizer)
+            ->delete(route('events.participants.responsibility.destroy', [
+                $event->routeIdentifier(),
+                $participants[$first->id]->id,
+            ]))
+            ->assertSessionHas('status', 'Назначение ответственного снято.');
+
+        $this->assertDatabaseHas('event_participants', [
+            'id' => $participants[$first->id]->id,
+            'responsibility_status' => null,
+        ]);
+        $this->assertDatabaseHas('event_participants', [
+            'id' => $participants[$second->id]->id,
+            'responsibility_status' => EventResponsibilityStatusEnum::ACCEPTED->value,
+        ]);
     }
 
     /** @return array{Venue, CarbonImmutable, CarbonImmutable} */

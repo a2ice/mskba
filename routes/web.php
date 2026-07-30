@@ -248,6 +248,20 @@ Route::prefix('events')->group(function () {
             ->name('events.leave');
         Route::patch('/{event}/participants/me', [EventController::class, 'participation'])
             ->name('events.participation');
+        Route::get('/{event}/participants/candidates', [EventController::class, 'participantCandidates'])
+            ->middleware('throttle:60,1')
+            ->name('events.participants.candidates');
+        Route::post('/{event}/participants/manage', [EventController::class, 'addParticipant'])
+            ->name('events.participants.manage.store');
+        Route::post('/{event}/participants/{participant}/responsibility', [EventController::class, 'requestResponsibility'])
+            ->whereNumber('participant')
+            ->name('events.participants.responsibility.request');
+        Route::patch('/{event}/participants/{participant}/responsibility', [EventController::class, 'respondResponsibility'])
+            ->whereNumber('participant')
+            ->name('events.participants.responsibility.respond');
+        Route::delete('/{event}/participants/{participant}/responsibility', [EventController::class, 'removeResponsibility'])
+            ->whereNumber('participant')
+            ->name('events.participants.responsibility.destroy');
         Route::post('/{event}/cancel', [EventController::class, 'cancel'])->name('events.cancel');
         Route::put('/{event}/result', [EventController::class, 'complete'])->name('events.result.update');
         Route::post('/{event}/result/photos', [EventController::class, 'storeResultPhoto'])

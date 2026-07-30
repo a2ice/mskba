@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initEventVenueMap();
     initEventDescription();
     initEventShare();
+    initEventParticipantManagement();
 });
 
 function initEventHero() {
@@ -190,6 +191,175 @@ function initEventShare() {
             }
         } catch {
             window.prompt('Скопируйте ссылку на мероприятие', url);
+        }
+    });
+}
+
+function initEventParticipantManagement() {
+    const manager = document.querySelector('[data-event-participant-manager]');
+    const form = manager?.querySelector('[data-event-participant-form]');
+    const input = manager?.querySelector('[data-event-participant-search]');
+    const userId = manager?.querySelector('[data-event-participant-user-id]');
+    const results = manager?.querySelector('[data-event-participant-results]');
+    const loader = manager?.querySelector('[data-event-participant-loader]');
+    const clearButton = manager?.querySelector('[data-event-participant-clear]');
+    const selection = manager?.querySelector('[data-event-participant-selection]');
+    const submitButton = manager?.querySelector('[data-event-participant-submit]');
+    const searchUrl = manager?.dataset.searchUrl;
+
+    if (!form || !input || !userId || !results || !loader || !clearButton || !selection || !submitButton || !searchUrl) {
+        return;
+    }
+
+    let debounceTimer = null;
+    let requestController = null;
+    let selectedName = '';
+
+    const setLoading = (isLoading) => {
+        loader.hidden = !isLoading;
+        clearButton.hidden = isLoading || input.value === '';
+        input.setAttribute('aria-busy', String(isLoading));
+    };
+
+    const resetSelection = () => {
+        selectedName = '';
+        userId.value = '';
+        selection.textContent = '';
+        selection.hidden = true;
+        submitButton.disabled = true;
+    };
+
+    const hideResults = () => {
+        results.hidden = true;
+        results.replaceChildren();
+    };
+
+    const reset = () => {
+        requestController?.abort();
+        window.clearTimeout(debounceTimer);
+        input.value = '';
+        resetSelection();
+        hideResults();
+        setLoading(false);
+        input.focus();
+    };
+
+    const selectUser = (user) => {
+        selectedName = user.name;
+        userId.value = String(user.id);
+        input.value = user.username ? `${user.name} · @${user.username}` : user.name;
+        selection.textContent = `Выбран: ${input.value}`;
+        selection.hidden = false;
+        submitButton.disabled = false;
+        hideResults();
+        setLoading(false);
+    };
+
+    const renderResults = (users) => {
+        results.replaceChildren();
+
+        if (!users.length) {
+            const empty = document.createElement('p');
+            empty.className = 'event-participant-search__empty';
+            empty.textContent = 'Доступные пользователи не найдены.';
+            results.append(empty);
+        } else {
+            users.forEach((user) => {
+                const option = document.createElement('button');
+                const name = document.createElement('strong');
+                const username = document.createElement('span');
+
+                option.type = 'button';
+                option.className = 'event-participant-search__option';
+                name.textContent = user.name;
+                username.textContent = user.username ? `@${user.username}` : `ID ${user.id}`;
+                option.append(name, username);
+                option.addEventListener('click', () => selectUser(user));
+                results.append(option);
+            });
+        }
+
+        results.hidden = false;
+    };
+
+    const search = async () => {
+        const query = input.value.trim();
+
+        if (query.length < 2) {
+            hideResults();
+            setLoading(false);
+            return;
+        }
+
+        requestController?.abort();
+        requestController = new AbortController();
+        setLoading(true);
+
+        try {
+            const url = new URL(searchUrl, window.location.origin);
+            url.searchParams.set('query', query);
+            const response = await fetch(url, {
+                headers: { Accept: 'application/json' },
+                signal: requestController.signal,
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Не удалось выполнить поиск.');
+            }
+
+            renderResults(payload.users || []);
+        } catch (error) {
+            if (error?.name === 'AbortError') {
+                return;
+            }
+
+            results.replaceChildren();
+            const message = document.createElement('p');
+            message.className = 'event-participant-search__empty is-error';
+            message.textContent = error?.message || 'Не удалось выполнить поиск.';
+            results.append(message);
+            results.hidden = false;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    input.addEventListener('input', () => {
+        if (selectedName !== '' || userId.value !== '') {
+            resetSelection();
+        }
+
+        clearButton.hidden = input.value === '';
+        window.clearTimeout(debounceTimer);
+
+        if (input.value.trim().length < 2) {
+            requestController?.abort();
+            hideResults();
+            setLoading(false);
+            return;
+        }
+
+        debounceTimer = window.setTimeout(search, 250);
+    });
+
+    input.addEventListener('focus', () => {
+        if (results.childElementCount > 0 && userId.value === '') {
+            results.hidden = false;
+        }
+    });
+
+    clearButton.addEventListener('click', reset);
+    document.addEventListener('click', (event) => {
+        if (!manager.contains(event.target)) {
+            hideResults();
+        }
+    });
+
+    form.addEventListener('submit', (event) => {
+        if (userId.value === '') {
+            event.preventDefault();
+            input.focus();
         }
     });
 }

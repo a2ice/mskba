@@ -59,6 +59,12 @@ final class SetEventParticipationHandler
                     'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
                     'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,
                     'confirmation_version' => $event->participation_confirmation_version,
+                    ...($status === EventParticipantStatusEnum::CONFIRMED ? [] : [
+                        'responsibility_status' => null,
+                        'responsibility_requested_by_user_id' => null,
+                        'responsibility_requested_at' => null,
+                        'responsibility_responded_at' => null,
+                    ]),
                 ],
             );
 

@@ -799,6 +799,197 @@
     justify-self: start;
 }
 
+.event-responsibility-invitation,
+.event-participant-manager,
+.event-responsibility-manager {
+    display: grid;
+    gap: 18px;
+}
+
+.event-responsibility-invitation {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    border-color: rgba(236, 127, 18, 0.55);
+}
+
+.event-responsibility-invitation h2,
+.event-participant-manager h3,
+.event-responsibility-manager h3 {
+    margin: 2px 0 6px;
+}
+
+.event-responsibility-invitation p,
+.event-participant-manager p,
+.event-responsibility-manager p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.event-responsibility-invitation__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.event-responsibility-invitation__actions form {
+    margin: 0;
+}
+
+.event-participant-manager,
+.event-responsibility-manager {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+}
+
+.event-participant-manager form {
+    position: relative;
+}
+
+.event-participant-search {
+    position: relative;
+    min-width: 0;
+}
+
+.event-participant-search .form-control {
+    width: 100%;
+    padding-right: 48px;
+}
+
+.event-participant-search__loader,
+.event-participant-search__clear {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: 14px;
+    width: 22px;
+    height: 22px;
+    transform: translateY(-50%);
+}
+
+.event-participant-search__loader {
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: event-participant-loading 700ms linear infinite;
+}
+
+.event-participant-search__clear {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--muted);
+    font-size: 21px;
+}
+
+.event-participant-search__results {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #151915;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.42);
+}
+
+.event-participant-search__option {
+    display: grid;
+    width: 100%;
+    gap: 2px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+    text-align: left;
+}
+
+.event-participant-search__option:last-child {
+    border-bottom: 0;
+}
+
+.event-participant-search__option:hover,
+.event-participant-search__option:focus-visible {
+    background: rgba(236, 127, 18, 0.13);
+}
+
+.event-participant-search__option span,
+.event-participant-search__selection,
+.event-participant-search__empty {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.event-participant-search__empty {
+    margin: 0;
+    padding: 14px;
+}
+
+.event-participant-search__empty.is-error {
+    color: var(--danger, #ef6b6b);
+}
+
+.event-participant-search__selection {
+    margin: 0;
+}
+
+.event-responsibility-manager__list {
+    display: grid;
+    gap: 10px;
+}
+
+.event-responsibility-manager__item {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+
+.event-responsibility-manager__item > div {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+}
+
+.event-responsibility-manager__item strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-responsibility-manager__item span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.event-responsibility-manager__item span.is-pending {
+    color: var(--accent);
+}
+
+.event-responsibility-manager__item span.is-accepted {
+    color: var(--success, #31c97b);
+}
+
+.event-responsibility-manager__item span.is-declined {
+    color: var(--danger, #ef6b6b);
+}
+
+.event-responsibility-manager__item form {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+@keyframes event-participant-loading {
+    to {
+        transform: translateY(-50%) rotate(360deg);
+    }
+}
+
 .event-result-gallery {
     margin-bottom: 16px;
 }
@@ -1113,6 +1304,19 @@ body.telegram-mini-app .event-show {
 
     .event-management__body {
         padding: 0 18px 18px;
+    }
+
+    .event-responsibility-invitation {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .event-participant-manager,
+    .event-responsibility-manager {
+        padding: 16px;
+    }
+
+    .event-responsibility-manager__item {
+        align-items: flex-start;
     }
 }
 

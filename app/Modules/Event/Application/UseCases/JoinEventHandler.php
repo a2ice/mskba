@@ -50,6 +50,10 @@ final class JoinEventHandler
                     'joined_at' => now(),
                     'left_at' => null,
                     'confirmation_version' => $event->participation_confirmation_version,
+                    'responsibility_status' => null,
+                    'responsibility_requested_by_user_id' => null,
+                    'responsibility_requested_at' => null,
+                    'responsibility_responded_at' => null,
                 ],
             );
 

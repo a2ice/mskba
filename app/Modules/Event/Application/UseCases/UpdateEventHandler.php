@@ -164,6 +164,14 @@ final class UpdateEventHandler
                 $event->participants()
                     ->where('role', EventParticipantRoleEnum::ORGANIZER->value)
                     ->update(['confirmation_version' => $event->participation_confirmation_version]);
+                $event->participants()
+                    ->where('role', EventParticipantRoleEnum::PARTICIPANT->value)
+                    ->update([
+                        'responsibility_status' => null,
+                        'responsibility_requested_by_user_id' => null,
+                        'responsibility_requested_at' => null,
+                        'responsibility_responded_at' => null,
+                    ]);
             }
 
             return $event->refresh()->load(['venue.schedule', 'booking']);
