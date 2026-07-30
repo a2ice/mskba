@@ -29,6 +29,10 @@
     $miniGameEndsAt = $event->gameDetail->is_time_scheduled
         ? old('ends_at', $event->ends_at->format('H:i'))
         : '';
+    $hasMiniGameScheduledTime = (bool) old(
+        'has_scheduled_time',
+        $event->gameDetail->is_time_scheduled,
+    );
 @endphp
 
 @section('section-sidebar')
@@ -60,13 +64,50 @@
                             <label class="form-label">Название</label>
                             <input class="form-control" name="title" value="{{ old('title', $event->title) }}" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Начало</label>
-                            <input class="form-control" type="time" name="starts_at" value="{{ $miniGameStartsAt }}" autocomplete="off">
+                        <div class="col-12">
+                            @include('theme::partials.forms.toggle', [
+                                'id' => 'mini-game-has-scheduled-time',
+                                'name' => 'has_scheduled_time',
+                                'title' => 'Указать время',
+                                'description' => 'Включите, только если у мини-игры заранее известен точный интервал.',
+                                'checked' => $hasMiniGameScheduledTime,
+                                'wrapperClass' => 'mb-0',
+                                'inputAttributes' => [
+                                    'data-mini-game-schedule-toggle' => true,
+                                ],
+                            ])
                         </div>
-                        <div class="col-md-3">
+                        <div
+                            class="col-md-3"
+                            data-mini-game-schedule-field
+                            @if(! $hasMiniGameScheduledTime) hidden @endif
+                        >
+                            <label class="form-label">Начало</label>
+                            <input
+                                class="form-control"
+                                type="time"
+                                name="starts_at"
+                                value="{{ $miniGameStartsAt }}"
+                                autocomplete="off"
+                                data-mini-game-schedule-input
+                                @disabled(! $hasMiniGameScheduledTime)
+                            >
+                        </div>
+                        <div
+                            class="col-md-3"
+                            data-mini-game-schedule-field
+                            @if(! $hasMiniGameScheduledTime) hidden @endif
+                        >
                             <label class="form-label">Окончание</label>
-                            <input class="form-control" type="time" name="ends_at" value="{{ $miniGameEndsAt }}" autocomplete="off">
+                            <input
+                                class="form-control"
+                                type="time"
+                                name="ends_at"
+                                value="{{ $miniGameEndsAt }}"
+                                autocomplete="off"
+                                data-mini-game-schedule-input
+                                @disabled(! $hasMiniGameScheduledTime)
+                            >
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Игроков A</label>
@@ -76,7 +117,6 @@
                             <label class="form-label">Игроков B</label>
                             <input class="form-control" type="number" min="1" max="7" name="side_b_size" value="{{ old('side_b_size', $event->gameDetail->side_b_size) }}" required>
                         </div>
-                        <div class="col-12"><p class="form-hint mb-0">Время необязательно. Оставьте оба поля пустыми, если мини-игра проходит без заранее заданного интервала.</p></div>
                         <div class="col-md-6">
                             <label class="form-label">Название команды A</label>
                             <input class="form-control" name="side_a_name" value="{{ old('side_a_name', $sides['A']->display_name) }}" maxlength="80" required>

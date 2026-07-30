@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initEventVenueMap();
     initEventDescription();
     initEventShare();
+    initMiniGameScheduleControls();
     const miniGames = initMiniGameManagement();
     initEventParticipantManagement(miniGames);
 });
@@ -193,6 +194,36 @@ function initEventShare() {
         } catch {
             window.prompt('Скопируйте ссылку на мероприятие', url);
         }
+    });
+}
+
+function initMiniGameScheduleControls() {
+    document.querySelectorAll('[data-mini-game-schedule-toggle]').forEach((toggle) => {
+        const form = toggle.closest('form');
+        const fields = Array.from(form?.querySelectorAll('[data-mini-game-schedule-field]') || []);
+        const inputs = Array.from(form?.querySelectorAll('[data-mini-game-schedule-input]') || []);
+
+        if (!form || fields.length === 0 || inputs.length === 0) {
+            return;
+        }
+
+        const synchronize = () => {
+            const enabled = toggle.checked;
+
+            fields.forEach((field) => {
+                field.hidden = !enabled;
+            });
+            inputs.forEach((input) => {
+                input.disabled = !enabled;
+
+                if (!enabled) {
+                    input.value = '';
+                }
+            });
+        };
+
+        toggle.addEventListener('change', synchronize);
+        synchronize();
     });
 }
 

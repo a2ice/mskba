@@ -49,8 +49,9 @@ final class GameController extends Controller
         [$parent, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'starts_at' => ['nullable', 'required_with:ends_at', 'date_format:H:i'],
-            'ends_at' => ['nullable', 'required_with:starts_at', 'date_format:H:i'],
+            'has_scheduled_time' => ['nullable', 'boolean'],
+            'starts_at' => ['nullable', 'required_if:has_scheduled_time,1', 'date_format:H:i'],
+            'ends_at' => ['nullable', 'required_if:has_scheduled_time,1', 'date_format:H:i'],
             'side_a_name' => ['nullable', 'string', 'max:80', 'different:side_b_name'],
             'side_b_name' => ['nullable', 'string', 'max:80', 'different:side_a_name'],
             'side_a_size' => ['required', 'integer', 'min:1', 'max:6'],
@@ -66,8 +67,8 @@ final class GameController extends Controller
                 $parent,
                 $actor,
                 $data['title'],
-                $data['starts_at'] ?? null,
-                $data['ends_at'] ?? null,
+                ($data['has_scheduled_time'] ?? false) ? ($data['starts_at'] ?? null) : null,
+                ($data['has_scheduled_time'] ?? false) ? ($data['ends_at'] ?? null) : null,
                 $data['side_a_name'] ?? 'Команда A',
                 $data['side_b_name'] ?? 'Команда B',
                 $data['side_a_user_ids'] ?? [],
@@ -116,8 +117,9 @@ final class GameController extends Controller
         [$game] = $this->managedEvent($request, $event, $events, $actors, $access);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'starts_at' => ['nullable', 'required_with:ends_at', 'date_format:H:i'],
-            'ends_at' => ['nullable', 'required_with:starts_at', 'date_format:H:i'],
+            'has_scheduled_time' => ['nullable', 'boolean'],
+            'starts_at' => ['nullable', 'required_if:has_scheduled_time,1', 'date_format:H:i'],
+            'ends_at' => ['nullable', 'required_if:has_scheduled_time,1', 'date_format:H:i'],
             'side_a_name' => ['required', 'string', 'max:80', 'different:side_b_name'],
             'side_b_name' => ['required', 'string', 'max:80', 'different:side_a_name'],
             'side_a_size' => ['required', 'integer', 'min:1', 'max:6'],
@@ -128,8 +130,8 @@ final class GameController extends Controller
             fn () => $games->updateMiniGame(
                 $game,
                 $data['title'],
-                $data['starts_at'] ?? null,
-                $data['ends_at'] ?? null,
+                ($data['has_scheduled_time'] ?? false) ? ($data['starts_at'] ?? null) : null,
+                ($data['has_scheduled_time'] ?? false) ? ($data['ends_at'] ?? null) : null,
                 $data['side_a_name'],
                 $data['side_b_name'],
                 (int) $data['side_a_size'],

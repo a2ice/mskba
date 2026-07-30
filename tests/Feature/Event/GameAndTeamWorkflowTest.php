@@ -144,6 +144,7 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->actingAs($participantB)->post(route('events.join', $training->routeIdentifier()));
         $payload = [
             'title' => 'Мини-игра 1',
+            'has_scheduled_time' => true,
             'starts_at' => $start->format('H:i'),
             'ends_at' => $start->addHour()->format('H:i'),
             'side_a_name' => 'Оранжевые',
@@ -289,6 +290,9 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->actingAs($responsible)
             ->post(route('events.games.store', $training->routeIdentifier()), [
                 'title' => 'Мини-игра ответственного',
+                'has_scheduled_time' => false,
+                'starts_at' => '12:30',
+                'ends_at' => '12:30',
                 'side_a_name' => 'Светлые',
                 'side_b_name' => 'Тёмные',
                 'side_a_size' => 1,
@@ -300,18 +304,25 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $miniGame = Event::query()->where('parent_event_id', $training->id)->firstOrFail();
+        $this->assertFalse($miniGame->gameDetail->is_time_scheduled);
+        $this->assertTrue($miniGame->starts_at->equalTo($training->starts_at));
+        $this->assertTrue($miniGame->ends_at->equalTo($training->ends_at));
+
         $this->actingAs($responsible)
             ->get(route('events.game.manage', $miniGame->routeIdentifier()))
             ->assertOk()
-            ->assertSee('name="starts_at" value=""', false)
-            ->assertSee('name="ends_at" value=""', false)
+            ->assertSee('name="has_scheduled_time"', false)
+            ->assertSee('name="starts_at"', false)
+            ->assertSee('name="ends_at"', false)
+            ->assertSee('data-mini-game-schedule-input', false)
             ->assertSee('Состав и статистика');
 
         $this->actingAs($responsible)
             ->put(route('events.game.update', $miniGame->routeIdentifier()), [
                 'title' => 'Мини-игра обновлена ответственным',
-                'starts_at' => null,
-                'ends_at' => null,
+                'has_scheduled_time' => false,
+                'starts_at' => '12:30',
+                'ends_at' => '12:30',
                 'side_a_name' => 'Светлые',
                 'side_b_name' => 'Тёмные',
                 'side_a_size' => 1,
@@ -319,6 +330,11 @@ final class GameAndTeamWorkflowTest extends TestCase
             ])
             ->assertSessionHas('status')
             ->assertSessionHasNoErrors();
+
+        $miniGame->refresh();
+        $this->assertFalse($miniGame->gameDetail->is_time_scheduled);
+        $this->assertTrue($miniGame->starts_at->equalTo($training->starts_at));
+        $this->assertTrue($miniGame->ends_at->equalTo($training->ends_at));
 
         $this->actingAs($responsible)
             ->patch(route('events.game.statistics', $miniGame->routeIdentifier()), [

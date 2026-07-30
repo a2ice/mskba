@@ -474,8 +474,49 @@
                                             @csrf
                                             <div class="row g-3">
                                                 <div class="col-12"><label class="form-label">Название</label><input class="form-control" name="title" value="{{ old('title', 'Мини-игра') }}" required></div>
-                                                <div class="col-md-3"><label class="form-label">Начало</label><input class="form-control" type="time" name="starts_at" value="{{ old('starts_at') }}"></div>
-                                                <div class="col-md-3"><label class="form-label">Окончание</label><input class="form-control" type="time" name="ends_at" value="{{ old('ends_at') }}"></div>
+                                                <div class="col-12">
+                                                    @include('theme::partials.forms.toggle', [
+                                                        'id' => 'mini-game-has-scheduled-time',
+                                                        'name' => 'has_scheduled_time',
+                                                        'title' => 'Указать время',
+                                                        'description' => 'Включите, только если у мини-игры заранее известен точный интервал.',
+                                                        'checked' => (bool) old('has_scheduled_time', false),
+                                                        'wrapperClass' => 'mb-0',
+                                                        'inputAttributes' => [
+                                                            'data-mini-game-schedule-toggle' => true,
+                                                        ],
+                                                    ])
+                                                </div>
+                                                <div
+                                                    class="col-md-3"
+                                                    data-mini-game-schedule-field
+                                                    @if(! old('has_scheduled_time')) hidden @endif
+                                                >
+                                                    <label class="form-label">Начало</label>
+                                                    <input
+                                                        class="form-control"
+                                                        type="time"
+                                                        name="starts_at"
+                                                        value="{{ old('starts_at') }}"
+                                                        data-mini-game-schedule-input
+                                                        @disabled(! old('has_scheduled_time'))
+                                                    >
+                                                </div>
+                                                <div
+                                                    class="col-md-3"
+                                                    data-mini-game-schedule-field
+                                                    @if(! old('has_scheduled_time')) hidden @endif
+                                                >
+                                                    <label class="form-label">Окончание</label>
+                                                    <input
+                                                        class="form-control"
+                                                        type="time"
+                                                        name="ends_at"
+                                                        value="{{ old('ends_at') }}"
+                                                        data-mini-game-schedule-input
+                                                        @disabled(! old('has_scheduled_time'))
+                                                    >
+                                                </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label" for="miniGameFormat">Формат игры</label>
                                                     <select id="miniGameFormat" class="form-control" data-mini-game-format>
@@ -497,7 +538,6 @@
                                                     <input type="hidden" name="side_b_size" value="{{ old('side_b_size', $defaultMiniGameFormat['side_b_size']) }}" data-mini-game-side-b-size>
                                                     <p class="form-hint mb-0">Доступные форматы зависят от количества участников мероприятия.</p>
                                                 </div>
-                                                <div class="col-12"><p class="form-hint mb-0">Время необязательно. Если план неизвестен, оставьте оба поля пустыми.</p></div>
                                                 <div class="col-md-6"><label class="form-label">Название команды A</label><input class="form-control" name="side_a_name" value="{{ old('side_a_name', 'Команда A') }}" maxlength="80" required></div>
                                                 <div class="col-md-6"><label class="form-label">Название команды B</label><input class="form-control" name="side_b_name" value="{{ old('side_b_name', 'Команда B') }}" maxlength="80" required></div>
                                             </div>
