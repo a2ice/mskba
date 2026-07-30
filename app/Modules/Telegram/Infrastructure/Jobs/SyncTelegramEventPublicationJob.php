@@ -42,7 +42,14 @@ final class SyncTelegramEventPublicationJob implements ShouldQueue
         TelegramEventMessageBuilder $messages,
     ): void {
         $event = Event::query()
-            ->with(['venue.schedule'])
+            ->with([
+                'venue.schedule',
+                'participants.user.profile',
+                'childGames' => fn ($query) => $query
+                    ->with(['gameDetail', 'gameSides'])
+                    ->orderBy('starts_at')
+                    ->orderBy('id'),
+            ])
             ->find($this->eventId);
 
         if ($event === null) {

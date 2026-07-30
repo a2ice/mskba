@@ -5,6 +5,7 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\EventResultGalleryManager;
+use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\AddEventParticipantHandler;
 use App\Modules\Event\Application\UseCases\CancelEventHandler;
 use App\Modules\Event\Application\UseCases\CompleteEventHandler;
@@ -178,6 +179,7 @@ final class EventController extends Controller
         ShowEventHandler $events,
         CurrentActorResolver $actors,
         EventManagementAccess $access,
+        GameStatisticsFields $statisticsFields,
     ): Response {
         $item = $events->handle($event, $actors->resolveForRequest($request));
         $currentParticipant = $request->user() === null
@@ -186,12 +188,13 @@ final class EventController extends Controller
 
         $actor = $actors->resolveForRequest($request);
 
-        return ThemeResolver::page('events.show', [
+        return ThemeResolver::page($item->type === EventTypeEnum::GAME ? 'events.game-show' : 'events.show', [
             'event' => $item,
             'currentParticipant' => $currentParticipant,
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED
                 && $currentParticipant->confirmation_version === $item->participation_confirmation_version,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
+            'statisticsFields' => $statisticsFields->all(),
         ]);
     }
 

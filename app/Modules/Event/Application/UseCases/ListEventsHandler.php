@@ -33,6 +33,7 @@ final class ListEventsHandler
             : CarbonImmutable::parse($dateTo, $timezone)->endOfDay()->utc();
 
         return Event::query()
+            ->whereNull('parent_event_id')
             ->with(['venue.schedule', 'booking'])
             ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
             ->when(

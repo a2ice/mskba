@@ -381,6 +381,44 @@
                 @endif
             @endforeach
 
+            @if($event->childGames->isNotEmpty())
+                <section class="event-card event-mini-games event-mini-games--public">
+                    <div>
+                        <span class="eyebrow">Мини-игры</span>
+                        <h2>Игры внутри мероприятия</h2>
+                    </div>
+                    <div class="event-mini-games__list">
+                        @foreach($event->childGames as $childGame)
+                            @php
+                                $childSides = $childGame->gameSides->keyBy('slot');
+                                $childSideA = $childSides->get('A');
+                                $childSideB = $childSides->get('B');
+                                $childHasScore = $childSideA?->score !== null && $childSideB?->score !== null;
+                            @endphp
+                            <article>
+                                <a class="event-mini-games__summary" href="{{ route('events.show', $childGame->routeIdentifier()) }}">
+                                    <strong>{{ $childGame->title }}</strong>
+                                    <span>
+                                        {{ $childGame->gameDetail?->is_time_scheduled
+                                            ? $childGame->starts_at->format('H:i').'–'.$childGame->ends_at->format('H:i')
+                                            : 'Время не задано' }}
+                                        · {{ $childGame->gameDetail?->formatLabel() }}
+                                    </span>
+                                    <span class="event-mini-games__matchup">
+                                        {{ $childSideA?->display_name ?: 'Команда A' }}
+                                        <b>{{ $childHasScore ? $childSideA->score.':'.$childSideB->score : '—:—' }}</b>
+                                        {{ $childSideB?->display_name ?: 'Команда B' }}
+                                    </span>
+                                </a>
+                                @if($canManage)
+                                    <a class="btn btn--secondary btn--sm" href="{{ route('events.game.manage', $childGame->routeIdentifier()) }}">Управлять</a>
+                                @endif
+                            </article>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
             <button type="button" class="event-share" data-event-share data-share-url="{{ route('events.show', $event->routeIdentifier()) }}" data-share-title="{{ $event->title }}">
                 <i class="ti ti-message-share" aria-hidden="true"></i>
                 <span><strong>Поделиться в чате</strong><small>Пригласите друзей на событие</small></span>
@@ -420,24 +458,6 @@
                                     <h3>Игры внутри тренировки</h3>
                                     <p>Состав выбирается только из подтверждённых участников этого мероприятия.</p>
                                 </div>
-                                @if($event->childGames->isNotEmpty())
-                                    <div class="event-mini-games__list">
-                                        @foreach($event->childGames as $childGame)
-                                            <article>
-                                                <div>
-                                                    <strong>{{ $childGame->title }}</strong>
-                                                    <span>
-                                                        {{ $childGame->gameDetail?->is_time_scheduled
-                                                            ? $childGame->starts_at->format('H:i').'–'.$childGame->ends_at->format('H:i')
-                                                            : 'Время не задано' }}
-                                                        · {{ $childGame->gameDetail?->formatLabel() }}
-                                                    </span>
-                                                </div>
-                                                <a class="btn btn--secondary btn--sm" href="{{ route('events.game.manage', $childGame->routeIdentifier()) }}">Состав и статистика</a>
-                                            </article>
-                                        @endforeach
-                                    </div>
-                                @endif
                                 @if($canManageComposition)
                                     <details class="event-mini-games__create">
                                         <summary class="btn btn--sm btn--secondary"><span class="fc-white">Добавить мини-игру</span></summary>
@@ -563,7 +583,9 @@
                             </section>
                         @endif
 
-                        @if($event->starts_at->isFuture() && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
+                        @if($event->parent_event_id === null
+                            && $event->starts_at->isFuture()
+                            && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
                             @if($confirmedParticipants->where('role', EventParticipantRoleEnum::PARTICIPANT)->isNotEmpty())
                                 <section class="event-responsibility-manager">
                                     <div>

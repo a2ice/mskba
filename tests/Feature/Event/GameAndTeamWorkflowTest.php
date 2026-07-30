@@ -3,6 +3,9 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
+use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -113,6 +116,16 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->assertSame(1, $assessment->games_count);
         $this->assertSame('0.1000', $assessment->confidence);
         $this->assertSame('10.00', $assessment->stamina);
+
+        $this->app['auth']->logout();
+        $this->get(route('events.show', $game->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Команда А')
+            ->assertSee('Команда Б')
+            ->assertSee('owner-a')
+            ->assertSee('owner-b')
+            ->assertSee('Статистика игроков')
+            ->assertDontSee('Редактировать игру и статистику');
     }
 
     public function test_training_organizer_creates_non_overlapping_mini_game_from_confirmed_participants(): void
@@ -156,6 +169,34 @@ final class GameAndTeamWorkflowTest extends TestCase
             $miniGame->gameSides()->orderBy('slot')->pluck('display_name')->all(),
         );
 
+        $this->app['auth']->logout();
+        $this->get(route('events.show', $training->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Мини-игра 1')
+            ->assertSee('Оранжевые')
+            ->assertSee('Чёрные')
+            ->assertSee('—:—')
+            ->assertDontSee('Управлять');
+
+        $this->get(route('events.show', $miniGame->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Мини-игра мероприятия')
+            ->assertSee('Оранжевые')
+            ->assertSee('Чёрные')
+            ->assertSee('participant-a')
+            ->assertSee('participant-b')
+            ->assertSee('Статистика игроков')
+            ->assertDontSee('Редактировать игру и статистику');
+
+        $this->actingAs($organizer)
+            ->get(route('events.show', $training->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Управлять');
+        $this->actingAs($organizer)
+            ->get(route('events.show', $miniGame->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Редактировать игру и статистику');
+
         $this->actingAs($organizer)
             ->from(route('events.show', $training->routeIdentifier()))
             ->post(route('events.games.store', $training->routeIdentifier()), [
@@ -164,6 +205,208 @@ final class GameAndTeamWorkflowTest extends TestCase
             ])
             ->assertSessionHas('error', 'В выбранное время уже запланирована другая мини-игра.');
         $this->assertSame(1, Event::query()->where('parent_event_id', $training->id)->count());
+    }
+
+    public function test_mini_game_inherits_private_visibility_from_parent_event(): void
+    {
+        $organizer = User::factory()->create(['username' => 'private-game-organizer']);
+        $participant = User::factory()->create(['username' => 'private-game-player']);
+        $stranger = User::factory()->create(['username' => 'private-game-stranger']);
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(route('events.store'), [
+            ...$this->eventPayload($venue, $start, $end, EventTypeEnum::GAME_TRAINING),
+            'visibility' => 'private',
+        ])->assertRedirect();
+        $training = Event::query()->where('type', EventTypeEnum::GAME_TRAINING->value)->firstOrFail();
+        $training->participants()->create([
+            'user_id' => $participant->id,
+            'role' => EventParticipantRoleEnum::PARTICIPANT,
+            'status' => EventParticipantStatusEnum::CONFIRMED,
+            'joined_at' => now(),
+            'confirmation_version' => $training->participation_confirmation_version,
+        ]);
+
+        $this->actingAs($organizer)
+            ->post(route('events.games.store', $training->routeIdentifier()), [
+                'title' => 'Закрытая мини-игра',
+                'side_a_name' => 'Команда A',
+                'side_b_name' => 'Команда B',
+                'side_a_size' => 1,
+                'side_b_size' => 1,
+                'side_a_user_ids' => [$organizer->id],
+                'side_b_user_ids' => [$participant->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $miniGame = Event::query()->where('parent_event_id', $training->id)->firstOrFail();
+
+        $this->actingAs($stranger)
+            ->get(route('events.show', $miniGame->routeIdentifier()))
+            ->assertNotFound();
+        $this->actingAs($organizer)
+            ->get(route('events.show', $miniGame->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Закрытая мини-игра');
+    }
+
+    public function test_accepted_responsible_manages_parent_event_and_its_mini_games(): void
+    {
+        $organizer = User::factory()->create(['username' => 'aggregate-organizer']);
+        $responsible = User::factory()->create(['username' => 'aggregate-responsible']);
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(
+            route('events.store'),
+            $this->eventPayload($venue, $start, $end, EventTypeEnum::GAME_TRAINING),
+        )->assertRedirect();
+        $training = Event::query()->where('type', EventTypeEnum::GAME_TRAINING->value)->firstOrFail();
+        $this->actingAs($responsible)
+            ->post(route('events.join', $training->routeIdentifier()))
+            ->assertRedirect();
+        $participant = $training->participants()->where('user_id', $responsible->id)->firstOrFail();
+
+        $this->actingAs($organizer)
+            ->post(route('events.participants.responsibility.request', [
+                $training->routeIdentifier(),
+                $participant->id,
+            ]))
+            ->assertSessionHas('status');
+        $this->actingAs($responsible)
+            ->patch(route('events.participants.responsibility.respond', [
+                $training->routeIdentifier(),
+                $participant->id,
+            ]), ['decision' => EventResponsibilityStatusEnum::ACCEPTED->value])
+            ->assertSessionHas('status');
+
+        $this->actingAs($responsible)
+            ->get(route('events.show', $training->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Управление мероприятием')
+            ->assertSee('Добавить мини-игру');
+
+        $this->actingAs($responsible)
+            ->post(route('events.games.store', $training->routeIdentifier()), [
+                'title' => 'Мини-игра ответственного',
+                'side_a_name' => 'Светлые',
+                'side_b_name' => 'Тёмные',
+                'side_a_size' => 1,
+                'side_b_size' => 1,
+                'side_a_user_ids' => [$organizer->id],
+                'side_b_user_ids' => [$responsible->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $miniGame = Event::query()->where('parent_event_id', $training->id)->firstOrFail();
+        $this->actingAs($responsible)
+            ->get(route('events.game.manage', $miniGame->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('name="starts_at" value=""', false)
+            ->assertSee('name="ends_at" value=""', false)
+            ->assertSee('Состав и статистика');
+
+        $this->actingAs($responsible)
+            ->put(route('events.game.update', $miniGame->routeIdentifier()), [
+                'title' => 'Мини-игра обновлена ответственным',
+                'starts_at' => null,
+                'ends_at' => null,
+                'side_a_name' => 'Светлые',
+                'side_b_name' => 'Тёмные',
+                'side_a_size' => 1,
+                'side_b_size' => 1,
+            ])
+            ->assertSessionHas('status')
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($responsible)
+            ->patch(route('events.game.statistics', $miniGame->routeIdentifier()), [
+                'scores' => ['A' => 2, 'B' => 0],
+                'players' => [
+                    $organizer->id => $this->playerStatistics([
+                        'close_made' => 1,
+                        'close_attempted' => 1,
+                    ]),
+                    $responsible->id => $this->playerStatistics(),
+                ],
+            ])
+            ->assertSessionHas('status')
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('events', [
+            'id' => $miniGame->id,
+            'title' => 'Мини-игра обновлена ответственным',
+        ]);
+        $this->assertDatabaseHas('game_player_statistics', [
+            'event_id' => $miniGame->id,
+            'user_id' => $organizer->id,
+            'close_made' => 1,
+        ]);
+    }
+
+    public function test_existing_mini_game_responsibility_is_moved_to_parent_event(): void
+    {
+        $organizer = User::factory()->create(['username' => 'legacy-organizer']);
+        $responsible = User::factory()->create(['username' => 'legacy-responsible']);
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(
+            route('events.store'),
+            $this->eventPayload($venue, $start, $end, EventTypeEnum::GAME_TRAINING),
+        )->assertRedirect();
+        $training = Event::query()->where('type', EventTypeEnum::GAME_TRAINING->value)->firstOrFail();
+        $this->actingAs($responsible)->post(route('events.join', $training->routeIdentifier()));
+
+        $this->actingAs($organizer)
+            ->post(route('events.games.store', $training->routeIdentifier()), [
+                'title' => 'Мини-игра со старым назначением',
+                'side_a_name' => 'Светлые',
+                'side_b_name' => 'Тёмные',
+                'side_a_size' => 1,
+                'side_b_size' => 1,
+                'side_a_user_ids' => [$organizer->id],
+                'side_b_user_ids' => [$responsible->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $miniGame = Event::query()->where('parent_event_id', $training->id)->firstOrFail();
+        $childParticipant = $miniGame->participants()->create([
+            'user_id' => $responsible->id,
+            'role' => EventParticipantRoleEnum::PARTICIPANT,
+            'status' => EventParticipantStatusEnum::CONFIRMED,
+            'joined_at' => now(),
+            'responsibility_status' => EventResponsibilityStatusEnum::ACCEPTED,
+            'responsibility_requested_by_user_id' => $organizer->id,
+            'responsibility_requested_at' => now()->subMinute(),
+            'responsibility_responded_at' => now(),
+        ]);
+
+        $migration = require database_path(
+            'migrations/2026_07_30_160000_move_mini_game_responsibilities_to_parent_events.php',
+        );
+        $migration->up();
+
+        $parentParticipant = $training->participants()
+            ->where('user_id', $responsible->id)
+            ->firstOrFail();
+        $this->assertSame(
+            EventResponsibilityStatusEnum::ACCEPTED,
+            $parentParticipant->responsibility_status,
+        );
+        $this->assertNull($childParticipant->refresh()->responsibility_status);
+
+        $this->actingAs($organizer)
+            ->from(route('events.show', $miniGame->routeIdentifier()))
+            ->post(route('events.participants.responsibility.request', [
+                $miniGame->routeIdentifier(),
+                $childParticipant->id,
+            ]))
+            ->assertSessionHas(
+                'error',
+                'Ответственных назначают на основном мероприятии, а не на отдельной мини-игре.',
+            );
     }
 
     public function test_mini_game_can_be_created_without_time_and_rejects_format_larger_than_available_roster(): void

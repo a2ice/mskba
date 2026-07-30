@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Portal\Application\Services\OnlineUserPresence;
+use App\Modules\Portal\Application\Services\SiteSummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Redis;
@@ -23,6 +24,8 @@ class SiteSummaryTest extends TestCase
 
         Redis::connection((string) config('site_summary.presence_redis_connection', 'cache'))
             ->del('site-summary:online-presence');
+        app(SiteSummaryService::class)->forgetTodayEvents();
+        app(SiteSummaryService::class)->forgetTotalUsers();
     }
 
     protected function tearDown(): void
@@ -41,10 +44,17 @@ class SiteSummaryTest extends TestCase
             'status' => EventStatusEnum::PUBLISHED,
             'starts_at' => Carbon::parse('2026-07-23 18:00:00', 'Europe/Moscow')->utc(),
         ]);
-        Event::factory()->create([
+        $parentEvent = Event::factory()->create([
             'type' => EventTypeEnum::GAME_TRAINING,
             'status' => EventStatusEnum::COMPLETED,
             'starts_at' => Carbon::parse('2026-07-23 20:00:00', 'Europe/Moscow')->utc(),
+        ]);
+        Event::factory()->create([
+            'parent_event_id' => $parentEvent->id,
+            'venue_id' => $parentEvent->venue_id,
+            'type' => EventTypeEnum::GAME,
+            'status' => EventStatusEnum::COMPLETED,
+            'starts_at' => Carbon::parse('2026-07-23 20:30:00', 'Europe/Moscow')->utc(),
         ]);
         Event::factory()->create([
             'type' => EventTypeEnum::TRAINING,
@@ -93,6 +103,15 @@ class SiteSummaryTest extends TestCase
             'status' => EventStatusEnum::PUBLISHED,
             'starts_at' => Carbon::parse('2026-07-23 20:00:00', 'Europe/Moscow')->utc(),
         ]);
+        $parentEvent = Event::query()->where('title', 'Игровая тренировка')->firstOrFail();
+        Event::factory()->create([
+            'parent_event_id' => $parentEvent->id,
+            'venue_id' => $parentEvent->venue_id,
+            'title' => 'Внутренняя мини-игра',
+            'type' => EventTypeEnum::GAME,
+            'status' => EventStatusEnum::PUBLISHED,
+            'starts_at' => Carbon::parse('2026-07-23 20:30:00', 'Europe/Moscow')->utc(),
+        ]);
         Event::factory()->create([
             'title' => 'Обычная тренировка',
             'type' => EventTypeEnum::TRAINING,
@@ -108,6 +127,7 @@ class SiteSummaryTest extends TestCase
             ->assertOk()
             ->assertSee('Обычная игра')
             ->assertSee('Игровая тренировка')
+            ->assertDontSee('Внутренняя мини-игра')
             ->assertDontSee('Обычная тренировка')
             ->assertSee('Игры и игровые тренировки');
     }

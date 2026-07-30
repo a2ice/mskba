@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
+use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -26,13 +27,14 @@ final class GameController extends Controller
         ShowEventHandler $events,
         CurrentActorResolver $actors,
         EventManagementAccess $access,
+        GameStatisticsFields $statisticsFields,
     ): Response {
         [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
         abort_unless($game->type === EventTypeEnum::GAME && $game->gameDetail !== null, 404);
 
         return ThemeResolver::page('events.game', [
             'event' => $this->loadGame($game),
-            'statisticsFields' => $this->statisticsFields(),
+            'statisticsFields' => $statisticsFields->all(),
         ]);
     }
 
@@ -227,29 +229,6 @@ final class GameController extends Controller
             'gameRosterEntries.user.profile.activeAvatar',
             'gamePlayerStatistics',
         ]);
-    }
-
-    /** @return array<string, string> */
-    private function statisticsFields(): array
-    {
-        return [
-            'minutes' => 'Мин',
-            'close_made' => 'Ближ. +',
-            'close_attempted' => 'Ближ. всего',
-            'mid_made' => 'Сред. +',
-            'mid_attempted' => 'Сред. всего',
-            'three_made' => '3PT +',
-            'three_attempted' => '3PT всего',
-            'free_throw_made' => 'Штр. +',
-            'free_throw_attempted' => 'Штр. всего',
-            'offensive_rebounds' => 'Подб. ат.',
-            'defensive_rebounds' => 'Подб. защ.',
-            'assists' => 'Передачи',
-            'steals' => 'Перехваты',
-            'blocks' => 'Блоки',
-            'turnovers' => 'Потери',
-            'fouls' => 'Фолы',
-        ];
     }
 
     private function perform(callable $callback, string $message): RedirectResponse

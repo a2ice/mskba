@@ -70,6 +70,7 @@ final class SiteSummaryService
         $day = now($timezone);
 
         return Event::query()
+            ->whereNull('parent_event_id')
             ->whereIn('type', [
                 EventTypeEnum::GAME->value,
                 EventTypeEnum::GAME_TRAINING->value,

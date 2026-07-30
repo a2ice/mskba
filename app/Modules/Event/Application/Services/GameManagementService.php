@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
@@ -93,7 +94,7 @@ final class GameManagementService
             throw new InvalidArgumentException('Мини-игры можно создавать только внутри тренировки.');
         }
 
-        return DB::transaction(function () use (
+        $game = DB::transaction(function () use (
             $parent,
             $actor,
             $title,
@@ -183,6 +184,10 @@ final class GameManagementService
 
             return $game->load(['gameDetail', 'gameSides', 'gameRosterEntries.user.profile']);
         });
+
+        event(new EventChanged($parent->id));
+
+        return $game;
     }
 
     public function updateMiniGame(
@@ -275,10 +280,14 @@ final class GameManagementService
                 $side->team()->update(['name' => $name]);
             }
         });
+
+        event(new EventChanged((int) $game->parent_event_id));
     }
 
     public function deleteMiniGame(Event $game): void
     {
+        $parentEventId = (int) $game->parent_event_id;
+
         DB::transaction(function () use ($game): void {
             if ($game->parent_event_id === null) {
                 throw new InvalidArgumentException('Удалить здесь можно только мини-игру.');
@@ -296,6 +305,8 @@ final class GameManagementService
 
             $lockedGame->delete();
         });
+
+        event(new EventChanged($parentEventId));
     }
 
     /**
@@ -361,6 +372,8 @@ final class GameManagementService
                 }
             }
         });
+
+        event(new EventChanged($this->aggregateEventId($game)));
     }
 
     /**
@@ -410,6 +423,8 @@ final class GameManagementService
                 'statistics_version' => $detail->statistics_version + 1,
             ]);
         });
+
+        event(new EventChanged($this->aggregateEventId($game)));
     }
 
     public function confirmStatistics(Event $game, Actor $actor): void
@@ -459,6 +474,8 @@ final class GameManagementService
 
             DB::afterCommit(fn () => event(new GameStatisticsConfirmed($lockedGame->id)));
         });
+
+        event(new EventChanged($this->aggregateEventId($game)));
     }
 
     /**
@@ -595,11 +612,19 @@ final class GameManagementService
         $localDate = $parent->starts_at->setTimezone($timezone)->toDateString();
         $start = Carbon::parse($localDate.' '.$startsAt, $timezone);
         $end = Carbon::parse($localDate.' '.$endsAt, $timezone);
-        if ($end->lessThanOrEqualTo($start)) {
+        if ($end->equalTo($start)) {
+            throw new InvalidArgumentException('Начало и окончание мини-игры не могут совпадать.');
+        }
+        if ($end->lessThan($start)) {
             $end->addDay();
         }
 
         return [$start, $end, true];
+    }
+
+    private function aggregateEventId(Event $game): int
+    {
+        return (int) ($game->parent_event_id ?: $game->id);
     }
 
     /** @return Collection<int, array{membership_id?: int, participant_id?: int}> */

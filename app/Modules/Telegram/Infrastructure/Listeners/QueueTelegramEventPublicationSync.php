@@ -10,13 +10,19 @@ final class QueueTelegramEventPublicationSync
 {
     public function handle(EventChanged $changed): void
     {
-        SyncTelegramEventPublicationJob::dispatch($changed->eventId)->afterCommit();
+        $event = Event::query()
+            ->whereKey($changed->eventId)
+            ->first(['id', 'parent_event_id', 'starts_at']);
+        $aggregateEventId = (int) ($event?->parent_event_id ?: $changed->eventId);
+        $aggregateEvent = $event?->parent_event_id === null
+            ? $event
+            : Event::query()->whereKey($aggregateEventId)->first(['id', 'starts_at']);
 
-        $event = Event::query()->whereKey($changed->eventId)->first(['id', 'starts_at']);
+        SyncTelegramEventPublicationJob::dispatch($aggregateEventId)->afterCommit();
 
-        if ($event?->starts_at->isFuture()) {
-            SyncTelegramEventPublicationJob::dispatch($changed->eventId)
-                ->delay($event->starts_at)
+        if ($aggregateEvent?->starts_at->isFuture()) {
+            SyncTelegramEventPublicationJob::dispatch($aggregateEventId)
+                ->delay($aggregateEvent->starts_at)
                 ->afterCommit();
         }
     }

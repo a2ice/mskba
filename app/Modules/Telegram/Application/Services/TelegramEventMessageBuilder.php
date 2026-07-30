@@ -3,6 +3,7 @@
 namespace App\Modules\Telegram\Application\Services;
 
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -34,6 +35,33 @@ final class TelegramEventMessageBuilder
             '🗓 '.$startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i').' (МСК)',
             '👥 Участники: '.$capacity,
         ];
+
+        $responsibles = $event->participants
+            ->filter(fn ($participant) => $participant->status === EventParticipantStatusEnum::CONFIRMED
+                && $participant->confirmation_version === $event->participation_confirmation_version
+                && $participant->responsibility_status === EventResponsibilityStatusEnum::ACCEPTED)
+            ->map(fn ($participant): string => $this->userName($participant->user))
+            ->values();
+        if ($responsibles->isNotEmpty()) {
+            $lines[] = '🛡 Ответственные: '.$this->escape($responsibles->join(', '));
+        }
+
+        if ($event->childGames->isNotEmpty()) {
+            $lines[] = '';
+            $lines[] = '🎮 <b>Мини-игры</b>';
+            foreach ($event->childGames as $childGame) {
+                $sides = $childGame->gameSides->keyBy('slot');
+                $sideA = $sides->get('A');
+                $sideB = $sides->get('B');
+                $score = $sideA?->score !== null && $sideB?->score !== null
+                    ? "{$sideA->score}:{$sideB->score}"
+                    : '—:—';
+                $lines[] = '• <b>'.$this->escape($childGame->title).'</b>';
+                $lines[] = $this->escape($sideA?->display_name ?: 'Команда A')
+                    .' <b>'.$score.'</b> '
+                    .$this->escape($sideB?->display_name ?: 'Команда B');
+            }
+        }
 
         if ($event->status === EventStatusEnum::CANCELLED) {
             $lines[] = '';
@@ -97,6 +125,18 @@ final class TelegramEventMessageBuilder
             rawurlencode($botUsername),
             rawurlencode("event_{$event->id}"),
         );
+    }
+
+    private function userName($user): string
+    {
+        $profileName = trim(implode(' ', array_filter([
+            $user?->profile?->first_name,
+            $user?->profile?->last_name,
+        ])));
+
+        return $profileName !== ''
+            ? $profileName
+            : ($user?->username ?: 'Пользователь #'.$user?->id);
     }
 
     private function escape(string $value): string

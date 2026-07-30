@@ -23,6 +23,12 @@
             ->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED)
             ->map(fn ($participant) => $participant->user)
             ->keyBy('id');
+    $miniGameStartsAt = $event->gameDetail->is_time_scheduled
+        ? old('starts_at', $event->starts_at->format('H:i'))
+        : '';
+    $miniGameEndsAt = $event->gameDetail->is_time_scheduled
+        ? old('ends_at', $event->ends_at->format('H:i'))
+        : '';
 @endphp
 
 @section('section-sidebar')
@@ -56,11 +62,11 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Начало</label>
-                            <input class="form-control" type="time" name="starts_at" value="{{ old('starts_at', $event->gameDetail->is_time_scheduled ? $event->starts_at->format('H:i') : '') }}">
+                            <input class="form-control" type="time" name="starts_at" value="{{ $miniGameStartsAt }}" autocomplete="off">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Окончание</label>
-                            <input class="form-control" type="time" name="ends_at" value="{{ old('ends_at', $event->gameDetail->is_time_scheduled ? $event->ends_at->format('H:i') : '') }}">
+                            <input class="form-control" type="time" name="ends_at" value="{{ $miniGameEndsAt }}" autocomplete="off">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Игроков A</label>
@@ -140,14 +146,22 @@
             </div>
             <div class="game-statistics-table-wrap">
                 <table class="game-statistics-table">
-                    <thead><tr><th>Игрок</th>@foreach($statisticsFields as $label)<th>{{ $label }}</th>@endforeach<th>Очки*</th></tr></thead>
+                    <thead>
+                    <tr>
+                        <th>Игрок</th>
+                        @foreach($statisticsFields as $definition)
+                            <th><span title="{{ $definition['tooltip'] }}" data-tooltip-variant="title" tabindex="0">{{ $definition['label'] }}</span></th>
+                        @endforeach
+                        <th><span title="Очки, рассчитанные по попаданиям игрока." data-tooltip-variant="title" tabindex="0">Очки*</span></th>
+                    </tr>
+                    </thead>
                     <tbody>
                     @foreach($event->gameRosterEntries as $entry)
                         @php $stat = $stats->get($entry->user_id); @endphp
                         <tr>
                             <th>{{ $name($entry->user) }}</th>
-                            @foreach($statisticsFields as $field => $label)
-                                <td><input type="number" min="0" max="999" name="players[{{ $entry->user_id }}][{{ $field }}]" value="{{ old('players.'.$entry->user_id.'.'.$field, $stat?->{$field} ?? 0) }}" aria-label="{{ $label }} · {{ $name($entry->user) }}"></td>
+                            @foreach($statisticsFields as $field => $definition)
+                                <td><input type="number" min="0" max="999" name="players[{{ $entry->user_id }}][{{ $field }}]" value="{{ old('players.'.$entry->user_id.'.'.$field, $stat?->{$field} ?? 0) }}" aria-label="{{ $definition['label'] }} · {{ $name($entry->user) }}"></td>
                             @endforeach
                             <td>{{ $stat?->points() ?? 0 }}</td>
                         </tr>

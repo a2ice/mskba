@@ -28,12 +28,16 @@ final class ShowEventHandler
                     ->orderBy('sort_order')
                     ->orderBy('id'),
                 'booking',
+                'parentEvent',
                 'organizerActor.user.profile.activeAvatar',
                 'organizerActor.user.telegramAccount',
                 'organizerActor.user.contacts',
                 'participants.user.profile.activeAvatar',
                 'gameDetail',
                 'gameSides.team',
+                'gameRosterEntries.gameSide',
+                'gameRosterEntries.user.profile.activeAvatar',
+                'gamePlayerStatistics',
                 'childGames' => fn ($query) => $query
                     ->with(['gameDetail', 'gameSides.team'])
                     ->orderBy('starts_at'),
@@ -41,8 +45,9 @@ final class ShowEventHandler
             ])
             ->firstOrFail();
 
-        $isPublic = in_array($event->status, [EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED], true)
-            && $event->visibility === EventVisibilityEnum::PUBLIC;
+        $visibilitySource = $event->parentEvent ?? $event;
+        $isPublic = in_array($visibilitySource->status, [EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED], true)
+            && $visibilitySource->visibility === EventVisibilityEnum::PUBLIC;
         $canManage = $actor !== null && $this->access->canManage($event, $actor);
 
         if (! $isPublic && ! $canManage) {

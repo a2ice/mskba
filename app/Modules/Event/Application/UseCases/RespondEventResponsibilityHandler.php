@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
+use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -13,6 +14,8 @@ use InvalidArgumentException;
 
 final class RespondEventResponsibilityHandler
 {
+    public function __construct(private readonly EventManagementAccess $access) {}
+
     public function handle(
         string $identifier,
         int $participantId,
@@ -25,6 +28,7 @@ final class RespondEventResponsibilityHandler
 
         $event = DB::transaction(function () use ($identifier, $participantId, $user, $decision): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
+            $this->access->assertOwnsManagementScope($event);
 
             if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
                 || $event->starts_at->lessThanOrEqualTo(now())) {

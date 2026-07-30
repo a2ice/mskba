@@ -28,6 +28,7 @@ final class RequestEventResponsibilityHandler
         [$event, $participant] = DB::transaction(function () use ($identifier, $participantId, $actor): array {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertCanManage($event, $actor);
+            $this->access->assertOwnsManagementScope($event);
             $this->assertEventIsActive($event);
             $participant = $event->participants()->whereKey($participantId)->lockForUpdate()->firstOrFail();
 

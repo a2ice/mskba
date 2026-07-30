@@ -19,6 +19,7 @@ final class RemoveEventResponsibilityHandler
         $event = DB::transaction(function () use ($identifier, $participantId, $actor): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertCanManage($event, $actor);
+            $this->access->assertOwnsManagementScope($event);
             $participant = $event->participants()->whereKey($participantId)->lockForUpdate()->firstOrFail();
 
             if ($participant->role === EventParticipantRoleEnum::ORGANIZER) {

@@ -4,6 +4,7 @@ namespace Tests\Feature\Telegram;
 
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -59,6 +60,30 @@ final class TelegramEventIntegrationTest extends TestCase
             'status' => EventParticipantStatusEnum::CONFIRMED,
             'joined_at' => now(),
         ]);
+        $responsible = User::factory()->create(['username' => 'game-responsible']);
+        $event->participants()->create([
+            'user_id' => $responsible->id,
+            'role' => EventParticipantRoleEnum::PARTICIPANT,
+            'status' => EventParticipantStatusEnum::CONFIRMED,
+            'joined_at' => now(),
+            'confirmation_version' => (int) ($event->participation_confirmation_version ?? 1),
+            'responsibility_status' => EventResponsibilityStatusEnum::ACCEPTED,
+        ]);
+        $miniGame = Event::factory()->create([
+            'parent_event_id' => $event->id,
+            'venue_id' => $event->venue_id,
+            'title' => 'Игра до семи',
+            'type' => EventTypeEnum::GAME,
+        ]);
+        $miniGame->gameDetail()->create([
+            'side_a_size' => 2,
+            'side_b_size' => 2,
+            'is_time_scheduled' => false,
+        ]);
+        $miniGame->gameSides()->createMany([
+            ['slot' => 'A', 'display_name' => 'Оранжевые', 'score' => 7],
+            ['slot' => 'B', 'display_name' => 'Чёрные', 'score' => 5],
+        ]);
         TelegramEventPublication::query()->create([
             'event_id' => $event->id,
             'chat_id' => '-1002136558099',
@@ -89,7 +114,10 @@ final class TelegramEventIntegrationTest extends TestCase
                 && str_contains($request['text'], '<b>Играем на '.$event->venue->name.'</b>')
                 && str_contains($request['text'], 'Тип активности: Игра')
                 && str_contains($request['text'], 'Описание: —')
-                && str_contains($request['text'], 'Участники: 1/10')
+                && str_contains($request['text'], 'Участники: 2/10')
+                && str_contains($request['text'], 'Ответственные: game-responsible')
+                && str_contains($request['text'], 'Игра до семи')
+                && str_contains($request['text'], 'Оранжевые <b>7:5</b> Чёрные')
                 && $buttons[0][0]['callback_data'] === "event:{$event->id}:join"
                 && $buttons[0][1]['callback_data'] === "event:{$event->id}:leave"
                 && $buttons[1][0]['url'] === "https://t.me/MSKBABot?startapp=event_{$event->id}";
