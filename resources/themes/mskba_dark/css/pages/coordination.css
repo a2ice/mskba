@@ -239,6 +239,11 @@
     gap: 10px;
 }
 
+.coordination-participant-selection {
+    display: grid;
+    gap: 10px;
+}
+
 .field .coordination-checkbox {
     position: relative;
     display: grid;
