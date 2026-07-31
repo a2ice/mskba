@@ -843,6 +843,12 @@ final class EventWorkflowTest extends TestCase
         $this->assertSame('image/webp', $photo->mime);
         Storage::disk('public')->assertExists($photo->path);
 
+        $this->actingAs($organizer)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('data-event-hero-source="results"', false)
+            ->assertSee($photo->publicUrl(), false);
+
         $this->get(route('events.index', ['period' => 'past']))
             ->assertOk()
             ->assertSee('Вечерняя игра');

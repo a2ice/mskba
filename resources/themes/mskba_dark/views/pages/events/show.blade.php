@@ -82,6 +82,9 @@
         ? $isRegistrationOpen
         : $canRespond && $participationOptions->isNotEmpty();
     $venuePhotos = $event->venue->media->values();
+    $resultPhotos = $event->media->values();
+    $heroPhotos = $resultPhotos->isNotEmpty() ? $resultPhotos : $venuePhotos;
+    $heroUsesResultPhotos = $resultPhotos->isNotEmpty();
     $address = preg_replace('/^Россия,\\s*/u', '', $event->venue->location?->address?->full_address ?: $event->venue->raw_address ?: '');
     $locationName = $event->venue->name;
     $coordinates = $event->venue->location?->address;
@@ -145,11 +148,11 @@
             @if(session('photo_status')) <div class="alert alert-success event-show__alert">{{ session('photo_status') }}</div> @endif
             @if(session('photo_error') || $errors->has('photo')) <div class="alert alert-danger event-show__alert">{{ session('photo_error') ?: $errors->first('photo') }}</div> @endif
 
-            <section class="event-hero" data-event-hero>
+            <section class="event-hero" data-event-hero data-event-hero-source="{{ $heroUsesResultPhotos ? 'results' : 'venue' }}">
                 <div class="event-hero__track" data-event-hero-track>
-                    @forelse($venuePhotos as $index => $photo)
+                    @forelse($heroPhotos as $index => $photo)
                         <figure class="event-hero__slide" data-event-hero-slide>
-                            <img src="{{ $photo->publicUrl() }}" alt="{{ $photo->title ?: $event->venue->name }}">
+                            <img src="{{ $photo->publicUrl() }}" alt="{{ $photo->title ?: ($heroUsesResultPhotos ? 'Как прошло мероприятие «'.$event->title.'»' : $event->venue->name) }}">
                         </figure>
                     @empty
                         <figure class="event-hero__slide" data-event-hero-slide>
@@ -158,10 +161,10 @@
                     @endforelse
                 </div>
 
-                <span class="event-hero__counter" data-event-hero-counter>1 / {{ max(1, $venuePhotos->count()) }}</span>
-                @if($venuePhotos->count() > 1)
-                    <div class="event-hero-dots" aria-label="Фотографии площадки">
-                        @foreach($venuePhotos as $index => $photo)
+                <span class="event-hero__counter" data-event-hero-counter>1 / {{ max(1, $heroPhotos->count()) }}</span>
+                @if($heroPhotos->count() > 1)
+                    <div class="event-hero-dots" aria-label="{{ $heroUsesResultPhotos ? 'Фотографии с мероприятия' : 'Фотографии площадки' }}">
+                        @foreach($heroPhotos as $index => $photo)
                             <button type="button" class="{{ $index === 0 ? 'is-active' : '' }}" data-event-hero-dot="{{ $index }}" aria-label="Фото {{ $index + 1 }}"></button>
                         @endforeach
                     </div>
