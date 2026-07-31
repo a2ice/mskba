@@ -28,6 +28,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
@@ -481,7 +482,7 @@ class AccountController extends Controller
             ]]);
         }
 
-        $user->loadMissing('playerProfile.positions', 'playerProfile.selfAssessment');
+        $user->loadMissing('playerProfile.positions', 'playerProfile.selfAssessment', 'playerObjectiveAssessment');
 
         $participationRole = $user->participationRoles()
             ->where('role', $roleEnum->value)
@@ -497,6 +498,7 @@ class AccountController extends Controller
             'playerPositions' => PlayerPositionEnum::cases(),
             'playerBodyTypes' => PlayerBodyTypeEnum::cases(),
             'playerSkills' => PlayerSelfAssessment::SKILLS,
+            'objectivePlayerSkills' => PlayerObjectiveAssessment::SKILLS,
         ]);
     }
 

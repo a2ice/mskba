@@ -23,6 +23,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class PlayerObjectiveAssessment extends Model
 {
+    public const SKILLS = [
+        'stamina' => 'Выносливость',
+        'passing' => 'Передачи',
+        'close_range_shooting' => 'Ближний бросок',
+        'mid_range_shooting' => 'Средний бросок',
+        'long_range_shooting' => 'Дальний бросок',
+        'defense' => 'Защита',
+        'rebounding' => 'Подбор',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
+use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,6 +25,8 @@ final class AccountPlayerProfileTest extends TestCase
             ->assertOk()
             ->assertSee('Роль в проекте')
             ->assertSee('Характеристики игрока')
+            ->assertSee('Объективные игровые показатели')
+            ->assertSee('Показателей пока нет')
             ->assertSee('Самооценка игровых навыков')
             ->assertSee('Разыгрывающий')
             ->assertSee('Игровое мышление')
@@ -97,6 +100,38 @@ final class AccountPlayerProfileTest extends TestCase
             '/id="player-skill-stamina"[^>]*type="range"[^>]*value="8"/s',
             $profilePage->getContent(),
         );
+    }
+
+    public function test_player_profile_shows_only_calculated_objective_metrics(): void
+    {
+        $user = $this->player();
+
+        PlayerObjectiveAssessment::query()->create([
+            'user_id' => $user->id,
+            'stamina' => 8.5,
+            'passing' => 7.25,
+            'close_range_shooting' => null,
+            'mid_range_shooting' => null,
+            'long_range_shooting' => null,
+            'defense' => 6,
+            'rebounding' => null,
+            'games_count' => 4,
+            'confidence' => 0.4,
+            'formula_version' => 1,
+            'calculated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
+            ->assertOk()
+            ->assertSee('Матчей учтено: 4')
+            ->assertSee('Достоверность 40%');
+
+        $response->assertSee('data-objective-skill="stamina"', false);
+        $response->assertSee('data-objective-skill="passing"', false);
+        $response->assertSee('data-objective-skill="defense"', false);
+        $response->assertDontSee('data-objective-skill="close_range_shooting"', false);
+        $response->assertDontSee('data-objective-skill="rebounding"', false);
     }
 
     public function test_updating_profile_replaces_positions_and_allows_partial_values(): void

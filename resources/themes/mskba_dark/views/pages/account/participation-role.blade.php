@@ -67,6 +67,9 @@
         @if($role === UserParticipationRoleEnum::PLAYER)
             @php
                 $profile = $user->playerProfile;
+                $objectiveAssessment = $user->playerObjectiveAssessment;
+                $availableObjectiveSkills = collect($objectivePlayerSkills)
+                    ->filter(fn ($label, $skill) => $objectiveAssessment?->{$skill} !== null);
                 $shootingSkillKeys = [
                     'close_range_shooting',
                     'mid_range_shooting',
@@ -184,12 +187,53 @@
                     </fieldset>
                 </section>
 
+                <section class="account-player-profile__section account-player-objective">
+                    <div class="account-player-objective__heading">
+                        <div>
+                            <h3 class="h4 mb-1">Объективные игровые показатели</h3>
+                            <p class="text-muted mb-0">Рассчитываются по подтверждённой статистике сыгранных матчей.</p>
+                        </div>
+                        @if($objectiveAssessment)
+                            <div class="account-player-objective__meta">
+                                <strong>Матчей учтено: {{ $objectiveAssessment->games_count }}</strong>
+                                <span title="Достоверность растёт с количеством подтверждённых матчей и достигает максимума после десяти игр." data-tooltip-variant="title" tabindex="0">
+                                    Достоверность {{ (int) round((float) $objectiveAssessment->confidence * 100) }}%
+                                </span>
+                            </div>
+                        @endif
+                    </div>
+
+                    @if($objectiveAssessment && $availableObjectiveSkills->isNotEmpty())
+                        <div class="account-player-objective__grid">
+                            @foreach($availableObjectiveSkills as $skill => $label)
+                                @php
+                                    $score = (float) $objectiveAssessment->{$skill};
+                                    $formattedScore = rtrim(rtrim(number_format($score, 1, '.', ''), '0'), '.');
+                                @endphp
+                                <article class="account-player-objective__skill" data-objective-skill="{{ $skill }}">
+                                    <div><span>{{ $label }}</span><strong>{{ $formattedScore }}</strong><small>/10</small></div>
+                                    <span class="account-player-objective__track" aria-hidden="true">
+                                        <span style="width: {{ min(100, max(0, $score * 10)) }}%"></span>
+                                    </span>
+                                </article>
+                            @endforeach
+                        </div>
+                        <p class="account-player-objective__updated">
+                            Обновлено {{ $objectiveAssessment->calculated_at?->format('d.m.Y H:i') }}
+                        </p>
+                    @else
+                        <div class="account-player-objective__empty">
+                            <i class="ti ti-chart-dots" aria-hidden="true"></i>
+                            <div><strong>Показателей пока нет</strong><span>Они появятся после подтверждения статистики первой сыгранной игры.</span></div>
+                        </div>
+                    @endif
+                </section>
+
                 <section class="account-player-profile__section">
                     <div>
                         <h3 class="h4 mb-1">Самооценка игровых навыков</h3>
                         <p class="text-muted mb-0">
-                            Оцените себя от 1 до 10. Позже рядом появятся отдельные объективные показатели,
-                            рассчитанные по статистике сыгранных матчей.
+                            Оцените свои текущие навыки от 1 до 10. Самооценка хранится отдельно от показателей матчей.
                         </p>
                     </div>
 

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
+use App\Modules\Event\Application\Services\PlayerObjectiveAssessmentCalculator;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
@@ -12,6 +13,7 @@ use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Infrastructure\Jobs\RecalculatePlayerObjectiveAssessmentsJob;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Models\Team;
@@ -21,6 +23,7 @@ use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 final class GameAndTeamWorkflowTest extends TestCase
@@ -113,9 +116,20 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertJsonPath('calculated_scores.B', 4)
             ->assertJsonPath('player_points.'.$ownerA->id, 6)
             ->assertJsonPath('player_points.'.$ownerB->id, 4);
+
+        Queue::fake();
+
         $this->actingAs($ownerA)
             ->post(route('events.game.statistics.confirm', $game->routeIdentifier()))
             ->assertSessionHas('status');
+
+        Queue::assertPushed(
+            RecalculatePlayerObjectiveAssessmentsJob::class,
+            fn (RecalculatePlayerObjectiveAssessmentsJob $job): bool => $job->eventId === $game->id,
+        );
+
+        (new RecalculatePlayerObjectiveAssessmentsJob($game->id))
+            ->handle(app(PlayerObjectiveAssessmentCalculator::class));
 
         $this->assertSame(
             GameStatisticsStatusEnum::CONFIRMED,
