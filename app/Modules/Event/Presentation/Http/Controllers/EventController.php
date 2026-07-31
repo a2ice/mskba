@@ -23,11 +23,16 @@ use App\Modules\Event\Application\UseCases\SearchEventParticipantCandidatesHandl
 use App\Modules\Event\Application\UseCases\SetEventParticipationHandler;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Application\UseCases\UpdateEventHandler;
+use App\Modules\Event\Application\UseCases\UpdateEventResponsibilityPermissionsHandler;
+use App\Modules\Event\Application\UseCases\UpdateManagedEventParticipantStatusHandler;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\EventParticipant;
 use App\Modules\Event\Presentation\Http\Requests\CancelEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
@@ -197,6 +202,12 @@ final class EventController extends Controller
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED
                 && $currentParticipant->confirmation_version === $item->participation_confirmation_version,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
+            'effectivePermissions' => collect($actor === null ? [] : $access->effectivePermissions($item, $actor))
+                ->map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value),
+            'responsibilityPermissionGroups' => [
+                'event' => EventResponsibilityPermissionEnum::eventPermissions(),
+                'mini_game' => EventResponsibilityPermissionEnum::miniGamePermissions(),
+            ],
             'statisticsFields' => $statisticsFields->all(),
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::EVENT,
@@ -219,7 +230,7 @@ final class EventController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         $item = $events->handle($event, $actor);
-        abort_unless($access->canManage($item, $actor), 403);
+        abort_unless($access->allows($item, $actor, EventResponsibilityPermissionEnum::UPDATE_EVENT), 403);
 
         if (in_array($item->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
             || $item->ends_at->lessThanOrEqualTo(now())) {
@@ -318,25 +329,55 @@ final class EventController extends Controller
 
         if ($request->expectsJson()) {
             $participant = $managedEvent->participants()
-                ->with('user.profile')
+                ->with(['user.profile', 'statusChangedByActor.user.profile'])
                 ->where('user_id', (int) $validated['user_id'])
                 ->firstOrFail();
-            $profile = $participant->user->profile;
-            $name = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
-                ?: $participant->user->username
-                ?: 'Пользователь #'.$participant->user_id;
 
             return response()->json([
-                'message' => 'Участник добавлен в мероприятие.',
-                'participant' => [
-                    'user_id' => $participant->user_id,
-                    'name' => $name,
-                    'username' => $participant->user->username,
-                ],
+                'message' => 'Пользователь добавлен в список «Думают».',
+                'participant' => $this->managedParticipantPayload($managedEvent, $participant),
+                'confirmed_count' => $this->confirmedParticipantCount($managedEvent),
             ]);
         }
 
-        return back()->with('status', 'Участник добавлен в мероприятие.');
+        return back()->with('status', 'Пользователь добавлен в список «Думают».');
+    }
+
+    public function updateManagedParticipantStatus(
+        Request $request,
+        string $event,
+        int $participant,
+        UpdateManagedEventParticipantStatusHandler $participants,
+        CurrentActorResolver $actors,
+    ): RedirectResponse|JsonResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $validated = $request->validate([
+            'status' => ['required', Rule::enum(EventParticipantStatusEnum::class)],
+        ]);
+        $status = EventParticipantStatusEnum::from($validated['status']);
+
+        try {
+            $managedEvent = $participants->handle($event, $participant, $actor, $status);
+        } catch (InvalidArgumentException $exception) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $exception->getMessage()], 422)
+                : back()->with('error', $exception->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            $confirmedParticipant = $managedEvent->participants()
+                ->with(['user.profile', 'statusChangedByActor.user.profile'])
+                ->findOrFail($participant);
+
+            return response()->json([
+                'message' => $this->managedParticipantStatusMessage($status),
+                'participant' => $this->managedParticipantPayload($managedEvent, $confirmedParticipant),
+                'confirmed_count' => $this->confirmedParticipantCount($managedEvent),
+            ]);
+        }
+
+        return back()->with('status', $this->managedParticipantStatusMessage($status));
     }
 
     public function requestResponsibility(
@@ -349,13 +390,45 @@ final class EventController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
+        $validated = $request->validate([
+            'permissions_present' => ['nullable', 'boolean'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', Rule::enum(EventResponsibilityPermissionEnum::class)],
+        ]);
+        $permissions = array_key_exists('permissions_present', $validated)
+            ? ($validated['permissions'] ?? [])
+            : array_map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value, EventResponsibilityPermissionEnum::cases());
+
         try {
-            $responsibilities->handle($event, $participant, $actor);
+            $responsibilities->handle($event, $participant, $actor, $permissions);
         } catch (InvalidArgumentException $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
         return back()->with('status', 'Запрос на назначение отправлен участнику.');
+    }
+
+    public function updateResponsibilityPermissions(
+        Request $request,
+        string $event,
+        int $participant,
+        UpdateEventResponsibilityPermissionsHandler $responsibilities,
+        CurrentActorResolver $actors,
+    ): RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $validated = $request->validate([
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', Rule::enum(EventResponsibilityPermissionEnum::class)],
+        ]);
+
+        try {
+            $responsibilities->handle($event, $participant, $actor, $validated['permissions'] ?? []);
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Права ответственного обновлены.');
     }
 
     public function respondResponsibility(
@@ -543,5 +616,56 @@ final class EventController extends Controller
             EventParticipantStatusEnum::TENTATIVE => 'Ответ «Думаю» сохранён.',
             EventParticipantStatusEnum::LEFT => 'Ответ «Не пойду» сохранён.',
         });
+    }
+
+    private function managedParticipantPayload(Event $event, EventParticipant $participant): array
+    {
+        $profile = $participant->user->profile;
+        $name = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+            ?: $participant->user->username
+            ?: 'Пользователь #'.$participant->user_id;
+        $changer = $participant->statusChangedByActor?->user;
+        $changerProfile = $changer?->profile;
+        $changerName = $changer === null ? null : (
+            trim(implode(' ', array_filter([$changerProfile?->first_name, $changerProfile?->last_name])))
+            ?: $changer->username
+            ?: 'Пользователь #'.$changer->id
+        );
+        $isOrganizer = $changer !== null
+            && $event->organizerActor()->where('user_id', $changer->id)->exists();
+
+        return [
+            'id' => $participant->id,
+            'user_id' => $participant->user_id,
+            'name' => $name,
+            'username' => $participant->user->username,
+            'avatar_url' => $profile?->avatarUrl(),
+            'initials' => mb_strtoupper(mb_substr($name, 0, 2)),
+            'status' => $participant->status->value,
+            'status_url' => route('events.participants.manage.status', [$event->routeIdentifier(), $participant->id]),
+            'changed_label' => $participant->status_changed_at?->format('H:i') === null
+                ? null
+                : 'изменено '.$participant->status_changed_at->setTimezone(config('app.timezone'))->format('H:i'),
+            'changed_title' => $changerName === null
+                ? null
+                : 'Изменил: '.$changerName.($isOrganizer ? ' · организатор' : ' · ответственный'),
+        ];
+    }
+
+    private function confirmedParticipantCount(Event $event): int
+    {
+        return $event->participants()
+            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
+            ->where('confirmation_version', $event->participation_confirmation_version)
+            ->count();
+    }
+
+    private function managedParticipantStatusMessage(EventParticipantStatusEnum $status): string
+    {
+        return match ($status) {
+            EventParticipantStatusEnum::CONFIRMED => 'Пользователь отмечен как участник.',
+            EventParticipantStatusEnum::TENTATIVE => 'Пользователь перемещён в список «Думают».',
+            EventParticipantStatusEnum::LEFT => 'Пользователь отмечен как не участвующий.',
+        };
     }
 }

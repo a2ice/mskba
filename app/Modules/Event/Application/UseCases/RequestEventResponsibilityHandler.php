@@ -3,8 +3,10 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventResponsibilityPermissionManager;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
@@ -20,14 +22,16 @@ final class RequestEventResponsibilityHandler
 {
     public function __construct(
         private readonly EventManagementAccess $access,
+        private readonly EventResponsibilityPermissionManager $permissions,
         private readonly CreateUserNotificationHandler $notifications,
     ) {}
 
-    public function handle(string $identifier, int $participantId, Actor $actor): Event
+    /** @param list<string> $permissionValues */
+    public function handle(string $identifier, int $participantId, Actor $actor, array $permissionValues): Event
     {
-        [$event, $participant] = DB::transaction(function () use ($identifier, $participantId, $actor): array {
+        [$event, $participant] = DB::transaction(function () use ($identifier, $participantId, $actor, $permissionValues): array {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
-            $this->access->assertCanManage($event, $actor);
+            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES);
             $this->access->assertOwnsManagementScope($event);
             $this->assertEventIsActive($event);
             $participant = $event->participants()->whereKey($participantId)->lockForUpdate()->firstOrFail();
@@ -55,6 +59,7 @@ final class RequestEventResponsibilityHandler
                 'responsibility_requested_at' => now(),
                 'responsibility_responded_at' => null,
             ])->save();
+            $this->permissions->replace($event, $participant, $actor, $permissionValues);
 
             return [$event, $participant->load('user')];
         });

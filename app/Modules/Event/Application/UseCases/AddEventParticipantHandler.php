@@ -5,6 +5,7 @@ namespace App\Modules\Event\Application\UseCases;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -27,7 +28,7 @@ final class AddEventParticipantHandler
     {
         $event = DB::transaction(function () use ($identifier, $actor, $userId): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
-            $this->access->assertCanManage($event, $actor);
+            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
             $this->assertCanChangeParticipants($event);
 
             $viewer = $actor->user;
@@ -47,27 +48,21 @@ final class AddEventParticipantHandler
                 throw new InvalidArgumentException('Пользователь уже участвует в мероприятии.');
             }
 
-            $confirmedCount = $event->participants()
-                ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
-                ->where('confirmation_version', $event->participation_confirmation_version)
-                ->count();
-
-            if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {
-                throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
-            }
-
+            $event->participants()->where('user_id', $userId)->first()?->responsibilityPermissions()->delete();
             $event->participants()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'role' => EventParticipantRoleEnum::PARTICIPANT,
-                    'status' => EventParticipantStatusEnum::CONFIRMED,
-                    'joined_at' => now(),
+                    'status' => EventParticipantStatusEnum::TENTATIVE,
+                    'joined_at' => null,
                     'left_at' => null,
                     'confirmation_version' => $event->participation_confirmation_version,
                     'responsibility_status' => null,
                     'responsibility_requested_by_user_id' => null,
                     'responsibility_requested_at' => null,
                     'responsibility_responded_at' => null,
+                    'status_changed_by_actor_id' => $actor->id,
+                    'status_changed_at' => now(),
                 ],
             );
 

@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -18,7 +19,10 @@ final class CompleteEventHandler
     {
         $event = DB::transaction(function () use ($identifier, $actor, $description): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
-            $this->access->assertCanManage($event, $actor);
+            $permission = $event->completed_at === null
+                ? EventResponsibilityPermissionEnum::COMPLETE_EVENT
+                : EventResponsibilityPermissionEnum::MANAGE_RESULT;
+            $this->access->assertAllows($event, $actor, $permission);
 
             if ($event->status === EventStatusEnum::CANCELLED || $event->status === EventStatusEnum::DRAFT) {
                 throw new InvalidArgumentException('Это мероприятие нельзя отметить состоявшимся.');

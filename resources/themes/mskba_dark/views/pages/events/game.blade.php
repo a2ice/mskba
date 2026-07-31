@@ -7,6 +7,8 @@
 ])
 
 @php
+    use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+
     $sides = $event->gameSides->keyBy('slot');
     $roster = $event->gameRosterEntries->groupBy('game_side_id');
     $stats = $event->gamePlayerStatistics->keyBy('user_id');
@@ -33,6 +35,13 @@
         'has_scheduled_time',
         $event->gameDetail->is_time_scheduled,
     );
+    $allows = fn (EventResponsibilityPermissionEnum $permission): bool => $effectivePermissions->contains($permission->value);
+    $canUpdateMiniGame = $allows(EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
+    $canDeleteMiniGame = $allows(EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
+    $canManageRoster = $allows(EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
+    $canManageStatistics = $allows(EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
+    $canManageScore = $allows(EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
+    $canCompleteMiniGame = $allows(EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
 @endphp
 
 @section('section-sidebar')
@@ -54,10 +63,11 @@
 
     <section class="section-card">
         <span class="eyebrow">Формат {{ $event->gameDetail->formatLabel() }}</span>
-        @if($event->parentEvent && !$statisticsConfirmed)
+        @if($event->parentEvent && !$statisticsConfirmed && ($canUpdateMiniGame || $canDeleteMiniGame))
             <details class="event-mini-games__create mb-4">
                 <summary>Параметры мини-игры</summary>
-                <form method="POST" action="{{ route('events.game.update', $event->routeIdentifier()) }}">
+                @if($canUpdateMiniGame)
+                    <form method="POST" action="{{ route('events.game.update', $event->routeIdentifier()) }}">
                     @csrf @method('PUT')
                     <div class="row g-3">
                         <div class="col-12">
@@ -129,11 +139,14 @@
                     <div class="d-flex flex-wrap gap-2 mt-3">
                         <button class="btn btn--primary btn--sm" type="submit">Сохранить параметры</button>
                     </div>
-                </form>
-                <form class="mt-2" method="POST" action="{{ route('events.game.destroy', $event->routeIdentifier()) }}" onsubmit="return confirm('Удалить мини-игру? Это действие нельзя отменить.')">
-                    @csrf @method('DELETE')
-                    <button class="btn btn--danger btn--sm" type="submit">Удалить мини-игру</button>
-                </form>
+                    </form>
+                @endif
+                @if($canDeleteMiniGame)
+                    <form class="mt-2" method="POST" action="{{ route('events.game.destroy', $event->routeIdentifier()) }}" onsubmit="return confirm('Удалить мини-игру? Это действие нельзя отменить.')">
+                        @csrf @method('DELETE')
+                        <button class="btn btn--danger btn--sm" type="submit">Удалить мини-игру</button>
+                    </form>
+                @endif
             </details>
         @endif
         <h2>Состав на игру</h2>
@@ -156,7 +169,7 @@
                         <legend>{{ $side->display_name }}</legend>
                         @forelse($candidates as $user)
                             <label class="form-check">
-                                <input type="checkbox" name="side_{{ strtolower($slot) }}_user_ids[]" value="{{ $user->id }}" @checked($selected->contains($user->id))>
+                                <input type="checkbox" name="side_{{ strtolower($slot) }}_user_ids[]" value="{{ $user->id }}" @checked($selected->contains($user->id)) @disabled(!$canManageRoster || $statisticsConfirmed)>
                                 <span>{{ $name($user) }}</span>
                             </label>
                         @empty
@@ -165,19 +178,20 @@
                     </fieldset>
                 @endforeach
             </div>
-            @unless($statisticsConfirmed)
+            @if(!$statisticsConfirmed && $canManageRoster)
                 <button class="btn btn--primary btn--sm" type="submit">Сохранить состав</button>
-            @endunless
+            @endif
         </form>
     </section>
 
+    @if($canManageScore || $canManageStatistics || $canCompleteMiniGame)
     <section class="section-card">
         <span class="eyebrow">{{ $event->gameDetail->statistics_status->label() }}</span>
         <h2>Результат и статистика</h2>
         <div class="alert" data-game-statistics-message role="status" aria-live="polite" hidden></div>
         <form
             method="POST"
-            action="{{ route('events.game.statistics', $event->routeIdentifier()) }}"
+            action="{{ $canManageStatistics ? route('events.game.statistics', $event->routeIdentifier()) : route('events.game.score', $event->routeIdentifier()) }}"
             data-game-statistics-form
             data-image-upload-surface
         >
@@ -199,6 +213,7 @@
                             name="scores[{{ $slot }}]"
                             value="{{ old('scores.'.$slot, $sides[$slot]->score) }}"
                             data-game-score="{{ $slot }}"
+                            @disabled(!$canManageScore && !$canManageStatistics)
                         >
                         <small class="game-score-row__calculated" data-game-calculated-score="{{ $slot }}">
                             По игрокам: {{ $sidePlayerPoints }}
@@ -206,6 +221,7 @@
                     </label>
                 @endforeach
             </div>
+            @if($canManageStatistics)
             <div class="game-statistics-table-wrap">
                 <table class="game-statistics-table">
                     <thead>
@@ -246,10 +262,12 @@
                 </table>
             </div>
             <p class="form-hint">* Очки игроков считаются по попаданиям. Счёт команды хранится отдельно: расхождение допустимо, но требует проверки.</p>
+            @endif
             @unless($statisticsConfirmed)
                 <div class="game-statistics-actions">
-                    <button class="btn btn--secondary btn--sm" type="button" data-game-statistics-calculate>Подсчитать</button>
-                    <button class="btn btn--primary btn--sm" type="submit" data-game-statistics-submit>Сохранить</button>
+                    @if($canManageStatistics)<button class="btn btn--secondary btn--sm" type="button" data-game-statistics-calculate>Подсчитать</button>@endif
+                    @if($canManageScore || $canManageStatistics)<button class="btn btn--primary btn--sm" type="submit" data-game-statistics-submit>Сохранить</button>@endif
+                    @if($canManageStatistics && $canCompleteMiniGame)
                     <button
                         class="btn btn--secondary btn--sm"
                         type="submit"
@@ -258,8 +276,10 @@
                         data-side-a-name="{{ $sides['A']->display_name }}"
                         data-side-b-name="{{ $sides['B']->display_name }}"
                     >Сохранить и завершить игру</button>
+                    @endif
                 </div>
             @endunless
         </form>
     </section>
+    @endif
 @endsection

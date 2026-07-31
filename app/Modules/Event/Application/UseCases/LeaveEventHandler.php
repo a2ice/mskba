@@ -37,7 +37,10 @@ final class LeaveEventHandler
                 'responsibility_requested_by_user_id' => null,
                 'responsibility_requested_at' => null,
                 'responsibility_responded_at' => null,
+                'status_changed_by_actor_id' => null,
+                'status_changed_at' => null,
             ]);
+            $participant->responsibilityPermissions()->delete();
 
             return $event;
         });

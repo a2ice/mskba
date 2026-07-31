@@ -266,12 +266,18 @@ Route::prefix('events')->group(function () {
             ->name('events.participants.candidates');
         Route::post('/{event}/participants/manage', [EventController::class, 'addParticipant'])
             ->name('events.participants.manage.store');
+        Route::patch('/{event}/participants/{participant}/manage/status', [EventController::class, 'updateManagedParticipantStatus'])
+            ->whereNumber('participant')
+            ->name('events.participants.manage.status');
         Route::post('/{event}/participants/{participant}/responsibility', [EventController::class, 'requestResponsibility'])
             ->whereNumber('participant')
             ->name('events.participants.responsibility.request');
         Route::patch('/{event}/participants/{participant}/responsibility', [EventController::class, 'respondResponsibility'])
             ->whereNumber('participant')
             ->name('events.participants.responsibility.respond');
+        Route::put('/{event}/participants/{participant}/responsibility/permissions', [EventController::class, 'updateResponsibilityPermissions'])
+            ->whereNumber('participant')
+            ->name('events.participants.responsibility.permissions.update');
         Route::delete('/{event}/participants/{participant}/responsibility', [EventController::class, 'removeResponsibility'])
             ->whereNumber('participant')
             ->name('events.participants.responsibility.destroy');
@@ -287,6 +293,7 @@ Route::prefix('events')->group(function () {
         Route::delete('/{event}/game', [GameController::class, 'destroyMiniGame'])->name('events.game.destroy');
         Route::patch('/{event}/game/roster', [GameController::class, 'roster'])->name('events.game.roster');
         Route::patch('/{event}/game/statistics', [GameController::class, 'statistics'])->name('events.game.statistics');
+        Route::patch('/{event}/game/score', [GameController::class, 'score'])->name('events.game.score');
         Route::patch('/{event}/game/statistics/complete', [GameController::class, 'completeStatistics'])
             ->name('events.game.statistics.complete');
         Route::post('/{event}/game/statistics/confirm', [GameController::class, 'confirmStatistics'])

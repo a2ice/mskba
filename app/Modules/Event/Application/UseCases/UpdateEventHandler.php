@@ -6,12 +6,14 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\EventResponsibilityPermission;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -62,7 +64,7 @@ final class UpdateEventHandler
                 throw new InvalidArgumentException('Мероприятие уже было перенесено. Обновите страницу и повторите действие.');
             }
 
-            $this->access->assertCanManage($event, $actor);
+            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::UPDATE_EVENT);
             $requestedType = EventTypeEnum::from($data['type']);
 
             if ($requestedType !== $event->type
@@ -172,6 +174,12 @@ final class UpdateEventHandler
                 $event->participants()
                     ->where('role', EventParticipantRoleEnum::ORGANIZER->value)
                     ->update(['confirmation_version' => $event->participation_confirmation_version]);
+                $participantIds = $event->participants()
+                    ->where('role', EventParticipantRoleEnum::PARTICIPANT->value)
+                    ->pluck('id');
+                EventResponsibilityPermission::query()
+                    ->whereIn('event_participant_id', $participantIds)
+                    ->delete();
                 $event->participants()
                     ->where('role', EventParticipantRoleEnum::PARTICIPANT->value)
                     ->update([

@@ -2,6 +2,7 @@
     use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
     use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
     use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
+    use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
     use App\Modules\Event\Domain\Enums\EventStatusEnum;
     use App\Modules\Event\Domain\Enums\EventTypeEnum;
     use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
@@ -68,6 +69,8 @@
     $currentResponse = $needsReconfirmation ? null : $currentParticipant?->status;
     $isFull = $remainingPlaces !== null && $remainingPlaces <= 0;
     $canConfirm = ! $isFull || $currentResponse === EventParticipantStatusEnum::CONFIRMED;
+    $allows = fn (EventResponsibilityPermissionEnum $permission): bool => $effectivePermissions->contains($permission->value);
+    $canManageParticipants = $allows(EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
     $participationOptions = collect([
         EventParticipantStatusEnum::CONFIRMED->value => ['Пойду', 'ti-circle-check', 'is-going'],
         EventParticipantStatusEnum::LEFT->value => ['Не пойду', 'ti-circle-x', 'is-declined'],
@@ -201,6 +204,14 @@
                         <span class="eyebrow">Назначение</span>
                         <h2>Стать ответственным за мероприятие?</h2>
                         <p>Организатор приглашает вас помогать в проведении этого мероприятия. Назначение начнёт действовать только после вашего согласия.</p>
+                        <div class="event-responsibility-invitation__permissions">
+                            <strong>Предложенные права</strong>
+                            <ul>
+                                @foreach($currentParticipant->responsibilityPermissions as $entry)
+                                    <li>{{ $entry->permission->label() }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
                     <div class="event-responsibility-invitation__actions">
                         <form method="POST" action="{{ route('events.participants.responsibility.respond', [$event->routeIdentifier(), $currentParticipant->id]) }}">
@@ -267,7 +278,7 @@
             @endif
 
             <section class="event-stat-grid">
-                <div><i class="ti ti-users" aria-hidden="true"></i><span>Участники</span><strong>{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></div>
+                <div><i class="ti ti-users" aria-hidden="true"></i><span>Участники</span><strong data-event-confirmed-count>{{ $confirmedCount }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></div>
                 <div><i class="ti ti-ball-basketball" aria-hidden="true"></i><span>Тип</span><strong>{{ $event->type->label() }}</strong></div>
                 <div><i class="ti ti-shield-check" aria-hidden="true"></i><span>Бронирование</span><strong>{{ $bookingLabel }}</strong></div>
             </section>
@@ -322,16 +333,17 @@
                 @endif
             </section>
 
+            <div class="event-participants-surface" data-event-participants-surface data-max-participants="{{ $event->max_participants }}" data-image-upload-surface>
+                @include('theme::partials.image-upload-loading', ['text' => 'Обновляем список участников…'])
             @foreach([
-                ['class' => 'is-going', 'title' => 'Участники', 'state' => 'Идут', 'memberState' => 'Идёт', 'items' => $confirmedParticipants],
-                ['class' => 'is-tentative', 'title' => 'Подтверждение', 'state' => 'Ожидают', 'memberState' => 'Подтвердить повторно', 'items' => $needsReconfirmationParticipants],
-                ['class' => 'is-tentative', 'title' => 'Думают', 'state' => null, 'memberState' => 'Думает', 'items' => $tentativeParticipants],
-                ['class' => 'is-declined', 'title' => 'Не идут', 'state' => null, 'memberState' => 'Не идёт', 'items' => $declinedParticipants],
+                ['status' => 'confirmed', 'class' => 'is-going', 'title' => 'Участники', 'state' => 'Идут', 'memberState' => 'Идёт', 'items' => $confirmedParticipants],
+                ['status' => 'reconfirmation', 'class' => 'is-tentative', 'title' => 'Подтверждение', 'state' => 'Ожидают', 'memberState' => 'Подтвердить повторно', 'items' => $needsReconfirmationParticipants],
+                ['status' => 'tentative', 'class' => 'is-tentative', 'title' => 'Думают', 'state' => null, 'memberState' => 'Думает', 'items' => $tentativeParticipants],
+                ['status' => 'left', 'class' => 'is-declined', 'title' => 'Не идут', 'state' => null, 'memberState' => 'Не идёт', 'items' => $declinedParticipants],
             ] as $group)
-                @if($group['items']->isNotEmpty())
-                    <section class="event-participants {{ $group['class'] }}">
+                <section class="event-participants {{ $group['class'] }}" data-event-participant-group="{{ $group['status'] }}" @if($group['items']->isEmpty()) hidden @endif>
                         <div class="event-participants__heading">
-                            <h2>
+                            <h2 data-event-participant-group-heading data-title="{{ $group['title'] }}">
                                 {{ $group['title'] }} ({{ $group['items']->count() }})
                                 @if($group['state']) <span>{{ $group['state'] }}</span> @endif
                             </h2>
@@ -343,8 +355,17 @@
                                     $participantName = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
                                         ?: $participant->user->username;
                                     $participantAvatar = $profile?->avatarUrl();
+                                    $statusChanger = $participant->statusChangedByActor?->user;
+                                    $statusChangerProfile = $statusChanger?->profile;
+                                    $statusChangerName = $statusChanger === null ? null : (
+                                        trim(implode(' ', array_filter([$statusChangerProfile?->first_name, $statusChangerProfile?->last_name])))
+                                        ?: $statusChanger->username
+                                        ?: 'Пользователь #'.$statusChanger->id
+                                    );
+                                    $statusChangedByOrganizer = $statusChanger !== null
+                                        && $event->organizerActor?->user_id === $statusChanger->id;
                                 @endphp
-                                <article class="event-participant-chip">
+                                <article class="event-participant-chip" data-event-participant-id="{{ $participant->id }}">
                                     <div class="event-person-avatar">
                                         @if($participantAvatar)
                                             <img src="{{ $participantAvatar }}" alt="{{ $participantName }}">
@@ -352,7 +373,7 @@
                                             <span>{{ mb_strtoupper(mb_substr($participantName, 0, 2)) }}</span>
                                         @endif
                                     </div>
-                                    <div>
+                                    <div class="event-participant-chip__identity">
                                         <strong>{{ $participantName }}</strong>
                                         <span>
                                             {{ match (true) {
@@ -361,7 +382,32 @@
                                                 default => $group['memberState'],
                                             } }}
                                         </span>
+                                        @if($participant->status_changed_at && $statusChangerName)
+                                            <small
+                                                class="event-participant-chip__changed"
+                                                title="Изменил: {{ $statusChangerName }} · {{ $statusChangedByOrganizer ? 'организатор' : 'ответственный' }}"
+                                                data-tooltip-variant="title"
+                                                tabindex="0"
+                                            >изменено {{ $participant->status_changed_at->setTimezone($timezone)->format('H:i') }}</small>
+                                        @endif
                                     </div>
+                                    @if($canManageParticipants && $participant->role !== EventParticipantRoleEnum::ORGANIZER)
+                                        <div class="event-participant-chip__status-actions">
+                                            @foreach([
+                                                EventParticipantStatusEnum::CONFIRMED->value => 'Идёт',
+                                                EventParticipantStatusEnum::TENTATIVE->value => 'Думает',
+                                                EventParticipantStatusEnum::LEFT->value => 'Не идёт',
+                                            ] as $targetStatus => $targetLabel)
+                                                @if($group['status'] === 'reconfirmation' || $participant->status->value !== $targetStatus)
+                                                    <form method="POST" action="{{ route('events.participants.manage.status', [$event->routeIdentifier(), $participant->id]) }}" data-event-participant-status-form data-target-label="{{ $targetLabel }}">
+                                                        @csrf @method('PATCH')
+                                                        <input type="hidden" name="status" value="{{ $targetStatus }}">
+                                                        <button class="btn btn--secondary event-participant-chip__status-button" type="submit">{{ $targetLabel }}</button>
+                                                    </form>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </article>
                             @endforeach
                             @if($group['class'] === 'is-going')
@@ -377,9 +423,9 @@
                                 @endif
                             @endif
                         </div>
-                    </section>
-                @endif
+                </section>
             @endforeach
+            </div>
 
             @if($event->childGames->isNotEmpty())
                 <section class="event-card event-mini-games event-mini-games--public">
@@ -410,7 +456,7 @@
                                         {{ $childSideB?->display_name ?: 'Команда B' }}
                                     </span>
                                 </a>
-                                @if($canManage)
+                                @if(collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
                                     <a class="btn btn--secondary btn--sm" href="{{ route('events.game.manage', $childGame->routeIdentifier()) }}">Управлять</a>
                                 @endif
                             </article>
@@ -432,7 +478,8 @@
                         <i class="ti ti-chevron-down"></i>
                     </summary>
                     <div class="event-management__body">
-                        @if($event->type === EventTypeEnum::GAME && $event->gameDetail)
+                        @if($event->type === EventTypeEnum::GAME && $event->gameDetail
+                            && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
                             <section class="event-game-management-link">
                                 <div>
                                     <span class="eyebrow">Игра</span>
@@ -458,7 +505,7 @@
                                     <h3>Игры внутри тренировки</h3>
                                     <p>Состав выбирается только из подтверждённых участников этого мероприятия.</p>
                                 </div>
-                                @if($canManageComposition)
+                                @if($canManageComposition && $allows(EventResponsibilityPermissionEnum::CREATE_MINI_GAME))
                                     <details class="event-mini-games__create">
                                         <summary class="btn btn--sm btn--secondary"><span class="fc-white">Добавить мини-игру</span></summary>
                                         <div class="event-mini-games__empty" data-mini-game-empty @if($confirmedCount >= 2) hidden @endif>
@@ -577,7 +624,7 @@
                             </section>
                         @endif
 
-                        @if($canManageComposition)
+                        @if($canManageComposition && $allows(EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS))
                             <section
                                 id="event-participant-management"
                                 class="event-participant-manager"
@@ -624,6 +671,7 @@
                         @endif
 
                         @if($event->parent_event_id === null
+                            && $allows(EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES)
                             && $event->starts_at->isFuture()
                             && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
                             @if($confirmedParticipants->where('role', EventParticipantRoleEnum::PARTICIPANT)->isNotEmpty())
@@ -650,17 +698,41 @@
                                                     </span>
                                                 </div>
                                                 @if($responsibility === null || $responsibility === EventResponsibilityStatusEnum::DECLINED)
-                                                    <form method="POST" action="{{ route('events.participants.responsibility.request', [$event->routeIdentifier(), $participant->id]) }}">
-                                                        @csrf
-                                                        <button class="btn btn--secondary btn--sm" type="submit">Назначить</button>
-                                                    </form>
+                                                    <details class="event-responsibility-manager__permissions-editor">
+                                                        <summary class="btn btn--secondary btn--sm">Назначить</summary>
+                                                        <form method="POST" action="{{ route('events.participants.responsibility.request', [$event->routeIdentifier(), $participant->id]) }}">
+                                                            @csrf
+                                                            @include('theme::pages.events.partials.responsibility-permissions', [
+                                                                'participant' => $participant,
+                                                                'selected' => $effectivePermissions,
+                                                                'allowed' => $effectivePermissions,
+                                                                'formContext' => 'invite',
+                                                            ])
+                                                            <button class="btn btn--primary btn--sm" type="submit">Отправить приглашение</button>
+                                                        </form>
+                                                    </details>
                                                 @else
-                                                    <form method="POST" action="{{ route('events.participants.responsibility.destroy', [$event->routeIdentifier(), $participant->id]) }}">
-                                                        @csrf @method('DELETE')
-                                                        <button class="btn btn--secondary btn--sm" type="submit">
-                                                            {{ $responsibility === EventResponsibilityStatusEnum::PENDING ? 'Отменить запрос' : 'Снять' }}
-                                                        </button>
-                                                    </form>
+                                                    <div class="event-responsibility-manager__actions">
+                                                        <details class="event-responsibility-manager__permissions-editor">
+                                                            <summary class="btn btn--secondary btn--sm">Права</summary>
+                                                            <form method="POST" action="{{ route('events.participants.responsibility.permissions.update', [$event->routeIdentifier(), $participant->id]) }}">
+                                                                @csrf @method('PUT')
+                                                                @include('theme::pages.events.partials.responsibility-permissions', [
+                                                                    'participant' => $participant,
+                                                                    'selected' => $participant->responsibilityPermissions->pluck('permission'),
+                                                                    'allowed' => $effectivePermissions,
+                                                                    'formContext' => 'edit',
+                                                                ])
+                                                                <button class="btn btn--primary btn--sm" type="submit">Сохранить права</button>
+                                                            </form>
+                                                        </details>
+                                                        <form method="POST" action="{{ route('events.participants.responsibility.destroy', [$event->routeIdentifier(), $participant->id]) }}">
+                                                            @csrf @method('DELETE')
+                                                            <button class="btn btn--secondary btn--sm" type="submit">
+                                                                {{ $responsibility === EventResponsibilityStatusEnum::PENDING ? 'Отменить запрос' : 'Снять' }}
+                                                            </button>
+                                                        </form>
+                                                    </div>
                                                 @endif
                                             </article>
                                         @endforeach
@@ -668,16 +740,22 @@
                                 </section>
                             @endif
 
-                            <a class="btn btn--secondary btn--sm" href="{{ route('events.edit', $event->routeIdentifier()) }}">Редактировать</a>
-                            <form method="POST" action="{{ route('events.cancel', $event->routeIdentifier()) }}" onsubmit="return confirm('Вы уверены, что хотите отменить мероприятие и освободить бронь?')">
-                                @csrf
-                                <label class="form-label" for="eventCancellationReason">Причина отмены</label>
-                                <textarea id="eventCancellationReason" class="form-control" name="reason" rows="3" maxlength="1000"></textarea>
-                                <button class="btn btn--danger btn--sm" type="submit">Отменить мероприятие</button>
-                            </form>
+                            @if($allows(EventResponsibilityPermissionEnum::UPDATE_EVENT))
+                                <a class="btn btn--secondary btn--sm" href="{{ route('events.edit', $event->routeIdentifier()) }}">Редактировать</a>
+                            @endif
+                            @if($allows(EventResponsibilityPermissionEnum::CANCEL_EVENT))
+                                <form method="POST" action="{{ route('events.cancel', $event->routeIdentifier()) }}" onsubmit="return confirm('Вы уверены, что хотите отменить мероприятие и освободить бронь?')">
+                                    @csrf
+                                    <label class="form-label" for="eventCancellationReason">Причина отмены</label>
+                                    <textarea id="eventCancellationReason" class="form-control" name="reason" rows="3" maxlength="1000"></textarea>
+                                    <button class="btn btn--danger btn--sm" type="submit">Отменить мероприятие</button>
+                                </form>
+                            @endif
                         @endif
 
-                        @if($event->ends_at->isPast() && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::DRAFT], true))
+                        @if($event->ends_at->isPast()
+                            && ($isCompleted ? $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT) : $allows(EventResponsibilityPermissionEnum::COMPLETE_EVENT))
+                            && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::DRAFT], true))
                             <form method="POST" action="{{ route('events.result.update', $event->routeIdentifier()) }}">
                                 @csrf @method('PUT')
                                 <label class="form-label" for="eventResultDescription">Как прошло мероприятие</label>
@@ -722,7 +800,7 @@
                     @endif
                 </section>
 
-                @if($canManage)
+                @if($allows(EventResponsibilityPermissionEnum::MANAGE_RESULT))
                     <section class="venue-gallery-editor event-result-gallery" data-tooltip-skip data-image-upload-surface>
                         @include('theme::partials.image-upload-loading', ['text' => 'Загружаем фотографию…'])
                         <div class="venue-gallery-editor__heading"><div><h2>Фотографии</h2><p>До 12 изображений · JPEG, PNG или WebP · до 5 МБ</p></div><span>{{ $event->media->count() }}/12</span></div>

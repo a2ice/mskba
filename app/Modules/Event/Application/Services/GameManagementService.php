@@ -4,6 +4,7 @@ namespace App\Modules\Event\Application\Services;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
@@ -25,6 +26,8 @@ use InvalidArgumentException;
 
 final class GameManagementService
 {
+    public function __construct(private readonly EventManagementAccess $access) {}
+
     public function initializeStandalone(
         Event $event,
         int $teamAId,
@@ -109,6 +112,7 @@ final class GameManagementService
             $sideBSize,
         ): Event {
             $lockedParent = Event::query()->lockForUpdate()->findOrFail($parent->id);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::CREATE_MINI_GAME);
             [$start, $end, $isTimeScheduled] = $this->resolveMiniGamePeriod($lockedParent, $startsAt, $endsAt);
             [$sideAName, $sideBName] = $this->normalizeSideNames($sideAName, $sideBName);
 
@@ -193,6 +197,7 @@ final class GameManagementService
 
     public function updateMiniGame(
         Event $game,
+        Actor $actor,
         string $title,
         ?string $startsAt,
         ?string $endsAt,
@@ -203,6 +208,7 @@ final class GameManagementService
     ): void {
         DB::transaction(function () use (
             $game,
+            $actor,
             $title,
             $startsAt,
             $endsAt,
@@ -218,6 +224,7 @@ final class GameManagementService
             // Во всех сценариях с двумя мероприятиями сохраняем единый порядок:
             // родитель → дочерняя игра. Это снижает риск взаимной блокировки.
             $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             if ($lockedGame->parent_event_id !== $lockedParent->id) {
                 throw new InvalidArgumentException('Связь мини-игры с тренировкой была изменена.');
@@ -285,16 +292,17 @@ final class GameManagementService
         event(new EventChanged((int) $game->parent_event_id));
     }
 
-    public function deleteMiniGame(Event $game): void
+    public function deleteMiniGame(Event $game, Actor $actor): void
     {
         $parentEventId = (int) $game->parent_event_id;
 
-        DB::transaction(function () use ($game): void {
+        DB::transaction(function () use ($game, $actor): void {
             if ($game->parent_event_id === null) {
                 throw new InvalidArgumentException('Удалить здесь можно только мини-игру.');
             }
 
             $lockedParent = Event::query()->whereKey($game->parent_event_id)->lockForUpdate()->firstOrFail();
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             if ($lockedGame->parent_event_id !== $lockedParent->id) {
                 throw new InvalidArgumentException('Связь мини-игры с тренировкой была изменена.');
@@ -314,9 +322,13 @@ final class GameManagementService
      * @param  array<int, int>  $sideAUserIds
      * @param  array<int, int>  $sideBUserIds
      */
-    public function replaceRoster(Event $game, array $sideAUserIds, array $sideBUserIds): void
+    public function replaceRoster(Event $game, Actor $actor, array $sideAUserIds, array $sideBUserIds): void
     {
-        DB::transaction(function () use ($game, $sideAUserIds, $sideBUserIds): void {
+        DB::transaction(function () use ($game, $actor, $sideAUserIds, $sideBUserIds): void {
+            if ($game->parent_event_id !== null) {
+                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
+            }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
             if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
@@ -382,7 +394,11 @@ final class GameManagementService
      */
     public function saveStatistics(Event $game, Actor $actor, array $statistics): void
     {
-        DB::transaction(function () use ($game, $statistics): void {
+        DB::transaction(function () use ($game, $actor, $statistics): void {
+            if ($game->parent_event_id !== null) {
+                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
+            }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
             $this->persistStatistics($lockedGame, $detail, $statistics);
@@ -391,9 +407,38 @@ final class GameManagementService
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
+    /** @param array{A:int, B:int} $scores */
+    public function saveScore(Event $game, Actor $actor, array $scores): void
+    {
+        DB::transaction(function () use ($game, $actor, $scores): void {
+            if ($game->parent_event_id !== null) {
+                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
+            }
+            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
+            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+                throw new InvalidArgumentException('Счёт подтверждённой игры изменять нельзя.');
+            }
+            $sides = $lockedGame->gameSides()->lockForUpdate()->get()->keyBy('slot');
+            if (! $sides->has('A') || ! $sides->has('B')) {
+                throw new InvalidArgumentException('Для игры не настроены две стороны.');
+            }
+            foreach (['A', 'B'] as $slot) {
+                $sides[$slot]->update(['score' => (int) $scores[$slot]]);
+            }
+        });
+
+        event(new EventChanged($this->aggregateEventId($game)));
+    }
+
     public function confirmStatistics(Event $game, Actor $actor): void
     {
         DB::transaction(function () use ($game, $actor): void {
+            if ($game->parent_event_id !== null) {
+                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+            }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
             if ($lockedGame->ends_at->isFuture()) {
@@ -418,7 +463,9 @@ final class GameManagementService
             // мероприятие-агрегат, затем мини-игра. Это снижает риск deadlock
             // при одновременной синхронизации мероприятия и его игр.
             if ($game->parent_event_id !== null) {
-                Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
             }
 
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);

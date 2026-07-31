@@ -42,6 +42,8 @@ final class JoinEventHandler
                 throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
             }
 
+            $event->participants()->where('user_id', $user->id)->first()?->responsibilityPermissions()->delete();
+
             $event->participants()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -54,6 +56,8 @@ final class JoinEventHandler
                     'responsibility_requested_by_user_id' => null,
                     'responsibility_requested_at' => null,
                     'responsibility_responded_at' => null,
+                    'status_changed_by_actor_id' => null,
+                    'status_changed_at' => null,
                 ],
             );
 

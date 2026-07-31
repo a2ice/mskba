@@ -4,6 +4,7 @@ namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -22,7 +23,7 @@ final class SearchEventParticipantCandidatesHandler
     public function handle(string $identifier, Actor $actor, string $query): Collection
     {
         $event = Event::query()->whereRouteIdentifier($identifier)->firstOrFail();
-        $this->access->assertCanManage($event, $actor);
+        $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
         $viewer = $actor->user;
 
         if (! $viewer instanceof User) {

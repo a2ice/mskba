@@ -33,6 +33,8 @@ final class ShowEventHandler
                 'organizerActor.user.telegramAccount',
                 'organizerActor.user.contacts',
                 'participants.user.profile.activeAvatar',
+                'participants.statusChangedByActor.user.profile',
+                'participants.responsibilityPermissions',
                 'gameDetail',
                 'gameSides.team',
                 'gameRosterEntries.gameSide',
