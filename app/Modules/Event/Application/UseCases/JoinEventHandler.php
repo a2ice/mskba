@@ -23,8 +23,8 @@ final class JoinEventHandler
                 throw new InvalidArgumentException('К этому мероприятию сейчас нельзя присоединиться.');
             }
 
-            if ($event->starts_at->lessThanOrEqualTo(now())) {
-                throw new InvalidArgumentException('Мероприятие уже началось.');
+            if ($event->ends_at->lessThanOrEqualTo(now())) {
+                throw new InvalidArgumentException('Мероприятие уже завершилось.');
             }
 
             $participant = $event->participants()->where('user_id', $user->id)->first();

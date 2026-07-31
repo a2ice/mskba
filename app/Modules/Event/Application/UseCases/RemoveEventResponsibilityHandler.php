@@ -5,6 +5,7 @@ namespace App\Modules\Event\Application\UseCases;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -21,6 +22,10 @@ final class RemoveEventResponsibilityHandler
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES);
             $this->access->assertOwnsManagementScope($event);
+            if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
+                || $event->ends_at->lessThanOrEqualTo(now())) {
+                throw new InvalidArgumentException('Назначениями завершённого мероприятия управлять нельзя.');
+            }
             $participant = $event->participants()->whereKey($participantId)->lockForUpdate()->firstOrFail();
 
             if ($participant->role === EventParticipantRoleEnum::ORGANIZER) {

@@ -29,8 +29,8 @@ final class SetEventParticipationHandler
                 throw new InvalidArgumentException('Для этого мероприятия сейчас нельзя изменить участие.');
             }
 
-            if ($event->starts_at->lessThanOrEqualTo(now())) {
-                throw new InvalidArgumentException('После начала мероприятия изменить участие нельзя.');
+            if ($event->ends_at->lessThanOrEqualTo(now())) {
+                throw new InvalidArgumentException('После завершения мероприятия изменить участие нельзя.');
             }
 
             $participant = $event->participants()->where('user_id', $user->id)->first();

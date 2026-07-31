@@ -226,7 +226,7 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($user)
             ->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
-            ->assertSee('Создать игровую тренировку')
+            ->assertSee('Создать')
             ->assertSee(route('events.create', ['type' => EventTypeEnum::GAME_TRAINING->value]), false);
 
         $this->actingAs($user)
@@ -237,7 +237,8 @@ final class EventWorkflowTest extends TestCase
             ->assertDontSee('Без расписания площадка доступна круглосуточно.')
             ->assertSee('value="game_training" data-title-prefix="Игровая тренировка" selected', false)
             ->assertSee('Игровая тренировка - 20260722')
-            ->assertSee('value="2026-07-22T12:15"', false)
+            ->assertSee('value="2026-07-22T12:30"', false)
+            ->assertSee('min="2026-07-22T12:15"', false)
             ->assertSee('name="duration_minutes"', false)
             ->assertSee('value="60" selected', false)
             ->assertSee('1,5 часа')
@@ -875,9 +876,9 @@ final class EventWorkflowTest extends TestCase
         $pastEvents = $this->actingAs($organizer)
             ->get(route('events.index', ['period' => 'past']));
         $pastEvents->assertOk();
-        $pastEvents->assertSee('Прошедшие мероприятия');
+        $pastEvents->assertSee('Мероприятия');
         $pastEvents->assertSee('Вечерняя игра');
-        $pastEvents->assertSee('<span class="badge badge--warning">Итог не указан</span>', false);
+        $pastEvents->assertSee('Итог не указан');
 
         $this->actingAs($organizer)
             ->get(route('events.show', $event->routeIdentifier()))
@@ -893,8 +894,7 @@ final class EventWorkflowTest extends TestCase
         $completedEvents = $this->actingAs($organizer)
             ->get(route('events.index', ['period' => 'past']));
         $completedEvents->assertOk();
-        $completedEvents->assertSee('<span class="badge badge--success">Состоялось</span>', false);
-        $completedEvents->assertDontSee('<span class="badge badge--warning">Итог не указан</span>', false);
+        $completedEvents->assertSee('Состоялось');
     }
 
     public function test_event_journals_can_be_filtered_by_type_dates_and_past_outcome(): void
@@ -951,7 +951,7 @@ final class EventWorkflowTest extends TestCase
             ->assertOk()
             ->assertDontSee('Игра для фильтра')
             ->assertSee('Тренировка для фильтра')
-            ->assertSee('<span class="badge badge--warning">Итог не указан</span>', false);
+            ->assertSee('Итог не указан');
 
         $this->assertSame(EventStatusEnum::PUBLISHED, $training->refresh()->status);
     }
@@ -1014,7 +1014,7 @@ final class EventWorkflowTest extends TestCase
             ->assertSessionHas('error', 'Этот пользователь недоступен для добавления.');
     }
 
-    public function test_organizer_adds_participant_to_ended_event_via_ajax_for_retrospective_mini_game(): void
+    public function test_organizer_cannot_change_participants_after_event_time_has_ended(): void
     {
         $organizer = User::factory()->create(['username' => 'retrospective-owner']);
         $participant = User::factory()->create(['username' => 'retrospective-player']);
@@ -1043,26 +1043,58 @@ final class EventWorkflowTest extends TestCase
             ->postJson(route('events.participants.manage.store', $event->routeIdentifier()), [
                 'user_id' => $participant->id,
             ])
-            ->assertOk()
-            ->assertJsonPath('participant.user_id', $participant->id)
-            ->assertJsonPath('participant.name', 'retrospective-player')
-            ->assertJsonPath('participant.status', EventParticipantStatusEnum::TENTATIVE->value);
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Состав этого мероприятия уже нельзя изменять.');
 
-        $managedParticipant = $event->participants()->where('user_id', $participant->id)->firstOrFail();
         $this->actingAs($organizer)
-            ->patchJson(route('events.participants.manage.status', [$event->routeIdentifier(), $managedParticipant->id]), [
-                'status' => EventParticipantStatusEnum::CONFIRMED->value,
-            ])
-            ->assertOk()
-            ->assertJsonPath('participant.status', EventParticipantStatusEnum::CONFIRMED->value)
-            ->assertJsonPath('confirmed_count', 2);
+            ->getJson(route('events.participants.candidates', [
+                'event' => $event->routeIdentifier(),
+                'query' => 'retrospective',
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Состав этого мероприятия уже нельзя изменять.');
 
-        $this->assertDatabaseHas('event_participants', [
+        $this->actingAs($organizer)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('data-event-participant-manager', false)
+            ->assertDontSee('data-event-participant-status-form', false);
+
+        $this->assertDatabaseMissing('event_participants', [
             'event_id' => $event->id,
             'user_id' => $participant->id,
-            'status' => EventParticipantStatusEnum::CONFIRMED->value,
-            'confirmation_version' => $event->participation_confirmation_version,
         ]);
+    }
+
+    public function test_participant_management_is_locked_after_event_is_completed(): void
+    {
+        $organizer = User::factory()->create();
+        $candidate = User::factory()->create(['username' => 'late-player']);
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
+        $event = $venue->events()->firstOrFail();
+        $event->forceFill(['status' => EventStatusEnum::COMPLETED])->save();
+
+        $this->actingAs($organizer)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('data-event-participant-manager', false)
+            ->assertDontSee('data-event-participant-status-form', false);
+
+        $this->actingAs($organizer)
+            ->getJson(route('events.participants.candidates', [
+                'event' => $event->routeIdentifier(),
+                'query' => 'late',
+            ]))
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Состав этого мероприятия уже нельзя изменять.');
+
+        $this->actingAs($organizer)
+            ->postJson(route('events.participants.manage.store', $event->routeIdentifier()), [
+                'user_id' => $candidate->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Состав этого мероприятия уже нельзя изменять.');
     }
 
     public function test_multiple_responsible_participants_accept_invitation_and_organizer_can_remove_them(): void

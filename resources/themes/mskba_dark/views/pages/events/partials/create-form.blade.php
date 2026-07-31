@@ -85,7 +85,7 @@
     <div class="row g-3 mb-3">
         <div class="col-md-6 form-group field">
             <label class="form-label" for="{{ $formIdPrefix }}StartsAt">Начало</label>
-        <input id="{{ $formIdPrefix }}StartsAt" type="datetime-local" class="form-control @error('starts_at') is-invalid @enderror" name="starts_at" value="{{ old('starts_at', $coordinatedStartsAt ?? $defaultStartsAt) }}" min="{{ $defaultStartsAt }}" required data-event-start>
+        <input id="{{ $formIdPrefix }}StartsAt" type="datetime-local" class="form-control @error('starts_at') is-invalid @enderror" name="starts_at" value="{{ old('starts_at', $coordinatedStartsAt ?? $defaultStartsAt) }}" min="{{ $minimumStartsAt ?? $defaultStartsAt }}" required data-event-start>
             @error('starts_at') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
         <div class="col-md-6 form-group field">

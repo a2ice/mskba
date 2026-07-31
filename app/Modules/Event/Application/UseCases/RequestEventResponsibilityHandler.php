@@ -81,7 +81,7 @@ final class RequestEventResponsibilityHandler
     private function assertEventIsActive(Event $event): void
     {
         if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
-            || $event->starts_at->lessThanOrEqualTo(now())) {
+            || $event->ends_at->lessThanOrEqualTo(now())) {
             throw new InvalidArgumentException('Для этого мероприятия назначение уже недоступно.');
         }
     }

@@ -26,8 +26,8 @@ final class LeaveEventHandler
                 throw new InvalidArgumentException('Организатор не может покинуть собственное мероприятие.');
             }
 
-            if ($event->starts_at->lessThanOrEqualTo(now())) {
-                throw new InvalidArgumentException('После начала мероприятия изменить участие нельзя.');
+            if ($event->ends_at->lessThanOrEqualTo(now())) {
+                throw new InvalidArgumentException('После завершения мероприятия изменить участие нельзя.');
             }
 
             $participant->update([

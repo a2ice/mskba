@@ -6,6 +6,7 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\EventResponsibilityPermissionManager;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -26,6 +27,10 @@ final class UpdateEventResponsibilityPermissionsHandler
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertOwnsManagementScope($event);
             $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES);
+            if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
+                || $event->ends_at->lessThanOrEqualTo(now())) {
+                throw new InvalidArgumentException('Назначениями завершённого мероприятия управлять нельзя.');
+            }
             $participant = $event->participants()->whereKey($participantId)->lockForUpdate()->firstOrFail();
 
             if (! in_array($participant->responsibility_status, [

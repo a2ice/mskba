@@ -199,7 +199,8 @@ final class CoordinationController extends Controller
             && $contextEvent !== null
             && $coordination->status->value === 'completed';
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
-        $defaultStartsAt = $now->addMinutes(15)->ceilMinute();
+        $minimumStartsAt = $now->addMinutes(15)->ceilMinute();
+        $defaultStartsAt = $now->addMinutes(30)->ceilMinute();
         $decisionDescription = $coordination->decisions->isEmpty()
             ? null
             : 'Согласовано: '.$coordination->decisions
@@ -380,6 +381,7 @@ final class CoordinationController extends Controller
                 $decisionDescription,
             ])->filter()->implode("\n\n"),
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
+            'minimumStartsAt' => $minimumStartsAt->format('Y-m-d\TH:i'),
             'coordinatedStartsAt' => $coordinatedStartsAt,
             'coordinatedVenueId' => is_numeric($venueId) ? (int) $venueId : null,
             'coordinatedDuration' => $coordinatedDuration,

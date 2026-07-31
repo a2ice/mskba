@@ -28,7 +28,7 @@ final class ShowEventHandler
                     ->orderBy('sort_order')
                     ->orderBy('id'),
                 'booking',
-                'parentEvent',
+                'parentEvent.participants.user.profile.activeAvatar',
                 'organizerActor.user.profile.activeAvatar',
                 'organizerActor.user.telegramAccount',
                 'organizerActor.user.contacts',
@@ -36,7 +36,8 @@ final class ShowEventHandler
                 'participants.statusChangedByActor.user.profile',
                 'participants.responsibilityPermissions',
                 'gameDetail',
-                'gameSides.team',
+                'gameSides.team.memberships.contract',
+                'gameSides.team.memberships.user.profile.activeAvatar',
                 'gameRosterEntries.gameSide',
                 'gameRosterEntries.user.profile.activeAvatar',
                 'gamePlayerStatistics',

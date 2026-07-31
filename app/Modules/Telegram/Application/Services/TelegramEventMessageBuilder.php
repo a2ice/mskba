@@ -53,7 +53,8 @@ final class TelegramEventMessageBuilder
                 $sides = $childGame->gameSides->keyBy('slot');
                 $sideA = $sides->get('A');
                 $sideB = $sides->get('B');
-                $score = $sideA?->score !== null && $sideB?->score !== null
+                $score = $childGame->status === EventStatusEnum::COMPLETED
+                    && $sideA?->score !== null && $sideB?->score !== null
                     ? "{$sideA->score}:{$sideB->score}"
                     : '—:—';
                 $lines[] = '• <b>'.$this->escape($childGame->title).'</b>';

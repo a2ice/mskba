@@ -40,7 +40,8 @@
             ->filter(fn (array $format): bool => $format['side_a_size'] <= 6 && $format['side_b_size'] <= 5)
             ->values();
     $defaultMiniGameFormat = $miniGameFormats->last() ?? ['side_a_size' => 1, 'side_b_size' => 1];
-    $canManageComposition = ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::DRAFT], true);
+    $canManageComposition = ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED, EventStatusEnum::DRAFT], true)
+        && $event->ends_at->isFuture();
     $remainingPlaces = $event->max_participants === null
         ? null
         : max(0, $event->max_participants - $confirmedCount);
@@ -55,7 +56,7 @@
     $hasPendingResponsibility = $currentParticipant?->responsibility_status === EventResponsibilityStatusEnum::PENDING
         && $currentParticipant->status === EventParticipantStatusEnum::CONFIRMED
         && $currentParticipant->confirmation_version === $event->participation_confirmation_version;
-    $isFuture = $event->starts_at->isFuture();
+    $isFuture = $event->ends_at->isFuture();
     $isCompleted = $event->status === EventStatusEnum::COMPLETED;
     $isParticipationWindowOpen = $event->status === EventStatusEnum::PUBLISHED
         && $event->visibility === EventVisibilityEnum::PUBLIC
@@ -70,7 +71,8 @@
     $isFull = $remainingPlaces !== null && $remainingPlaces <= 0;
     $canConfirm = ! $isFull || $currentResponse === EventParticipantStatusEnum::CONFIRMED;
     $allows = fn (EventResponsibilityPermissionEnum $permission): bool => $effectivePermissions->contains($permission->value);
-    $canManageParticipants = $allows(EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+    $canManageParticipants = $canManageComposition
+        && $allows(EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
     $participationOptions = collect([
         EventParticipantStatusEnum::CONFIRMED->value => ['Пойду', 'ti-circle-check', 'is-going'],
         EventParticipantStatusEnum::LEFT->value => ['Не пойду', 'ti-circle-x', 'is-declined'],
@@ -676,7 +678,7 @@
 
                         @if($event->parent_event_id === null
                             && $allows(EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES)
-                            && $event->starts_at->isFuture()
+                            && $event->ends_at->isFuture()
                             && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
                             @if($confirmedParticipants->where('role', EventParticipantRoleEnum::PARTICIPANT)->isNotEmpty())
                                 <section class="event-responsibility-manager">
@@ -744,10 +746,11 @@
                                 </section>
                             @endif
 
-                            @if($allows(EventResponsibilityPermissionEnum::UPDATE_EVENT))
+                            @if($canManageComposition && $allows(EventResponsibilityPermissionEnum::UPDATE_EVENT))
                                 <a class="btn btn--secondary btn--sm" href="{{ route('events.edit', $event->routeIdentifier()) }}">Редактировать</a>
                             @endif
-                            @if($allows(EventResponsibilityPermissionEnum::CANCEL_EVENT))
+                            @if($allows(EventResponsibilityPermissionEnum::CANCEL_EVENT)
+                                && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
                                 <form method="POST" action="{{ route('events.cancel', $event->routeIdentifier()) }}" onsubmit="return confirm('Вы уверены, что хотите отменить мероприятие и освободить бронь?')">
                                     @csrf
                                     <label class="form-label" for="eventCancellationReason">Причина отмены</label>

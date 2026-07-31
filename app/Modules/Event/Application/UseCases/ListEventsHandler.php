@@ -23,6 +23,8 @@ final class ListEventsHandler
         ?string $dateFrom = null,
         ?string $dateTo = null,
         ?string $outcome = null,
+        ?int $venueId = null,
+        bool $hasMiniGames = false,
     ): LengthAwarePaginator {
         $timezone = (string) config('app.timezone', 'Europe/Moscow');
         $startsFrom = $dateFrom === null
@@ -34,7 +36,19 @@ final class ListEventsHandler
 
         return Event::query()
             ->whereNull('parent_event_id')
-            ->with(['venue.schedule', 'booking'])
+            ->with([
+                'venue.schedule',
+                'venue.location.address',
+                'venue.media' => fn ($query) => $query
+                    ->where('collection', 'gallery')
+                    ->orderByDesc('is_featured')
+                    ->orderBy('sort_order')
+                    ->limit(1),
+                'booking',
+                'childGames' => fn ($query) => $query
+                    ->with(['gameDetail', 'gameSides'])
+                    ->orderBy('starts_at'),
+            ])
             ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
             ->when(
                 $period === 'past',
@@ -68,6 +82,8 @@ final class ListEventsHandler
             ))
             ->when($startsFrom, fn ($query) => $query->where('starts_at', '>=', $startsFrom))
             ->when($startsTo, fn ($query) => $query->where('starts_at', '<=', $startsTo))
+            ->when($venueId !== null, fn ($query) => $query->where('venue_id', $venueId))
+            ->when($hasMiniGames, fn ($query) => $query->whereHas('childGames'))
             ->when($period === 'past' && $outcome !== null, function ($query) use ($outcome): void {
                 match ($outcome) {
                     'completed' => $query->where('status', EventStatusEnum::COMPLETED->value),

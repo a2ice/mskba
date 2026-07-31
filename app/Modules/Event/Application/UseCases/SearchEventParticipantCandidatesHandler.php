@@ -5,6 +5,7 @@ namespace App\Modules\Event\Application\UseCases;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -24,6 +25,10 @@ final class SearchEventParticipantCandidatesHandler
     {
         $event = Event::query()->whereRouteIdentifier($identifier)->firstOrFail();
         $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+        if (in_array($event->status, [EventStatusEnum::DRAFT, EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
+            || $event->ends_at->lessThanOrEqualTo(now())) {
+            throw new InvalidArgumentException('Состав этого мероприятия уже нельзя изменять.');
+        }
         $viewer = $actor->user;
 
         if (! $viewer instanceof User) {

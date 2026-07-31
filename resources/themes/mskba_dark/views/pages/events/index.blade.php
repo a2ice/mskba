@@ -1,136 +1,134 @@
-@php $title = 'Мероприятия'; @endphp
+@php
+    use App\Modules\Event\Domain\Enums\EventStatusEnum;
 
-@extends('theme::layouts.section-sidebar', [
-    'title' => $title,
-    'sectionId' => 'events',
-    'sectionClass' => 'events-section',
-    'contentTitle' => $period === 'past' ? 'Прошедшие мероприятия' : 'Предстоящие мероприятия',
-    'contentSubtitle' => 'Игры и тренировки на баскетбольных площадках.',
-    'sidebarLabel' => 'Навигация мероприятий',
-])
+    $title = 'Мероприятия';
+    $activeFilterCount = collect([
+        $period === 'past',
+        filled($typeFilter),
+        filled($dateFrom),
+        filled($dateTo),
+        filled($outcome),
+        filled($venueId),
+        $hasMiniGames,
+    ])->filter()->count();
+    $createUrl = route('events.create', array_filter(['type' => $selectedType?->value]));
+    $pastToggleQuery = request()->query();
+    if ($period === 'past') {
+        unset($pastToggleQuery['period'], $pastToggleQuery['outcome']);
+    } else {
+        $pastToggleQuery['period'] = 'past';
+    }
+@endphp
 
-@section('section-heading-action')
-    @php
-        $createLabel = $selectedType?->createLabel() ?? 'Создать мероприятие';
-        $createUrl = route('events.create', array_filter(['type' => $selectedType?->value]));
-    @endphp
-    @auth
-        <a href="{{ $createUrl }}" class="btn btn--primary btn--sm">{{ $createLabel }}</a>
-    @else
-        <button type="button" class="btn btn--primary btn--sm js-handler" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('events.create', array_filter(['type' => $selectedType?->value]), false) }}">{{ $createLabel }}</button>
-    @endauth
-@endsection
+@extends('theme::layouts.app', ['title' => $title])
 
-@section('section-sidebar')
-    @php
-        $persistentFilters = array_filter([
-            'type' => $typeFilter,
-            'period' => $period,
-            'date_from' => $dateFrom,
-            'date_to' => $dateTo,
-            'outcome' => $outcome,
-        ]);
-    @endphp
-    <div class="section-sidebar-block">
-        <h2 class="section-sidebar-block__title">Мероприятия</h2>
-        <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item {{ $typeFilter === null ? 'active' : '' }}"><a class="nav-link {{ $typeFilter === null ? 'active' : '' }}" href="{{ route('events.index', array_diff_key($persistentFilters, ['type' => true])) }}">Все</a></li>
-            @foreach($types as $type)
-                <li class="nav-item {{ $selectedType === $type ? 'active' : '' }}"><a class="nav-link {{ $selectedType === $type ? 'active' : '' }}" href="{{ route('events.index', array_merge($persistentFilters, ['type' => $type->value])) }}">{{ $type->label() }}</a></li>
-            @endforeach
-        </ul>
-    </div>
-    <div class="section-sidebar-block">
-        <h2 class="section-sidebar-block__title">Период</h2>
-        <ul class="sidebar-nav nav flex-column">
-            <li class="nav-item {{ $period === 'upcoming' ? 'active' : '' }}"><a class="nav-link {{ $period === 'upcoming' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $typeFilter, 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Предстоящие</a></li>
-            <li class="nav-item {{ $period === 'past' ? 'active' : '' }}"><a class="nav-link {{ $period === 'past' ? 'active' : '' }}" href="{{ route('events.index', array_filter(['type' => $typeFilter, 'period' => 'past', 'date_from' => $dateFrom, 'date_to' => $dateTo])) }}">Прошедшие</a></li>
-        </ul>
-    </div>
-@endsection
+@section('content')
+    <section class="events-catalog first-screen">
+        <div class="inner events-catalog__inner">
+            @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
 
-@section('section-content')
-    @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
+            <header class="events-catalog__header">
+                <h1>{{ $title }}</h1>
+            </header>
 
-    <details class="section-list-item event-filters-shell mb-4">
-        <summary class="event-filters-shell__summary">
-            <span>Поиск</span>
-            <span class="event-filters-shell__indicator" aria-hidden="true"></span>
-        </summary>
-
-        <form method="GET" action="{{ route('events.index') }}" class="event-filters event-filters--{{ $period }}">
-            <input type="hidden" name="period" value="{{ $period }}">
-            <div class="event-filters__grid">
-                <div class="form-group field event-filters__field--type">
-                    <label class="form-label" for="eventFilterType">Тип</label>
-                    <select id="eventFilterType" class="form-select" name="type">
-                        <option value="">Все типы</option>
-                        <option value="games" @selected($typeFilter === 'games')>Игры и игровые тренировки</option>
-                        @foreach($types as $type)
-                            <option value="{{ $type->value }}" @selected($selectedType === $type)>{{ $type->label() }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="form-group field event-filters__field--date">
-                    <label class="form-label" for="eventFilterDateFrom">Дата с</label>
-                    <input id="eventFilterDateFrom" type="date" class="form-control" name="date_from" value="{{ $dateFrom }}">
-                </div>
-                <div class="form-group field event-filters__field--date">
-                    <label class="form-label" for="eventFilterDateTo">Дата по</label>
-                    <input id="eventFilterDateTo" type="date" class="form-control" name="date_to" value="{{ $dateTo }}">
-                </div>
-                @if($period === 'past')
-                    <div class="form-group field event-filters__field--outcome">
-                        <label class="form-label" for="eventFilterOutcome">Итог</label>
-                        <select id="eventFilterOutcome" class="form-select" name="outcome">
-                            <option value="">Все итоги</option>
-                            <option value="completed" @selected($outcome === 'completed')>Состоялось</option>
-                            <option value="cancelled" @selected($outcome === 'cancelled')>Отменено</option>
-                            <option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option>
-                        </select>
-                    </div>
-                @endif
-                <div class="event-filters__actions">
-                    <button class="btn btn--primary btn--sm" type="submit">Применить</button>
-                    <a class="btn btn--secondary btn--sm" href="{{ route('events.index', $period === 'past' ? ['period' => 'past'] : []) }}">Сбросить</a>
-                </div>
+            <div class="events-catalog-filters__toolbar">
+                    <button class="btn btn--secondary events-catalog__options" type="button" data-event-filter-toggle aria-expanded="true">
+                        <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span>Фильтры</span><i class="ti ti-chevron-up" data-event-filter-toggle-icon aria-hidden="true"></i>
+                        @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
+                    </button>
+                    @auth
+                        <a class="btn btn--primary" href="{{ $createUrl }}"><i class="ti ti-plus"></i>Создать</a>
+                    @else
+                        <button type="button" class="btn btn--primary js-handler" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('events.create', absolute: false) }}"><i class="ti ti-plus"></i>Создать</button>
+                    @endauth
             </div>
-            @error('date_to') <div class="invalid-feedback d-block mt-2">{{ $message }}</div> @enderror
-        </form>
-    </details>
+            <form method="GET" action="{{ route('events.index') }}" class="events-catalog-filters" data-event-filters data-event-filter-body>
+                <div class="events-catalog-filters__quick">
+                    <a @class(['events-filter-chip', 'is-active' => $period === 'past']) href="{{ route('events.index', $pastToggleQuery) }}">
+                        <i class="ti {{ $period === 'past' ? 'ti-square-check' : 'ti-square' }}" aria-hidden="true"></i><span>Показывать прошедшие</span>
+                    </a>
+                    <label class="events-filter-chip">
+                        <i class="ti ti-calendar-event" aria-hidden="true"></i>
+                        <input type="date" name="date_from" value="{{ $dateFrom }}" aria-label="Дата мероприятия" onchange="this.form.submit()">
+                    </label>
+                    <label class="events-filter-chip events-filter-chip--toggle">
+                        <input type="checkbox" name="has_mini_games" value="1" @checked($hasMiniGames) onchange="this.form.submit()">
+                        <span><i class="ti ti-device-gamepad-2" aria-hidden="true"></i>Есть мини-игры</span>
+                    </label>
+                    <button class="events-filter-chip js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="events-nearby-development">
+                        <i class="ti ti-navigation" aria-hidden="true"></i>Только рядом
+                    </button>
+                </div>
 
-    @if($events->isEmpty())
-        <div class="alert alert-info">Подходящих мероприятий пока нет.</div>
-    @else
-        <div class="section-list">
-            @foreach($events as $event)
-                @php
-                    $timezone = $event->venue->schedule?->timezone ?: config('app.timezone');
-                    $outcome = match($event->status->value) {
-                        'completed' => ['Состоялось', 'success'],
-                        'cancelled' => ['Отменено', 'danger'],
-                        default => ['Итог не указан', 'warning'],
-                    };
-                @endphp
-                <article class="section-list-item">
-                    <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
-                        <span>
-                            <span class="badge">{{ $event->type->label() }}</span>
-                            @if($period === 'past')
-                                <span class="badge badge--{{ $outcome[1] }}">{{ $outcome[0] }}</span>
-                            @else
-                                <span class="badge badge--{{ $event->status->value === 'published' ? 'success' : 'warning' }}">{{ $event->status->label() }}</span>
-                            @endif
-                        </span>
-                        <time datetime="{{ $event->starts_at->toIso8601String() }}">{{ $event->starts_at->setTimezone($timezone)->format('d.m.Y H:i') }}</time>
-                    </div>
-                    <h2 class="h4 mb-2"><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>
-                    <p class="mb-2">{{ $event->venue->name }} · {{ $event->venue->raw_address }}</p>
-                    <p class="mb-3">Участники: {{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : '' }}</p>
-                    <a class="btn btn--secondary btn--sm" href="{{ route('events.show', $event->routeIdentifier()) }}">Подробнее</a>
-                </article>
-            @endforeach
+                <div class="events-catalog-filters__advanced" data-event-filter-panel>
+                    <label class="field"><span class="form-label">Тип мероприятия</span><select class="form-select" name="type"><option value="">Все типы</option><option value="games" @selected($typeFilter === 'games')>Игры и игровые тренировки</option>@foreach($types as $type)<option value="{{ $type->value }}" @selected($selectedType === $type)>{{ $type->label() }}</option>@endforeach</select></label>
+                    <label class="field"><span class="form-label">Площадка</span><select class="form-select" name="venue_id"><option value="">Все площадки</option>@foreach($filterVenues as $venue)<option value="{{ $venue->id }}" @selected($venueId === $venue->id)>{{ $venue->name }}</option>@endforeach</select></label>
+                    <label class="field"><span class="form-label">Дата по</span><input class="form-control" type="date" name="date_to" value="{{ $dateTo }}"></label>
+                    @if($period === 'past')
+                        <label class="field"><span class="form-label">Итог</span><select class="form-select" name="outcome"><option value="">Все итоги</option><option value="completed" @selected($outcome === 'completed')>Состоялось</option><option value="cancelled" @selected($outcome === 'cancelled')>Отменено</option><option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option></select></label>
+                    @endif
+                    <div class="events-catalog-filters__actions"><button class="btn btn--primary btn--sm">Применить</button><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить</a></div>
+                </div>
+                @error('date_to') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+            </form>
+
+            @if($events->isEmpty())
+                <div class="events-catalog__empty"><i class="ti ti-ball-basketball"></i><strong>Подходящих мероприятий пока нет</strong><span>Измените фильтры или создайте новое мероприятие.</span></div>
+            @else
+                <div class="events-catalog-list">
+                    @foreach($events as $event)
+                        @php
+                            $timezone = $event->venue->schedule?->timezone ?: config('app.timezone');
+                            $startsAt = $event->starts_at->setTimezone($timezone);
+                            $endsAt = $event->ends_at->setTimezone($timezone);
+                            $photo = $event->venue->media->first();
+                            $isPast = $event->ends_at->isPast();
+                            $isGame = $event->type->value === 'game';
+                            $pastOutcome = match($event->status) {
+                                EventStatusEnum::COMPLETED => 'Состоялось',
+                                EventStatusEnum::CANCELLED => 'Отменено',
+                                default => 'Итог не указан',
+                            };
+                            $address = $event->venue->raw_address ?: $event->venue->location?->address?->full_address;
+                            $latitude = $event->venue->location?->address?->latitude;
+                            $longitude = $event->venue->location?->address?->longitude;
+                        @endphp
+                        <article @class(['event-catalog-card', 'is-past' => $isPast])>
+                            <a class="event-catalog-card__image" href="{{ route('events.show', $event->routeIdentifier()) }}">
+                                <img src="{{ $photo?->publicUrl() ?: asset('images/venue-placeholder.png') }}" alt="">
+                            </a>
+                            <div class="event-catalog-card__content">
+                                <div class="event-catalog-card__badges"><span class="event-type-badge event-type-badge--{{ $event->type->value }}">{{ $event->type->label() }}</span>@if($isPast)<span class="event-type-badge is-muted">{{ $pastOutcome }}</span>@endif</div>
+                                <h2><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>
+                                @if($latitude !== null && $longitude !== null)
+                                    <button class="event-catalog-card__location js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="events-catalog-map" data-catalog-map-open data-latitude="{{ $latitude }}" data-longitude="{{ $longitude }}" data-title="{{ $event->venue->name }}" data-address="{{ $address }}"><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($address), {{ $address }}@endif</span></button>
+                                @else
+                                    <p><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($address), {{ $address }}@endif</span></p>
+                                @endif
+                                <p><i class="ti ti-clock"></i><span>{{ $startsAt->format('d.m.Y · H:i') }}–{{ $endsAt->format('H:i') }}</span></p>
+                                <p><i class="ti ti-users"></i><span>{{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : ' / ∞' }} участников</span></p>
+                            </div>
+                            <aside class="event-catalog-card__games">
+                                <strong @class(['is-empty' => $event->childGames->isEmpty()])><i class="ti ti-device-gamepad-2"></i>Мини-игры{{ $event->childGames->isNotEmpty() ? ': '.$event->childGames->count() : '' }}</strong>
+                                @foreach($event->childGames->take(2) as $childGame)<span>{{ $childGame->title }}</span>@endforeach
+                                @if($event->childGames->count() > 2)<small>+{{ $event->childGames->count() - 2 }} ещё</small>@endif
+                                <a class="btn btn--secondary btn--sm" href="{{ route('events.show', $event->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>
+                            </aside>
+                        </article>
+                    @endforeach
+                </div>
+                <div class="events-catalog__pagination">{{ $events->links() }}</div>
+            @endif
         </div>
-        <div class="mt-4">{{ $events->links() }}</div>
-    @endif
+    </section>
+
+    @component('theme::partials.modal.layout', ['id' => 'events-nearby-development'])
+        <div class="events-nearby-modal"><i class="ti ti-navigation"></i><h2 class="modal_title" id="modal-title-events-nearby-development">Функция в разработке</h2><p>Скоро здесь появится поиск мероприятий рядом с вашим текущим местоположением.</p></div>
+    @endcomponent
+
+    @component('theme::partials.modal.layout', ['id' => 'events-catalog-map', 'dialogClass' => 'venue-selector-map-modal__dialog event-venue-map-modal__dialog'])
+        <h2 class="modal_title" id="modal-title-events-catalog-map" data-catalog-map-title>Площадка</h2>
+        <p class="venue-selector-map__message" data-event-map-message>Загружаем карту…</p>
+        <div class="venue-selector-map" data-event-map data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}" aria-label="Площадка на карте"></div>
+    @endcomponent
 @endsection

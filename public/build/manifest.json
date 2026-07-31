@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-BRWRwJXe.css",
+    "file": "assets/app-BAdOqhEZ.css",
     "name": "app",
     "names": [
       "app.css"
@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-DS7Ha1Ge.css",
+    "file": "assets/app-C2l-iknr.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-B8kMtoUV.css",
+    "file": "assets/app-Bccklx9v.css",
     "name": "app",
     "names": [
       "app.css"
@@ -46,7 +46,7 @@
     "src": "resources/themes/mskba_dark/images/event-about-basketball.webp"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-VdvLtabx.js",
+    "file": "assets/app-BrwLGAGq.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,

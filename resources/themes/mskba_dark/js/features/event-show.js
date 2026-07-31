@@ -345,19 +345,31 @@ function initEventHero() {
 }
 
 function initEventVenueMap() {
-    const openButton = document.querySelector('[data-event-map-open]');
+    const openButtons = Array.from(document.querySelectorAll('[data-event-map-open], [data-catalog-map-open]'));
     const mapElement = document.querySelector('[data-event-map]');
     const message = document.querySelector('[data-event-map-message]');
+    const title = document.querySelector('[data-catalog-map-title]');
     let yandexMap = null;
     let loading = null;
 
-    if (!openButton || !mapElement || !message) {
+    if (openButtons.length === 0 || !mapElement || !message) {
         return;
     }
 
-    openButton.addEventListener('click', () => {
+    openButtons.forEach((openButton) => openButton.addEventListener('click', () => {
+        if (openButton.matches('[data-catalog-map-open]')) {
+            mapElement.dataset.latitude = openButton.dataset.latitude || '';
+            mapElement.dataset.longitude = openButton.dataset.longitude || '';
+            mapElement.dataset.title = openButton.dataset.title || 'Площадка';
+            mapElement.dataset.address = openButton.dataset.address || '';
+            if (title) title.textContent = mapElement.dataset.title;
+            if (yandexMap) {
+                yandexMap.destroy();
+                yandexMap = null;
+            }
+        }
         window.setTimeout(loadMap, 0);
-    });
+    }));
 
     async function loadMap() {
         if (yandexMap) {
@@ -1111,3 +1123,24 @@ function initEventParticipantManagement(miniGames) {
         }
     });
 }
+document.querySelectorAll('[data-event-filters]').forEach((filters) => {
+    const panel = filters;
+    const toggles = document.querySelectorAll('[data-event-filter-toggle]');
+    const toolbar = filters.previousElementSibling?.classList.contains('events-catalog-filters__toolbar')
+        ? filters.previousElementSibling
+        : null;
+
+    if (!panel) return;
+
+    toggles.forEach((toggle) => toggle.addEventListener('click', () => {
+        const willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        toolbar?.classList.toggle('is-filters-collapsed', !willOpen);
+        toggles.forEach((item) => {
+            item.setAttribute('aria-expanded', String(willOpen));
+            const icon = item.querySelector('[data-event-filter-toggle-icon]');
+            icon?.classList.toggle('ti-chevron-up', willOpen);
+            icon?.classList.toggle('ti-chevron-down', !willOpen);
+        });
+    }));
+});

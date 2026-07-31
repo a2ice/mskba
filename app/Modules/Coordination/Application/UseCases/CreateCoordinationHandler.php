@@ -15,6 +15,7 @@ use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Coordination\Domain\ValueObjects\PollOptionValue;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -275,7 +276,11 @@ final class CreateCoordinationHandler
         $contextEvent = null;
         if (isset($data['context_event_id'])) {
             $contextEvent = Event::query()->with('booking')->findOrFail((int) $data['context_event_id']);
-            $this->eventAccess->assertCanManage($contextEvent, $actor);
+            $this->eventAccess->assertAllows(
+                $contextEvent,
+                $actor,
+                EventResponsibilityPermissionEnum::UPDATE_EVENT,
+            );
 
             if ($contextEvent->status !== EventStatusEnum::PUBLISHED || $contextEvent->starts_at->isPast()) {
                 throw new InvalidArgumentException('Согласовать перенос можно только для предстоящего опубликованного мероприятия.');

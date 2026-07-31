@@ -17,6 +17,7 @@ use App\Modules\Event\Infrastructure\Jobs\RecalculatePlayerObjectiveAssessmentsJ
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Telegram\Application\Services\TelegramEventMessageBuilder;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
@@ -193,6 +194,23 @@ final class GameAndTeamWorkflowTest extends TestCase
             $miniGame->gameSides()->orderBy('slot')->pluck('display_name')->all(),
         );
 
+        $miniGame->gameSides()->where('slot', 'A')->update(['score' => 7]);
+        $miniGame->gameSides()->where('slot', 'B')->update(['score' => 5]);
+        $telegramEvent = $training->fresh()->load([
+            'venue.schedule',
+            'participants.user.profile',
+            'childGames.gameSides',
+        ]);
+        $builder = app(TelegramEventMessageBuilder::class);
+        $this->assertStringContainsString('—:—', $builder->text($telegramEvent));
+        $this->assertStringNotContainsString('7:5', $builder->text($telegramEvent));
+
+        $miniGame->update(['status' => EventStatusEnum::COMPLETED]);
+        $telegramEvent->load('childGames.gameSides');
+        $this->assertStringContainsString('7:5', $builder->text($telegramEvent));
+        $miniGame->update(['status' => EventStatusEnum::PUBLISHED]);
+        $miniGame->gameSides()->update(['score' => null]);
+
         $this->app['auth']->logout();
         $this->get(route('events.show', $training->routeIdentifier()))
             ->assertOk()
@@ -205,10 +223,9 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->get(route('events.show', $miniGame->routeIdentifier()))
             ->assertOk()
             ->assertSee('Мини-игра 1')
-            ->assertSee('Мероприятие:')
+            ->assertSee('В рамках')
             ->assertSee($training->title)
-            ->assertSee('target="_blank"', false)
-            ->assertSee('data-event-map-open', false)
+            ->assertSee($miniGame->starts_at->format('H:i'))
             ->assertSee('Оранжевые')
             ->assertSee('Чёрные')
             ->assertSee('participant-a')
@@ -223,7 +240,8 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->actingAs($organizer)
             ->get(route('events.show', $miniGame->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Редактировать игру и статистику');
+            ->assertSee('Бросок')
+            ->assertSee('Завершить игру');
 
         $this->actingAs($organizer)
             ->from(route('events.show', $training->routeIdentifier()))
@@ -233,6 +251,19 @@ final class GameAndTeamWorkflowTest extends TestCase
             ])
             ->assertSessionHas('error', 'В выбранное время уже запланирована другая мини-игра.');
         $this->assertSame(1, Event::query()->where('parent_event_id', $training->id)->count());
+
+        $training->forceFill(['ends_at' => now()->subMinute()])->save();
+        $this->actingAs($organizer)
+            ->post(route('events.games.store', $training->routeIdentifier()), [
+                ...$payload,
+                'title' => 'Поздняя мини-игра',
+            ])
+            ->assertSessionHas('error', 'После закрытия мероприятия создавать мини-игры нельзя.');
+        $this->actingAs($organizer)
+            ->patchJson(route('events.game.cancel', $miniGame->routeIdentifier()))
+            ->assertOk()
+            ->assertJsonPath('message', 'Игра отменена.');
+        $this->assertSame(EventStatusEnum::CANCELLED, $miniGame->refresh()->status);
     }
 
     public function test_mini_game_inherits_private_visibility_from_parent_event(): void
@@ -337,12 +368,21 @@ final class GameAndTeamWorkflowTest extends TestCase
 
         $this->actingAs($responsible)
             ->get(route('events.game.manage', $miniGame->routeIdentifier()))
+            ->assertRedirect(route('events.show', $miniGame->routeIdentifier()));
+
+        $this->actingAs($responsible)
+            ->get(route('events.show', $miniGame->routeIdentifier()))
             ->assertOk()
-            ->assertSee('name="has_scheduled_time"', false)
-            ->assertSee('name="starts_at"', false)
-            ->assertSee('name="ends_at"', false)
-            ->assertSee('data-mini-game-schedule-input', false)
-            ->assertSee('Состав и статистика');
+            ->assertSee('Управление составом')
+            ->assertSee('data-game-live-statistics', false);
+
+        $this->actingAs($responsible)
+            ->patchJson(route('events.game.roster', $miniGame->routeIdentifier()), [
+                'side_a_user_ids' => [$organizer->id],
+                'side_b_user_ids' => [$responsible->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Состав игры сохранён.');
 
         $this->actingAs($responsible)
             ->put(route('events.game.update', $miniGame->routeIdentifier()), [
@@ -386,6 +426,11 @@ final class GameAndTeamWorkflowTest extends TestCase
             'user_id' => $organizer->id,
             'close_made' => 1,
         ]);
+
+        $this->actingAs($organizer)
+            ->post(route('events.cancel', $training->routeIdentifier()), ['reason' => 'Передумали'])
+            ->assertSessionHas('error', 'Сначала завершите активные мини-игры, в которых уже есть счёт или статистика.');
+        $this->assertSame(EventStatusEnum::PUBLISHED, $training->refresh()->status);
 
         $training->forceFill([
             'starts_at' => now()->subHour(),

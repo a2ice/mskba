@@ -31,7 +31,7 @@ final class RespondEventResponsibilityHandler
             $this->access->assertOwnsManagementScope($event);
 
             if (in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
-                || $event->starts_at->lessThanOrEqualTo(now())) {
+                || $event->ends_at->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('Срок ответа на назначение истёк.');
             }
 

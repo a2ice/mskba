@@ -26,7 +26,8 @@ final class UpdateManagedEventParticipantStatusHandler
         $event = DB::transaction(function () use ($identifier, $participantId, $actor, $status): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
-            if (in_array($event->status, [EventStatusEnum::DRAFT, EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)) {
+            if (in_array($event->status, [EventStatusEnum::DRAFT, EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true)
+                || $event->ends_at->lessThanOrEqualTo(now())) {
                 throw new InvalidArgumentException('Состав этого мероприятия уже нельзя изменять.');
             }
 

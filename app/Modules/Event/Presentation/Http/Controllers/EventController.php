@@ -43,6 +43,7 @@ use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -71,6 +72,8 @@ final class EventController extends Controller
                 Rule::when($request->filled('date_from'), ['after_or_equal:date_from']),
             ],
             'outcome' => ['nullable', Rule::in(['completed', 'cancelled', 'unmarked'])],
+            'venue_id' => ['nullable', 'integer', 'exists:venues,id'],
+            'has_mini_games' => ['nullable', 'boolean'],
         ]);
         $typeFilter = $validated['type'] ?? null;
         $type = is_string($typeFilter) ? EventTypeEnum::tryFrom($typeFilter) : null;
@@ -83,6 +86,8 @@ final class EventController extends Controller
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
         $outcome = $period === 'past' ? ($validated['outcome'] ?? null) : null;
+        $venueId = isset($validated['venue_id']) ? (int) $validated['venue_id'] : null;
+        $hasMiniGames = (bool) ($validated['has_mini_games'] ?? false);
 
         return ThemeResolver::page('events.index', [
             'events' => $events->handle(
@@ -92,6 +97,8 @@ final class EventController extends Controller
                 $dateFrom,
                 $dateTo,
                 $outcome,
+                $venueId,
+                $hasMiniGames,
             ),
             'types' => EventTypeEnum::cases(),
             'selectedType' => $type,
@@ -100,6 +107,12 @@ final class EventController extends Controller
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
             'outcome' => $outcome,
+            'venueId' => $venueId,
+            'hasMiniGames' => $hasMiniGames,
+            'filterVenues' => Venue::query()
+                ->whereHas('events', fn ($query) => $query->whereNull('parent_event_id'))
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -114,7 +127,8 @@ final class EventController extends Controller
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
-        $defaultStartsAt = $now->addMinutes(15)->ceilMinute();
+        $minimumStartsAt = $now->addMinutes(15)->ceilMinute();
+        $defaultStartsAt = $now->addMinutes(30)->ceilMinute();
 
         return ThemeResolver::page('events.create', [
             'venues' => $venues->handle(),
@@ -125,6 +139,7 @@ final class EventController extends Controller
             'currentDate' => $now->format('Ymd'),
             'defaultTitle' => $defaultType->label().' - '.$now->format('Ymd'),
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
+            'minimumStartsAt' => $minimumStartsAt->format('Y-m-d\TH:i'),
             'durationOptions' => range(30, 480, 30),
             'defaultDuration' => 60,
             'telegramChats' => $telegramChats->activeEventChats(),

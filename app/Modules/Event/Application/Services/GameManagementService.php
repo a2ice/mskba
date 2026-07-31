@@ -113,6 +113,10 @@ final class GameManagementService
         ): Event {
             $lockedParent = Event::query()->lockForUpdate()->findOrFail($parent->id);
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::CREATE_MINI_GAME);
+            if ($lockedParent->status !== EventStatusEnum::PUBLISHED
+                || $lockedParent->ends_at->lessThanOrEqualTo(now())) {
+                throw new InvalidArgumentException('После закрытия мероприятия создавать мини-игры нельзя.');
+            }
             [$start, $end, $isTimeScheduled] = $this->resolveMiniGamePeriod($lockedParent, $startsAt, $endsAt);
             [$sideAName, $sideBName] = $this->normalizeSideNames($sideAName, $sideBName);
 
@@ -230,6 +234,7 @@ final class GameManagementService
                 throw new InvalidArgumentException('Связь мини-игры с тренировкой была изменена.');
             }
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $this->assertGameIsEditable($lockedGame, $detail);
             if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Мини-игру с подтверждённой статистикой изменять нельзя.');
             }
@@ -318,6 +323,42 @@ final class GameManagementService
         event(new EventChanged($parentEventId));
     }
 
+    public function cancelMiniGame(Event $game, Actor $actor): void
+    {
+        $parentEventId = (int) $game->parent_event_id;
+
+        DB::transaction(function () use ($game, $actor): void {
+            if ($game->parent_event_id === null) {
+                throw new InvalidArgumentException('Отменить здесь можно только мини-игру.');
+            }
+
+            $lockedParent = Event::query()->whereKey($game->parent_event_id)->lockForUpdate()->firstOrFail();
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
+            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+
+            if ($lockedGame->status === EventStatusEnum::CANCELLED) {
+                return;
+            }
+            if ($lockedGame->status === EventStatusEnum::COMPLETED
+                || $detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+                throw new InvalidArgumentException('Завершённую игру отменить нельзя.');
+            }
+            if ($this->hasRecordedGameData($lockedGame, $detail)) {
+                throw new InvalidArgumentException('В игре уже есть счёт или статистика. Сначала проверьте данные и завершите игру.');
+            }
+
+            $lockedGame->forceFill([
+                'status' => EventStatusEnum::CANCELLED,
+                'cancelled_at' => now(),
+                'cancelled_by_actor_id' => $actor->id,
+                'cancellation_reason' => 'Игра не состоялась.',
+            ])->save();
+        });
+
+        event(new EventChanged($parentEventId));
+    }
+
     /**
      * @param  array<int, int>  $sideAUserIds
      * @param  array<int, int>  $sideBUserIds
@@ -331,6 +372,7 @@ final class GameManagementService
             }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $this->assertGameIsEditable($lockedGame, $detail);
             if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Состав игры с подтверждённой статистикой изменять нельзя.');
             }
@@ -417,6 +459,7 @@ final class GameManagementService
             }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $this->assertGameIsEditable($lockedGame, $detail);
             if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Счёт подтверждённой игры изменять нельзя.');
             }
@@ -492,6 +535,7 @@ final class GameManagementService
      */
     private function persistStatistics(Event $game, GameDetail $detail, array $statistics): void
     {
+        $this->assertGameIsEditable($game, $detail);
         if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('Подтверждённую статистику изменять нельзя.');
         }
@@ -572,6 +616,24 @@ final class GameManagementService
             ->update(['status' => GameRosterStatusEnum::PLAYED->value]);
 
         DB::afterCommit(fn () => event(new GameStatisticsConfirmed($game->id)));
+    }
+
+    private function hasRecordedGameData(Event $game, GameDetail $detail): bool
+    {
+        return $detail->statistics_status !== GameStatisticsStatusEnum::NOT_STARTED
+            || $game->gamePlayerStatistics()->exists()
+            || $game->gameSides()->where('score', '>', 0)->exists();
+    }
+
+    private function assertGameIsEditable(Event $game, GameDetail $detail): void
+    {
+        if ($game->status === EventStatusEnum::CANCELLED) {
+            throw new InvalidArgumentException('Отменённую игру изменять нельзя.');
+        }
+        if ($game->status === EventStatusEnum::COMPLETED
+            || $detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+            throw new InvalidArgumentException('Завершённую игру изменять нельзя.');
+        }
     }
 
     /**

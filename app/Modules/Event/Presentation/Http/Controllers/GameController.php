@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
-use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
@@ -14,11 +13,9 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\Actor;
-use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use InvalidArgumentException;
 
 final class GameController extends Controller
@@ -29,17 +26,11 @@ final class GameController extends Controller
         ShowEventHandler $events,
         CurrentActorResolver $actors,
         EventManagementAccess $access,
-        GameStatisticsFields $statisticsFields,
-    ): Response {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
+    ): RedirectResponse {
+        [$game] = $this->managedEvent($request, $event, $events, $actors, $access);
         abort_unless($game->type === EventTypeEnum::GAME && $game->gameDetail !== null, 404);
 
-        return ThemeResolver::page('events.game', [
-            'event' => $this->loadGame($game),
-            'statisticsFields' => $statisticsFields->all(),
-            'effectivePermissions' => collect($access->effectivePermissions($game, $actor))
-                ->map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value),
-        ]);
+        return redirect()->route('events.show', $game->routeIdentifier());
     }
 
     public function createMiniGame(
@@ -84,7 +75,7 @@ final class GameController extends Controller
             return back()->withInput()->with('error', $exception->getMessage());
         }
 
-        return redirect()->route('events.game.manage', $game->routeIdentifier())
+        return redirect()->route('events.show', $game->routeIdentifier())
             ->with('status', 'Мини-игра создана.');
     }
 
@@ -95,7 +86,7 @@ final class GameController extends Controller
         CurrentActorResolver $actors,
         EventManagementAccess $access,
         GameManagementService $games,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
         $data = $request->validate([
             'side_a_user_ids' => ['required', 'array', 'min:1'],
@@ -104,10 +95,17 @@ final class GameController extends Controller
             'side_b_user_ids.*' => ['integer'],
         ]);
 
-        return $this->perform(
-            fn () => $games->replaceRoster($game, $actor, $data['side_a_user_ids'] ?? [], $data['side_b_user_ids'] ?? []),
-            'Состав игры сохранён.',
-        );
+        try {
+            $games->replaceRoster($game, $actor, $data['side_a_user_ids'] ?? [], $data['side_b_user_ids'] ?? []);
+        } catch (InvalidArgumentException $exception) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $exception->getMessage()], 422)
+                : back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Состав игры сохранён.'])
+            : back()->with('status', 'Состав игры сохранён.');
     }
 
     public function updateMiniGame(
@@ -225,6 +223,35 @@ final class GameController extends Controller
         }
 
         return $this->statisticsJson($game, 'Счёт сохранён.');
+    }
+
+    public function cancelMiniGame(
+        Request $request,
+        string $event,
+        ShowEventHandler $events,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+        GameManagementService $games,
+    ): RedirectResponse|JsonResponse {
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+
+        try {
+            $games->cancelMiniGame($game, $actor);
+        } catch (InvalidArgumentException $exception) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $exception->getMessage()], 422)
+                : back()->with('error', $exception->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Игра отменена.',
+                'redirect_url' => route('events.show', $game->parentEvent->routeIdentifier()),
+            ]);
+        }
+
+        return redirect()->route('events.show', $game->parentEvent->routeIdentifier())
+            ->with('status', 'Игра отменена.');
     }
 
     public function completeStatistics(
