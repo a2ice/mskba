@@ -2,6 +2,7 @@
 
 namespace App\Modules\Content\Presentation\Http\Requests;
 
+use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -9,6 +10,15 @@ use Illuminate\Validation\Validator;
 
 final class SaveContentItemRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('content_format')) {
+            $this->merge([
+                'content_format' => ContentFormatEnum::MARKDOWN->value,
+            ]);
+        }
+    }
+
     public function authorize(): bool
     {
         return $this->user()?->can('manage-content') ?? false;
@@ -21,9 +31,13 @@ final class SaveContentItemRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'short_description' => ['required', 'string', 'max:1000'],
             'full_description' => ['required', 'string', 'max:50000'],
+            'content_format' => ['required', Rule::enum(ContentFormatEnum::class)],
             'type' => ['required', Rule::enum(ContentTypeEnum::class)],
             'related_id' => ['nullable', 'integer', 'min:1'],
             'link_url' => ['nullable', 'string', 'max:2048'],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string', 'max:320'],
+            'meta_keywords' => ['nullable', 'string', 'max:1000'],
             'publish_in_feed' => ['nullable', 'boolean'],
             'publish_in_telegram' => ['nullable', 'boolean'],
             'telegram_chat_ids' => ['nullable', 'array'],

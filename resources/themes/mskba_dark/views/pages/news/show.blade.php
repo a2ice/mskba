@@ -1,10 +1,13 @@
 @php
     $title = $contentItem->title;
     $cover = $contentItem->cover->first();
-    $contentHtml = \Illuminate\Support\Str::markdown($contentItem->full_description, [
-        'html_input' => 'strip',
-        'allow_unsafe_links' => false,
-    ]);
+    $contentHtml = app(\App\Modules\Content\Application\Services\ContentBodyRenderer::class)->render($contentItem);
+    $metaTitle = $contentItem->meta_title ?: $contentItem->title;
+    $metaDescription = $contentItem->meta_description ?: $contentItem->short_description;
+    $metaKeywords = $contentItem->meta_keywords;
+    $metaImage = $cover?->publicUrl();
+    $metaType = 'article';
+    $canonicalUrl = $contentItem->publicUrl();
     $breadcrumbs = [
         ['label' => 'Новости', 'url' => route('news.index')],
         ['label' => $contentItem->title],
@@ -34,7 +37,7 @@
         <header class="news-article__header">
             <div class="news-card__meta">
                 <span class="badge badge--primary fs-smaller">{{ $contentItem->type->label() }}</span>
-                <time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}"><span class="fs-smaller">{{ $contentItem->feed_published_at->translatedFormat('d F Y') }}</span></time>
+                <time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}"><span class="fs-smaller">{{ $contentItem->feed_published_at->locale('ru')->translatedFormat('j F Y') }}</span></time>
             </div>
             <p class="news-article__lead">{{ $contentItem->short_description }}</p>
         </header>

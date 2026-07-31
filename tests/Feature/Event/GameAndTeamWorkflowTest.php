@@ -189,7 +189,11 @@ final class GameAndTeamWorkflowTest extends TestCase
 
         $this->get(route('events.show', $miniGame->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Мини-игра мероприятия')
+            ->assertSee('Мини-игра 1')
+            ->assertSee('Мероприятие:')
+            ->assertSee($training->title)
+            ->assertSee('target="_blank"', false)
+            ->assertSee('data-event-map-open', false)
             ->assertSee('Оранжевые')
             ->assertSee('Чёрные')
             ->assertSee('participant-a')

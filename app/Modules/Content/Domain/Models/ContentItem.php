@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Media\Domain\Models\Media;
@@ -24,7 +25,11 @@ use Illuminate\Support\Str;
     'alias',
     'short_description',
     'full_description',
+    'content_format',
     'link_url',
+    'meta_title',
+    'meta_description',
+    'meta_keywords',
     'related_type',
     'related_id',
     'publish_in_feed',
@@ -89,6 +94,7 @@ final class ContentItem extends Model
     {
         return [
             'type' => ContentTypeEnum::class,
+            'content_format' => ContentFormatEnum::class,
             'publish_in_feed' => 'boolean',
             'publish_in_telegram' => 'boolean',
             'feed_published_at' => 'immutable_datetime',

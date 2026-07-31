@@ -3,6 +3,8 @@
 namespace App\Modules\Team\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
@@ -92,8 +94,13 @@ final class TeamController extends Controller
         return redirect()->route('teams.show', $team->routeIdentifier())->with('status', 'Команда создана.');
     }
 
-    public function show(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): Response
-    {
+    public function show(
+        string $team,
+        Request $request,
+        CurrentActorResolver $actors,
+        TeamManagementAccess $access,
+        PageSeoResolver $pageSeo,
+    ): Response {
         $item = Team::query()->whereRouteIdentifier($team)
             ->with(['logo', 'memberships.contract', 'memberships.user.profile.activeAvatar'])
             ->firstOrFail();
@@ -103,6 +110,13 @@ final class TeamController extends Controller
             'team' => $item,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
             'roles' => TeamMembershipAccessLevelEnum::cases(),
+            ...$pageSeo->resolve(
+                SeoEntityTypeEnum::TEAM,
+                $item->id,
+                $item->name,
+                $item->description,
+                route('teams.show', $item->routeIdentifier()),
+            ),
         ]);
     }
 

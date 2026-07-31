@@ -6,11 +6,50 @@
 ])
 
 @section('section-heading-action')
-    <a class="btn btn--primary btn--sm" href="{{ route('admin.content.create') }}">Добавить материал</a>
+    <div class="content-admin-actions">
+        <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.seo') }}">SEO страниц</a>
+        <a class="btn btn--primary btn--sm" href="{{ route('admin.content.create') }}">Добавить материал</a>
+    </div>
 @endsection
 
 @section('section-content')
     @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
+
+    <form class="admin-filter mb-4" method="GET" action="{{ route('admin.content') }}">
+            <label class="admin-filter__field" for="contentFilterQuery">
+                <span class="admin-filter__label">Поиск</span>
+                <input id="contentFilterQuery" class="form-control" name="q" value="{{ request('q') }}" placeholder="Название, alias, описание">
+            </label>
+            <label class="admin-filter__field" for="contentFilterType">
+                <span class="admin-filter__label">Тип</span>
+                <select id="contentFilterType" class="form-select" name="type">
+                    <option value="">Все</option>
+                    @foreach($types as $type)
+                        <option value="{{ $type->value }}" @selected(request('type') === $type->value)>{{ $type->label() }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="admin-filter__field" for="contentFilterFeed">
+                <span class="admin-filter__label">Лента</span>
+                <select id="contentFilterFeed" class="form-select" name="feed">
+                    <option value="">Все</option>
+                    <option value="published" @selected(request('feed') === 'published')>Опубликован</option>
+                    <option value="hidden" @selected(request('feed') === 'hidden')>Не опубликован</option>
+                </select>
+            </label>
+            <label class="admin-filter__field" for="contentFilterTelegram">
+                <span class="admin-filter__label">Telegram</span>
+                <select id="contentFilterTelegram" class="form-select" name="telegram">
+                    <option value="">Все</option>
+                    <option value="published" @selected(request('telegram') === 'published')>Включён</option>
+                    <option value="hidden" @selected(request('telegram') === 'hidden')>Выключен</option>
+                </select>
+            </label>
+        <div class="admin-filter__actions">
+            <button class="btn btn--primary btn--sm" type="submit">Фильтр</button>
+            <a class="btn btn--secondary btn--sm" href="{{ route('admin.content') }}">Сброс</a>
+        </div>
+    </form>
 
     @if($contentItems->isEmpty())
         <div class="admin-empty">Материалов пока нет.</div>

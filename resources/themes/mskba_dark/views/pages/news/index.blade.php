@@ -36,7 +36,7 @@
                     <div class="news-card__body">
                         <div class="news-card__meta">
                             <span class="badge">{{ $contentItem->type->label() }}</span>
-                            <time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}">{{ $contentItem->feed_published_at->translatedFormat('d F Y') }}</time>
+                            <time datetime="{{ $contentItem->feed_published_at->toIso8601String() }}">{{ $contentItem->feed_published_at->locale('ru')->translatedFormat('j F Y') }}</time>
                         </div>
                         <h2 class="news-card__title"><a href="{{ route('news.show', $contentItem->alias) }}">{{ $contentItem->title }}</a></h2>
                         <p class="news-card__description">{{ $contentItem->short_description }}</p>

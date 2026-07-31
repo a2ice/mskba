@@ -3,6 +3,8 @@
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
@@ -226,6 +228,7 @@ class VenueController extends Controller
         string $alias,
         ShowVenueHandler $useCase,
         CurrentActorResolver $actors,
+        PageSeoResolver $pageSeo,
     ): Response {
         try {
             $venue = $useCase->handle($alias, $request->user(), $actors->resolveForRequest($request));
@@ -236,7 +239,16 @@ class VenueController extends Controller
             ]]);
         }
 
-        return ThemeResolver::page('venues.show', ['venue' => $venue]);
+        return ThemeResolver::page('venues.show', [
+            'venue' => $venue,
+            ...$pageSeo->resolve(
+                SeoEntityTypeEnum::VENUE,
+                $venue->id,
+                $venue->name,
+                $venue->shortDescription,
+                route('venues.show', $venue->id.'-'.$venue->alias),
+            ),
+        ]);
     }
 
     public function edit(

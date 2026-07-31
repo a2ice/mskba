@@ -1,6 +1,11 @@
 @php
     $theme = app(\App\Presentation\Theming\ThemeResolver::class);
-    $pageTitle = isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA');
+    $pageTitle = isset($metaTitle)
+        ? $metaTitle
+        : (isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA'));
+    $pageDescription = isset($metaDescription) ? trim((string) $metaDescription) : null;
+    $pageKeywords = isset($metaKeywords) ? trim((string) $metaKeywords) : null;
+    $pageCanonical = $canonicalUrl ?? url()->current();
 
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
 
@@ -35,6 +40,22 @@
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
         <meta name="yandex-verification" content="5e74a0d5140e0b49" />
         <title>{{ $pageTitle }}</title>
+        @if($pageDescription)
+            <meta name="description" content="{{ $pageDescription }}">
+        @endif
+        @if($pageKeywords)
+            <meta name="keywords" content="{{ $pageKeywords }}">
+        @endif
+        <link rel="canonical" href="{{ $pageCanonical }}">
+        <meta property="og:title" content="{{ $pageTitle }}">
+        @if($pageDescription)
+            <meta property="og:description" content="{{ $pageDescription }}">
+        @endif
+        <meta property="og:url" content="{{ $pageCanonical }}">
+        <meta property="og:type" content="{{ $metaType ?? 'website' }}">
+        @if(! empty($metaImage))
+            <meta property="og:image" content="{{ $metaImage }}">
+        @endif
         @include('partials.analytics.yandex-metrika')
         @if($isTelegramMiniApp)
             <script async src="https://telegram.org/js/telegram-web-app.js" data-telegram-sdk></script>

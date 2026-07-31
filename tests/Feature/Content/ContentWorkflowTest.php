@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Content;
 
+use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -115,6 +116,56 @@ MARKDOWN,
             ->assertSee('<a href="/account/participation">Заполнить профиль игрока</a>', false)
             ->assertDontSee('<script>', false)
             ->assertDontSee('href="javascript:', false);
+    }
+
+    public function test_editor_can_publish_sanitized_html_with_page_metadata(): void
+    {
+        $editor = $this->editor();
+
+        $this->actingAs($editor)
+            ->post(route('admin.content.store'), [
+                'title' => 'Безопасная HTML-публикация',
+                'short_description' => 'Материал с форматированием.',
+                'full_description' => <<<'HTML'
+<h2 class="content-accent evil-class" onclick="alert('unsafe')">Главное</h2>
+<p class="content-lead">Абзац с <strong>выделением</strong>.</p>
+<script>alert('unsafe')</script>
+<a href="javascript:alert('unsafe')">Опасная ссылка</a>
+<a href="/account/participation">Открыть профиль</a>
+<img src="https://example.com/image.webp" alt="Иллюстрация" onerror="alert('unsafe')">
+HTML,
+                'content_format' => ContentFormatEnum::SAFE_HTML->value,
+                'meta_title' => 'HTML-публикация — MSKBA',
+                'meta_description' => 'Описание страницы для поисковых систем.',
+                'meta_keywords' => 'баскетбол, профиль игрока',
+                'type' => 'material',
+                'publish_in_feed' => '1',
+                'publish_in_telegram' => '0',
+            ])
+            ->assertRedirect();
+
+        $content = ContentItem::query()->sole();
+
+        $this->assertSame(ContentFormatEnum::SAFE_HTML, $content->content_format);
+        $this->assertStringContainsString('class="content-accent"', $content->full_description);
+        $this->assertStringNotContainsString('evil-class', $content->full_description);
+        $this->assertStringNotContainsString('onclick=', $content->full_description);
+        $this->assertStringNotContainsString('<script', $content->full_description);
+        $this->assertStringNotContainsString('javascript:', $content->full_description);
+        $this->assertStringNotContainsString('onerror=', $content->full_description);
+
+        $this->get(route('news.show', $content->alias))
+            ->assertOk()
+            ->assertSee('<h2 class="content-accent">Главное</h2>', false)
+            ->assertSee('<p class="content-lead">Абзац с <strong>выделением</strong>.</p>', false)
+            ->assertSee('href="/account/participation"', false)
+            ->assertSee('<title>HTML-публикация — MSKBA</title>', false)
+            ->assertSee('name="description" content="Описание страницы для поисковых систем."', false)
+            ->assertSee('name="keywords" content="баскетбол, профиль игрока"', false)
+            ->assertDontSee('onclick=', false)
+            ->assertDontSee('javascript:', false)
+            ->assertDontSee('onerror=', false)
+            ->assertDontSee('evil-class', false);
     }
 
     public function test_user_content_can_optionally_target_one_user(): void

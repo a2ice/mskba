@@ -3,6 +3,8 @@
 namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\EventResultGalleryManager;
 use App\Modules\Event\Application\Services\GameStatisticsFields;
@@ -180,6 +182,7 @@ final class EventController extends Controller
         CurrentActorResolver $actors,
         EventManagementAccess $access,
         GameStatisticsFields $statisticsFields,
+        PageSeoResolver $pageSeo,
     ): Response {
         $item = $events->handle($event, $actors->resolveForRequest($request));
         $currentParticipant = $request->user() === null
@@ -195,6 +198,13 @@ final class EventController extends Controller
                 && $currentParticipant->confirmation_version === $item->participation_confirmation_version,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
             'statisticsFields' => $statisticsFields->all(),
+            ...$pageSeo->resolve(
+                SeoEntityTypeEnum::EVENT,
+                $item->id,
+                $item->title,
+                $item->description,
+                route('events.show', $item->routeIdentifier()),
+            ),
         ]);
     }
 

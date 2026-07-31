@@ -131,6 +131,8 @@ body[data-telegram-auth-bootstrap] > .modal {
     --inner-width: 1390px;
     --link-color: #fff;
     --link-color-hover: var(--accent);
+    --bs-nav-link-color: var(--link-color);
+    --bs-nav-link-hover-color: var(--accent-hover);
     --row-highlight: rgba(156, 203, 185, 0.1);
 
     --bs-secondary-color: var(--muted);

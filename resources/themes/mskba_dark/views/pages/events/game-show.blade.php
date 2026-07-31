@@ -3,7 +3,7 @@
     'sectionId' => 'events',
     'sectionClass' => 'events-section game-public-page',
     'contentTitle' => $event->title,
-    'contentSubtitle' => $event->parentEvent ? 'Мини-игра мероприятия «'.$event->parentEvent->title.'»' : 'Игра',
+    'contentSubtitle' => $event->parentEvent ? 'Мини-игра' : 'Игра',
 ])
 
 @php
@@ -13,6 +13,10 @@
     $sideA = $sides->get('A');
     $sideB = $sides->get('B');
     $hasScore = $sideA?->score !== null && $sideB?->score !== null;
+    $venueName = $event->venue->name;
+    $venueAddress = preg_replace('/^Россия,\\s*/u', '', $event->venue->location?->address?->full_address ?: $event->venue->raw_address ?: '');
+    $venueCoordinates = $event->venue->location?->address;
+    $hasVenueMap = $venueCoordinates?->latitude !== null && $venueCoordinates?->longitude !== null;
     $name = static function ($user): string {
         $profile = $user->profile;
         return trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
@@ -37,7 +41,7 @@
 @endsection
 
 @section('section-content')
-    <section class="section-card game-public-summary">
+    <section class="section-card game-public-summary mb-3">
         <div class="game-public-summary__meta">
             <span class="eyebrow">Формат {{ $event->gameDetail->formatLabel() }}</span>
             @if($event->gameDetail->is_time_scheduled)
@@ -45,7 +49,27 @@
             @else
                 <span><i class="ti ti-clock" aria-hidden="true"></i>Время не задано</span>
             @endif
-            <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $event->venue->title }}</span>
+            @if($hasVenueMap)
+                <button
+                    type="button"
+                    class="event-hero__location js-handler"
+                    data-handler="modal"
+                    data-modal-action="open"
+                    data-modal-target="event-venue-map"
+                    data-event-map-open
+                >
+                    <i class="ti ti-map-pin" aria-hidden="true"></i>{{ $venueName }}
+                </button>
+            @else
+                <span><i class="ti ti-map-pin" aria-hidden="true"></i>{{ $venueName }}</span>
+            @endif
+            @if($event->parentEvent)
+                <span>
+                    <i class="ti ti-calendar-event" aria-hidden="true"></i>
+                    Мероприятие:
+                    <a href="{{ route('events.show', $event->parentEvent->routeIdentifier()) }}" target="_blank" rel="noopener noreferrer">{{ $event->parentEvent->title }}</a>
+                </span>
+            @endif
         </div>
         <div class="game-public-score" aria-label="Счёт игры">
             <div><strong>{{ $sideA?->display_name ?: 'Команда A' }}</strong><span>{{ $sideA?->score ?? '—' }}</span></div>
@@ -60,7 +84,7 @@
         @endif
     </section>
 
-    <section class="section-card">
+    <section class="section-card mb-3">
         <span class="eyebrow">Состав</span>
         <h2>Игроки</h2>
         <div class="game-public-roster">
@@ -87,7 +111,7 @@
         </div>
     </section>
 
-    <section class="section-card">
+    <section class="section-card mb-3">
         <span class="eyebrow">{{ $event->gameDetail->statistics_status->label() }}</span>
         <h2>Статистика игроков</h2>
         <div class="game-statistics-table-wrap">
@@ -118,4 +142,24 @@
             </table>
         </div>
     </section>
+
+    @if($hasVenueMap)
+        @component('theme::partials.modal.layout', [
+            'id' => 'event-venue-map',
+            'dialogClass' => 'venue-selector-map-modal__dialog event-venue-map-modal__dialog',
+        ])
+            <h2 class="modal_title" id="modal-title-event-venue-map">{{ $venueName }}</h2>
+            <p class="venue-selector-map__message" data-event-map-message>Загружаем карту…</p>
+            <div
+                class="venue-selector-map"
+                data-event-map
+                data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"
+                data-latitude="{{ $venueCoordinates->latitude }}"
+                data-longitude="{{ $venueCoordinates->longitude }}"
+                data-title="{{ $venueName }}"
+                data-address="{{ $venueAddress }}"
+                aria-label="Площадка {{ $venueName }} на карте"
+            ></div>
+        @endcomponent
+    @endif
 @endsection

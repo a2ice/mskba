@@ -3,8 +3,10 @@
 namespace App\Modules\Admin\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\ContentBodySanitizer;
 use App\Modules\Content\Application\Services\ContentCoverManager;
 use App\Modules\Content\Application\Services\ContentPublicationManager;
+use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Content\Presentation\Http\Requests\SaveContentItemRequest;
@@ -15,6 +17,7 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use App\Support\Text\CyrillicTransliterator;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -23,13 +26,42 @@ use Throwable;
 
 final class AdminContentController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $query = ContentItem::query()
+            ->with(['createdBy.profile', 'telegramPublications']);
+
+        if ($search = trim($request->string('q')->toString())) {
+            $query->where(function ($query) use ($search): void {
+                $query
+                    ->where('title', 'ilike', '%'.$search.'%')
+                    ->orWhere('alias', 'ilike', '%'.$search.'%')
+                    ->orWhere('short_description', 'ilike', '%'.$search.'%');
+            });
+        }
+
+        if ($type = ContentTypeEnum::tryFrom($request->string('type')->toString())) {
+            $query->where('type', $type);
+        }
+
+        if ($request->string('feed')->toString() === 'published') {
+            $query->where('publish_in_feed', true);
+        } elseif ($request->string('feed')->toString() === 'hidden') {
+            $query->where('publish_in_feed', false);
+        }
+
+        if ($request->string('telegram')->toString() === 'published') {
+            $query->where('publish_in_telegram', true);
+        } elseif ($request->string('telegram')->toString() === 'hidden') {
+            $query->where('publish_in_telegram', false);
+        }
+
         return ThemeResolver::page('admin.content.index', [
-            'contentItems' => ContentItem::query()
-                ->with(['createdBy.profile', 'telegramPublications'])
+            'contentItems' => $query
                 ->latest()
-                ->paginate(20),
+                ->paginate(20)
+                ->withQueryString(),
+            'types' => ContentTypeEnum::cases(),
         ]);
     }
 
@@ -45,17 +77,18 @@ final class AdminContentController extends Controller
     public function store(
         SaveContentItemRequest $request,
         CyrillicTransliterator $transliterator,
+        ContentBodySanitizer $bodySanitizer,
         ContentCoverManager $covers,
         ContentPublicationManager $publications,
     ): RedirectResponse {
         try {
-            $content = DB::transaction(function () use ($request, $transliterator): ContentItem {
+            $content = DB::transaction(function () use ($request, $transliterator, $bodySanitizer): ContentItem {
                 $type = ContentTypeEnum::from($request->string('type')->toString());
                 $this->assertRelatedEntityExists($type, $request->integer('related_id') ?: null);
                 $publishInFeed = $request->boolean('publish_in_feed');
 
                 return ContentItem::query()->create([
-                    ...$this->attributes($request, $type),
+                    ...$this->attributes($request, $type, $bodySanitizer),
                     'created_by_user_id' => $request->user()->id,
                     'updated_by_user_id' => $request->user()->id,
                     'alias' => $this->uniqueAlias($request->string('title')->toString(), $transliterator),
@@ -101,18 +134,19 @@ final class AdminContentController extends Controller
     public function update(
         SaveContentItemRequest $request,
         ContentItem $contentItem,
+        ContentBodySanitizer $bodySanitizer,
         ContentCoverManager $covers,
         ContentPublicationManager $publications,
     ): RedirectResponse {
         try {
-            DB::transaction(function () use ($request, $contentItem): void {
+            DB::transaction(function () use ($request, $contentItem, $bodySanitizer): void {
                 $type = ContentTypeEnum::from($request->string('type')->toString());
                 $this->assertRelatedEntityExists($type, $request->integer('related_id') ?: null);
                 $wasPublished = $contentItem->feed_published_at;
                 $publishInFeed = $request->boolean('publish_in_feed');
 
                 $contentItem->update([
-                    ...$this->attributes($request, $type),
+                    ...$this->attributes($request, $type, $bodySanitizer),
                     'updated_by_user_id' => $request->user()->id,
                     'feed_published_at' => $publishInFeed ? ($wasPublished ?? now()) : null,
                 ]);
@@ -141,6 +175,7 @@ final class AdminContentController extends Controller
     {
         return [
             'types' => ContentTypeEnum::cases(),
+            'formats' => ContentFormatEnum::cases(),
             'telegramChats' => TelegramChat::query()
                 ->where('is_active', true)
                 ->orderBy('title')
@@ -179,14 +214,30 @@ final class AdminContentController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function attributes(SaveContentItemRequest $request, ContentTypeEnum $type): array
-    {
+    private function attributes(
+        SaveContentItemRequest $request,
+        ContentTypeEnum $type,
+        ContentBodySanitizer $bodySanitizer,
+    ): array {
+        $format = ContentFormatEnum::from($request->string('content_format')->toString());
+        $body = trim($request->string('full_description')->toString());
+
         return [
             'type' => $type,
             'title' => trim($request->string('title')->toString()),
             'short_description' => trim($request->string('short_description')->toString()),
-            'full_description' => trim($request->string('full_description')->toString()),
+            'full_description' => $format === ContentFormatEnum::SAFE_HTML
+                ? $bodySanitizer->sanitize($body)
+                : $body,
+            'content_format' => $format,
             'link_url' => $request->filled('link_url') ? trim($request->string('link_url')->toString()) : null,
+            'meta_title' => $request->filled('meta_title') ? trim($request->string('meta_title')->toString()) : null,
+            'meta_description' => $request->filled('meta_description')
+                ? trim($request->string('meta_description')->toString())
+                : null,
+            'meta_keywords' => $request->filled('meta_keywords')
+                ? trim($request->string('meta_keywords')->toString())
+                : null,
             'related_type' => $type->supportsRelatedEntity() && $request->filled('related_id') ? $type->value : null,
             'related_id' => $type->supportsRelatedEntity() && $request->filled('related_id')
                 ? $request->integer('related_id')

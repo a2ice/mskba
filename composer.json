@@ -6,10 +6,11 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "ext-gd": "*",
         "php": "^8.3",
+        "ext-gd": "*",
         "laravel/framework": "^13.8",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "symfony/html-sanitizer": "^8.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

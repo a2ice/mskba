@@ -3,6 +3,7 @@
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminPageSeoController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
@@ -135,6 +136,16 @@ Route::prefix('admin/content')
         Route::get('/create', [AdminContentController::class, 'create'])
             ->name('admin.content.create')
             ->defaults('breadcrumb', 'Новый материал');
+        Route::get('/seo', [AdminPageSeoController::class, 'index'])
+            ->name('admin.content.seo')
+            ->defaults('breadcrumb', 'SEO страниц');
+        Route::get('/seo/{entityType}/{entityId}', [AdminPageSeoController::class, 'edit'])
+            ->whereNumber('entityId')
+            ->name('admin.content.seo.edit')
+            ->defaults('breadcrumb', 'SEO страницы');
+        Route::put('/seo/{entityType}/{entityId}', [AdminPageSeoController::class, 'update'])
+            ->whereNumber('entityId')
+            ->name('admin.content.seo.update');
         Route::post('/', [AdminContentController::class, 'store'])
             ->name('admin.content.store');
         Route::get('/{contentItem:alias}', [AdminContentController::class, 'edit'])

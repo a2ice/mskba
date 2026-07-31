@@ -2,6 +2,7 @@
     $editing = $contentItem->exists;
     $title = $editing ? 'Редактирование материала' : 'Новый материал';
     $selectedType = old('type', $contentItem->type?->value ?? 'material');
+    $selectedFormat = old('content_format', $contentItem->content_format?->value ?? 'safe_html');
     $selectedRelatedId = old('related_id', $contentItem->related_id);
     $publishInFeed = (bool) old('publish_in_feed', $contentItem->publish_in_feed ?? true);
     $publishInTelegram = (bool) old('publish_in_telegram', $contentItem->publish_in_telegram ?? false);
@@ -47,18 +48,50 @@
             <div class="form-group field mb-3">
                 <label class="form-label" for="contentFullDescription">Полное описание</label>
                 <textarea id="contentFullDescription" class="form-control @error('full_description') is-invalid @enderror" name="full_description" rows="12" maxlength="50000" required>{{ old('full_description', $contentItem->full_description) }}</textarea>
-                <small class="form-text">
-                    Поддерживается Markdown, например:
-                    <code>[Заполнить профиль игрока](/account/participation)</code>.
-                    Произвольный HTML не выполняется.
-                </small>
                 @error('full_description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="contentFormat">Формат содержимого</label>
+                <select id="contentFormat" class="form-select @error('content_format') is-invalid @enderror" name="content_format" required>
+                    @foreach($formats as $format)
+                        <option value="{{ $format->value }}" @selected($selectedFormat === $format->value)>{{ $format->label() }}</option>
+                    @endforeach
+                </select>
+                <small class="form-text">
+                    Для новых материалов используйте безопасный HTML. Разрешены:
+                    <code>p, div, span, br, strong, em, u, s, mark, h2–h4, ul, ol, li, blockquote, pre, code, a, hr, figure, figcaption, img, table, thead, tbody, tr, th, td</code>.
+                    Допустимые классы:
+                    <code>content-lead, content-note, content-accent, content-muted, content-columns, content-image, content-image--wide, content-table</code>.
+                    Скрипты, inline-стили и прочие опасные конструкции будут удалены сервером.
+                </small>
+                @error('content_format') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
             <div class="form-group field">
                 <label class="form-label" for="contentLinkUrl">Ссылка действия в материале</label>
                 <input id="contentLinkUrl" class="form-control @error('link_url') is-invalid @enderror" name="link_url" value="{{ old('link_url', $contentItem->link_url) }}" maxlength="2048" placeholder="/account/participation или https://example.com">
                 <small class="form-text">Необязательная отдельная кнопка в конце статьи. Telegram-сниппет всегда открывает сам материал.</small>
                 @error('link_url') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+        </section>
+
+        <section class="content-admin-section">
+            <h2 class="content-admin-section__title">SEO материала</h2>
+            <p class="form-text mb-3">Если оставить поля пустыми, будут использованы название и краткое описание материала.</p>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="contentMetaTitle">Meta title</label>
+                <input id="contentMetaTitle" class="form-control @error('meta_title') is-invalid @enderror" name="meta_title" value="{{ old('meta_title', $contentItem->meta_title) }}" maxlength="255">
+                @error('meta_title') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group field mb-3">
+                <label class="form-label" for="contentMetaDescription">Meta description</label>
+                <textarea id="contentMetaDescription" class="form-control @error('meta_description') is-invalid @enderror" name="meta_description" rows="3" maxlength="320">{{ old('meta_description', $contentItem->meta_description) }}</textarea>
+                @error('meta_description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+            <div class="form-group field">
+                <label class="form-label" for="contentMetaKeywords">Meta keywords</label>
+                <input id="contentMetaKeywords" class="form-control @error('meta_keywords') is-invalid @enderror" name="meta_keywords" value="{{ old('meta_keywords', $contentItem->meta_keywords) }}" maxlength="1000" placeholder="баскетбол, Москва, игры">
+                <small class="form-text">Через запятую. Современные поисковики почти не используют keywords для ранжирования, но поле поддерживается.</small>
+                @error('meta_keywords') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
         </section>
 
