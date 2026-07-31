@@ -3,10 +3,12 @@
 namespace App\Modules\Media\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Event\Domain\Models\EventResultPhotoTag;
 use App\Modules\Media\Infrastructure\Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +43,11 @@ class Media extends Model
     public function mediable(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    public function eventResultPhotoTags(): HasMany
+    {
+        return $this->hasMany(EventResultPhotoTag::class);
     }
 
     public function publicUrl(): string

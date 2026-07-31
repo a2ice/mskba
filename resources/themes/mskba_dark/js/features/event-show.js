@@ -1,4 +1,5 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
+import { setImageUploadLoading } from './image-upload.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initEventHero();
@@ -10,7 +11,151 @@ document.addEventListener('DOMContentLoaded', () => {
     initGameStatistics();
     const miniGames = initMiniGameManagement();
     initEventParticipantManagement(miniGames);
+    initEventResultPhotoEditors();
 });
+
+function parseJsonDataset(value, fallback = []) {
+    try {
+        return JSON.parse(value || '');
+    } catch {
+        return fallback;
+    }
+}
+
+function initEventResultPhotoEditors() {
+    document.querySelectorAll('[data-event-photo-editor]').forEach((editor) => {
+        const form = editor.querySelector('[data-event-photo-metadata-form]');
+        const surface = editor.querySelector('[data-event-photo-tag-surface]');
+        const tagsLayer = editor.querySelector('[data-event-photo-tags]');
+        const search = editor.querySelector('[data-event-photo-tag-search]');
+        const suggestions = editor.querySelector('[data-event-photo-tag-suggestions]');
+        const hint = editor.querySelector('[data-event-photo-tag-hint]');
+        const status = editor.querySelector('[data-event-photo-status]');
+        const candidates = parseJsonDataset(editor.dataset.candidates);
+        let tags = parseJsonDataset(editor.dataset.tags);
+        let selectedCandidate = null;
+
+        if (!form || !surface || !tagsLayer || !search || !suggestions) {
+            return;
+        }
+
+        const renderTags = () => {
+            tagsLayer.replaceChildren();
+            tags.forEach((tag) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'event-photo-tag is-visible';
+                button.style.setProperty('--tag-x', `${tag.x}%`);
+                button.style.setProperty('--tag-y', `${tag.y}%`);
+                button.textContent = tag.name;
+                button.title = 'Удалить отметку';
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    tags = tags.filter((item) => Number(item.user_id) !== Number(tag.user_id));
+                    renderTags();
+                });
+                tagsLayer.append(button);
+            });
+        };
+
+        const closeSuggestions = () => {
+            suggestions.hidden = true;
+            suggestions.replaceChildren();
+        };
+
+        const renderSuggestions = () => {
+            const query = search.value.trim();
+            selectedCandidate = null;
+            if (!query.startsWith('@')) {
+                closeSuggestions();
+                return;
+            }
+
+            const needle = query.slice(1).trim().toLocaleLowerCase('ru');
+            const matches = candidates.filter((candidate) => {
+                if (tags.some((tag) => Number(tag.user_id) === Number(candidate.id))) {
+                    return false;
+                }
+                return !needle
+                    || candidate.name.toLocaleLowerCase('ru').includes(needle)
+                    || (candidate.username || '').toLocaleLowerCase('ru').includes(needle);
+            }).slice(0, 8);
+
+            suggestions.replaceChildren();
+            matches.forEach((candidate) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = candidate.username
+                    ? `${candidate.name} · @${candidate.username}`
+                    : candidate.name;
+                button.addEventListener('click', () => {
+                    selectedCandidate = candidate;
+                    search.value = `@${candidate.username || candidate.name}`;
+                    closeSuggestions();
+                    hint.textContent = `Нажмите на фотографию, чтобы отметить: ${candidate.name}`;
+                    surface.classList.add('is-awaiting-tag-position');
+                });
+                suggestions.append(button);
+            });
+            suggestions.hidden = matches.length === 0;
+        };
+
+        search.addEventListener('input', renderSuggestions);
+        search.addEventListener('focus', renderSuggestions);
+        document.addEventListener('click', (event) => {
+            if (!editor.contains(event.target)) closeSuggestions();
+        });
+
+        surface.addEventListener('click', (event) => {
+            if (!selectedCandidate) return;
+            const bounds = surface.getBoundingClientRect();
+            const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100));
+            const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100));
+            tags.push({ user_id: selectedCandidate.id, name: selectedCandidate.name, x, y });
+            selectedCandidate = null;
+            search.value = '';
+            hint.textContent = 'Выберите участника, затем нажмите на нужное место фотографии.';
+            surface.classList.remove('is-awaiting-tag-position');
+            renderTags();
+        });
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            setImageUploadLoading(form, true);
+            status.textContent = '';
+            status.classList.remove('is-error');
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'PUT',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        description: form.querySelector('[name="description"]')?.value || null,
+                        tags: tags.map((tag) => ({ user_id: tag.user_id, x: tag.x, y: tag.y })),
+                    }),
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.message || 'Не удалось сохранить фотографию.');
+                tags = payload.tags || tags;
+                editor.dataset.tags = JSON.stringify(tags);
+                renderTags();
+                status.textContent = payload.message || 'Сохранено.';
+            } catch (error) {
+                status.textContent = error?.message || 'Не удалось сохранить фотографию.';
+                status.classList.add('is-error');
+            } finally {
+                setImageUploadLoading(form, false);
+            }
+        });
+
+        renderTags();
+    });
+}
 
 function initResponsibilityPermissions() {
     document.querySelectorAll('[data-responsibility-permissions]').forEach((editor) => {
@@ -309,6 +454,17 @@ function initEventHero() {
     const slides = Array.from(hero?.querySelectorAll('[data-event-hero-slide]') || []);
     const dots = Array.from(document.querySelectorAll('[data-event-hero-dot]'));
     const counter = hero?.querySelector('[data-event-hero-counter]');
+
+    slides.filter((slide) => slide.hasAttribute('data-photo-tags-toggle')).forEach((slide) => {
+        const toggle = () => slide.classList.toggle('is-tags-visible');
+        slide.addEventListener('click', toggle);
+        slide.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggle();
+            }
+        });
+    });
 
     if (!track || slides.length < 2) {
         return;

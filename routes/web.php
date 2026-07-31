@@ -285,6 +285,8 @@ Route::prefix('events')->group(function () {
         Route::put('/{event}/result', [EventController::class, 'complete'])->name('events.result.update');
         Route::post('/{event}/result/photos', [EventController::class, 'storeResultPhoto'])
             ->middleware('throttle:10,1')->name('events.result.photos.store');
+        Route::put('/{event}/result/photos/{photo}', [EventController::class, 'updateResultPhoto'])
+            ->middleware('throttle:30,1')->whereNumber('photo')->name('events.result.photos.update');
         Route::delete('/{event}/result/photos/{photo}', [EventController::class, 'destroyResultPhoto'])
             ->middleware('throttle:20,1')->whereNumber('photo')->name('events.result.photos.destroy');
         Route::get('/{event}/game', [GameController::class, 'manage'])->name('events.game.manage');

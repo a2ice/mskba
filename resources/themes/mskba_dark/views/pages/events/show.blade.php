@@ -85,6 +85,21 @@
     $resultPhotos = $event->media->values();
     $heroPhotos = $resultPhotos->isNotEmpty() ? $resultPhotos : $venuePhotos;
     $heroUsesResultPhotos = $resultPhotos->isNotEmpty();
+    $photoTagCandidates = $event->participants
+        ->filter(fn ($participant) => $participant->user !== null)
+        ->unique('user_id')
+        ->map(function ($participant): array {
+            $profile = $participant->user->profile;
+
+            return [
+                'id' => $participant->user_id,
+                'name' => trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+                    ?: $participant->user->username
+                    ?: 'Пользователь #'.$participant->user_id,
+                'username' => $participant->user->username,
+            ];
+        })
+        ->values();
     $address = preg_replace('/^Россия,\\s*/u', '', $event->venue->location?->address?->full_address ?: $event->venue->raw_address ?: '');
     $locationName = $event->venue->name;
     $coordinates = $event->venue->location?->address;
@@ -151,8 +166,20 @@
             <section class="event-hero" data-event-hero data-event-hero-source="{{ $heroUsesResultPhotos ? 'results' : 'venue' }}">
                 <div class="event-hero__track" data-event-hero-track>
                     @forelse($heroPhotos as $index => $photo)
-                        <figure class="event-hero__slide" data-event-hero-slide>
+                        @php
+                            $heroTags = $heroUsesResultPhotos
+                                ? $photo->eventResultPhotoTags->map(fn ($tag) => [
+                                    'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
+                                    'x' => $tag->position_x,
+                                    'y' => $tag->position_y,
+                                ])->values()
+                                : collect();
+                        @endphp
+                        <figure class="event-hero__slide" data-event-hero-slide @if($heroTags->isNotEmpty()) data-photo-tags-toggle tabindex="0" role="button" aria-label="Показать отмеченных участников" @endif>
                             <img src="{{ $photo->publicUrl() }}" alt="{{ $photo->title ?: ($heroUsesResultPhotos ? 'Как прошло мероприятие «'.$event->title.'»' : $event->venue->name) }}">
+                            @foreach($heroTags as $tag)
+                                <span class="event-photo-tag" style="--tag-x: {{ $tag['x'] }}%; --tag-y: {{ $tag['y'] }}%;">{{ $tag['name'] }}</span>
+                            @endforeach
                         </figure>
                     @empty
                         <figure class="event-hero__slide" data-event-hero-slide>
@@ -785,13 +812,22 @@
                     @if($event->media->isNotEmpty())
                         <div class="event-result-photos" aria-label="Фотографии мероприятия">
                             @foreach($event->media as $index => $photo)
+                                @php
+                                    $photoTags = $photo->eventResultPhotoTags->map(fn ($tag) => [
+                                        'user_id' => $tag->user_id,
+                                        'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
+                                        'x' => $tag->position_x,
+                                        'y' => $tag->position_y,
+                                    ])->values();
+                                @endphp
                                 <button
                                     type="button"
                                     data-venue-gallery-item
                                     data-index="{{ $index }}"
                                     data-url="{{ $photo->publicUrl() }}"
                                     data-title="{{ $event->title }}"
-                                    data-description=""
+                                    data-description="{{ $photo->description }}"
+                                    data-tags='@json($photoTags)'
                                 >
                                     <img src="{{ $photo->publicUrl() }}" alt="{{ $event->title }}">
                                 </button>
@@ -802,7 +838,10 @@
                             <section class="venue-gallery-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="event-gallery-modal-title">
                                 <button type="button" class="venue-gallery-modal__close" data-venue-gallery-close aria-label="Закрыть"><i class="ti ti-x"></i></button>
                                 <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--prev" data-venue-gallery-prev aria-label="Предыдущее фото"><i class="ti ti-chevron-left"></i></button>
-                                <img src="" alt="" data-venue-gallery-image>
+                                <div class="venue-gallery-modal__photo" data-photo-tags-surface>
+                                    <img src="" alt="" data-venue-gallery-image>
+                                    <div data-venue-gallery-tags></div>
+                                </div>
                                 <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--next" data-venue-gallery-next aria-label="Следующее фото"><i class="ti ti-chevron-right"></i></button>
                                 <div class="venue-gallery-modal__caption"><h3 id="event-gallery-modal-title" data-venue-gallery-title></h3><p data-venue-gallery-description></p></div>
                             </section>
@@ -813,7 +852,7 @@
                 @if($allows(EventResponsibilityPermissionEnum::MANAGE_RESULT))
                     <section class="venue-gallery-editor event-result-gallery" data-tooltip-skip data-image-upload-surface>
                         @include('theme::partials.image-upload-loading', ['text' => 'Загружаем фотографию…'])
-                        <div class="venue-gallery-editor__heading"><div><h2>Фотографии</h2><p>До 12 изображений · JPEG, PNG или WebP · до 5 МБ</p></div><span>{{ $event->media->count() }}/12</span></div>
+                        <div class="venue-gallery-editor__heading"><div><h2>Фотографии</h2><p>До 12 изображений · JPEG, PNG или WebP · до 10 МБ</p></div><span>{{ $event->media->count() }}/12</span></div>
                         @if($event->media->count() < 12)
                             <form action="{{ route('events.result.photos.store', $event->routeIdentifier()) }}" method="POST" enctype="multipart/form-data" class="venue-gallery-editor__upload" data-image-upload data-image-upload-auto-submit>
                                 @csrf
@@ -824,8 +863,34 @@
                         @if($event->media->isNotEmpty())
                             <div class="venue-gallery-editor__items" aria-label="Фотографии мероприятия">
                                 @foreach($event->media as $photo)
-                                    <article class="venue-gallery-editor__item">
-                                        <span class="venue-gallery-editor__preview"><img src="{{ $photo->publicUrl() }}" alt=""></span>
+                                    @php
+                                        $editorTags = $photo->eventResultPhotoTags->map(fn ($tag) => [
+                                            'user_id' => $tag->user_id,
+                                            'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
+                                            'x' => $tag->position_x,
+                                            'y' => $tag->position_y,
+                                        ])->values();
+                                    @endphp
+                                    <article class="venue-gallery-editor__item event-result-photo-editor" data-event-photo-editor data-candidates='@json($photoTagCandidates)' data-tags='@json($editorTags)'>
+                                        <form action="{{ route('events.result.photos.update', [$event->routeIdentifier(), $photo->id]) }}" method="POST" data-event-photo-metadata-form data-image-upload-surface>
+                                            @csrf @method('PUT')
+                                            @include('theme::partials.image-upload-loading', ['text' => 'Сохраняем описание и отметки…'])
+                                            <div class="event-result-photo-editor__image" data-event-photo-tag-surface>
+                                                <img src="{{ $photo->publicUrl() }}" alt="">
+                                                <div data-event-photo-tags></div>
+                                            </div>
+                                            <label class="form-label" for="event-result-description-{{ $photo->id }}">Описание фотографии</label>
+                                            <textarea id="event-result-description-{{ $photo->id }}" class="form-control" name="description" rows="2" maxlength="2000" placeholder="Что происходит на фотографии?">{{ $photo->description }}</textarea>
+                                            <div class="event-photo-tag-editor">
+                                                <label class="form-label" for="event-result-tag-{{ $photo->id }}">Отметить участника</label>
+                                                <input id="event-result-tag-{{ $photo->id }}" class="form-control" type="text" data-event-photo-tag-search placeholder="Введите @имя или @логин" autocomplete="off">
+                                                <div class="event-photo-tag-editor__suggestions" data-event-photo-tag-suggestions hidden></div>
+                                                <p data-event-photo-tag-hint>Выберите участника, затем нажмите на нужное место фотографии.</p>
+                                            </div>
+                                            <input type="hidden" name="tags" data-event-photo-tags-input>
+                                            <button class="btn btn--primary btn--sm" type="submit">Сохранить</button>
+                                            <p class="event-result-photo-editor__status" data-event-photo-status aria-live="polite"></p>
+                                        </form>
                                         <form action="{{ route('events.result.photos.destroy', [$event->routeIdentifier(), $photo->id]) }}" method="POST">@csrf @method('DELETE')<button type="submit" class="venue-gallery-editor__delete" aria-label="Удалить фотографию" onclick="return confirm('Вы уверены, что хотите удалить фотографию?')">×</button></form>
                                     </article>
                                 @endforeach

@@ -817,9 +817,11 @@ final class EventWorkflowTest extends TestCase
     {
         Storage::fake('public');
         $organizer = User::factory()->create();
+        $participant = User::factory()->create(['username' => 'tagged_player']);
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
         $event = $venue->events()->firstOrFail();
+        $this->actingAs($participant)->post(route('events.join', $event->routeIdentifier()));
         $this->travelTo($end->addMinute());
 
         $this->actingAs($organizer)
@@ -834,7 +836,7 @@ final class EventWorkflowTest extends TestCase
 
         $this->actingAs($organizer)
             ->post(route('events.result.photos.store', $event->routeIdentifier()), [
-                'photo' => UploadedFile::fake()->image('result.jpg', 1600, 900),
+                'photo' => UploadedFile::fake()->image('result.jpg', 1600, 900)->size(7 * 1024),
             ])
             ->assertSessionHas('photo_status');
 
@@ -844,10 +846,46 @@ final class EventWorkflowTest extends TestCase
         Storage::disk('public')->assertExists($photo->path);
 
         $this->actingAs($organizer)
+            ->putJson(route('events.result.photos.update', [$event->routeIdentifier(), $photo->id]), [
+                'description' => 'Решающий бросок в концовке.',
+                'tags' => [[
+                    'user_id' => $participant->id,
+                    'x' => 42.75,
+                    'y' => 61.5,
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('description', 'Решающий бросок в концовке.')
+            ->assertJsonPath('tags.0.name', 'tagged_player');
+
+        $this->assertDatabaseHas('media', [
+            'id' => $photo->id,
+            'description' => 'Решающий бросок в концовке.',
+        ]);
+        $this->assertDatabaseHas('event_result_photo_tags', [
+            'media_id' => $photo->id,
+            'user_id' => $participant->id,
+            'position_x' => 42.75,
+            'position_y' => 61.5,
+        ]);
+
+        $outsider = User::factory()->create();
+        $this->actingAs($organizer)
+            ->putJson(route('events.result.photos.update', [$event->routeIdentifier(), $photo->id]), [
+                'description' => 'Подмена',
+                'tags' => [['user_id' => $outsider->id, 'x' => 10, 'y' => 20]],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'На фотографии можно отметить только участников мероприятия.');
+        $this->assertSame('Решающий бросок в концовке.', $photo->refresh()->description);
+
+        $this->actingAs($organizer)
             ->get(route('events.show', $event->routeIdentifier()))
             ->assertOk()
             ->assertSee('data-event-hero-source="results"', false)
-            ->assertSee($photo->publicUrl(), false);
+            ->assertSee($photo->publicUrl(), false)
+            ->assertSee('Решающий бросок в концовке.')
+            ->assertSee('tagged_player');
 
         $this->get(route('events.index', ['period' => 'past']))
             ->assertOk()

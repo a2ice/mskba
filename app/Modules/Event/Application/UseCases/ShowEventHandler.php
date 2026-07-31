@@ -44,7 +44,11 @@ final class ShowEventHandler
                 'childGames' => fn ($query) => $query
                     ->with(['gameDetail', 'gameSides.team'])
                     ->orderBy('starts_at'),
-                'media' => fn ($query) => $query->where('collection', 'event_results')->orderBy('sort_order')->orderBy('id'),
+                'media' => fn ($query) => $query
+                    ->where('collection', 'event_results')
+                    ->with('eventResultPhotoTags.user.profile')
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
             ])
             ->firstOrFail();
 

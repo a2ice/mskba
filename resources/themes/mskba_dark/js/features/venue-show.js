@@ -119,6 +119,7 @@ function initVenueGalleryModal() {
     const image = modal.querySelector('[data-venue-gallery-image]');
     const title = modal.querySelector('[data-venue-gallery-title]');
     const description = modal.querySelector('[data-venue-gallery-description]');
+    const tags = modal.querySelector('[data-venue-gallery-tags]');
     const closeButtons = Array.from(modal.querySelectorAll('[data-venue-gallery-close]'));
     const prevButton = modal.querySelector('[data-venue-gallery-prev]');
     const nextButton = modal.querySelector('[data-venue-gallery-next]');
@@ -138,6 +139,23 @@ function initVenueGalleryModal() {
         title.textContent = item.dataset.title || '';
         description.textContent = item.dataset.description || '';
         description.hidden = !description.textContent;
+        if (tags) {
+            tags.replaceChildren();
+            let photoTags = [];
+            try {
+                photoTags = JSON.parse(item.dataset.tags || '[]');
+            } catch {
+                photoTags = [];
+            }
+            photoTags.forEach((tag) => {
+                const label = document.createElement('span');
+                label.className = 'event-photo-tag is-visible';
+                label.style.setProperty('--tag-x', `${tag.x}%`);
+                label.style.setProperty('--tag-y', `${tag.y}%`);
+                label.textContent = tag.name;
+                tags.append(label);
+            });
+        }
     };
 
     const open = (index) => {

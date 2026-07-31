@@ -37,6 +37,7 @@ use App\Modules\Event\Presentation\Http\Requests\CancelEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventRequest;
+use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultPhotoRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
@@ -579,6 +580,53 @@ final class EventController extends Controller
         }
 
         return back()->with('photo_status', 'Фотография удалена.');
+    }
+
+    public function updateResultPhoto(
+        UpdateEventResultPhotoRequest $request,
+        string $event,
+        int $photo,
+        ShowEventHandler $events,
+        EventResultGalleryManager $gallery,
+        CurrentActorResolver $actors,
+    ): JsonResponse|RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $item = $events->handle($event, $actor);
+
+        try {
+            $updatedPhoto = $gallery->updateMetadata(
+                $item,
+                $actor,
+                $photo,
+                $request->validated('description'),
+                $request->validated('tags'),
+            );
+        } catch (InvalidArgumentException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $exception->getMessage()], 422);
+            }
+
+            return back()->with('photo_error', $exception->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Описание и отметки сохранены.',
+                'description' => $updatedPhoto->description,
+                'tags' => $updatedPhoto->eventResultPhotoTags->map(fn ($tag): array => [
+                    'user_id' => $tag->user_id,
+                    'name' => trim(implode(' ', array_filter([
+                        $tag->user->profile?->first_name,
+                        $tag->user->profile?->last_name,
+                    ]))) ?: $tag->user->username,
+                    'x' => $tag->position_x,
+                    'y' => $tag->position_y,
+                ])->values(),
+            ]);
+        }
+
+        return back()->with('photo_status', 'Описание и отметки сохранены.');
     }
 
     public function join(Request $request, string $event, JoinEventHandler $events): RedirectResponse
