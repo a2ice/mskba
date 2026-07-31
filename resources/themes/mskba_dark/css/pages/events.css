@@ -1098,10 +1098,17 @@
 
 .event-result-gallery .venue-gallery-editor__item {
     width: auto;
+    height: auto;
+    min-width: 0;
+}
+
+.event-result-photo-editor:focus-within {
+    z-index: 210;
 }
 
 .event-result-photo-editor > form:first-child {
     display: grid;
+    min-width: 0;
     gap: 10px;
 }
 
@@ -1114,6 +1121,8 @@
 }
 
 .event-result-photo-editor__image {
+    width: 100%;
+    max-width: 100%;
     cursor: default;
 }
 
@@ -1140,22 +1149,25 @@
     cursor: pointer;
 }
 
-.event-photo-tag-editor {
+.event-photo-tag-editor__control {
     position: relative;
 }
 
 .event-photo-tag-editor__suggestions {
     position: absolute;
-    z-index: 5;
-    top: calc(100% - 28px);
+    z-index: 211;
+    top: calc(100% - 1px);
     right: 0;
     left: 0;
     display: grid;
-    overflow: hidden;
+    max-height: min(260px, 42vh);
+    overflow-x: hidden;
+    overflow-y: auto;
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 0 0 12px 12px;
     background: #171916;
     box-shadow: 0 12px 34px rgba(0, 0, 0, .45);
+    isolation: isolate;
 }
 
 .event-photo-tag-editor__suggestions[hidden] {
@@ -1167,7 +1179,7 @@
     border: 0;
     border-bottom: 1px solid var(--line);
     color: var(--text);
-    background: transparent;
+    background: #171916;
     text-align: left;
 }
 
@@ -1227,6 +1239,17 @@ body.telegram-mini-app .event-show {
 @media (max-width: 768px) {
     .event-result-gallery .venue-gallery-editor__items {
         grid-template-columns: 1fr;
+    }
+
+    .event-result-gallery .venue-gallery-editor__item {
+        width: 100%;
+        height: auto;
+    }
+
+    .event-result-photo-editor__image > img {
+        width: 100%;
+        height: auto;
+        max-height: none;
     }
     .event-show {
         padding: calc(var(--site-header-height, 76px) + 12px) 12px 150px;

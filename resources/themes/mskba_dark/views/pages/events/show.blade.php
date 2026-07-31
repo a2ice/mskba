@@ -883,8 +883,10 @@
                                             <textarea id="event-result-description-{{ $photo->id }}" class="form-control" name="description" rows="2" maxlength="2000" placeholder="Что происходит на фотографии?">{{ $photo->description }}</textarea>
                                             <div class="event-photo-tag-editor">
                                                 <label class="form-label" for="event-result-tag-{{ $photo->id }}">Отметить участника</label>
-                                                <input id="event-result-tag-{{ $photo->id }}" class="form-control" type="text" data-event-photo-tag-search placeholder="Введите @имя или @логин" autocomplete="off">
-                                                <div class="event-photo-tag-editor__suggestions" data-event-photo-tag-suggestions hidden></div>
+                                                <div class="event-photo-tag-editor__control">
+                                                    <input id="event-result-tag-{{ $photo->id }}" class="form-control" type="text" data-event-photo-tag-search placeholder="Введите @имя или @логин" autocomplete="off">
+                                                    <div class="event-photo-tag-editor__suggestions" data-event-photo-tag-suggestions hidden></div>
+                                                </div>
                                                 <p data-event-photo-tag-hint>Выберите участника, затем нажмите на нужное место фотографии.</p>
                                             </div>
                                             <input type="hidden" name="tags" data-event-photo-tags-input>
