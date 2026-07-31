@@ -117,32 +117,17 @@
     z-index: 3;
     top: var(--tag-y);
     left: var(--tag-x);
-    max-width: min(220px, 70%);
-    padding: 7px 11px;
-    border: 0;
-    border-radius: 5px;
-    color: #111;
-    background: #fff;
-    box-shadow: 0 4px 18px rgba(0, 0, 0, .42);
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.2;
-    text-align: left;
-    transform: translate(-50%, -100%);
+    width: clamp(62px, 10vw, 112px);
+    aspect-ratio: 1.15 / 1;
+    padding: 0;
+    border: 2px solid rgba(255, 255, 255, .96);
+    border-radius: 2px;
+    background: rgba(255, 255, 255, .08);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .26);
+    transform: translate(-50%, -50%);
     opacity: 0;
     pointer-events: none;
-}
-
-.event-photo-tag::after {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border: 5px solid transparent;
-    border-top-color: #fff;
-    content: '';
-    transform: translateX(-50%);
+    transition: opacity .16s ease, background-color .16s ease;
 }
 
 .event-photo-tag.is-visible,
@@ -1149,6 +1134,40 @@
     cursor: pointer;
 }
 
+.event-result-photo-editor .event-photo-tag:hover,
+.event-result-photo-editor .event-photo-tag:focus-visible {
+    background: rgba(255, 80, 80, .2);
+    outline: none;
+}
+
+.event-photo-tag-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.event-photo-tag-links[hidden] {
+    display: none;
+}
+
+.event-photo-tag-links button {
+    padding: 3px 0;
+    border: 0;
+    border-bottom: 1px dotted rgba(255, 255, 255, .5);
+    color: #fff;
+    background: transparent;
+    font: inherit;
+    font-weight: 650;
+}
+
+.event-photo-tag-links button:hover,
+.event-photo-tag-links button:focus-visible,
+.event-photo-tag-links button[aria-pressed="true"] {
+    border-bottom-color: var(--accent-text);
+    color: var(--accent-text);
+    outline: none;
+}
+
 .event-photo-tag-editor__control {
     position: relative;
 }
@@ -1237,6 +1256,9 @@ body.telegram-mini-app .event-show {
 }
 
 @media (max-width: 768px) {
+    .event-photo-tag {
+        width: clamp(54px, 18vw, 76px);
+    }
     .event-result-gallery .venue-gallery-editor__items {
         grid-template-columns: 1fr;
     }

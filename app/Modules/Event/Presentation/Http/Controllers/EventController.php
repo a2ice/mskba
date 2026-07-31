@@ -620,6 +620,7 @@ final class EventController extends Controller
                         $tag->user->profile?->first_name,
                         $tag->user->profile?->last_name,
                     ]))) ?: $tag->user->username,
+                    'username' => $tag->user->username,
                     'x' => $tag->position_x,
                     'y' => $tag->position_y,
                 ])->values(),

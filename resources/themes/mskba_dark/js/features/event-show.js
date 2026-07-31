@@ -47,8 +47,8 @@ function initEventResultPhotoEditors() {
                 button.className = 'event-photo-tag is-visible';
                 button.style.setProperty('--tag-x', `${tag.x}%`);
                 button.style.setProperty('--tag-y', `${tag.y}%`);
-                button.textContent = tag.name;
-                button.title = 'Удалить отметку';
+                button.title = `Удалить отметку: ${tag.name}`;
+                button.setAttribute('aria-label', `Удалить отметку участника ${tag.name}`);
                 button.addEventListener('click', (event) => {
                     event.stopPropagation();
                     tags = tags.filter((item) => Number(item.user_id) !== Number(tag.user_id));
@@ -111,7 +111,13 @@ function initEventResultPhotoEditors() {
             const bounds = surface.getBoundingClientRect();
             const x = Math.max(0, Math.min(100, ((event.clientX - bounds.left) / bounds.width) * 100));
             const y = Math.max(0, Math.min(100, ((event.clientY - bounds.top) / bounds.height) * 100));
-            tags.push({ user_id: selectedCandidate.id, name: selectedCandidate.name, x, y });
+            tags.push({
+                user_id: selectedCandidate.id,
+                name: selectedCandidate.name,
+                username: selectedCandidate.username,
+                x,
+                y,
+            });
             selectedCandidate = null;
             search.value = '';
             hint.textContent = 'Выберите участника, затем нажмите на нужное место фотографии.';

@@ -120,6 +120,7 @@ function initVenueGalleryModal() {
     const title = modal.querySelector('[data-venue-gallery-title]');
     const description = modal.querySelector('[data-venue-gallery-description]');
     const tags = modal.querySelector('[data-venue-gallery-tags]');
+    const tagLinks = modal.querySelector('[data-venue-gallery-tag-links]');
     const closeButtons = Array.from(modal.querySelectorAll('[data-venue-gallery-close]'));
     const prevButton = modal.querySelector('[data-venue-gallery-prev]');
     const nextButton = modal.querySelector('[data-venue-gallery-next]');
@@ -141,20 +142,39 @@ function initVenueGalleryModal() {
         description.hidden = !description.textContent;
         if (tags) {
             tags.replaceChildren();
+            tagLinks?.replaceChildren();
             let photoTags = [];
             try {
                 photoTags = JSON.parse(item.dataset.tags || '[]');
             } catch {
                 photoTags = [];
             }
-            photoTags.forEach((tag) => {
-                const label = document.createElement('span');
-                label.className = 'event-photo-tag is-visible';
-                label.style.setProperty('--tag-x', `${tag.x}%`);
-                label.style.setProperty('--tag-y', `${tag.y}%`);
-                label.textContent = tag.name;
-                tags.append(label);
+            photoTags.forEach((tag, tagIndex) => {
+                const marker = document.createElement('span');
+                marker.className = 'event-photo-tag';
+                marker.dataset.photoTagIndex = String(tagIndex);
+                marker.style.setProperty('--tag-x', `${tag.x}%`);
+                marker.style.setProperty('--tag-y', `${tag.y}%`);
+                marker.title = tag.name;
+                marker.setAttribute('aria-label', `Отмечен участник ${tag.name}`);
+                tags.append(marker);
+
+                if (tagLinks) {
+                    const link = document.createElement('button');
+                    link.type = 'button';
+                    link.textContent = tag.username ? `@${tag.username}` : tag.name;
+                    link.setAttribute('aria-pressed', 'false');
+                    link.addEventListener('click', () => {
+                        const willShow = !marker.classList.contains('is-visible');
+                        tags.querySelectorAll('.event-photo-tag').forEach((item) => item.classList.remove('is-visible'));
+                        tagLinks.querySelectorAll('button').forEach((item) => item.setAttribute('aria-pressed', 'false'));
+                        marker.classList.toggle('is-visible', willShow);
+                        link.setAttribute('aria-pressed', String(willShow));
+                    });
+                    tagLinks.append(link);
+                }
             });
+            tagLinks?.toggleAttribute('hidden', photoTags.length === 0);
         }
     };
 

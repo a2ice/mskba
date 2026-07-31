@@ -170,6 +170,7 @@
                             $heroTags = $heroUsesResultPhotos
                                 ? $photo->eventResultPhotoTags->map(fn ($tag) => [
                                     'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
+                                    'username' => $tag->user->username,
                                     'x' => $tag->position_x,
                                     'y' => $tag->position_y,
                                 ])->values()
@@ -178,7 +179,7 @@
                         <figure class="event-hero__slide" data-event-hero-slide @if($heroTags->isNotEmpty()) data-photo-tags-toggle tabindex="0" role="button" aria-label="Показать отмеченных участников" @endif>
                             <img src="{{ $photo->publicUrl() }}" alt="{{ $photo->title ?: ($heroUsesResultPhotos ? 'Как прошло мероприятие «'.$event->title.'»' : $event->venue->name) }}">
                             @foreach($heroTags as $tag)
-                                <span class="event-photo-tag" style="--tag-x: {{ $tag['x'] }}%; --tag-y: {{ $tag['y'] }}%;">{{ $tag['name'] }}</span>
+                                <span class="event-photo-tag" style="--tag-x: {{ $tag['x'] }}%; --tag-y: {{ $tag['y'] }}%;" title="{{ $tag['name'] }}" aria-label="Отмечен участник {{ $tag['name'] }}"></span>
                             @endforeach
                         </figure>
                     @empty
@@ -816,6 +817,7 @@
                                     $photoTags = $photo->eventResultPhotoTags->map(fn ($tag) => [
                                         'user_id' => $tag->user_id,
                                         'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
+                                        'username' => $tag->user->username,
                                         'x' => $tag->position_x,
                                         'y' => $tag->position_y,
                                     ])->values();
@@ -843,7 +845,11 @@
                                     <div data-venue-gallery-tags></div>
                                 </div>
                                 <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--next" data-venue-gallery-next aria-label="Следующее фото"><i class="ti ti-chevron-right"></i></button>
-                                <div class="venue-gallery-modal__caption"><h3 id="event-gallery-modal-title" data-venue-gallery-title></h3><p data-venue-gallery-description></p></div>
+                                <div class="venue-gallery-modal__caption">
+                                    <h3 id="event-gallery-modal-title" data-venue-gallery-title></h3>
+                                    <p data-venue-gallery-description></p>
+                                    <div class="event-photo-tag-links" data-venue-gallery-tag-links aria-label="Отмеченные участники"></div>
+                                </div>
                             </section>
                         </div>
                     @endif
@@ -867,6 +873,7 @@
                                         $editorTags = $photo->eventResultPhotoTags->map(fn ($tag) => [
                                             'user_id' => $tag->user_id,
                                             'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
+                                            'username' => $tag->user->username,
                                             'x' => $tag->position_x,
                                             'y' => $tag->position_y,
                                         ])->values();
