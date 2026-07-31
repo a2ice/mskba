@@ -583,10 +583,14 @@
                                                     </select>
                                                     <input type="hidden" name="side_a_size" value="{{ old('side_a_size', $defaultMiniGameFormat['side_a_size']) }}" data-mini-game-side-a-size>
                                                     <input type="hidden" name="side_b_size" value="{{ old('side_b_size', $defaultMiniGameFormat['side_b_size']) }}" data-mini-game-side-b-size>
-                                                    <p class="form-hint mb-0">Доступные форматы зависят от количества участников мероприятия.</p>
+                                                    <small class="form-hint mb-0 form-toggle__description">Доступные форматы зависят от количества участников мероприятия.</small>
                                                 </div>
-                                                <div class="col-md-6"><label class="form-label">Название команды A</label><input class="form-control" name="side_a_name" value="{{ old('side_a_name', 'Команда A') }}" maxlength="80" required></div>
-                                                <div class="col-md-6"><label class="form-label">Название команды B</label><input class="form-control" name="side_b_name" value="{{ old('side_b_name', 'Команда B') }}" maxlength="80" required></div>
+                                                <div class="col-12">
+                                                    <div class="row g-3">
+                                                        <div class="col-md-6"><label class="form-label">Название команды A</label><input class="form-control" name="side_a_name" value="{{ old('side_a_name', 'Команда A') }}" maxlength="80" required></div>
+                                                        <div class="col-md-6"><label class="form-label">Название команды B</label><input class="form-control" name="side_b_name" value="{{ old('side_b_name', 'Команда B') }}" maxlength="80" required></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="game-roster-grid mt-3">
                                                 @foreach(['A', 'B'] as $slot)
