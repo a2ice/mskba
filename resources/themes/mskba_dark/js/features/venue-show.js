@@ -162,7 +162,7 @@ function initVenueGalleryModal() {
                 if (tagLinks) {
                     const link = document.createElement('button');
                     link.type = 'button';
-                    link.textContent = tag.username ? `@${tag.username}` : tag.name;
+                    link.textContent = tag.name;
                     link.setAttribute('aria-pressed', 'false');
                     link.addEventListener('click', () => {
                         const willShow = !marker.classList.contains('is-visible');
