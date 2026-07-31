@@ -658,12 +658,12 @@
 }
 
 .event-participants.is-tentative .event-participants__heading h2,
-.event-participants.is-tentative .event-participant-chip > div:last-child span {
+.event-participants.is-tentative .event-participant-chip__identity span {
     color: #e7ab32;
 }
 
 .event-participants.is-declined .event-participants__heading h2,
-.event-participants.is-declined .event-participant-chip > div:last-child span {
+.event-participants.is-declined .event-participant-chip__identity span {
     color: #f06060;
 }
 
@@ -689,9 +689,21 @@
     scroll-snap-align: start;
 }
 
-.event-participant-chip > div:last-child {
+.event-participant-chip__identity {
     display: grid;
     min-width: 0;
+}
+
+.event-participant-chip__identity span {
+    display: block;
+}
+
+.event-participant-chip__changed {
+    margin-top: 2px;
+    color: var(--muted) !important;
+    font-size: 10px;
+    line-height: 1.2;
+    cursor: help;
 }
 
 .event-participant-chip strong {
@@ -916,6 +928,119 @@
 .event-responsibility-manager__item form {
     flex: 0 0 auto;
     margin: 0;
+}
+
+.event-responsibility-manager__actions {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.event-responsibility-manager__permissions-editor {
+    position: relative;
+}
+
+.event-responsibility-manager__permissions-editor > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.event-responsibility-manager__permissions-editor > summary::-webkit-details-marker {
+    display: none;
+}
+
+.event-responsibility-manager__permissions-editor > form {
+    width: min(560px, calc(100vw - 48px));
+    margin-top: 10px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    background: var(--color-surface, #16181d);
+}
+
+.event-responsibility-permissions {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.event-responsibility-permissions__group {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+.event-responsibility-permissions__group legend {
+    padding: 0 6px;
+    font-weight: 700;
+}
+
+.event-responsibility-permissions__all {
+    margin-bottom: 10px;
+}
+
+.event-responsibility-permissions__options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+}
+
+.event-responsibility-permissions__option {
+    margin: 0;
+}
+
+.event-responsibility-invitation__permissions ul {
+    margin: 8px 0 0;
+    padding-left: 20px;
+}
+
+.event-participants-surface {
+    position: relative;
+}
+
+.event-participant-chip__status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.event-participant-chip__status-button {
+    min-height: 0;
+    padding: 4px 7px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+    .event-responsibility-manager__actions,
+    .event-responsibility-permissions__options {
+        grid-template-columns: 1fr;
+    }
+
+    .event-responsibility-manager__actions {
+        display: grid;
+        width: 100%;
+    }
+
+    .event-responsibility-manager__permissions-editor > form {
+        width: 100%;
+    }
+
+    .event-participant-chip__status-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+    }
+
+    .event-participant-chip__status-button {
+        width: auto;
+    }
 }
 
 .event-result-gallery {

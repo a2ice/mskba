@@ -6,10 +6,48 @@ document.addEventListener('DOMContentLoaded', () => {
     initEventDescription();
     initEventShare();
     initMiniGameScheduleControls();
+    initResponsibilityPermissions();
     initGameStatistics();
     const miniGames = initMiniGameManagement();
     initEventParticipantManagement(miniGames);
 });
+
+function initResponsibilityPermissions() {
+    document.querySelectorAll('[data-responsibility-permissions]').forEach((editor) => {
+        const groups = Array.from(editor.querySelectorAll('[data-permission-group]'));
+        const score = editor.querySelector('[value="mini_game.score.manage"]');
+        const statistics = editor.querySelector('[value="mini_game.statistics.manage"]');
+
+        const syncGroup = (group) => {
+            const toggle = group.querySelector('[data-permission-group-toggle]');
+            const options = Array.from(group.querySelectorAll('[data-permission-option]'));
+            toggle.checked = options.length > 0 && options.every((option) => option.checked);
+            toggle.indeterminate = options.some((option) => option.checked) && !toggle.checked;
+        };
+
+        groups.forEach((group) => {
+            const toggle = group.querySelector('[data-permission-group-toggle]');
+            const options = Array.from(group.querySelectorAll('[data-permission-option]'));
+            toggle.addEventListener('change', () => {
+                options.forEach((option) => { option.checked = toggle.checked; });
+                if (!toggle.checked && group.dataset.permissionGroup === 'mini_game') {
+                    statistics && (statistics.checked = false);
+                }
+                syncGroup(group);
+            });
+            options.forEach((option) => option.addEventListener('change', () => {
+                if (option === statistics && statistics.checked && score) {
+                    score.checked = true;
+                }
+                if (option === score && !score.checked && statistics) {
+                    statistics.checked = false;
+                }
+                syncGroup(group);
+            }));
+            syncGroup(group);
+        });
+    });
+}
 
 function initGameStatistics() {
     const form = document.querySelector('[data-game-statistics-form]');
@@ -602,6 +640,14 @@ function initMiniGameManagement() {
         renderFormats();
     };
 
+    const removeParticipant = (participant) => {
+        section.querySelectorAll(`[data-mini-game-player-toggle][data-player-id="${participant.user_id}"]`)
+            .forEach((toggle) => toggle.closest('.game-roster-toggle')?.remove());
+        confirmedCount = Math.max(0, confirmedCount - 1);
+        section.dataset.confirmedCount = String(confirmedCount);
+        renderFormats();
+    };
+
     format.addEventListener('change', syncFormatInputs);
     section.addEventListener('change', (event) => {
         const toggle = event.target instanceof Element
@@ -623,7 +669,7 @@ function initMiniGameManagement() {
     });
     renderFormats();
 
-    return { addParticipant, setLoading };
+    return { addParticipant, removeParticipant, setLoading };
 }
 
 function initEventParticipantManagement(miniGames) {
@@ -639,6 +685,9 @@ function initEventParticipantManagement(miniGames) {
     const submitButton = manager?.querySelector('[data-event-participant-submit]');
     const searchUrl = manager?.dataset.searchUrl;
     const focusTriggers = document.querySelectorAll('[data-event-participant-focus]');
+    const participantsSurface = document.querySelector('[data-event-participants-surface]');
+    const participantsOverlay = participantsSurface?.querySelector('[data-image-upload-overlay]');
+    const confirmedCountLabel = document.querySelector('[data-event-confirmed-count]');
 
     if (!form || !input || !userId || !results || !control || !message || !selection || !status || !submitButton || !searchUrl) {
         return;
@@ -655,6 +704,132 @@ function initEventParticipantManagement(miniGames) {
     let debounceTimer = null;
     let requestController = null;
     let selectedName = '';
+
+    const setParticipantsLoading = (loading) => {
+        if (!participantsSurface) {
+            return;
+        }
+        participantsSurface.classList.toggle('is-image-upload-loading', loading);
+        participantsSurface.setAttribute('aria-busy', String(loading));
+        if (participantsOverlay) {
+            participantsOverlay.hidden = !loading;
+        }
+    };
+
+    const group = (statusValue) => participantsSurface?.querySelector(`[data-event-participant-group="${statusValue}"]`);
+    const updateGroupCount = (section) => {
+        if (!section) {
+            return;
+        }
+        const count = section.querySelectorAll('[data-event-participant-id]').length;
+        const heading = section.querySelector('[data-event-participant-group-heading]');
+        if (heading?.firstChild) {
+            heading.firstChild.textContent = `\n                                ${heading.dataset.title} (${count})\n                                `;
+        }
+        section.hidden = count === 0;
+    };
+    const createParticipantCard = (participant, statusValue) => {
+        const card = document.createElement('article');
+        const avatar = document.createElement('div');
+        const identity = document.createElement('div');
+        const name = document.createElement('strong');
+        const state = document.createElement('span');
+        card.className = 'event-participant-chip';
+        card.dataset.eventParticipantId = String(participant.id);
+        avatar.className = 'event-person-avatar';
+        identity.className = 'event-participant-chip__identity';
+        if (participant.avatar_url) {
+            const image = document.createElement('img');
+            image.src = participant.avatar_url;
+            image.alt = participant.name;
+            avatar.append(image);
+        } else {
+            const initials = document.createElement('span');
+            initials.textContent = participant.initials;
+            avatar.append(initials);
+        }
+        name.textContent = participant.name;
+        const statusLabels = { confirmed: 'Идёт', tentative: 'Думает', left: 'Не идёт' };
+        state.textContent = statusLabels[statusValue] || '';
+        identity.append(name, state);
+        if (participant.changed_label && participant.changed_title) {
+            const changed = document.createElement('small');
+            changed.className = 'event-participant-chip__changed ui-tooltip-source ui-tooltip-source--title';
+            changed.textContent = participant.changed_label;
+            changed.dataset.tooltip = participant.changed_title;
+            changed.dataset.tooltipSource = participant.changed_title;
+            changed.tabIndex = 0;
+            identity.append(changed);
+        }
+        card.append(avatar, identity);
+        const actions = document.createElement('div');
+        actions.className = 'event-participant-chip__status-actions';
+        Object.entries(statusLabels).forEach(([targetStatus, targetLabel]) => {
+            if (targetStatus === statusValue) {
+                return;
+            }
+            const statusForm = document.createElement('form');
+            const method = document.createElement('input');
+            const csrf = document.createElement('input');
+            const statusInput = document.createElement('input');
+            const button = document.createElement('button');
+            statusForm.method = 'POST';
+            statusForm.action = participant.status_url;
+            statusForm.dataset.eventParticipantStatusForm = '';
+            statusForm.dataset.targetLabel = targetLabel;
+            method.type = 'hidden';
+            method.name = '_method';
+            method.value = 'PATCH';
+            csrf.type = 'hidden';
+            csrf.name = '_token';
+            csrf.value = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            statusInput.value = targetStatus;
+            button.type = 'submit';
+            button.className = 'btn btn--secondary event-participant-chip__status-button';
+            button.textContent = targetLabel;
+            statusForm.append(csrf, method, statusInput, button);
+            actions.append(statusForm);
+        });
+        card.append(actions);
+        return card;
+    };
+    const insertParticipant = (participant, statusValue) => {
+        const target = group(statusValue);
+        const row = target?.querySelector('.event-participants__row');
+        if (!target || !row) {
+            return;
+        }
+        target.hidden = false;
+        target.querySelector(`[data-event-participant-id="${participant.id}"]`)?.remove();
+        const card = createParticipantCard(participant, statusValue);
+        const remaining = row.querySelector('.event-participant-chip--remaining');
+        row.insertBefore(card, remaining);
+        updateGroupCount(target);
+    };
+    const updateConfirmedCount = (count) => {
+        if (!confirmedCountLabel) {
+            return;
+        }
+        const maximum = participantsSurface?.dataset.maxParticipants;
+        confirmedCountLabel.textContent = maximum ? `${count}/${maximum}` : String(count);
+        if (maximum) {
+            const remainingCard = group('confirmed')?.querySelector('.event-participant-chip--remaining:not(.event-participant-chip--unlimited)');
+            const remaining = Math.max(0, Number.parseInt(maximum, 10) - count);
+            if (remainingCard && remaining === 0) {
+                remainingCard.remove();
+            } else if (remainingCard) {
+                const ending = remaining % 10 === 1 && remaining % 100 !== 11
+                    ? 'место'
+                    : ([2, 3, 4].includes(remaining % 10) && ![12, 13, 14].includes(remaining % 100) ? 'места' : 'мест');
+                const label = remainingCard.querySelector('strong');
+                if (label) {
+                    label.textContent = `Ещё ${remaining} ${ending}`;
+                }
+            }
+        }
+    };
 
     const setControlState = (state) => {
         control.hidden = state === 'hidden';
@@ -863,7 +1038,7 @@ function initEventParticipantManagement(miniGames) {
         hideMessage();
         status.hidden = true;
         submitButton.disabled = true;
-        miniGames?.setLoading(true);
+        setParticipantsLoading(true);
 
         try {
             const response = await fetch(form.action, {
@@ -880,14 +1055,59 @@ function initEventParticipantManagement(miniGames) {
                 throw new Error(payload.message || 'Не удалось добавить участника.');
             }
 
-            miniGames?.addParticipant(payload.participant);
-            showStatus(payload.message || 'Участник добавлен в мероприятие.');
+            insertParticipant(payload.participant, 'tentative');
+            updateConfirmedCount(payload.confirmed_count);
+            showStatus(payload.message || 'Пользователь добавлен в список «Думают».');
             reset();
         } catch (error) {
             showMessage(error?.message || 'Не удалось добавить участника.');
             submitButton.disabled = userId.value === '';
         } finally {
-            miniGames?.setLoading(false);
+            setParticipantsLoading(false);
+        }
+    });
+
+    participantsSurface?.addEventListener('submit', async (event) => {
+        const statusForm = event.target instanceof Element
+            ? event.target.closest('[data-event-participant-status-form]')
+            : null;
+        if (!(statusForm instanceof HTMLFormElement)) {
+            return;
+        }
+        event.preventDefault();
+        if (!window.confirm(`Вы уверены, что хотите установить статус «${statusForm.dataset.targetLabel}»?`)) {
+            return;
+        }
+
+        setParticipantsLoading(true);
+        try {
+            const response = await fetch(statusForm.action, {
+                method: 'POST',
+                body: new FormData(statusForm),
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.message || 'Не удалось подтвердить участие.');
+            }
+            const wasConfirmed = Boolean(group('confirmed')?.querySelector(`[data-event-participant-id="${payload.participant.id}"]`));
+            ['confirmed', 'tentative', 'left', 'reconfirmation'].forEach((statusValue) => {
+                const sourceGroup = group(statusValue);
+                sourceGroup?.querySelector(`[data-event-participant-id="${payload.participant.id}"]`)?.remove();
+                updateGroupCount(sourceGroup);
+            });
+            insertParticipant(payload.participant, payload.participant.status);
+            updateConfirmedCount(payload.confirmed_count);
+            if (payload.participant.status === 'confirmed' && !wasConfirmed) {
+                miniGames?.addParticipant(payload.participant);
+            } else if (payload.participant.status !== 'confirmed' && wasConfirmed) {
+                miniGames?.removeParticipant(payload.participant);
+            }
+            showStatus(payload.message || 'Статус пользователя обновлён.');
+        } catch (error) {
+            showMessage(error?.message || 'Не удалось подтвердить участие.');
+        } finally {
+            setParticipantsLoading(false);
         }
     });
 }

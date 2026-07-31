@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
@@ -24,7 +25,7 @@ final class CancelEventHandler
             // Соблюдаем общий порядок блокировок бронирования: venue -> event -> booking.
             Venue::query()->whereKey($reference->venue_id)->lockForUpdate()->firstOrFail();
             $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
-            $this->access->assertCanManage($event, $actor);
+            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::CANCEL_EVENT);
 
             if ($event->status === EventStatusEnum::CANCELLED) {
                 return $event;

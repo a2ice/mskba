@@ -33,6 +33,8 @@ final class DeclineEventHandler
                 throw new InvalidArgumentException('Организатор не может отказаться от собственного мероприятия.');
             }
 
+            $participant?->responsibilityPermissions()->delete();
+
             $event->participants()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -45,6 +47,8 @@ final class DeclineEventHandler
                     'responsibility_requested_by_user_id' => null,
                     'responsibility_requested_at' => null,
                     'responsibility_responded_at' => null,
+                    'status_changed_by_actor_id' => null,
+                    'status_changed_at' => null,
                 ],
             );
 

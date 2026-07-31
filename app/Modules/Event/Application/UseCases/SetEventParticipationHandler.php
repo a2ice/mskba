@@ -51,6 +51,10 @@ final class SetEventParticipationHandler
                 }
             }
 
+            if ($status !== EventParticipantStatusEnum::CONFIRMED) {
+                $participant?->responsibilityPermissions()->delete();
+            }
+
             $event->participants()->updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -59,6 +63,8 @@ final class SetEventParticipationHandler
                     'joined_at' => $status === EventParticipantStatusEnum::CONFIRMED ? now() : null,
                     'left_at' => $status === EventParticipantStatusEnum::LEFT ? now() : null,
                     'confirmation_version' => $event->participation_confirmation_version,
+                    'status_changed_by_actor_id' => null,
+                    'status_changed_at' => null,
                     ...($status === EventParticipantStatusEnum::CONFIRMED ? [] : [
                         'responsibility_status' => null,
                         'responsibility_requested_by_user_id' => null,

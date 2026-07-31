@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\Services;
 
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -41,7 +42,7 @@ final class EventResultGalleryManager
         try {
             return DB::transaction(function () use ($event, $actor, $disk, $path, $image): Media {
                 $lockedEvent = Event::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
-                $this->access->assertCanManage($lockedEvent, $actor);
+                $this->access->assertAllows($lockedEvent, $actor, EventResponsibilityPermissionEnum::MANAGE_RESULT);
 
                 if ($lockedEvent->status !== EventStatusEnum::COMPLETED) {
                     throw new InvalidArgumentException('Фотографии результата можно добавить после завершения мероприятия.');
@@ -73,7 +74,7 @@ final class EventResultGalleryManager
     {
         DB::transaction(function () use ($event, $actor, $mediaId): void {
             $lockedEvent = Event::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
-            $this->access->assertCanManage($lockedEvent, $actor);
+            $this->access->assertAllows($lockedEvent, $actor, EventResponsibilityPermissionEnum::MANAGE_RESULT);
             $photo = $lockedEvent->media()
                 ->where('collection', self::COLLECTION)
                 ->lockForUpdate()

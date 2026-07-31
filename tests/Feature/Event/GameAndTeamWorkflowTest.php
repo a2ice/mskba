@@ -5,6 +5,7 @@ namespace Tests\Feature\Event;
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
@@ -479,6 +480,130 @@ final class GameAndTeamWorkflowTest extends TestCase
                 'error',
                 'Ответственных назначают на основном мероприятии, а не на отдельной мини-игре.',
             );
+    }
+
+    public function test_responsible_with_score_only_permission_cannot_manage_other_mini_game_data(): void
+    {
+        $organizer = User::factory()->create(['username' => 'permission-organizer']);
+        $responsible = User::factory()->create(['username' => 'scorekeeper']);
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(
+            route('events.store'),
+            $this->eventPayload($venue, $start, $end, EventTypeEnum::GAME_TRAINING),
+        )->assertRedirect();
+        $training = Event::query()->where('type', EventTypeEnum::GAME_TRAINING->value)->firstOrFail();
+        $this->actingAs($responsible)->post(route('events.join', $training->routeIdentifier()))->assertRedirect();
+        $participant = $training->participants()->where('user_id', $responsible->id)->firstOrFail();
+
+        $this->actingAs($organizer)->post(route('events.games.store', $training->routeIdentifier()), [
+            'title' => 'Игра со счётчиком',
+            'has_scheduled_time' => false,
+            'side_a_name' => 'A',
+            'side_b_name' => 'B',
+            'side_a_size' => 1,
+            'side_b_size' => 1,
+            'side_a_user_ids' => [$organizer->id],
+            'side_b_user_ids' => [$responsible->id],
+        ])->assertRedirect();
+        $miniGame = Event::query()->where('parent_event_id', $training->id)->firstOrFail();
+
+        $this->actingAs($organizer)->post(route('events.participants.responsibility.request', [
+            $training->routeIdentifier(),
+            $participant->id,
+        ]), [
+            'permissions_present' => 1,
+            'permissions' => [EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE->value],
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($responsible)->patch(route('events.participants.responsibility.respond', [
+            $training->routeIdentifier(),
+            $participant->id,
+        ]), ['decision' => EventResponsibilityStatusEnum::ACCEPTED->value])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('event_responsibility_permissions', [
+            'event_participant_id' => $participant->id,
+            'permission' => EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE->value,
+        ]);
+        $this->actingAs($responsible)->patch(route('events.game.score', $miniGame->routeIdentifier()), [
+            'scores' => ['A' => 7, 'B' => 5],
+        ])->assertSessionHas('status');
+        $this->actingAs($responsible)->put(route('events.game.update', $miniGame->routeIdentifier()), [])
+            ->assertForbidden();
+        $this->actingAs($responsible)->patch(route('events.game.statistics', $miniGame->routeIdentifier()), [
+            'scores' => ['A' => 7, 'B' => 5],
+        ])->assertForbidden();
+    }
+
+    public function test_organizer_updates_responsibility_permission_snapshot(): void
+    {
+        $organizer = User::factory()->create();
+        $responsible = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(
+            route('events.store'),
+            $this->eventPayload($venue, $start, $end, EventTypeEnum::TRAINING),
+        );
+        $event = Event::query()->where('type', EventTypeEnum::TRAINING->value)->firstOrFail();
+        $this->actingAs($responsible)->post(route('events.join', $event->routeIdentifier()));
+        $participant = $event->participants()->where('user_id', $responsible->id)->firstOrFail();
+        $this->actingAs($organizer)->post(route('events.participants.responsibility.request', [
+            $event->routeIdentifier(), $participant->id,
+        ]))->assertSessionHasNoErrors();
+
+        $this->actingAs($organizer)->put(route('events.participants.responsibility.permissions.update', [
+            $event->routeIdentifier(), $participant->id,
+        ]), ['permissions' => [EventResponsibilityPermissionEnum::UPDATE_EVENT->value]])
+            ->assertSessionHas('status')
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('event_responsibility_permissions', 1);
+        $this->assertDatabaseHas('event_responsibility_permissions', [
+            'event_participant_id' => $participant->id,
+            'permission' => EventResponsibilityPermissionEnum::UPDATE_EVENT->value,
+        ]);
+    }
+
+    public function test_responsible_cannot_delegate_permission_they_do_not_have(): void
+    {
+        $organizer = User::factory()->create();
+        $manager = User::factory()->create();
+        $candidate = User::factory()->create();
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($organizer)->post(
+            route('events.store'),
+            $this->eventPayload($venue, $start, $end, EventTypeEnum::TRAINING),
+        );
+        $event = Event::query()->where('type', EventTypeEnum::TRAINING->value)->firstOrFail();
+        foreach ([$manager, $candidate] as $user) {
+            $this->actingAs($user)->post(route('events.join', $event->routeIdentifier()));
+        }
+        $managerParticipant = $event->participants()->where('user_id', $manager->id)->firstOrFail();
+        $candidateParticipant = $event->participants()->where('user_id', $candidate->id)->firstOrFail();
+
+        $this->actingAs($organizer)->post(route('events.participants.responsibility.request', [
+            $event->routeIdentifier(), $managerParticipant->id,
+        ]), [
+            'permissions_present' => 1,
+            'permissions' => [EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES->value],
+        ]);
+        $this->actingAs($manager)->patch(route('events.participants.responsibility.respond', [
+            $event->routeIdentifier(), $managerParticipant->id,
+        ]), ['decision' => EventResponsibilityStatusEnum::ACCEPTED->value]);
+
+        $this->actingAs($manager)->post(route('events.participants.responsibility.request', [
+            $event->routeIdentifier(), $candidateParticipant->id,
+        ]), [
+            'permissions_present' => 1,
+            'permissions' => [
+                EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES->value,
+                EventResponsibilityPermissionEnum::CANCEL_EVENT->value,
+            ],
+        ])->assertSessionHas('error', 'Нельзя выдать права, которыми вы не обладаете.');
+
+        $this->assertNull($candidateParticipant->refresh()->responsibility_status);
+        $this->assertDatabaseMissing('event_responsibility_permissions', [
+            'event_participant_id' => $candidateParticipant->id,
+        ]);
     }
 
     public function test_mini_game_can_be_created_without_time_and_rejects_format_larger_than_available_roster(): void

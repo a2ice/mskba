@@ -51,6 +51,9 @@ final class RespondEventResponsibilityHandler
                 'responsibility_status' => $decision,
                 'responsibility_responded_at' => now(),
             ])->save();
+            if ($decision === EventResponsibilityStatusEnum::DECLINED) {
+                $participant->responsibilityPermissions()->delete();
+            }
 
             return $event;
         });

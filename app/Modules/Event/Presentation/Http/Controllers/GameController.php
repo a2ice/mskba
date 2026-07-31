@@ -8,6 +8,7 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
 use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
+use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
@@ -36,6 +37,8 @@ final class GameController extends Controller
         return ThemeResolver::page('events.game', [
             'event' => $this->loadGame($game),
             'statisticsFields' => $statisticsFields->all(),
+            'effectivePermissions' => collect($access->effectivePermissions($game, $actor))
+                ->map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value),
         ]);
     }
 
@@ -47,7 +50,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse {
-        [$parent, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
+        [$parent, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::CREATE_MINI_GAME);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'has_scheduled_time' => ['nullable', 'boolean'],
@@ -93,7 +96,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse {
-        [$game] = $this->managedEvent($request, $event, $events, $actors, $access);
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
         $data = $request->validate([
             'side_a_user_ids' => ['required', 'array', 'min:1'],
             'side_a_user_ids.*' => ['integer'],
@@ -102,7 +105,7 @@ final class GameController extends Controller
         ]);
 
         return $this->perform(
-            fn () => $games->replaceRoster($game, $data['side_a_user_ids'] ?? [], $data['side_b_user_ids'] ?? []),
+            fn () => $games->replaceRoster($game, $actor, $data['side_a_user_ids'] ?? [], $data['side_b_user_ids'] ?? []),
             'Состав игры сохранён.',
         );
     }
@@ -115,7 +118,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse {
-        [$game] = $this->managedEvent($request, $event, $events, $actors, $access);
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'has_scheduled_time' => ['nullable', 'boolean'],
@@ -130,6 +133,7 @@ final class GameController extends Controller
         return $this->perform(
             fn () => $games->updateMiniGame(
                 $game,
+                $actor,
                 $data['title'],
                 ($data['has_scheduled_time'] ?? false) ? ($data['starts_at'] ?? null) : null,
                 ($data['has_scheduled_time'] ?? false) ? ($data['ends_at'] ?? null) : null,
@@ -150,11 +154,11 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse {
-        [$game] = $this->managedEvent($request, $event, $events, $actors, $access);
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
         $parentIdentifier = $game->parentEvent?->routeIdentifier();
 
         try {
-            $games->deleteMiniGame($game);
+            $games->deleteMiniGame($game, $actor);
         } catch (InvalidArgumentException $exception) {
             return back()->with('error', $exception->getMessage());
         }
@@ -171,7 +175,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
         $data = $this->validatedStatistics($request);
 
         try {
@@ -193,6 +197,36 @@ final class GameController extends Controller
         return $this->statisticsJson($game, $message);
     }
 
+    public function score(
+        Request $request,
+        string $event,
+        ShowEventHandler $events,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+        GameManagementService $games,
+    ): RedirectResponse|JsonResponse {
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
+        $data = $request->validate([
+            'scores' => ['required', 'array'],
+            'scores.A' => ['required', 'integer', 'min:0', 'max:999'],
+            'scores.B' => ['required', 'integer', 'min:0', 'max:999'],
+        ]);
+
+        try {
+            $games->saveScore($game, $actor, $data['scores']);
+        } catch (InvalidArgumentException $exception) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $exception->getMessage()], 422)
+                : back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        if (! $request->expectsJson()) {
+            return back()->with('status', 'Счёт сохранён.');
+        }
+
+        return $this->statisticsJson($game, 'Счёт сохранён.');
+    }
+
     public function completeStatistics(
         Request $request,
         string $event,
@@ -201,7 +235,8 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+        $access->assertAllows($game, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
         $data = $this->validatedStatistics($request);
 
         try {
@@ -235,7 +270,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access);
+        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
 
         return $this->perform(
             fn () => $games->confirmStatistics($game, $actor),
@@ -250,11 +285,14 @@ final class GameController extends Controller
         ShowEventHandler $events,
         CurrentActorResolver $actors,
         EventManagementAccess $access,
+        ?EventResponsibilityPermissionEnum $permission = null,
     ): array {
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         $event = $events->handle($identifier, $actor);
-        abort_unless($access->canManage($event, $actor), 403);
+        abort_unless($permission === null
+            ? $access->canManage($event, $actor)
+            : $access->allows($event, $actor, $permission), 403);
 
         return [$event, $actor];
     }

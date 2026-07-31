@@ -983,14 +983,29 @@ final class EventWorkflowTest extends TestCase
             ->post(route('events.participants.manage.store', $event->routeIdentifier()), [
                 'user_id' => $visibleUser->id,
             ])
-            ->assertSessionHas('status', 'Участник добавлен в мероприятие.');
+            ->assertSessionHas('status', 'Пользователь добавлен в список «Думают».');
 
         $this->assertDatabaseHas('event_participants', [
             'event_id' => $event->id,
             'user_id' => $visibleUser->id,
             'role' => EventParticipantRoleEnum::PARTICIPANT->value,
-            'status' => EventParticipantStatusEnum::CONFIRMED->value,
+            'status' => EventParticipantStatusEnum::TENTATIVE->value,
         ]);
+        $participant = $event->participants()->where('user_id', $visibleUser->id)->firstOrFail();
+        $this->actingAs($organizer)
+            ->patch(route('events.participants.manage.status', [$event->routeIdentifier(), $participant->id]), [
+                'status' => EventParticipantStatusEnum::CONFIRMED->value,
+            ])
+            ->assertSessionHas('status', 'Пользователь отмечен как участник.');
+        $this->assertSame(EventParticipantStatusEnum::CONFIRMED, $participant->refresh()->status);
+        $this->actingAs($organizer)->patchJson(
+            route('events.participants.manage.status', [$event->routeIdentifier(), $participant->id]),
+            ['status' => EventParticipantStatusEnum::LEFT->value],
+        )->assertOk()->assertJsonPath('participant.status', EventParticipantStatusEnum::LEFT->value);
+        $this->actingAs($organizer)->patchJson(
+            route('events.participants.manage.status', [$event->routeIdentifier(), $participant->id]),
+            ['status' => EventParticipantStatusEnum::TENTATIVE->value],
+        )->assertOk()->assertJsonPath('participant.status', EventParticipantStatusEnum::TENTATIVE->value);
 
         $this->actingAs($organizer)
             ->post(route('events.participants.manage.store', $event->routeIdentifier()), [
@@ -1030,7 +1045,17 @@ final class EventWorkflowTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('participant.user_id', $participant->id)
-            ->assertJsonPath('participant.name', 'retrospective-player');
+            ->assertJsonPath('participant.name', 'retrospective-player')
+            ->assertJsonPath('participant.status', EventParticipantStatusEnum::TENTATIVE->value);
+
+        $managedParticipant = $event->participants()->where('user_id', $participant->id)->firstOrFail();
+        $this->actingAs($organizer)
+            ->patchJson(route('events.participants.manage.status', [$event->routeIdentifier(), $managedParticipant->id]), [
+                'status' => EventParticipantStatusEnum::CONFIRMED->value,
+            ])
+            ->assertOk()
+            ->assertJsonPath('participant.status', EventParticipantStatusEnum::CONFIRMED->value)
+            ->assertJsonPath('confirmed_count', 2);
 
         $this->assertDatabaseHas('event_participants', [
             'event_id' => $event->id,
@@ -1062,6 +1087,9 @@ final class EventWorkflowTest extends TestCase
             ->keyBy('user_id');
 
         foreach ($participants as $participant) {
+            $this->actingAs($organizer)->patch(route('events.participants.manage.status', [
+                $event->routeIdentifier(), $participant->id,
+            ]), ['status' => EventParticipantStatusEnum::CONFIRMED->value]);
             $this->actingAs($organizer)
                 ->post(route('events.participants.responsibility.request', [
                     $event->routeIdentifier(),
