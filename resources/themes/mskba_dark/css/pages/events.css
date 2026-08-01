@@ -190,11 +190,22 @@
 }
 
 .event-photo-tag__statistics-values {
-    display: block;
+    display: grid;
     margin-top: 3px;
     font-size: 9px;
     line-height: 1.2;
-    white-space: pre-line;
+}
+
+.event-photo-tag__statistics-row {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+}
+
+.event-photo-tag__statistics-row strong {
+    color: var(--accent-text);
+    font: inherit;
+    font-weight: 800;
 }
 
 .event-photo-tag__details-link {

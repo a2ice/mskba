@@ -190,11 +190,20 @@ function initVenueGalleryModal() {
                 if (tag.statistics) {
                     const statistics = document.createElement('span');
                     statistics.className = 'event-photo-tag__statistics-values';
-                    statistics.textContent = [
-                        `Броски: ${tag.statistics.shots_made}/${tag.statistics.shots_attempted}`,
-                        `Подборы: ${tag.statistics.rebounds}`,
-                        `Передачи: ${tag.statistics.assists}`,
-                    ].join('\n');
+                    [
+                        ['Броски:', `${tag.statistics.shots_made}/${tag.statistics.shots_attempted}`],
+                        ['Подборы:', tag.statistics.rebounds],
+                        ['Передачи:', tag.statistics.assists],
+                    ].forEach(([label, value]) => {
+                        const row = document.createElement('span');
+                        row.className = 'event-photo-tag__statistics-row';
+                        const labelElement = document.createElement('span');
+                        labelElement.textContent = label;
+                        const valueElement = document.createElement('strong');
+                        valueElement.textContent = String(value);
+                        row.append(labelElement, valueElement);
+                        statistics.append(row);
+                    });
                     statisticsPanel.append(statistics);
                 }
 
