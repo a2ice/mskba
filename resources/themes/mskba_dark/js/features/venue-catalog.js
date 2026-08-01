@@ -1,8 +1,8 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
 
-const MOSCOW_REGION_BOUNDS = [
-    [54.20, 35.10],
-    [57.05, 40.35],
+const MOSCOW_METRO_AREA_BOUNDS = [
+    [55.25, 36.75],
+    [56.05, 38.25],
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -64,7 +64,7 @@ function initCatalogMap(catalog, getPromise, setPromise) {
 
     const promise = loadYandexMaps(apiKey).then(() => new Promise((resolve) => window.ymaps.ready(resolve))).then(() => {
         const map = new window.ymaps.Map(canvas, {
-            bounds: MOSCOW_REGION_BOUNDS,
+            bounds: MOSCOW_METRO_AREA_BOUNDS,
             controls: ['zoomControl', 'fullscreenControl', 'geolocationControl'],
         });
         points.forEach((point) => {
@@ -75,7 +75,7 @@ function initCatalogMap(catalog, getPromise, setPromise) {
                 balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>`,
             }, { preset: 'islands#orangeSportIcon' }));
         });
-        map.setBounds(MOSCOW_REGION_BOUNDS, { checkZoomRange: true, zoomMargin: 24 });
+        map.setBounds(MOSCOW_METRO_AREA_BOUNDS, { checkZoomRange: true, zoomMargin: 18 });
         if (status) status.hidden = true;
         window.setTimeout(() => map.container.fitToViewport(), 0);
     }).catch(() => { if (status) status.textContent = 'Не удалось загрузить карту.'; });
