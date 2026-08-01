@@ -1570,7 +1570,7 @@
     .venues-catalog__header { margin-bottom: 14px; }
     .venues-catalog__header h1 { font-size: 24px; line-height: 1.1; }
     .venues-catalog__back { display: inline-flex; font-size: 11px; }
-    .venues-catalog-toolbar { flex-wrap: wrap; justify-content: center; gap: 8px; padding: 10px; border-radius: 18px 18px 0 0; }
+    .venues-catalog-toolbar { flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px; border-radius: 18px 18px 0 0; }
     .venues-catalog-toolbar.is-filters-collapsed { border-radius: 18px; }
     .venues-catalog-view { order: 2; flex: 1 0 100%; margin: 0; }
     .venues-catalog-view button { flex: 1 1 0; justify-content: center; }

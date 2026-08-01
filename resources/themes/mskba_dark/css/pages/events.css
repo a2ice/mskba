@@ -2345,7 +2345,7 @@ body.telegram-mini-app .event-show {
     .events-catalog__header h1 { font-size: 24px; line-height: 1.1; }
     .events-catalog__back { display: inline-flex; font-size: 11px; }
     .events-catalog-filters { max-height: calc(100dvh - var(--site-header-height, 76px) - 86px); padding: 14px; overflow-y: auto; border-radius: 0 0 18px 18px; }
-    .events-catalog-filters__toolbar { justify-content: center; gap: 8px; padding: 10px 14px; border-radius: 18px 18px 0 0; }
+    .events-catalog-filters__toolbar { justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 18px 18px 0 0; }
     .events-catalog-filters__toolbar.is-filters-collapsed { border-radius: 18px; }
     .events-catalog-filters__toolbar .btn { min-height: 44px; padding-inline: 13px; }
     .events-filter-chip { flex: 1 1 auto; min-height: 44px; padding: 0 12px; }
