@@ -139,6 +139,7 @@
 
 .event-photo-tag.event-photo-tag--hero {
     width: auto;
+    height: auto;
     max-width: min(120px, 46%);
     aspect-ratio: auto;
     overflow: hidden;
@@ -154,6 +155,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     pointer-events: none;
+    transition: opacity .16s ease;
 }
 
 .event-photo-tag--hero[hidden] {
