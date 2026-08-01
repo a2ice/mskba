@@ -853,6 +853,7 @@
                                     <div data-venue-gallery-tags></div>
                                 </div>
                                 <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--next" data-venue-gallery-next aria-label="Следующее фото"><i class="ti ti-chevron-right"></i></button>
+                                <div class="event-result-gallery-modal__pagination" data-venue-gallery-pagination aria-label="Выбор фотографии"></div>
                                 <div class="venue-gallery-modal__caption event-result-gallery-modal__caption" data-venue-gallery-caption>
                                     <button type="button" class="event-result-gallery-modal__caption-toggle" data-venue-gallery-caption-toggle aria-expanded="true" aria-label="Свернуть информацию о фотографии">
                                         <i class="ti ti-chevron-down" data-venue-gallery-caption-toggle-icon aria-hidden="true"></i>

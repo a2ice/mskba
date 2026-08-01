@@ -127,6 +127,7 @@ function initVenueGalleryModal() {
     const closeButtons = Array.from(modal.querySelectorAll('[data-venue-gallery-close]'));
     const prevButton = modal.querySelector('[data-venue-gallery-prev]');
     const nextButton = modal.querySelector('[data-venue-gallery-next]');
+    const pagination = modal.querySelector('[data-venue-gallery-pagination]');
     let currentIndex = 0;
 
     if (items.length < 2) {
@@ -134,9 +135,24 @@ function initVenueGalleryModal() {
         nextButton?.setAttribute('hidden', '');
     }
 
+    if (pagination) {
+        pagination.toggleAttribute('hidden', items.length < 2);
+        items.forEach((item, index) => {
+            const bullet = document.createElement('button');
+            bullet.type = 'button';
+            bullet.setAttribute('aria-label', `Открыть фотографию ${index + 1}`);
+            bullet.addEventListener('click', () => show(index));
+            pagination.append(bullet);
+        });
+    }
+
     const show = (index) => {
         currentIndex = (index + items.length) % items.length;
         const item = items[currentIndex];
+
+        pagination?.querySelectorAll('button').forEach((bullet, bulletIndex) => {
+            bullet.setAttribute('aria-current', String(bulletIndex === currentIndex));
+        });
 
         image.src = item.dataset.url || '';
         image.alt = item.dataset.title || '';
@@ -166,6 +182,7 @@ function initVenueGalleryModal() {
                 const demoStatistics = document.createElement('span');
                 demoStatistics.className = 'event-photo-tag__statistics';
                 demoStatistics.textContent = [
+                    tag.name,
                     `Броски: ${tagIndex + 2}/${tagIndex + 5}`,
                     `Подборы: ${tagIndex + 3}`,
                     `Передачи: ${tagIndex + 1}`,
