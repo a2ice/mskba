@@ -128,7 +128,7 @@
     transform: translate(-50%, -50%);
     opacity: 0;
     pointer-events: none;
-    transition: width .22s ease, height .22s ease, opacity .16s ease, background-color .22s ease;
+    transition: top .22s ease, left .22s ease, width .22s ease, height .22s ease, opacity .16s ease, background-color .22s ease;
 }
 
 .event-photo-tag.is-visible,
@@ -225,8 +225,10 @@
 .venue-gallery-modal__photo .event-photo-tag:hover,
 .venue-gallery-modal__photo .event-photo-tag:focus-visible,
 .venue-gallery-modal__photo .event-photo-tag.is-statistics-visible {
-    width: clamp(150px, 16vw, 180px);
-    height: 112px;
+    top: clamp(48px, var(--tag-y), calc(100% - 48px));
+    left: clamp(72px, var(--tag-x), calc(100% - 72px));
+    width: clamp(122px, 12vw, 136px);
+    height: 88px;
     background: rgba(0, 0, 0, .5);
 }
 
