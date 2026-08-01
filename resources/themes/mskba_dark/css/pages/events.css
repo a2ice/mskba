@@ -159,6 +159,20 @@
     display: none;
 }
 
+.event-photo-tag__statistics {
+    position: absolute;
+    inset: auto 2px 2px;
+    padding: 3px;
+    color: #fff;
+    background: rgba(0, 0, 0, .68);
+    font-size: clamp(6px, .65vw, 8px);
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: left;
+    white-space: pre-line;
+    pointer-events: none;
+}
+
 .event-hero__slide img {
     width: 100%;
     height: 100%;
@@ -1128,6 +1142,93 @@
     background: #080908;
 }
 
+.event-result-gallery-modal__dialog {
+    display: block;
+    height: min(74vh, 720px);
+}
+
+.event-result-gallery-modal__dialog .venue-gallery-modal__photo {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+}
+
+.event-result-gallery-modal__dialog .venue-gallery-modal__photo > img {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    object-fit: contain;
+}
+
+.event-result-gallery-modal__dialog .venue-gallery-modal__photo .event-photo-tag {
+    width: clamp(112px, 15vw, 160px);
+}
+
+.event-result-gallery-modal__caption {
+    position: absolute;
+    z-index: 4;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    max-height: 42%;
+    padding: 5px 10px;
+    color: #fff;
+    background: rgba(0, 0, 0, .75);
+    transform: translateY(0);
+    transition: transform .2s ease;
+    will-change: transform;
+}
+
+.event-result-gallery-modal__caption[hidden] {
+    display: none;
+}
+
+.event-result-gallery-modal__caption.is-collapsed {
+    transform: translateY(calc(100% - 10px));
+}
+
+.event-result-gallery-modal__caption-content {
+    display: grid;
+    max-height: 26vh;
+    overflow-y: auto;
+    gap: 4px;
+    padding-right: 30px;
+    scrollbar-width: thin;
+}
+
+.event-result-gallery-modal__caption [data-venue-gallery-description] {
+    margin: 0;
+    color: rgba(255, 255, 255, .86);
+    font-size: 9px;
+    line-height: 1.35;
+}
+
+.event-result-gallery-modal__caption-toggle {
+    position: absolute;
+    top: -15px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(0, 0, 0, .82);
+    font-size: 14px;
+}
+
+.event-result-gallery-modal__caption-toggle:hover,
+.event-result-gallery-modal__caption-toggle:focus-visible {
+    border-color: var(--accent-text);
+    color: var(--accent-text);
+    outline: none;
+}
+
 .event-result-photo-editor__image {
     width: 100%;
     max-width: 100%;
@@ -1174,12 +1275,12 @@
 }
 
 .event-photo-tag-links button {
-    padding: 3px 0;
+    padding: 2px 0;
     border: 0;
     border-bottom: 1px dotted rgba(255, 255, 255, .5);
     color: #fff;
     background: transparent;
-    font: inherit;
+    font-size: 10px;
     font-weight: 650;
 }
 
@@ -1281,6 +1382,14 @@ body.telegram-mini-app .event-show {
 @media (max-width: 768px) {
     .event-photo-tag {
         width: clamp(54px, 18vw, 76px);
+    }
+
+    .event-result-gallery-modal__dialog {
+        height: min(66dvh, 580px);
+    }
+
+    .event-result-gallery-modal__dialog .venue-gallery-modal__photo .event-photo-tag {
+        width: clamp(94px, 28vw, 122px);
     }
     .event-result-gallery .venue-gallery-editor__items {
         grid-template-columns: 1fr;

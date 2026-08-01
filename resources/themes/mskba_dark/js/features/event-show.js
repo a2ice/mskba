@@ -47,7 +47,6 @@ function initEventResultPhotoEditors() {
                 button.className = 'event-photo-tag is-visible';
                 button.style.setProperty('--tag-x', `${tag.x}%`);
                 button.style.setProperty('--tag-y', `${tag.y}%`);
-                button.title = `Удалить отметку: ${tag.name}`;
                 button.setAttribute('aria-label', `Удалить отметку участника ${tag.name}`);
                 button.addEventListener('click', (event) => {
                     event.stopPropagation();

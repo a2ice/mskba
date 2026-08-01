@@ -845,7 +845,7 @@
                         </div>
                         <div class="venue-gallery-modal" data-venue-gallery-modal hidden>
                             <div class="venue-gallery-modal__backdrop" data-venue-gallery-close></div>
-                            <section class="venue-gallery-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="event-gallery-modal-title">
+                            <section class="venue-gallery-modal__dialog event-result-gallery-modal__dialog" role="dialog" aria-modal="true" aria-label="Фотографии с мероприятия">
                                 <button type="button" class="venue-gallery-modal__close" data-venue-gallery-close aria-label="Закрыть"><i class="ti ti-x"></i></button>
                                 <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--prev" data-venue-gallery-prev aria-label="Предыдущее фото"><i class="ti ti-chevron-left"></i></button>
                                 <div class="venue-gallery-modal__photo" data-photo-tags-surface>
@@ -853,10 +853,14 @@
                                     <div data-venue-gallery-tags></div>
                                 </div>
                                 <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--next" data-venue-gallery-next aria-label="Следующее фото"><i class="ti ti-chevron-right"></i></button>
-                                <div class="venue-gallery-modal__caption">
-                                    <h3 id="event-gallery-modal-title" data-venue-gallery-title></h3>
-                                    <p data-venue-gallery-description></p>
-                                    <div class="event-photo-tag-links" data-venue-gallery-tag-links aria-label="Отмеченные участники"></div>
+                                <div class="venue-gallery-modal__caption event-result-gallery-modal__caption" data-venue-gallery-caption>
+                                    <button type="button" class="event-result-gallery-modal__caption-toggle" data-venue-gallery-caption-toggle aria-expanded="true" aria-label="Свернуть информацию о фотографии">
+                                        <i class="ti ti-chevron-down" data-venue-gallery-caption-toggle-icon aria-hidden="true"></i>
+                                    </button>
+                                    <div class="event-result-gallery-modal__caption-content">
+                                        <p data-venue-gallery-description></p>
+                                        <div class="event-photo-tag-links" data-venue-gallery-tag-links aria-label="Отмеченные участники"></div>
+                                    </div>
                                 </div>
                             </section>
                         </div>

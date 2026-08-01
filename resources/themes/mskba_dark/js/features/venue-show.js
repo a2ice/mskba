@@ -121,6 +121,9 @@ function initVenueGalleryModal() {
     const description = modal.querySelector('[data-venue-gallery-description]');
     const tags = modal.querySelector('[data-venue-gallery-tags]');
     const tagLinks = modal.querySelector('[data-venue-gallery-tag-links]');
+    const caption = modal.querySelector('[data-venue-gallery-caption]');
+    const captionToggle = modal.querySelector('[data-venue-gallery-caption-toggle]');
+    const captionToggleIcon = modal.querySelector('[data-venue-gallery-caption-toggle-icon]');
     const closeButtons = Array.from(modal.querySelectorAll('[data-venue-gallery-close]'));
     const prevButton = modal.querySelector('[data-venue-gallery-prev]');
     const nextButton = modal.querySelector('[data-venue-gallery-next]');
@@ -137,13 +140,13 @@ function initVenueGalleryModal() {
 
         image.src = item.dataset.url || '';
         image.alt = item.dataset.title || '';
-        title.textContent = item.dataset.title || '';
+        if (title) title.textContent = item.dataset.title || '';
         description.textContent = item.dataset.description || '';
         description.hidden = !description.textContent;
+        let photoTags = [];
         if (tags) {
             tags.replaceChildren();
             tagLinks?.replaceChildren();
-            let photoTags = [];
             try {
                 photoTags = JSON.parse(item.dataset.tags || '[]');
             } catch {
@@ -155,8 +158,18 @@ function initVenueGalleryModal() {
                 marker.dataset.photoTagIndex = String(tagIndex);
                 marker.style.setProperty('--tag-x', `${tag.x}%`);
                 marker.style.setProperty('--tag-y', `${tag.y}%`);
-                marker.title = tag.name;
                 marker.setAttribute('aria-label', `Отмечен участник ${tag.name}`);
+
+                const demoStatistics = document.createElement('span');
+                demoStatistics.className = 'event-photo-tag__statistics';
+                demoStatistics.textContent = [
+                    `Броски: ${tagIndex + 2}/${tagIndex + 5}`,
+                    `Подборы: ${tagIndex + 3}`,
+                    `Передачи: ${tagIndex + 1}`,
+                    `Потери: ${tagIndex}`,
+                    `Фолы: ${tagIndex + 1}`,
+                ].join('\n');
+                marker.append(demoStatistics);
                 tags.append(marker);
 
                 if (tagLinks) {
@@ -176,6 +189,7 @@ function initVenueGalleryModal() {
             });
             tagLinks?.toggleAttribute('hidden', photoTags.length === 0);
         }
+        caption?.toggleAttribute('hidden', !description.textContent && photoTags.length === 0);
     };
 
     const open = (index) => {
@@ -200,6 +214,16 @@ function initVenueGalleryModal() {
 
     prevButton?.addEventListener('click', () => show(currentIndex - 1));
     nextButton?.addEventListener('click', () => show(currentIndex + 1));
+
+    captionToggle?.addEventListener('click', () => {
+        const collapsed = caption?.classList.toggle('is-collapsed') || false;
+        captionToggle.setAttribute('aria-expanded', String(!collapsed));
+        captionToggle.setAttribute('aria-label', collapsed
+            ? 'Развернуть информацию о фотографии'
+            : 'Свернуть информацию о фотографии');
+        captionToggleIcon?.classList.toggle('ti-chevron-down', !collapsed);
+        captionToggleIcon?.classList.toggle('ti-chevron-up', collapsed);
+    });
 
     document.addEventListener('keydown', (event) => {
         if (modal.hidden) {
