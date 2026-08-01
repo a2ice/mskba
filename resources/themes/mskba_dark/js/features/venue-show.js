@@ -159,6 +159,9 @@ function initVenueGalleryModal() {
                 marker.style.setProperty('--tag-x', `${tag.x}%`);
                 marker.style.setProperty('--tag-y', `${tag.y}%`);
                 marker.setAttribute('aria-label', `Отмечен участник ${tag.name}`);
+                marker.setAttribute('aria-expanded', 'false');
+                marker.setAttribute('role', 'button');
+                marker.tabIndex = 0;
 
                 const demoStatistics = document.createElement('span');
                 demoStatistics.className = 'event-photo-tag__statistics';
@@ -170,6 +173,19 @@ function initVenueGalleryModal() {
                     `Фолы: ${tagIndex + 1}`,
                 ].join('\n');
                 marker.append(demoStatistics);
+                const toggleStatistics = () => {
+                    const isVisible = marker.classList.toggle('is-statistics-visible');
+                    marker.setAttribute('aria-expanded', String(isVisible));
+                };
+                marker.addEventListener('click', toggleStatistics);
+                marker.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    toggleStatistics();
+                });
                 tags.append(marker);
 
                 if (tagLinks) {
@@ -179,7 +195,10 @@ function initVenueGalleryModal() {
                     link.setAttribute('aria-pressed', 'false');
                     link.addEventListener('click', () => {
                         const willShow = !marker.classList.contains('is-visible');
-                        tags.querySelectorAll('.event-photo-tag').forEach((item) => item.classList.remove('is-visible'));
+                        tags.querySelectorAll('.event-photo-tag').forEach((item) => {
+                            item.classList.remove('is-visible', 'is-statistics-visible');
+                            item.setAttribute('aria-expanded', 'false');
+                        });
                         tagLinks.querySelectorAll('button').forEach((item) => item.setAttribute('aria-pressed', 'false'));
                         marker.classList.toggle('is-visible', willShow);
                         link.setAttribute('aria-pressed', String(willShow));
