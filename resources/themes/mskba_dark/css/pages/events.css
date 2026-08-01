@@ -91,7 +91,7 @@
     position: absolute;
     inset: 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
@@ -119,7 +119,7 @@
     top: var(--tag-y);
     left: var(--tag-x);
     width: clamp(62px, 10vw, 112px);
-    aspect-ratio: 1.15 / 1;
+    height: clamp(54px, 8.7vw, 97px);
     padding: 0;
     border: 2px solid rgba(255, 255, 255, .96);
     border-radius: 2px;
@@ -128,7 +128,7 @@
     transform: translate(-50%, -50%);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .16s ease, background-color .16s ease;
+    transition: width .22s ease, height .22s ease, opacity .16s ease, background-color .22s ease;
 }
 
 .event-photo-tag.is-visible,
@@ -164,6 +164,7 @@
     position: absolute;
     inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
     justify-content: center;
     padding: 4px;
@@ -173,7 +174,7 @@
     text-align: left;
     opacity: 0;
     visibility: hidden;
-    transition: opacity .16s ease, visibility .16s ease;
+    transition: opacity .12s ease, visibility .12s ease;
 }
 
 .event-photo-tag__participant-name {
@@ -216,11 +217,14 @@
 .event-photo-tag.is-statistics-visible .event-photo-tag__statistics {
     opacity: 1;
     visibility: visible;
+    transition-delay: .2s;
 }
 
 .venue-gallery-modal__photo .event-photo-tag:hover,
 .venue-gallery-modal__photo .event-photo-tag:focus-visible,
 .venue-gallery-modal__photo .event-photo-tag.is-statistics-visible {
+    width: clamp(150px, 16vw, 180px);
+    height: 112px;
     background: rgba(0, 0, 0, .5);
 }
 
