@@ -181,8 +181,11 @@
 
 .event-photo-tag__participant-name {
     display: block;
+    width: 100%;
     max-width: 100%;
+    padding-bottom: 3px;
     overflow: hidden;
+    border-bottom: 1px solid var(--accent-text);
     font-size: 11px;
     line-height: 1.15;
     text-overflow: ellipsis;
@@ -240,7 +243,9 @@
     left: clamp(72px, var(--tag-x), calc(100% - 72px));
     width: clamp(122px, 12vw, 136px);
     height: 88px;
-    background: rgba(0, 0, 0, .5);
+    background:
+        radial-gradient(circle at 100% 100%, rgba(255, 102, 0, .28) 0, rgba(255, 102, 0, .08) 32%, transparent 62%),
+        rgba(0, 0, 0, .5);
 }
 
 .event-hero__slide img {
