@@ -523,7 +523,7 @@ final class GameManagementService
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
 
-            if ($lockedGame->starts_at->isFuture()) {
+            if ($detail->is_time_scheduled && $lockedGame->starts_at->isFuture()) {
                 throw new InvalidArgumentException('Завершить игру можно только после её начала.');
             }
 

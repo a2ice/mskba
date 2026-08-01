@@ -125,10 +125,10 @@ final class UpdateEventHandler
                     );
                 }
 
-                $minimumStartsAt = CarbonImmutable::now($timezone)->addMinutes(15)->ceilMinute();
+                $minimumStartsAt = CarbonImmutable::now($timezone)->subMinute()->startOfMinute();
 
                 if ($startsAt->lessThan($minimumStartsAt)) {
-                    throw new InvalidArgumentException('Начало должно быть не раньше чем через 15 минут.');
+                    throw new InvalidArgumentException('Начало не может быть раньше текущего времени.');
                 }
 
                 $this->availability->assertAvailable(

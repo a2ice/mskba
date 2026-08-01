@@ -114,8 +114,11 @@ final class VenueEventAvailability
             throw new InvalidArgumentException('Площадка временно закрыта.');
         }
 
-        if ($startsAt->lessThanOrEqualTo(now())) {
-            throw new InvalidArgumentException('Мероприятие должно начинаться в будущем.');
+        $minimumStartsAt = CarbonImmutable::now($startsAt->getTimezone())
+            ->subMinute()
+            ->startOfMinute();
+        if ($startsAt->lessThan($minimumStartsAt)) {
+            throw new InvalidArgumentException('Начало не может быть раньше текущего времени.');
         }
 
         if ($endsAt->lessThanOrEqualTo($startsAt)) {

@@ -129,8 +129,8 @@ final class EventController extends Controller
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : null;
         $defaultType = $selectedType ?? EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
-        $minimumStartsAt = $now->addMinutes(15)->ceilMinute();
-        $defaultStartsAt = $now->addMinutes(30)->ceilMinute();
+        $minimumStartsAt = $now->subMinute()->startOfMinute();
+        $defaultStartsAt = $now->ceilMinute();
 
         return ThemeResolver::page('events.create', [
             'venues' => $venues->handle(),

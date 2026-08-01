@@ -123,7 +123,7 @@ final class CreateEventRequest extends FormRequest
             }
 
             if ($startsAt->lessThan($this->minimumStartsAt())) {
-                $validator->errors()->add('starts_at', 'Начало должно быть не раньше чем через 15 минут.');
+                $validator->errors()->add('starts_at', 'Начало не может быть раньше текущего времени.');
             }
 
         });
@@ -132,7 +132,7 @@ final class CreateEventRequest extends FormRequest
     private function minimumStartsAt(): CarbonImmutable
     {
         return CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'))
-            ->addMinutes(15)
-            ->ceilMinute();
+            ->subMinute()
+            ->startOfMinute();
     }
 }

@@ -237,8 +237,8 @@ final class EventWorkflowTest extends TestCase
             ->assertDontSee('Без расписания площадка доступна круглосуточно.')
             ->assertSee('value="game_training" data-title-prefix="Игровая тренировка" selected', false)
             ->assertSee('Игровая тренировка - 20260722')
-            ->assertSee('value="2026-07-22T12:30"', false)
-            ->assertSee('min="2026-07-22T12:15"', false)
+            ->assertSee('value="2026-07-22T12:00"', false)
+            ->assertSee('min="2026-07-22T11:59"', false)
             ->assertSee('name="duration_minutes"', false)
             ->assertSee('value="60" selected', false)
             ->assertSee('1,5 часа')
@@ -279,13 +279,19 @@ final class EventWorkflowTest extends TestCase
             'requires_payment' => false,
             'requires_booking_approval' => false,
         ]);
-        $minimumStart = CarbonImmutable::parse('2026-07-22 12:15:00', 'Europe/Moscow');
+        $minimumStart = CarbonImmutable::parse('2026-07-22 11:59:00', 'Europe/Moscow');
+
+        $this->actingAs($user)
+            ->get(route('events.create'))
+            ->assertOk()
+            ->assertSee('value="2026-07-22T12:00"', false)
+            ->assertSee('min="2026-07-22T11:59"', false);
 
         $this->actingAs($user)
             ->from(route('events.create'))
             ->post(route('events.store'), $this->payload($venue, $minimumStart->subMinute(), $minimumStart->addHour()))
             ->assertRedirect(route('events.create'))
-            ->assertSessionHasErrors(['starts_at' => 'Начало должно быть не раньше чем через 15 минут.']);
+            ->assertSessionHasErrors(['starts_at' => 'Начало не может быть раньше текущего времени.']);
 
         $this->actingAs($user)
             ->from(route('events.create'))

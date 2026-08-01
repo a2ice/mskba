@@ -432,14 +432,8 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertSessionHas('error', 'Сначала завершите активные мини-игры, в которых уже есть счёт или статистика.');
         $this->assertSame(EventStatusEnum::PUBLISHED, $training->refresh()->status);
 
-        $training->forceFill([
-            'starts_at' => now()->subHour(),
-            'ends_at' => now()->addHour(),
-        ])->save();
-        $miniGame->forceFill([
-            'starts_at' => $training->starts_at,
-            'ends_at' => $training->ends_at,
-        ])->save();
+        $this->assertTrue($miniGame->starts_at->isFuture());
+        $this->assertFalse($miniGame->gameDetail->is_time_scheduled);
 
         $this->actingAs($responsible)
             ->patchJson(route('events.game.statistics.complete', $miniGame->routeIdentifier()), [
