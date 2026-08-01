@@ -39,4 +39,9 @@ return [
         'id' => env('YANDEX_METRIKA_ID'),
     ],
 
+    'social' => [
+        'telegram_url' => env('TELEGRAM_COMMUNITY_URL', 'https://t.me/mskbaofficial'),
+        'vk_url' => env('VK_COMMUNITY_URL', 'https://vk.ru/mskba_official'),
+    ],
+
 ];
