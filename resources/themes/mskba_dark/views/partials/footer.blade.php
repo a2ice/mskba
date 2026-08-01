@@ -19,6 +19,8 @@
                                 rel="noopener noreferrer"
                                 aria-label="Официальное сообщество MSKBA в Telegram"
                                 title="MSKBA в Telegram"
+                                data-tooltip-variant="title"
+                                data-tooltip-icon
                                 style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:1px solid rgba(255,255,255,.16);border-radius:50%;font-size:22px;transition:color 160ms ease,border-color 160ms ease,background-color 160ms ease;"
                             >
                                 <i class="ti ti-brand-telegram" aria-hidden="true"></i>
@@ -32,6 +34,8 @@
                                 rel="noopener noreferrer"
                                 aria-label="Официальное сообщество MSKBA во ВКонтакте"
                                 title="MSKBA во ВКонтакте"
+                                data-tooltip-variant="title"
+                                data-tooltip-icon
                                 style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:1px solid rgba(255,255,255,.16);border-radius:50%;font-size:22px;transition:color 160ms ease,border-color 160ms ease,background-color 160ms ease;"
                             >
                                 <i class="ti ti-brand-vk" aria-hidden="true"></i>
