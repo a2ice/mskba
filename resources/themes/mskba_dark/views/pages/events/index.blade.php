@@ -29,6 +29,9 @@
 
             <header class="events-catalog__header">
                 <h1>{{ $title }}</h1>
+                <button class="page-breadcrumbs__back events-catalog__back js-handler" type="button" data-handler="historyBack">
+                    <i class="ti ti-arrow-left" aria-hidden="true"></i><span>Назад</span>
+                </button>
             </header>
 
             <div class="events-catalog-filters__toolbar">
@@ -90,6 +93,12 @@
                                 default => 'Итог не указан',
                             };
                             $address = $event->venue->raw_address ?: $event->venue->location?->address?->full_address;
+                            $structuredShortAddress = implode(', ', array_filter([
+                                $event->venue->location?->address?->street,
+                                $event->venue->location?->address?->building,
+                            ]));
+                            $addressParts = array_values(array_filter(array_map('trim', explode(',', (string) $address))));
+                            $shortAddress = $structuredShortAddress ?: implode(', ', array_slice($addressParts, -2));
                             $latitude = $event->venue->location?->address?->latitude;
                             $longitude = $event->venue->location?->address?->longitude;
                         @endphp
@@ -100,10 +109,12 @@
                             <div class="event-catalog-card__content">
                                 <div class="event-catalog-card__badges"><span class="event-type-badge event-type-badge--{{ $event->type->value }}">{{ $event->type->label() }}</span>@if($isPast)<span class="event-type-badge is-muted">{{ $pastOutcome }}</span>@endif</div>
                                 <h2><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>
+                            </div>
+                            <div class="event-catalog-card__meta">
                                 @if($latitude !== null && $longitude !== null)
-                                    <button class="event-catalog-card__location js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="events-catalog-map" data-catalog-map-open data-latitude="{{ $latitude }}" data-longitude="{{ $longitude }}" data-title="{{ $event->venue->name }}" data-address="{{ $address }}"><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($address), {{ $address }}@endif</span></button>
+                                    <button class="event-catalog-card__location js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="events-catalog-map" data-catalog-map-open data-latitude="{{ $latitude }}" data-longitude="{{ $longitude }}" data-title="{{ $event->venue->name }}" data-address="{{ $address }}"><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($shortAddress), {{ $shortAddress }}@endif</span></button>
                                 @else
-                                    <p><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($address), {{ $address }}@endif</span></p>
+                                    <p><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($shortAddress), {{ $shortAddress }}@endif</span></p>
                                 @endif
                                 <p><i class="ti ti-clock"></i><span>{{ $startsAt->format('d.m.Y · H:i') }}–{{ $endsAt->format('H:i') }}</span></p>
                                 <p><i class="ti ti-users"></i><span>{{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : ' / ∞' }} участников</span></p>
