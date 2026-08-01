@@ -194,8 +194,6 @@ function initVenueGalleryModal() {
                         `Броски: ${tag.statistics.shots_made}/${tag.statistics.shots_attempted}`,
                         `Подборы: ${tag.statistics.rebounds}`,
                         `Передачи: ${tag.statistics.assists}`,
-                        `Потери: ${tag.statistics.turnovers}`,
-                        `Фолы: ${tag.statistics.fouls}`,
                     ].join('\n');
                     statisticsPanel.append(statistics);
                 }

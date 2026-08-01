@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Domain\Models;
 
+use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -64,11 +65,14 @@ class GamePlayerStatistic extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function points(): int
+    public function points(GameScoringTypeEnum $scoringType = GameScoringTypeEnum::STREETBALL): int
     {
-        return ($this->close_made * 2)
-            + ($this->mid_made * 2)
-            + ($this->three_made * 3)
+        $regularShotPoints = $scoringType === GameScoringTypeEnum::STREETBALL ? 1 : 2;
+        $longShotPoints = $scoringType === GameScoringTypeEnum::STREETBALL ? 2 : 3;
+
+        return ($this->close_made * $regularShotPoints)
+            + ($this->mid_made * $regularShotPoints)
+            + ($this->three_made * $longShotPoints)
             + $this->free_throw_made;
     }
 

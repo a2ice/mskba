@@ -4,6 +4,7 @@ namespace App\Modules\Event\Presentation\Http\Requests;
 
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -68,6 +69,10 @@ final class CreateEventRequest extends FormRequest
                 'integer',
                 'min:1',
                 'max:7',
+            ],
+            'scoring_type' => [
+                'nullable',
+                'enum:'.GameScoringTypeEnum::class,
             ],
             'participant_user_ids' => ['nullable', 'array', 'max:499'],
             'participant_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],

@@ -9,6 +9,7 @@ use App\Modules\Event\Application\Services\GameManagementService;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -51,6 +52,7 @@ final class GameController extends Controller
             'side_b_name' => ['nullable', 'string', 'max:80', 'different:side_a_name'],
             'side_a_size' => ['required', 'integer', 'min:1', 'max:6'],
             'side_b_size' => ['required', 'integer', 'min:1', 'max:5'],
+            'scoring_type' => ['nullable', 'enum:'.GameScoringTypeEnum::class],
             'side_a_user_ids' => ['required', 'array', 'min:1'],
             'side_a_user_ids.*' => ['integer'],
             'side_b_user_ids' => ['required', 'array', 'min:1'],
@@ -70,6 +72,7 @@ final class GameController extends Controller
                 $data['side_b_user_ids'] ?? [],
                 (int) $data['side_a_size'],
                 (int) $data['side_b_size'],
+                GameScoringTypeEnum::from($data['scoring_type'] ?? GameScoringTypeEnum::STREETBALL->value),
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
@@ -126,6 +129,7 @@ final class GameController extends Controller
             'side_b_name' => ['required', 'string', 'max:80', 'different:side_a_name'],
             'side_a_size' => ['required', 'integer', 'min:1', 'max:6'],
             'side_b_size' => ['required', 'integer', 'min:1', 'max:5'],
+            'scoring_type' => ['nullable', 'enum:'.GameScoringTypeEnum::class],
         ]);
 
         return $this->perform(
@@ -139,6 +143,7 @@ final class GameController extends Controller
                 $data['side_b_name'],
                 (int) $data['side_a_size'],
                 (int) $data['side_b_size'],
+                GameScoringTypeEnum::from($data['scoring_type'] ?? $game->gameDetail->scoring_type->value),
             ),
             'Параметры мини-игры обновлены.',
         );
@@ -365,14 +370,14 @@ final class GameController extends Controller
             ->all();
         $playerPoints = $game->gamePlayerStatistics
             ->mapWithKeys(fn (GamePlayerStatistic $statistic): array => [
-                (string) $statistic->user_id => $statistic->points(),
+                (string) $statistic->user_id => $statistic->points($game->gameDetail->scoring_type),
             ])
             ->all();
         $calculatedScores = $game->gameSides
             ->mapWithKeys(fn ($side): array => [
                 $side->slot => $game->gamePlayerStatistics
                     ->where('game_side_id', $side->id)
-                    ->sum(fn (GamePlayerStatistic $statistic): int => $statistic->points()),
+                    ->sum(fn (GamePlayerStatistic $statistic): int => $statistic->points($game->gameDetail->scoring_type)),
             ])
             ->all();
 

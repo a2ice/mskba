@@ -149,8 +149,9 @@ function initGameControl(root) {
         if (!review || !table) return;
         const scores = { A: 0, B: 0 };
         const rows = [];
+        const isStreetball = form.dataset.scoringType === 'streetball';
         form.querySelectorAll('[data-game-player]').forEach((player) => {
-            const points = value(player, 'close_made') * 2 + value(player, 'mid_made') * 2 + value(player, 'three_made') * 3 + value(player, 'free_throw_made');
+            const points = value(player, 'close_made') * (isStreetball ? 1 : 2) + value(player, 'mid_made') * (isStreetball ? 1 : 2) + value(player, 'three_made') * (isStreetball ? 2 : 3) + value(player, 'free_throw_made');
             scores[player.dataset.gamePlayerSide] += points;
             rows.push(`<tr><th>${player.querySelector('.game-live-player__identity strong').textContent}</th><td>${points}</td><td>${value(player, 'assists')}</td><td>${value(player, 'defensive_rebounds') + value(player, 'offensive_rebounds')}</td><td>${value(player, 'fouls')}</td></tr>`);
         });

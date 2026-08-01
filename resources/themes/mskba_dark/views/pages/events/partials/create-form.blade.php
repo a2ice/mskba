@@ -32,6 +32,7 @@
         <fieldset class="form-group field mb-4" data-game-team-fields @if(old('type', $defaultType->value) !== \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME->value) hidden @endif>
             <legend class="form-label">Команды и формат игры</legend>
             <p class="form-text mb-3">Выберите две постоянные команды. Текущий активный состав будет сохранён как снимок этой игры и его можно будет скорректировать перед началом.</p>
+            <div class="form-group field mb-3"><label class="form-label" for="{{ $formIdPrefix }}ScoringType">Правила подсчёта</label><select id="{{ $formIdPrefix }}ScoringType" class="form-select" name="scoring_type">@foreach(\App\Modules\Event\Domain\Enums\GameScoringTypeEnum::cases() as $scoringType)<option value="{{ $scoringType->value }}" @selected(old('scoring_type', 'streetball') === $scoringType->value)>{{ $scoringType->label() }}</option>@endforeach</select></div>
             <div class="row g-3 mb-3">
                 <div class="col-md-6 form-group field">
                     <label class="form-label" for="{{ $formIdPrefix }}TeamA">Команда A</label>

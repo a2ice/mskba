@@ -63,6 +63,7 @@
 
     <section class="section-card">
         <span class="eyebrow">Формат {{ $event->gameDetail->formatLabel() }}</span>
+        <span class="eyebrow">{{ $event->gameDetail->scoring_type->label() }}</span>
         @if($event->parentEvent && !$statisticsConfirmed && ($canUpdateMiniGame || $canDeleteMiniGame))
             <details class="event-mini-games__create mb-4">
                 <summary>Параметры мини-игры</summary>
@@ -74,6 +75,7 @@
                             <label class="form-label">Название</label>
                             <input class="form-control" name="title" value="{{ old('title', $event->title) }}" required>
                         </div>
+                        <div class="col-md-6"><label class="form-label">Правила подсчёта</label><select class="form-control" name="scoring_type">@foreach(\App\Modules\Event\Domain\Enums\GameScoringTypeEnum::cases() as $scoringType)<option value="{{ $scoringType->value }}" @selected(old('scoring_type', $event->gameDetail->scoring_type->value) === $scoringType->value)>{{ $scoringType->label() }}</option>@endforeach</select></div>
                         <div class="col-12">
                             @include('theme::partials.forms.toggle', [
                                 'id' => 'mini-game-has-scheduled-time',
@@ -193,6 +195,7 @@
             method="POST"
             action="{{ $canManageStatistics ? route('events.game.statistics', $event->routeIdentifier()) : route('events.game.score', $event->routeIdentifier()) }}"
             data-game-statistics-form
+            data-scoring-type="{{ $event->gameDetail->scoring_type->value }}"
             data-image-upload-surface
         >
             @csrf @method('PATCH')
@@ -201,7 +204,7 @@
                 @foreach(['A', 'B'] as $slot)
                     @php
                         $sidePlayerPoints = $roster->get($sides[$slot]->id, collect())
-                            ->sum(fn ($entry) => $stats->get($entry->user_id)?->points() ?? 0);
+                            ->sum(fn ($entry) => $stats->get($entry->user_id)?->points($event->gameDetail->scoring_type) ?? 0);
                     @endphp
                     <label>
                         <span>{{ $sides[$slot]->display_name }}</span>
@@ -255,7 +258,7 @@
                                     >
                                 </td>
                             @endforeach
-                            <td data-game-player-points>{{ $stat?->points() ?? 0 }}</td>
+                            <td data-game-player-points>{{ $stat?->points($event->gameDetail->scoring_type) ?? 0 }}</td>
                         </tr>
                     @endforeach
                     </tbody>

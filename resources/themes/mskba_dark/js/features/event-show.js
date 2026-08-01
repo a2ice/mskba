@@ -220,6 +220,7 @@ function initGameStatistics() {
     const completeButton = form.querySelector('[data-game-statistics-complete]');
     const overlay = form.querySelector('[data-image-upload-overlay]');
     const message = document.querySelector('[data-game-statistics-message]');
+    const isStreetball = form.dataset.scoringType === 'streetball';
 
     const integerValue = (value) => {
         const parsed = Number.parseInt(value, 10);
@@ -231,9 +232,9 @@ function initGameStatistics() {
         const value = (field) => integerValue(
             row.querySelector(`[data-game-statistic-field="${field}"]`)?.value,
         );
-        const points = (value('close_made') * 2)
-            + (value('mid_made') * 2)
-            + (value('three_made') * 3)
+        const points = (value('close_made') * (isStreetball ? 1 : 2))
+            + (value('mid_made') * (isStreetball ? 1 : 2))
+            + (value('three_made') * (isStreetball ? 2 : 3))
             + value('free_throw_made');
         const output = row.querySelector('[data-game-player-points]');
 

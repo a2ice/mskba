@@ -5,6 +5,7 @@ namespace Tests\Feature\Event;
 use App\Modules\Event\Application\Services\EventPlayerStatisticsSummaryBuilder;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\GameDetail;
@@ -16,6 +17,19 @@ use Tests\TestCase;
 final class EventPlayerStatisticsSummaryBuilderTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_player_points_follow_selected_scoring_rules(): void
+    {
+        $statistic = new GamePlayerStatistic([
+            'close_made' => 1,
+            'mid_made' => 1,
+            'three_made' => 1,
+            'free_throw_made' => 1,
+        ]);
+
+        $this->assertSame(5, $statistic->points(GameScoringTypeEnum::STREETBALL));
+        $this->assertSame(8, $statistic->points(GameScoringTypeEnum::BASKETBALL));
+    }
 
     public function test_it_sums_only_confirmed_mini_games_and_links_the_latest_played_game(): void
     {

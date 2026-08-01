@@ -113,10 +113,10 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('scores.A', 12)
             ->assertJsonPath('scores.B', 8)
-            ->assertJsonPath('calculated_scores.A', 6)
-            ->assertJsonPath('calculated_scores.B', 4)
-            ->assertJsonPath('player_points.'.$ownerA->id, 6)
-            ->assertJsonPath('player_points.'.$ownerB->id, 4);
+            ->assertJsonPath('calculated_scores.A', 3)
+            ->assertJsonPath('calculated_scores.B', 2)
+            ->assertJsonPath('player_points.'.$ownerA->id, 3)
+            ->assertJsonPath('player_points.'.$ownerB->id, 2);
 
         Queue::fake();
 

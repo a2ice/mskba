@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
+use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
@@ -34,6 +35,7 @@ final class GameManagementService
         int $teamBId,
         int $sideASize = 5,
         int $sideBSize = 5,
+        GameScoringTypeEnum $scoringType = GameScoringTypeEnum::STREETBALL,
     ): void {
         if ($event->type !== EventTypeEnum::GAME || $event->parent_event_id !== null) {
             throw new InvalidArgumentException('Составы команд доступны только для самостоятельной игры.');
@@ -60,6 +62,7 @@ final class GameManagementService
         $event->gameDetail()->create([
             'side_a_size' => $sideASize,
             'side_b_size' => $sideBSize,
+            'scoring_type' => $scoringType,
         ]);
 
         $sideA = $event->gameSides()->create([
@@ -93,6 +96,7 @@ final class GameManagementService
         array $sideBUserIds,
         int $sideASize = 5,
         int $sideBSize = 5,
+        GameScoringTypeEnum $scoringType = GameScoringTypeEnum::STREETBALL,
     ): Event {
         if (! in_array($parent->type, [EventTypeEnum::TRAINING, EventTypeEnum::GAME_TRAINING], true)) {
             throw new InvalidArgumentException('Мини-игры можно создавать только внутри тренировки.');
@@ -110,6 +114,7 @@ final class GameManagementService
             $sideBUserIds,
             $sideASize,
             $sideBSize,
+            $scoringType,
         ): Event {
             $lockedParent = Event::query()->lockForUpdate()->findOrFail($parent->id);
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::CREATE_MINI_GAME);
@@ -176,6 +181,7 @@ final class GameManagementService
                 'side_a_size' => $sideASize,
                 'side_b_size' => $sideBSize,
                 'is_time_scheduled' => $isTimeScheduled,
+                'scoring_type' => $scoringType,
             ]);
             $sideA = $game->gameSides()->create([
                 'team_id' => $teamA->id,
@@ -209,6 +215,7 @@ final class GameManagementService
         string $sideBName,
         int $sideASize,
         int $sideBSize,
+        GameScoringTypeEnum $scoringType,
     ): void {
         DB::transaction(function () use (
             $game,
@@ -220,6 +227,7 @@ final class GameManagementService
             $sideBName,
             $sideASize,
             $sideBSize,
+            $scoringType,
         ): void {
             if ($game->parent_event_id === null) {
                 throw new InvalidArgumentException('Этот сценарий доступен только для мини-игры.');
@@ -286,6 +294,7 @@ final class GameManagementService
                 'side_a_size' => $sideASize,
                 'side_b_size' => $sideBSize,
                 'is_time_scheduled' => $isTimeScheduled,
+                'scoring_type' => $scoringType,
             ]);
             foreach (['A' => $sideAName, 'B' => $sideBName] as $slot => $name) {
                 $side = $sides[$slot];

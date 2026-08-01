@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Domain\Models;
 
+use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsModeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'event_id',
     'side_a_size',
     'side_b_size',
+    'scoring_type',
     'is_time_scheduled',
     'statistics_mode',
     'statistics_status',
@@ -45,6 +47,7 @@ class GameDetail extends Model
     {
         return [
             'is_time_scheduled' => 'boolean',
+            'scoring_type' => GameScoringTypeEnum::class,
             'statistics_mode' => GameStatisticsModeEnum::class,
             'statistics_status' => GameStatisticsStatusEnum::class,
             'statistics_confirmed_at' => 'immutable_datetime',

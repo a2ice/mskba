@@ -563,6 +563,7 @@
                                             @csrf
                                             <div class="row g-3">
                                                 <div class="col-12"><label class="form-label">Название</label><input class="form-control" name="title" value="{{ old('title', 'Мини-игра') }}" required></div>
+                                                <div class="col-md-6"><label class="form-label">Правила подсчёта</label><select class="form-control" name="scoring_type">@foreach(\App\Modules\Event\Domain\Enums\GameScoringTypeEnum::cases() as $scoringType)<option value="{{ $scoringType->value }}" @selected(old('scoring_type', 'streetball') === $scoringType->value)>{{ $scoringType->label() }}</option>@endforeach</select></div>
                                                 <div class="col-12">
                                                     @include('theme::partials.forms.toggle', [
                                                         'id' => 'mini-game-has-scheduled-time',
@@ -836,8 +837,6 @@
                                                 'shots_attempted' => $statistics['shots_attempted'],
                                                 'rebounds' => $statistics['rebounds'],
                                                 'assists' => $statistics['assists'],
-                                                'turnovers' => $statistics['turnovers'],
-                                                'fouls' => $statistics['fouls'],
                                             ],
                                             'details_url' => $statistics === null
                                                 ? null
