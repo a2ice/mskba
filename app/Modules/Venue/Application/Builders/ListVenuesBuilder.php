@@ -21,6 +21,13 @@ final class ListVenuesBuilder
 
     public function getQuery(): Builder
     {
-        return Venue::query();
+        return Venue::query()->with([
+            'location.address',
+            'media' => fn ($query) => $query
+                ->where('collection', 'gallery')
+                ->orderByDesc('is_featured')
+                ->orderBy('sort_order')
+                ->orderBy('id'),
+        ]);
     }
 }

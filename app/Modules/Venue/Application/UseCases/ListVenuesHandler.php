@@ -17,7 +17,8 @@ final class ListVenuesHandler
         private readonly ListVenuesBuilder $listVenuesBuilder,
     ) {}
 
-    public function handle(?User $user, ?Actor $actor = null): array
+    /** @param array{search?: string|null, type?: string|null, operational_status?: string|null, access?: string|null} $filters */
+    public function handle(?User $user, ?Actor $actor = null, array $filters = []): array
     {
         $contractViewableVenueIds = $this->accessResolver->contractViewableVenueIdsFor($user);
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
@@ -25,12 +26,29 @@ final class ListVenuesHandler
         $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
         $actorOwnedVenueIds = $this->accessResolver->actorOwnedVenueIdsFor($actor);
 
-        return $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
-            $query->where('status', VenueStatusEnum::CONFIRMED->value)
-                ->orWhereIn('id', $contractViewableVenueIds)
-                ->orWhereIn('id', $bootstrapOwnedVenueIds)
-                ->orWhereIn('id', $actorOwnedVenueIds);
+        return $this->listVenuesBuilder->build(function ($query) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds, $filters): void {
+            $query->where(function ($visible) use ($contractViewableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds): void {
+                $visible->where('status', VenueStatusEnum::CONFIRMED->value)
+                    ->orWhereIn('id', $contractViewableVenueIds)
+                    ->orWhereIn('id', $bootstrapOwnedVenueIds)
+                    ->orWhereIn('id', $actorOwnedVenueIds);
+            });
+
+            $query
+                ->when($filters['search'] ?? null, function ($filtered, string $search): void {
+                    $needle = '%'.addcslashes(trim($search), '%_\\').'%';
+                    $filtered->where(fn ($match) => $match
+                        ->where('name', 'like', $needle)
+                        ->orWhere('raw_address', 'like', $needle)
+                        ->orWhere('short_description', 'like', $needle));
+                })
+                ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->where('type', $type))
+                ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status))
+                ->when(($filters['access'] ?? null) === 'free', fn ($filtered) => $filtered->where('requires_payment', false)->where('requires_booking_approval', false))
+                ->when(($filters['access'] ?? null) === 'paid', fn ($filtered) => $filtered->where('requires_payment', true))
+                ->when(($filters['access'] ?? null) === 'approval', fn ($filtered) => $filtered->where('requires_booking_approval', true));
         })
+            ->orderBy('name')
             ->get()
             ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $actorOwnedVenueIds) {
                 $isBootstrapOwned = in_array($venue->id, $bootstrapOwnedVenueIds, true);
@@ -41,12 +59,18 @@ final class ListVenuesHandler
                     name: $venue->name,
                     alias: $venue->alias,
                     type: $venue->type->label(),
+                    typeSlug: $venue->type->value,
+                    operationalStatus: $venue->operational_status->label(),
+                    operationalStatusSlug: $venue->operational_status->value,
                     requiresPayment: $venue->requires_payment,
                     requiresBookingApproval: $venue->requires_booking_approval,
                     status: $venue->status->label(),
                     statusSlug: $venue->status->value,
                     shortDescription: $venue->short_description,
                     rawAddress: $venue->raw_address,
+                    imageUrl: $venue->media->first()?->publicUrl(),
+                    latitude: $venue->location?->address?->latitude !== null ? (float) $venue->location->address->latitude : null,
+                    longitude: $venue->location?->address?->longitude !== null ? (float) $venue->location->address->longitude : null,
                     canView: $venue->status === VenueStatusEnum::CONFIRMED || $isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractViewableVenueIds, true),
                     canEdit: $venue->allowsDetailsEditing() && ($isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractEditableVenueIds, true)),
                     canEditSchedule: $venue->allowsOperationalChanges() && ($isBootstrapOwned || $isActorOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true)),

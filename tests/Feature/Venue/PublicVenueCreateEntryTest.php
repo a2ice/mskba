@@ -36,19 +36,52 @@ class PublicVenueCreateEntryTest extends TestCase
             ->get(route('venues'))
             ->assertOk()
             ->assertSee('data-mobile-primary-bar', false)
-            ->assertSee('mobile-primary-bar__menu', false)
-            ->assertSee('data-mobile-nav-switcher', false)
-            ->assertSee('role="tablist"', false)
-            ->assertSee('data-mobile-nav-section-toggle="main"', false)
-            ->assertSee('data-mobile-nav-section-toggle="sidebar"', false)
-            ->assertSee('data-mobile-section-sidebar', false)
-            ->assertSee('data-mobile-section-sidebar-title="Навигация площадок"', false)
+            ->assertSee('data-venue-catalog', false)
+            ->assertSee('data-venue-filter-toggle', false)
+            ->assertSee('data-venue-view="list"', false)
+            ->assertSee('data-venue-view="map"', false)
             ->assertSee('На сегодня игр нет')
-            ->assertSee('Личный кабинет')
-            ->assertSee('Добавить площадку')
+            ->assertSee('Добавить')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
             ->assertSee('data-auth-redirect-url="'.route('venues.create', [], false).'"', false)
             ->assertSee(route('venues.create', [], false));
+    }
+
+    public function test_public_venues_catalog_filters_visible_venues_and_exposes_map_points(): void
+    {
+        $address = Address::factory()->create([
+            'latitude' => 55.751244,
+            'longitude' => 37.618423,
+            'full_address' => 'Москва, Тестовая улица, 1',
+        ]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
+        Venue::factory()->create([
+            'name' => 'Бесплатная улица',
+            'location_id' => $location->id,
+            'raw_address' => 'Москва, Тестовая улица, 1',
+            'type' => VenueTypeEnum::STREET_COURT,
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        Venue::factory()->create([
+            'name' => 'Платный зал',
+            'type' => VenueTypeEnum::SPORTS_HALL,
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => true,
+        ]);
+
+        $this->get(route('venues', [
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'access' => 'free',
+            'view' => 'map',
+        ]))
+            ->assertOk()
+            ->assertSee('Бесплатная улица')
+            ->assertDontSee('Платный зал')
+            ->assertSee('data-venue-catalog-map', false)
+            ->assertSee('55.751244', false)
+            ->assertSee('37.618423', false);
     }
 
     public function test_unconfirmed_user_sees_create_link_on_public_venues_page(): void
@@ -61,7 +94,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->actingAs($user)
             ->get(route('venues'))
             ->assertOk()
-            ->assertSee('Добавить площадку')
+            ->assertSee('Добавить')
             ->assertSee(route('venues.create', [], false));
     }
 
@@ -75,7 +108,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->actingAs($user)
             ->get(route('venues'))
             ->assertOk()
-            ->assertSee('Добавить площадку')
+            ->assertSee('Добавить')
             ->assertSee(route('venues.create', [], false));
     }
 

@@ -66,9 +66,21 @@ class VenueController extends Controller
 
     public function index(Request $request, ListVenuesHandler $useCase, CurrentActorResolver $actors): Response
     {
-        $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request));
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'type' => ['nullable', Rule::enum(VenueTypeEnum::class)],
+            'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
+            'access' => ['nullable', Rule::in(['free', 'paid', 'approval'])],
+            'view' => ['nullable', Rule::in(['list', 'map'])],
+        ]);
+        $venues = $useCase->handle($request->user(), $actors->resolveForRequest($request), $filters);
 
-        return ThemeResolver::page('venues.index', ['venues' => $venues]);
+        return ThemeResolver::page('venues.index', [
+            'venues' => $venues,
+            'filters' => $filters,
+            'types' => VenueTypeEnum::cases(),
+            'operationalStatuses' => VenueOperationalStatusEnum::cases(),
+        ]);
     }
 
     public function search(
