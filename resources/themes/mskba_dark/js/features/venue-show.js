@@ -179,17 +179,37 @@ function initVenueGalleryModal() {
                 marker.setAttribute('role', 'button');
                 marker.tabIndex = 0;
 
-                const demoStatistics = document.createElement('span');
-                demoStatistics.className = 'event-photo-tag__statistics';
-                demoStatistics.textContent = [
-                    tag.name,
-                    `Броски: ${tagIndex + 2}/${tagIndex + 5}`,
-                    `Подборы: ${tagIndex + 3}`,
-                    `Передачи: ${tagIndex + 1}`,
-                    `Потери: ${tagIndex}`,
-                    `Фолы: ${tagIndex + 1}`,
-                ].join('\n');
-                marker.append(demoStatistics);
+                const statisticsPanel = document.createElement('span');
+                statisticsPanel.className = 'event-photo-tag__statistics';
+
+                const participantName = document.createElement('strong');
+                participantName.className = 'event-photo-tag__participant-name';
+                participantName.textContent = tag.name;
+                statisticsPanel.append(participantName);
+
+                if (tag.statistics) {
+                    const statistics = document.createElement('span');
+                    statistics.className = 'event-photo-tag__statistics-values';
+                    statistics.textContent = [
+                        `Броски: ${tag.statistics.shots_made}/${tag.statistics.shots_attempted}`,
+                        `Подборы: ${tag.statistics.rebounds}`,
+                        `Передачи: ${tag.statistics.assists}`,
+                        `Потери: ${tag.statistics.turnovers}`,
+                        `Фолы: ${tag.statistics.fouls}`,
+                    ].join('\n');
+                    statisticsPanel.append(statistics);
+                }
+
+                if (tag.details_url) {
+                    const detailsLink = document.createElement('a');
+                    detailsLink.className = 'event-photo-tag__details-link';
+                    detailsLink.href = tag.details_url;
+                    detailsLink.textContent = 'Подробнее';
+                    detailsLink.addEventListener('click', (event) => event.stopPropagation());
+                    statisticsPanel.append(detailsLink);
+                }
+
+                marker.append(statisticsPanel);
                 const toggleStatistics = () => {
                     const isVisible = marker.classList.toggle('is-statistics-visible');
                     marker.setAttribute('aria-expanded', String(isVisible));

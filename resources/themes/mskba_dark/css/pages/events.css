@@ -163,19 +163,50 @@
     position: absolute;
     inset: 0;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    justify-content: center;
     padding: 4px;
     color: #fff;
     background: transparent;
-    font-size: clamp(6px, .65vw, 8px);
     font-weight: 600;
-    line-height: 1.15;
     text-align: left;
-    white-space: pre-line;
-    pointer-events: none;
     opacity: 0;
     visibility: hidden;
     transition: opacity .16s ease, visibility .16s ease;
+}
+
+.event-photo-tag__participant-name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-photo-tag__statistics-values {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+    line-height: 1.2;
+    white-space: pre-line;
+}
+
+.event-photo-tag__details-link {
+    display: inline-block;
+    margin-top: 3px;
+    border-bottom: 1px dotted currentColor;
+    color: #fff;
+    font-size: 9px;
+    line-height: 1.2;
+    pointer-events: auto;
+}
+
+.event-photo-tag__details-link:hover,
+.event-photo-tag__details-link:focus-visible {
+    color: var(--accent-text);
+    outline: none;
 }
 
 .event-photo-tag:hover .event-photo-tag__statistics,
@@ -188,7 +219,7 @@
 .venue-gallery-modal__photo .event-photo-tag:hover,
 .venue-gallery-modal__photo .event-photo-tag:focus-visible,
 .venue-gallery-modal__photo .event-photo-tag.is-statistics-visible {
-    background: rgba(0, 0, 0, .75);
+    background: rgba(0, 0, 0, .5);
 }
 
 .event-hero__slide img {

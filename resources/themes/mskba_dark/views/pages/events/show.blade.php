@@ -823,12 +823,27 @@
                         <div class="event-result-photos" aria-label="Фотографии мероприятия">
                             @foreach($event->media as $index => $photo)
                                 @php
-                                    $photoTags = $photo->eventResultPhotoTags->map(fn ($tag) => [
-                                        'user_id' => $tag->user_id,
-                                        'name' => $photoTagDisplayName($tag),
-                                        'x' => $tag->position_x,
-                                        'y' => $tag->position_y,
-                                    ])->values();
+                                    $photoTags = $photo->eventResultPhotoTags->map(function ($tag) use ($photoTagDisplayName, $eventPlayerStatistics) {
+                                        $statistics = $eventPlayerStatistics->get($tag->user_id);
+
+                                        return [
+                                            'user_id' => $tag->user_id,
+                                            'name' => $photoTagDisplayName($tag),
+                                            'x' => $tag->position_x,
+                                            'y' => $tag->position_y,
+                                            'statistics' => $statistics === null ? null : [
+                                                'shots_made' => $statistics['shots_made'],
+                                                'shots_attempted' => $statistics['shots_attempted'],
+                                                'rebounds' => $statistics['rebounds'],
+                                                'assists' => $statistics['assists'],
+                                                'turnovers' => $statistics['turnovers'],
+                                                'fouls' => $statistics['fouls'],
+                                            ],
+                                            'details_url' => $statistics === null
+                                                ? null
+                                                : route('events.show', $statistics['last_game_identifier']),
+                                        ];
+                                    })->values();
                                 @endphp
                                 <button
                                     type="button"

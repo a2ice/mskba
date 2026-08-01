@@ -42,7 +42,7 @@ final class ShowEventHandler
                 'gameRosterEntries.user.profile.activeAvatar',
                 'gamePlayerStatistics',
                 'childGames' => fn ($query) => $query
-                    ->with(['gameDetail', 'gameSides.team'])
+                    ->with(['gameDetail', 'gameSides.team', 'gamePlayerStatistics'])
                     ->orderBy('starts_at'),
                 'media' => fn ($query) => $query
                     ->where('collection', 'event_results')

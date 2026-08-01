@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\EventPlayerStatisticsSummaryBuilder;
 use App\Modules\Event\Application\Services\EventResultGalleryManager;
 use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\AddEventParticipantHandler;
@@ -202,6 +203,7 @@ final class EventController extends Controller
         ShowEventHandler $events,
         CurrentActorResolver $actors,
         EventManagementAccess $access,
+        EventPlayerStatisticsSummaryBuilder $playerStatisticsSummaryBuilder,
         GameStatisticsFields $statisticsFields,
         PageSeoResolver $pageSeo,
     ): Response {
@@ -214,6 +216,7 @@ final class EventController extends Controller
 
         return ThemeResolver::page($item->type === EventTypeEnum::GAME ? 'events.game-show' : 'events.show', [
             'event' => $item,
+            'eventPlayerStatistics' => $playerStatisticsSummaryBuilder->build($item),
             'currentParticipant' => $currentParticipant,
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED
                 && $currentParticipant->confirmation_version === $item->participation_confirmation_version,
