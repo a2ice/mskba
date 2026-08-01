@@ -50,6 +50,9 @@ class PublicVenueCreateEntryTest extends TestCase
     public function test_public_venues_catalog_filters_visible_venues_and_exposes_map_points(): void
     {
         $address = Address::factory()->create([
+            'city' => 'Москва',
+            'street' => 'Тестовая улица',
+            'building' => '1',
             'latitude' => 55.751244,
             'longitude' => 37.618423,
             'full_address' => 'Москва, Тестовая улица, 1',
@@ -78,6 +81,8 @@ class PublicVenueCreateEntryTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('Бесплатная улица')
+            ->assertSee('Москва, Тестовая улица, 1')
+            ->assertDontSee('Россия, Москва')
             ->assertDontSee('Платный зал')
             ->assertSee('data-venue-catalog-map', false)
             ->assertSee('55.751244', false)

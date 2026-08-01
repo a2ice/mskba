@@ -1,5 +1,10 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
 
+const MOSCOW_REGION_BOUNDS = [
+    [54.20, 35.10],
+    [57.05, 40.35],
+];
+
 document.addEventListener('DOMContentLoaded', () => {
     const catalog = document.querySelector('[data-venue-catalog]');
     if (!catalog) return;
@@ -58,19 +63,19 @@ function initCatalogMap(catalog, getPromise, setPromise) {
     }
 
     const promise = loadYandexMaps(apiKey).then(() => new Promise((resolve) => window.ymaps.ready(resolve))).then(() => {
-        const center = [points[0].latitude, points[0].longitude];
-        const map = new window.ymaps.Map(canvas, { center, zoom: 11, controls: ['zoomControl', 'fullscreenControl', 'geolocationControl'] });
-        const bounds = [];
+        const map = new window.ymaps.Map(canvas, {
+            bounds: MOSCOW_REGION_BOUNDS,
+            controls: ['zoomControl', 'fullscreenControl', 'geolocationControl'],
+        });
         points.forEach((point) => {
             const coordinates = [point.latitude, point.longitude];
-            bounds.push(coordinates);
             map.geoObjects.add(new window.ymaps.Placemark(coordinates, {
                 hintContent: point.name,
                 balloonContentHeader: point.name,
                 balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>`,
             }, { preset: 'islands#orangeSportIcon' }));
         });
-        if (bounds.length > 1) map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 45 });
+        map.setBounds(MOSCOW_REGION_BOUNDS, { checkZoomRange: true, zoomMargin: 24 });
         if (status) status.hidden = true;
         window.setTimeout(() => map.container.fitToViewport(), 0);
     }).catch(() => { if (status) status.textContent = 'Не удалось загрузить карту.'; });

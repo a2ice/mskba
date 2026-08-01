@@ -18,6 +18,7 @@ final readonly class VenueListItemDTO
         public bool $requiresBookingApproval,
         public ?string $shortDescription,
         public ?string $rawAddress,
+        public ?string $displayAddress,
         public ?string $imageUrl,
         public ?float $latitude,
         public ?float $longitude,

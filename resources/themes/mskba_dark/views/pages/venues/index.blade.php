@@ -10,7 +10,7 @@
             'latitude' => $venue->latitude,
             'longitude' => $venue->longitude,
             'name' => $venue->name,
-            'address' => $venue->rawAddress,
+            'address' => $venue->displayAddress,
             'url' => route('venues.show', $venue->routeIdentifier()),
         ])->values();
 @endphp
@@ -62,7 +62,7 @@
                         <div class="venue-catalog-card__body">
                             <div class="venue-catalog-card__badges"><span>{{ $venue->type }}</span><span @class(['is-closed' => $venue->operationalStatusSlug !== 'active'])>{{ $venue->operationalStatus }}</span></div>
                             <h2><a href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
-                            @if($venue->rawAddress)<p><i class="ti ti-map-pin"></i><span>{{ $venue->rawAddress }}</span></p>@endif
+                            @if($venue->displayAddress)<p><i class="ti ti-map-pin"></i><span>{{ $venue->displayAddress }}</span></p>@endif
                             @if($venue->shortDescription)<p class="venue-catalog-card__description">{{ $venue->shortDescription }}</p>@endif
                             <div class="venue-catalog-card__access"><span><i class="ti {{ $venue->requiresPayment ? 'ti-currency-ruble' : 'ti-gift' }}"></i>{{ $venue->requiresPayment ? 'Платно' : 'Бесплатно' }}</span>@if($venue->requiresBookingApproval)<span><i class="ti ti-shield-check"></i>По подтверждению</span>@endif</div>
                         </div>

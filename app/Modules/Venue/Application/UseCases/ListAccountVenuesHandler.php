@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Application\UseCases;
 
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
@@ -13,6 +14,7 @@ final class ListAccountVenuesHandler
     public function __construct(
         private readonly VenueAccessResolver $accessResolver,
         private readonly ListVenuesBuilder $listVenuesBuilder,
+        private readonly AddressDisplayFormatter $addressFormatter,
     ) {}
 
     public function handle(?User $user): array
@@ -46,6 +48,12 @@ final class ListAccountVenuesHandler
                     statusSlug: $venue->status->value,
                     shortDescription: $venue->short_description,
                     rawAddress: $venue->raw_address,
+                    displayAddress: $this->addressFormatter->format(
+                        $venue->location?->address?->full_address ?? $venue->raw_address,
+                        $venue->location?->address?->city,
+                        $venue->location?->address?->street,
+                        $venue->location?->address?->building,
+                    ),
                     imageUrl: $venue->media->first()?->publicUrl(),
                     latitude: $venue->location?->address?->latitude !== null ? (float) $venue->location->address->latitude : null,
                     longitude: $venue->location?->address?->longitude !== null ? (float) $venue->location->address->longitude : null,
