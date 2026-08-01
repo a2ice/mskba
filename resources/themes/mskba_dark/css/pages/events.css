@@ -1226,16 +1226,15 @@
     right: 0;
     bottom: 0;
     left: 0;
-    display: block;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
     width: 100%;
     max-height: 42%;
     padding: 10px;
     color: #fff;
     background: rgba(0, 0, 0, .75);
     font-size: 10px;
-    transform: translateY(0);
-    transition: transform .2s ease;
-    will-change: transform;
+    transition: grid-template-rows .2s ease, padding .2s ease, background-color .2s ease;
 }
 
 .event-result-gallery-modal__caption[hidden] {
@@ -1243,16 +1242,28 @@
 }
 
 .event-result-gallery-modal__caption.is-collapsed {
-    transform: translateY(calc(100% - 10px));
+    grid-template-rows: minmax(0, 0fr);
+    padding-top: 0;
+    padding-bottom: 0;
+    background: transparent;
 }
 
 .event-result-gallery-modal__caption-content {
     display: grid;
+    min-height: 0;
     max-height: 26vh;
     overflow-y: auto;
     gap: 4px;
     padding-right: 30px;
     scrollbar-width: thin;
+    transition: opacity .12s ease, visibility .12s ease;
+}
+
+.event-result-gallery-modal__caption.is-collapsed .event-result-gallery-modal__caption-content {
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .event-result-gallery-modal__caption [data-venue-gallery-description] {
