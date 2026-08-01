@@ -619,8 +619,7 @@ final class EventController extends Controller
                     'name' => trim(implode(' ', array_filter([
                         $tag->user->profile?->first_name,
                         $tag->user->profile?->last_name,
-                    ]))) ?: $tag->user->username,
-                    'username' => $tag->user->username,
+                    ]))) ?: 'Участник #'.$tag->user_id,
                     'x' => $tag->position_x,
                     'y' => $tag->position_y,
                 ])->values(),

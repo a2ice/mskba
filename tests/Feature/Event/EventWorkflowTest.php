@@ -818,6 +818,7 @@ final class EventWorkflowTest extends TestCase
         Storage::fake('public');
         $organizer = User::factory()->create();
         $participant = User::factory()->create(['username' => 'tagged_player']);
+        $participant->profile()->create(['first_name' => 'Илья', 'last_name' => 'Игроков']);
         [$venue, $start, $end] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($venue, $start, $end));
         $event = $venue->events()->firstOrFail();
@@ -856,7 +857,7 @@ final class EventWorkflowTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('description', 'Решающий бросок в концовке.')
-            ->assertJsonPath('tags.0.name', 'tagged_player');
+            ->assertJsonPath('tags.0.name', 'Илья Игроков');
 
         $this->assertDatabaseHas('media', [
             'id' => $photo->id,
@@ -885,7 +886,7 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('data-event-hero-source="results"', false)
             ->assertSee($photo->publicUrl(), false)
             ->assertSee('Решающий бросок в концовке.')
-            ->assertSee('tagged_player');
+            ->assertSee('Илья Игроков');
 
         $this->get(route('events.index', ['period' => 'past']))
             ->assertOk()

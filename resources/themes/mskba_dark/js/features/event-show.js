@@ -461,6 +461,62 @@ function initEventHero() {
     const dots = Array.from(document.querySelectorAll('[data-event-hero-dot]'));
     const counter = hero?.querySelector('[data-event-hero-counter]');
 
+    const positionHeroTags = () => {
+        slides.forEach((slide) => {
+            const image = slide.querySelector('img');
+            const markers = Array.from(slide.querySelectorAll('[data-photo-tag-source-x][data-photo-tag-source-y]'));
+            const containerWidth = slide.clientWidth;
+            const containerHeight = slide.clientHeight;
+
+            if (!image?.naturalWidth || !image.naturalHeight || !containerWidth || !containerHeight) {
+                return;
+            }
+
+            const scale = Math.max(
+                containerWidth / image.naturalWidth,
+                containerHeight / image.naturalHeight,
+            );
+            const renderedWidth = image.naturalWidth * scale;
+            const renderedHeight = image.naturalHeight * scale;
+            const cropOffsetX = (containerWidth - renderedWidth) / 2;
+            const cropOffsetY = (containerHeight - renderedHeight) / 2;
+
+            markers.forEach((marker) => {
+                const sourceX = Number.parseFloat(marker.dataset.photoTagSourceX || '');
+                const sourceY = Number.parseFloat(marker.dataset.photoTagSourceY || '');
+                const renderedX = cropOffsetX + ((sourceX / 100) * renderedWidth);
+                const renderedY = cropOffsetY + ((sourceY / 100) * renderedHeight);
+                const isVisible = Number.isFinite(renderedX)
+                    && Number.isFinite(renderedY)
+                    && renderedX >= 0
+                    && renderedX <= containerWidth
+                    && renderedY >= 0
+                    && renderedY <= containerHeight;
+
+                marker.hidden = !isVisible;
+                if (isVisible) {
+                    marker.style.setProperty('--tag-x', `${(renderedX / containerWidth) * 100}%`);
+                    marker.style.setProperty('--tag-y', `${(renderedY / containerHeight) * 100}%`);
+                }
+            });
+        });
+    };
+
+    slides.forEach((slide) => {
+        const image = slide.querySelector('img');
+        if (image?.complete) {
+            positionHeroTags();
+        } else {
+            image?.addEventListener('load', positionHeroTags, { once: true });
+        }
+    });
+
+    if ('ResizeObserver' in window && hero) {
+        new ResizeObserver(positionHeroTags).observe(hero);
+    } else {
+        window.addEventListener('resize', positionHeroTags, { passive: true });
+    }
+
     slides.filter((slide) => slide.hasAttribute('data-photo-tags-toggle')).forEach((slide) => {
         const toggle = () => slide.classList.toggle('is-tags-visible');
         slide.addEventListener('click', toggle);

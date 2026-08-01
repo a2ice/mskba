@@ -85,6 +85,12 @@
     $resultPhotos = $event->media->values();
     $heroPhotos = $resultPhotos->isNotEmpty() ? $resultPhotos : $venuePhotos;
     $heroUsesResultPhotos = $resultPhotos->isNotEmpty();
+    $photoTagDisplayName = static function ($tag): string {
+        return trim(implode(' ', array_filter([
+            $tag->user->profile?->first_name,
+            $tag->user->profile?->last_name,
+        ]))) ?: 'Участник #'.$tag->user_id;
+    };
     $photoTagCandidates = $event->participants
         ->filter(fn ($participant) => $participant->user !== null)
         ->unique('user_id')
@@ -94,7 +100,6 @@
             return [
                 'id' => $participant->user_id,
                 'name' => trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
-                    ?: $participant->user->username
                     ?: 'Пользователь #'.$participant->user_id,
                 'username' => $participant->user->username,
             ];
@@ -169,8 +174,7 @@
                         @php
                             $heroTags = $heroUsesResultPhotos
                                 ? $photo->eventResultPhotoTags->map(fn ($tag) => [
-                                    'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
-                                    'username' => $tag->user->username,
+                                    'name' => $photoTagDisplayName($tag),
                                     'x' => $tag->position_x,
                                     'y' => $tag->position_y,
                                 ])->values()
@@ -179,7 +183,12 @@
                         <figure class="event-hero__slide" data-event-hero-slide @if($heroTags->isNotEmpty()) data-photo-tags-toggle tabindex="0" role="button" aria-label="Показать отмеченных участников" @endif>
                             <img src="{{ $photo->publicUrl() }}" alt="{{ $photo->title ?: ($heroUsesResultPhotos ? 'Как прошло мероприятие «'.$event->title.'»' : $event->venue->name) }}">
                             @foreach($heroTags as $tag)
-                                <span class="event-photo-tag" style="--tag-x: {{ $tag['x'] }}%; --tag-y: {{ $tag['y'] }}%;" title="{{ $tag['name'] }}" aria-label="Отмечен участник {{ $tag['name'] }}"></span>
+                                <span
+                                    class="event-photo-tag event-photo-tag--hero"
+                                    data-photo-tag-source-x="{{ $tag['x'] }}"
+                                    data-photo-tag-source-y="{{ $tag['y'] }}"
+                                    aria-label="Отмечен участник {{ $tag['name'] }}"
+                                >{{ $tag['name'] }}</span>
                             @endforeach
                         </figure>
                     @empty
@@ -816,8 +825,7 @@
                                 @php
                                     $photoTags = $photo->eventResultPhotoTags->map(fn ($tag) => [
                                         'user_id' => $tag->user_id,
-                                        'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
-                                        'username' => $tag->user->username,
+                                        'name' => $photoTagDisplayName($tag),
                                         'x' => $tag->position_x,
                                         'y' => $tag->position_y,
                                     ])->values();
@@ -872,7 +880,7 @@
                                     @php
                                         $editorTags = $photo->eventResultPhotoTags->map(fn ($tag) => [
                                             'user_id' => $tag->user_id,
-                                            'name' => trim(implode(' ', array_filter([$tag->user->profile?->first_name, $tag->user->profile?->last_name]))) ?: $tag->user->username,
+                                            'name' => $photoTagDisplayName($tag),
                                             'username' => $tag->user->username,
                                             'x' => $tag->position_x,
                                             'y' => $tag->position_y,
