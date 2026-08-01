@@ -130,6 +130,44 @@ function initVenueGalleryModal() {
     const pagination = modal.querySelector('[data-venue-gallery-pagination]');
     let currentIndex = 0;
 
+    const clearTagSelection = () => {
+        tags?.querySelectorAll('.event-photo-tag').forEach((marker) => {
+            marker.classList.remove('is-visible', 'is-statistics-visible');
+            marker.setAttribute('aria-expanded', 'false');
+        });
+        tagLinks?.querySelectorAll('button').forEach((link) => link.setAttribute('aria-pressed', 'false'));
+    };
+
+    const selectTag = (marker) => {
+        clearTagSelection();
+        marker.classList.add('is-visible');
+        tagLinks
+            ?.querySelector(`[data-photo-tag-index="${marker.dataset.photoTagIndex}"]`)
+            ?.setAttribute('aria-pressed', 'true');
+    };
+
+    tags?.addEventListener('click', (event) => {
+        if (event.target.closest('.event-photo-tag')) {
+            return;
+        }
+
+        const hiddenMarkerAtPoint = Array.from(tags.querySelectorAll('.event-photo-tag:not(.is-visible)'))
+            .find((marker) => {
+                const bounds = marker.getBoundingClientRect();
+
+                return event.clientX >= bounds.left
+                    && event.clientX <= bounds.right
+                    && event.clientY >= bounds.top
+                    && event.clientY <= bounds.bottom;
+            });
+
+        clearTagSelection();
+
+        if (hiddenMarkerAtPoint) {
+            selectTag(hiddenMarkerAtPoint);
+        }
+    });
+
     if (items.length < 2) {
         prevButton?.setAttribute('hidden', '');
         nextButton?.setAttribute('hidden', '');
@@ -235,17 +273,17 @@ function initVenueGalleryModal() {
                 if (tagLinks) {
                     const link = document.createElement('button');
                     link.type = 'button';
+                    link.dataset.photoTagIndex = String(tagIndex);
                     link.textContent = tag.name;
                     link.setAttribute('aria-pressed', 'false');
                     link.addEventListener('click', () => {
                         const willShow = !marker.classList.contains('is-visible');
-                        tags.querySelectorAll('.event-photo-tag').forEach((item) => {
-                            item.classList.remove('is-visible', 'is-statistics-visible');
-                            item.setAttribute('aria-expanded', 'false');
-                        });
-                        tagLinks.querySelectorAll('button').forEach((item) => item.setAttribute('aria-pressed', 'false'));
-                        marker.classList.toggle('is-visible', willShow);
-                        link.setAttribute('aria-pressed', String(willShow));
+
+                        if (willShow) {
+                            selectTag(marker);
+                        } else {
+                            clearTagSelection();
+                        }
                     });
                     tagLinks.append(link);
                 }
