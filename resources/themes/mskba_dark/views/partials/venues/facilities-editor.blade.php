@@ -1,16 +1,17 @@
 @php
     $facilityPayload = is_array($revisionPayload['facilities'] ?? null) ? $revisionPayload['facilities'] : [];
+    $storedCharacteristic = \App\Modules\Venue\Domain\Models\VenueCharacteristic::query()
+        ->where('venue_id', $venue?->id)
+        ->first();
     $savedCharacteristics = is_array($facilityPayload['characteristics'] ?? null)
         ? $facilityPayload['characteristics']
-        : (array) optional(\App\Modules\Venue\Domain\Models\VenueCharacteristic::query()
-            ->where('venue_id', $venue?->id)
-            ->first())->only([
-                'hoops_count',
-                'hoops_condition',
-                'surface_condition',
-                'first_hoop_marking',
-                'second_hoop_marking',
-            ]);
+        : [
+            'hoops_count' => $storedCharacteristic?->hoops_count,
+            'hoops_condition' => $storedCharacteristic?->hoops_condition,
+            'surface_condition' => $storedCharacteristic?->surface_condition,
+            'first_hoop_marking' => $storedCharacteristic?->first_hoop_marking?->value,
+            'second_hoop_marking' => $storedCharacteristic?->second_hoop_marking?->value,
+        ];
     $selectedAmenityIds = collect(old(
         'amenity_ids',
         $facilityPayload['amenity_ids'] ?? $venue?->amenities?->pluck('id')->all() ?? [],
@@ -21,7 +22,6 @@
         ->orderBy('name')
         ->get();
     $markingOptions = \App\Modules\Venue\Domain\Enums\VenueMarkingConditionEnum::cases();
-    $selectedType = old('type', $revisionDetails['type'] ?? $venue?->type?->value);
 @endphp
 
 <section class="venue-facilities-editor" data-venue-facilities-editor>
@@ -60,7 +60,7 @@
                 <legend>{{ $label }}</legend>
                 <div class="venue-facilities-editor__rating" aria-label="{{ $label }} по пятибалльной шкале">
                     @foreach(range(1, 5) as $rating)
-                        <label title="{{ [1 => 'Очень плохое', 2 => 'Плохое', 3 => 'Удовлетворительное', 4 => 'Хорошее', 5 => 'Отличное'][$rating] }}">
+                        <label title="{{ [1 => 'Очень плохое', 2 => 'Плохое', 3 => 'Удовлетворительное', 4 => 'Хорошее', 5 => 'Отличное'][$rating] }}" data-tooltip-variant="title" data-tooltip-icon>
                             <input
                                 type="radio"
                                 name="characteristics[{{ $field }}]"
@@ -77,12 +77,12 @@
     </div>
 
     <div class="venue-facilities-editor__markings">
-        @foreach(['first' => 'У первого кольца', 'second' => 'У второго кольца'] as $position => $label)
+        @foreach(['first' => 'первого', 'second' => 'второго'] as $position => $label)
             <fieldset
                 class="venue-facilities-editor__control"
                 @if($position === 'second') data-second-hoop-marking @endif
             >
-                <legend>Разметка {{ mb_strtolower($label) }}</legend>
+                <legend>Разметка у {{ $label }} кольца</legend>
                 <div class="venue-facilities-editor__segments venue-facilities-editor__segments--wide">
                     @foreach($markingOptions as $option)
                         <label>
@@ -131,14 +131,166 @@
     @error('amenity_ids.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 </section>
 
+<style>
+    .venue-facilities-form {
+        margin-top: 28px;
+        padding-top: 28px;
+        border-top: 1px solid var(--line);
+    }
+    .venue-facilities-editor {
+        display: grid;
+        gap: 22px;
+        margin-bottom: 22px;
+    }
+    .venue-facilities-editor__heading h2 {
+        margin: 0 0 6px;
+        font: 700 22px/1.2 var(--font-display);
+    }
+    .venue-facilities-editor__heading p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .venue-facilities-editor__heading--amenities {
+        padding-top: 5px;
+    }
+    .venue-facilities-editor__grid,
+    .venue-facilities-editor__markings {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+    .venue-facilities-editor__markings {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .venue-facilities-editor__control {
+        min-width: 0;
+        margin: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-control);
+        background: var(--surface-raised);
+    }
+    .venue-facilities-editor__control legend {
+        float: none;
+        width: auto;
+        margin: 0 0 12px;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 800;
+    }
+    .venue-facilities-editor__segments,
+    .venue-facilities-editor__rating {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+    }
+    .venue-facilities-editor__segments--wide {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .venue-facilities-editor__rating {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .venue-facilities-editor__segments label,
+    .venue-facilities-editor__rating label {
+        margin: 0;
+        cursor: pointer;
+    }
+    .venue-facilities-editor__segments input,
+    .venue-facilities-editor__rating input,
+    .venue-facilities-editor__amenity input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .venue-facilities-editor__segments span,
+    .venue-facilities-editor__rating span {
+        display: grid;
+        min-height: 40px;
+        place-items: center;
+        padding: 7px;
+        border: 1px solid var(--field-border);
+        border-radius: 10px;
+        background: var(--field);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        transition: 150ms ease;
+    }
+    .venue-facilities-editor__segments input:checked + span,
+    .venue-facilities-editor__rating input:checked + span {
+        border-color: var(--accent-hover);
+        background: var(--accent-light);
+        color: #fff;
+    }
+    .venue-facilities-editor__amenities {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+    }
+    .venue-facilities-editor__amenity {
+        display: flex;
+        min-height: 54px;
+        align-items: center;
+        gap: 11px;
+        padding: 11px 13px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface-raised);
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 150ms ease;
+    }
+    .venue-facilities-editor__amenity:has(input:checked) {
+        border-color: rgba(255, 139, 47, .7);
+        background: var(--accent-light);
+        color: #fff;
+    }
+    .venue-facilities-editor__amenity-icon {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        place-items: center;
+        border-radius: 9px;
+        background: rgba(255,255,255,.07);
+        font-size: 17px;
+    }
+    [data-second-hoop-marking][hidden],
+    [data-amenity-scope][hidden] {
+        display: none;
+    }
+    @media (max-width: 900px) {
+        .venue-facilities-editor__grid,
+        .venue-facilities-editor__amenities {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 620px) {
+        .venue-facilities-editor__grid,
+        .venue-facilities-editor__markings,
+        .venue-facilities-editor__amenities {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
 <script>
     (() => {
         const editor = document.querySelector('[data-venue-facilities-editor]');
         const typeSelect = document.getElementById('venueType');
+        const facilitiesForm = editor?.closest('form');
+        const hiddenType = facilitiesForm?.querySelector('input[name="type"]');
         if (!editor || !typeSelect) return;
 
         const refresh = () => {
             const group = typeSelect.value === 'street_court' ? 'outdoor' : 'indoor';
+            if (hiddenType) hiddenType.value = typeSelect.value;
+
             editor.querySelectorAll('[data-amenity-scope]').forEach((item) => {
                 const visible = ['all', group].includes(item.dataset.amenityScope);
                 item.hidden = !visible;
