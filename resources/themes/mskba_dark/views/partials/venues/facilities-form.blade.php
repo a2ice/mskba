@@ -11,6 +11,7 @@
     @csrf
     @method('PUT')
 
+    <input type="hidden" name="facilities_present" value="1">
     <input type="hidden" name="name" value="{{ $revisionDetails['name'] ?? $venue->name }}">
     <input type="hidden" name="type" value="{{ $revisionDetails['type'] ?? $venue->type->value }}">
     <input type="hidden" name="short_description" value="{{ $revisionDetails['short_description'] ?? $venue->short_description }}">
