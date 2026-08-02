@@ -1,5 +1,5 @@
 @php
-    $characteristics = isset($venue?->id)
+    $characteristics = isset($venue) && isset($venue->id)
         ? \App\Modules\Venue\Domain\Models\VenueCharacteristic::query()->where('venue_id', $venue->id)->first()
         : null;
     $conditionLabel = static fn (?int $value): ?string => match ($value) {
