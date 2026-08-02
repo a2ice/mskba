@@ -97,15 +97,18 @@ final class VenueRevisionManager
             ];
         }
         $payload['tags'] = array_values($tagNames);
-        $payload['facilities'] = [
-            'characteristics' => is_array($data['characteristics'] ?? null) ? $data['characteristics'] : [],
-            'amenity_ids' => collect(is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [])
-                ->map(fn (mixed $id): int => (int) $id)
-                ->filter(fn (int $id): bool => $id > 0)
-                ->unique()
-                ->values()
-                ->all(),
-        ];
+
+        if ((bool) ($data['facilities_present'] ?? false)) {
+            $payload['facilities'] = [
+                'characteristics' => is_array($data['characteristics'] ?? null) ? $data['characteristics'] : [],
+                'amenity_ids' => collect(is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [])
+                    ->map(fn (mixed $id): int => (int) $id)
+                    ->filter(fn (int $id): bool => $id > 0)
+                    ->unique()
+                    ->values()
+                    ->all(),
+            ];
+        }
 
         $revision->forceFill(['payload' => $payload])->save();
 
@@ -134,6 +137,7 @@ final class VenueRevisionManager
         $venue = $this->detailsUpdater->update(
             $revision->venue,
             array_replace($details, [
+                'facilities_present' => true,
                 'characteristics' => is_array($facilities['characteristics'] ?? null)
                     ? $facilities['characteristics']
                     : [],
