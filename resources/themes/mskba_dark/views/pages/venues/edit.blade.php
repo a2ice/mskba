@@ -87,5 +87,10 @@
             'readOnlyMessage' => 'Дождитесь результата модерации — после этого редактирование снова станет доступно.',
         ])
 
+        @include('theme::partials.venues.facilities-form', [
+            'venue' => $venue,
+            'venueRevision' => $venueRevision ?? null,
+            'readOnly' => $hasPendingModeration,
+        ])
     @endif
 @endsection
