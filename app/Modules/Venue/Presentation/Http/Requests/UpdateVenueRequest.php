@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Presentation\Http\Requests;
 
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
+use App\Modules\Venue\Domain\Enums\VenueMarkingConditionEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Presentation\Http\Requests\Concerns\InteractsWithVenueTags;
 use Illuminate\Foundation\Http\FormRequest;
@@ -41,6 +42,14 @@ class UpdateVenueRequest extends FormRequest
             'location.longitude' => ['required_with:location', 'numeric', 'between:-180,180'],
             'location.metro_station_ids' => ['nullable', 'array'],
             'location.metro_station_ids.*' => ['integer', 'distinct', 'exists:metro_stations,id'],
+            'characteristics' => ['nullable', 'array'],
+            'characteristics.hoops_count' => ['nullable', 'integer', Rule::in([1, 2])],
+            'characteristics.hoops_condition' => ['nullable', 'integer', 'between:1,5'],
+            'characteristics.surface_condition' => ['nullable', 'integer', 'between:1,5'],
+            'characteristics.first_hoop_marking' => ['nullable', Rule::enum(VenueMarkingConditionEnum::class)],
+            'characteristics.second_hoop_marking' => ['nullable', Rule::enum(VenueMarkingConditionEnum::class)],
+            'amenity_ids' => ['nullable', 'array'],
+            'amenity_ids.*' => ['integer', 'distinct', 'exists:amenities,id'],
         ];
     }
 
@@ -61,6 +70,18 @@ class UpdateVenueRequest extends FormRequest
     public function withValidator($validator): void
     {
         $this->addVenueTagValidation($validator);
+
+        $validator->after(function ($validator): void {
+            $hoopsCount = (int) $this->input('characteristics.hoops_count', 0);
+            $secondMarking = $this->input('characteristics.second_hoop_marking');
+
+            if ($hoopsCount !== 2 && is_string($secondMarking) && $secondMarking !== '') {
+                $validator->errors()->add(
+                    'characteristics.second_hoop_marking',
+                    'Разметку второго кольца можно указать только для площадки с двумя кольцами.',
+                );
+            }
+        });
     }
 
     private function nullableString(string $key): ?string
