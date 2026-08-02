@@ -29,6 +29,7 @@ class VenueFacilitiesManagementTest extends TestCase
 
         $this->actingAs($user)
             ->put(route('account.venues.update', $venue->routeIdentifier()), [
+                'facilities_present' => '1',
                 'name' => $venue->name,
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'short_description' => $venue->short_description,
@@ -74,6 +75,7 @@ class VenueFacilitiesManagementTest extends TestCase
 
         $this->actingAs($user)
             ->put(route('account.venues.update', $venue->routeIdentifier()), [
+                'facilities_present' => '1',
                 'name' => $venue->name,
                 'type' => VenueTypeEnum::SPORTS_HALL->value,
                 'short_description' => $venue->short_description,
@@ -111,6 +113,7 @@ class VenueFacilitiesManagementTest extends TestCase
         $this->actingAs($user)
             ->from(route('account.venues.edit', $venue->routeIdentifier()))
             ->put(route('account.venues.update', $venue->routeIdentifier()), [
+                'facilities_present' => '1',
                 'name' => $venue->name,
                 'type' => VenueTypeEnum::STREET_COURT->value,
                 'amenity_ids' => [$shower->id],
@@ -133,6 +136,7 @@ class VenueFacilitiesManagementTest extends TestCase
 
         $this->actingAs($user)
             ->put(route('account.venues.update', $venue->routeIdentifier()), [
+                'facilities_present' => '1',
                 'name' => $venue->name,
                 'type' => $venue->type->value,
                 'characteristics' => [
@@ -154,6 +158,7 @@ class VenueFacilitiesManagementTest extends TestCase
         $this->actingAs($intruder)
             ->from(route('account.venues.edit', $venue->routeIdentifier()))
             ->put(route('account.venues.update', $venue->routeIdentifier()), [
+                'facilities_present' => '1',
                 'name' => $venue->name,
                 'type' => $venue->type->value,
                 'characteristics' => [
@@ -163,6 +168,29 @@ class VenueFacilitiesManagementTest extends TestCase
             ->assertSessionHas('error', 'Доступ запрещен');
 
         $this->assertDatabaseMissing('venue_characteristics', ['venue_id' => $venue->id]);
+    }
+
+    public function test_regular_details_edit_preserves_existing_facilities(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($user),
+            'type' => VenueTypeEnum::STREET_COURT,
+        ]);
+        $lighting = Amenity::query()->where('alias', 'lighting')->firstOrFail();
+        $venue->amenities()->sync([$lighting->id]);
+
+        $this->actingAs($user)
+            ->put(route('account.venues.update', $venue->routeIdentifier()), [
+                'name' => $venue->name.' обновлена',
+                'type' => VenueTypeEnum::STREET_COURT->value,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('venue_amenities', [
+            'venue_id' => $venue->id,
+            'amenity_id' => $lighting->id,
+        ]);
     }
 
     private function actorIdFor(User $user): int
