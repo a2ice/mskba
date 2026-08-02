@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCharacteristic;
 use App\Modules\Venue\Domain\Models\VenueRevision;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -38,7 +39,7 @@ final class VenueRevisionManager
             return $draft;
         }
 
-        $venue->loadMissing('location.address', 'location.metroStations', 'tags', 'media');
+        $venue->loadMissing('location.address', 'location.metroStations', 'tags', 'media', 'amenities');
 
         return $venue->revisions()->create([
             'created_by_actor_id' => $actor?->id,
@@ -76,6 +77,7 @@ final class VenueRevisionManager
                 ]))
                 ->all();
         }
+
         $payload['details'] = [
             'name' => (string) $data['name'],
             'type' => (string) $data['type'],
@@ -95,6 +97,15 @@ final class VenueRevisionManager
             ];
         }
         $payload['tags'] = array_values($tagNames);
+        $payload['facilities'] = [
+            'characteristics' => is_array($data['characteristics'] ?? null) ? $data['characteristics'] : [],
+            'amenity_ids' => collect(is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all(),
+        ];
 
         $revision->forceFill(['payload' => $payload])->save();
 
@@ -112,6 +123,7 @@ final class VenueRevisionManager
         $payload = $revision->payload;
         $details = $payload['details'] ?? [];
         $location = $payload['location'] ?? [];
+        $facilities = is_array($payload['facilities'] ?? null) ? $payload['facilities'] : [];
 
         $this->assertCurrent($revision);
 
@@ -121,7 +133,14 @@ final class VenueRevisionManager
 
         $venue = $this->detailsUpdater->update(
             $revision->venue,
-            $details,
+            array_replace($details, [
+                'characteristics' => is_array($facilities['characteristics'] ?? null)
+                    ? $facilities['characteristics']
+                    : [],
+                'amenity_ids' => is_array($facilities['amenity_ids'] ?? null)
+                    ? $facilities['amenity_ids']
+                    : [],
+            ]),
             new CreateLocationDTO(
                 rawAddress: $this->nullableString($location['raw_address'] ?? null),
                 city: $this->nullableString($location['city'] ?? null),
@@ -154,6 +173,7 @@ final class VenueRevisionManager
     private function snapshot(Venue $venue): array
     {
         $address = $venue->location?->address;
+        $characteristics = VenueCharacteristic::query()->where('venue_id', $venue->id)->first();
 
         return [
             'base_content_version' => $venue->content_version,
@@ -174,8 +194,17 @@ final class VenueRevisionManager
                 'metro_station_ids' => $venue->location?->metroStations?->pluck('id')->map(fn ($id): int => (int) $id)->all() ?? [],
             ],
             'tags' => $venue->tags->pluck('name')->values()->all(),
+            'facilities' => [
+                'characteristics' => $characteristics === null ? [] : [
+                    'hoops_count' => $characteristics->hoops_count,
+                    'hoops_condition' => $characteristics->hoops_condition,
+                    'surface_condition' => $characteristics->surface_condition,
+                    'first_hoop_marking' => $characteristics->first_hoop_marking?->value,
+                    'second_hoop_marking' => $characteristics->second_hoop_marking?->value,
+                ],
+                'amenity_ids' => $venue->amenities->pluck('id')->map(fn ($id): int => (int) $id)->values()->all(),
+            ],
             'gallery' => $venue->media
-                ->where('collection', 'gallery')
                 ->where('collection', 'gallery')
                 ->sortBy([
                     ['is_featured', 'desc'],
