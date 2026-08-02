@@ -15,6 +15,7 @@ final class VenueDetailsUpdater
         private readonly CreateLocationHandler $createLocation,
         private readonly VenueTagSynchronizer $tagSynchronizer,
         private readonly VenueProximityService $proximity,
+        private readonly VenueFacilitiesSynchronizer $facilities,
     ) {}
 
     /**
@@ -62,6 +63,11 @@ final class VenueDetailsUpdater
         ])->save();
 
         $this->tagSynchronizer->sync($venue, $tagNames);
+        $this->facilities->sync(
+            $venue,
+            is_array($data['characteristics'] ?? null) ? $data['characteristics'] : [],
+            is_array($data['amenity_ids'] ?? null) ? $data['amenity_ids'] : [],
+        );
 
         return $venue->refresh();
     }
