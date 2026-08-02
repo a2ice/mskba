@@ -25,6 +25,7 @@ class UpdateVenueRequest extends FormRequest
     {
         return [
             'telegram_flow' => ['sometimes', 'accepted'],
+            'facilities_present' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
             'short_description' => ['nullable', 'string', 'max:500'],
@@ -72,6 +73,10 @@ class UpdateVenueRequest extends FormRequest
         $this->addVenueTagValidation($validator);
 
         $validator->after(function ($validator): void {
+            if (! $this->boolean('facilities_present')) {
+                return;
+            }
+
             $hoopsCount = (int) $this->input('characteristics.hoops_count', 0);
             $secondMarking = $this->input('characteristics.second_hoop_marking');
 
