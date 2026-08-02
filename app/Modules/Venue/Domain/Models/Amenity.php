@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'alias',
     'description',
     'icon',
+    'applies_to',
     'is_active',
     'sort_order',
 ])]
@@ -24,11 +25,6 @@ class Amenity extends Model
 
     use SoftDeletes;
 
-    protected static function newFactory(): AmenityFactory
-    {
-        return AmenityFactory::new();
-    }
-
     public function venues(): BelongsToMany
     {
         return $this
@@ -36,6 +32,11 @@ class Amenity extends Model
             ->withPivot(['note', 'deleted_at'])
             ->wherePivotNull('deleted_at')
             ->withTimestamps();
+    }
+
+    protected static function newFactory(): AmenityFactory
+    {
+        return AmenityFactory::new();
     }
 
     /**
