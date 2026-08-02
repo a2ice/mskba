@@ -100,6 +100,9 @@
 
             <main class="site-content">
                 @yield('content')
+                @if(Route::currentRouteName() === 'venues.show' && isset($venue))
+                    @include('theme::partials.venues.characteristics-public', ['venue' => $venue])
+                @endif
             </main>
 
             @include('theme::partials.mobile-primary-bar')
