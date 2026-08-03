@@ -72,11 +72,15 @@ function prepareEventCatalogFilters() {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'events-filter-chip events-filter-chip--brand-toggle';
-    wrapper.style.marginBottom = '12px';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
 
     const label = document.createElement('label');
     label.className = 'form-toggle';
     label.htmlFor = 'events-show-past';
+    label.style.width = '100%';
+    label.style.margin = '0';
+    label.style.alignItems = 'center';
 
     const checkbox = document.createElement('input');
     checkbox.id = 'events-show-past';
