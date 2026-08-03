@@ -27,13 +27,13 @@
                 </button>
             </header>
 
-            <div class="venues-catalog-toolbar">
+            <div class="venues-catalog-toolbar is-filters-collapsed">
                 <div class="venues-catalog-view" role="group" aria-label="Вид площадок">
                     <button type="button" @class(['is-active' => $currentView === 'list']) data-venue-view="list" aria-pressed="{{ $currentView === 'list' ? 'true' : 'false' }}"><i class="ti ti-list"></i><span>Список</span></button>
                     <button type="button" @class(['is-active' => $currentView === 'map']) data-venue-view="map" aria-pressed="{{ $currentView === 'map' ? 'true' : 'false' }}"><i class="ti ti-map-2"></i><span>На карте</span></button>
                 </div>
-                <button class="btn btn--secondary venues-catalog__filters-toggle" type="button" data-venue-filter-toggle aria-expanded="true">
-                    <i class="ti ti-adjustments-horizontal"></i><span>Фильтры</span><i class="ti ti-chevron-up" data-venue-filter-toggle-icon></i>
+                <button class="btn btn--secondary venues-catalog__filters-toggle" type="button" data-venue-filter-toggle aria-expanded="false">
+                    <i class="ti ti-adjustments-horizontal"></i><span>Фильтры</span><i class="ti ti-chevron-down" data-venue-filter-toggle-icon></i>
                     @if($activeFilterCount)<b>{{ $activeFilterCount }}</b>@endif
                 </button>
                 @auth
@@ -43,7 +43,7 @@
                 @endauth
             </div>
 
-            <form method="GET" action="{{ route('venues') }}" class="venues-catalog-filters" data-venue-filters>
+            <form method="GET" action="{{ route('venues') }}" class="venues-catalog-filters" data-venue-filters hidden>
                 <input type="hidden" name="view" value="{{ $currentView }}" data-venue-view-input>
                 <label class="venues-catalog-search">
                     <span>Поиск</span>
