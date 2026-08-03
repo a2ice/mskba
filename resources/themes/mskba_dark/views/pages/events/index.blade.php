@@ -34,9 +34,9 @@
                 </button>
             </header>
 
-            <div class="events-catalog-filters__toolbar">
-                    <button class="btn btn--secondary events-catalog__options" type="button" data-event-filter-toggle aria-expanded="true">
-                        <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span>Фильтры</span><i class="ti ti-chevron-up" data-event-filter-toggle-icon aria-hidden="true"></i>
+            <div class="events-catalog-filters__toolbar is-filters-collapsed">
+                    <button class="btn btn--secondary events-catalog__options" type="button" data-event-filter-toggle aria-expanded="false">
+                        <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span>Фильтры</span><i class="ti ti-chevron-down" data-event-filter-toggle-icon aria-hidden="true"></i>
                         @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
                     </button>
                     @auth
@@ -45,7 +45,7 @@
                         <button type="button" class="btn btn--primary js-handler" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('events.create', absolute: false) }}"><i class="ti ti-plus"></i>Создать</button>
                     @endauth
             </div>
-            <form method="GET" action="{{ route('events.index') }}" class="events-catalog-filters" data-event-filters data-event-filter-body>
+            <form method="GET" action="{{ route('events.index') }}" class="events-catalog-filters" data-event-filters data-event-filter-body hidden>
                 <div class="events-catalog-filters__quick">
                     <a @class(['events-filter-chip', 'is-active' => $period === 'past']) href="{{ route('events.index', $pastToggleQuery) }}">
                         <i class="ti {{ $period === 'past' ? 'ti-square-check' : 'ti-square' }}" aria-hidden="true"></i><span>Показывать прошедшие</span>
