@@ -64,37 +64,56 @@ function prepareEventCatalogFilters() {
 
     const quickFilters = form.querySelector('.events-catalog-filters__quick');
     const pastControl = quickFilters?.querySelector(':scope > .events-filter-chip:first-child');
+    const dateFrom = form.querySelector('[name="date_from"]');
 
-    if (pastControl) {
-        const wrapper = document.createElement('label');
-        wrapper.className = 'events-filter-chip events-filter-chip--toggle';
+    if (!pastControl) {
+        return;
+    }
 
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.name = 'period';
-        checkbox.value = 'past';
-        checkbox.checked = new URL(window.location.href).searchParams.get('period') === 'past';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'events-filter-chip events-filter-chip--brand-toggle';
 
-        const label = document.createElement('span');
-        label.innerHTML = '<i class="ti ti-history" aria-hidden="true"></i>Показывать прошедшие';
+    const label = document.createElement('label');
+    label.className = 'form-toggle';
+    label.htmlFor = 'events-show-past';
 
-        const dateFrom = form.querySelector('[name="date_from"]');
-        const today = currentMoscowDate();
+    const checkbox = document.createElement('input');
+    checkbox.id = 'events-show-past';
+    checkbox.className = 'form-toggle__input';
+    checkbox.type = 'checkbox';
+    checkbox.name = 'period';
+    checkbox.value = 'past';
+    checkbox.checked = new URL(window.location.href).searchParams.get('period') === 'past';
 
-        checkbox.addEventListener('change', () => {
-            if (!dateFrom) {
-                return;
-            }
+    const control = document.createElement('span');
+    control.className = 'form-toggle__control';
+    control.setAttribute('aria-hidden', 'true');
 
-            if (checkbox.checked && dateFrom.value === today) {
-                dateFrom.value = '';
-            } else if (!checkbox.checked && dateFrom.value === '') {
-                dateFrom.value = today;
-            }
-        });
+    const title = document.createElement('strong');
+    title.className = 'form-toggle__title';
+    title.textContent = 'Показывать прошедшие';
 
-        wrapper.append(checkbox, label);
-        pastControl.replaceWith(wrapper);
+    label.append(checkbox, control, title);
+    wrapper.append(label);
+    pastControl.replaceWith(wrapper);
+
+    checkbox.addEventListener('change', () => {
+        if (checkbox.checked && dateFrom) {
+            dateFrom.value = '';
+        }
+    });
+
+    const resetPastFilter = () => {
+        if (dateFrom?.value) {
+            checkbox.checked = false;
+        }
+    };
+
+    dateFrom?.addEventListener('input', resetPastFilter);
+    dateFrom?.addEventListener('change', resetPastFilter);
+
+    if (checkbox.checked && dateFrom?.value) {
+        dateFrom.value = '';
     }
 }
 
