@@ -78,6 +78,21 @@ function prepareEventCatalogFilters() {
         const label = document.createElement('span');
         label.innerHTML = '<i class="ti ti-history" aria-hidden="true"></i>Показывать прошедшие';
 
+        const dateFrom = form.querySelector('[name="date_from"]');
+        const today = currentMoscowDate();
+
+        checkbox.addEventListener('change', () => {
+            if (!dateFrom) {
+                return;
+            }
+
+            if (checkbox.checked && dateFrom.value === today) {
+                dateFrom.value = '';
+            } else if (!checkbox.checked && dateFrom.value === '') {
+                dateFrom.value = today;
+            }
+        });
+
         wrapper.append(checkbox, label);
         pastControl.replaceWith(wrapper);
     }
