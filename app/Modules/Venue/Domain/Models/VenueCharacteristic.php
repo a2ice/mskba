@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'hoops_condition',
     'surface_condition',
     'marking_condition',
+    'first_hoop_marking',
+    'second_hoop_marking',
 ])]
 final class VenueCharacteristic extends Model
 {
@@ -28,6 +30,8 @@ final class VenueCharacteristic extends Model
             'hoops_condition' => 'integer',
             'surface_condition' => 'integer',
             'marking_condition' => VenueMarkingConditionEnum::class,
+            'first_hoop_marking' => VenueMarkingConditionEnum::class,
+            'second_hoop_marking' => VenueMarkingConditionEnum::class,
         ];
     }
 }
