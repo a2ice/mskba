@@ -43,6 +43,9 @@ final class VenueFacilitiesSynchronizer
         $hoopsCount = isset($characteristics['hoops_count'])
             ? (int) $characteristics['hoops_count']
             : null;
+        $markingCondition = $characteristics['marking_condition']
+            ?? $characteristics['first_hoop_marking']
+            ?? null;
 
         VenueCharacteristic::query()->updateOrCreate(
             ['venue_id' => $venue->id],
@@ -54,10 +57,9 @@ final class VenueFacilitiesSynchronizer
                 'surface_condition' => isset($characteristics['surface_condition'])
                     ? (int) $characteristics['surface_condition']
                     : null,
-                'first_hoop_marking' => $characteristics['first_hoop_marking'] ?? null,
-                'second_hoop_marking' => $hoopsCount === 2
-                    ? ($characteristics['second_hoop_marking'] ?? null)
-                    : null,
+                'marking_condition' => $markingCondition,
+                'first_hoop_marking' => $markingCondition,
+                'second_hoop_marking' => null,
             ],
         );
 
