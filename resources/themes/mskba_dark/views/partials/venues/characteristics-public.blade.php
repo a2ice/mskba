@@ -1,5 +1,5 @@
 @php
-    $characteristics = isset($venue) && isset($venue->id)
+    $characteristics = isset($venue?->id)
         ? \App\Modules\Venue\Domain\Models\VenueCharacteristic::query()->where('venue_id', $venue->id)->first()
         : null;
     $conditionLabel = static fn (?int $value): ?string => match ($value) {
@@ -10,6 +10,7 @@
         5 => 'Отличное',
         default => null,
     };
+    $marking = $characteristics?->marking_condition ?? $characteristics?->first_hoop_marking;
 @endphp
 
 @if($characteristics !== null)
@@ -43,58 +44,23 @@
                 </article>
             @endif
 
-            @if($characteristics->first_hoop_marking)
+            @if($marking)
                 <article>
                     <i class="ti ti-line" aria-hidden="true"></i>
-                    <span>Разметка у первого кольца</span>
-                    <strong>{{ $characteristics->first_hoop_marking->label() }}</strong>
-                </article>
-            @endif
-
-            @if($characteristics->hoops_count === 2 && $characteristics->second_hoop_marking)
-                <article>
-                    <i class="ti ti-line" aria-hidden="true"></i>
-                    <span>Разметка у второго кольца</span>
-                    <strong>{{ $characteristics->second_hoop_marking->label() }}</strong>
+                    <span>Разметка</span>
+                    <strong>{{ $marking->label() }}</strong>
                 </article>
             @endif
         </div>
     </section>
 
     <style>
-        .venue-characteristics-public__grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-        }
-        .venue-characteristics-public__grid article {
-            display: grid;
-            grid-template-columns: 34px 1fr;
-            gap: 3px 11px;
-            align-items: center;
-            min-height: 76px;
-            padding: 14px;
-            border: 1px solid var(--line);
-            border-radius: 13px;
-            background: var(--surface-raised);
-        }
-        .venue-characteristics-public__grid i {
-            grid-row: 1 / 3;
-            color: var(--accent-text);
-            font-size: 25px;
-        }
-        .venue-characteristics-public__grid span {
-            color: var(--muted);
-            font-size: 12px;
-        }
-        .venue-characteristics-public__grid strong {
-            font-size: 14px;
-        }
-        @media (max-width: 780px) {
-            .venue-characteristics-public__grid {
-                grid-template-columns: 1fr;
-            }
-        }
+        .venue-characteristics-public__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+        .venue-characteristics-public__grid article{display:grid;grid-template-columns:34px 1fr;gap:3px 11px;align-items:center;min-height:76px;padding:14px;border:1px solid var(--line);border-radius:13px;background:var(--surface-raised)}
+        .venue-characteristics-public__grid i{grid-row:1/3;color:var(--accent-text);font-size:25px}
+        .venue-characteristics-public__grid span{color:var(--muted);font-size:12px}
+        .venue-characteristics-public__grid strong{font-size:14px}
+        @media(max-width:780px){.venue-characteristics-public__grid{grid-template-columns:1fr}}
     </style>
 
     <script>
