@@ -91,7 +91,7 @@
     :root {
         --mobile-primary-actions-height: 68px;
         --mobile-primary-stats-height: 38px;
-        --mobile-primary-bar-inset: 8px;
+        --mobile-primary-bar-inset: 4px;
         --mobile-primary-bar-max-width: 500px;
     }
 
@@ -99,7 +99,7 @@
         padding-bottom: calc(
             var(--mobile-primary-actions-height)
             + var(--mobile-primary-stats-height)
-            + 18px
+            + var(--mobile-primary-bar-inset)
             + env(safe-area-inset-bottom)
         );
     }
@@ -226,7 +226,7 @@
         bottom: calc(
             var(--mobile-primary-actions-height)
             + var(--mobile-primary-stats-height)
-            + 18px
+            + var(--mobile-primary-bar-inset)
             + env(safe-area-inset-bottom)
         );
     }
