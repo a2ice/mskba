@@ -44,7 +44,7 @@
     </div>
 
     <nav class="mobile-primary-bar__actions" aria-label="Основные действия">
-        <a class="mobile-primary-bar__action" href="{{ route('events.index', ['type' => 'game']) }}">
+        <a class="mobile-primary-bar__action" href="{{ route('events.index', ['type' => 'games']) }}">
             <i class="ti ti-ball-basketball" aria-hidden="true"></i>
             <span>Играть</span>
         </a>
