@@ -207,7 +207,7 @@
     }
 
     .mobile-primary-bar__action--home > span:last-child {
-        margin-top: 26px;
+        margin-bottom: 8px;
         color: var(--accent-text);
         font-weight: 800;
     }
