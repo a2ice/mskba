@@ -73,18 +73,18 @@ function prepareEventCatalogFilters() {
     const wrapper = document.createElement('div');
     wrapper.className = 'events-filter-chip events-filter-chip--brand-toggle';
     wrapper.style.display = 'flex';
-    wrapper.style.alignItems = 'center';
+    wrapper.style.alignItems = 'stretch';
     wrapper.style.boxSizing = 'border-box';
-    wrapper.style.paddingBlock = '14px';
-    wrapper.style.paddingInline = '24px';
+    wrapper.style.padding = '0';
 
     const label = document.createElement('label');
     label.className = 'form-toggle';
     label.htmlFor = 'events-show-past';
     label.style.display = 'flex';
     label.style.width = '100%';
-    label.style.minHeight = '44px';
+    label.style.minHeight = '100%';
     label.style.margin = '0';
+    label.style.padding = '0 16px';
     label.style.alignItems = 'center';
     label.style.lineHeight = '1.2';
 
