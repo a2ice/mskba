@@ -22,7 +22,7 @@
         <div class="venue-characteristics-public__grid">
             @if($characteristics->hoops_count)
                 <article>
-                    <i class="ti ti-basketball-hoop" aria-hidden="true"></i>
+                    <i class="ti ti-basketball" aria-hidden="true"></i>
                     <span>Количество колец</span>
                     <strong>{{ $characteristics->hoops_count }}</strong>
                 </article>
