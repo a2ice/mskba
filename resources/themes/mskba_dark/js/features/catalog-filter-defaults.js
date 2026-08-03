@@ -72,6 +72,7 @@ function prepareEventCatalogFilters() {
 
     const wrapper = document.createElement('div');
     wrapper.className = 'events-filter-chip events-filter-chip--brand-toggle';
+    wrapper.style.marginBottom = '12px';
 
     const label = document.createElement('label');
     label.className = 'form-toggle';
