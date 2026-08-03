@@ -18,9 +18,7 @@ class UpdateVenueRequest extends FormRequest
         return ! ($this->user()?->isBlocked() ?? false);
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function rules(): array
     {
         return [
@@ -47,8 +45,8 @@ class UpdateVenueRequest extends FormRequest
             'characteristics.hoops_count' => ['nullable', 'integer', Rule::in([1, 2])],
             'characteristics.hoops_condition' => ['nullable', 'integer', 'between:1,5'],
             'characteristics.surface_condition' => ['nullable', 'integer', 'between:1,5'],
+            'characteristics.marking_condition' => ['nullable', Rule::enum(VenueMarkingConditionEnum::class)],
             'characteristics.first_hoop_marking' => ['nullable', Rule::enum(VenueMarkingConditionEnum::class)],
-            'characteristics.second_hoop_marking' => ['nullable', Rule::enum(VenueMarkingConditionEnum::class)],
             'amenity_ids' => ['nullable', 'array'],
             'amenity_ids.*' => ['integer', 'distinct', 'exists:amenities,id'],
         ];
@@ -71,45 +69,23 @@ class UpdateVenueRequest extends FormRequest
     public function withValidator($validator): void
     {
         $this->addVenueTagValidation($validator);
-
-        $validator->after(function ($validator): void {
-            if (! $this->boolean('facilities_present')) {
-                return;
-            }
-
-            $hoopsCount = (int) $this->input('characteristics.hoops_count', 0);
-            $secondMarking = $this->input('characteristics.second_hoop_marking');
-
-            if ($hoopsCount !== 2 && is_string($secondMarking) && $secondMarking !== '') {
-                $validator->errors()->add(
-                    'characteristics.second_hoop_marking',
-                    'Разметку второго кольца можно указать только для площадки с двумя кольцами.',
-                );
-            }
-        });
     }
 
     private function nullableString(string $key): ?string
     {
         $value = $this->validated($key);
 
-        return is_string($value) && trim($value) !== ''
-            ? trim($value)
-            : null;
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 
     private function nullableFloat(string $key): ?float
     {
         $value = $this->validated($key);
 
-        return is_numeric($value)
-            ? (float) $value
-            : null;
+        return is_numeric($value) ? (float) $value : null;
     }
 
-    /**
-     * @return array<int>
-     */
+    /** @return array<int> */
     private function metroStationIds(): array
     {
         $metroStationIds = $this->validated('location.metro_station_ids');
