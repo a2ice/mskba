@@ -42,7 +42,7 @@ final class TeamMemberSportsService
                 ->firstOrFail();
 
             if ($memberType !== TeamMemberTypeEnum::PLAYER && ($isCaptain || $isDefaultStarter)) {
-                throw new InvalidArgumentException('Капитаном и игроком стартового состава может быть только игрок.');
+                throw new InvalidArgumentException('Капитаном и стартовым участником может быть только игрок.');
             }
 
             if ($isCaptain) {
