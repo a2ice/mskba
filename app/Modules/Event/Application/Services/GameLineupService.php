@@ -22,18 +22,19 @@ final class GameLineupService
     public function update(Event $game, Actor $actor, array $starterUserIds, array $captainUserIds): void
     {
         DB::transaction(function () use ($game, $actor, $starterUserIds, $captainUserIds): void {
-            $aggregate = $game->parent_event_id !== null
-                ? Event::query()->lockForUpdate()->findOrFail($game->parent_event_id)
-                : Event::query()->lockForUpdate()->findOrFail($game->id);
-            $this->access->assertAllows(
-                $aggregate,
-                $actor,
-                EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER,
-            );
+            if ($game->parent_event_id !== null) {
+                $parent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+                $this->access->assertAllows($parent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
+            }
 
-            $lockedGame = $aggregate->id === $game->id
-                ? $aggregate
-                : Event::query()->lockForUpdate()->findOrFail($game->id);
+            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
+            if ($lockedGame->parent_event_id === null) {
+                $this->access->assertAllows(
+                    $lockedGame,
+                    $actor,
+                    EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER,
+                );
+            }
             if ($lockedGame->actual_started_at !== null) {
                 throw new InvalidArgumentException('После начала игры стартовый состав и капитана изменять нельзя.');
             }
@@ -94,6 +95,7 @@ final class GameLineupService
                 $entries = $game->gameRosterEntries()
                     ->where('game_side_id', $sides[$slot]->id)
                     ->where('status', GameRosterStatusEnum::SELECTED->value)
+                    ->orderByDesc('is_captain')
                     ->orderBy('id')
                     ->lockForUpdate()
                     ->get();
