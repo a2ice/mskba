@@ -5,6 +5,7 @@ namespace App\Modules\Telegram\Infrastructure\Jobs;
 use App\Modules\Identity\Application\UseCases\StoreProfileAvatarHandler;
 use App\Modules\Media\Application\Services\WebpImageNormalizer;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Telegram\Infrastructure\Exceptions\TelegramBotApiException;
 use App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -38,26 +39,47 @@ final class SyncTelegramProfileAvatarJob implements ShouldQueue
         }
 
         $activeAvatar = $profile->activeAvatar;
-        $reference = is_string($photoUrl) && str_starts_with($photoUrl, 'https://')
+        $photoUrlReference = is_string($photoUrl) && str_starts_with($photoUrl, 'https://')
             ? hash('sha256', $photoUrl)
             : null;
 
+        if ($activeAvatar?->source === 'upload') {
+            return;
+        }
+
+        if ($photoUrlReference !== null && $profile->media()
+            ->onlyTrashed()
+            ->where('collection', 'avatar')
+            ->where('source', 'telegram')
+            ->where('source_reference', $photoUrlReference)
+            ->exists()) {
+            return;
+        }
+
         $telegramFilePath = null;
+        $reference = null;
+        if ($telegram->isBotConfigured()) {
+            try {
+                $photos = $telegram->call('getUserProfilePhotos', ['user_id' => $account->telegram_user_id, 'limit' => 1], 8);
+                $sizes = data_get($photos, 'result.photos.0');
+                $largest = is_array($sizes) ? end($sizes) : null;
+                $fileId = is_array($largest) ? ($largest['file_id'] ?? null) : null;
+                $fileUniqueId = is_array($largest) ? ($largest['file_unique_id'] ?? null) : null;
+                if (is_string($fileId) && is_string($fileUniqueId)) {
+                    $file = $telegram->call('getFile', ['file_id' => $fileId], 8);
+                    $telegramFilePath = data_get($file, 'result.file_path');
+                    if (is_string($telegramFilePath) && $telegramFilePath !== '') {
+                        $reference = hash('sha256', "telegram-profile:{$account->telegram_user_id}:{$fileUniqueId}");
+                    }
+                }
+            } catch (TelegramBotApiException) {
+                // Публичный URL остается резервным источником при недоступности Bot API.
+            }
+        }
+
+        $reference ??= $photoUrlReference;
         if ($reference === null) {
-            $photos = $telegram->call('getUserProfilePhotos', ['user_id' => $account->telegram_user_id, 'limit' => 1], 8);
-            $sizes = data_get($photos, 'result.photos.0');
-            $largest = is_array($sizes) ? end($sizes) : null;
-            $fileId = is_array($largest) ? ($largest['file_id'] ?? null) : null;
-            $fileUniqueId = is_array($largest) ? ($largest['file_unique_id'] ?? null) : null;
-            if (! is_string($fileId) || ! is_string($fileUniqueId)) {
-                return;
-            }
-            $file = $telegram->call('getFile', ['file_id' => $fileId], 8);
-            $telegramFilePath = data_get($file, 'result.file_path');
-            if (! is_string($telegramFilePath) || $telegramFilePath === '') {
-                return;
-            }
-            $reference = hash('sha256', "telegram-profile:{$account->telegram_user_id}:{$fileUniqueId}");
+            return;
         }
 
         $wasDeletedByUser = $profile->media()
@@ -67,7 +89,7 @@ final class SyncTelegramProfileAvatarJob implements ShouldQueue
             ->where('source_reference', $reference)
             ->exists();
 
-        if ($wasDeletedByUser || $activeAvatar?->source === 'upload' || $activeAvatar?->source_reference === $reference) {
+        if ($wasDeletedByUser || $activeAvatar?->source_reference === $reference) {
             return;
         }
 

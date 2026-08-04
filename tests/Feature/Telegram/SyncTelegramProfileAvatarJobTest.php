@@ -138,6 +138,40 @@ class SyncTelegramProfileAvatarJobTest extends TestCase
         Storage::disk('public')->assertExists($avatar->path);
     }
 
+    public function test_job_prefers_bot_api_when_public_photo_url_is_present(): void
+    {
+        Storage::fake('public');
+        config(['telegram.bot_token' => '123456:test-token', 'telegram.api_base_url' => 'https://api.telegram.test']);
+        $photo = UploadedFile::fake()->image('telegram-api.jpg', 400, 400);
+        Http::fake([
+            'https://api.telegram.test/bot123456:test-token/getUserProfilePhotos' => Http::response([
+                'ok' => true,
+                'result' => ['photos' => [[
+                    ['file_id' => 'large', 'file_unique_id' => 'bot-photo', 'width' => 640, 'height' => 640],
+                ]]],
+            ]),
+            'https://api.telegram.test/bot123456:test-token/getFile' => Http::response([
+                'ok' => true,
+                'result' => ['file_path' => 'photos/avatar.jpg'],
+            ]),
+            'https://api.telegram.test/file/bot123456:test-token/photos/avatar.jpg' => Http::response(file_get_contents($photo->getPathname()), 200, ['Content-Type' => 'image/jpeg']),
+        ]);
+
+        $user = User::factory()->create();
+        $profile = $user->createProfile([]);
+        $account = TelegramAccount::query()->create([
+            'user_id' => $user->id,
+            'telegram_user_id' => 987655,
+            'photo_url' => 'https://t.me/i/userpic/320/unreachable.svg',
+        ]);
+
+        (new SyncTelegramProfileAvatarJob($account->id))->handle(app(StoreProfileAvatarHandler::class), app(TelegramBotApiClient::class));
+
+        $avatar = $profile->media()->where('collection', 'avatar')->sole();
+        $this->assertSame(hash('sha256', 'telegram-profile:987655:bot-photo'), $avatar->source_reference);
+        Http::assertNotSent(fn ($request) => $request->url() === $account->photo_url);
+    }
+
     public function test_backfill_command_queues_only_telegram_accounts_without_active_avatar(): void
     {
         Queue::fake();
