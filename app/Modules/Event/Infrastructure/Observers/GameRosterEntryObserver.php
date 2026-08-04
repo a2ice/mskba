@@ -22,7 +22,9 @@ final class GameRosterEntryObserver
             return null;
         }
 
-        if ($membership->member_type !== TeamMemberTypeEnum::PLAYER) {
+        // Memberships created before sport roles were introduced are players by default.
+        if ($membership->member_type !== null
+            && $membership->member_type !== TeamMemberTypeEnum::PLAYER) {
             return false;
         }
 
