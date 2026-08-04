@@ -133,7 +133,11 @@ final class TeamRosterAndInvitationsTest extends TestCase
 
         $this->actingAs($candidate)->deleteJson(route('teams.members.destroy', [$team->routeIdentifier(), $membership->id]))
             ->assertUnprocessable();
-        $removablePlayer = $team->memberships()->where('member_type', 'player')->where('user_id', '!=', $candidate->id)->firstOrFail();
+        $captain = $team->memberships()->where('is_captain', true)->firstOrFail();
+        $this->deleteJson(route('teams.members.destroy', [$team->routeIdentifier(), $captain->id]))
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Капитана нельзя исключить из команды. Сначала назначьте другого капитана.');
+        $removablePlayer = $team->memberships()->where('member_type', 'player')->where('is_captain', false)->where('user_id', '!=', $candidate->id)->firstOrFail();
         $this->deleteJson(route('teams.members.destroy', [$team->routeIdentifier(), $removablePlayer->id]))
             ->assertOk()->assertJsonPath('membership_id', $removablePlayer->id);
         $this->assertSame(ContractStatusEnum::INACTIVE, $removablePlayer->contract->fresh()->status);

@@ -2341,10 +2341,11 @@ body.telegram-mini-app .event-show {
 .team-permissions-modal__form { display: grid; gap: 16px; }
 .team-permissions-modal__form fieldset { margin: 0; padding: 0; border: 0; }
 .team-permissions-modal__form legend { margin-bottom: 9px; color: #d7d9d5; font-weight: 700; }
-.team-permissions-modal__permission .form-toggle { grid-template-columns: 36px minmax(0, 1fr); gap: 7px; min-height: 0; padding: 8px 9px; }
-.team-permissions-modal__permission .form-toggle__control { width: 36px; height: 20px; margin: 0; }
-.team-permissions-modal__permission .form-toggle__control::after { top: 2px; left: 2px; width: 14px; height: 14px; }
-.team-permissions-modal__permission .form-toggle__input:checked + .form-toggle__control::after { transform: translateX(16px); }
+.team-permissions-modal__permission { --team-toggle-track-width: 36px; --team-toggle-knob-size: 14px; }
+.team-permissions-modal__permission .form-toggle { grid-template-columns: var(--team-toggle-track-width) minmax(0, 1fr); gap: 7px; min-height: 0; padding: 8px 9px; }
+.team-permissions-modal__permission .form-toggle__control { box-sizing: border-box; flex: 0 0 var(--team-toggle-track-width); width: var(--team-toggle-track-width); min-width: var(--team-toggle-track-width); max-width: var(--team-toggle-track-width); height: 20px; margin: 0; }
+.team-permissions-modal__permission .form-toggle__control::after { top: 2px; left: 2px; width: var(--team-toggle-knob-size); height: var(--team-toggle-knob-size); }
+.team-permissions-modal__permission .form-toggle__input:checked + .form-toggle__control::after { transform: translateX(calc(var(--team-toggle-track-width) - var(--team-toggle-knob-size) - 6px)); }
 .team-permissions-modal__permission .form-toggle__title { font-size: 12px; line-height: 1.15; }
 .team-permissions-modal__actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .team-form-feedback { grid-column: 1 / -1; margin: 0; padding: 10px 12px; font-size: 13px; }

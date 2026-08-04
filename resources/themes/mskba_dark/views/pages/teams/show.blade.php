@@ -82,7 +82,7 @@
                     @endforeach</div></fieldset>@endif
                     <div class="team-permissions-modal__actions">
                         @if($canManagePermissions)<button class="btn btn--primary btn--sm" type="submit">Сохранить права</button>@endif
-                        @if($canRemoveMembers && $member->user_id !== $currentUserId)<button class="btn btn--danger btn--sm" type="button" data-team-member-remove-url="{{ route('teams.members.destroy', [$team->routeIdentifier(), $member->id]) }}">Исключить из команды</button>@endif
+                        @if($canRemoveMembers && $member->user_id !== $currentUserId && !$member->is_captain)<button class="btn btn--danger btn--sm" type="button" data-team-member-remove-url="{{ route('teams.members.destroy', [$team->routeIdentifier(), $member->id]) }}">Исключить из команды</button>@endif
                     </div>
                     <div class="team-form-feedback" data-team-form-feedback hidden></div>
                 </form>

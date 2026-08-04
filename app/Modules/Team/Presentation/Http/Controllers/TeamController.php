@@ -341,6 +341,7 @@ final class TeamController extends Controller
             ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
             ->firstOrFail();
         abort_if($member->access_level === TeamMembershipAccessLevelEnum::OWNER->value, 422, 'Владельца команды удалить нельзя.');
+        abort_if($member->is_captain, 422, 'Капитана нельзя исключить из команды. Сначала назначьте другого капитана.');
         abort_if($member->user_id === $actor->user_id, 422, 'Нельзя исключить самого себя через управление командой.');
 
         DB::transaction(function () use ($member): void {
