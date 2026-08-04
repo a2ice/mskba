@@ -10,6 +10,7 @@ use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
@@ -24,6 +25,7 @@ use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Presentation\Theming\ThemeResolver;
 use App\Support\Text\CyrillicTransliterator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -188,6 +190,7 @@ final class TeamController extends Controller
             'team' => $item,
             'coaches' => $coaches,
             'managers' => $managers,
+            'activeMemberships' => $activeMemberships,
             'players' => $players,
             'startingLineups' => $startingLineups,
             'hasCompleteRoster' => $startingLineups->every('is_complete'),
@@ -196,6 +199,8 @@ final class TeamController extends Controller
             'canInviteMembers' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS),
             'canManageRoles' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROLES),
             'canManagePermissions' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_PERMISSIONS),
+            'canRemoveMembers' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::REMOVE_MEMBERS),
+            'currentUserId' => $actor?->user_id,
             'teamPermissions' => TeamPermissionEnum::cases(),
             'roles' => TeamMembershipAccessLevelEnum::cases(),
             'sportTypes' => TeamSportTypeEnum::cases(),
@@ -326,17 +331,29 @@ final class TeamController extends Controller
         return back()->with('status', 'Логотип команды удалён.');
     }
 
-    public function removeMember(string $team, int $membership, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): RedirectResponse
+    public function removeMember(string $team, int $membership, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): RedirectResponse|JsonResponse
     {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
-        abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS), 403);
-        $member = $item->memberships()->whereKey($membership)->firstOrFail();
+        abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::REMOVE_MEMBERS), 403);
+        $member = $item->memberships()->whereKey($membership)
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
+            ->firstOrFail();
         abort_if($member->access_level === TeamMembershipAccessLevelEnum::OWNER->value, 422, 'Владельца команды удалить нельзя.');
-        $member->contract->update(['status' => ContractStatusEnum::INACTIVE]);
-        $member->sportLineupAssignments()->delete();
+        abort_if($member->user_id === $actor->user_id, 422, 'Нельзя исключить самого себя через управление командой.');
 
-        return back()->with('status', 'Участник исключён из активного состава.');
+        DB::transaction(function () use ($member): void {
+            $lockedMember = ContractMembership::query()->whereKey($member->id)->lockForUpdate()->firstOrFail();
+            $lockedMember->contract()->lockForUpdate()->firstOrFail()->update(['status' => ContractStatusEnum::INACTIVE]);
+            $lockedMember->sportLineupAssignments()->delete();
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Участник исключён из команды.', 'membership_id' => $member->id]);
+        }
+
+        return back()->with('status', 'Участник исключён из команды.');
     }
 
     /** @param array<int, string> $sportTypes */

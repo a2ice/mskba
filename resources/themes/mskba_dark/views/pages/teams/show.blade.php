@@ -30,14 +30,18 @@
         <div class="team-coaches">@forelse($coaches as $coach)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($coach) }}" alt=""><div><strong>{{ $memberName($coach) }}</strong><span>Тренер команды</span></div></div>@empty<p class="team-profile__empty">Тренер пока не назначен.</p>@endforelse</div>
     </section>
 
-    @if($managers->isNotEmpty())
+    @if($activeMemberships->isNotEmpty() && ($canManagePermissions || $canRemoveMembers))
     <section class="team-profile__section" aria-labelledby="team-managers-title">
-        <div class="team-profile__section-heading"><i class="ti ti-shield-cog"></i><div><span>Договорные условия</span><h2 id="team-managers-title">Управление командой</h2></div></div>
-        <div class="team-managers">@foreach($managers as $manager)
-            <form class="team-manager-contract" data-team-permissions-form data-update-url="{{ route('teams.members.permissions', [$team->routeIdentifier(), $manager->id]) }}">
-                <div class="team-person team-person--manager"><img src="{{ $avatarUrl($manager) }}" alt=""><div><strong>{{ $memberName($manager) }}</strong><span>{{ $manager->access_level === 'owner' ? 'Создатель' : 'Менеджер' }}</span></div></div>
-                <div class="team-invitation__permissions">@foreach($teamPermissions as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked($manager->access_level === 'owner' || $manager->contract->permissions->contains('permission', $permission->value)) @disabled(!$canManagePermissions || $manager->access_level === 'owner')><span>{{ $permission->label() }}</span></label>@endforeach</div>
-                @if($canManagePermissions && $manager->access_level !== 'owner')<button class="btn btn--secondary btn--sm" type="submit">Сохранить права</button>@endif
+        <div class="team-profile__section-heading"><i class="ti ti-shield-cog"></i><div><span>Договорные условия</span><h2 id="team-managers-title">Права участников</h2></div></div>
+        <div class="team-managers">@foreach($activeMemberships as $member)
+            <form class="team-manager-contract" data-team-permissions-form data-update-url="{{ route('teams.members.permissions', [$team->routeIdentifier(), $member->id]) }}">
+                <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->access_level === 'owner' ? 'Создатель' : $member->member_type->label() }}</span></div></div>
+                <div class="team-invitation__permissions">@foreach($teamPermissions as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked($member->access_level === 'owner' || $member->contract->permissions->contains('permission', $permission->value)) @disabled(!$canManagePermissions || $member->access_level === 'owner')><span>{{ $permission->label() }}</span></label>@endforeach</div>
+                <div class="team-manager-contract__actions">
+                    @if($canManagePermissions && $member->access_level !== 'owner')<button class="btn btn--secondary btn--sm" type="submit">Сохранить права</button>@endif
+                    @if($canRemoveMembers && $member->access_level !== 'owner' && $member->user_id !== $currentUserId)<button class="btn btn--danger btn--sm" type="button" data-team-member-remove-url="{{ route('teams.members.destroy', [$team->routeIdentifier(), $member->id]) }}">Исключить</button>@endif
+                </div>
+                <div class="team-form-feedback" data-team-form-feedback hidden></div>
             </form>
         @endforeach</div>
     </section>
@@ -49,6 +53,7 @@
         @foreach($startingLineups as $lineup)
             <section class="team-sport-group" data-team-roster data-update-url="{{ route('teams.roster.update', $team->routeIdentifier()) }}" data-sport-type="{{ $lineup['sport_type'] }}" data-limit="{{ $lineup['size'] }}" data-editable="{{ $canManageRoster ? '1' : '0' }}">
                 <header><div><strong>{{ $lineup['label'] }}</strong><span>Основа: <b data-starter-count>{{ $lineup['starters']->count() }}</b> / {{ $lineup['size'] }}</span></div>@if($canManageRoster)<button class="btn btn--primary btn--sm" type="button" data-roster-save>Сохранить</button>@endif</header>
+                <div class="team-form-feedback" data-team-form-feedback hidden></div>
                 <div class="team-roster-pool"><div class="team-roster-pool__heading"><span>Основной состав</span><b>{{ $lineup['size'] }} мест</b></div><div class="team-roster-dropzone" data-roster-zone="starter">
                     @foreach($lineup['starters'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'team')) @endforeach
                     @if($lineup['starters']->isEmpty())<p class="team-roster-dropzone__empty">Перенесите сюда основных игроков</p>@endif
@@ -70,6 +75,7 @@
             <label><span>Роль</span><select class="form-select" name="member_type"><option value="player">Игрок</option><option value="coach">Тренер</option><option value="manager">Менеджер</option></select></label>
         </div>@if($canManagePermissions)<fieldset><legend>Права по договору</legend><div class="team-invitation__permissions">@foreach($teamPermissions as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}"><span>{{ $permission->label() }}</span></label>@endforeach</div></fieldset>@endif
         <button class="btn btn--primary" type="submit">Отправить приглашение</button></form>
+        <div class="team-form-feedback" data-team-form-feedback hidden></div>
     </section>
     @endif
 </article>

@@ -8,6 +8,7 @@ enum TeamPermissionEnum: string
     case INVITE_MEMBERS = 'team.members.invite';
     case MANAGE_ROLES = 'team.roles.manage';
     case MANAGE_PERMISSIONS = 'team.permissions.manage';
+    case REMOVE_MEMBERS = 'team.members.remove';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum TeamPermissionEnum: string
             self::INVITE_MEMBERS => 'Приглашать участников',
             self::MANAGE_ROLES => 'Назначать роли и капитана',
             self::MANAGE_PERMISSIONS => 'Выдавать права управления командой',
+            self::REMOVE_MEMBERS => 'Исключать участников из команды',
         };
     }
 }

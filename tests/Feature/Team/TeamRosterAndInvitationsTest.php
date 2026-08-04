@@ -118,6 +118,26 @@ final class TeamRosterAndInvitationsTest extends TestCase
         $this->assertSame(ContractStatusEnum::ACTIVE, $membership->contract->fresh()->status);
         $this->assertSame(2, DB::table('team_sport_lineup_members')->where('contract_membership_id', $membership->id)->count());
 
+        $this->actingAs($creator)->putJson(route('teams.members.permissions', [$team->routeIdentifier(), $membership->id]), [
+            'permissions' => ['team.roster.manage', 'team.members.remove'],
+        ])->assertOk()->assertJsonPath('message', 'Договорные права обновлены.');
+        $this->assertDatabaseHas('contract_permissions', [
+            'contract_id' => $membership->contract_id,
+            'permission' => 'team.members.remove',
+        ]);
+        $this->get(route('teams.show', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Права участников')
+            ->assertSee('Исключать участников из команды');
+
+        $this->actingAs($candidate)->deleteJson(route('teams.members.destroy', [$team->routeIdentifier(), $membership->id]))
+            ->assertUnprocessable();
+        $removablePlayer = $team->memberships()->where('member_type', 'player')->where('user_id', '!=', $candidate->id)->firstOrFail();
+        $this->deleteJson(route('teams.members.destroy', [$team->routeIdentifier(), $removablePlayer->id]))
+            ->assertOk()->assertJsonPath('membership_id', $removablePlayer->id);
+        $this->assertSame(ContractStatusEnum::INACTIVE, $removablePlayer->contract->fresh()->status);
+        $this->assertDatabaseMissing('team_sport_lineup_members', ['contract_membership_id' => $removablePlayer->id]);
+
         $playerIds = $team->memberships()->where('member_type', 'player')->whereHas('contract', fn ($query) => $query->where('status', 'active'))->orderBy('id')->pluck('id');
         $this->putJson(route('teams.roster.update', $team->routeIdentifier()), [
             'sport_type' => 'streetball',

@@ -4,7 +4,14 @@ if (root) {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const errorBox = root.querySelector('[data-team-management-error]');
     const successBox = root.querySelector('[data-team-management-success]');
-    const message = (text, error = false) => {
+    const message = (text, error = false, scope = null) => {
+        const local = scope?.querySelector?.('[data-team-form-feedback]');
+        if (local) {
+            local.className = `team-form-feedback alert ${error ? 'alert-danger' : 'alert-success'}`;
+            local.textContent = text;
+            local.hidden = false;
+            return;
+        }
         const target = error ? errorBox : successBox;
         const other = error ? successBox : errorBox;
         if (other) other.hidden = true;
@@ -29,7 +36,7 @@ if (root) {
         const showStarterCapacityError = () => {
             starterZone.classList.remove('is-dragover');
             starterZone.classList.add('is-capacity-error');
-            message(`В основном составе может быть не больше ${starterLimit} игроков. Сначала переместите игрока в запас.`, true);
+            message(`В основном составе может быть не больше ${starterLimit} игроков. Сначала переместите игрока в запас.`, true, group);
             clearTimeout(capacityTimer);
             capacityTimer = setTimeout(() => starterZone.classList.remove('is-capacity-error'), 1800);
         };
@@ -81,8 +88,8 @@ if (root) {
             try {
                 const ids = (zone) => [...zone.querySelectorAll('[data-roster-player]')].map((player) => Number(player.dataset.membershipId));
                 const payload = await request(group.dataset.updateUrl, 'PUT', { sport_type: group.dataset.sportType, starter_ids: ids(zones[0]), reserve_ids: ids(zones[1]) });
-                group.classList.remove('is-dirty'); message(payload.message);
-            } catch (error) { message(error.message, true); } finally { button.disabled = false; }
+                group.classList.remove('is-dirty'); message(payload.message, false, group);
+            } catch (error) { message(error.message, true, group); } finally { button.disabled = false; }
         });
     });
 
@@ -99,8 +106,19 @@ if (root) {
 
     root.querySelectorAll('[data-team-permissions-form]').forEach((form) => form.addEventListener('submit', async (event) => {
         event.preventDefault(); const button = form.querySelector('[type="submit"]'); button.disabled = true;
-        try { const payload = await request(form.dataset.updateUrl, 'PUT', { permissions: new FormData(form).getAll('permissions[]') }); message(payload.message); } catch (error) { message(error.message, true); } finally { button.disabled = false; }
+        try { const payload = await request(form.dataset.updateUrl, 'PUT', { permissions: new FormData(form).getAll('permissions[]') }); message(payload.message, false, form); } catch (error) { message(error.message, true, form); } finally { button.disabled = false; }
     }));
+
+    root.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-team-member-remove-url]'); if (!button) return;
+        if (!window.confirm('Исключить участника из команды?')) return;
+        const form = button.closest('[data-team-permissions-form]'); button.disabled = true;
+        try {
+            const payload = await request(button.dataset.teamMemberRemoveUrl, 'DELETE', {});
+            message(payload.message, false, form);
+            window.setTimeout(() => window.location.reload(), 500);
+        } catch (error) { message(error.message, true, form); button.disabled = false; }
+    });
 
     const invitation = root.querySelector('[data-team-invitation]');
     if (invitation) {
@@ -117,9 +135,9 @@ if (root) {
         });
         results.addEventListener('click', (event) => { const option = event.target.closest('[data-user-id]'); if (!option) return; idInput.value = option.dataset.userId; input.value = option.dataset.userLabel; results.hidden = true; });
         invitation.querySelector('form').addEventListener('submit', async (event) => {
-            event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); if (!idInput.value) { message('Выберите пользователя из подсказки.', true); return; }
+            event.preventDefault(); const form = event.currentTarget; const data = new FormData(form); if (!idInput.value) { message('Выберите пользователя из подсказки.', true, invitation); return; }
             const submit = form.querySelector('[type="submit"]'); submit.disabled = true;
-            try { const payload = await request(invitation.dataset.storeUrl, 'POST', { user_id: Number(idInput.value), member_type: data.get('member_type'), permissions: data.getAll('permissions[]') }); form.reset(); idInput.value = ''; message(payload.message); } catch (error) { message(error.message, true); } finally { submit.disabled = false; }
+            try { const payload = await request(invitation.dataset.storeUrl, 'POST', { user_id: Number(idInput.value), member_type: data.get('member_type'), permissions: data.getAll('permissions[]') }); form.reset(); idInput.value = ''; message(payload.message, false, invitation); } catch (error) { message(error.message, true, invitation); } finally { submit.disabled = false; }
         });
     }
 }
