@@ -34,10 +34,31 @@
 <div class="form-group field mb-3"><label class="form-label">Статус</label><select class="form-select" name="status">@foreach(\App\Modules\Team\Domain\Enums\TeamStatusEnum::cases() as $status)<option value="{{ $status->value }}" @selected($team->status===$status)>{{ $status->label() }}</option>@endforeach</select></div>
 <button class="btn btn--primary">Сохранить</button></form>
 <div class="section-card"><h2>Состав</h2>
-@foreach($team->memberships as $membership) @php($memberName = trim(implode(' ', array_filter([$membership->user->profile?->first_name, $membership->user->profile?->last_name]))) ?: $membership->user->username)<div class="d-flex justify-content-between align-items-center gap-3 mb-2"><span>{{ $memberName }} — {{ \App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum::from($membership->access_level)->label() }}</span>
-@if($membership->access_level !== 'owner')<form method="POST" action="{{ route('teams.members.destroy',[$team->routeIdentifier(),$membership]) }}">@csrf @method('DELETE')<button class="btn btn--secondary">Исключить</button></form>@endif</div>@endforeach
+<p class="form-hint">Спортивная роль не заменяет права доступа. Капитаном и участником стартового состава может быть только игрок. Эти настройки используются как шаблон для новых игр.</p>
+@foreach($team->memberships as $membership)
+@php
+    $memberName = trim(implode(' ', array_filter([$membership->user->profile?->first_name, $membership->user->profile?->last_name]))) ?: $membership->user->username;
+    $memberType = $membership->member_type?->value ?? 'player';
+@endphp
+<div class="section-card section-card--nested mb-3">
+<div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+<strong>{{ $memberName }}</strong>
+<span>{{ \App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum::from($membership->access_level)->label() }}</span>
+</div>
+<form method="POST" action="{{ route('teams.members.sports.update', [$team->routeIdentifier(), $membership->id]) }}">@csrf @method('PUT')
+<div class="row g-3 align-items-end">
+<div class="col-md-5"><label class="form-label">Тип участника</label><select class="form-select" name="member_type">
+@foreach(\App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::cases() as $type)<option value="{{ $type->value }}" @selected($memberType === $type->value)>{{ $type->label() }}</option>@endforeach
+</select></div>
+<div class="col-md-3"><label class="form-check"><input type="hidden" name="is_captain" value="0"><input class="form-check-input" type="checkbox" name="is_captain" value="1" @checked($membership->is_captain)><span class="form-check-label">Капитан</span></label></div>
+<div class="col-md-4"><label class="form-check"><input type="hidden" name="is_default_starter" value="0"><input class="form-check-input" type="checkbox" name="is_default_starter" value="1" @checked($membership->is_default_starter)><span class="form-check-label">Старт по умолчанию</span></label></div>
+</div>
+<div class="d-flex justify-content-between align-items-center gap-3 mt-3"><button class="btn btn--secondary btn--sm" type="submit">Сохранить роль</button></form>
+@if($membership->access_level !== 'owner')<form method="POST" action="{{ route('teams.members.destroy',[$team->routeIdentifier(),$membership]) }}">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm">Исключить</button></form>@endif</div>
+</div>
+@endforeach
 <hr><form method="POST" action="{{ route('teams.members.store',$team->routeIdentifier()) }}">@csrf
 <div class="row g-3"><div class="col-md-7"><label class="form-label">Пользователь</label><select class="form-select" name="user_id">@foreach($users as $user) @php($userName = trim(implode(' ', array_filter([$user->profile?->first_name, $user->profile?->last_name]))) ?: $user->username)<option value="{{ $user->id }}">{{ $userName }}</option>@endforeach</select></div>
-<div class="col-md-5"><label class="form-label">Роль</label><select class="form-select" name="access_level">@foreach($roles as $role)<option value="{{ $role->value }}">{{ $role->label() }}</option>@endforeach</select></div></div>
+<div class="col-md-5"><label class="form-label">Права в команде</label><select class="form-select" name="access_level">@foreach($roles as $role)<option value="{{ $role->value }}">{{ $role->label() }}</option>@endforeach</select></div></div>
 <button class="btn btn--primary mt-3">Добавить или изменить</button></form></div>
 @endsection
