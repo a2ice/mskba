@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameLifecycleAllowsStatistics;
 use App\Modules\Identity\Infrastructure\Http\Middleware\RecordBrowserFingerprint;
 use App\Modules\Portal\Infrastructure\Http\Middleware\RecordOnlineUserPresence;
 use Illuminate\Foundation\Application;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', [
             RecordBrowserFingerprint::class,
             RecordOnlineUserPresence::class,
+            EnsureGameLifecycleAllowsStatistics::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
