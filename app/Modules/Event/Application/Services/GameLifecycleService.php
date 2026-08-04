@@ -14,7 +14,10 @@ use InvalidArgumentException;
 
 final class GameLifecycleService
 {
-    public function __construct(private readonly EventManagementAccess $access) {}
+    public function __construct(
+        private readonly EventManagementAccess $access,
+        private readonly GameLineupService $lineups,
+    ) {}
 
     public function start(Event $game, Actor $actor): Event
     {
@@ -43,6 +46,8 @@ final class GameLifecycleService
             if ($lockedGame->gameSides()->count() !== 2 || $lockedGame->gameRosterEntries()->count() === 0) {
                 throw new InvalidArgumentException('Перед началом игры необходимо сформировать команды и составы.');
             }
+
+            $this->lineups->prepareAndLockForStart($lockedGame);
 
             $lockedGame->update([
                 'actual_started_at' => now(),
