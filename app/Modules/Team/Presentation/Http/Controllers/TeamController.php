@@ -15,6 +15,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Application\Services\TeamLogoManager;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Presentation\Theming\ThemeResolver;
@@ -29,22 +30,56 @@ use InvalidArgumentException;
 
 final class TeamController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'member_count' => ['nullable', Rule::in(['small', 'medium', 'large'])],
+            'sport_type' => ['nullable', Rule::enum(TeamSportTypeEnum::class)],
+        ]);
+        $search = trim((string) ($filters['q'] ?? ''));
+        $memberCount = (string) ($filters['member_count'] ?? '');
+        $sportType = (string) ($filters['sport_type'] ?? '');
+        $activeMemberships = fn ($query) => $query->whereHas(
+            'contract',
+            fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE),
+        );
+
         return ThemeResolver::page('teams.index', [
             'teams' => Team::query()
                 ->whereNull('temporary_for_event_id')
                 ->where('status', TeamStatusEnum::ACTIVE)
-                ->with('logo')
-                ->withCount('memberships')
+                ->when($sportType !== '', fn ($query) => $query->whereHas(
+                    'sportProfiles',
+                    fn ($profiles) => $profiles->where('sport_type', $sportType),
+                ))
+                ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                    $query->whereLike('name', "%{$search}%")
+                        ->orWhereLike('description', "%{$search}%");
+                }))
+                ->when($memberCount === 'small', fn ($query) => $query->whereHas('memberships', $activeMemberships, '<=', 5))
+                ->when($memberCount === 'medium', fn ($query) => $query
+                    ->whereHas('memberships', $activeMemberships, '>=', 6)
+                    ->whereHas('memberships', $activeMemberships, '<=', 10))
+                ->when($memberCount === 'large', fn ($query) => $query->whereHas('memberships', $activeMemberships, '>=', 11))
+                ->with([
+                    'logo',
+                    'sportProfiles',
+                    'memberships' => fn ($memberships) => $memberships
+                        ->whereHas('contract', fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE))
+                        ->with(['contract', 'user.profile']),
+                ])
+                ->withCount(['memberships as active_memberships_count' => $activeMemberships])
                 ->orderBy('name')
-                ->paginate(20),
+                ->paginate(20)
+                ->withQueryString(),
+            'filters' => ['q' => $search, 'member_count' => $memberCount, 'sport_type' => $sportType],
         ]);
     }
 
     public function create(): Response
     {
-        return ThemeResolver::page('teams.create', ['statuses' => TeamStatusEnum::cases()]);
+        return ThemeResolver::page('teams.create', ['sportTypes' => TeamSportTypeEnum::cases()]);
     }
 
     public function store(
@@ -55,11 +90,15 @@ final class TeamController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'sport_types' => ['nullable', 'array', 'min:1'],
+            'sport_types.*' => ['required', 'distinct', Rule::enum(TeamSportTypeEnum::class)],
         ]);
+        $sportTypes = $data['sport_types'] ?? [TeamSportTypeEnum::BASKETBALL->value];
+        unset($data['sport_types']);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor?->user_id === null, 403);
 
-        $team = DB::transaction(function () use ($data, $actor, $transliterator): Team {
+        $team = DB::transaction(function () use ($data, $sportTypes, $actor, $transliterator): Team {
             $base = Str::slug($transliterator->transliterate($data['name'])) ?: 'team';
             $alias = $base;
             $suffix = 2;
@@ -74,6 +113,7 @@ final class TeamController extends Controller
                 'created_by_actor_id' => $actor->id,
                 'status' => TeamStatusEnum::ACTIVE,
             ]);
+            $this->syncSportTypes($team, $sportTypes);
             $contract = Contract::create([
                 'family' => ContractFamilyEnum::MEMBERSHIP,
                 'name' => "Владелец команды «{$team->name}»",
@@ -102,7 +142,7 @@ final class TeamController extends Controller
         PageSeoResolver $pageSeo,
     ): Response {
         $item = Team::query()->whereRouteIdentifier($team)
-            ->with(['logo', 'memberships.contract', 'memberships.user.profile.activeAvatar'])
+            ->with(['logo', 'sportProfiles', 'memberships.contract', 'memberships.user.profile.activeAvatar'])
             ->firstOrFail();
         $actor = $actors->resolveForRequest($request);
 
@@ -110,6 +150,7 @@ final class TeamController extends Controller
             'team' => $item,
             'canManage' => $actor !== null && $access->canManage($item, $actor),
             'roles' => TeamMembershipAccessLevelEnum::cases(),
+            'sportTypes' => TeamSportTypeEnum::cases(),
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::TEAM,
                 $item->id,
@@ -123,7 +164,7 @@ final class TeamController extends Controller
     public function edit(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): Response
     {
         $item = Team::query()->whereRouteIdentifier($team)
-            ->with(['logo', 'memberships.contract', 'memberships.user.profile'])
+            ->with(['logo', 'sportProfiles', 'memberships.contract', 'memberships.user.profile'])
             ->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->canManage($item, $actor), 403);
@@ -132,6 +173,7 @@ final class TeamController extends Controller
             'team' => $item,
             'roles' => TeamMembershipAccessLevelEnum::cases(),
             'users' => User::query()->with('profile')->orderBy('username')->limit(200)->get(),
+            'sportTypes' => TeamSportTypeEnum::cases(),
         ]);
     }
 
@@ -144,9 +186,14 @@ final class TeamController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', Rule::enum(TeamStatusEnum::class)],
+            'sport_types' => ['nullable', 'array', 'min:1'],
+            'sport_types.*' => ['required', 'distinct', Rule::enum(TeamSportTypeEnum::class)],
         ]);
+        $sportTypes = $data['sport_types'] ?? $item->sportProfiles()->pluck('sport_type')->all();
+        $sportTypes = $sportTypes ?: [TeamSportTypeEnum::BASKETBALL->value];
+        unset($data['sport_types']);
         try {
-            DB::transaction(function () use ($item, $data): void {
+            DB::transaction(function () use ($item, $data, $sportTypes): void {
                 $lockedTeam = Team::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
                 if ($data['status'] === TeamStatusEnum::ACTIVE->value) {
                     $hasManager = $lockedTeam->memberships()
@@ -162,6 +209,7 @@ final class TeamController extends Controller
                     }
                 }
                 $lockedTeam->update($data);
+                $this->syncSportTypes($lockedTeam, $sportTypes);
             });
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
@@ -258,5 +306,15 @@ final class TeamController extends Controller
         $member->contract->update(['status' => ContractStatusEnum::INACTIVE]);
 
         return back()->with('status', 'Участник исключён из активного состава.');
+    }
+
+    /** @param array<int, string> $sportTypes */
+    private function syncSportTypes(Team $team, array $sportTypes): void
+    {
+        $values = collect($sportTypes)->unique()->values();
+        foreach ($values as $sportType) {
+            $team->sportProfiles()->updateOrCreate(['sport_type' => $sportType]);
+        }
+        $team->sportProfiles()->whereNotIn('sport_type', $values)->delete();
     }
 }

@@ -8,7 +8,7 @@ use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 
 final class GameRosterEntryObserver
 {
-    public function creating(GameRosterEntry $entry): bool|null
+    public function creating(GameRosterEntry $entry): ?bool
     {
         $entry->lineup_role ??= GameLineupRoleEnum::BENCH;
         $entry->is_captain ??= false;

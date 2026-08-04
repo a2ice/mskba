@@ -16,6 +16,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Infrastructure\Jobs\RecalculatePlayerObjectiveAssessmentsJob;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramEventMessageBuilder;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -24,7 +25,7 @@ use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 final class GameAndTeamWorkflowTest extends TestCase
@@ -43,12 +44,40 @@ final class GameAndTeamWorkflowTest extends TestCase
         $team = Team::query()->firstOrFail();
         $response->assertRedirect(route('teams.show', $team->routeIdentifier()));
         $this->assertNull($team->temporary_for_event_id);
+        $this->assertDatabaseHas('team_sport_profiles', [
+            'team_id' => $team->id,
+            'sport_type' => TeamSportTypeEnum::BASKETBALL->value,
+        ]);
         $this->assertDatabaseHas('contract_memberships', [
             'scope_type' => 'team',
             'scope_id' => $team->id,
             'user_id' => $owner->id,
             'access_level' => TeamMembershipAccessLevelEnum::OWNER->value,
         ]);
+    }
+
+    public function test_team_can_support_multiple_sport_types_without_limiting_roster_size(): void
+    {
+        $owner = User::factory()->create(['username' => 'streetball-owner']);
+
+        $this->actingAs($owner)->post(route('teams.store'), [
+            'name' => 'Стритбольная команда',
+            'sport_types' => [
+                TeamSportTypeEnum::STREETBALL->value,
+                TeamSportTypeEnum::BASKETBALL->value,
+            ],
+        ])->assertRedirect();
+
+        $team = Team::query()->where('name', 'Стритбольная команда')->firstOrFail();
+        $this->assertEqualsCanonicalizing(
+            [TeamSportTypeEnum::STREETBALL, TeamSportTypeEnum::BASKETBALL],
+            $team->sportProfiles->pluck('sport_type')->all(),
+        );
+
+        foreach (range(1, 6) as $index) {
+            $this->addPlayer($owner, $team, User::factory()->create(['username' => 'multi-player-'.$index]));
+        }
+        $this->assertSame(7, $team->memberships()->count());
     }
 
     public function test_standalone_game_uses_team_snapshots_and_confirmed_statistics_update_objective_assessment(): void
@@ -118,13 +147,19 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertJsonPath('player_points.'.$ownerA->id, 3)
             ->assertJsonPath('player_points.'.$ownerB->id, 2);
 
-        Queue::fake();
+        config()->set('cache.default', 'array');
+        $this->app['cache']->setDefaultDriver('array');
+        Bus::fake();
 
         $this->actingAs($ownerA)
             ->post(route('events.game.statistics.confirm', $game->routeIdentifier()))
-            ->assertSessionHas('status');
+            ->assertSessionMissing('error')
+            ->assertSessionHas(
+                'status',
+                'Статистика подтверждена и учтена в объективных показателях игроков.',
+            );
 
-        Queue::assertPushed(
+        Bus::assertDispatched(
             RecalculatePlayerObjectiveAssessmentsJob::class,
             fn (RecalculatePlayerObjectiveAssessmentsJob $job): bool => $job->eventId === $game->id,
         );
@@ -760,6 +795,14 @@ final class GameAndTeamWorkflowTest extends TestCase
         $playerMembership = $teamA->memberships()->where('user_id', $playerA->id)->firstOrFail();
 
         $this->actingAs($ownerA)
+            ->from(route('events.game.manage', $game->routeIdentifier()))
+            ->patch(route('events.game.roster', $game->routeIdentifier()), [
+                'side_a_user_ids' => [$ownerA->id, $playerA->id],
+                'side_b_user_ids' => [$ownerB->id],
+            ])
+            ->assertSessionHas('error', 'Количество выбранных игроков превышает формат стороны.');
+
+        $this->actingAs($ownerA)
             ->delete(route('teams.members.destroy', [$teamA->routeIdentifier(), $playerMembership->id]))
             ->assertSessionHas('status');
         $this->assertDatabaseHas('game_roster_entries', [
@@ -767,14 +810,6 @@ final class GameAndTeamWorkflowTest extends TestCase
             'user_id' => $playerA->id,
             'source_contract_membership_id' => $playerMembership->id,
         ]);
-
-        $this->actingAs($ownerA)
-            ->from(route('events.game.manage', $game->routeIdentifier()))
-            ->patch(route('events.game.roster', $game->routeIdentifier()), [
-                'side_a_user_ids' => [$ownerA->id, $playerA->id],
-                'side_b_user_ids' => [$ownerB->id],
-            ])
-            ->assertSessionHas('error', 'Количество выбранных игроков превышает формат стороны.');
 
         $this->actingAs($ownerA)
             ->from(route('events.game.manage', $game->routeIdentifier()))

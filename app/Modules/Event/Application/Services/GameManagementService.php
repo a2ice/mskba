@@ -452,6 +452,7 @@ final class GameManagementService
             }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $this->assertGameIsLive($lockedGame);
             $this->persistStatistics($lockedGame, $detail, $statistics);
         });
 
@@ -468,6 +469,7 @@ final class GameManagementService
             }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $this->assertGameIsLive($lockedGame);
             $this->assertGameIsEditable($lockedGame, $detail);
             if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Счёт подтверждённой игры изменять нельзя.');
@@ -493,6 +495,7 @@ final class GameManagementService
             }
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $this->assertGameHasEnded($lockedGame);
             if ($lockedGame->ends_at->isFuture()) {
                 throw new InvalidArgumentException('Подтвердить итоговую статистику можно после окончания игры.');
             }
@@ -500,6 +503,7 @@ final class GameManagementService
             $this->confirmLockedStatistics($lockedGame, $detail, $actor);
         });
 
+        event(new GameStatisticsConfirmed($game->id));
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
@@ -522,6 +526,7 @@ final class GameManagementService
 
             $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
             $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $this->assertGameHasEnded($lockedGame);
 
             if ($detail->is_time_scheduled && $lockedGame->starts_at->isFuture()) {
                 throw new InvalidArgumentException('Завершить игру можно только после её начала.');
@@ -536,6 +541,7 @@ final class GameManagementService
             ]);
         });
 
+        event(new GameStatisticsConfirmed($game->id));
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
@@ -624,7 +630,6 @@ final class GameManagementService
             ->where('status', GameRosterStatusEnum::SELECTED->value)
             ->update(['status' => GameRosterStatusEnum::PLAYED->value]);
 
-        DB::afterCommit(fn () => event(new GameStatisticsConfirmed($game->id)));
     }
 
     private function hasRecordedGameData(Event $game, GameDetail $detail): bool
@@ -642,6 +647,23 @@ final class GameManagementService
         if ($game->status === EventStatusEnum::COMPLETED
             || $detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('Завершённую игру изменять нельзя.');
+        }
+    }
+
+    private function assertGameIsLive(Event $game): void
+    {
+        if ($game->actual_started_at === null) {
+            throw new InvalidArgumentException('Сначала необходимо начать игру.');
+        }
+        if ($game->actual_ended_at !== null) {
+            throw new InvalidArgumentException('Игра уже закончена. Оперативный ввод закрыт.');
+        }
+    }
+
+    private function assertGameHasEnded(Event $game): void
+    {
+        if ($game->actual_ended_at === null) {
+            throw new InvalidArgumentException('Сначала необходимо закончить фактическое проведение игры.');
         }
     }
 

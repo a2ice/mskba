@@ -301,13 +301,22 @@ final class GameController extends Controller
         CurrentActorResolver $actors,
         EventManagementAccess $access,
         GameManagementService $games,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
 
-        return $this->perform(
-            fn () => $games->confirmStatistics($game, $actor),
-            'Статистика подтверждена и учтена в объективных показателях игроков.',
-        );
+        try {
+            $games->confirmStatistics($game, $actor);
+        } catch (InvalidArgumentException $exception) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $exception->getMessage()], 422)
+                : back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        $message = 'Статистика подтверждена и учтена в объективных показателях игроков.';
+
+        return $request->expectsJson()
+            ? response()->json(['message' => $message])
+            : back()->with('status', $message);
     }
 
     /** @return array{Event, Actor} */

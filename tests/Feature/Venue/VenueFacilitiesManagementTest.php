@@ -38,8 +38,7 @@ class VenueFacilitiesManagementTest extends TestCase
                     'hoops_count' => 2,
                     'hoops_condition' => 4,
                     'surface_condition' => 3,
-                    'first_hoop_marking' => VenueMarkingConditionEnum::GOOD->value,
-                    'second_hoop_marking' => VenueMarkingConditionEnum::PARTIAL->value,
+                    'marking_condition' => VenueMarkingConditionEnum::GOOD->value,
                 ],
                 'amenity_ids' => [$lighting->id, $parking->id],
             ])
@@ -50,8 +49,9 @@ class VenueFacilitiesManagementTest extends TestCase
             'hoops_count' => 2,
             'hoops_condition' => 4,
             'surface_condition' => 3,
+            'marking_condition' => 'good',
             'first_hoop_marking' => 'good',
-            'second_hoop_marking' => 'partial',
+            'second_hoop_marking' => null,
         ]);
         $this->assertDatabaseHas('venue_amenities', [
             'venue_id' => $venue->id,
@@ -127,7 +127,7 @@ class VenueFacilitiesManagementTest extends TestCase
         ]);
     }
 
-    public function test_second_marking_is_rejected_for_single_hoop(): void
+    public function test_legacy_second_marking_is_ignored_in_favour_of_single_marking(): void
     {
         $user = User::factory()->create();
         $venue = Venue::factory()->create([
@@ -141,10 +141,18 @@ class VenueFacilitiesManagementTest extends TestCase
                 'type' => $venue->type->value,
                 'characteristics' => [
                     'hoops_count' => 1,
+                    'marking_condition' => VenueMarkingConditionEnum::PARTIAL->value,
                     'second_hoop_marking' => VenueMarkingConditionEnum::GOOD->value,
                 ],
             ])
-            ->assertSessionHasErrors(['characteristics.second_hoop_marking']);
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('venue_characteristics', [
+            'venue_id' => $venue->id,
+            'hoops_count' => 1,
+            'marking_condition' => VenueMarkingConditionEnum::PARTIAL->value,
+            'second_hoop_marking' => null,
+        ]);
     }
 
     public function test_another_user_cannot_change_facilities(): void

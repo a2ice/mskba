@@ -74,8 +74,45 @@ Server-side rules:
 - live score and statistics are writable only after factual start and before factual end;
 - result confirmation is available only after factual end;
 - cancellation and deletion are blocked after factual start;
-- UI visibility is supplemental and never replaces server validation.
+- UI visibility and HTTP middleware are early guards only and never replace
+  application-service validation;
+- the application service checks the factual phase after locking the parent
+  event, game and game details, so concurrent requests cannot bypass the
+  lifecycle invariant.
 
 ## Temporary teams and mini-games
 
 Temporary teams use the same `GameRosterEntry` snapshot. Their source is the confirmed participant of the parent event rather than permanent team membership. Starters and captain can be selected before factual start and are frozen in the same way.
+
+## Local demo data
+
+Browser acceptance scenarios are created separately from the production-safe
+base seeder:
+
+```bash
+php artisan db:seed --class=GameLifecycleDemoSeeder
+```
+
+When the host PHP does not have the Redis extension, use
+`CACHE_STORE=array` for this command or run it inside the `phpfpm` container.
+The seeder is idempotent, resets its stable `demo-*` records to known states and
+is explicitly restricted to `local/testing`. It provides permanent teams and
+games as well as a game training with live and review-stage mini-games.
+
+Tournament demo data is intentionally excluded until the tournament domain
+model is implemented; a tournament must not be represented as a specially
+named event.
+
+## Permanent team sport profile
+
+A permanent team stores one or more supported sport profiles independently
+from a particular game's scoring and format settings:
+
+- streetball;
+- basketball.
+
+These values are catalog characteristics and do not limit the total roster: a
+streetball team can keep substitutes and can support basketball at the same
+time. A particular game still owns the factual `side_a_size`, `side_b_size` and
+`scoring_type`, so historical games and custom formats do not change when the
+team profiles are edited.

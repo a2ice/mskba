@@ -121,7 +121,7 @@ final class GameLineupAndLifecycleTest extends TestCase
                 'captains' => ['A' => $ownerA->id, 'B' => $ownerB->id],
             ],
         )->assertStatus(422)
-            ->assertJsonPath('message', 'После начала игры состав и параметры изменять нельзя.');
+            ->assertJsonPath('message', 'После начала игры стартовый состав и капитана изменять нельзя.');
     }
 
     public function test_score_and_statistics_routes_obey_actual_lifecycle(): void
@@ -198,7 +198,7 @@ final class GameLineupAndLifecycleTest extends TestCase
             ->assertSessionHas('error', 'Капитаном и стартовым участником может быть только игрок.');
 
         $coachMembership->refresh();
-        $this->assertNull($coachMembership->member_type);
+        $this->assertSame(TeamMemberTypeEnum::PLAYER, $coachMembership->member_type);
         $this->assertFalse($coachMembership->is_captain);
         $this->assertFalse($coachMembership->is_default_starter);
     }

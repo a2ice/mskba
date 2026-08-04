@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Models\Event;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Testing\TestResponse;
+use Tests\Feature\Event\GameAndTeamWorkflowTest;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -25,10 +26,10 @@ abstract class TestCase extends BaseTestCase
      * requests into the lifecycle phase required by the production middleware.
      * New lifecycle tests do not use this compatibility adapter.
      *
-     * @param array<string, mixed> $parameters
-     * @param array<string, string> $cookies
-     * @param array<string, mixed> $files
-     * @param array<string, string> $server
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, string>  $cookies
+     * @param  array<string, mixed>  $files
+     * @param  array<string, string>  $server
      */
     public function call(
         $method,
@@ -46,7 +47,7 @@ abstract class TestCase extends BaseTestCase
 
     private function prepareLegacyGameLifecycle(string $uri): void
     {
-        if (static::class !== \Tests\Feature\Event\GameAndTeamWorkflowTest::class) {
+        if (static::class !== GameAndTeamWorkflowTest::class) {
             return;
         }
 

@@ -7,7 +7,6 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameLifecycleService;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
-use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;

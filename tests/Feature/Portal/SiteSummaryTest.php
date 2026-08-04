@@ -127,7 +127,7 @@ class SiteSummaryTest extends TestCase
             ->assertOk()
             ->assertSee('Обычная игра')
             ->assertSee('Игровая тренировка')
-            ->assertDontSee('Внутренняя мини-игра')
+            ->assertSee('Внутренняя мини-игра')
             ->assertDontSee('Обычная тренировка')
             ->assertSee('Игры и игровые тренировки');
     }

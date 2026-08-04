@@ -2260,6 +2260,71 @@ body.telegram-mini-app .event-show {
     height: 128px;
 }
 
+/* Teams catalog */
+.teams-catalog { min-height: 100vh; padding: 42px 0 90px; background: radial-gradient(circle at 50% 0, rgba(43, 48, 43, .24), transparent 42%), #080a08; }
+.teams-catalog__inner { max-width: 1240px; }
+.teams-catalog__header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.teams-catalog__header h1 { margin: 0; font-size: clamp(34px, 5vw, 58px); }
+.teams-catalog__back { display: inline-flex; align-items: center; gap: 6px; }
+.teams-catalog-toolbar { position: sticky; z-index: 20; top: var(--site-header-height, 76px); display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 18px 22px; border: 1px solid #353936; border-radius: 24px 24px 0 0; background: rgba(20, 23, 20, .96); backdrop-filter: blur(14px); }
+.teams-catalog-toolbar.is-filters-collapsed { margin-bottom: 18px; border-radius: 24px; }
+.teams-catalog-toolbar .btn { min-height: 50px; gap: 9px; border-radius: 15px; }
+.teams-catalog__filters-toggle { position: relative; }
+.teams-catalog__filters-toggle b { position: absolute; top: -9px; right: -7px; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 7px; border-radius: 50%; color: #fff; background: #ff6200; }
+.teams-catalog-filters { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(210px, .7fr)); gap: 16px; margin-bottom: 18px; padding: 22px; border: 1px solid #353936; border-top: 0; border-radius: 0 0 24px 24px; background: rgba(20, 23, 20, .96); }
+.teams-catalog-filters[hidden] { display: none !important; }
+.teams-catalog-filters label { display: grid; align-content: start; gap: 8px; min-width: 0; color: #d0ccc2; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.teams-catalog-filters .form-select,
+.teams-catalog-search__control { min-height: 48px; border: 1px solid #555a55; border-radius: 14px; color: #f0f0ec; background-color: #292d29; }
+.teams-catalog-search__control { display: flex; align-items: center; gap: 9px; padding: 0 14px; }
+.teams-catalog-search__control input { width: 100%; border: 0; outline: 0; color: inherit; background: transparent; }
+.teams-catalog-filters__actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; }
+.teams-catalog-results { display: grid; gap: 10px; }
+.team-catalog-card { display: grid; grid-template-columns: 275px minmax(0, 1fr) 190px; gap: 24px; min-height: 210px; padding: 14px; border: 1px solid #303431; border-radius: 23px; background: linear-gradient(110deg, rgba(25, 28, 25, .96), rgba(13, 15, 13, .96)); transition: border-color .2s ease, transform .2s ease; }
+.team-catalog-card:hover { border-color: #555b56; transform: translateY(-1px); }
+.team-catalog-card__image { min-height: 190px; overflow: hidden; border-radius: 14px; background: #0d0f0d; }
+.team-catalog-card__image img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+.team-catalog-card:hover .team-catalog-card__image img { transform: scale(1.025); }
+.team-catalog-card__body { align-self: center; min-width: 0; }
+.team-catalog-card__badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.team-catalog-card__badges span { padding: 5px 9px; border: 1px solid rgba(58, 183, 84, .35); border-radius: 9px; color: #74d780; background: rgba(34, 118, 50, .12); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.team-catalog-card h2 { margin: 0 0 10px; font-size: 24px; line-height: 1.3; }
+.team-catalog-card h2 a { color: #f5f5f1; }
+.team-catalog-card__tags { display: flex; flex-wrap: wrap; gap: 7px; margin: -2px 0 12px; }
+.team-catalog-card__tags span { padding: 4px 9px; border: 1px solid #454a45; border-radius: 999px; color: #b9bdb8; background: #222522; font-size: 11px; font-weight: 600; }
+.team-catalog-card__description { display: -webkit-box; margin: 0 0 15px; overflow: hidden; color: #b7bab6; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.team-catalog-card__members { display: flex; align-items: center; gap: 8px; margin: 5px 0 0; color: #d7d9d5; font-size: 14px; }
+.team-catalog-card__members i { color: #ff7a21; font-size: 20px; }
+.team-catalog-card__actions { display: flex; flex-direction: column; align-self: stretch; justify-content: flex-end; }
+.team-catalog-card__actions .btn { justify-content: space-between; }
+.teams-catalog__empty { display: grid; justify-items: center; align-content: center; gap: 8px; min-height: 260px; padding: 60px 20px; border: 1px solid #303431; border-radius: 23px; color: #979b97; text-align: center; }
+.teams-catalog__empty i { color: #ff7417; font-size: 42px; }
+.teams-catalog__empty strong { color: #f1f1ed; font-size: 22px; }
+.teams-catalog__pagination { margin-top: 24px; }
+
+@media (max-width: 900px) {
+    .team-catalog-card { grid-template-columns: 210px minmax(0, 1fr); }
+    .team-catalog-card__actions { grid-column: 1 / -1; }
+}
+
+@media (max-width: 640px) {
+    .teams-catalog { padding: 24px 0 150px; }
+    .teams-catalog__header { margin-bottom: 14px; }
+    .teams-catalog__header h1 { font-size: 24px; line-height: 1.1; }
+    .teams-catalog__back { font-size: 11px; }
+    .teams-catalog-toolbar { gap: 8px; padding: 10px; border-radius: 18px 18px 0 0; }
+    .teams-catalog-toolbar.is-filters-collapsed { border-radius: 18px; }
+    .teams-catalog-toolbar .btn { min-height: 44px; padding-inline: 13px; }
+    .teams-catalog-filters { grid-template-columns: 1fr; max-height: calc(100dvh - var(--site-header-height, 76px) - 86px); padding: 14px; overflow-y: auto; border-radius: 0 0 18px 18px; }
+    .teams-catalog-filters__actions { justify-content: stretch; }
+    .teams-catalog-filters__actions .btn { flex: 1 1 0; }
+    .team-catalog-card { grid-template-columns: 105px minmax(0, 1fr); gap: 14px; min-height: 138px; padding: 10px; border-radius: 18px; }
+    .team-catalog-card__image { min-height: 118px; }
+    .team-catalog-card h2 { font-size: 18px; }
+    .team-catalog-card__description { -webkit-line-clamp: 1; }
+    .team-catalog-card__actions { grid-column: 1 / -1; }
+}
+
 /* Events catalog */
 .events-catalog {
     min-height: 100vh;

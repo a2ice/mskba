@@ -61,6 +61,11 @@ class Team extends Model
             ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value);
     }
 
+    public function sportProfiles(): HasMany
+    {
+        return $this->hasMany(TeamSportProfile::class);
+    }
+
     public function media(): MorphMany
     {
         return $this->morphMany(Media::class, 'mediable');

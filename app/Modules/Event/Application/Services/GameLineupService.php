@@ -16,8 +16,8 @@ final class GameLineupService
     public function __construct(private readonly EventManagementAccess $access) {}
 
     /**
-     * @param array{A: array<int, int>, B: array<int, int>} $starterUserIds
-     * @param array{A: int|null, B: int|null} $captainUserIds
+     * @param  array{A: array<int, int>, B: array<int, int>}  $starterUserIds
+     * @param  array{A: int|null, B: int|null}  $captainUserIds
      */
     public function update(Event $game, Actor $actor, array $starterUserIds, array $captainUserIds): void
     {
