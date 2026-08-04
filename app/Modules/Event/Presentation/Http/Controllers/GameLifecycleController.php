@@ -7,6 +7,7 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameLifecycleService;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -26,27 +27,43 @@ final class GameLifecycleController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
-        $canComplete = $access->allows(
-            $game,
-            $actor,
-            EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME,
-        );
-        $canManageStatistics = $access->allows(
-            $game,
-            $actor,
-            EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS,
-        );
-        $canManageScore = $access->allows(
-            $game,
-            $actor,
-            EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE,
-        );
+        $canComplete = $access->allows($game, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+        $canManageStatistics = $access->allows($game, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
+        $canManageScore = $access->allows($game, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
+        $canManageRoster = $access->allows($game, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
 
         $cancelled = $game->status === EventStatusEnum::CANCELLED;
         $completed = $game->status === EventStatusEnum::COMPLETED
             || $game->gameDetail?->statistics_status === GameStatisticsStatusEnum::CONFIRMED;
         $started = $game->actual_started_at !== null;
         $ended = $game->actual_ended_at !== null;
+
+        $roster = $game->gameSides->mapWithKeys(function ($side) use ($game): array {
+            $entries = $game->gameRosterEntries
+                ->where('game_side_id', $side->id)
+                ->values()
+                ->map(function ($entry): array {
+                    $profile = $entry->user->profile;
+                    $name = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
+                        ?: $entry->user->username
+                        ?: 'Пользователь #'.$entry->user_id;
+
+                    return [
+                        'user_id' => (int) $entry->user_id,
+                        'name' => $name,
+                        'lineup_role' => $entry->lineup_role->value,
+                        'is_captain' => (bool) $entry->is_captain,
+                    ];
+                });
+
+            return [$side->slot => [
+                'name' => $side->display_name,
+                'required_starters' => $side->slot === 'A'
+                    ? (int) $game->gameDetail->side_a_size
+                    : (int) $game->gameDetail->side_b_size,
+                'players' => $entries,
+            ]];
+        });
 
         return response()->json([
             'started' => $started,
@@ -59,9 +76,12 @@ final class GameLifecycleController extends Controller
             'can_end' => $canComplete && $started && ! $ended && ! $cancelled && ! $completed,
             'can_enter_statistics' => $canManageStatistics && $started && ! $ended && ! $cancelled && ! $completed,
             'can_manage_score' => $canManageScore && $started && ! $ended && ! $cancelled && ! $completed,
+            'can_manage_lineup' => $canManageRoster && ! $started && ! $cancelled && ! $completed,
             'can_confirm_result' => $canComplete && $canManageStatistics && $ended && ! $cancelled && ! $completed,
             'start_url' => route('events.game.lifecycle.start', $game->routeIdentifier()),
             'end_url' => route('events.game.lifecycle.end', $game->routeIdentifier()),
+            'lineup_update_url' => route('events.game.lineup.update', $game->routeIdentifier()),
+            'roster' => $roster,
         ]);
     }
 
@@ -111,7 +131,11 @@ final class GameLifecycleController extends Controller
     {
         return Event::query()
             ->whereRouteIdentifier($identifier)
-            ->with('gameDetail')
+            ->with([
+                'gameDetail',
+                'gameSides',
+                'gameRosterEntries.user.profile',
+            ])
             ->firstOrFail();
     }
 }
