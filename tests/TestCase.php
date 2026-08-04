@@ -39,12 +39,12 @@ abstract class TestCase extends BaseTestCase
         $server = [],
         $content = null,
     ): TestResponse {
-        $this->prepareLegacyGameLifecycle((string) $method, (string) $uri);
+        $this->prepareLegacyGameLifecycle((string) $uri);
 
         return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
     }
 
-    private function prepareLegacyGameLifecycle(string $method, string $uri): void
+    private function prepareLegacyGameLifecycle(string $uri): void
     {
         if (static::class !== \Tests\Feature\Event\GameAndTeamWorkflowTest::class) {
             return;
@@ -70,10 +70,7 @@ abstract class TestCase extends BaseTestCase
             }
         }
 
-        $expectsEarlyConfirmationError = method_exists($this, 'name')
-            && $this->name() === 'test_invalid_or_early_statistics_cannot_be_confirmed';
-
-        if ($finalAction !== null && ! $expectsEarlyConfirmationError && $game->actual_ended_at === null) {
+        if ($finalAction !== null && $game->actual_ended_at === null) {
             $game->forceFill(['actual_ended_at' => now()])->save();
             $detail = $game->gameDetail()->first();
             if ($detail?->statistics_status === GameStatisticsStatusEnum::ENTERING) {
