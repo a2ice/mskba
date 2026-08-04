@@ -25,11 +25,15 @@ class TelegramMiniAppAuthTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Queue::fake();
+    }
+
     public function test_telegram_mini_app_auth_creates_user_and_logs_him_in(): void
     {
         config(['telegram.bot_token' => '123456:test-token']);
-        Queue::fake();
-
         $this
             ->postJson(route('integrations.telegram.auth'), [
                 'init_data' => $this->signedInitData([

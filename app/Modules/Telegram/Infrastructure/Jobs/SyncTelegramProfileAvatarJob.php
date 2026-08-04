@@ -5,6 +5,7 @@ namespace App\Modules\Telegram\Infrastructure\Jobs;
 use App\Modules\Identity\Application\UseCases\StoreProfileAvatarHandler;
 use App\Modules\Media\Application\Services\WebpImageNormalizer;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
@@ -23,7 +24,7 @@ final class SyncTelegramProfileAvatarJob implements ShouldQueue
         public readonly int $telegramAccountId,
     ) {}
 
-    public function handle(StoreProfileAvatarHandler $storeProfileAvatar): void
+    public function handle(StoreProfileAvatarHandler $storeProfileAvatar, TelegramBotApiClient $telegram): void
     {
         $account = TelegramAccount::query()
             ->with('user.profile.activeAvatar')
@@ -32,12 +33,32 @@ final class SyncTelegramProfileAvatarJob implements ShouldQueue
         $profile = $account?->user?->profile;
         $photoUrl = $account?->photo_url;
 
-        if ($profile === null || ! is_string($photoUrl) || ! str_starts_with($photoUrl, 'https://')) {
+        if ($profile === null) {
             return;
         }
 
         $activeAvatar = $profile->activeAvatar;
-        $reference = hash('sha256', $photoUrl);
+        $reference = is_string($photoUrl) && str_starts_with($photoUrl, 'https://')
+            ? hash('sha256', $photoUrl)
+            : null;
+
+        $telegramFilePath = null;
+        if ($reference === null) {
+            $photos = $telegram->call('getUserProfilePhotos', ['user_id' => $account->telegram_user_id, 'limit' => 1], 8);
+            $sizes = data_get($photos, 'result.photos.0');
+            $largest = is_array($sizes) ? end($sizes) : null;
+            $fileId = is_array($largest) ? ($largest['file_id'] ?? null) : null;
+            $fileUniqueId = is_array($largest) ? ($largest['file_unique_id'] ?? null) : null;
+            if (! is_string($fileId) || ! is_string($fileUniqueId)) {
+                return;
+            }
+            $file = $telegram->call('getFile', ['file_id' => $fileId], 8);
+            $telegramFilePath = data_get($file, 'result.file_path');
+            if (! is_string($telegramFilePath) || $telegramFilePath === '') {
+                return;
+            }
+            $reference = hash('sha256', "telegram-profile:{$account->telegram_user_id}:{$fileUniqueId}");
+        }
 
         $wasDeletedByUser = $profile->media()
             ->onlyTrashed()
@@ -50,14 +71,18 @@ final class SyncTelegramProfileAvatarJob implements ShouldQueue
             return;
         }
 
-        $response = Http::accept('image/jpeg,image/png,image/webp')
-            ->connectTimeout(3)
-            ->timeout(8)
-            ->get($photoUrl)
-            ->throw();
-
-        $contentLength = (int) ($response->header('Content-Length') ?: 0);
-        $contents = $response->body();
+        if ($telegramFilePath !== null) {
+            $contents = $telegram->downloadFile($telegramFilePath, 8);
+            $contentLength = strlen($contents);
+        } else {
+            $response = Http::accept('image/jpeg,image/png,image/webp')
+                ->connectTimeout(3)
+                ->timeout(8)
+                ->get($photoUrl)
+                ->throw();
+            $contentLength = (int) ($response->header('Content-Length') ?: 0);
+            $contents = $response->body();
+        }
 
         if ($contentLength > WebpImageNormalizer::MAX_INPUT_BYTES || strlen($contents) > WebpImageNormalizer::MAX_INPUT_BYTES) {
             return;

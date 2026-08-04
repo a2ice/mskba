@@ -92,6 +92,23 @@ final class TelegramBotApiClient
         }
     }
 
+    public function downloadFile(string $filePath, ?int $timeoutSeconds = null): string
+    {
+        $token = (string) config('telegram.bot_token');
+        if ($token === '' || $filePath === '' || str_contains($filePath, '..')) {
+            throw new TelegramBotApiException('Telegram file path is invalid.');
+        }
+
+        try {
+            return $this->request($timeoutSeconds, asJson: false)
+                ->get($this->fileUrl($token, $filePath))
+                ->throw()
+                ->body();
+        } catch (ConnectionException|RequestException $exception) {
+            throw new TelegramBotApiException($this->safeError($exception, $token));
+        }
+    }
+
     private function request(?int $timeoutSeconds = null, bool $asJson = true): PendingRequest
     {
         $options = [];
@@ -122,6 +139,13 @@ final class TelegramBotApiClient
         $baseUrl = rtrim((string) config('telegram.api_base_url', 'https://api.telegram.org'), '/');
 
         return "{$baseUrl}/bot{$token}/{$method}";
+    }
+
+    private function fileUrl(string $token, string $filePath): string
+    {
+        $baseUrl = rtrim((string) config('telegram.api_base_url', 'https://api.telegram.org'), '/');
+
+        return "{$baseUrl}/file/bot{$token}/".ltrim($filePath, '/');
     }
 
     private function safeError(Throwable $exception, string $token): string

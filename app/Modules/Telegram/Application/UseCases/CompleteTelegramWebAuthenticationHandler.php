@@ -21,9 +21,7 @@ final class CompleteTelegramWebAuthenticationHandler
         Auth::login($user, true);
         request()->session()->regenerate();
 
-        if ($telegramAccount->photo_url) {
-            SyncTelegramProfileAvatarJob::dispatch($telegramAccount->id)->afterResponse();
-        }
+        SyncTelegramProfileAvatarJob::dispatch($telegramAccount->id)->afterResponse();
 
         $firstLoginMarked = User::query()
             ->whereKey($user->id)

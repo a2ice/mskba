@@ -47,9 +47,7 @@ final class AuthenticateTelegramMiniAppUserHandler
         Auth::login($result['user'], true);
         request()->session()->regenerate();
 
-        if ($result['telegram_account']->photo_url) {
-            SyncTelegramProfileAvatarJob::dispatch($result['telegram_account']->id)->afterResponse();
-        }
+        SyncTelegramProfileAvatarJob::dispatch($result['telegram_account']->id)->afterResponse();
 
         $firstLoginMarked = User::query()
             ->whereKey($result['user']->id)

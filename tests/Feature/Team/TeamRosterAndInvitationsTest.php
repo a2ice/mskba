@@ -127,7 +127,8 @@ final class TeamRosterAndInvitationsTest extends TestCase
         ]);
         $this->get(route('teams.show', $team->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Права участников')
+            ->assertSee('data-modal-target="team-member-permissions-'.$membership->id.'"', false)
+            ->assertSee('Права участника')
             ->assertSee('Исключать участников из команды');
 
         $this->actingAs($candidate)->deleteJson(route('teams.members.destroy', [$team->routeIdentifier(), $membership->id]))

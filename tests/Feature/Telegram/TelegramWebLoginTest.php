@@ -25,12 +25,11 @@ final class TelegramWebLoginTest extends TestCase
             'telegram.bot_username' => 'MSKBABot',
             'telegram.login_widget_max_age' => 600,
         ]);
+        Queue::fake();
     }
 
     public function test_login_widget_creates_user_and_authenticated_session(): void
     {
-        Queue::fake();
-
         $this
             ->postJson(route('auth.telegram'), [
                 'telegram_user' => $this->signedPayload([

@@ -2313,10 +2313,12 @@ body.telegram-mini-app .event-show {
 .team-roster-dropzone__empty { align-self: center; margin: 0; color: #737873; font-size: 13px; }
 .team-person[draggable="true"] { cursor: grab; }
 .team-person.is-dragging { opacity: .35; }
-.team-person__move { display: grid; flex: 0 0 auto; place-items: center; width: 31px; height: 31px; margin-left: auto; border: 1px solid #454b46; border-radius: 9px; color: #ff812b; background: #202420; }
-.team-person__captain-action { display: grid; flex: 0 0 auto; place-items: center; width: 31px; height: 31px; border: 1px solid #454b46; border-radius: 9px; color: #b8bbb7; background: #202420; }
+.team-person__actions { display: grid; flex: 0 0 auto; justify-self: end; gap: 5px; margin-right: 0; margin-left: auto; }
+.team-person__icon-action { display: grid; appearance: none; place-items: center; width: 27px; height: 27px; padding: 0; border: 1px solid #454b46; border-radius: 8px; color: #b8bbb7; background: #202420; box-shadow: none; }
+.team-person__move { color: #ff812b; }
 .team-person__captain-action:hover, .team-person__captain-action:focus-visible { border-color: #ff812b; color: #ff812b; }
-.team-person__captain-action i { font-size: 17px; }
+.team-person__permission-action:hover, .team-person__permission-action:focus-visible { border-color: #ff812b; color: #ff812b; }
+.team-person__captain-action i, .team-person__permission-action i { font-size: 15px; }
 [data-team-tooltip] { position: relative; }
 [data-team-tooltip]::after { position: absolute; z-index: 30; right: 50%; bottom: calc(100% + 8px); width: max-content; max-width: 260px; padding: 7px 9px; border: 1px solid #505650; border-radius: 8px; color: #f1f2ef; background: #252925; box-shadow: 0 8px 22px rgba(0, 0, 0, .4); content: attr(data-team-tooltip); font-size: 12px; font-weight: 500; line-height: 1.25; opacity: 0; pointer-events: none; text-align: left; text-decoration: none; transform: translate(50%, 4px); transition: opacity .12s ease, transform .12s ease; white-space: normal; }
 [data-team-tooltip]:hover::after, [data-team-tooltip]:focus-visible::after { opacity: 1; transform: translate(50%, 0); }
@@ -2332,8 +2334,19 @@ body.telegram-mini-app .event-show {
 .team-invitation__permissions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .team-invitation__permissions label { display: flex; align-items: center; gap: 8px; padding: 9px; border: 1px solid #353a36; border-radius: 11px; }
 .team-managers { display: grid; gap: 12px; }
-.team-manager-contract { display: grid; grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr) auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid #363b37; border-radius: 16px; }
-.team-manager-contract__actions { display: grid; gap: 8px; }
+.team-manager-contract { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #363b37; border-radius: 14px; }
+.team-manager-contract .team-person { flex: 1 1 auto; padding: 0; }
+.team-manager-contract__edit { display: grid; flex: 0 0 auto; place-items: center; width: 32px; height: 32px; border: 1px solid #454b46; border-radius: 9px; color: #ff812b; background: #202420; }
+.team-permissions-modal__dialog { width: min(620px, calc(100vw - 30px)); }
+.team-permissions-modal__form { display: grid; gap: 16px; }
+.team-permissions-modal__form fieldset { margin: 0; padding: 0; border: 0; }
+.team-permissions-modal__form legend { margin-bottom: 9px; color: #d7d9d5; font-weight: 700; }
+.team-permissions-modal__permission .form-toggle { grid-template-columns: 36px minmax(0, 1fr); gap: 7px; min-height: 0; padding: 8px 9px; }
+.team-permissions-modal__permission .form-toggle__control { width: 36px; height: 20px; margin: 0; }
+.team-permissions-modal__permission .form-toggle__control::after { top: 2px; left: 2px; width: 14px; height: 14px; }
+.team-permissions-modal__permission .form-toggle__input:checked + .form-toggle__control::after { transform: translateX(16px); }
+.team-permissions-modal__permission .form-toggle__title { font-size: 12px; line-height: 1.15; }
+.team-permissions-modal__actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .team-form-feedback { grid-column: 1 / -1; margin: 0; padding: 10px 12px; font-size: 13px; }
 .team-person--manager { border: 0; background: transparent; }
 .account-team-filters { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding: 15px; border: 1px solid #383d39; border-radius: 16px; }

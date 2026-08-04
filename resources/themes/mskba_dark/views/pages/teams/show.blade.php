@@ -27,25 +27,9 @@
 
     <section class="team-profile__section" aria-labelledby="team-coaches-title">
         <div class="team-profile__section-heading"><i class="ti ti-user-cog"></i><div><span>Тренерский штаб</span><h2 id="team-coaches-title">Тренер</h2></div></div>
-        <div class="team-coaches">@forelse($coaches as $coach)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($coach) }}" alt=""><div><strong>{{ $memberName($coach) }}</strong><span>Тренер команды</span></div></div>@empty<p class="team-profile__empty">Тренер пока не назначен.</p>@endforelse</div>
+        <div class="team-coaches">@forelse($coaches as $coach)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($coach) }}" alt=""><div><strong>{{ $memberName($coach) }}</strong><span>Тренер команды</span></div>@if($canManagePermissions || ($canRemoveMembers && $coach->user_id !== $currentUserId))<button class="team-manager-contract__edit" type="button" data-handler="modal" data-modal-action="open" data-modal-target="team-member-permissions-{{ $coach->id }}" data-tooltip-skip aria-label="Управление участником {{ $memberName($coach) }}"><i class="ti ti-settings" aria-hidden="true"></i></button>@endif</div>@empty<p class="team-profile__empty">Тренер пока не назначен.</p>@endforelse
+        @foreach($managers->where('access_level', '!=', 'owner') as $manager)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($manager) }}" alt=""><div><strong>{{ $memberName($manager) }}</strong><span>Менеджер команды</span></div>@if($canManagePermissions || ($canRemoveMembers && $manager->user_id !== $currentUserId))<button class="team-manager-contract__edit" type="button" data-handler="modal" data-modal-action="open" data-modal-target="team-member-permissions-{{ $manager->id }}" data-tooltip-skip aria-label="Управление участником {{ $memberName($manager) }}"><i class="ti ti-settings" aria-hidden="true"></i></button>@endif</div>@endforeach</div>
     </section>
-
-    @if($activeMemberships->isNotEmpty() && ($canManagePermissions || $canRemoveMembers))
-    <section class="team-profile__section" aria-labelledby="team-managers-title">
-        <div class="team-profile__section-heading"><i class="ti ti-shield-cog"></i><div><span>Договорные условия</span><h2 id="team-managers-title">Права участников</h2></div></div>
-        <div class="team-managers">@foreach($activeMemberships as $member)
-            <form class="team-manager-contract" data-team-permissions-form data-update-url="{{ route('teams.members.permissions', [$team->routeIdentifier(), $member->id]) }}">
-                <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->access_level === 'owner' ? 'Создатель' : $member->member_type->label() }}</span></div></div>
-                <div class="team-invitation__permissions">@foreach($teamPermissions as $permission)<label><input type="checkbox" name="permissions[]" value="{{ $permission->value }}" @checked($member->access_level === 'owner' || $member->contract->permissions->contains('permission', $permission->value)) @disabled(!$canManagePermissions || $member->access_level === 'owner')><span>{{ $permission->label() }}</span></label>@endforeach</div>
-                <div class="team-manager-contract__actions">
-                    @if($canManagePermissions && $member->access_level !== 'owner')<button class="btn btn--secondary btn--sm" type="submit">Сохранить права</button>@endif
-                    @if($canRemoveMembers && $member->access_level !== 'owner' && $member->user_id !== $currentUserId)<button class="btn btn--danger btn--sm" type="button" data-team-member-remove-url="{{ route('teams.members.destroy', [$team->routeIdentifier(), $member->id]) }}">Исключить</button>@endif
-                </div>
-                <div class="team-form-feedback" data-team-form-feedback hidden></div>
-            </form>
-        @endforeach</div>
-    </section>
-    @endif
 
     <section class="team-profile__section" aria-labelledby="team-lineups-title">
         <div class="team-profile__section-heading"><i class="ti ti-layout-grid"></i><div><span>Игровые группы</span><h2 id="team-lineups-title">Составы по дисциплинам</h2></div></div>
@@ -78,5 +62,32 @@
         <div class="team-form-feedback" data-team-form-feedback hidden></div>
     </section>
     @endif
+
+    @foreach($activeMemberships as $member)
+        @if($member->access_level !== 'owner' && ($canManagePermissions || ($canRemoveMembers && $member->user_id !== $currentUserId)))
+            @component('theme::partials.modal.layout', ['id' => 'team-member-permissions-'.$member->id, 'dialogClass' => 'team-permissions-modal__dialog'])
+                <form class="team-permissions-modal__form" data-team-permissions-form data-update-url="{{ route('teams.members.permissions', [$team->routeIdentifier(), $member->id]) }}">
+                    <h2 class="modal_title" id="modal-title-team-member-permissions-{{ $member->id }}">Права участника</h2>
+                    <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->member_type->label() }}</span></div></div>
+                    @if($canManagePermissions)<fieldset><legend>Договорные права</legend><div class="team-invitation__permissions">@foreach($teamPermissions as $permission)
+                        @include('theme::partials.forms.toggle', [
+                            'id' => 'team-member-'.$member->id.'-'.str_replace('.', '-', $permission->value),
+                            'name' => 'permissions[]',
+                            'value' => $permission->value,
+                            'title' => $permission->label(),
+                            'checked' => $member->contract->permissions->contains('permission', $permission->value),
+                            'includeHiddenInput' => false,
+                            'wrapperClass' => 'team-permissions-modal__permission',
+                        ])
+                    @endforeach</div></fieldset>@endif
+                    <div class="team-permissions-modal__actions">
+                        @if($canManagePermissions)<button class="btn btn--primary btn--sm" type="submit">Сохранить права</button>@endif
+                        @if($canRemoveMembers && $member->user_id !== $currentUserId)<button class="btn btn--danger btn--sm" type="button" data-team-member-remove-url="{{ route('teams.members.destroy', [$team->routeIdentifier(), $member->id]) }}">Исключить из команды</button>@endif
+                    </div>
+                    <div class="team-form-feedback" data-team-form-feedback hidden></div>
+                </form>
+            @endcomponent
+        @endif
+    @endforeach
 </article>
 @endsection
