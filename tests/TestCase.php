@@ -6,7 +6,7 @@ use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Testing\TestResponse;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -38,7 +38,7 @@ abstract class TestCase extends BaseTestCase
         $files = [],
         $server = [],
         $content = null,
-    ): Response {
+    ): TestResponse {
         $this->prepareLegacyGameLifecycle((string) $method, (string) $uri);
 
         return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
@@ -56,7 +56,6 @@ abstract class TestCase extends BaseTestCase
         }
 
         $identifier = rawurldecode($matches[1]);
-        $operation = $matches[2];
         $finalAction = $matches[3] ?? null;
         $game = Event::query()->whereRouteIdentifier($identifier)->first();
         if ($game === null) {
@@ -71,14 +70,10 @@ abstract class TestCase extends BaseTestCase
             }
         }
 
-        $isFinalRequest = $finalAction !== null
-            || ($operation === 'statistics' && strtoupper($method) === 'POST' && str_ends_with($path, '/confirm'));
-
-        // This test intentionally verifies that confirmation before actual end is rejected.
         $expectsEarlyConfirmationError = method_exists($this, 'name')
             && $this->name() === 'test_invalid_or_early_statistics_cannot_be_confirmed';
 
-        if ($isFinalRequest && ! $expectsEarlyConfirmationError && $game->actual_ended_at === null) {
+        if ($finalAction !== null && ! $expectsEarlyConfirmationError && $game->actual_ended_at === null) {
             $game->forceFill(['actual_ended_at' => now()])->save();
             $detail = $game->gameDetail()->first();
             if ($detail?->statistics_status === GameStatisticsStatusEnum::ENTERING) {
