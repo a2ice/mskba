@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('contract_memberships', function (Blueprint $table): void {
-            $table->string('member_type', 24)->nullable()->after('access_level');
+            $table->string('member_type', 24)->default('player')->after('access_level');
             $table->boolean('is_captain')->default(false)->after('member_type');
             $table->boolean('is_default_starter')->default(false)->after('is_captain');
             $table->index(['scope_type', 'scope_id', 'member_type'], 'contract_memberships_scope_member_type_idx');
