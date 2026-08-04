@@ -14,6 +14,7 @@ use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Infrastructure\Jobs\RecalculatePlayerObjectiveAssessmentsJob;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
@@ -34,7 +35,7 @@ final class GameAndTeamWorkflowTest extends TestCase
 
     public function test_user_creates_team_and_receives_owner_membership(): void
     {
-        $owner = User::factory()->create(['username' => 'team-owner']);
+        $owner = User::factory()->create(['username' => 'team-owner', 'status' => UserStatusEnum::CONFIRMED]);
 
         $response = $this->actingAs($owner)->post(route('teams.store'), [
             'name' => 'Северные совы',
@@ -58,7 +59,7 @@ final class GameAndTeamWorkflowTest extends TestCase
 
     public function test_team_can_support_multiple_sport_types_without_limiting_roster_size(): void
     {
-        $owner = User::factory()->create(['username' => 'streetball-owner']);
+        $owner = User::factory()->create(['username' => 'streetball-owner', 'status' => UserStatusEnum::CONFIRMED]);
 
         $this->actingAs($owner)->post(route('teams.store'), [
             'name' => 'Стритбольная команда',
@@ -101,15 +102,15 @@ final class GameAndTeamWorkflowTest extends TestCase
         ])->assertRedirect();
 
         $game = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
-        $this->assertSame(4, $game->gameRosterEntries()->count());
+        $this->assertSame(2, $game->gameRosterEntries()->count());
         $this->assertSame('3×4', $game->gameDetail->formatLabel());
         $this->assertCount(2, $game->gameSides);
 
         $this->actingAs($ownerA)->patch(
             route('events.game.roster', $game->routeIdentifier()),
             [
-                'side_a_user_ids' => [$ownerA->id],
-                'side_b_user_ids' => [$ownerB->id],
+                'side_a_user_ids' => [$playerA->id],
+                'side_b_user_ids' => [$playerB->id],
             ],
         )->assertSessionHas('status');
         $this->assertSame(2, $game->gameRosterEntries()->count());
@@ -121,14 +122,14 @@ final class GameAndTeamWorkflowTest extends TestCase
         $statistics = [
             'scores' => ['A' => 12, 'B' => 8],
             'players' => [
-                $ownerA->id => $this->playerStatistics([
+                $playerA->id => $this->playerStatistics([
                     'minutes' => 40,
                     'close_made' => 3,
                     'close_attempted' => 5,
                     'assists' => 4,
                     'steals' => 2,
                 ]),
-                $ownerB->id => $this->playerStatistics([
+                $playerB->id => $this->playerStatistics([
                     'minutes' => 35,
                     'mid_made' => 2,
                     'mid_attempted' => 5,
@@ -144,8 +145,8 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertJsonPath('scores.B', 8)
             ->assertJsonPath('calculated_scores.A', 3)
             ->assertJsonPath('calculated_scores.B', 2)
-            ->assertJsonPath('player_points.'.$ownerA->id, 3)
-            ->assertJsonPath('player_points.'.$ownerB->id, 2);
+            ->assertJsonPath('player_points.'.$playerA->id, 3)
+            ->assertJsonPath('player_points.'.$playerB->id, 2);
 
         config()->set('cache.default', 'array');
         $this->app['cache']->setDefaultDriver('array');
@@ -171,7 +172,7 @@ final class GameAndTeamWorkflowTest extends TestCase
             GameStatisticsStatusEnum::CONFIRMED,
             $game->gameDetail()->firstOrFail()->statistics_status,
         );
-        $assessment = PlayerObjectiveAssessment::query()->where('user_id', $ownerA->id)->firstOrFail();
+        $assessment = PlayerObjectiveAssessment::query()->where('user_id', $playerA->id)->firstOrFail();
         $this->assertSame(1, $assessment->games_count);
         $this->assertSame('0.1000', $assessment->confidence);
         $this->assertSame('10.00', $assessment->stamina);
@@ -181,8 +182,8 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Команда А')
             ->assertSee('Команда Б')
-            ->assertSee('owner-a')
-            ->assertSee('owner-b')
+            ->assertSee('player-a')
+            ->assertSee('player-b')
             ->assertSee('Статистика игроков')
             ->assertDontSee('Редактировать игру и статистику');
     }
@@ -778,10 +779,14 @@ final class GameAndTeamWorkflowTest extends TestCase
     {
         $ownerA = User::factory()->create(['username' => 'history-owner-a']);
         $playerA = User::factory()->create(['username' => 'history-player-a']);
+        $playerA2 = User::factory()->create(['username' => 'history-player-a-2']);
         $ownerB = User::factory()->create(['username' => 'history-owner-b']);
+        $playerB = User::factory()->create(['username' => 'history-player-b']);
         $teamA = $this->createTeam($ownerA, 'История А');
         $teamB = $this->createTeam($ownerB, 'История Б');
         $this->addPlayer($ownerA, $teamA, $playerA);
+        $this->addPlayer($ownerA, $teamA, $playerA2);
+        $this->addPlayer($ownerB, $teamB, $playerB);
         [$venue, $start, $end] = $this->availableVenue();
 
         $this->actingAs($ownerA)->post(route('events.store'), [
@@ -797,8 +802,8 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->actingAs($ownerA)
             ->from(route('events.game.manage', $game->routeIdentifier()))
             ->patch(route('events.game.roster', $game->routeIdentifier()), [
-                'side_a_user_ids' => [$ownerA->id, $playerA->id],
-                'side_b_user_ids' => [$ownerB->id],
+                'side_a_user_ids' => [$playerA->id, $playerA2->id],
+                'side_b_user_ids' => [$playerB->id],
             ])
             ->assertSessionHas('error', 'Количество выбранных игроков превышает формат стороны.');
 
@@ -815,7 +820,7 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->from(route('events.game.manage', $game->routeIdentifier()))
             ->patch(route('events.game.roster', $game->routeIdentifier()), [
                 'side_a_user_ids' => [],
-                'side_b_user_ids' => [$ownerB->id],
+                'side_b_user_ids' => [$playerB->id],
             ])
             ->assertSessionHasErrors('side_a_user_ids');
     }
@@ -824,8 +829,12 @@ final class GameAndTeamWorkflowTest extends TestCase
     {
         $ownerA = User::factory()->create(['username' => 'stats-owner-a']);
         $ownerB = User::factory()->create(['username' => 'stats-owner-b']);
+        $playerA = User::factory()->create(['username' => 'stats-player-a']);
+        $playerB = User::factory()->create(['username' => 'stats-player-b']);
         $teamA = $this->createTeam($ownerA, 'Статистика А');
         $teamB = $this->createTeam($ownerB, 'Статистика Б');
+        $this->addPlayer($ownerA, $teamA, $playerA);
+        $this->addPlayer($ownerB, $teamB, $playerB);
         [$venue, $start, $end] = $this->availableVenue();
 
         $this->actingAs($ownerA)->post(route('events.store'), [
@@ -840,11 +849,11 @@ final class GameAndTeamWorkflowTest extends TestCase
         $invalid = [
             'scores' => ['A' => 2, 'B' => 0],
             'players' => [
-                $ownerA->id => $this->playerStatistics([
+                $playerA->id => $this->playerStatistics([
                     'close_made' => 2,
                     'close_attempted' => 1,
                 ]),
-                $ownerB->id => $this->playerStatistics(),
+                $playerB->id => $this->playerStatistics(),
             ],
         ];
         $this->actingAs($ownerA)
@@ -855,11 +864,11 @@ final class GameAndTeamWorkflowTest extends TestCase
         $valid = [
             'scores' => ['A' => 2, 'B' => 0],
             'players' => [
-                $ownerA->id => $this->playerStatistics([
+                $playerA->id => $this->playerStatistics([
                     'close_made' => 1,
                     'close_attempted' => 1,
                 ]),
-                $ownerB->id => $this->playerStatistics(),
+                $playerB->id => $this->playerStatistics(),
             ],
         ];
         $this->actingAs($ownerA)
@@ -876,6 +885,7 @@ final class GameAndTeamWorkflowTest extends TestCase
 
     private function createTeam(User $owner, string $name): Team
     {
+        $owner->update(['status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($owner)->post(route('teams.store'), [
             'name' => $name,
             'description' => null,
@@ -886,10 +896,14 @@ final class GameAndTeamWorkflowTest extends TestCase
 
     private function addPlayer(User $owner, Team $team, User $player): void
     {
-        $this->actingAs($owner)->post(route('teams.members.store', $team->routeIdentifier()), [
+        $this->actingAs($owner)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
             'user_id' => $player->id,
-            'access_level' => TeamMembershipAccessLevelEnum::PLAYER->value,
-        ])->assertSessionHas('status');
+            'member_type' => 'player',
+        ])->assertCreated();
+        $membership = $team->memberships()->where('user_id', $player->id)->firstOrFail();
+        $this->actingAs($player)->patch(route('teams.invitations.respond', $membership->id), [
+            'decision' => 'accept',
+        ])->assertRedirect();
     }
 
     /** @return array{Venue, CarbonImmutable, CarbonImmutable} */

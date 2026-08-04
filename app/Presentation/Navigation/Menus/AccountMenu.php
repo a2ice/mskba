@@ -53,6 +53,13 @@ final class AccountMenu implements MenuHandler
             }
 
             $items[] = [
+                'label' => 'Мои команды',
+                'url' => $this->routeUrl('account.teams'),
+                'active' => $this->isActiveRoute('account.teams'),
+                'visible' => true,
+            ];
+
+            $items[] = [
                 'label' => 'Уведомления',
                 'url' => $this->routeUrl('account.notifications'),
                 'active' => $this->isActiveRoute('account.notifications'),

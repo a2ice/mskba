@@ -10,11 +10,15 @@ use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
+use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
-use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Application\Services\TeamLogoManager;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
+use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
+use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
+use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -40,10 +44,9 @@ final class TeamController extends Controller
         $search = trim((string) ($filters['q'] ?? ''));
         $memberCount = (string) ($filters['member_count'] ?? '');
         $sportType = (string) ($filters['sport_type'] ?? '');
-        $activeMemberships = fn ($query) => $query->whereHas(
-            'contract',
-            fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE),
-        );
+        $activeMemberships = fn ($query) => $query
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE));
 
         return ThemeResolver::page('teams.index', [
             'teams' => Team::query()
@@ -64,8 +67,9 @@ final class TeamController extends Controller
                 ->when($memberCount === 'large', fn ($query) => $query->whereHas('memberships', $activeMemberships, '>=', 11))
                 ->with([
                     'logo',
-                    'sportProfiles',
+                    'sportProfiles.lineupMembers',
                     'memberships' => fn ($memberships) => $memberships
+                        ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
                         ->whereHas('contract', fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE))
                         ->with(['contract', 'user.profile']),
                 ])
@@ -126,6 +130,8 @@ final class TeamController extends Controller
                 'scope_id' => $team->id,
                 'user_id' => $actor->user_id,
                 'access_level' => TeamMembershipAccessLevelEnum::OWNER->value,
+                'member_type' => TeamMemberTypeEnum::MANAGER,
+                'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
             ]);
 
             return $team;
@@ -142,13 +148,55 @@ final class TeamController extends Controller
         PageSeoResolver $pageSeo,
     ): Response {
         $item = Team::query()->whereRouteIdentifier($team)
-            ->with(['logo', 'sportProfiles', 'memberships.contract', 'memberships.user.profile.activeAvatar'])
+            ->with(['logo', 'sportProfiles.lineupMembers', 'memberships.contract.permissions', 'memberships.user.profile.activeAvatar'])
             ->firstOrFail();
         $actor = $actors->resolveForRequest($request);
+        $activeMemberships = $item->memberships
+            ->filter(fn ($membership) => $membership->contract?->status === ContractStatusEnum::ACTIVE
+                && $membership->invitation_status === TeamInvitationStatusEnum::ACCEPTED)
+            ->values();
+        $coaches = $activeMemberships
+            ->filter(fn ($membership) => $membership->member_type === TeamMemberTypeEnum::COACH
+                || $membership->access_level === TeamMembershipAccessLevelEnum::COACH->value)
+            ->values();
+        $managers = $activeMemberships
+            ->filter(fn ($membership) => $membership->member_type === TeamMemberTypeEnum::MANAGER)
+            ->values();
+        $players = $activeMemberships
+            ->filter(fn ($membership) => $membership->member_type === TeamMemberTypeEnum::PLAYER)
+            ->sortBy('id')
+            ->values();
+        $startingLineups = $item->sportProfiles
+            ->mapWithKeys(function ($profile) use ($players): array {
+                $size = $profile->sport_type === TeamSportTypeEnum::STREETBALL ? 3 : 5;
+                $assignments = $profile->lineupMembers->keyBy('contract_membership_id');
+                $ordered = $players->sortBy(fn ($player) => sprintf('%d-%010d', $assignments->get($player->id)?->position ?? 9999, $player->id))->values();
+                $starters = $ordered->filter(fn ($player) => $assignments->get($player->id)?->assignment === TeamLineupAssignmentEnum::STARTER)->values();
+                $reserves = $ordered->reject(fn ($player) => $starters->contains('id', $player->id))->values();
+
+                return [$profile->sport_type->value => [
+                    'label' => $profile->sport_type->label(),
+                    'size' => $size,
+                    'sport_type' => $profile->sport_type->value,
+                    'starters' => $starters,
+                    'reserves' => $reserves,
+                    'is_complete' => $players->count() >= $size && $starters->count() === $size,
+                ]];
+            });
 
         return ThemeResolver::page('teams.show', [
             'team' => $item,
+            'coaches' => $coaches,
+            'managers' => $managers,
+            'players' => $players,
+            'startingLineups' => $startingLineups,
+            'hasCompleteRoster' => $startingLineups->every('is_complete'),
             'canManage' => $actor !== null && $access->canManage($item, $actor),
+            'canManageRoster' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROSTER),
+            'canInviteMembers' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS),
+            'canManageRoles' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROLES),
+            'canManagePermissions' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_PERMISSIONS),
+            'teamPermissions' => TeamPermissionEnum::cases(),
             'roles' => TeamMembershipAccessLevelEnum::cases(),
             'sportTypes' => TeamSportTypeEnum::cases(),
             ...$pageSeo->resolve(
@@ -171,9 +219,8 @@ final class TeamController extends Controller
 
         return ThemeResolver::page('teams.edit', [
             'team' => $item,
-            'roles' => TeamMembershipAccessLevelEnum::cases(),
-            'users' => User::query()->with('profile')->orderBy('username')->limit(200)->get(),
             'sportTypes' => TeamSportTypeEnum::cases(),
+            'canModerateStatus' => $actor->user?->isAdmin() ?? false,
         ]);
     }
 
@@ -182,13 +229,16 @@ final class TeamController extends Controller
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->canManage($item, $actor), 403);
+        $canModerateStatus = $actor->user?->isAdmin() ?? false;
+        abort_if(! $canModerateStatus && $request->exists('status'), 403, 'Изменять статус команды может только администратор.');
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string', 'max:5000'],
-            'status' => ['required', Rule::enum(TeamStatusEnum::class)],
+            'status' => [$canModerateStatus ? 'required' : 'missing', Rule::enum(TeamStatusEnum::class)],
             'sport_types' => ['nullable', 'array', 'min:1'],
             'sport_types.*' => ['required', 'distinct', Rule::enum(TeamSportTypeEnum::class)],
         ]);
+        $data['status'] ??= $item->status->value;
         $sportTypes = $data['sport_types'] ?? $item->sportProfiles()->pluck('sport_type')->all();
         $sportTypes = $sportTypes ?: [TeamSportTypeEnum::BASKETBALL->value];
         unset($data['sport_types']);
@@ -216,6 +266,22 @@ final class TeamController extends Controller
         }
 
         return back()->with('status', 'Команда обновлена.');
+    }
+
+    public function destroy(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): RedirectResponse
+    {
+        $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null || ! $access->canManage($item, $actor), 403);
+        abort_if($item->status !== TeamStatusEnum::ACTIVE, 409, 'Удалить можно только активную команду.');
+
+        if (GameSide::query()->where('team_id', $item->id)->exists()) {
+            return back()->with('error', 'Команду нельзя удалить: она участвует или участвовала в мероприятиях. Сначала удалите все связанные участия.');
+        }
+
+        $item->update(['status' => TeamStatusEnum::DRAFT]);
+
+        return redirect()->route('account.teams')->with('status', 'Команда удалена и перенесена в черновики.');
     }
 
     public function storeLogo(
@@ -260,50 +326,15 @@ final class TeamController extends Controller
         return back()->with('status', 'Логотип команды удалён.');
     }
 
-    public function addMember(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): RedirectResponse
-    {
-        $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
-        $actor = $actors->resolveForRequest($request);
-        abort_if($actor === null || ! $access->canManage($item, $actor), 403);
-        $data = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-            'access_level' => ['required', Rule::enum(TeamMembershipAccessLevelEnum::class)],
-        ]);
-
-        DB::transaction(function () use ($item, $data, $actor): void {
-            $existing = $item->memberships()->where('user_id', $data['user_id'])->first();
-            if ($existing) {
-                $existing->update(['access_level' => $data['access_level']]);
-                $existing->contract()->update(['status' => ContractStatusEnum::ACTIVE]);
-
-                return;
-            }
-            $contract = Contract::create([
-                'family' => ContractFamilyEnum::MEMBERSHIP,
-                'name' => "Участник команды «{$item->name}»",
-                'status' => ContractStatusEnum::ACTIVE,
-                'assigned_by' => $actor->user_id,
-                'assigner' => UserParticipationRoleAssignerEnum::USER,
-            ]);
-            $contract->membership()->create([
-                'scope_type' => ContractMembershipScopeTypeEnum::TEAM,
-                'scope_id' => $item->id,
-                'user_id' => $data['user_id'],
-                'access_level' => $data['access_level'],
-            ]);
-        });
-
-        return back()->with('status', 'Состав команды обновлён.');
-    }
-
     public function removeMember(string $team, int $membership, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): RedirectResponse
     {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
-        abort_if($actor === null || ! $access->canManage($item, $actor), 403);
+        abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS), 403);
         $member = $item->memberships()->whereKey($membership)->firstOrFail();
         abort_if($member->access_level === TeamMembershipAccessLevelEnum::OWNER->value, 422, 'Владельца команды удалить нельзя.');
         $member->contract->update(['status' => ContractStatusEnum::INACTIVE]);
+        $member->sportLineupAssignments()->delete();
 
         return back()->with('status', 'Участник исключён из активного состава.');
     }
@@ -313,7 +344,18 @@ final class TeamController extends Controller
     {
         $values = collect($sportTypes)->unique()->values();
         foreach ($values as $sportType) {
-            $team->sportProfiles()->updateOrCreate(['sport_type' => $sportType]);
+            $profile = $team->sportProfiles()->updateOrCreate(['sport_type' => $sportType]);
+            $playerIds = $team->memberships()
+                ->where('member_type', TeamMemberTypeEnum::PLAYER->value)
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
+                ->orderBy('id')->pluck('id');
+            foreach ($playerIds as $position => $membershipId) {
+                $profile->lineupMembers()->firstOrCreate(
+                    ['contract_membership_id' => $membershipId],
+                    ['assignment' => TeamLineupAssignmentEnum::RESERVE, 'position' => $position],
+                );
+            }
         }
         $team->sportProfiles()->whereNotIn('sport_type', $values)->delete();
     }

@@ -43,6 +43,12 @@ class AccessServiceProvider extends ServiceProvider
                 ->allows($user, UserOperationalPermissionEnum::CREATE_COORDINATION),
         );
         Gate::define(
+            'team-create',
+            fn (User $user): bool => $user->isConfirmed()
+                && app(UserOperationalPermissionChecker::class)
+                    ->allows($user, UserOperationalPermissionEnum::CREATE_TEAM),
+        );
+        Gate::define(
             'edit-venues-as-superadmin',
             fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),
         );

@@ -28,7 +28,12 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileContro
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
+use App\Modules\Team\Presentation\Http\Controllers\AccountTeamsController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamController;
+use App\Modules\Team\Presentation\Http\Controllers\TeamInvitationController;
+use App\Modules\Team\Presentation\Http\Controllers\TeamPermissionController;
+use App\Modules\Team\Presentation\Http\Controllers\TeamRoleController;
+use App\Modules\Team\Presentation\Http\Controllers\TeamRosterController;
 use App\Modules\Telegram\Presentation\Http\Controllers\StartTelegramBotLoginController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramBotLoginStatusController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
@@ -314,17 +319,23 @@ Route::get('/tournaments', [TournamentController::class, 'index'])
 Route::prefix('teams')->group(function () {
     Route::get('/', [TeamController::class, 'index'])->name('teams.index')->defaults('breadcrumb', 'Команды');
     Route::middleware('auth')->group(function () {
-        Route::get('/create', [TeamController::class, 'create'])->name('teams.create')->defaults('breadcrumb', 'Новая команда');
-        Route::post('/', [TeamController::class, 'store'])->name('teams.store');
+        Route::get('/create', [TeamController::class, 'create'])->middleware('can:team-create')->name('teams.create')->defaults('breadcrumb', 'Новая команда');
+        Route::post('/', [TeamController::class, 'store'])->middleware('can:team-create')->name('teams.store');
         Route::get('/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit')->defaults('breadcrumb', 'Управление командой');
         Route::put('/{team}', [TeamController::class, 'update'])->name('teams.update');
+        Route::delete('/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
         Route::post('/{team}/logo', [TeamController::class, 'storeLogo'])
             ->middleware('throttle:10,1')->name('teams.logo.store');
         Route::delete('/{team}/logo', [TeamController::class, 'destroyLogo'])
             ->middleware('throttle:20,1')->name('teams.logo.destroy');
-        Route::post('/{team}/members', [TeamController::class, 'addMember'])->name('teams.members.store');
         Route::delete('/{team}/members/{membership}', [TeamController::class, 'removeMember'])
             ->whereNumber('membership')->name('teams.members.destroy');
+        Route::put('/{team}/roster', [TeamRosterController::class, 'update'])->name('teams.roster.update');
+        Route::get('/{team}/invitation-candidates', [TeamInvitationController::class, 'search'])->name('teams.invitations.search');
+        Route::post('/{team}/invitations', [TeamInvitationController::class, 'store'])->name('teams.invitations.store');
+        Route::patch('/{team}/members/{membership}/captain', [TeamRoleController::class, 'captain'])->whereNumber('membership')->name('teams.members.captain');
+        Route::put('/{team}/members/{membership}/permissions', [TeamPermissionController::class, 'update'])->whereNumber('membership')->name('teams.members.permissions');
+        Route::patch('/team-invitations/{membership}', [TeamInvitationController::class, 'respond'])->whereNumber('membership')->name('teams.invitations.respond');
     });
     Route::get('/{team}', [TeamController::class, 'show'])->name('teams.show');
 });
@@ -454,6 +465,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.contacts.verification.confirm');
         Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
         Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
+        Route::get('/teams', AccountTeamsController::class)->name('account.teams')->defaults('breadcrumb', 'Мои команды');
         Route::get('/venues', [AccountController::class, 'venues'])
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');

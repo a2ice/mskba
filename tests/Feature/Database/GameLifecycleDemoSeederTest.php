@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Models\Team;
 use Database\Seeders\GameLifecycleDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -54,6 +55,23 @@ class GameLifecycleDemoSeederTest extends TestCase
             ->assertOk()
             ->assertSee('[DEMO] Красные')
             ->assertDontSee('[DEMO] Синие');
+        $redTeam = Team::query()->where('alias', 'demo-red')->firstOrFail();
+        $this->get(route('teams.show', $redTeam->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Тренерский штаб')
+            ->assertSee('Демо Организатор')
+            ->assertSee('Составы по дисциплинам')
+            ->assertSee('Баскетбол')
+            ->assertSee('data-starter-count', false)
+            ->assertSee('Стритбол')
+            ->assertSee('Запасные')
+            ->assertSee('Капитан')
+            ->assertSee('data-team-tooltip="Игрок 2 Красные"', false)
+            ->assertSee('data-team-tooltip="Назначить капитаном"', false)
+            ->assertSee('ti-star', false)
+            ->assertDontSee('>Назначить капитаном</button>', false)
+            ->assertSee('data-team-roster', false)
+            ->assertSee('team-person--coach', false);
         $this->post(route('teams.store'), ['name' => 'Команда без спортивных ролей'])
             ->assertRedirect();
         $this->get(route('teams.index', ['q' => 'Команда без спортивных ролей']))

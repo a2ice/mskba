@@ -31,6 +31,8 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
+use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
@@ -162,6 +164,20 @@ class GameLifecycleDemoSeeder extends Seeder
             );
         }
 
+        $team->load('sportProfiles.lineupMembers');
+        $playerMemberships = collect($players)->map(fn (User $player) => $this->memberships[$alias.':'.$player->id])->values();
+        foreach ($team->sportProfiles as $profile) {
+            $limit = $profile->sport_type === TeamSportTypeEnum::STREETBALL ? 3 : 5;
+            $profile->lineupMembers()->delete();
+            foreach ($playerMemberships as $position => $membership) {
+                $profile->lineupMembers()->create([
+                    'contract_membership_id' => $membership->id,
+                    'assignment' => $position < $limit ? TeamLineupAssignmentEnum::STARTER : TeamLineupAssignmentEnum::RESERVE,
+                    'position' => $position,
+                ]);
+            }
+        }
+
         return $team;
     }
 
@@ -196,6 +212,7 @@ class GameLifecycleDemoSeeder extends Seeder
                 'member_type' => $type,
                 'is_captain' => $captain,
                 'is_default_starter' => $starter,
+                'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
             ],
         );
     }

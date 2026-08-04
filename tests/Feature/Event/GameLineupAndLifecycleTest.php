@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Event;
 
-use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -219,6 +219,7 @@ final class GameLineupAndLifecycleTest extends TestCase
 
     private function createTeam(User $owner, string $name): Team
     {
+        $owner->update(['status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($owner)->post(route('teams.store'), [
             'name' => $name,
             'description' => null,
@@ -229,12 +230,15 @@ final class GameLineupAndLifecycleTest extends TestCase
 
     private function addMember(User $owner, Team $team, User $member)
     {
-        $this->actingAs($owner)->post(route('teams.members.store', $team->routeIdentifier()), [
+        $this->actingAs($owner)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
             'user_id' => $member->id,
-            'access_level' => TeamMembershipAccessLevelEnum::PLAYER->value,
-        ])->assertSessionHas('status');
+            'member_type' => TeamMemberTypeEnum::PLAYER->value,
+        ])->assertCreated();
+        $membership = $team->memberships()->where('user_id', $member->id)->firstOrFail();
+        $this->actingAs($member)->patch(route('teams.invitations.respond', $membership->id), ['decision' => 'accept'])
+            ->assertRedirect();
 
-        return $team->memberships()->where('user_id', $member->id)->firstOrFail();
+        return $membership->fresh();
     }
 
     private function setSports(

@@ -6,7 +6,9 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -133,12 +135,16 @@ final class GameLifecycleWorkflowTest extends TestCase
 
     private function createTeam(User $owner, string $name): Team
     {
+        $owner->update(['status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($owner)->post(route('teams.store'), [
             'name' => $name,
             'description' => null,
         ])->assertRedirect();
 
-        return Team::query()->where('name', $name)->firstOrFail();
+        $team = Team::query()->where('name', $name)->firstOrFail();
+        $team->memberships()->where('user_id', $owner->id)->update(['member_type' => TeamMemberTypeEnum::PLAYER]);
+
+        return $team;
     }
 
     /** @return array{Venue, CarbonImmutable, CarbonImmutable} */

@@ -23,7 +23,7 @@
                     @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
                 </button>
                 @auth
-                    <a class="btn btn--primary" href="{{ route('teams.create') }}"><i class="ti ti-plus"></i>Создать</a>
+                    @can('team-create')<a class="btn btn--primary" href="{{ route('teams.create') }}"><i class="ti ti-plus"></i>Создать</a>@endcan
                 @else
                     <button type="button" class="btn btn--primary js-handler" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('teams.create', absolute: false) }}"><i class="ti ti-plus"></i>Создать</button>
                 @endauth
@@ -69,13 +69,20 @@
                                 ?: $membership->user->username
                                 ?: '—';
                         };
+                        $activePlayerIds = $team->memberships->where('member_type', \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::PLAYER)->pluck('id');
+                        $rosterComplete = $team->sportProfiles->every(function ($profile) use ($activePlayerIds): bool {
+                            $required = $profile->sport_type === \App\Modules\Team\Domain\Enums\TeamSportTypeEnum::STREETBALL ? 3 : 5;
+                            return $profile->lineupMembers
+                                ->where('assignment', \App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum::STARTER)
+                                ->whereIn('contract_membership_id', $activePlayerIds)->count() === $required;
+                        });
                     @endphp
                     <article class="team-catalog-card">
                         <a class="team-catalog-card__image" href="{{ route('teams.show', $team->routeIdentifier()) }}">
                             <img src="{{ $team->logo?->publicUrl() ?: asset('images/team-placeholder.webp') }}" alt="Логотип команды {{ $team->name }}">
                         </a>
                         <div class="team-catalog-card__body">
-                            <div class="team-catalog-card__badges"><span>{{ $team->status->label() }}</span></div>
+                            <div class="team-catalog-card__badges"><span>{{ $team->status->label() }}</span>@unless($rosterComplete)<span class="is-incomplete">Неполный состав</span>@endunless</div>
                             <h2><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
                             <div class="team-catalog-card__tags" aria-label="Дисциплины команды">@foreach($team->sportProfiles as $profile)<span>{{ $profile->sport_type->label() }}</span>@endforeach</div>
                             <p class="team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>

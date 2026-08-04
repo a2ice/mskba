@@ -116,3 +116,22 @@ streetball team can keep substitutes and can support basketball at the same
 time. A particular game still owns the factual `side_a_size`, `side_b_size` and
 `scoring_type`, so historical games and custom formats do not change when the
 team profiles are edited.
+
+Each profile owns an independent permanent lineup projection in
+`team_sport_lineup_members`. Every accepted active player is assigned either
+to `starter` or `reserve`; ordering is persisted for drag-and-drop. Streetball
+requires three starters and basketball five. If the team has enough active
+players, saving fewer starters is rejected. If the total player count is below
+the requirement, the partial arrangement is allowed and the team is presented
+as `Неполный состав`. New accepted players enter the reserve of every current
+profile. A new game copies the starter assignment matching its scoring type;
+legacy `is_default_starter` remains only as a fallback for historical records.
+
+Team membership is invitation based. A new membership contract is inactive
+and has `invitation_status=pending` until the invited user accepts it. Declined
+invitations remain inactive. Contract permissions use the existing
+`contract_permissions` table and atomic permissions for roster, invitations,
+roles and permission delegation. An active, non-blocked creator has every team
+permission; other accepted members receive only permissions stored in their
+active contract. Team mutations use a stable lock order: team, sport profile
+or membership, then lineup rows.

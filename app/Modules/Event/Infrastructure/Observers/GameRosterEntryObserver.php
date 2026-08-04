@@ -4,7 +4,9 @@ namespace App\Modules\Event\Infrastructure\Observers;
 
 use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Models\GameRosterEntry;
+use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
+use App\Modules\Team\Domain\Models\TeamSportLineupMember;
 
 final class GameRosterEntryObserver
 {
@@ -28,7 +30,17 @@ final class GameRosterEntryObserver
             return false;
         }
 
-        $entry->lineup_role = $membership->is_default_starter
+        $sportType = $entry->event()->first()?->gameDetail()->value('scoring_type');
+        $sportAssignment = $sportType === null ? null : TeamSportLineupMember::query()
+            ->where('contract_membership_id', $membership->id)
+            ->whereHas('sportProfile', fn ($profile) => $profile
+                ->where('team_id', $membership->scope_id)
+                ->where('sport_type', $sportType))
+            ->value('assignment');
+        $isStarter = $sportAssignment !== null
+            ? $sportAssignment === TeamLineupAssignmentEnum::STARTER->value
+            : $membership->is_default_starter;
+        $entry->lineup_role = $isStarter
             ? GameLineupRoleEnum::STARTER
             : GameLineupRoleEnum::BENCH;
         $entry->is_captain = (bool) $membership->is_captain;
