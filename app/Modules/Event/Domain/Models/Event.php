@@ -34,6 +34,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'result_description',
     'starts_at',
     'ends_at',
+    'actual_started_at',
+    'actual_started_by_actor_id',
+    'actual_ended_at',
+    'actual_ended_by_actor_id',
     'max_participants',
     'completed_at',
     'completed_by_actor_id',
@@ -122,6 +126,16 @@ class Event extends Model
         return $this->hasMany(TelegramEventPublication::class);
     }
 
+    public function actualStartedByActor(): BelongsTo
+    {
+        return $this->belongsTo(Actor::class, 'actual_started_by_actor_id');
+    }
+
+    public function actualEndedByActor(): BelongsTo
+    {
+        return $this->belongsTo(Actor::class, 'actual_ended_by_actor_id');
+    }
+
     public function completedByActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'completed_by_actor_id');
@@ -145,6 +159,8 @@ class Event extends Model
             'visibility' => EventVisibilityEnum::class,
             'starts_at' => 'immutable_datetime',
             'ends_at' => 'immutable_datetime',
+            'actual_started_at' => 'immutable_datetime',
+            'actual_ended_at' => 'immutable_datetime',
             'max_participants' => 'integer',
             'completed_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
