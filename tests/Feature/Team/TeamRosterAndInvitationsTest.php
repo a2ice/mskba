@@ -64,6 +64,33 @@ final class TeamRosterAndInvitationsTest extends TestCase
         $this->assertSame(TeamStatusEnum::ARCHIVED, $team->fresh()->status);
     }
 
+    public function test_admin_creator_sees_delete_button_and_non_creator_manager_cannot_delete_team(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $admin->createProfile([]);
+        $this->actingAs($admin)
+            ->post(route('teams.store'), ['name' => 'Команда администратора'])
+            ->assertRedirect();
+        $team = Team::query()->where('name', 'Команда администратора')->firstOrFail();
+
+        $this->get(route('teams.edit', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Удалить команду')
+            ->assertSee('Вы уверены, что хотите удалить команду?', false);
+
+        $otherAdmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $this->actingAs($otherAdmin)
+            ->delete(route('teams.destroy', $team->routeIdentifier()))
+            ->assertForbidden();
+        $this->assertSame(TeamStatusEnum::ACTIVE, $team->fresh()->status);
+    }
+
     public function test_creator_manages_independent_sport_rosters_and_incomplete_roster_is_rejected_when_players_are_available(): void
     {
         $this->seed(GameLifecycleDemoSeeder::class);

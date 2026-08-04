@@ -226,6 +226,8 @@ final class TeamController extends Controller
             'team' => $item,
             'sportTypes' => TeamSportTypeEnum::cases(),
             'canModerateStatus' => $actor->user?->isAdmin() ?? false,
+            'canDeleteTeam' => $access->isCreator($item, $actor)
+                && $item->status === TeamStatusEnum::ACTIVE,
         ]);
     }
 
@@ -277,7 +279,7 @@ final class TeamController extends Controller
     {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
-        abort_if($actor === null || ! $access->canManage($item, $actor), 403);
+        abort_if($actor === null || ! $access->isCreator($item, $actor), 403);
         abort_if($item->status !== TeamStatusEnum::ACTIVE, 409, 'Удалить можно только активную команду.');
 
         if (GameSide::query()->where('team_id', $item->id)->exists()) {

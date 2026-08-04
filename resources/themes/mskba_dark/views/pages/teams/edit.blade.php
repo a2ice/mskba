@@ -37,9 +37,9 @@
 <select class="form-select" name="status">@foreach(\App\Modules\Team\Domain\Enums\TeamStatusEnum::cases() as $status)<option value="{{ $status->value }}" @selected($team->status===$status)>{{ $status->label() }}</option>@endforeach</select>
 </div>@endif
 <button class="btn btn--primary">Сохранить</button></form>
-@if(!$canModerateStatus && $team->status === \App\Modules\Team\Domain\Enums\TeamStatusEnum::ACTIVE)
+@if($canDeleteTeam)
 <section class="section-card mb-4"><h2>Удаление команды</h2><p class="form-hint">Команда будет перенесена в черновики. Удаление недоступно, пока команда связана с мероприятием или турниром.</p>
-<form method="POST" action="{{ route('teams.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Удалить команду и перенести её в черновики?')">@csrf @method('DELETE')<button class="btn btn--danger" type="submit">Удалить команду</button></form></section>
+<form class="mt-2" method="POST" action="{{ route('teams.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Вы уверены, что хотите удалить команду? Команда будет перенесена в черновики.')">@csrf @method('DELETE')<button class="btn btn--danger" type="submit">Удалить команду</button></form></section>
 @endif
 <div class="section-card"><h2>Состав и приглашения</h2>
 <p class="form-hint">Основные и запасные составы, приглашения, роли и капитан управляются на странице команды.</p>

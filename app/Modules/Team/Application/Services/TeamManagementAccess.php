@@ -12,6 +12,16 @@ use App\Modules\Team\Domain\Models\Team;
 
 final class TeamManagementAccess
 {
+    public function isCreator(Team $team, Actor $actor): bool
+    {
+        $user = $actor->user;
+
+        return $user !== null
+            && ! $user->isBlocked()
+            && ! $user->trashed()
+            && $team->createdByActor()->where('user_id', $user->id)->exists();
+    }
+
     public function allows(Team $team, Actor $actor, TeamPermissionEnum $permission): bool
     {
         $user = $actor->user;
@@ -23,7 +33,7 @@ final class TeamManagementAccess
             return true;
         }
 
-        if ($team->createdByActor()->where('user_id', $user->id)->exists()) {
+        if ($this->isCreator($team, $actor)) {
             return true;
         }
 
