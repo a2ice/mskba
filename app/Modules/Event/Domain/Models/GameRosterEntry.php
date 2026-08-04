@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Domain\Models;
 
 use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,6 +17,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'source_contract_membership_id',
     'source_event_participant_id',
     'status',
+    'lineup_role',
+    'is_captain',
+    'locked_at',
 ])]
 class GameRosterEntry extends Model
 {
@@ -46,6 +50,11 @@ class GameRosterEntry extends Model
 
     protected function casts(): array
     {
-        return ['status' => GameRosterStatusEnum::class];
+        return [
+            'status' => GameRosterStatusEnum::class,
+            'lineup_role' => GameLineupRoleEnum::class,
+            'is_captain' => 'boolean',
+            'locked_at' => 'immutable_datetime',
+        ];
     }
 }
