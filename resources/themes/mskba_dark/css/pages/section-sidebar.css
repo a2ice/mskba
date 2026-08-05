@@ -85,6 +85,66 @@
     overflow-wrap: anywhere;
 }
 
+.team-help-heading,
+.team-role-legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-help-heading h2 {
+    margin-right: 0;
+}
+
+.team-help-tooltip {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    padding: 0;
+    border: 1px solid rgba(255, 116, 23, .65);
+    border-radius: 50%;
+    color: var(--accent-text);
+    background: rgba(255, 116, 23, .08);
+    font: 800 16px/1 var(--font-ui);
+    cursor: help;
+}
+
+.team-help-tooltip:hover,
+.team-help-tooltip:focus-visible {
+    border-color: var(--accent-hover);
+    color: #fff;
+    background: rgba(255, 116, 23, .2);
+    outline: none;
+}
+
+.team-role-legend {
+    width: auto;
+    margin-bottom: 12px;
+}
+
+.team-sport-role-options {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+}
+
+.team-sport-role-option {
+    margin: 0;
+}
+
+.team-sport-role-option .form-toggle {
+    min-height: 38px;
+    padding-top: 0;
+}
+
+.team-sport-role-options--flags {
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+}
+
 .section-sidebar-layout__mobile-sticky-navigation {
     display: none;
 }
@@ -280,6 +340,20 @@
 
     .teams-management-section .team-profile__section-heading {
         align-items: flex-start;
+    }
+
+    .team-help-heading {
+        align-items: flex-start;
+    }
+
+    .team-help-tooltip {
+        margin-top: 4px;
+    }
+
+    .team-sport-role-options {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 }
 
