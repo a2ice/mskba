@@ -13,7 +13,7 @@ final class TeamOwnerSportRoleProtectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_only_owner_and_system_admin_can_edit_owner_sport_roles(): void
+    public function test_owner_roles_are_managed_only_by_owner_in_user_context(): void
     {
         $owner = User::factory()->create([
             'username' => 'protected-team-owner',
@@ -53,25 +53,32 @@ final class TeamOwnerSportRoleProtectionTest extends TestCase
             $ownerMembership->id,
         ]);
 
-        $this->get(route('teams.show', $team->routeIdentifier()))
+        $this->actingAs($delegate)
+            ->get(route('teams.show', $team->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Изменять спортивные роли владельца может только сам владелец или администратор.')
-            ->assertDontSee('action="'.$ownerUpdateUrl.'"', false)
-            ->assertDontSee('aria-label="Изменить роли protected-team-owner"', false);
+            ->assertDontSee('action="'.$ownerUpdateUrl.'"', false);
 
-        $this->put($ownerUpdateUrl, [
-            'sport_roles' => ['coach'],
-        ])->assertSessionHas('error', 'Спортивные роли владельца может менять только сам владелец или администратор.');
+        $this->get(route('teams.management', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Изменять спортивные роли владельца может только сам владелец.')
+            ->assertDontSee('action="'.$ownerUpdateUrl.'"', false);
+
+        $this->put($ownerUpdateUrl, ['sport_roles' => ['coach']])
+            ->assertSessionHas('error', 'Спортивные роли владельца может менять только сам владелец.');
         $this->assertSame(['manager'], $ownerMembership->fresh()->sportRoleValues());
 
-        $this->actingAs($owner)->put($ownerUpdateUrl, [
-            'sport_roles' => ['coach'],
-        ])->assertSessionHas('status');
+        $this->actingAs($admin)
+            ->get(route('teams.management', $team->routeIdentifier()))
+            ->assertForbidden();
+        $this->put($ownerUpdateUrl, ['sport_roles' => ['coach']])
+            ->assertSessionHas('error', 'Недостаточно прав для управления спортивными ролями команды.');
+
+        $this->actingAs($owner)
+            ->get(route('teams.management', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('action="'.$ownerUpdateUrl.'"', false);
+        $this->put($ownerUpdateUrl, ['sport_roles' => ['coach']])
+            ->assertSessionHas('status');
         $this->assertSame(['coach'], $ownerMembership->fresh()->sportRoleValues());
-
-        $this->actingAs($admin)->put($ownerUpdateUrl, [
-            'sport_roles' => ['manager'],
-        ])->assertSessionHas('status');
-        $this->assertSame(['manager'], $ownerMembership->fresh()->sportRoleValues());
     }
 }
