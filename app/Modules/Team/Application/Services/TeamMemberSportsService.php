@@ -5,6 +5,7 @@ namespace App\Modules\Team\Application\Services;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -52,9 +53,27 @@ final class TeamMemberSportsService
                 ->unique(fn (TeamMemberTypeEnum $role) => $role->value)
                 ->values();
             $isPlayer = $roles->contains(TeamMemberTypeEnum::PLAYER);
+            $wasCaptain = (bool) $lockedMembership->is_captain;
+
+            if ($wasCaptain && (! $isPlayer || ! $isCaptain)) {
+                throw new InvalidArgumentException('Сначала назначьте другого игрока капитаном команды.');
+            }
 
             if (! $isPlayer && ($isCaptain || $isDefaultStarter)) {
                 throw new InvalidArgumentException('Капитаном и стартовым участником может быть только игрок.');
+            }
+
+            $otherCaptainExists = $lockedTeam->memberships()
+                ->whereKeyNot($lockedMembership->id)
+                ->where('is_captain', true)
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
+                ->lockForUpdate()
+                ->exists();
+
+            // The first active player becomes captain automatically.
+            if ($isPlayer && ! $otherCaptainExists) {
+                $isCaptain = true;
             }
 
             if ($isCaptain) {
