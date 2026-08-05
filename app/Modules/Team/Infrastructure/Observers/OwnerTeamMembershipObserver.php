@@ -3,9 +3,11 @@
 namespace App\Modules\Team\Infrastructure\Observers;
 
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Team\Application\Services\TeamRosterService;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Validation\ValidationException;
@@ -51,7 +53,10 @@ final class OwnerTeamMembershipObserver
 
     public function created(ContractMembership $membership): void
     {
-        if ($membership->scope_type !== ContractMembershipScopeTypeEnum::TEAM || ! $membership->isPlayingMember()) {
+        if ($membership->scope_type !== ContractMembershipScopeTypeEnum::TEAM
+            || $membership->invitation_status !== TeamInvitationStatusEnum::ACCEPTED
+            || ! $membership->isPlayingMember()
+            || $membership->contract()->where('status', ContractStatusEnum::ACTIVE->value)->doesntExist()) {
             return;
         }
 
