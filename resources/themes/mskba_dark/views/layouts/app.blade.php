@@ -99,6 +99,14 @@
             @include('theme::partials.header')
 
             <main class="site-content">
+                @if(! empty($contextManagementUrl))
+                    <div class="inner py-3 d-flex justify-content-end">
+                        <a class="btn btn--secondary btn--sm" href="{{ $contextManagementUrl }}">
+                            <i class="ti ti-settings" aria-hidden="true"></i>
+                            {{ $contextManagementLabel ?? 'Управление' }}
+                        </a>
+                    </div>
+                @endif
                 @yield('content')
                 @if(Route::currentRouteName() === 'venues.show' && isset($venue))
                     @include('theme::partials.venues.characteristics-public', ['venue' => $venue])
