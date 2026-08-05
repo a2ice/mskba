@@ -29,7 +29,9 @@ final class TeamRosterAndInvitationsTest extends TestCase
             ->get(route('teams.create'))
             ->assertOk()
             ->assertSee('Названия команд могут совпадать.')
-            ->assertSee('Название №2');
+            ->assertSee('Название №2')
+            ->assertSee('aria-label="Подсказка о названии команды"', false)
+            ->assertSee('aria-label="Подсказка о типе команды"', false);
         $this->post(route('teams.store'), ['name' => 'Chicago Bulls'])->assertRedirect();
         $first = Team::query()->where('name', 'Chicago Bulls')->firstOrFail();
         $this->assertSame('Chicago Bulls', $first->name);
