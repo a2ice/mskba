@@ -71,7 +71,7 @@
         <div class="team-sport-groups">
         @foreach($startingLineups as $lineup)
             <section class="team-sport-group" data-team-roster data-sport-type="{{ $lineup['sport_type'] }}" data-limit="{{ $lineup['size'] }}" data-editable="0">
-                <header><div><strong>{{ $lineup['label'] }}</strong><span>Основа: {{ $lineup['starters']->count() }} / {{ $lineup['size'] }}</span></div></header>
+                <header><div><strong>{{ $lineup['label'] }}</strong><span>{{ $lineup['starters']->count() }}/{{ $lineup['size'] }}</span></div></header>
                 <div class="team-roster-pool"><div class="team-roster-pool__heading"><span>Основной состав</span><b>{{ $lineup['size'] }} мест</b></div><div class="team-roster-dropzone" data-roster-zone="starter">
                     @foreach($lineup['starters'] as $player)
                         @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'canManagePermissions', 'canRemoveMembers', 'currentUserId', 'team'))
