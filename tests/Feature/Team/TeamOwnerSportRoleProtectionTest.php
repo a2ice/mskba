@@ -5,6 +5,7 @@ namespace Tests\Feature\Team;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -80,5 +81,36 @@ final class TeamOwnerSportRoleProtectionTest extends TestCase
         $this->put($ownerUpdateUrl, ['sport_roles' => ['coach']])
             ->assertSessionHas('status');
         $this->assertSame(['coach'], $ownerMembership->fresh()->sportRoleValues());
+    }
+
+    public function test_team_status_is_rejected_by_user_update_even_for_system_admin(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+
+        $this->actingAs($owner)->post(route('teams.store'), [
+            'name' => 'Команда пользовательского контекста',
+            'creator_sport_roles' => ['manager'],
+        ])->assertRedirect();
+        $team = Team::query()->where('name', 'Команда пользовательского контекста')->firstOrFail();
+
+        $this->put(route('teams.update', $team->routeIdentifier()), [
+            'name' => $team->base_name ?? $team->name,
+            'description' => 'Новое описание',
+            'sport_types' => ['basketball'],
+            'status' => TeamStatusEnum::BLOCKED->value,
+        ])->assertForbidden();
+
+        $this->actingAs($admin)->put(route('teams.update', $team->routeIdentifier()), [
+            'name' => $team->base_name ?? $team->name,
+            'description' => 'Попытка администратора',
+            'sport_types' => ['basketball'],
+            'status' => TeamStatusEnum::BLOCKED->value,
+        ])->assertForbidden();
+
+        $this->assertSame(TeamStatusEnum::ACTIVE, $team->fresh()->status);
     }
 }
