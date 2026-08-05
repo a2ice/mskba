@@ -3,8 +3,8 @@
 namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Event\Application\Handlers\ShowEventHandler;
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
