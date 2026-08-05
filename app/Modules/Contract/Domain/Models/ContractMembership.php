@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 #[Fillable([
     'contract_id',
@@ -64,13 +65,11 @@ class ContractMembership extends Model
         return $this->member_type === null ? [] : [$this->member_type->value];
     }
 
-    /** @return array<int, TeamMemberTypeEnum> */
-    public function sportRoles(): array
+    /** @return Collection<int, TeamMemberTypeEnum> */
+    public function sportRoles(): Collection
     {
-        return array_map(
-            static fn (string $role): TeamMemberTypeEnum => TeamMemberTypeEnum::from($role),
-            $this->sportRoleValues(),
-        );
+        return collect($this->sportRoleValues())
+            ->map(static fn (string $role): TeamMemberTypeEnum => TeamMemberTypeEnum::from($role));
     }
 
     public function sportLineupAssignments(): HasMany
