@@ -21,10 +21,9 @@
 </div>
 @error('creator_sport_roles')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 <div class="d-flex flex-wrap gap-3 mt-3">
-<label class="form-check"><input class="form-check-input" type="checkbox" name="creator_is_captain" value="1" @checked(old('creator_is_captain'))><span class="form-check-label">Я капитан</span></label>
 <label class="form-check"><input class="form-check-input" type="checkbox" name="creator_is_default_starter" value="1" @checked(old('creator_is_default_starter'))><span class="form-check-label">Я в стартовом составе по умолчанию</span></label>
 </div>
-<p class="form-hint mt-2">Капитан и стартовый участник должны иметь роль «Игрок».</p>
+<p class="form-hint mt-2">Если выбрана роль «Игрок», первый игрок автоматически становится капитаном команды. Для снятия игровой роли сначала нужно назначить другого капитана.</p>
 </fieldset>
 <div class="form-group field mb-4"><label class="form-label">Описание</label><textarea class="form-control" name="description" rows="6" maxlength="5000">{{ old('description') }}</textarea></div>
 <button class="btn btn--primary">Создать команду</button>
