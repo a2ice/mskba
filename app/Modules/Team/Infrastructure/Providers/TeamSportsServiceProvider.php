@@ -2,6 +2,7 @@
 
 namespace App\Modules\Team\Infrastructure\Providers;
 
+use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Team\Infrastructure\Http\Middleware\EnsureTeamMemberRemovalHierarchy;
 use App\Modules\Team\Infrastructure\Observers\OwnerTeamMembershipObserver;
@@ -24,5 +25,10 @@ final class TeamSportsServiceProvider extends ServiceProvider
                 ->whereNumber('membership')
                 ->name('teams.members.sports.update');
         });
+
+        Route::middleware(['web', 'auth', 'can:access-admin-panel'])
+            ->get('/admin/teams/{team}', [AdminTeamsController::class, 'show'])
+            ->name('admin.teams.show')
+            ->defaults('breadcrumb', 'Команда');
     }
 }
