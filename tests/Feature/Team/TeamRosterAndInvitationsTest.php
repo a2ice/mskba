@@ -233,5 +233,10 @@ final class TeamRosterAndInvitationsTest extends TestCase
             ->assertSee('team-catalog-card__meta', false)
             ->assertSee('team-catalog-card__member-count', false)
             ->assertDontSee('team-catalog-card__tags', false);
+
+        $this->get(route('teams.index', ['q' => 'несуществующая команда']))
+            ->assertOk()
+            ->assertSee('Попробуйте изменить условия поиска')
+            ->assertSee('Сбросить параметры');
     }
 }

@@ -19,7 +19,7 @@
 
             <div class="catalog-toolbar teams-catalog-toolbar is-filters-collapsed">
                 <label class="catalog-toolbar__search" aria-label="Поиск команд"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название или описание" form="team-catalog-filter-form"></label>
-                <button class="btn btn--secondary teams-catalog__filters-toggle" type="button" data-team-filter-toggle aria-label="Расширенные фильтры команд" aria-expanded="false">
+                <button class="btn btn--secondary catalog-toolbar__filter-button teams-catalog__filters-toggle" type="button" data-team-filter-toggle aria-label="Расширенные фильтры команд" aria-expanded="false">
                     <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span class="catalog-toolbar__button-text">Фильтры</span><i class="ti ti-chevron-down catalog-toolbar__chevron" data-team-filter-toggle-icon aria-hidden="true"></i>
                     @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
                 </button>
@@ -102,7 +102,7 @@
                         </div>
                     </article>
                 @empty
-                    <div class="teams-catalog__empty"><i class="ti ti-users-off"></i><strong>Команды не найдены</strong><span>Попробуйте изменить параметры фильтра или создайте новую команду.</span></div>
+                    <div class="teams-catalog__empty"><i class="ti ti-users-off"></i><strong>Команды не найдены</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('teams.index') }}">Сбросить параметры</a></div>
                 @endforelse
             </div>
 

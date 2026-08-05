@@ -33,7 +33,7 @@
                     <button type="button" @class(['is-active' => $currentView === 'list']) data-venue-view="list" aria-label="Список" title="Список" data-tooltip-variant="title" data-tooltip-icon aria-pressed="{{ $currentView === 'list' ? 'true' : 'false' }}"><i class="ti ti-list"></i><span class="catalog-toolbar__button-text">Список</span></button>
                     <button type="button" @class(['is-active' => $currentView === 'map']) data-venue-view="map" aria-label="На карте" title="На карте" data-tooltip-variant="title" data-tooltip-icon aria-pressed="{{ $currentView === 'map' ? 'true' : 'false' }}"><i class="ti ti-map-2"></i><span class="catalog-toolbar__button-text">На карте</span></button>
                 </div>
-                <button class="btn btn--secondary venues-catalog__filters-toggle" type="button" data-venue-filter-toggle aria-label="Расширенные фильтры площадок" aria-expanded="false">
+                <button class="btn btn--secondary catalog-toolbar__filter-button venues-catalog__filters-toggle" type="button" data-venue-filter-toggle aria-label="Расширенные фильтры площадок" aria-expanded="false">
                     <i class="ti ti-adjustments-horizontal"></i><span class="catalog-toolbar__button-text">Фильтры</span><i class="ti ti-chevron-down catalog-toolbar__chevron" data-venue-filter-toggle-icon></i>
                     @if($activeFilterCount)<b>{{ $activeFilterCount }}</b>@endif
                 </button>
@@ -66,7 +66,7 @@
                         <div class="catalog-card__actions venue-catalog-card__actions"><a class="btn btn--secondary btn--sm" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>@if($venue->canEdit)<a class="venue-catalog-card__edit" href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}"><i class="ti ti-pencil"></i>Редактировать</a>@endif</div>
                     </article>
                 @empty
-                    <div class="venues-catalog__empty"><i class="ti ti-map-pin-off"></i><strong>Площадки не найдены</strong><span>Попробуйте изменить параметры фильтра.</span></div>
+                    <div class="venues-catalog__empty"><i class="ti ti-map-pin-off"></i><strong>Площадки не найдены</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('venues') }}">Сбросить параметры</a></div>
                 @endforelse
             </div>
 
@@ -76,7 +76,7 @@
                     <div class="venues-catalog-map__canvas" data-venue-catalog-map data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"></div>
                     <script type="application/json" data-venue-catalog-map-points>@json($mapVenues)</script>
                 @else
-                    <div class="venues-catalog__empty"><i class="ti ti-map-pin-off"></i><strong>Нет площадок с координатами</strong><span>Выбранные площадки доступны в режиме списка.</span></div>
+                    <div class="venues-catalog__empty"><i class="ti ti-map-pin-off"></i><strong>Нет площадок с координатами</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('venues') }}">Сбросить параметры</a></div>
                 @endif
             </section>
         </div>

@@ -36,7 +36,7 @@
 
             <div class="catalog-toolbar events-catalog-filters__toolbar is-filters-collapsed">
                     <label class="catalog-toolbar__search" aria-label="Поиск мероприятий"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="q" value="{{ $search }}" placeholder="Название, описание или площадка" form="event-catalog-filter-form"></label>
-                    <button class="btn btn--secondary events-catalog__options" type="button" data-event-filter-toggle aria-label="Расширенные фильтры мероприятий" aria-expanded="false">
+                    <button class="btn btn--secondary catalog-toolbar__filter-button events-catalog__options" type="button" data-event-filter-toggle aria-label="Расширенные фильтры мероприятий" aria-expanded="false">
                         <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span class="catalog-toolbar__button-text">Фильтры</span><i class="ti ti-chevron-down catalog-toolbar__chevron" data-event-filter-toggle-icon aria-hidden="true"></i>
                         @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
                     </button>
@@ -77,7 +77,7 @@
             </form>
 
             @if($events->isEmpty())
-                <div class="events-catalog__empty"><i class="ti ti-ball-basketball"></i><strong>Подходящих мероприятий пока нет</strong><span>Измените фильтры или создайте новое мероприятие.</span></div>
+                <div class="events-catalog__empty"><i class="ti ti-ball-basketball"></i><strong>Подходящих мероприятий пока нет</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить параметры</a></div>
             @else
                 <div class="events-catalog-list">
                     @foreach($events as $event)
@@ -120,10 +120,12 @@
                                 <p><i class="ti ti-clock"></i><span>{{ $startsAt->format('d.m.Y · H:i') }}–{{ $endsAt->format('H:i') }}</span></p>
                                 <p><i class="ti ti-users"></i><span>{{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : ' / ∞' }} участников</span></p>
                             </div>
-                            <aside class="catalog-card__actions event-catalog-card__games">
-                                <strong @class(['is-empty' => $event->childGames->isEmpty()])><i class="ti ti-device-gamepad-2"></i>Мини-игры{{ $event->childGames->isNotEmpty() ? ': '.$event->childGames->count() : '' }}</strong>
-                                @foreach($event->childGames->take(2) as $childGame)<span>{{ $childGame->title }}</span>@endforeach
-                                @if($event->childGames->count() > 2)<small>+{{ $event->childGames->count() - 2 }} ещё</small>@endif
+                            <aside @class(['catalog-card__actions', 'event-catalog-card__games', 'has-mini-games' => $event->childGames->isNotEmpty()])>
+                                @if($event->childGames->isNotEmpty())
+                                    <strong><i class="ti ti-device-gamepad-2"></i>Мини-игры: {{ $event->childGames->count() }}</strong>
+                                    @foreach($event->childGames->take(2) as $childGame)<span>{{ $childGame->title }}</span>@endforeach
+                                    @if($event->childGames->count() > 2)<small>И еще {{ $event->childGames->count() - 2 }}…</small>@endif
+                                @endif
                                 <a class="btn btn--secondary btn--sm" href="{{ route('events.show', $event->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>
                             </aside>
                         </article>

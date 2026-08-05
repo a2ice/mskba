@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -81,7 +82,31 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('catalog-card__badge event-type-badge', false);
         $this->get(route('events.index', ['q' => 'Вечерняя', 'type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
-            ->assertSee('Вечерняя игра');
+            ->assertSee('Вечерняя игра')
+            ->assertDontSee('Мини-игры:');
+        $this->get(route('events.index', ['q' => 'несуществующее мероприятие']))
+            ->assertOk()
+            ->assertSee('Попробуйте изменить условия поиска')
+            ->assertSee('Сбросить параметры');
+
+        foreach (range(1, 3) as $number) {
+            Event::factory()->create([
+                'parent_event_id' => $event->id,
+                'venue_id' => $venue->id,
+                'organizer_actor_id' => $event->organizer_actor_id,
+                'title' => "Мини-игра {$number}",
+                'starts_at' => $event->starts_at->addMinutes($number * 10),
+                'ends_at' => $event->starts_at->addMinutes(($number + 1) * 10),
+            ]);
+        }
+
+        $this->get(route('events.index', ['q' => 'Вечерняя']))
+            ->assertOk()
+            ->assertSee('Мини-игры: 3')
+            ->assertSee('Мини-игра 1')
+            ->assertSee('Мини-игра 2')
+            ->assertDontSee('Мини-игра 3')
+            ->assertSee('И еще 1…');
         $slotStart = $event->booking->starts_at->setTimezone('Europe/Moscow');
         $slotEnd = $event->booking->ends_at->setTimezone('Europe/Moscow');
         $this->get(route('venues.show', $venue->routeIdentifier()))

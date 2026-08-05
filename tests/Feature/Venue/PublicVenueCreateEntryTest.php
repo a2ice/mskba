@@ -93,6 +93,11 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('data-venue-catalog-map', false)
             ->assertSee('55.751244', false)
             ->assertSee('37.618423', false);
+
+        $this->get(route('venues', ['search' => 'несуществующая площадка']))
+            ->assertOk()
+            ->assertSee('Попробуйте изменить условия поиска')
+            ->assertSee('Сбросить параметры');
     }
 
     public function test_unconfirmed_user_sees_create_link_on_public_venues_page(): void

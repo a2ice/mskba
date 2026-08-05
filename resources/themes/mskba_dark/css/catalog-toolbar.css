@@ -25,6 +25,26 @@
     border-radius: 15px;
 }
 
+.catalog-toolbar__filter-button {
+    position: relative;
+}
+
+.catalog-toolbar__filter-button > b {
+    position: absolute;
+    top: -9px;
+    right: -7px;
+    display: grid;
+    place-items: center;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 7px;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--accent-color, #ff6200);
+    font-size: 13px;
+    line-height: 1;
+}
+
 .catalog-toolbar__search {
     display: flex;
     align-items: center;
@@ -93,5 +113,14 @@
     .catalog-toolbar__button-text,
     .catalog-toolbar__chevron {
         display: none !important;
+    }
+
+    .catalog-toolbar__filter-button > b {
+        top: -5px;
+        right: -4px;
+        min-width: 19px;
+        height: 19px;
+        padding: 0 5px;
+        font-size: 10px;
     }
 }
