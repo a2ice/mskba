@@ -39,7 +39,7 @@
             <div class="team-profile__header-statuses">
                 <span class="team-profile__status">{{ $team->status->label() }}</span>
                 @foreach($team->sportProfiles as $profile)
-                    <span class="team-profile__sport" title="{{ $profile->sport_type->label() }}" aria-label="{{ $profile->sport_type->label() }}">
+                    <span class="team-profile__sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" aria-label="{{ $profile->sport_type->label() }}">
                         <span class="team-profile__sport-full">{{ $profile->sport_type->label() }}</span>
                         <span class="team-profile__sport-short">{{ $profile->sport_type->shortLabel() }}</span>
                     </span>
