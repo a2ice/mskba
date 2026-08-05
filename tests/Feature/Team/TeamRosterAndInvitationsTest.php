@@ -81,7 +81,16 @@ final class TeamRosterAndInvitationsTest extends TestCase
             ->assertOk()
             ->assertDontSee('value="blocked"', false)
             ->assertDontSee('value="archived"', false)
+            ->assertDontSee('data-team-name-input', false)
+            ->assertSee('data-image-upload-auto-submit', false)
+            ->assertSee('team-logo-upload__overlay', false)
+            ->assertSee('mt-3', false)
             ->assertSee('Удалить команду');
+        $this->put(route('teams.update', $team->routeIdentifier()), [
+            'name' => 'Несанкционированное переименование',
+            'description' => $team->description,
+        ])->assertRedirect();
+        $this->assertSame('[DEMO] Красные', $team->fresh()->name);
         $this->put(route('teams.update', $team->routeIdentifier()), [
             'name' => $team->name,
             'description' => $team->description,
@@ -105,6 +114,7 @@ final class TeamRosterAndInvitationsTest extends TestCase
         ]);
         $this->actingAs($admin)->get(route('teams.edit', $team->routeIdentifier()))
             ->assertOk()
+            ->assertSee('data-team-name-input', false)
             ->assertSee('value="blocked"', false)
             ->assertSee('value="archived"', false);
         $this->put(route('teams.update', $team->routeIdentifier()), [

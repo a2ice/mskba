@@ -283,8 +283,11 @@ final class TeamController extends Controller
         $sportTypes = $sportTypes ?: [TeamSportTypeEnum::BASKETBALL->value];
         unset($data['sport_types']);
         try {
-            DB::transaction(function () use ($item, $data, $sportTypes, $names): void {
+            DB::transaction(function () use ($item, $data, $sportTypes, $names, $canModerateStatus): void {
                 $lockedTeam = Team::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
+                if (! $canModerateStatus) {
+                    $data['name'] = $lockedTeam->base_name ?? $lockedTeam->name;
+                }
                 if ($data['status'] === TeamStatusEnum::ACTIVE->value) {
                     $hasManager = $lockedTeam->memberships()
                         ->whereIn('access_level', [
@@ -298,7 +301,7 @@ final class TeamController extends Controller
                         throw new InvalidArgumentException('Для активной постоянной команды нужен владелец, ответственный или капитан.');
                     }
                     $requestedNormalized = $names->normalize($data['name']);
-                    if ($lockedTeam->status !== TeamStatusEnum::ACTIVE || $lockedTeam->normalized_name !== $requestedNormalized) {
+                    if ($canModerateStatus && ($lockedTeam->status !== TeamStatusEnum::ACTIVE || $lockedTeam->normalized_name !== $requestedNormalized)) {
                         $creatorUserId = (int) $lockedTeam->createdByActor()->value('user_id');
                         $allocatedName = $names->allocate($data['name'], $creatorUserId, $lockedTeam);
                         unset($allocatedName['has_duplicate']);

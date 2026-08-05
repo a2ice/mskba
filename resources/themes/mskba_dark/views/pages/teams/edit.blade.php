@@ -13,23 +13,21 @@
 @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 <section class="section-card mb-4">
 <h2>Логотип</h2>
-<p class="form-hint">JPEG, PNG или WebP · до 5 МБ. Изображение будет уменьшено до 500 пикселей по большей стороне.</p>
-@if($team->logo)
-<div class="team-logo-editor">
-<img class="team-logo team-logo--large" src="{{ $team->logo->publicUrl() }}" alt="Логотип команды {{ $team->name }}">
-<form method="POST" action="{{ route('teams.logo.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Удалить логотип команды?')">@csrf @method('DELETE')
-<button class="btn btn--secondary btn--sm" type="submit">Удалить</button></form>
-</div>
-@endif
-<form method="POST" action="{{ route('teams.logo.store', $team->routeIdentifier()) }}" enctype="multipart/form-data">
-@csrf
-<input class="form-control" type="file" name="logo" accept="image/jpeg,image/png,image/webp" required>
+<form method="POST" action="{{ route('teams.logo.store', $team->routeIdentifier()) }}" enctype="multipart/form-data" class="team-logo-upload-form" data-image-upload data-image-upload-auto-submit>@csrf
+<label class="team-logo-upload" for="team-logo-input" data-image-upload-surface>
+<img class="team-logo-upload__image" src="{{ $team->logo?->publicUrl() ?? asset('images/team-placeholder.webp') }}" alt="Логотип команды {{ $team->name }}">
+<span class="team-logo-upload__overlay" aria-hidden="true"><i class="ti ti-camera"></i></span>
+@include('theme::partials.image-upload-loading', ['text' => 'Загружаем логотип…'])
+<span class="visually-hidden">{{ $team->logo ? 'Заменить логотип команды' : 'Добавить логотип команды' }}</span>
+</label>
+<input id="team-logo-input" class="visually-hidden" type="file" name="logo" accept="image/jpeg,image/png,image/webp" required>
+<p class="form-hint team-logo-upload__hint">JPEG, PNG или WebP · до 5 МБ. Изображение будет уменьшено до 500 пикселей.</p>
 @error('logo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-<button class="btn btn--primary btn--sm mt-3" type="submit">{{ $team->logo ? 'Заменить логотип' : 'Добавить логотип' }}</button>
 </form>
+@if($team->logo)<form class="team-logo-delete-form" method="POST" action="{{ route('teams.logo.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Удалить логотип команды?')">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm" type="submit">Удалить логотип</button></form>@endif
 </section>
 <form method="POST" action="{{ route('teams.update', $team->routeIdentifier()) }}" class="section-card mb-4" data-team-name-form data-team-name-suggestion-url="{{ route('teams.name-suggestion') }}" data-team-name-except="{{ $team->id }}">@csrf @method('PUT')
-<h2>Данные команды</h2><div class="form-group field mb-3"><label class="form-label">Название</label><div class="team-name-field__control"><input class="form-control" name="name" value="{{ old('name',$team->base_name ?? $team->name) }}" required maxlength="140" data-team-name-input><button class="ui-tooltip-trigger" type="button" aria-label="Подсказка о названии команды" data-tooltip="Названия команд могут совпадать. Если активная команда с таким названием уже существует, система добавит порядковый номер, например «Название №2».">?</button></div><p class="form-hint text-warning" data-team-name-warning hidden></p>@error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>
+<h2>Данные команды</h2>@if($canModerateStatus)<div class="form-group field mb-3"><label class="form-label">Название</label><div class="team-name-field__control"><input class="form-control" name="name" value="{{ old('name',$team->base_name ?? $team->name) }}" required maxlength="140" data-team-name-input><button class="ui-tooltip-trigger" type="button" aria-label="Подсказка о названии команды" data-tooltip="Названия команд могут совпадать. Если активная команда с таким названием уже существует, система добавит порядковый номер, например «Название №2».">?</button></div><p class="form-hint text-warning" data-team-name-warning hidden></p>@error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>@else<div class="team-data-readonly mb-3"><span class="form-label">Название</span><strong>{{ $team->name }}</strong><input type="hidden" name="name" value="{{ $team->base_name ?? $team->name }}"></div>@endif
 <div class="form-group field mb-3"><label class="form-label">Описание</label><textarea class="form-control" name="description" rows="4">{{ old('description',$team->description) }}</textarea></div>
 @php($selectedSportTypes = old('sport_types', $team->sportProfiles->pluck('sport_type.value')->all()))
 <fieldset class="mb-3"><legend class="form-label team-form-legend"><span>Тип команды</span><button class="ui-tooltip-trigger" type="button" aria-label="Подсказка о типе команды" data-tooltip="Можно выбрать несколько дисциплин. Размер общего состава не ограничивается этим выбором.">?</button></legend><div class="d-flex flex-wrap gap-3">@foreach($sportTypes as $type)<label class="form-check"><input class="form-check-input" type="checkbox" name="sport_types[]" value="{{ $type->value }}" @checked(in_array($type->value, $selectedSportTypes, true))><span class="form-check-label">{{ $type->label() }}</span></label>@endforeach</div>@error('sport_types')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</fieldset>
@@ -43,5 +41,5 @@
 @endif
 <div class="section-card"><h2>Состав и приглашения</h2>
 <p class="form-hint">Основные и запасные составы, приглашения, роли и капитан управляются на странице команды.</p>
-<a class="btn btn--secondary" href="{{ route('teams.show', $team->routeIdentifier()) }}#team-lineups-title">Перейти к составу</a></div>
+<a class="btn btn--secondary mt-3" href="{{ route('teams.show', $team->routeIdentifier()) }}#team-lineups-title">Перейти к составу</a></div>
 @endsection
