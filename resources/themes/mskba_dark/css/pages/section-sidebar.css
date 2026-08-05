@@ -6,8 +6,12 @@
 }
 
 .section-sidebar-layout__aside,
-.section-sidebar-layout__main {
+.section-sidebar-layout__main,
+.section-sidebar-layout__panel,
+.section-sidebar-layout__content {
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .section-sidebar-layout__panel {
@@ -19,7 +23,30 @@
 }
 
 .section-sidebar-layout__content {
+    width: 100%;
+}
+
+.teams-management-section .team-profile,
+.teams-management-section .team-profile__section,
+.teams-management-section .team-sport-role-list,
+.teams-management-section .section-card,
+.teams-management-section .team-sport-groups,
+.teams-management-section .team-sport-group,
+.teams-management-section .team-roster-pool,
+.teams-management-section .team-roster-dropzone {
     min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.teams-management-section .team-profile__section-heading > div {
+    min-width: 0;
+}
+
+.teams-management-section .team-profile__section-heading h2,
+.teams-management-section .form-hint {
+    overflow-wrap: anywhere;
 }
 
 .section-sidebar-layout__mobile-sticky-navigation {
@@ -129,7 +156,11 @@
 
 @media (max-width: 900px) {
     .section-sidebar-layout__grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .section-sidebar-layout__aside {
+        display: none;
     }
 }
 
@@ -166,12 +197,15 @@
     }
 
     .section-sidebar-layout__panel {
-        padding: 22px;
+        padding: 18px;
+    }
+
+    .teams-management-section .team-profile__section-heading {
+        align-items: flex-start;
     }
 }
 
-
 .nav-link {
-    padding-left: 0px;
-    padding-right: 0px;
+    padding-left: 0;
+    padding-right: 0;
 }
