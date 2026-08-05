@@ -113,7 +113,10 @@ final class TeamJoinRequestController extends Controller
 
         if ($action === 'accept') {
             DB::transaction(function () use ($item, $entry, $actor, $rosters): void {
-                $membership = $item->memberships()->where('user_id', $entry->user_id)->lockForUpdate()->first();
+                $lockedEntry = TeamJoinRequest::query()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+                abort_if($lockedEntry->status !== TeamJoinRequestStatusEnum::PENDING, 422, 'Эта заявка уже обработана.');
+
+                $membership = $item->memberships()->where('user_id', $lockedEntry->user_id)->lockForUpdate()->first();
                 $contract = $membership?->contract;
 
                 if ($contract === null) {
@@ -128,7 +131,7 @@ final class TeamJoinRequestController extends Controller
                     $membership = $contract->membership()->create([
                         'scope_type' => ContractMembershipScopeTypeEnum::TEAM,
                         'scope_id' => $item->id,
-                        'user_id' => $entry->user_id,
+                        'user_id' => $lockedEntry->user_id,
                         'access_level' => TeamMembershipAccessLevelEnum::PLAYER,
                         'member_type' => TeamMemberTypeEnum::PLAYER,
                         'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
@@ -149,7 +152,8 @@ final class TeamJoinRequestController extends Controller
                     ]);
                 }
 
-                $entry->update([
+                $contract->permissions()->delete();
+                $lockedEntry->update([
                     'status' => TeamJoinRequestStatusEnum::ACCEPTED,
                     'reviewed_by_user_id' => $actor->user_id,
                     'reviewed_at' => now(),
