@@ -50,9 +50,8 @@ final class TeamMemberSportsService
                 ->firstOrFail();
 
             if ($lockedMembership->access_level === TeamMembershipAccessLevelEnum::OWNER->value
-                && $lockedMembership->user_id !== $actor->user_id
-                && ! ($actor->user?->isAdmin() ?? false)) {
-                throw new InvalidArgumentException('Спортивные роли владельца может менять только сам владелец или администратор.');
+                && $lockedMembership->user_id !== $actor->user_id) {
+                throw new InvalidArgumentException('Спортивные роли владельца может менять только сам владелец.');
             }
 
             $roles = collect($sportRoles)
