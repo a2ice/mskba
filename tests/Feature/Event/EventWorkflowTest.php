@@ -72,7 +72,10 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('Вы организатор');
         $this->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
-            ->assertSee('Вечерняя игра');
+            ->assertSee('Вечерняя игра')
+            ->assertSee('catalog-card event-catalog-card', false)
+            ->assertSee('catalog-card__title', false)
+            ->assertSee('catalog-card__badge event-type-badge', false);
         $slotStart = $event->booking->starts_at->setTimezone('Europe/Moscow');
         $slotEnd = $event->booking->ends_at->setTimezone('Europe/Moscow');
         $this->get(route('venues.show', $venue->routeIdentifier()))

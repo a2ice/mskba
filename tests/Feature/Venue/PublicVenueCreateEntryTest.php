@@ -84,6 +84,9 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('Москва, Тестовая улица, 1')
             ->assertDontSee('Россия, Москва')
             ->assertDontSee('Платный зал')
+            ->assertSee('catalog-card venue-catalog-card', false)
+            ->assertSee('catalog-card__title', false)
+            ->assertSee('catalog-card__description venue-catalog-card__description', false)
             ->assertSee('data-venue-catalog-map', false)
             ->assertSee('55.751244', false)
             ->assertSee('37.618423', false);

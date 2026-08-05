@@ -2392,25 +2392,16 @@ body.telegram-mini-app .event-show {
 .teams-catalog-search__control input { width: 100%; border: 0; outline: 0; color: inherit; background: transparent; }
 .teams-catalog-filters__actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; }
 .teams-catalog-results { display: grid; gap: 10px; }
-.team-catalog-card { display: grid; grid-template-columns: 275px minmax(0, 1fr) 190px; gap: 24px; min-height: 210px; padding: 14px; border: 1px solid #303431; border-radius: 23px; background: linear-gradient(110deg, rgba(25, 28, 25, .96), rgba(13, 15, 13, .96)); transition: border-color .2s ease, transform .2s ease; }
-.team-catalog-card:hover { border-color: #555b56; transform: translateY(-1px); }
-.team-catalog-card__image { min-height: 190px; overflow: hidden; border-radius: 14px; background: #0d0f0d; }
-.team-catalog-card__image img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
-.team-catalog-card:hover .team-catalog-card__image img { transform: scale(1.025); }
-.team-catalog-card__body { align-self: center; min-width: 0; }
-.team-catalog-card__badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.team-catalog-card__badges span { padding: 5px 9px; border: 1px solid rgba(58, 183, 84, .35); border-radius: 9px; color: #74d780; background: rgba(34, 118, 50, .12); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.team-catalog-card { display: grid; grid-template-columns: 275px minmax(0, 1fr) 190px; gap: 24px; min-height: 210px; }
+.team-catalog-card__image { min-height: 190px; background: #0d0f0d; }
+.team-catalog-card__body { align-self: center; }
 .team-catalog-card__badges .is-sport { border-color: #454a45; border-radius: 999px; color: #b9bdb8; background: #222522; text-transform: none; text-decoration: none; cursor: default; }
 .team-catalog-card__badges .is-sport > span { padding: 0; border: 0; border-radius: 0; color: inherit; background: transparent; font: inherit; text-transform: inherit; }
 .team-catalog-card__badges .is-sport__short { display: none; }
 .team-catalog-card__badges .is-incomplete { border-color: rgba(255, 125, 34, .45); color: #ff8b3d; background: rgba(255, 103, 16, .1); }
-.team-catalog-card h2 { margin: 0 0 10px; font-size: 24px; line-height: 1.3; }
-.team-catalog-card h2 a { color: #f5f5f1; }
-.team-catalog-card__description { display: -webkit-box; margin: 0 0 15px; overflow: hidden; color: #b7bab6; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .team-catalog-card__members { display: flex; align-items: center; gap: 8px; margin: 5px 0 0; color: #d7d9d5; font-size: 14px; }
 .team-catalog-card__members i { color: #ff7a21; font-size: 20px; }
 .team-catalog-card__actions { display: flex; flex-direction: column; align-self: stretch; justify-content: flex-end; }
-.team-catalog-card__actions .btn { justify-content: space-between; }
 .teams-catalog__empty { display: grid; justify-items: center; align-content: center; gap: 8px; min-height: 260px; padding: 60px 20px; border: 1px solid #303431; border-radius: 23px; color: #979b97; text-align: center; }
 .teams-catalog__empty i { color: #ff7417; font-size: 42px; }
 .teams-catalog__empty strong { color: #f1f1ed; font-size: 22px; }
@@ -2432,14 +2423,11 @@ body.telegram-mini-app .event-show {
     .teams-catalog-filters { grid-template-columns: 1fr; max-height: calc(100dvh - var(--site-header-height, 76px) - 86px); padding: 14px; overflow-y: auto; border-radius: 0 0 18px 18px; }
     .teams-catalog-filters__actions { justify-content: stretch; }
     .teams-catalog-filters__actions .btn { flex: 1 1 0; }
-    .team-catalog-card { grid-template-columns: 105px minmax(0, 1fr); gap: 14px; min-height: 138px; padding: 10px; border-radius: 18px; }
+    .team-catalog-card { grid-template-columns: 105px minmax(0, 1fr); gap: 14px; min-height: 138px; }
     .team-catalog-card__image { min-height: 118px; }
-    .team-catalog-card__badges { gap: 5px; margin-bottom: 9px; }
-    .team-catalog-card__badges span { padding: 4px 7px; font-size: 10px; }
+    .team-catalog-card__badges { margin-bottom: 9px; }
     .team-catalog-card__badges .is-sport__full { display: none; }
     .team-catalog-card__badges .is-sport__short { display: inline; }
-    .team-catalog-card h2 { margin-bottom: 6px; font-size: 12px; }
-    .team-catalog-card__description { margin-bottom: 10px; font-size: 12px; line-height: 1.25; -webkit-line-clamp: 1; }
     .team-catalog-card__meta { display: flex; align-items: center; gap: 12px; }
     .team-catalog-card__members { gap: 4px; margin: 0; }
     .team-catalog-card__members i { font-size: 18px; }
@@ -2491,19 +2479,14 @@ body.telegram-mini-app .event-show {
 .events-catalog-filters__actions { grid-column: 1 / -1; justify-content: flex-end; gap: 10px; }
 
 .events-catalog-list { display: grid; gap: 9px; }
-.event-catalog-card { display: grid; grid-template-areas: "image content games" "image meta games"; grid-template-columns: 285px minmax(0, 1fr) 265px; grid-template-rows: auto 1fr; column-gap: 28px; row-gap: 0; min-height: 222px; padding: 14px; border: 1px solid #303431; border-radius: 23px; background: linear-gradient(110deg, rgba(25, 28, 25, .96), rgba(13, 15, 13, .96)); transition: border-color .2s ease, transform .2s ease; }
-.event-catalog-card:hover { border-color: #555b56; transform: translateY(-1px); }
+.event-catalog-card { display: grid; grid-template-areas: "image content games" "image meta games"; grid-template-columns: 285px minmax(0, 1fr) 265px; grid-template-rows: auto 1fr; column-gap: 28px; row-gap: 0; min-height: 222px; }
 .event-catalog-card.is-past { opacity: .48; filter: grayscale(.3); }
-.event-catalog-card__image { grid-area: image; overflow: hidden; border-radius: 14px; }
-.event-catalog-card__image img { width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
-.event-catalog-card:hover .event-catalog-card__image img { transform: scale(1.025); }
-.event-catalog-card__content { grid-area: content; align-self: end; min-width: 0; }
-.event-catalog-card__badges { display: flex; gap: 8px; margin-bottom: 10px; }
-.event-type-badge { padding: 5px 10px; border: 1px solid rgba(58, 183, 84, .35); border-radius: 9px; color: #74d780; background: rgba(34, 118, 50, .12); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.event-catalog-card__image { grid-area: image; }
+.event-catalog-card__content { grid-area: content; align-self: end; }
+.event-catalog-card__badges { margin-bottom: 10px; }
+.event-type-badge { padding-inline: 10px; font-size: 12px; }
 .event-type-badge--game { border-color: rgba(255, 133, 21, .35); color: #ff8a1f; background: rgba(255, 112, 0, .08); }
 .event-type-badge.is-muted { border-color: #343734; color: #858985; background: #1b1d1b; }
-.event-catalog-card__content h2 { margin: 0 0 13px; font-size: 24px; line-height: 1.35; }
-.event-catalog-card__content h2 a { color: #f5f5f1; }
 .event-catalog-card__meta { grid-area: meta; min-width: 0; }
 .event-catalog-card__meta p { display: flex; gap: 10px; margin: 7px 0 0; color: #b7bab6; }
 .event-catalog-card__meta p i { flex: 0 0 auto; margin-top: 2px; font-size: 21px; }
@@ -2543,11 +2526,10 @@ body.telegram-mini-app .event-show {
     .events-catalog-filters__advanced { grid-template-columns: 1fr; }
     .events-catalog-filters__actions { justify-content: stretch; }
     .events-catalog-filters__actions .btn { flex: 1 1 0; }
-    .event-catalog-card { grid-template-areas: "image content" "meta meta" "games games"; grid-template-columns: 118px minmax(0, 1fr); grid-template-rows: 104px auto auto; column-gap: 12px; row-gap: 10px; min-height: 0; padding: 10px; border-radius: 18px; }
+    .event-catalog-card { grid-template-areas: "image content" "meta meta" "games games"; grid-template-columns: 118px minmax(0, 1fr); grid-template-rows: 104px auto auto; column-gap: 12px; row-gap: 10px; min-height: 0; }
     .event-catalog-card__image { min-height: 0; }
     .event-catalog-card__content { align-self: start; }
-    .event-catalog-card__badges { margin-bottom: 7px; }
-    .event-catalog-card__content h2 { margin-bottom: 0; font-size: 16px; line-height: 1.25; }
+    .event-catalog-card__content .catalog-card__title { margin-bottom: 0; }
     .event-catalog-card__meta { display: grid; grid-template-columns: 1fr; gap: 5px; }
     .event-catalog-card__meta p,
     .event-catalog-card__location { margin: 0; font-size: 12px; line-height: 1.35; }

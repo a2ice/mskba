@@ -77,30 +77,30 @@
                                 ->whereIn('contract_membership_id', $activePlayerIds)->count() === $required;
                         });
                     @endphp
-                    <article class="team-catalog-card">
-                        <a class="team-catalog-card__image" href="{{ route('teams.show', $team->routeIdentifier()) }}">
+                    <article class="catalog-card team-catalog-card">
+                        <a class="catalog-card__image team-catalog-card__image" href="{{ route('teams.show', $team->routeIdentifier()) }}">
                             <img src="{{ $team->logo?->publicUrl() ?: asset('images/team-placeholder.webp') }}" alt="Логотип команды {{ $team->name }}">
                         </a>
-                        <div class="team-catalog-card__body">
-                            <div class="team-catalog-card__badges">
-                                <span>{{ $team->status->label() }}</span>
+                        <div class="catalog-card__body team-catalog-card__body">
+                            <div class="catalog-card__badges team-catalog-card__badges">
+                                <span class="catalog-card__badge">{{ $team->status->label() }}</span>
                                 @foreach($team->sportProfiles as $profile)
-                                    <span class="is-sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" aria-label="{{ $profile->sport_type->label() }}">
+                                    <span class="catalog-card__badge is-sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" aria-label="{{ $profile->sport_type->label() }}">
                                         <span class="is-sport__full" aria-hidden="true">{{ $profile->sport_type->label() }}</span>
                                         <span class="is-sport__short" aria-hidden="true">{{ $profile->sport_type->shortLabel() }}</span>
                                     </span>
                                 @endforeach
-                                @unless($rosterComplete)<span class="is-incomplete">Неполный состав</span>@endunless
+                                @unless($rosterComplete)<span class="catalog-card__badge is-incomplete">Неполный состав</span>@endunless
                             </div>
-                            <h2><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
-                            <p class="team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
+                            <h2 class="catalog-card__title"><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
+                            <p class="catalog-card__description team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
                             <div class="team-catalog-card__meta">
                                 <p class="team-catalog-card__members" aria-label="{{ $team->active_memberships_count }} участников"><i class="ti ti-users"></i><span class="team-catalog-card__member-count">{{ $team->active_memberships_count }}</span><span class="team-catalog-card__member-label"> участников</span></p>
                                 <p class="team-catalog-card__members team-catalog-card__coach @if($coach === null) is-missing @endif" aria-label="Тренер: {{ $memberName($coach) }}"><i class="ti ti-user-cog"></i><span>Тренер: {{ $memberName($coach) }}</span></p>
                                 <p class="team-catalog-card__members team-catalog-card__captain @if($captain === null) is-missing @endif" aria-label="Капитан: {{ $memberName($captain) }}"><i class="ti ti-star"></i><span>Капитан: {{ $memberName($captain) }}</span></p>
                             </div>
                         </div>
-                        <div class="team-catalog-card__actions">
+                        <div class="catalog-card__actions team-catalog-card__actions">
                             <a class="btn btn--secondary btn--sm" href="{{ route('teams.show', $team->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>
                         </div>
                     </article>

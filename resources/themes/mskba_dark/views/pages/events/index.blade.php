@@ -102,13 +102,13 @@
                             $latitude = $event->venue->location?->address?->latitude;
                             $longitude = $event->venue->location?->address?->longitude;
                         @endphp
-                        <article @class(['event-catalog-card', 'is-past' => $isPast])>
-                            <a class="event-catalog-card__image" href="{{ route('events.show', $event->routeIdentifier()) }}">
+                        <article @class(['catalog-card', 'event-catalog-card', 'is-past' => $isPast])>
+                            <a class="catalog-card__image event-catalog-card__image" href="{{ route('events.show', $event->routeIdentifier()) }}">
                                 <img src="{{ $photo?->publicUrl() ?: asset('images/venue-placeholder.png') }}" alt="">
                             </a>
-                            <div class="event-catalog-card__content">
-                                <div class="event-catalog-card__badges"><span class="event-type-badge event-type-badge--{{ $event->type->value }}">{{ $event->type->label() }}</span>@if($isPast)<span class="event-type-badge is-muted">{{ $pastOutcome }}</span>@endif</div>
-                                <h2><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>
+                            <div class="catalog-card__body event-catalog-card__content">
+                                <div class="catalog-card__badges event-catalog-card__badges"><span class="catalog-card__badge event-type-badge event-type-badge--{{ $event->type->value }}">{{ $event->type->label() }}</span>@if($isPast)<span class="catalog-card__badge event-type-badge is-muted">{{ $pastOutcome }}</span>@endif</div>
+                                <h2 class="catalog-card__title"><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>
                             </div>
                             <div class="event-catalog-card__meta">
                                 @if($latitude !== null && $longitude !== null)
@@ -119,7 +119,7 @@
                                 <p><i class="ti ti-clock"></i><span>{{ $startsAt->format('d.m.Y · H:i') }}–{{ $endsAt->format('H:i') }}</span></p>
                                 <p><i class="ti ti-users"></i><span>{{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : ' / ∞' }} участников</span></p>
                             </div>
-                            <aside class="event-catalog-card__games">
+                            <aside class="catalog-card__actions event-catalog-card__games">
                                 <strong @class(['is-empty' => $event->childGames->isEmpty()])><i class="ti ti-device-gamepad-2"></i>Мини-игры{{ $event->childGames->isNotEmpty() ? ': '.$event->childGames->count() : '' }}</strong>
                                 @foreach($event->childGames->take(2) as $childGame)<span>{{ $childGame->title }}</span>@endforeach
                                 @if($event->childGames->count() > 2)<small>+{{ $event->childGames->count() - 2 }} ещё</small>@endif

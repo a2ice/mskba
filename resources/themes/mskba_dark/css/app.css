@@ -11,6 +11,7 @@
 @import './address-suggest';
 @import './venue-selector';
 @import './form-controls';
+@import './catalog-card';
 
 @import './pages/home';
 @import './pages/account';

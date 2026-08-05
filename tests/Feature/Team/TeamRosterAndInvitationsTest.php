@@ -219,7 +219,8 @@ final class TeamRosterAndInvitationsTest extends TestCase
 
         $this->get(route('teams.index'))
             ->assertOk()
-            ->assertSee('class="team-catalog-card__badges"', false)
+            ->assertSee('catalog-card team-catalog-card', false)
+            ->assertSee('catalog-card__badges team-catalog-card__badges', false)
             ->assertSee('title="Баскетбол"', false)
             ->assertSee('title="Стритбол"', false)
             ->assertSee('data-tooltip-variant="title"', false)

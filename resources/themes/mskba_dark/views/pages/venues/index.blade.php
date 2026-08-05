@@ -57,16 +57,16 @@
 
             <div class="venues-catalog-results" data-venue-list @if($currentView === 'map') hidden @endif>
                 @forelse($venues as $venue)
-                    <article class="venue-catalog-card">
-                        <a class="venue-catalog-card__image" href="{{ route('venues.show', $venue->routeIdentifier()) }}"><img src="{{ $venue->imageUrl ?: asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}"></a>
-                        <div class="venue-catalog-card__body">
-                            <div class="venue-catalog-card__badges"><span>{{ $venue->type }}</span><span @class(['is-closed' => $venue->operationalStatusSlug !== 'active'])>{{ $venue->operationalStatus }}</span></div>
-                            <h2><a href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
+                    <article class="catalog-card venue-catalog-card">
+                        <a class="catalog-card__image venue-catalog-card__image" href="{{ route('venues.show', $venue->routeIdentifier()) }}"><img src="{{ $venue->imageUrl ?: asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}"></a>
+                        <div class="catalog-card__body venue-catalog-card__body">
+                            <div class="catalog-card__badges venue-catalog-card__badges"><span class="catalog-card__badge">{{ $venue->type }}</span><span @class(['catalog-card__badge', 'is-closed' => $venue->operationalStatusSlug !== 'active'])>{{ $venue->operationalStatus }}</span></div>
+                            <h2 class="catalog-card__title"><a href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
                             @if($venue->displayAddress)<p><i class="ti ti-map-pin"></i><span>{{ $venue->displayAddress }}</span></p>@endif
-                            @if($venue->shortDescription)<p class="venue-catalog-card__description">{{ $venue->shortDescription }}</p>@endif
+                            @if($venue->shortDescription)<p class="catalog-card__description venue-catalog-card__description">{{ $venue->shortDescription }}</p>@endif
                             <div class="venue-catalog-card__access"><span><i class="ti {{ $venue->requiresPayment ? 'ti-currency-ruble' : 'ti-gift' }}"></i>{{ $venue->requiresPayment ? 'Платно' : 'Бесплатно' }}</span>@if($venue->requiresBookingApproval)<span><i class="ti ti-shield-check"></i>По подтверждению</span>@endif</div>
                         </div>
-                        <div class="venue-catalog-card__actions"><a class="btn btn--secondary btn--sm" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>@if($venue->canEdit)<a class="venue-catalog-card__edit" href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}"><i class="ti ti-pencil"></i>Редактировать</a>@endif</div>
+                        <div class="catalog-card__actions venue-catalog-card__actions"><a class="btn btn--secondary btn--sm" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>@if($venue->canEdit)<a class="venue-catalog-card__edit" href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}"><i class="ti ti-pencil"></i>Редактировать</a>@endif</div>
                     </article>
                 @empty
                     <div class="venues-catalog__empty"><i class="ti ti-map-pin-off"></i><strong>Площадки не найдены</strong><span>Попробуйте изменить параметры фильтра.</span></div>
