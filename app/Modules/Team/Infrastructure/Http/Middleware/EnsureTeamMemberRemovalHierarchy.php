@@ -4,7 +4,6 @@ namespace App\Modules\Team\Infrastructure\Http\Middleware;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
-use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Application\Services\TeamMembershipHierarchy;
@@ -63,7 +62,7 @@ final class EnsureTeamMemberRemovalHierarchy
             return $this->deny($request, 'Капитана нельзя исключить из команды. Сначала назначьте другого капитана.');
         }
 
-        if ($this->access->isCreator($team, $actor) || ($actor->user?->isAdmin() ?? false)) {
+        if ($this->access->isCreator($team, $actor)) {
             return $next($request);
         }
 
