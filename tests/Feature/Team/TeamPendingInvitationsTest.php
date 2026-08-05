@@ -61,7 +61,7 @@ final class TeamPendingInvitationsTest extends TestCase
             ->assertSee('Отозвать');
     }
 
-    public function test_manager_can_revoke_invitation_and_stale_acceptance_shows_explicit_error(): void
+    public function test_manager_can_revoke_find_and_reinvite_user_while_stale_acceptance_is_rejected(): void
     {
         $this->seed(GameLifecycleDemoSeeder::class);
 
@@ -104,6 +104,28 @@ final class TeamPendingInvitationsTest extends TestCase
             ->assertSessionHas('error', 'Приглашение было отозвано.');
 
         $this->assertSame(TeamInvitationStatusEnum::REVOKED, $membership->fresh()->invitation_status);
+        $this->assertSame(ContractStatusEnum::INACTIVE, $membership->contract->fresh()->status);
+
+        $this->actingAs($creator)
+            ->getJson(route('teams.invitations.search', [
+                'team' => $team->routeIdentifier(),
+                'q' => 'Отозванный',
+            ]))
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $candidate->id,
+                'username' => 'revoked-team-member',
+                'name' => 'Отозванный Игрок',
+            ]);
+
+        $this->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
+            'user_id' => $candidate->id,
+            'member_type' => 'player',
+            'permissions' => [],
+        ])->assertCreated()
+            ->assertJsonPath('invitation.id', $membership->id);
+
+        $this->assertSame(TeamInvitationStatusEnum::PENDING, $membership->fresh()->invitation_status);
         $this->assertSame(ContractStatusEnum::INACTIVE, $membership->contract->fresh()->status);
     }
 }
