@@ -3,6 +3,46 @@
     gap: 14px;
 }
 
+.team-member-management-card > .team-person {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    width: 100%;
+}
+
+.team-member-card-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 0 8px 16px;
+    border: 0;
+    color: var(--accent-text);
+    background: transparent;
+    font: 800 14px/1 var(--font-ui);
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.team-member-card-toggle i {
+    font-size: 20px;
+    transition: transform 0.2s ease;
+}
+
+.team-member-management-card.is-details-open .team-member-card-toggle i {
+    transform: rotate(180deg);
+}
+
+.team-member-card-details {
+    display: none;
+}
+
+.team-member-management-card.is-details-open .team-member-card-details {
+    display: block;
+}
+
 .team-member-panel {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -55,6 +95,21 @@
 }
 
 @media (max-width: 560px) {
+    .team-member-management-card > .team-person {
+        grid-template-columns: 64px minmax(0, 1fr) auto;
+        gap: 12px;
+    }
+
+    .team-member-card-toggle {
+        gap: 5px;
+        padding-left: 8px;
+        font-size: 12px;
+    }
+
+    .team-member-card-toggle i {
+        font-size: 18px;
+    }
+
     .team-member-panel__summary {
         font-size: 18px;
     }
@@ -68,5 +123,18 @@
     .team-member-access-form__actions {
         align-items: stretch;
         flex-direction: column;
+    }
+}
+
+@media (max-width: 420px) {
+    .team-member-card-toggle span {
+        display: none;
+    }
+
+    .team-member-card-toggle {
+        width: 38px;
+        min-width: 38px;
+        padding: 0;
+        justify-content: center;
     }
 }
