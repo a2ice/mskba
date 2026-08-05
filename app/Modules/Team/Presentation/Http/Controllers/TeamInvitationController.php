@@ -80,12 +80,14 @@ final class TeamInvitationController extends Controller
                     'user_id' => $data['user_id'],
                     'access_level' => $accessLevel,
                     'member_type' => $memberType,
+                    'sport_roles' => [$memberType->value],
                     'invitation_status' => TeamInvitationStatusEnum::PENDING,
                 ]);
             }
             $existing->update([
                 'access_level' => $accessLevel,
                 'member_type' => $memberType,
+                'sport_roles' => [$memberType->value],
                 'invitation_status' => TeamInvitationStatusEnum::PENDING,
                 'is_captain' => false,
             ]);
@@ -116,7 +118,7 @@ final class TeamInvitationController extends Controller
             $accepted = $data['decision'] === 'accept';
             $member->update(['invitation_status' => $accepted ? TeamInvitationStatusEnum::ACCEPTED : TeamInvitationStatusEnum::DECLINED]);
             $member->contract->update(['status' => $accepted ? ContractStatusEnum::ACTIVE : ContractStatusEnum::INACTIVE]);
-            if ($accepted && $member->member_type === TeamMemberTypeEnum::PLAYER) {
+            if ($accepted && $member->isPlayingMember()) {
                 $rosters->synchronizePlayer($team, $member->id);
             }
         });
