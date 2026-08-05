@@ -27,14 +27,12 @@
 </form>
 @if($team->logo)<form class="team-logo-delete-form" method="POST" action="{{ route('teams.logo.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Удалить логотип команды?')">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm" type="submit">Удалить логотип</button></form>@endif
 </section>
-<form method="POST" action="{{ route('teams.update', $team->routeIdentifier()) }}" class="section-card mb-4" data-team-name-form data-team-name-suggestion-url="{{ route('teams.name-suggestion') }}" data-team-name-except="{{ $team->id }}">@csrf @method('PUT')
-<h2>Данные команды</h2>@if($canModerateStatus)<div class="form-group field mb-3"><label class="form-label">Название</label><div class="team-name-field__control"><input class="form-control" name="name" value="{{ old('name',$team->base_name ?? $team->name) }}" required maxlength="140" data-team-name-input><button class="ui-tooltip-trigger" type="button" aria-label="Подсказка о названии команды" data-tooltip="Названия команд могут совпадать. Если активная команда с таким названием уже существует, система добавит порядковый номер, например «Название №2».">?</button></div><p class="form-hint text-warning" data-team-name-warning hidden></p>@error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</div>@else<div class="team-data-readonly mb-3"><span class="form-label">Название</span><strong>{{ $team->name }}</strong><input type="hidden" name="name" value="{{ $team->base_name ?? $team->name }}"></div>@endif
+<form method="POST" action="{{ route('teams.update', $team->routeIdentifier()) }}" class="section-card mb-4">@csrf @method('PUT')
+<h2>Данные команды</h2>
+<div class="team-data-readonly mb-3"><span class="form-label">Название</span><strong>{{ $team->name }}</strong><input type="hidden" name="name" value="{{ $team->base_name ?? $team->name }}"></div>
 <div class="form-group field mb-3"><label class="form-label">Описание</label><textarea class="form-control" name="description" rows="4">{{ old('description',$team->description) }}</textarea></div>
 @php($selectedSportTypes = old('sport_types', $team->sportProfiles->pluck('sport_type.value')->all()))
 <fieldset class="mb-3"><legend class="form-label team-form-legend"><span>Тип команды</span><button class="ui-tooltip-trigger" type="button" aria-label="Подсказка о типе команды" data-tooltip="Можно выбрать несколько дисциплин. Размер общего состава не ограничивается этим выбором.">?</button></legend><div class="d-flex flex-wrap gap-3">@foreach($sportTypes as $type)<label class="form-check"><input class="form-check-input" type="checkbox" name="sport_types[]" value="{{ $type->value }}" @checked(in_array($type->value, $selectedSportTypes, true))><span class="form-check-label">{{ $type->label() }}</span></label>@endforeach</div>@error('sport_types')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</fieldset>
-@if($canModerateStatus)<div class="form-group field mb-3"><label class="form-label">Статус</label>
-<select class="form-select" name="status">@foreach(\App\Modules\Team\Domain\Enums\TeamStatusEnum::cases() as $status)<option value="{{ $status->value }}" @selected($team->status===$status)>{{ $status->label() }}</option>@endforeach</select>
-</div>@endif
 <button class="btn btn--primary">Сохранить</button></form>
 @if($canDeleteTeam)
 <section class="section-card mb-4"><h2>Удаление команды</h2><p class="form-hint">Команда будет перенесена в черновики. Удаление недоступно, пока команда связана с мероприятием или турниром.</p>
