@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Infrastructure\Providers;
 
+use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Event\Domain\Models\GameRosterEntry;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameLifecycleState;
 use App\Modules\Event\Infrastructure\Observers\GameRosterEntryObserver;
@@ -24,6 +25,11 @@ final class EventLifecycleServiceProvider extends ServiceProvider
             ->name('events.management')
             ->defaults('breadcrumb', 'Управление мероприятием');
 
+        Route::middleware(['web', 'auth', 'can:access-admin-panel'])
+            ->get('/admin/events/{event}', [AdminEventsController::class, 'show'])
+            ->name('admin.events.show')
+            ->defaults('breadcrumb', 'Мероприятие');
+
         Route::middleware(['web', 'auth'])
             ->prefix('game-lifecycle')
             ->group(function (): void {
@@ -45,24 +51,21 @@ final class EventLifecycleServiceProvider extends ServiceProvider
             $event = $data['event'] ?? null;
 
             // Public pages keep personal contextual actions, but never expose
-            // forms that mutate the event, game state or other participants.
+            // forms that mutate the event or other participants.
             $view->with('effectivePermissions', collect());
 
-            if (! ($data['canManage'] ?? false) || $event === null) {
-                return;
+            if (($data['canManage'] ?? false) && $event !== null) {
+                $view->with(
+                    'contextManagementUrl',
+                    $event->type->value === 'game'
+                        ? route('events.game.manage', $event->routeIdentifier())
+                        : route('events.management', $event->routeIdentifier()),
+                );
+                $view->with(
+                    'contextManagementLabel',
+                    $event->type->value === 'game' ? 'Управление игрой' : 'Управление мероприятием',
+                );
             }
-
-            $isGameView = $view->getName() === 'theme::pages.events.game-show';
-            $view->with(
-                'contextManagementUrl',
-                $isGameView
-                    ? route('events.game.manage', $event->routeIdentifier())
-                    : route('events.management', $event->routeIdentifier()),
-            );
-            $view->with(
-                'contextManagementLabel',
-                $isGameView ? 'Управление игрой' : 'Управление мероприятием',
-            );
         });
     }
 }
