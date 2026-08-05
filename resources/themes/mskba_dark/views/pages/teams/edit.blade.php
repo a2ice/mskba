@@ -7,6 +7,7 @@
 <li class="nav-item"><a class="nav-link" href="{{ route('teams.show', $team->routeIdentifier()) }}">Обзор</a></li>
 <li class="nav-item active"><a class="nav-link active" href="{{ route('teams.edit', $team->routeIdentifier()) }}">Основные настройки</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ route('teams.management', $team->routeIdentifier()) }}">Состав и участники</a></li>
+@if($canManageJoinRequests)<li class="nav-item"><a class="nav-link" href="{{ route('teams.join-requests.index', $team->routeIdentifier()) }}">Заявки на вступление</a></li>@endif
 </ul></div>
 @endsection
 @section('section-content')
@@ -27,6 +28,7 @@
 </form>
 @if($team->logo)<form class="team-logo-delete-form" method="POST" action="{{ route('teams.logo.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Удалить логотип команды?')">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm" type="submit">Удалить логотип</button></form>@endif
 </section>
+
 <form method="POST" action="{{ route('teams.update', $team->routeIdentifier()) }}" class="section-card mb-4">@csrf @method('PUT')
 <h2>Данные команды</h2>
 <div class="team-data-readonly mb-3"><span class="form-label">Название</span><strong>{{ $team->name }}</strong><input type="hidden" name="name" value="{{ $team->base_name ?? $team->name }}"></div>
@@ -34,6 +36,23 @@
 @php($selectedSportTypes = old('sport_types', $team->sportProfiles->pluck('sport_type.value')->all()))
 <fieldset class="mb-3"><legend class="form-label team-form-legend"><span>Тип команды</span><button class="ui-tooltip-trigger" type="button" aria-label="Подсказка о типе команды" data-tooltip="Можно выбрать несколько дисциплин. Размер общего состава не ограничивается этим выбором.">?</button></legend><div class="d-flex flex-wrap gap-3">@foreach($sportTypes as $type)<label class="form-check"><input class="form-check-input" type="checkbox" name="sport_types[]" value="{{ $type->value }}" @checked(in_array($type->value, $selectedSportTypes, true))><span class="form-check-label">{{ $type->label() }}</span></label>@endforeach</div>@error('sport_types')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror</fieldset>
 <button class="btn btn--primary">Сохранить</button></form>
+
+<section class="section-card mb-4">
+    <h2>Настройки</h2>
+    <form method="POST" action="{{ route('teams.settings.applications.update', $team->routeIdentifier()) }}">
+        @csrf @method('PATCH')
+        @include('theme::partials.forms.toggle', [
+            'id' => 'team-accepts-join-requests',
+            'name' => 'accepts_join_requests',
+            'title' => 'Принимать заявки на вступление в команду',
+            'checked' => old('accepts_join_requests', $team->accepts_join_requests),
+            'wrapperClass' => 'mb-3',
+        ])
+        <p class="form-hint mb-3">Когда настройка включена, пользователи могут подать заявку с публичной страницы команды.</p>
+        <button class="btn btn--primary" type="submit">Сохранить настройки</button>
+    </form>
+</section>
+
 @if($canDeleteTeam)
 <section class="section-card mb-4"><h2>Удаление команды</h2><p class="form-hint">Команда будет перенесена в черновики. Удаление недоступно, пока команда связана с мероприятием или турниром.</p>
 <form class="mt-2" method="POST" action="{{ route('teams.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Вы уверены, что хотите удалить команду? Команда будет перенесена в черновики.')">@csrf @method('DELETE')<button class="btn btn--danger" type="submit">Удалить команду</button></form></section>
