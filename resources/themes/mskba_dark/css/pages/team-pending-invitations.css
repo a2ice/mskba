@@ -46,6 +46,12 @@
     color: var(--muted);
 }
 
+.team-pending-invitation__actions {
+    display: grid;
+    gap: 8px;
+    justify-items: stretch;
+}
+
 .team-pending-invitation__status {
     padding: 6px 10px;
     border: 1px solid rgba(255, 139, 47, 0.55);
@@ -53,7 +59,13 @@
     color: var(--accent-text);
     font-size: 12px;
     font-weight: 800;
+    text-align: center;
     text-transform: uppercase;
+}
+
+.team-pending-invitation__revoke {
+    min-width: 0;
+    padding-inline: 12px;
 }
 
 #team-pending-invitations-title small {
@@ -71,8 +83,10 @@
         height: 48px;
     }
 
-    .team-pending-invitation__status {
+    .team-pending-invitation__actions {
         grid-column: 2;
-        justify-self: start;
+        grid-template-columns: auto auto;
+        justify-content: start;
+        align-items: center;
     }
 }
