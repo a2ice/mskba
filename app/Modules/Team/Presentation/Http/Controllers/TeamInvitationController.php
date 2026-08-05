@@ -33,7 +33,13 @@ final class TeamInvitationController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS), 403);
         $data = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
-        $excluded = $item->memberships()->pluck('user_id')->all();
+        $excluded = $item->memberships()
+            ->whereIn('invitation_status', [
+                TeamInvitationStatusEnum::PENDING->value,
+                TeamInvitationStatusEnum::ACCEPTED->value,
+            ])
+            ->pluck('user_id')
+            ->all();
 
         return response()->json(['users' => $users->handle($actor->user, $data['q'], $excluded)->map(fn (User $user) => [
             'id' => $user->id,
