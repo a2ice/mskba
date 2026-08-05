@@ -5,7 +5,6 @@ namespace App\Modules\Event\Infrastructure\Observers;
 use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Models\GameRosterEntry;
 use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
-use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\TeamSportLineupMember;
 
 final class GameRosterEntryObserver
@@ -24,9 +23,7 @@ final class GameRosterEntryObserver
             return null;
         }
 
-        // Memberships created before sport roles were introduced are players by default.
-        if ($membership->member_type !== null
-            && $membership->member_type !== TeamMemberTypeEnum::PLAYER) {
+        if (! $membership->isPlayingMember()) {
             return false;
         }
 
