@@ -4,9 +4,8 @@ namespace App\Modules\Team\Infrastructure\Providers;
 
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Contract\Domain\Models\ContractMembership;
-use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
+use App\Modules\Team\Application\Services\TeamLineupResolver;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
-use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Infrastructure\Http\Middleware\EnsureTeamMemberRemovalHierarchy;
 use App\Modules\Team\Infrastructure\Http\Middleware\EnsureTeamUserContext;
 use App\Modules\Team\Infrastructure\Observers\OwnerTeamMembershipObserver;
@@ -56,33 +55,7 @@ final class TeamSportsServiceProvider extends ServiceProvider
                 ->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::PLAYER))
                 ->sortBy('id')
                 ->values();
-            $startingLineups = $team->sportProfiles
-                ->mapWithKeys(function ($profile) use ($players): array {
-                    $size = $profile->sport_type === TeamSportTypeEnum::STREETBALL ? 3 : 5;
-                    $assignments = $profile->lineupMembers->keyBy('contract_membership_id');
-                    $ordered = $players
-                        ->sortBy(fn ($player) => sprintf(
-                            '%d-%010d',
-                            $assignments->get($player->id)?->position ?? 9999,
-                            $player->id,
-                        ))
-                        ->values();
-                    $starters = $ordered
-                        ->filter(fn ($player) => $assignments->get($player->id)?->assignment === TeamLineupAssignmentEnum::STARTER)
-                        ->values();
-                    $reserves = $ordered
-                        ->reject(fn ($player) => $starters->contains('id', $player->id))
-                        ->values();
-
-                    return [$profile->sport_type->value => [
-                        'label' => $profile->sport_type->label(),
-                        'size' => $size,
-                        'sport_type' => $profile->sport_type->value,
-                        'starters' => $starters,
-                        'reserves' => $reserves,
-                        'is_complete' => $players->count() >= $size && $starters->count() === $size,
-                    ]];
-                });
+            $startingLineups = app(TeamLineupResolver::class)->resolve($team->sportProfiles, $players);
 
             $view->with([
                 'coaches' => $coaches,
