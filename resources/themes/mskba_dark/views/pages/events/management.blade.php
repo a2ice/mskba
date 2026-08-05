@@ -16,6 +16,7 @@
         && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true);
     $canManageResult = $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT)
         || $allows(EventResponsibilityPermissionEnum::COMPLETE_EVENT);
+    $canManageResultPhotos = $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT);
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -40,6 +41,8 @@
 @section('section-content')
 @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
 @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
+@if(session('photo_status'))<div class="alert alert-success">{{ session('photo_status') }}</div>@endif
+@if(session('photo_error') || $errors->has('photo'))<div class="alert alert-danger">{{ session('photo_error') ?: $errors->first('photo') }}</div>@endif
 
 <section class="section-card mb-4">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -49,12 +52,7 @@
 </section>
 
 @if($canManageParticipants)
-<section
-    class="section-card mb-4"
-    id="event-participant-management"
-    data-event-participant-manager
-    data-search-url="{{ route('events.participants.candidates', $event->routeIdentifier()) }}"
->
+<section class="section-card mb-4" id="event-participant-management" data-event-participant-manager data-search-url="{{ route('events.participants.candidates', $event->routeIdentifier()) }}">
     <h2>Участники</h2>
     <form method="POST" action="{{ route('events.participants.manage.store', $event->routeIdentifier()) }}" data-event-participant-form class="mb-4">
         @csrf
@@ -65,16 +63,11 @@
             <div class="predictive-search__results" data-event-participant-results hidden></div>
         </div>
         <p class="form-hint" data-event-participant-message>Начните вводить имя или логин.</p>
-        <div class="event-participant-selection" data-event-participant-selection hidden>
-            <strong data-event-participant-status></strong>
-        </div>
+        <div class="event-participant-selection" data-event-participant-selection hidden><strong data-event-participant-status></strong></div>
         <button class="btn btn--primary btn--sm mt-2" type="submit" data-event-participant-submit disabled>Добавить в список «Думают»</button>
     </form>
 
-    <div
-        data-event-participants-surface
-        data-max-participants="{{ $event->max_participants }}"
-    >
+    <div data-event-participants-surface data-max-participants="{{ $event->max_participants }}">
         <p class="form-hint">Подтверждено: <strong data-event-confirmed-count>{{ $confirmedParticipants->count() }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></p>
         @foreach([
             ['status' => 'confirmed', 'title' => 'Идут', 'items' => $confirmedParticipants],
@@ -86,10 +79,7 @@
                 <div class="event-participants__row">
                     @foreach($group['items'] as $participant)
                         <article class="event-participant-chip" data-event-participant-id="{{ $participant->id }}">
-                            <div class="event-participant-chip__identity">
-                                <strong>{{ $name($participant) }}</strong>
-                                <span>{{ $group['title'] }}</span>
-                            </div>
+                            <div class="event-participant-chip__identity"><strong>{{ $name($participant) }}</strong><span>{{ $group['title'] }}</span></div>
                             <div class="event-participant-chip__status-actions">
                                 @foreach(['confirmed' => 'Идёт', 'tentative' => 'Думает', 'left' => 'Не идёт'] as $status => $label)
                                     @if(($participant->status->value ?? $participant->status) !== $status)
@@ -161,6 +151,10 @@
         <button class="btn btn--primary btn--sm mt-2" type="submit">Сохранить итоги</button>
     </form>
 </section>
+@endif
+
+@if($canManageResultPhotos)
+    @include('theme::pages.events.partials.result-photo-management')
 @endif
 
 @if($canCancel)
