@@ -85,7 +85,7 @@
                             <div class="team-catalog-card__badges">
                                 <span>{{ $team->status->label() }}</span>
                                 @foreach($team->sportProfiles as $profile)
-                                    <span class="is-sport" title="{{ $profile->sport_type->label() }}" aria-label="{{ $profile->sport_type->label() }}">
+                                    <span class="is-sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" aria-label="{{ $profile->sport_type->label() }}">
                                         <span class="is-sport__full" aria-hidden="true">{{ $profile->sport_type->label() }}</span>
                                         <span class="is-sport__short" aria-hidden="true">{{ $profile->sport_type->shortLabel() }}</span>
                                     </span>
@@ -94,9 +94,11 @@
                             </div>
                             <h2><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
                             <p class="team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
-                            <p class="team-catalog-card__members"><i class="ti ti-users"></i><span>{{ $team->active_memberships_count }} участников</span></p>
-                            <p class="team-catalog-card__members"><i class="ti ti-user-cog"></i><span>Тренер: {{ $memberName($coach) }}</span></p>
-                            <p class="team-catalog-card__members"><i class="ti ti-star"></i><span>Капитан: {{ $memberName($captain) }}</span></p>
+                            <div class="team-catalog-card__meta">
+                                <p class="team-catalog-card__members" aria-label="{{ $team->active_memberships_count }} участников"><i class="ti ti-users"></i><span class="team-catalog-card__member-count">{{ $team->active_memberships_count }}</span><span class="team-catalog-card__member-label"> участников</span></p>
+                                <p class="team-catalog-card__members team-catalog-card__coach @if($coach === null) is-missing @endif" aria-label="Тренер: {{ $memberName($coach) }}"><i class="ti ti-user-cog"></i><span>Тренер: {{ $memberName($coach) }}</span></p>
+                                <p class="team-catalog-card__members team-catalog-card__captain @if($captain === null) is-missing @endif" aria-label="Капитан: {{ $memberName($captain) }}"><i class="ti ti-star"></i><span>Капитан: {{ $memberName($captain) }}</span></p>
+                            </div>
                         </div>
                         <div class="team-catalog-card__actions">
                             <a class="btn btn--secondary btn--sm" href="{{ route('teams.show', $team->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>

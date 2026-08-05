@@ -2400,7 +2400,7 @@ body.telegram-mini-app .event-show {
 .team-catalog-card__body { align-self: center; min-width: 0; }
 .team-catalog-card__badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .team-catalog-card__badges span { padding: 5px 9px; border: 1px solid rgba(58, 183, 84, .35); border-radius: 9px; color: #74d780; background: rgba(34, 118, 50, .12); font-size: 11px; font-weight: 700; text-transform: uppercase; }
-.team-catalog-card__badges .is-sport { border-color: #454a45; border-radius: 999px; color: #b9bdb8; background: #222522; text-transform: none; cursor: default; }
+.team-catalog-card__badges .is-sport { border-color: #454a45; border-radius: 999px; color: #b9bdb8; background: #222522; text-transform: none; text-decoration: none; cursor: default; }
 .team-catalog-card__badges .is-sport > span { padding: 0; border: 0; border-radius: 0; color: inherit; background: transparent; font: inherit; text-transform: inherit; }
 .team-catalog-card__badges .is-sport__short { display: none; }
 .team-catalog-card__badges .is-incomplete { border-color: rgba(255, 125, 34, .45); color: #ff8b3d; background: rgba(255, 103, 16, .1); }
@@ -2438,8 +2438,16 @@ body.telegram-mini-app .event-show {
     .team-catalog-card__badges span { padding: 4px 7px; font-size: 10px; }
     .team-catalog-card__badges .is-sport__full { display: none; }
     .team-catalog-card__badges .is-sport__short { display: inline; }
-    .team-catalog-card h2 { font-size: 18px; }
-    .team-catalog-card__description { -webkit-line-clamp: 1; }
+    .team-catalog-card h2 { margin-bottom: 6px; font-size: 12px; }
+    .team-catalog-card__description { margin-bottom: 10px; font-size: 12px; line-height: 1.25; -webkit-line-clamp: 1; }
+    .team-catalog-card__meta { display: flex; align-items: center; gap: 12px; }
+    .team-catalog-card__members { gap: 4px; margin: 0; }
+    .team-catalog-card__members i { font-size: 18px; }
+    .team-catalog-card__member-label,
+    .team-catalog-card__coach span,
+    .team-catalog-card__captain span { display: none; }
+    .team-catalog-card__coach.is-missing,
+    .team-catalog-card__captain.is-missing { display: none; }
     .team-catalog-card__actions { grid-column: 1 / -1; }
 }
 

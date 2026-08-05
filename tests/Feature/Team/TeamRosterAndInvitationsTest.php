@@ -222,8 +222,11 @@ final class TeamRosterAndInvitationsTest extends TestCase
             ->assertSee('class="team-catalog-card__badges"', false)
             ->assertSee('title="Баскетбол"', false)
             ->assertSee('title="Стритбол"', false)
+            ->assertSee('data-tooltip-variant="title"', false)
             ->assertSee('class="is-sport__short" aria-hidden="true">5x5', false)
             ->assertSee('class="is-sport__short" aria-hidden="true">3x3', false)
+            ->assertSee('team-catalog-card__meta', false)
+            ->assertSee('team-catalog-card__member-count', false)
             ->assertDontSee('team-catalog-card__tags', false);
     }
 }
