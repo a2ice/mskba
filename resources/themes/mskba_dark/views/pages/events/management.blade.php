@@ -11,6 +11,7 @@
     $canManageParticipants = $allows(EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
     $canManageResponsibilities = $allows(EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES);
     $canUpdate = $allows(EventResponsibilityPermissionEnum::UPDATE_EVENT);
+    $canCreateMiniGame = $allows(EventResponsibilityPermissionEnum::CREATE_MINI_GAME);
     $canCancel = $allows(EventResponsibilityPermissionEnum::CANCEL_EVENT)
         && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true);
     $canManageResult = $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT)
@@ -90,7 +91,7 @@
 <section class="section-card mb-4">
     <h2>Ответственные и права</h2>
     <p class="form-hint">Назначение начинает действовать после согласия участника.</p>
-    @foreach($event->participants->where('status', \App\Modules\Event\Domain\Enums\EventParticipantStatusEnum::CONFIRMED) as $participant)
+    @foreach($confirmedParticipants as $participant)
         @php($responsibility = $participant->responsibility_status)
         <article class="section-card mb-3">
             <strong>{{ $name($participant) }}</strong>
@@ -113,16 +114,18 @@
 </section>
 @endif
 
-@if($allows(EventResponsibilityPermissionEnum::MANAGE_MINI_GAMES))
+@if($canCreateMiniGame || $event->childGames->isNotEmpty())
 <section class="section-card mb-4">
     <h2>Игры и мини-игры</h2>
     <p class="form-hint">Создание и оперативное управление играми выполняется в отдельном рабочем интерфейсе.</p>
-    @foreach($event->childEvents as $miniGame)<a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('events.game.manage', $miniGame->routeIdentifier()) }}">{{ $miniGame->title }}</a>@endforeach
+    @foreach($event->childGames as $miniGame)<a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('events.game.manage', $miniGame->routeIdentifier()) }}">{{ $miniGame->title }}</a>@endforeach
+    @if($canCreateMiniGame)
     <form method="POST" action="{{ route('events.games.store', $event->routeIdentifier()) }}" class="mt-3">@csrf
         <input type="hidden" name="title" value="Мини-игра">
         <input type="hidden" name="side_a_size" value="3"><input type="hidden" name="side_b_size" value="3">
         <button class="btn btn--primary btn--sm" type="submit">Добавить мини-игру 3×3</button>
     </form>
+    @endif
 </section>
 @endif
 
