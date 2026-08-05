@@ -5,12 +5,11 @@ namespace App\Modules\Team\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Team\Application\Services\TeamLineupResolver;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
-use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
-use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
@@ -23,6 +22,7 @@ final class TeamManagementController extends Controller
         Request $request,
         CurrentActorResolver $actors,
         TeamManagementAccess $access,
+        TeamLineupResolver $lineups,
     ): Response {
         $item = Team::query()->whereRouteIdentifier($team)
             ->with([
@@ -44,32 +44,7 @@ final class TeamManagementController extends Controller
             ->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::PLAYER))
             ->sortBy('id')
             ->values();
-        $startingLineups = $item->sportProfiles
-            ->mapWithKeys(function ($profile) use ($players): array {
-                $size = $profile->sport_type === TeamSportTypeEnum::STREETBALL ? 3 : 5;
-                $assignments = $profile->lineupMembers->keyBy('contract_membership_id');
-                $ordered = $players
-                    ->sortBy(fn ($player) => sprintf(
-                        '%d-%010d',
-                        $assignments->get($player->id)?->position ?? 9999,
-                        $player->id,
-                    ))
-                    ->values();
-                $starters = $ordered
-                    ->filter(fn ($player) => $assignments->get($player->id)?->assignment === TeamLineupAssignmentEnum::STARTER)
-                    ->values();
-                $reserves = $ordered
-                    ->reject(fn ($player) => $starters->contains('id', $player->id))
-                    ->values();
-
-                return [$profile->sport_type->value => [
-                    'label' => $profile->sport_type->label(),
-                    'size' => $size,
-                    'sport_type' => $profile->sport_type->value,
-                    'starters' => $starters,
-                    'reserves' => $reserves,
-                ]];
-            });
+        $startingLineups = $lineups->resolve($item->sportProfiles, $players);
 
         return ThemeResolver::page('teams.management', [
             'team' => $item,
