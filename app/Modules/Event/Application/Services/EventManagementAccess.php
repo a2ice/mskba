@@ -5,7 +5,6 @@ namespace App\Modules\Event\Application\Services;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
-use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use InvalidArgumentException;
 
@@ -23,10 +22,8 @@ final class EventManagementAccess
         $managementEvent = $this->managementEvent($event);
         $isOrganizer = $actor->user_id !== null
             && $managementEvent->organizerActor()->where('user_id', $actor->user_id)->exists();
-        $isSuperadmin = $actor->user?->isConfirmed() === true
-            && $actor->user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN);
 
-        if ($isOrganizer || $isSuperadmin) {
+        if ($isOrganizer) {
             return true;
         }
 
