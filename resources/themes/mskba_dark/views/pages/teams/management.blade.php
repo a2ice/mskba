@@ -137,6 +137,22 @@
     </section>
 
     @if($canInviteMembers)
+    <section class="team-profile__section team-pending-invitations" data-team-pending-invitations aria-labelledby="team-pending-invitations-title">
+        <div class="team-profile__section-heading">
+            <i class="ti ti-mail-forward"></i>
+            <div>
+                <span>Ожидают ответа</span>
+                <h2 id="team-pending-invitations-title">Отправленные приглашения <small data-pending-invitations-count>{{ $pendingMemberships->count() }}</small></h2>
+            </div>
+        </div>
+        <div class="team-pending-invitations__list" data-pending-invitations-list>
+            @foreach($pendingMemberships as $invitation)
+                @include('theme::pages.teams.partials.pending-invitation', ['invitation' => $invitation])
+            @endforeach
+        </div>
+        <p class="team-pending-invitations__empty" data-pending-invitations-empty @if($pendingMemberships->isNotEmpty()) hidden @endif>Отправленных приглашений пока нет.</p>
+    </section>
+
     <section class="team-profile__section team-invitation" data-team-invitation data-search-url="{{ route('teams.invitations.search', $team->routeIdentifier()) }}" data-store-url="{{ route('teams.invitations.store', $team->routeIdentifier()) }}">
         <div class="team-profile__section-heading"><i class="ti ti-user-plus"></i><div><span>Договорное членство</span><h2>Пригласить в команду</h2></div></div>
         <form data-team-invitation-form><div class="team-invitation__fields">
