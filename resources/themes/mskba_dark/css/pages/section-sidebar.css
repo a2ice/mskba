@@ -49,6 +49,42 @@
     overflow-wrap: anywhere;
 }
 
+.team-profile__section-heading--without-icon {
+    display: block;
+}
+
+.team-profile__header-content {
+    min-width: 0;
+}
+
+.team-profile__header-statuses {
+    align-items: center;
+}
+
+.team-profile__sport {
+    display: inline-flex;
+    padding: 5px 10px;
+    border: 1px solid #454a45;
+    border-radius: 999px;
+    color: #c3c6c1;
+    background: #222522;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.team-profile__sport-short {
+    display: none;
+}
+
+.team-profile__description {
+    max-width: 720px;
+    margin: 14px 0 0;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
 .section-sidebar-layout__mobile-sticky-navigation {
     display: none;
 }
@@ -171,6 +207,48 @@
         z-index: 25;
         display: block;
         margin-bottom: 10px;
+    }
+
+    .team-profile__header--overview {
+        display: grid;
+        grid-template-columns: 105px minmax(0, 1fr);
+        align-items: start;
+        gap: 14px;
+        padding: 14px;
+    }
+
+    .team-profile__header--overview .team-profile__logo {
+        width: 105px;
+        height: 105px;
+        border-radius: 18px;
+    }
+
+    .team-profile__header--overview .team-profile__header-statuses {
+        gap: 7px;
+    }
+
+    .team-profile__header--overview .team-profile__status,
+    .team-profile__header--overview .team-profile__sport {
+        padding: 4px 9px;
+        font-size: 11px;
+    }
+
+    .team-profile__sport-full {
+        display: none;
+    }
+
+    .team-profile__sport-short {
+        display: inline;
+    }
+
+    .team-profile__description {
+        display: -webkit-box;
+        margin-top: 10px;
+        font-size: 13px;
+        line-height: 1.35;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
     }
 }
 
