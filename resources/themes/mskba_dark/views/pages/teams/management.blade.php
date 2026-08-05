@@ -24,6 +24,8 @@
         ->map(fn ($role) => $role->label())->join(', ') ?: 'Без спортивной роли';
     $canEditSportRoles = static fn ($membership): bool => $canManageRoles
         && ($membership->access_level !== 'owner' || $membership->user_id === $currentUserId);
+    $canEditMemberAccess = static fn ($membership): bool => $membership->access_level !== 'owner'
+        && ($canManagePermissions || ($canRemoveMembers && $membership->user_id !== $currentUserId));
 @endphp
 @section('section-sidebar')
 <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команда</h2><ul class="sidebar-nav nav flex-column">
@@ -39,78 +41,102 @@
     <div class="alert alert-danger" data-team-management-error hidden></div>
     <div class="alert alert-success" data-team-management-success hidden></div>
 
-    @if($canManageRoles)
-    <section class="team-profile__section" aria-labelledby="team-sport-roles-title">
+    @if($canManageRoles || $canManagePermissions || $canRemoveMembers)
+    <section class="team-profile__section" aria-labelledby="team-members-management-title">
         <div class="team-profile__section-heading team-profile__section-heading--without-icon">
             <div>
                 <span>Участие в команде</span>
-                <div class="team-help-heading">
-                    <h2 id="team-sport-roles-title">Спортивные роли участников</h2>
-                    <button
-                        class="team-help-tooltip"
-                        type="button"
-                        title="Спортивные роли не изменяют договорные права. Роли владельца может менять только сам владелец."
-                        data-tooltip-variant="title"
-                        aria-label="Подробнее о спортивных ролях"
-                    >?</button>
-                </div>
+                <h2 id="team-members-management-title">Участники команды</h2>
             </div>
         </div>
         <div class="team-sport-role-list">
             @foreach($activeMemberships as $member)
-                @if($canEditSportRoles($member))
-                <form id="team-sport-role-{{ $member->id }}" class="section-card mb-3" method="POST" action="{{ route('teams.members.sports.update', [$team->routeIdentifier(), $member->id]) }}">
-                    @csrf @method('PUT')
+                <article id="team-member-management-{{ $member->id }}" class="section-card team-member-management-card mb-3">
                     <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->access_level === 'owner' ? 'Владелец команды' : $roleText($member) }}</span></div></div>
-                    <fieldset class="mt-3">
-                        <legend class="form-label team-role-legend">
+
+                    @if($canManageRoles)
+                    <details class="team-member-panel">
+                        <summary class="team-member-panel__summary">
                             <span>Спортивные роли</span>
-                            <button
-                                class="team-help-tooltip"
-                                type="button"
-                                title="Капитан и стартовый участник должны иметь роль «Игрок»."
-                                data-tooltip-variant="title"
-                                aria-label="Подробнее об ограничениях спортивных ролей"
-                            >?</button>
-                        </legend>
-                        <div class="team-sport-role-options">
-                            @foreach($sportRoleCases as $role)
-                                @include('theme::partials.forms.toggle', [
-                                    'id' => 'team-member-'.$member->id.'-sport-role-'.$role->value,
-                                    'name' => 'sport_roles[]',
-                                    'value' => $role->value,
-                                    'title' => $role->label(),
-                                    'checked' => $member->hasSportRole($role),
-                                    'includeHiddenInput' => false,
-                                    'wrapperClass' => 'team-sport-role-option',
-                                ])
-                            @endforeach
+                            <span class="team-member-panel__toggle" aria-hidden="true"><i class="ti ti-chevron-down"></i></span>
+                        </summary>
+                        <div class="team-member-panel__body">
+                            @if($canEditSportRoles($member))
+                            <form id="team-sport-role-{{ $member->id }}" method="POST" action="{{ route('teams.members.sports.update', [$team->routeIdentifier(), $member->id]) }}">
+                                @csrf @method('PUT')
+                                <div class="team-sport-role-options">
+                                    @foreach($sportRoleCases as $role)
+                                        @include('theme::partials.forms.toggle', [
+                                            'id' => 'team-member-'.$member->id.'-sport-role-'.$role->value,
+                                            'name' => 'sport_roles[]',
+                                            'value' => $role->value,
+                                            'title' => $role->label(),
+                                            'checked' => $member->hasSportRole($role),
+                                            'includeHiddenInput' => false,
+                                            'wrapperClass' => 'team-sport-role-option',
+                                        ])
+                                    @endforeach
+                                </div>
+                                <div class="team-sport-role-options team-sport-role-options--flags mt-3">
+                                    @include('theme::partials.forms.toggle', [
+                                        'id' => 'team-member-'.$member->id.'-captain',
+                                        'name' => 'is_captain',
+                                        'title' => 'Капитан',
+                                        'checked' => $member->is_captain,
+                                        'wrapperClass' => 'team-sport-role-option',
+                                    ])
+                                    @include('theme::partials.forms.toggle', [
+                                        'id' => 'team-member-'.$member->id.'-default-starter',
+                                        'name' => 'is_default_starter',
+                                        'title' => 'Стартовый по умолчанию',
+                                        'checked' => $member->is_default_starter,
+                                        'wrapperClass' => 'team-sport-role-option',
+                                    ])
+                                </div>
+                                <p class="form-hint mt-3">Капитан и стартовый участник должны иметь роль «Игрок».</p>
+                                <button class="btn btn--primary btn--sm mt-3" type="submit">Сохранить роли</button>
+                            </form>
+                            @else
+                                <p class="form-hint">Роли владельца может менять только сам владелец.</p>
+                                <p>{{ $roleText($member) }}</p>
+                            @endif
                         </div>
-                    </fieldset>
-                    <div class="team-sport-role-options team-sport-role-options--flags mt-3">
-                        @include('theme::partials.forms.toggle', [
-                            'id' => 'team-member-'.$member->id.'-captain',
-                            'name' => 'is_captain',
-                            'title' => 'Капитан',
-                            'checked' => $member->is_captain,
-                            'wrapperClass' => 'team-sport-role-option',
-                        ])
-                        @include('theme::partials.forms.toggle', [
-                            'id' => 'team-member-'.$member->id.'-default-starter',
-                            'name' => 'is_default_starter',
-                            'title' => 'Стартовый по умолчанию',
-                            'checked' => $member->is_default_starter,
-                            'wrapperClass' => 'team-sport-role-option',
-                        ])
-                    </div>
-                    <button class="btn btn--primary btn--sm mt-3" type="submit">Сохранить роли</button>
-                </form>
-                @else
-                <div id="team-sport-role-{{ $member->id }}" class="section-card mb-3">
-                    <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>Владелец команды · {{ $roleText($member) }}</span></div></div>
-                    <p class="form-hint mt-2">Изменять спортивные роли владельца может только сам владелец.</p>
-                </div>
-                @endif
+                    </details>
+                    @endif
+
+                    @if($canEditMemberAccess($member))
+                    <details class="team-member-panel">
+                        <summary class="team-member-panel__summary">
+                            <span>Права участника</span>
+                            <span class="team-member-panel__toggle" aria-hidden="true"><i class="ti ti-chevron-down"></i></span>
+                        </summary>
+                        <div class="team-member-panel__body">
+                            <form class="team-member-access-form" data-team-permissions-form data-update-url="{{ route('teams.members.permissions', [$team->routeIdentifier(), $member->id]) }}">
+                                @if($canManagePermissions)
+                                <div class="team-invitation__permissions">
+                                    @foreach($teamPermissions as $permission)
+                                        @include('theme::partials.forms.toggle', [
+                                            'id' => 'team-member-'.$member->id.'-'.str_replace('.', '-', $permission->value),
+                                            'name' => 'permissions[]',
+                                            'value' => $permission->value,
+                                            'title' => $permission->label(),
+                                            'checked' => $member->contract->permissions->contains('permission', $permission->value),
+                                            'includeHiddenInput' => false,
+                                            'wrapperClass' => 'team-permissions-modal__permission',
+                                        ])
+                                    @endforeach
+                                </div>
+                                @endif
+                                <div class="team-member-access-form__actions">
+                                    @if($canManagePermissions)<button class="btn btn--primary btn--sm" type="submit">Сохранить права</button>@endif
+                                    @if($canRemoveMembers && $member->user_id !== $currentUserId && !$member->is_captain)<button class="btn btn--danger btn--sm" type="button" data-team-member-remove-url="{{ route('teams.members.destroy', [$team->routeIdentifier(), $member->id]) }}">Исключить из команды</button>@endif
+                                </div>
+                                <div class="team-form-feedback" data-team-form-feedback hidden></div>
+                            </form>
+                        </div>
+                    </details>
+                    @endif
+                </article>
             @endforeach
         </div>
     </section>
@@ -124,11 +150,11 @@
                 <header><div><strong>{{ $lineup['label'] }}</strong><span><b data-starter-count>{{ $lineup['starters']->count() }}</b>/{{ $lineup['size'] }}</span></div>@if($canManageRoster)<button class="btn btn--primary btn--sm" type="button" data-roster-save>Сохранить</button>@endif</header>
                 <div class="team-form-feedback" data-team-form-feedback hidden></div>
                 <div class="team-roster-pool"><div class="team-roster-pool__heading"><span>Основной состав</span><b>{{ $lineup['size'] }} мест</b></div><div class="team-roster-dropzone" data-roster-zone="starter">
-                    @foreach($lineup['starters'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'canManagePermissions', 'canRemoveMembers', 'currentUserId', 'team')) @endforeach
+                    @foreach($lineup['starters'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'currentUserId', 'team')) @endforeach
                     @if($lineup['starters']->isEmpty())<p class="team-roster-dropzone__empty">Перенесите сюда основных игроков</p>@endif
                 </div></div>
                 <div class="team-roster-pool team-roster-pool--reserve"><div class="team-roster-pool__heading"><span>Запасные</span><b><span data-reserve-count>{{ $lineup['reserves']->count() }}</span> игроков</b></div><div class="team-roster-dropzone" data-roster-zone="reserve">
-                    @foreach($lineup['reserves'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'canManagePermissions', 'canRemoveMembers', 'currentUserId', 'team')) @endforeach
+                    @foreach($lineup['reserves'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'currentUserId', 'team')) @endforeach
                     @if($lineup['reserves']->isEmpty())<p class="team-roster-dropzone__empty">Запас пока пуст</p>@endif
                 </div></div>
             </section>
@@ -163,32 +189,5 @@
         <div class="team-form-feedback" data-team-form-feedback hidden></div>
     </section>
     @endif
-
-    @foreach($activeMemberships as $member)
-        @if($member->access_level !== 'owner' && ($canManagePermissions || ($canRemoveMembers && $member->user_id !== $currentUserId)))
-            @component('theme::partials.modal.layout', ['id' => 'team-member-permissions-'.$member->id, 'dialogClass' => 'team-permissions-modal__dialog'])
-                <form class="team-permissions-modal__form" data-team-permissions-form data-update-url="{{ route('teams.members.permissions', [$team->routeIdentifier(), $member->id]) }}">
-                    <h2 class="modal_title" id="modal-title-team-member-permissions-{{ $member->id }}">Права участника</h2>
-                    <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $roleText($member) }}</span></div></div>
-                    @if($canManagePermissions)<fieldset><legend>Договорные права</legend><div class="team-invitation__permissions">@foreach($teamPermissions as $permission)
-                        @include('theme::partials.forms.toggle', [
-                            'id' => 'team-member-'.$member->id.'-'.str_replace('.', '-', $permission->value),
-                            'name' => 'permissions[]',
-                            'value' => $permission->value,
-                            'title' => $permission->label(),
-                            'checked' => $member->contract->permissions->contains('permission', $permission->value),
-                            'includeHiddenInput' => false,
-                            'wrapperClass' => 'team-permissions-modal__permission',
-                        ])
-                    @endforeach</div></fieldset>@endif
-                    <div class="team-permissions-modal__actions">
-                        @if($canManagePermissions)<button class="btn btn--primary btn--sm" type="submit">Сохранить права</button>@endif
-                        @if($canRemoveMembers && $member->user_id !== $currentUserId && !$member->is_captain)<button class="btn btn--danger btn--sm" type="button" data-team-member-remove-url="{{ route('teams.members.destroy', [$team->routeIdentifier(), $member->id]) }}">Исключить из команды</button>@endif
-                    </div>
-                    <div class="team-form-feedback" data-team-form-feedback hidden></div>
-                </form>
-            @endcomponent
-        @endif
-    @endforeach
 </article>
 @endsection
