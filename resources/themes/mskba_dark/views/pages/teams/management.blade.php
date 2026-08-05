@@ -1,5 +1,12 @@
+@php
+    $breadcrumbs = [
+        ['label' => 'Команды', 'url' => route('teams.index')],
+        ['label' => $team->name, 'url' => route('teams.show', $team->routeIdentifier())],
+        ['label' => 'Состав и участники'],
+    ];
+@endphp
 @extends('theme::layouts.section-sidebar', [
-    'title' => 'Состав и участники', 'sectionId' => 'teams', 'sectionClass' => 'teams-section',
+    'title' => 'Состав и участники', 'sectionId' => 'teams', 'sectionClass' => 'teams-section teams-management-section',
     'contentTitle' => 'Состав и участники', 'contentSubtitle' => $team->name,
 ])
 @php
@@ -52,7 +59,7 @@
                         <label class="form-check"><input class="form-check-input" type="checkbox" name="is_default_starter" value="1" @checked($member->is_default_starter)><span class="form-check-label">Стартовый по умолчанию</span></label>
                     </div>
                     <p class="form-hint mt-2">Капитан и стартовый участник должны иметь роль «Игрок».</p>
-                    <button class="btn btn--primary btn--sm" type="submit">Сохранить роли</button>
+                    <button class="btn btn--primary btn--sm mt-3" type="submit">Сохранить роли</button>
                 </form>
                 @else
                 <div id="team-sport-role-{{ $member->id }}" class="section-card mb-3">
@@ -70,7 +77,7 @@
         <div class="team-sport-groups">
         @foreach($startingLineups as $lineup)
             <section class="team-sport-group" data-team-roster data-update-url="{{ route('teams.roster.update', $team->routeIdentifier()) }}" data-sport-type="{{ $lineup['sport_type'] }}" data-limit="{{ $lineup['size'] }}" data-editable="{{ $canManageRoster ? '1' : '0' }}">
-                <header><div><strong>{{ $lineup['label'] }}</strong><span>Основа: <b data-starter-count>{{ $lineup['starters']->count() }}</b> / {{ $lineup['size'] }}</span></div>@if($canManageRoster)<button class="btn btn--primary btn--sm" type="button" data-roster-save>Сохранить</button>@endif</header>
+                <header><div><strong>{{ $lineup['label'] }}</strong><span><b data-starter-count>{{ $lineup['starters']->count() }}</b>/{{ $lineup['size'] }}</span></div>@if($canManageRoster)<button class="btn btn--primary btn--sm" type="button" data-roster-save>Сохранить</button>@endif</header>
                 <div class="team-form-feedback" data-team-form-feedback hidden></div>
                 <div class="team-roster-pool"><div class="team-roster-pool__heading"><span>Основной состав</span><b>{{ $lineup['size'] }} мест</b></div><div class="team-roster-dropzone" data-roster-zone="starter">
                     @foreach($lineup['starters'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'canManagePermissions', 'canRemoveMembers', 'currentUserId', 'team')) @endforeach
