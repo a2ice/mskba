@@ -3,14 +3,16 @@
     'contentTitle' => $team->name, 'contentSubtitle' => $team->description,
 ])
 @php
-    use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
-
+    $playerRole = \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::PLAYER;
+    $coachRole = \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::COACH;
+    $managerRole = \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::MANAGER;
+    $sportRoleCases = \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::cases();
     $memberName = static fn ($membership) => trim(implode(' ', array_filter([$membership->user->profile?->first_name, $membership->user->profile?->last_name]))) ?: $membership->user->username;
     $avatarUrl = static fn ($membership): string => $membership->user->profile?->activeAvatar?->publicUrl()
         ?? asset($membership->user->profile?->gender === \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE ? 'images/blank/avatar/avatar-female.png' : 'images/blank/avatar/avatar-male.png');
     $isCaptain = static fn ($membership): bool => $membership->is_captain;
-    $coaches = $activeMemberships->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::COACH))->values();
-    $managers = $activeMemberships->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::MANAGER))->values();
+    $coaches = $activeMemberships->filter(fn ($membership) => $membership->hasSportRole($coachRole))->values();
+    $managers = $activeMemberships->filter(fn ($membership) => $membership->hasSportRole($managerRole))->values();
     $roleText = static fn ($membership): string => $membership->sportRoles()->map(fn ($role) => $role->label())->join(', ') ?: 'Без спортивной роли';
 @endphp
 @section('section-sidebar')
@@ -50,7 +52,7 @@
                 @csrf @method('PUT')
                 <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->access_level === 'owner' ? 'Владелец команды' : $roleText($member) }}</span></div></div>
                 <fieldset class="mt-3"><legend class="form-label">Спортивные роли</legend><div class="d-flex flex-wrap gap-3">
-                    @foreach(TeamMemberTypeEnum::cases() as $role)
+                    @foreach($sportRoleCases as $role)
                     <label class="form-check"><input class="form-check-input" type="checkbox" name="sport_roles[]" value="{{ $role->value }}" @checked($member->hasSportRole($role))><span class="form-check-label">{{ $role->label() }}</span></label>
                     @endforeach
                 </div></fieldset>
