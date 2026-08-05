@@ -1,0 +1,26 @@
+@media (max-width: 768px) {
+    [data-roster-save] {
+        display: inline-grid !important;
+        place-items: center !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        padding: 5px !important;
+        box-sizing: border-box;
+        gap: 0 !important;
+        line-height: 0 !important;
+    }
+
+    [data-roster-save]::before {
+        position: static !important;
+        inset: auto !important;
+        display: block !important;
+        width: 20px !important;
+        height: 20px !important;
+        margin: 0 !important;
+        align-self: center;
+        justify-self: center;
+        transform: none !important;
+    }
+}
