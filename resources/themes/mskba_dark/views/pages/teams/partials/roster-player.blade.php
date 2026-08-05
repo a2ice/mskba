@@ -1,9 +1,8 @@
 <article class="team-person team-person--player" draggable="{{ $canManageRoster ? 'true' : 'false' }}" data-roster-player data-membership-id="{{ $player->id }}">
     <img src="{{ $avatarUrl($player) }}" alt="Аватар {{ $memberName($player) }}"><div><span class="team-person__name" data-team-tooltip="{{ $memberName($player) }}"><strong>{{ $memberName($player) }}</strong></span>
     @if($isCaptain($player))<span class="team-person__captain" data-captain-label><i class="ti ti-star"></i> Капитан</span>@else<span data-captain-label>Игрок</span>@endif</div>
-    @if($canManageRoster || ($canManageRoles && !$isCaptain($player)) || $canManagePermissions || ($canRemoveMembers && $player->user_id !== $currentUserId))<div class="team-person__actions">
+    @if($canManageRoster || ($canManageRoles && !$isCaptain($player)))<div class="team-person__actions">
         @if($canManageRoster)<button class="team-person__icon-action team-person__move" type="button" data-roster-move data-tooltip-skip aria-label="Переместить между основой и запасом"><i class="ti ti-arrows-exchange" aria-hidden="true"></i></button>@endif
         @if($canManageRoles && !$isCaptain($player))<button class="team-person__icon-action team-person__captain-action" type="button" data-captain-url="{{ route('teams.members.captain', [$team->routeIdentifier(), $player->id]) }}" data-team-tooltip="Назначить капитаном" data-tooltip-skip aria-label="Назначить {{ $memberName($player) }} капитаном"><i class="ti ti-star" aria-hidden="true"></i></button>@endif
-        @if($canManagePermissions || ($canRemoveMembers && $player->user_id !== $currentUserId))<button class="team-person__icon-action team-person__permission-action js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="team-member-permissions-{{ $player->id }}" data-team-permission-modal="team-member-permissions-{{ $player->id }}" data-team-tooltip="Права участника" data-tooltip-skip aria-label="Управление участником {{ $memberName($player) }}"><i class="ti ti-settings" aria-hidden="true"></i></button>@endif
     </div>@endif
 </article>
