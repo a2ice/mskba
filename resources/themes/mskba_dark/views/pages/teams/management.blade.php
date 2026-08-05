@@ -41,24 +41,68 @@
 
     @if($canManageRoles)
     <section class="team-profile__section" aria-labelledby="team-sport-roles-title">
-        <div class="team-profile__section-heading team-profile__section-heading--without-icon"><div><span>Участие в команде</span><h2 id="team-sport-roles-title">Спортивные роли участников</h2></div></div>
-        <p class="form-hint">Спортивные роли не изменяют договорные права. Роли владельца может менять только сам владелец.</p>
+        <div class="team-profile__section-heading team-profile__section-heading--without-icon">
+            <div>
+                <span>Участие в команде</span>
+                <div class="team-help-heading">
+                    <h2 id="team-sport-roles-title">Спортивные роли участников</h2>
+                    <button
+                        class="team-help-tooltip"
+                        type="button"
+                        title="Спортивные роли не изменяют договорные права. Роли владельца может менять только сам владелец."
+                        data-tooltip-variant="title"
+                        aria-label="Подробнее о спортивных ролях"
+                    >?</button>
+                </div>
+            </div>
+        </div>
         <div class="team-sport-role-list">
             @foreach($activeMemberships as $member)
                 @if($canEditSportRoles($member))
                 <form id="team-sport-role-{{ $member->id }}" class="section-card mb-3" method="POST" action="{{ route('teams.members.sports.update', [$team->routeIdentifier(), $member->id]) }}">
                     @csrf @method('PUT')
                     <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->access_level === 'owner' ? 'Владелец команды' : $roleText($member) }}</span></div></div>
-                    <fieldset class="mt-3"><legend class="form-label">Спортивные роли</legend><div class="d-flex flex-wrap gap-3">
-                        @foreach($sportRoleCases as $role)
-                        <label class="form-check"><input class="form-check-input" type="checkbox" name="sport_roles[]" value="{{ $role->value }}" @checked($member->hasSportRole($role))><span class="form-check-label">{{ $role->label() }}</span></label>
-                        @endforeach
-                    </div></fieldset>
-                    <div class="d-flex flex-wrap gap-3 mt-3">
-                        <label class="form-check"><input class="form-check-input" type="checkbox" name="is_captain" value="1" @checked($member->is_captain)><span class="form-check-label">Капитан</span></label>
-                        <label class="form-check"><input class="form-check-input" type="checkbox" name="is_default_starter" value="1" @checked($member->is_default_starter)><span class="form-check-label">Стартовый по умолчанию</span></label>
+                    <fieldset class="mt-3">
+                        <legend class="form-label team-role-legend">
+                            <span>Спортивные роли</span>
+                            <button
+                                class="team-help-tooltip"
+                                type="button"
+                                title="Капитан и стартовый участник должны иметь роль «Игрок»."
+                                data-tooltip-variant="title"
+                                aria-label="Подробнее об ограничениях спортивных ролей"
+                            >?</button>
+                        </legend>
+                        <div class="team-sport-role-options">
+                            @foreach($sportRoleCases as $role)
+                                @include('theme::partials.forms.toggle', [
+                                    'id' => 'team-member-'.$member->id.'-sport-role-'.$role->value,
+                                    'name' => 'sport_roles[]',
+                                    'value' => $role->value,
+                                    'title' => $role->label(),
+                                    'checked' => $member->hasSportRole($role),
+                                    'includeHiddenInput' => false,
+                                    'wrapperClass' => 'team-sport-role-option',
+                                ])
+                            @endforeach
+                        </div>
+                    </fieldset>
+                    <div class="team-sport-role-options team-sport-role-options--flags mt-3">
+                        @include('theme::partials.forms.toggle', [
+                            'id' => 'team-member-'.$member->id.'-captain',
+                            'name' => 'is_captain',
+                            'title' => 'Капитан',
+                            'checked' => $member->is_captain,
+                            'wrapperClass' => 'team-sport-role-option',
+                        ])
+                        @include('theme::partials.forms.toggle', [
+                            'id' => 'team-member-'.$member->id.'-default-starter',
+                            'name' => 'is_default_starter',
+                            'title' => 'Стартовый по умолчанию',
+                            'checked' => $member->is_default_starter,
+                            'wrapperClass' => 'team-sport-role-option',
+                        ])
                     </div>
-                    <p class="form-hint mt-2">Капитан и стартовый участник должны иметь роль «Игрок».</p>
                     <button class="btn btn--primary btn--sm mt-3" type="submit">Сохранить роли</button>
                 </form>
                 @else
