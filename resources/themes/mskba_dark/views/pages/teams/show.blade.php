@@ -22,10 +22,9 @@
 @section('section-sidebar')
 <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команда</h2><ul class="sidebar-nav nav flex-column">
 <li class="nav-item active"><a class="nav-link active" href="{{ route('teams.show', $team->routeIdentifier()) }}">Обзор</a></li>
-@if($canManage)
-<li class="nav-item"><a class="nav-link" href="{{ route('teams.edit', $team->routeIdentifier()) }}">Основные настройки</a></li>
-<li class="nav-item"><a class="nav-link" href="{{ route('teams.management', $team->routeIdentifier()) }}">Состав и участники</a></li>
-@endif
+@if($canEditSettings)<li class="nav-item"><a class="nav-link" href="{{ route('teams.edit', $team->routeIdentifier()) }}">Основные настройки</a></li>@endif
+@if($canManage)<li class="nav-item"><a class="nav-link" href="{{ route('teams.management', $team->routeIdentifier()) }}">Состав и участники</a></li>@endif
+@if($canManageJoinRequests)<li class="nav-item"><a class="nav-link" href="{{ route('teams.join-requests.index', $team->routeIdentifier()) }}">Заявки на вступление</a></li>@endif
 </ul></div>
 @endsection
 @section('section-content')
@@ -49,6 +48,29 @@
             <p class="team-profile__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
         </div>
     </header>
+
+    @auth
+        @if(!$isActiveTeamMember)
+            <section class="team-profile__section" aria-labelledby="team-join-title">
+                <div class="team-profile__section-heading"><i class="ti ti-user-plus"></i><div><span>Участие</span><h2 id="team-join-title">Вступление в команду</h2></div></div>
+                @if($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
+                    <p class="form-hint">Ваша заявка отправлена и ожидает решения.</p>
+                @elseif($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::BLOCKED)
+                    <p class="form-hint">Отправка заявок в эту команду для вас заблокирована.</p>
+                @elseif($team->accepts_join_requests && $canApplyToTeam)
+                    @if($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::REJECTED)
+                        <p class="form-hint mb-3">Предыдущая заявка была отклонена. Вы можете отправить новую.</p>
+                    @endif
+                    <form method="POST" action="{{ route('teams.join-requests.store', $team->routeIdentifier()) }}" onsubmit="return confirm('Отправить заявку на вступление в команду «{{ addslashes($team->name) }}»?')">
+                        @csrf
+                        <button class="btn btn--primary" type="submit">Подать заявку</button>
+                    </form>
+                @else
+                    <p class="form-hint">Команда сейчас не принимает заявки на вступление.</p>
+                @endif
+            </section>
+        @endif
+    @endauth
 
     <section class="team-profile__section" aria-labelledby="team-coaches-title">
         <div class="team-profile__section-heading"><i class="ti ti-user-cog"></i><div><span>Тренерский штаб</span><h2 id="team-coaches-title">Тренеры</h2></div></div>
