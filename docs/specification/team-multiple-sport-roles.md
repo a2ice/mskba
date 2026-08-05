@@ -70,6 +70,27 @@ A user with `team.roles.manage` permission can edit all sport roles of an accept
 
 The editor includes the owner, including an owner with no sport roles.
 
+## Member removal hierarchy
+
+The permission `team.members.remove` is necessary but is not sufficient on its own. A non-owner can remove only a member with a strictly lower administrative access level.
+
+The hierarchy is:
+
+```text
+owner > responsible > captain > coach > player
+```
+
+Consequences:
+
+- the owner membership cannot be removed;
+- a member cannot remove themself;
+- an active captain cannot be removed until another captain is appointed;
+- equal administrative levels cannot remove each other;
+- a lower level cannot remove a higher level;
+- the team creator and a system administrator may remove any lower-level non-captain member, but never the owner membership.
+
+Sport roles do not affect this hierarchy. A sporting manager without administrative access remains subject to their contract `access_level`.
+
 ## Game roster behavior
 
 Only memberships containing `player` can become game roster entries. Additional roles do not prevent participation:
