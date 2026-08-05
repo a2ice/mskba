@@ -27,9 +27,8 @@
                 </button>
             </header>
 
-            <form method="GET" action="{{ route('venues') }}" class="catalog-toolbar-form">
             <div class="catalog-toolbar venues-catalog-toolbar is-filters-collapsed">
-                <label class="catalog-toolbar__search" aria-label="Поиск площадок"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание"></label>
+                <label class="catalog-toolbar__search" aria-label="Поиск площадок"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" form="venue-catalog-filter-form"></label>
                 <div class="venues-catalog-view" role="group" aria-label="Вид площадок">
                     <button type="button" @class(['is-active' => $currentView === 'list']) data-venue-view="list" aria-label="Список" title="Список" data-tooltip-variant="title" data-tooltip-icon aria-pressed="{{ $currentView === 'list' ? 'true' : 'false' }}"><i class="ti ti-list"></i><span class="catalog-toolbar__button-text">Список</span></button>
                     <button type="button" @class(['is-active' => $currentView === 'map']) data-venue-view="map" aria-label="На карте" title="На карте" data-tooltip-variant="title" data-tooltip-icon aria-pressed="{{ $currentView === 'map' ? 'true' : 'false' }}"><i class="ti ti-map-2"></i><span class="catalog-toolbar__button-text">На карте</span></button>
@@ -45,13 +44,12 @@
                 @endauth
             </div>
 
-            <div class="catalog-toolbar__filters venues-catalog-filters" data-venue-filters hidden>
+            <form id="venue-catalog-filter-form" method="GET" action="{{ route('venues') }}" class="catalog-toolbar__filters venues-catalog-filters" data-venue-filters hidden>
                 <input type="hidden" name="view" value="{{ $currentView }}" data-venue-view-input>
                 <label><span>Тип площадки</span><select name="type" class="form-select"><option value="">Все типы</option>@foreach($types as $type)<option value="{{ $type->value }}" @selected(($filters['type'] ?? '') === $type->value)>{{ $type->label() }}</option>@endforeach</select></label>
                 <label><span>Состояние</span><select name="operational_status" class="form-select"><option value="">Любое</option>@foreach($operationalStatuses as $status)<option value="{{ $status->value }}" @selected(($filters['operational_status'] ?? '') === $status->value)>{{ $status->label() }}</option>@endforeach</select></label>
                 <label><span>Доступ</span><select name="access" class="form-select"><option value="">Любой</option><option value="free" @selected(($filters['access'] ?? '') === 'free')>Бесплатно</option><option value="paid" @selected(($filters['access'] ?? '') === 'paid')>Платно</option><option value="approval" @selected(($filters['access'] ?? '') === 'approval')>По подтверждению</option></select></label>
                 <div class="venues-catalog-filters__actions"><button class="btn btn--primary" type="submit">Применить</button><a class="btn btn--secondary" href="{{ route('venues', ['view' => $currentView]) }}">Сбросить</a></div>
-            </div>
             </form>
 
             <div class="venues-catalog-results" data-venue-list @if($currentView === 'map') hidden @endif>

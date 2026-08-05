@@ -17,9 +17,8 @@
                 </button>
             </header>
 
-            <form method="GET" action="{{ route('teams.index') }}" class="catalog-toolbar-form">
             <div class="catalog-toolbar teams-catalog-toolbar is-filters-collapsed">
-                <label class="catalog-toolbar__search" aria-label="Поиск команд"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название или описание"></label>
+                <label class="catalog-toolbar__search" aria-label="Поиск команд"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название или описание" form="team-catalog-filter-form"></label>
                 <button class="btn btn--secondary teams-catalog__filters-toggle" type="button" data-team-filter-toggle aria-label="Расширенные фильтры команд" aria-expanded="false">
                     <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span class="catalog-toolbar__button-text">Фильтры</span><i class="ti ti-chevron-down catalog-toolbar__chevron" data-team-filter-toggle-icon aria-hidden="true"></i>
                     @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
@@ -31,7 +30,7 @@
                 @endauth
             </div>
 
-            <div class="catalog-toolbar__filters teams-catalog-filters" data-team-filters hidden>
+            <form id="team-catalog-filter-form" method="GET" action="{{ route('teams.index') }}" class="catalog-toolbar__filters teams-catalog-filters" data-team-filters hidden>
                 <label>
                     <span>Размер состава</span>
                     <select name="member_count" class="form-select">
@@ -53,7 +52,6 @@
                     <button class="btn btn--primary" type="submit">Применить</button>
                     <a class="btn btn--secondary" href="{{ route('teams.index') }}">Сбросить</a>
                 </div>
-            </div>
             </form>
 
             <div class="teams-catalog-results">

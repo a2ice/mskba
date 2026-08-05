@@ -221,6 +221,7 @@ final class TeamRosterAndInvitationsTest extends TestCase
             ->assertOk()
             ->assertSee('catalog-toolbar teams-catalog-toolbar', false)
             ->assertSee('name="q"', false)
+            ->assertSee('form="team-catalog-filter-form"', false)
             ->assertSee('catalog-toolbar__button-text">Фильтры', false)
             ->assertSee('catalog-card team-catalog-card', false)
             ->assertSee('catalog-card__badges team-catalog-card__badges', false)

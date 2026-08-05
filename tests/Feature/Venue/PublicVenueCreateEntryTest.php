@@ -83,6 +83,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('Бесплатная улица')
             ->assertSee('catalog-toolbar venues-catalog-toolbar', false)
             ->assertSee('name="search"', false)
+            ->assertSee('form="venue-catalog-filter-form"', false)
             ->assertSee('catalog-toolbar__button-text">Список', false)
             ->assertSee('Москва, Тестовая улица, 1')
             ->assertDontSee('Россия, Москва')

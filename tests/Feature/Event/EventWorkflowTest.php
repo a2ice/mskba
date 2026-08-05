@@ -75,6 +75,7 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('Вечерняя игра')
             ->assertSee('catalog-toolbar events-catalog-filters__toolbar', false)
             ->assertSee('name="q"', false)
+            ->assertSee('form="event-catalog-filter-form"', false)
             ->assertSee('catalog-card event-catalog-card', false)
             ->assertSee('catalog-card__title', false)
             ->assertSee('catalog-card__badge event-type-badge', false);
