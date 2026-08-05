@@ -18,5 +18,13 @@
         <span>{{ '@'.$invitation->user->username }}</span>
         <small>{{ $invitedRole }} · приглашение ожидает ответа</small>
     </div>
-    <span class="team-pending-invitation__status">Ожидает</span>
+    <div class="team-pending-invitation__actions">
+        <span class="team-pending-invitation__status">Ожидает</span>
+        <button
+            class="btn btn--outline btn--sm team-pending-invitation__revoke"
+            type="button"
+            data-pending-invitation-revoke
+            data-revoke-url="{{ route('teams.invitations.respond', $invitation->id) }}"
+        >Отозвать</button>
+    </div>
 </article>
