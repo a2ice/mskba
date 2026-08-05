@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function applyEventCatalogDefaults() {
-    const form = document.querySelector('[data-event-filter-body]');
+    const form = document.querySelector('[data-event-filter-form]');
 
     if (!form) {
         return false;
@@ -51,7 +51,7 @@ function applyEventCatalogDefaults() {
 }
 
 function prepareEventCatalogFilters() {
-    const form = document.querySelector('[data-event-filter-body]');
+    const form = document.querySelector('[data-event-filter-form]');
 
     if (!form) {
         return;

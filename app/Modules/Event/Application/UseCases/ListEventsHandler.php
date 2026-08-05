@@ -25,6 +25,7 @@ final class ListEventsHandler
         ?string $outcome = null,
         ?int $venueId = null,
         bool $hasMiniGames = false,
+        string $search = '',
     ): LengthAwarePaginator {
         $timezone = (string) config('app.timezone', 'Europe/Moscow');
         $startsFrom = $dateFrom === null
@@ -84,6 +85,15 @@ final class ListEventsHandler
             ->when($startsTo, fn ($query) => $query->where('starts_at', '<=', $startsTo))
             ->when($venueId !== null, fn ($query) => $query->where('venue_id', $venueId))
             ->when($hasMiniGames, fn ($query) => $query->whereHas('childGames'))
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
+                $query->whereLike('title', "%{$search}%")
+                    ->orWhereLike('description', "%{$search}%")
+                    ->orWhereHas('venue', fn ($venue) => $venue
+                        ->whereLike('name', "%{$search}%")
+                        ->orWhereLike('raw_address', "%{$search}%")
+                        ->orWhereHas('location.address', fn ($address) => $address
+                            ->whereLike('full_address', "%{$search}%")));
+            }))
             ->when($period === 'past' && $outcome !== null, function ($query) use ($outcome): void {
                 match ($outcome) {
                     'completed' => $query->where('status', EventStatusEnum::COMPLETED->value),

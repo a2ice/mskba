@@ -1,6 +1,6 @@
 @php
     $title = 'Команды';
-    $activeFilterCount = collect($filters)->filter(fn ($value) => filled($value))->count();
+    $activeFilterCount = collect(['member_count', 'sport_type'])->filter(fn ($key) => filled($filters[$key] ?? null))->count();
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -17,23 +17,21 @@
                 </button>
             </header>
 
-            <div class="teams-catalog-toolbar is-filters-collapsed">
-                <button class="btn btn--secondary teams-catalog__filters-toggle" type="button" data-team-filter-toggle aria-expanded="false">
-                    <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span>Фильтры</span><i class="ti ti-chevron-down" data-team-filter-toggle-icon aria-hidden="true"></i>
+            <form method="GET" action="{{ route('teams.index') }}" class="catalog-toolbar-form">
+            <div class="catalog-toolbar teams-catalog-toolbar is-filters-collapsed">
+                <label class="catalog-toolbar__search" aria-label="Поиск команд"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название или описание"></label>
+                <button class="btn btn--secondary teams-catalog__filters-toggle" type="button" data-team-filter-toggle aria-label="Расширенные фильтры команд" aria-expanded="false">
+                    <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span class="catalog-toolbar__button-text">Фильтры</span><i class="ti ti-chevron-down catalog-toolbar__chevron" data-team-filter-toggle-icon aria-hidden="true"></i>
                     @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
                 </button>
                 @auth
-                    @can('team-create')<a class="btn btn--primary" href="{{ route('teams.create') }}"><i class="ti ti-plus"></i>Создать</a>@endcan
+                    @can('team-create')<a class="btn btn--primary" href="{{ route('teams.create') }}" aria-label="Создать команду" title="Создать команду" data-tooltip-variant="title" data-tooltip-icon><i class="ti ti-plus"></i><span class="catalog-toolbar__button-text">Создать</span></a>@endcan
                 @else
-                    <button type="button" class="btn btn--primary js-handler" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('teams.create', absolute: false) }}"><i class="ti ti-plus"></i>Создать</button>
+                    <button type="button" class="btn btn--primary js-handler" aria-label="Создать команду" title="Создать команду" data-tooltip-variant="title" data-tooltip-icon data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('teams.create', absolute: false) }}"><i class="ti ti-plus"></i><span class="catalog-toolbar__button-text">Создать</span></button>
                 @endauth
             </div>
 
-            <form method="GET" action="{{ route('teams.index') }}" class="teams-catalog-filters" data-team-filters hidden>
-                <label>
-                    <span>Поиск</span>
-                    <span class="teams-catalog-search__control"><i class="ti ti-search"></i><input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Название или описание"></span>
-                </label>
+            <div class="catalog-toolbar__filters teams-catalog-filters" data-team-filters hidden>
                 <label>
                     <span>Размер состава</span>
                     <select name="member_count" class="form-select">
@@ -55,6 +53,7 @@
                     <button class="btn btn--primary" type="submit">Применить</button>
                     <a class="btn btn--secondary" href="{{ route('teams.index') }}">Сбросить</a>
                 </div>
+            </div>
             </form>
 
             <div class="teams-catalog-results">

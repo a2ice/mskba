@@ -12,6 +12,7 @@
 @import './venue-selector';
 @import './form-controls';
 @import './catalog-card';
+@import './catalog-toolbar';
 
 @import './pages/home';
 @import './pages/account';

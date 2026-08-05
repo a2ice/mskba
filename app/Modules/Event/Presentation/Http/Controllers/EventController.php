@@ -65,6 +65,7 @@ final class EventController extends Controller
             EventTypeEnum::cases(),
         );
         $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
             'type' => ['nullable', Rule::in([...$eventTypeValues, 'games'])],
             'period' => ['nullable', Rule::in(['upcoming', 'past'])],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
@@ -90,6 +91,7 @@ final class EventController extends Controller
         $outcome = $period === 'past' ? ($validated['outcome'] ?? null) : null;
         $venueId = isset($validated['venue_id']) ? (int) $validated['venue_id'] : null;
         $hasMiniGames = (bool) ($validated['has_mini_games'] ?? false);
+        $search = trim((string) ($validated['q'] ?? ''));
 
         return ThemeResolver::page('events.index', [
             'events' => $events->handle(
@@ -101,6 +103,7 @@ final class EventController extends Controller
                 $outcome,
                 $venueId,
                 $hasMiniGames,
+                $search,
             ),
             'types' => EventTypeEnum::cases(),
             'selectedType' => $type,
@@ -111,6 +114,7 @@ final class EventController extends Controller
             'outcome' => $outcome,
             'venueId' => $venueId,
             'hasMiniGames' => $hasMiniGames,
+            'search' => $search,
             'filterVenues' => Venue::query()
                 ->whereHas('events', fn ($query) => $query->whereNull('parent_event_id'))
                 ->orderBy('name')

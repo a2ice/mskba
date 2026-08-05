@@ -73,9 +73,14 @@ final class EventWorkflowTest extends TestCase
         $this->get(route('events.index', ['type' => EventTypeEnum::GAME_TRAINING->value]))
             ->assertOk()
             ->assertSee('Вечерняя игра')
+            ->assertSee('catalog-toolbar events-catalog-filters__toolbar', false)
+            ->assertSee('name="q"', false)
             ->assertSee('catalog-card event-catalog-card', false)
             ->assertSee('catalog-card__title', false)
             ->assertSee('catalog-card__badge event-type-badge', false);
+        $this->get(route('events.index', ['q' => 'Вечерняя', 'type' => EventTypeEnum::GAME_TRAINING->value]))
+            ->assertOk()
+            ->assertSee('Вечерняя игра');
         $slotStart = $event->booking->starts_at->setTimezone('Europe/Moscow');
         $slotEnd = $event->booking->ends_at->setTimezone('Europe/Moscow');
         $this->get(route('venues.show', $venue->routeIdentifier()))
