@@ -64,6 +64,21 @@ When a user creates a team:
 - owner rights do not depend on the selected roles;
 - a playing creator is synchronized into each configured sport roster.
 
+## Captain invariant
+
+A team may temporarily exist without players. As soon as the first accepted active membership receives the `player` role, that member automatically becomes captain.
+
+For every team with at least one accepted active player:
+
+- exactly one player must be captain;
+- the first player becomes captain automatically;
+- assigning another captain demotes the previous captain;
+- the current captain cannot remove the `player` role or clear the captain flag;
+- the current captain must first appoint another accepted active player as captain;
+- migration backfill appoints the first active accepted player by membership id when an existing team has players but no captain.
+
+The system does not silently choose a replacement when the current captain removes their playing role. Reassignment must be explicit.
+
 ## Editing flow
 
 A user with `team.roles.manage` permission can edit all sport roles of an accepted active member. The team creator always has this permission through creator access.
