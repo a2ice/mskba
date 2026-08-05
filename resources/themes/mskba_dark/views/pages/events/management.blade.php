@@ -49,41 +49,64 @@
 </section>
 
 @if($canManageParticipants)
-<section class="section-card mb-4" id="event-participant-management" data-event-participant-management data-candidates-url="{{ route('events.participants.candidates', $event->routeIdentifier()) }}">
+<section
+    class="section-card mb-4"
+    id="event-participant-management"
+    data-event-participant-manager
+    data-search-url="{{ route('events.participants.candidates', $event->routeIdentifier()) }}"
+>
     <h2>Участники</h2>
     <form method="POST" action="{{ route('events.participants.manage.store', $event->routeIdentifier()) }}" data-event-participant-form class="mb-4">
         @csrf
         <label class="form-label" for="event-management-participant-search">Добавить пользователя</label>
-        <div class="predictive-search__input-wrap event-participant-search">
+        <div class="predictive-search__input-wrap event-participant-search" data-event-participant-control>
             <input id="event-management-participant-search" class="form-control" type="search" autocomplete="off" placeholder="Имя или логин" data-event-participant-search>
             <input type="hidden" name="user_id" data-event-participant-user-id>
             <div class="predictive-search__results" data-event-participant-results hidden></div>
         </div>
-        <button class="btn btn--primary btn--sm mt-2" type="submit">Добавить в список «Думают»</button>
+        <p class="form-hint" data-event-participant-message>Начните вводить имя или логин.</p>
+        <div class="event-participant-selection" data-event-participant-selection hidden>
+            <strong data-event-participant-status></strong>
+        </div>
+        <button class="btn btn--primary btn--sm mt-2" type="submit" data-event-participant-submit disabled>Добавить в список «Думают»</button>
     </form>
 
-    @foreach([
-        ['title' => 'Идут', 'items' => $confirmedParticipants],
-        ['title' => 'Думают', 'items' => $tentativeParticipants],
-        ['title' => 'Не идут', 'items' => $declinedParticipants],
-    ] as $group)
-        <div class="mb-4"><h3>{{ $group['title'] }}</h3>
-            @forelse($group['items'] as $participant)
-                <article class="section-card mb-2">
-                    <div class="d-flex flex-wrap justify-content-between gap-3 align-items-center">
-                        <strong>{{ $name($participant) }}</strong>
-                        <div class="d-flex flex-wrap gap-2">
-                            @foreach(['confirmed' => 'Идёт', 'tentative' => 'Думает', 'left' => 'Не идёт'] as $status => $label)
-                                @if(($participant->status->value ?? $participant->status) !== $status)
-                                <form method="POST" action="{{ route('events.participants.manage.status', [$event->routeIdentifier(), $participant->id]) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="{{ $status }}"><button class="btn btn--secondary btn--sm" type="submit">{{ $label }}</button></form>
-                                @endif
-                            @endforeach
-                        </div>
-                    </div>
-                </article>
-            @empty<p class="form-hint">Список пуст.</p>@endforelse
-        </div>
-    @endforeach
+    <div
+        data-event-participants-surface
+        data-max-participants="{{ $event->max_participants }}"
+    >
+        <p class="form-hint">Подтверждено: <strong data-event-confirmed-count>{{ $confirmedParticipants->count() }}{{ $event->max_participants ? '/'.$event->max_participants : '' }}</strong></p>
+        @foreach([
+            ['status' => 'confirmed', 'title' => 'Идут', 'items' => $confirmedParticipants],
+            ['status' => 'tentative', 'title' => 'Думают', 'items' => $tentativeParticipants],
+            ['status' => 'left', 'title' => 'Не идут', 'items' => $declinedParticipants],
+        ] as $group)
+            <section class="mb-4" data-event-participant-group="{{ $group['status'] }}" @if($group['items']->isEmpty()) hidden @endif>
+                <h3 data-event-participant-group-heading data-title="{{ $group['title'] }}">{{ $group['title'] }} ({{ $group['items']->count() }})</h3>
+                <div class="event-participants__row">
+                    @foreach($group['items'] as $participant)
+                        <article class="event-participant-chip" data-event-participant-id="{{ $participant->id }}">
+                            <div class="event-participant-chip__identity">
+                                <strong>{{ $name($participant) }}</strong>
+                                <span>{{ $group['title'] }}</span>
+                            </div>
+                            <div class="event-participant-chip__status-actions">
+                                @foreach(['confirmed' => 'Идёт', 'tentative' => 'Думает', 'left' => 'Не идёт'] as $status => $label)
+                                    @if(($participant->status->value ?? $participant->status) !== $status)
+                                    <form method="POST" action="{{ route('events.participants.manage.status', [$event->routeIdentifier(), $participant->id]) }}" data-event-participant-status-form data-target-label="{{ $label }}">
+                                        @csrf @method('PATCH')
+                                        <input type="hidden" name="status" value="{{ $status }}">
+                                        <button class="btn btn--secondary event-participant-chip__status-button" type="submit">{{ $label }}</button>
+                                    </form>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+            </section>
+        @endforeach
+    </div>
 </section>
 @endif
 
