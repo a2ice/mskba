@@ -114,17 +114,52 @@ final class TeamInvitationController extends Controller
         ], 201);
     }
 
-    public function respond(int $membership, Request $request, TeamRosterService $rosters): RedirectResponse
-    {
-        $data = $request->validate(['decision' => ['required', Rule::in(['accept', 'decline'])]]);
+    public function respond(
+        int $membership,
+        Request $request,
+        TeamRosterService $rosters,
+        CurrentActorResolver $actors,
+        TeamManagementAccess $access,
+    ): JsonResponse|RedirectResponse {
+        $data = $request->validate(['decision' => ['required', Rule::in(['accept', 'decline', 'revoke'])]]);
         $user = $request->user();
         abort_if($user->isBlocked() || $user->trashed(), 403);
+
         $member = ContractMembership::query()
             ->with(['contract', 'sportLineupAssignments'])
-            ->whereKey($membership)->where('user_id', $user->id)
+            ->whereKey($membership)
             ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
-            ->where('invitation_status', TeamInvitationStatusEnum::PENDING->value)->firstOrFail();
+            ->firstOrFail();
         $team = Team::query()->with('sportProfiles.lineupMembers')->findOrFail($member->scope_id);
+
+        if ($data['decision'] === 'revoke') {
+            $actor = $actors->resolveForRequest($request);
+            abort_if($actor === null || ! $access->allows($team, $actor, TeamPermissionEnum::INVITE_MEMBERS), 403);
+
+            if ($member->invitation_status !== TeamInvitationStatusEnum::PENDING) {
+                return response()->json(['message' => 'Отозвать можно только ожидающее приглашение.'], 422);
+            }
+
+            DB::transaction(function () use ($member): void {
+                $member->contract->update(['status' => ContractStatusEnum::INACTIVE]);
+                $member->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
+            });
+
+            return response()->json([
+                'message' => 'Приглашение отозвано.',
+                'membership_id' => $member->id,
+            ]);
+        }
+
+        abort_if($member->user_id !== $user->id, 403);
+
+        if ($member->invitation_status === TeamInvitationStatusEnum::REVOKED) {
+            return back()->with('error', 'Приглашение было отозвано.');
+        }
+
+        if ($member->invitation_status !== TeamInvitationStatusEnum::PENDING) {
+            return back()->with('error', 'Приглашение уже обработано.');
+        }
 
         DB::transaction(function () use ($member, $team, $data, $rosters): void {
             $accepted = $data['decision'] === 'accept';
