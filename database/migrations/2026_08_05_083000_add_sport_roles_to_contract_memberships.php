@@ -17,8 +17,13 @@ return new class extends Migration
             ->orderBy('id')
             ->eachById(function ($membership): void {
                 $role = $membership->member_type;
-                if ($role === null && $membership->access_level === 'coach') {
-                    $role = 'coach';
+                if ($role === null) {
+                    $role = match ($membership->access_level) {
+                        'coach' => 'coach',
+                        'responsible' => 'manager',
+                        'owner', 'captain', 'player' => 'player',
+                        default => null,
+                    };
                 }
                 if ($role === null) {
                     return;
@@ -26,7 +31,10 @@ return new class extends Migration
 
                 DB::table('contract_memberships')
                     ->where('id', $membership->id)
-                    ->update(['sport_roles' => json_encode([$role], JSON_THROW_ON_ERROR)]);
+                    ->update([
+                        'member_type' => $role,
+                        'sport_roles' => json_encode([$role], JSON_THROW_ON_ERROR),
+                    ]);
             });
     }
 
