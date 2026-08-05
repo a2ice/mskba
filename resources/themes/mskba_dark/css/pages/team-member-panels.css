@@ -3,6 +3,22 @@
     gap: 14px;
 }
 
+.team-member-management-card + .team-member-management-card {
+    position: relative;
+    margin-top: 18px;
+    padding-top: 26px;
+}
+
+.team-member-management-card + .team-member-management-card::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.16);
+    content: "";
+}
+
 .team-member-management-card > .team-person {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -95,6 +111,11 @@
 }
 
 @media (max-width: 560px) {
+    .team-member-management-card + .team-member-management-card {
+        margin-top: 14px;
+        padding-top: 22px;
+    }
+
     .team-member-management-card > .team-person {
         grid-template-columns: 64px minmax(0, 1fr) auto;
         gap: 12px;
