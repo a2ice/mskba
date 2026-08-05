@@ -27,8 +27,6 @@ final class CoordinationInterfaceServiceProvider extends ServiceProvider
                         : null,
                     'contextManagementLabel' => 'Управление опросом',
                     'canManage' => false,
-                    'canCreateEvent' => false,
-                    'canApplyEventChange' => false,
                 ]);
             }
         });
