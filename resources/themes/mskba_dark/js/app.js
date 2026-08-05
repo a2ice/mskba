@@ -1,6 +1,7 @@
 import $ from 'jquery';
 import '../css/pages/team-roster-save.css';
 import '../css/pages/team-pending-invitations.css';
+import '../css/pages/team-member-panels.css';
 
 window.$ = $;
 window.jQuery = $;
@@ -32,7 +33,6 @@ import './features/team-catalog.js';
 import './features/team-name-suggestion.js';
 import './features/team-pending-invitations.js';
 import './features/team-management.js';
-import './features/team-permission-modals.js';
 import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
