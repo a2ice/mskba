@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import '../css/pages/team-roster-save.css';
 
 window.$ = $;
 window.jQuery = $;
