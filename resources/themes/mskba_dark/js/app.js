@@ -27,6 +27,7 @@ import './features/address-suggest.js';
 import './features/venue-map.js';
 import './features/venue-catalog.js';
 import './features/team-catalog.js';
+import './features/team-name-suggestion.js';
 import './features/team-management.js';
 import './features/venue-show.js';
 import './features/venue-schedule-form.js';

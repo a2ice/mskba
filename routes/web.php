@@ -320,6 +320,7 @@ Route::prefix('teams')->group(function () {
     Route::get('/', [TeamController::class, 'index'])->name('teams.index')->defaults('breadcrumb', 'Команды');
     Route::middleware('auth')->group(function () {
         Route::get('/create', [TeamController::class, 'create'])->middleware('can:team-create')->name('teams.create')->defaults('breadcrumb', 'Новая команда');
+        Route::get('/name-suggestion', [TeamController::class, 'suggestName'])->middleware(['can:team-create', 'throttle:60,1'])->name('teams.name-suggestion');
         Route::post('/', [TeamController::class, 'store'])->middleware('can:team-create')->name('teams.store');
         Route::get('/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit')->defaults('breadcrumb', 'Управление командой');
         Route::put('/{team}', [TeamController::class, 'update'])->name('teams.update');

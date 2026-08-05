@@ -22,6 +22,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'temporary_for_event_id',
     'created_by_actor_id',
     'name',
+    'base_name',
+    'normalized_name',
+    'name_sequence',
     'alias',
     'description',
     'status',
@@ -87,6 +90,7 @@ class Team extends Model
     {
         return [
             'status' => TeamStatusEnum::class,
+            'name_sequence' => 'integer',
         ];
     }
 }

@@ -16,6 +16,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Team\Application\Services\TeamLogoManager;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Application\Services\TeamNameAllocator;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
@@ -32,6 +33,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 final class TeamController extends Controller
@@ -92,9 +94,10 @@ final class TeamController extends Controller
         Request $request,
         CurrentActorResolver $actors,
         CyrillicTransliterator $transliterator,
+        TeamNameAllocator $names,
     ): RedirectResponse {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
+            'name' => ['required', 'string', 'max:140'],
             'description' => ['nullable', 'string', 'max:5000'],
             'sport_types' => ['nullable', 'array', 'min:1'],
             'sport_types.*' => ['required', 'distinct', Rule::enum(TeamSportTypeEnum::class)],
@@ -104,42 +107,72 @@ final class TeamController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor?->user_id === null, 403);
 
-        $team = DB::transaction(function () use ($data, $sportTypes, $actor, $transliterator): Team {
-            $base = Str::slug($transliterator->transliterate($data['name'])) ?: 'team';
-            $alias = $base;
-            $suffix = 2;
-            while (Team::withTrashed()->where('alias', $alias)->exists()) {
-                $alias = "{$base}-{$suffix}";
-                $suffix++;
-            }
+        $hadDuplicate = false;
+        try {
+            $team = DB::transaction(function () use ($data, $sportTypes, $actor, $transliterator, $names, &$hadDuplicate): Team {
+                $allocatedName = $names->allocate($data['name'], $actor->user_id);
+                $hadDuplicate = $allocatedName['has_duplicate'];
+                $base = Str::slug($transliterator->transliterate($allocatedName['name'])) ?: 'team';
+                unset($allocatedName['has_duplicate']);
+                $alias = $base;
+                $suffix = 2;
+                while (Team::withTrashed()->where('alias', $alias)->exists()) {
+                    $alias = "{$base}-{$suffix}";
+                    $suffix++;
+                }
 
-            $team = Team::create([
-                ...$data,
-                'alias' => $alias,
-                'created_by_actor_id' => $actor->id,
-                'status' => TeamStatusEnum::ACTIVE,
-            ]);
-            $this->syncSportTypes($team, $sportTypes);
-            $contract = Contract::create([
-                'family' => ContractFamilyEnum::MEMBERSHIP,
-                'name' => "Владелец команды «{$team->name}»",
-                'status' => ContractStatusEnum::ACTIVE,
-                'assigned_by' => $actor->user_id,
-                'assigner' => UserParticipationRoleAssignerEnum::USER,
-            ]);
-            $contract->membership()->create([
-                'scope_type' => ContractMembershipScopeTypeEnum::TEAM,
-                'scope_id' => $team->id,
-                'user_id' => $actor->user_id,
-                'access_level' => TeamMembershipAccessLevelEnum::OWNER->value,
-                'member_type' => TeamMemberTypeEnum::MANAGER,
-                'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
-            ]);
+                $team = Team::create([
+                    ...$data,
+                    ...$allocatedName,
+                    'alias' => $alias,
+                    'created_by_actor_id' => $actor->id,
+                    'status' => TeamStatusEnum::ACTIVE,
+                ]);
+                $this->syncSportTypes($team, $sportTypes);
+                $contract = Contract::create([
+                    'family' => ContractFamilyEnum::MEMBERSHIP,
+                    'name' => "Владелец команды «{$team->name}»",
+                    'status' => ContractStatusEnum::ACTIVE,
+                    'assigned_by' => $actor->user_id,
+                    'assigner' => UserParticipationRoleAssignerEnum::USER,
+                ]);
+                $contract->membership()->create([
+                    'scope_type' => ContractMembershipScopeTypeEnum::TEAM,
+                    'scope_id' => $team->id,
+                    'user_id' => $actor->user_id,
+                    'access_level' => TeamMembershipAccessLevelEnum::OWNER->value,
+                    'member_type' => TeamMemberTypeEnum::MANAGER,
+                    'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
+                ]);
 
-            return $team;
-        });
+                return $team;
+            });
+        } catch (InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['name' => $exception->getMessage()]);
+        }
 
-        return redirect()->route('teams.show', $team->routeIdentifier())->with('status', 'Команда создана.');
+        $message = $hadDuplicate
+            ? "Команда создана как «{$team->name}», поскольку исходное название уже используется."
+            : 'Команда создана.';
+
+        return redirect()->route('teams.show', $team->routeIdentifier())->with('status', $message);
+    }
+
+    public function suggestName(Request $request, TeamNameAllocator $names, CurrentActorResolver $actors): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['nullable', 'string', 'max:140'],
+            'except' => ['nullable', 'integer', 'exists:teams,id'],
+        ]);
+        $except = isset($data['except']) ? Team::query()->find($data['except']) : null;
+
+        $actor = $actors->resolveForRequest($request);
+
+        return response()->json($names->suggest(
+            (string) ($data['name'] ?? ''),
+            $except,
+            $actor?->user_id,
+        ));
     }
 
     public function show(
@@ -231,7 +264,7 @@ final class TeamController extends Controller
         ]);
     }
 
-    public function update(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): RedirectResponse
+    public function update(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access, TeamNameAllocator $names): RedirectResponse
     {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
@@ -239,7 +272,7 @@ final class TeamController extends Controller
         $canModerateStatus = $actor->user?->isAdmin() ?? false;
         abort_if(! $canModerateStatus && $request->exists('status'), 403, 'Изменять статус команды может только администратор.');
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:150'],
+            'name' => ['required', 'string', 'max:140'],
             'description' => ['nullable', 'string', 'max:5000'],
             'status' => [$canModerateStatus ? 'required' : 'missing', Rule::enum(TeamStatusEnum::class)],
             'sport_types' => ['nullable', 'array', 'min:1'],
@@ -250,7 +283,7 @@ final class TeamController extends Controller
         $sportTypes = $sportTypes ?: [TeamSportTypeEnum::BASKETBALL->value];
         unset($data['sport_types']);
         try {
-            DB::transaction(function () use ($item, $data, $sportTypes): void {
+            DB::transaction(function () use ($item, $data, $sportTypes, $names): void {
                 $lockedTeam = Team::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
                 if ($data['status'] === TeamStatusEnum::ACTIVE->value) {
                     $hasManager = $lockedTeam->memberships()
@@ -264,6 +297,23 @@ final class TeamController extends Controller
                     if (! $hasManager) {
                         throw new InvalidArgumentException('Для активной постоянной команды нужен владелец, ответственный или капитан.');
                     }
+                    $requestedNormalized = $names->normalize($data['name']);
+                    if ($lockedTeam->status !== TeamStatusEnum::ACTIVE || $lockedTeam->normalized_name !== $requestedNormalized) {
+                        $creatorUserId = (int) $lockedTeam->createdByActor()->value('user_id');
+                        $allocatedName = $names->allocate($data['name'], $creatorUserId, $lockedTeam);
+                        unset($allocatedName['has_duplicate']);
+                        $data = [...$data, ...$allocatedName];
+                    } else {
+                        $data['base_name'] = $names->clean($data['name']);
+                        $data['name'] = $lockedTeam->name_sequence > 1
+                            ? "{$data['base_name']} №{$lockedTeam->name_sequence}"
+                            : $data['base_name'];
+                    }
+                } else {
+                    $data['base_name'] = $names->clean($data['name']);
+                    $data['normalized_name'] = $names->normalize($data['name']);
+                    $data['name_sequence'] = null;
+                    $data['name'] = $data['base_name'];
                 }
                 $lockedTeam->update($data);
                 $this->syncSportTypes($lockedTeam, $sportTypes);

@@ -20,6 +20,55 @@ final class TeamRosterAndInvitationsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_active_permanent_team_names_receive_suffixes_and_same_creator_cannot_duplicate(): void
+    {
+        $firstCreator = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $secondCreator = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        $this->actingAs($firstCreator)
+            ->get(route('teams.create'))
+            ->assertOk()
+            ->assertSee('Названия команд могут совпадать.')
+            ->assertSee('Название №2');
+        $this->post(route('teams.store'), ['name' => 'Chicago Bulls'])->assertRedirect();
+        $first = Team::query()->where('name', 'Chicago Bulls')->firstOrFail();
+        $this->assertSame('Chicago Bulls', $first->name);
+        $this->assertSame('chicago bulls', $first->normalized_name);
+        $this->assertSame(1, $first->name_sequence);
+        $this->getJson(route('teams.name-suggestion', ['name' => 'CHICAGO BULLS']))
+            ->assertOk()
+            ->assertJsonPath('owned_by_current_user', true);
+
+        $suggestion = $this->actingAs($secondCreator)->getJson(route('teams.name-suggestion', [
+            'name' => '  CHICAGO   BULLS ',
+        ]));
+        $suggestion->assertOk()
+            ->assertJsonPath('has_duplicate', true)
+            ->assertJsonPath('owned_by_current_user', false)
+            ->assertJsonPath('suggested_name', 'CHICAGO BULLS №2');
+
+        $this->post(route('teams.store'), ['name' => '  CHICAGO   BULLS '])->assertRedirect();
+        $second = Team::query()->where('name_sequence', 2)->firstOrFail();
+        $this->assertSame('CHICAGO BULLS №2', $second->name);
+        $this->assertSame(2, $second->name_sequence);
+
+        $this->actingAs($firstCreator)
+            ->post(route('teams.store'), ['name' => 'chicago bulls'])
+            ->assertSessionHasErrors('name');
+
+        Team::query()->whereIn('id', [$first->id, $second->id])->update([
+            'status' => TeamStatusEnum::DRAFT->value,
+            'name_sequence' => null,
+        ]);
+        $thirdCreator = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($thirdCreator)
+            ->post(route('teams.store'), ['name' => 'Chicago Bulls'])
+            ->assertRedirect();
+        $third = Team::query()->where('status', TeamStatusEnum::ACTIVE->value)->firstOrFail();
+        $this->assertSame('Chicago Bulls', $third->name);
+        $this->assertSame(1, $third->name_sequence);
+    }
+
     public function test_only_admin_can_change_status_and_creator_delete_moves_unbound_team_to_draft(): void
     {
         $this->seed(GameLifecycleDemoSeeder::class);

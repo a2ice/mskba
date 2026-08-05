@@ -46,7 +46,7 @@ class GameLifecycleDemoSeederTest extends TestCase
             ->assertOk()
             ->assertSee('[DEMO] Красные')
             ->assertSee('[DEMO] Синие')
-            ->assertSee('team-catalog-card__tags', false)
+            ->assertDontSee('team-catalog-card__tags', false)
             ->assertSee('Тренер: Демо Организатор')
             ->assertSee('Капитан: Игрок 1 Красные')
             ->assertSee('ti-user-cog', false)

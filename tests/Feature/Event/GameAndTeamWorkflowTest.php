@@ -215,6 +215,14 @@ final class GameAndTeamWorkflowTest extends TestCase
             'side_b_user_ids' => [$participantB->id],
         ];
         $this->actingAs($organizer)
+            ->post(route('events.games.store', $training->routeIdentifier()), [
+                ...$payload,
+                'side_a_name' => ' Оранжевые ',
+                'side_b_name' => 'оранжевые',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Названия команд должны отличаться.');
+        $this->actingAs($organizer)
             ->post(route('events.games.store', $training->routeIdentifier()), $payload)
             ->assertRedirect()
             ->assertSessionHasNoErrors()

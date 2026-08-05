@@ -774,12 +774,14 @@ final class GameManagementService
     /** @return array{0: string, 1: string} */
     private function normalizeSideNames(string $sideAName, string $sideBName): array
     {
-        $sideAName = trim($sideAName);
-        $sideBName = trim($sideBName);
+        $sideAName = trim(preg_replace('/\s+/u', ' ', $sideAName) ?? $sideAName);
+        $sideBName = trim(preg_replace('/\s+/u', ' ', $sideBName) ?? $sideBName);
         if ($sideAName === '' || $sideBName === '') {
             throw new InvalidArgumentException('Укажите названия обеих команд.');
         }
-        if (mb_strtolower($sideAName) === mb_strtolower($sideBName)) {
+        $normalizedA = str_replace('ё', 'е', mb_strtolower($sideAName));
+        $normalizedB = str_replace('ё', 'е', mb_strtolower($sideBName));
+        if ($normalizedA === $normalizedB) {
             throw new InvalidArgumentException('Названия команд должны отличаться.');
         }
 
