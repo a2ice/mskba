@@ -83,6 +83,38 @@ final class TeamOwnerSportRoleProtectionTest extends TestCase
         $this->assertSame(['coach'], $ownerMembership->fresh()->sportRoleValues());
     }
 
+    public function test_public_team_blocks_follow_multiple_sport_roles(): void
+    {
+        $owner = User::factory()->create([
+            'username' => 'multi-role-owner',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $this->actingAs($owner)->post(route('teams.store'), [
+            'name' => 'Команда множественных ролей',
+            'creator_sport_roles' => ['manager'],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $team = Team::query()->where('name', 'Команда множественных ролей')->firstOrFail();
+        $membership = $team->memberships()->where('user_id', $owner->id)->firstOrFail();
+
+        $this->put(route('teams.members.sports.update', [
+            $team->routeIdentifier(),
+            $membership->id,
+        ]), [
+            'sport_roles' => ['player', 'coach', 'manager'],
+            'is_captain' => '1',
+            'is_default_starter' => '1',
+        ])->assertSessionHas('status');
+
+        $this->get(route('teams.show', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('multi-role-owner')
+            ->assertDontSee('Тренер пока не назначен.')
+            ->assertDontSee('Менеджерская роль пока никому не назначена.')
+            ->assertSee('Капитан');
+    }
+
     public function test_team_status_is_rejected_by_user_update_even_for_system_admin(): void
     {
         $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
