@@ -1,0 +1,72 @@
+.team-member-management-card {
+    display: grid;
+    gap: 14px;
+}
+
+.team-member-panel {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.team-member-panel__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+}
+
+.team-member-panel__summary::-webkit-details-marker {
+    display: none;
+}
+
+.team-member-panel__toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border: 1px solid rgba(255, 116, 23, 0.72);
+    border-radius: 50%;
+    color: var(--accent-text);
+    background: rgba(255, 116, 23, 0.08);
+    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.team-member-panel[open] .team-member-panel__toggle {
+    transform: rotate(180deg);
+    color: #fff;
+    background: rgba(255, 116, 23, 0.2);
+}
+
+.team-member-panel__body {
+    padding: 0 0 18px;
+}
+
+.team-member-access-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+@media (max-width: 560px) {
+    .team-member-panel__summary {
+        font-size: 18px;
+    }
+
+    .team-member-panel__toggle {
+        width: 32px;
+        height: 32px;
+        flex-basis: 32px;
+    }
+
+    .team-member-access-form__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
