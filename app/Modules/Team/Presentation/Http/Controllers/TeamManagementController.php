@@ -55,6 +55,8 @@ final class TeamManagementController extends Controller
             'activeMemberships' => $activeMemberships,
             'pendingMemberships' => $pendingMemberships,
             'startingLineups' => $startingLineups,
+            'canEditSettings' => $access->allows($item, $actor, TeamPermissionEnum::EDIT_SETTINGS),
+            'canManageJoinRequests' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_JOIN_REQUESTS),
             'canManageRoster' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROSTER),
             'canInviteMembers' => $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS),
             'canManageRoles' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROLES),
