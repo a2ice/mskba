@@ -40,6 +40,10 @@ final class TeamManagementController extends Controller
             ->filter(fn ($membership) => $membership->contract?->status === ContractStatusEnum::ACTIVE
                 && $membership->invitation_status === TeamInvitationStatusEnum::ACCEPTED)
             ->values();
+        $pendingMemberships = $item->memberships
+            ->filter(fn ($membership) => $membership->invitation_status === TeamInvitationStatusEnum::PENDING)
+            ->sortByDesc('updated_at')
+            ->values();
         $players = $activeMemberships
             ->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::PLAYER))
             ->sortBy('id')
@@ -49,6 +53,7 @@ final class TeamManagementController extends Controller
         return ThemeResolver::page('teams.management', [
             'team' => $item,
             'activeMemberships' => $activeMemberships,
+            'pendingMemberships' => $pendingMemberships,
             'startingLineups' => $startingLineups,
             'canManageRoster' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROSTER),
             'canInviteMembers' => $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS),
