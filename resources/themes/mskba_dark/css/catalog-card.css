@@ -83,6 +83,13 @@
         margin-bottom: 7px;
     }
 
+    .catalog-card .catalog-card__image {
+        align-self: start;
+        width: 100%;
+        min-height: 0;
+        aspect-ratio: 1 / 1;
+    }
+
     .catalog-card .catalog-card__badge {
         padding: 4px 7px;
         font-size: 10px;

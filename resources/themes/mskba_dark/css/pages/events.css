@@ -2424,7 +2424,6 @@ body.telegram-mini-app .event-show {
     .teams-catalog-filters__actions { justify-content: stretch; }
     .teams-catalog-filters__actions .btn { flex: 1 1 0; }
     .team-catalog-card { grid-template-columns: 105px minmax(0, 1fr); gap: 14px; min-height: 138px; }
-    .team-catalog-card__image { min-height: 118px; }
     .team-catalog-card__badges { margin-bottom: 9px; }
     .team-catalog-card__badges .is-sport__full { display: none; }
     .team-catalog-card__badges .is-sport__short { display: inline; }
@@ -2526,8 +2525,7 @@ body.telegram-mini-app .event-show {
     .events-catalog-filters__advanced { grid-template-columns: 1fr; }
     .events-catalog-filters__actions { justify-content: stretch; }
     .events-catalog-filters__actions .btn { flex: 1 1 0; }
-    .event-catalog-card { grid-template-areas: "image content" "meta meta" "games games"; grid-template-columns: 118px minmax(0, 1fr); grid-template-rows: 104px auto auto; column-gap: 12px; row-gap: 10px; min-height: 0; }
-    .event-catalog-card__image { min-height: 0; }
+    .event-catalog-card { grid-template-areas: "image content" "meta meta" "games games"; grid-template-columns: 118px minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: 12px; row-gap: 10px; min-height: 0; }
     .event-catalog-card__content { align-self: start; }
     .event-catalog-card__content .catalog-card__title { margin-bottom: 0; }
     .event-catalog-card__meta { display: grid; grid-template-columns: 1fr; gap: 5px; }
