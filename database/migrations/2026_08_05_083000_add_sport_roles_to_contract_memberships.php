@@ -36,6 +36,35 @@ return new class extends Migration
                         'sport_roles' => json_encode([$role], JSON_THROW_ON_ERROR),
                     ]);
             });
+
+        DB::table('contract_memberships')
+            ->where('scope_type', 'team')
+            ->distinct()
+            ->orderBy('scope_id')
+            ->pluck('scope_id')
+            ->each(function ($teamId): void {
+                $activeMembers = DB::table('contract_memberships as memberships')
+                    ->join('contracts', 'contracts.id', '=', 'memberships.contract_id')
+                    ->where('memberships.scope_type', 'team')
+                    ->where('memberships.scope_id', $teamId)
+                    ->where('memberships.invitation_status', 'accepted')
+                    ->where('contracts.status', 'active');
+
+                if ((clone $activeMembers)->where('memberships.is_captain', true)->exists()) {
+                    return;
+                }
+
+                $firstPlayerId = (clone $activeMembers)
+                    ->where('memberships.member_type', 'player')
+                    ->orderBy('memberships.id')
+                    ->value('memberships.id');
+
+                if ($firstPlayerId !== null) {
+                    DB::table('contract_memberships')
+                        ->where('id', $firstPlayerId)
+                        ->update(['is_captain' => true]);
+                }
+            });
     }
 
     public function down(): void
