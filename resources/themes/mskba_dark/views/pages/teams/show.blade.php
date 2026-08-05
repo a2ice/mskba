@@ -1,6 +1,6 @@
 @extends('theme::layouts.section-sidebar', [
     'title' => $team->name, 'sectionId' => 'teams', 'sectionClass' => 'teams-section',
-    'contentTitle' => $team->name, 'contentSubtitle' => $team->description,
+    'contentTitle' => $team->name, 'contentSubtitle' => null,
 ])
 @php
     $memberName = static fn ($membership) => trim(implode(' ', array_filter([
@@ -33,14 +33,20 @@
     @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
     @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
-    <header class="team-profile__header">
+    <header class="team-profile__header team-profile__header--overview">
         <img class="team-profile__logo" src="{{ $team->logo?->publicUrl() ?? asset('images/team-placeholder.webp') }}" alt="Логотип команды {{ $team->name }}">
-        <div>
+        <div class="team-profile__header-content">
             <div class="team-profile__header-statuses">
                 <span class="team-profile__status">{{ $team->status->label() }}</span>
+                @foreach($team->sportProfiles as $profile)
+                    <span class="team-profile__sport" title="{{ $profile->sport_type->label() }}" aria-label="{{ $profile->sport_type->label() }}">
+                        <span class="team-profile__sport-full">{{ $profile->sport_type->label() }}</span>
+                        <span class="team-profile__sport-short">{{ $profile->sport_type->shortLabel() }}</span>
+                    </span>
+                @endforeach
                 <span @class(['team-profile__status', 'is-incomplete' => ! $hasCompleteRoster])>{{ $hasCompleteRoster ? 'Состав укомплектован' : 'Неполный состав' }}</span>
             </div>
-            <div class="team-profile__sports">@foreach($team->sportProfiles as $profile)<span>{{ $profile->sport_type->label() }}</span>@endforeach</div>
+            <p class="team-profile__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
         </div>
     </header>
 
