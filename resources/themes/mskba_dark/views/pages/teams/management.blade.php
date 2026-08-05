@@ -16,9 +16,7 @@
     $roleText = static fn ($membership): string => $membership->sportRoles()
         ->map(fn ($role) => $role->label())->join(', ') ?: 'Без спортивной роли';
     $canEditSportRoles = static fn ($membership): bool => $canManageRoles
-        && ($membership->access_level !== 'owner'
-            || $membership->user_id === $currentUserId
-            || $currentUserIsAdmin);
+        && ($membership->access_level !== 'owner' || $membership->user_id === $currentUserId);
 @endphp
 @section('section-sidebar')
 <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команда</h2><ul class="sidebar-nav nav flex-column">
@@ -75,11 +73,11 @@
                 <header><div><strong>{{ $lineup['label'] }}</strong><span>Основа: <b data-starter-count>{{ $lineup['starters']->count() }}</b> / {{ $lineup['size'] }}</span></div>@if($canManageRoster)<button class="btn btn--primary btn--sm" type="button" data-roster-save>Сохранить</button>@endif</header>
                 <div class="team-form-feedback" data-team-form-feedback hidden></div>
                 <div class="team-roster-pool"><div class="team-roster-pool__heading"><span>Основной состав</span><b>{{ $lineup['size'] }} мест</b></div><div class="team-roster-dropzone" data-roster-zone="starter">
-                    @foreach($lineup['starters'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'team')) @endforeach
+                    @foreach($lineup['starters'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'canManagePermissions', 'canRemoveMembers', 'currentUserId', 'team')) @endforeach
                     @if($lineup['starters']->isEmpty())<p class="team-roster-dropzone__empty">Перенесите сюда основных игроков</p>@endif
                 </div></div>
                 <div class="team-roster-pool team-roster-pool--reserve"><div class="team-roster-pool__heading"><span>Запасные</span><b><span data-reserve-count>{{ $lineup['reserves']->count() }}</span> игроков</b></div><div class="team-roster-dropzone" data-roster-zone="reserve">
-                    @foreach($lineup['reserves'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'team')) @endforeach
+                    @foreach($lineup['reserves'] as $player) @include('theme::pages.teams.partials.roster-player', compact('player', 'memberName', 'avatarUrl', 'isCaptain', 'canManageRoster', 'canManageRoles', 'canManagePermissions', 'canRemoveMembers', 'currentUserId', 'team')) @endforeach
                     @if($lineup['reserves']->isEmpty())<p class="team-roster-dropzone__empty">Запас пока пуст</p>@endif
                 </div></div>
             </section>
