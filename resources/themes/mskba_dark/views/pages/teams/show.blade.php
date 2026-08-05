@@ -7,6 +7,7 @@
     $coachRole = \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::COACH;
     $managerRole = \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::MANAGER;
     $sportRoleCases = \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::cases();
+    $currentUserIsAdmin = auth()->user()?->isAdmin() ?? false;
     $memberName = static fn ($membership) => trim(implode(' ', array_filter([$membership->user->profile?->first_name, $membership->user->profile?->last_name]))) ?: $membership->user->username;
     $avatarUrl = static fn ($membership): string => $membership->user->profile?->activeAvatar?->publicUrl()
         ?? asset($membership->user->profile?->gender === \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE ? 'images/blank/avatar/avatar-female.png' : 'images/blank/avatar/avatar-male.png');
@@ -14,6 +15,10 @@
     $coaches = $activeMemberships->filter(fn ($membership) => $membership->hasSportRole($coachRole))->values();
     $managers = $activeMemberships->filter(fn ($membership) => $membership->hasSportRole($managerRole))->values();
     $roleText = static fn ($membership): string => $membership->sportRoles()->map(fn ($role) => $role->label())->join(', ') ?: 'Без спортивной роли';
+    $canEditSportRoles = static fn ($membership): bool => $canManageRoles
+        && ($membership->access_level !== 'owner'
+            || $membership->user_id === $currentUserId
+            || $currentUserIsAdmin);
 @endphp
 @section('section-sidebar')
 <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команда</h2><ul class="sidebar-nav nav flex-column">
@@ -34,35 +39,42 @@
 
     <section class="team-profile__section" aria-labelledby="team-coaches-title">
         <div class="team-profile__section-heading"><i class="ti ti-user-cog"></i><div><span>Тренерский штаб</span><h2 id="team-coaches-title">Тренеры</h2></div></div>
-        <div class="team-coaches">@forelse($coaches as $coach)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($coach) }}" alt=""><div><strong>{{ $memberName($coach) }}</strong><span>{{ $roleText($coach) }}</span></div>@if($canManageRoles)<a class="team-manager-contract__edit" href="#team-sport-role-{{ $coach->id }}" aria-label="Изменить роли {{ $memberName($coach) }}"><i class="ti ti-settings" aria-hidden="true"></i></a>@endif</div>@empty<p class="team-profile__empty">Тренер пока не назначен.</p>@endforelse</div>
+        <div class="team-coaches">@forelse($coaches as $coach)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($coach) }}" alt=""><div><strong>{{ $memberName($coach) }}</strong><span>{{ $roleText($coach) }}</span></div>@if($canEditSportRoles($coach))<a class="team-manager-contract__edit" href="#team-sport-role-{{ $coach->id }}" aria-label="Изменить роли {{ $memberName($coach) }}"><i class="ti ti-settings" aria-hidden="true"></i></a>@endif</div>@empty<p class="team-profile__empty">Тренер пока не назначен.</p>@endforelse</div>
     </section>
 
     <section class="team-profile__section" aria-labelledby="team-managers-title">
         <div class="team-profile__section-heading"><i class="ti ti-briefcase"></i><div><span>Организация команды</span><h2 id="team-managers-title">Менеджеры</h2></div></div>
-        <div class="team-coaches">@forelse($managers as $manager)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($manager) }}" alt=""><div><strong>{{ $memberName($manager) }}</strong><span>{{ $roleText($manager) }}</span></div>@if($canManageRoles)<a class="team-manager-contract__edit" href="#team-sport-role-{{ $manager->id }}" aria-label="Изменить роли {{ $memberName($manager) }}"><i class="ti ti-settings" aria-hidden="true"></i></a>@endif</div>@empty<p class="team-profile__empty">Менеджерская роль пока никому не назначена.</p>@endforelse</div>
+        <div class="team-coaches">@forelse($managers as $manager)<div class="team-person team-person--coach"><img src="{{ $avatarUrl($manager) }}" alt=""><div><strong>{{ $memberName($manager) }}</strong><span>{{ $roleText($manager) }}</span></div>@if($canEditSportRoles($manager))<a class="team-manager-contract__edit" href="#team-sport-role-{{ $manager->id }}" aria-label="Изменить роли {{ $memberName($manager) }}"><i class="ti ti-settings" aria-hidden="true"></i></a>@endif</div>@empty<p class="team-profile__empty">Менеджерская роль пока никому не назначена.</p>@endforelse</div>
     </section>
 
     @if($canManageRoles)
     <section class="team-profile__section" aria-labelledby="team-sport-roles-title">
         <div class="team-profile__section-heading"><i class="ti ti-users-cog"></i><div><span>Участие в команде</span><h2 id="team-sport-roles-title">Спортивные роли участников</h2></div></div>
-        <p class="form-hint">Роли не меняют договорные права. Владелец может не иметь спортивной роли и всё равно управлять командой.</p>
+        <p class="form-hint">Роли не меняют договорные права. Спортивные роли владельца может менять только сам владелец или администратор.</p>
         <div class="team-sport-role-list">
             @foreach($activeMemberships as $member)
-            <form id="team-sport-role-{{ $member->id }}" class="section-card mb-3" method="POST" action="{{ route('teams.members.sports.update', [$team->routeIdentifier(), $member->id]) }}">
-                @csrf @method('PUT')
-                <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->access_level === 'owner' ? 'Владелец команды' : $roleText($member) }}</span></div></div>
-                <fieldset class="mt-3"><legend class="form-label">Спортивные роли</legend><div class="d-flex flex-wrap gap-3">
-                    @foreach($sportRoleCases as $role)
-                    <label class="form-check"><input class="form-check-input" type="checkbox" name="sport_roles[]" value="{{ $role->value }}" @checked($member->hasSportRole($role))><span class="form-check-label">{{ $role->label() }}</span></label>
-                    @endforeach
-                </div></fieldset>
-                <div class="d-flex flex-wrap gap-3 mt-3">
-                    <label class="form-check"><input class="form-check-input" type="checkbox" name="is_captain" value="1" @checked($member->is_captain)><span class="form-check-label">Капитан</span></label>
-                    <label class="form-check"><input class="form-check-input" type="checkbox" name="is_default_starter" value="1" @checked($member->is_default_starter)><span class="form-check-label">Стартовый по умолчанию</span></label>
+                @if($canEditSportRoles($member))
+                <form id="team-sport-role-{{ $member->id }}" class="section-card mb-3" method="POST" action="{{ route('teams.members.sports.update', [$team->routeIdentifier(), $member->id]) }}">
+                    @csrf @method('PUT')
+                    <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>{{ $member->access_level === 'owner' ? 'Владелец команды' : $roleText($member) }}</span></div></div>
+                    <fieldset class="mt-3"><legend class="form-label">Спортивные роли</legend><div class="d-flex flex-wrap gap-3">
+                        @foreach($sportRoleCases as $role)
+                        <label class="form-check"><input class="form-check-input" type="checkbox" name="sport_roles[]" value="{{ $role->value }}" @checked($member->hasSportRole($role))><span class="form-check-label">{{ $role->label() }}</span></label>
+                        @endforeach
+                    </div></fieldset>
+                    <div class="d-flex flex-wrap gap-3 mt-3">
+                        <label class="form-check"><input class="form-check-input" type="checkbox" name="is_captain" value="1" @checked($member->is_captain)><span class="form-check-label">Капитан</span></label>
+                        <label class="form-check"><input class="form-check-input" type="checkbox" name="is_default_starter" value="1" @checked($member->is_default_starter)><span class="form-check-label">Стартовый по умолчанию</span></label>
+                    </div>
+                    <p class="form-hint mt-2">Капитан и стартовый участник должны иметь роль «Игрок».</p>
+                    <button class="btn btn--primary btn--sm" type="submit">Сохранить роли</button>
+                </form>
+                @else
+                <div id="team-sport-role-{{ $member->id }}" class="section-card mb-3">
+                    <div class="team-person team-person--manager"><img src="{{ $avatarUrl($member) }}" alt=""><div><strong>{{ $memberName($member) }}</strong><span>Владелец команды · {{ $roleText($member) }}</span></div></div>
+                    <p class="form-hint mt-2">Изменять спортивные роли владельца может только сам владелец или администратор.</p>
                 </div>
-                <p class="form-hint mt-2">Капитан и стартовый участник должны иметь роль «Игрок».</p>
-                <button class="btn btn--primary btn--sm" type="submit">Сохранить роли</button>
-            </form>
+                @endif
             @endforeach
         </div>
     </section>
