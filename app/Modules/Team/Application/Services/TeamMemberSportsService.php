@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Models\Team;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -18,11 +19,12 @@ final class TeamMemberSportsService
         private readonly TeamRosterService $rosters,
     ) {}
 
+    /** @param array<int, TeamMemberTypeEnum|string> $sportRoles */
     public function update(
         Team $team,
         ContractMembership $membership,
         Actor $actor,
-        TeamMemberTypeEnum $memberType,
+        array $sportRoles,
         bool $isCaptain,
         bool $isDefaultStarter,
     ): void {
@@ -30,13 +32,13 @@ final class TeamMemberSportsService
             $team,
             $membership,
             $actor,
-            $memberType,
+            $sportRoles,
             $isCaptain,
             $isDefaultStarter,
         ): void {
             $lockedTeam = Team::query()->lockForUpdate()->findOrFail($team->id);
             if (! $this->access->allows($lockedTeam, $actor, TeamPermissionEnum::MANAGE_ROLES)) {
-                throw new InvalidArgumentException('Недостаточно прав для управления составом команды.');
+                throw new InvalidArgumentException('Недостаточно прав для управления спортивными ролями команды.');
             }
 
             $lockedMembership = $lockedTeam->memberships()
@@ -45,7 +47,13 @@ final class TeamMemberSportsService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($memberType !== TeamMemberTypeEnum::PLAYER && ($isCaptain || $isDefaultStarter)) {
+            $roles = collect($sportRoles)
+                ->map(fn ($role) => $role instanceof TeamMemberTypeEnum ? $role : TeamMemberTypeEnum::from((string) $role))
+                ->unique(fn (TeamMemberTypeEnum $role) => $role->value)
+                ->values();
+            $isPlayer = $roles->contains(TeamMemberTypeEnum::PLAYER);
+
+            if (! $isPlayer && ($isCaptain || $isDefaultStarter)) {
                 throw new InvalidArgumentException('Капитаном и стартовым участником может быть только игрок.');
             }
 
@@ -58,16 +66,30 @@ final class TeamMemberSportsService
             }
 
             $lockedMembership->update([
-                'member_type' => $memberType,
+                'sport_roles' => $roles->map->value->all(),
+                'member_type' => $this->compatiblePrimaryRole($roles),
                 'is_captain' => $isCaptain,
                 'is_default_starter' => $isDefaultStarter,
             ]);
-            if ($memberType === TeamMemberTypeEnum::PLAYER) {
+
+            if ($isPlayer) {
                 $lockedTeam->load('sportProfiles.lineupMembers');
                 $this->rosters->synchronizePlayer($lockedTeam, $lockedMembership->id);
             } else {
                 $lockedMembership->sportLineupAssignments()->delete();
             }
         });
+    }
+
+    /** @param Collection<int, TeamMemberTypeEnum> $roles */
+    private function compatiblePrimaryRole(Collection $roles): ?TeamMemberTypeEnum
+    {
+        foreach ([TeamMemberTypeEnum::PLAYER, TeamMemberTypeEnum::COACH, TeamMemberTypeEnum::MANAGER] as $role) {
+            if ($roles->contains($role)) {
+                return $role;
+            }
+        }
+
+        return null;
     }
 }
