@@ -212,4 +212,18 @@ final class TeamRosterAndInvitationsTest extends TestCase
         $this->get(route('teams.show', $team->routeIdentifier()))
             ->assertOk()->assertSee('Неполный состав');
     }
+
+    public function test_team_catalog_renders_full_and_compact_sport_labels_in_status_row(): void
+    {
+        $this->seed(GameLifecycleDemoSeeder::class);
+
+        $this->get(route('teams.index'))
+            ->assertOk()
+            ->assertSee('class="team-catalog-card__badges"', false)
+            ->assertSee('title="Баскетбол"', false)
+            ->assertSee('title="Стритбол"', false)
+            ->assertSee('class="is-sport__short" aria-hidden="true">5x5', false)
+            ->assertSee('class="is-sport__short" aria-hidden="true">3x3', false)
+            ->assertDontSee('team-catalog-card__tags', false);
+    }
 }

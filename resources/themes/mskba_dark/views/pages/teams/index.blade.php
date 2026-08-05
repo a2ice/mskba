@@ -82,9 +82,17 @@
                             <img src="{{ $team->logo?->publicUrl() ?: asset('images/team-placeholder.webp') }}" alt="Логотип команды {{ $team->name }}">
                         </a>
                         <div class="team-catalog-card__body">
-                            <div class="team-catalog-card__badges"><span>{{ $team->status->label() }}</span>@unless($rosterComplete)<span class="is-incomplete">Неполный состав</span>@endunless</div>
+                            <div class="team-catalog-card__badges">
+                                <span>{{ $team->status->label() }}</span>
+                                @foreach($team->sportProfiles as $profile)
+                                    <span class="is-sport" title="{{ $profile->sport_type->label() }}" aria-label="{{ $profile->sport_type->label() }}">
+                                        <span class="is-sport__full" aria-hidden="true">{{ $profile->sport_type->label() }}</span>
+                                        <span class="is-sport__short" aria-hidden="true">{{ $profile->sport_type->shortLabel() }}</span>
+                                    </span>
+                                @endforeach
+                                @unless($rosterComplete)<span class="is-incomplete">Неполный состав</span>@endunless
+                            </div>
                             <h2><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
-                            <div class="team-catalog-card__tags" aria-label="Дисциплины команды">@foreach($team->sportProfiles as $profile)<span>{{ $profile->sport_type->label() }}</span>@endforeach</div>
                             <p class="team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
                             <p class="team-catalog-card__members"><i class="ti ti-users"></i><span>{{ $team->active_memberships_count }} участников</span></p>
                             <p class="team-catalog-card__members"><i class="ti ti-user-cog"></i><span>Тренер: {{ $memberName($coach) }}</span></p>

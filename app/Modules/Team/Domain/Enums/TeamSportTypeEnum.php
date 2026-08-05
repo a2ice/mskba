@@ -14,4 +14,12 @@ enum TeamSportTypeEnum: string
             self::BASKETBALL => 'Баскетбол',
         };
     }
+
+    public function shortLabel(): string
+    {
+        return match ($this) {
+            self::STREETBALL => '3x3',
+            self::BASKETBALL => '5x5',
+        };
+    }
 }
