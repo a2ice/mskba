@@ -62,7 +62,7 @@ final class TeamInvitationController extends Controller
             TeamMemberTypeEnum::MANAGER => TeamMembershipAccessLevelEnum::RESPONSIBLE,
         };
 
-        DB::transaction(function () use ($item, $data, $actor, $memberType, $accessLevel): void {
+        $membership = DB::transaction(function () use ($item, $data, $actor, $memberType, $accessLevel): ContractMembership {
             $existing = $item->memberships()->where('user_id', $data['user_id'])->lockForUpdate()->first();
             $contract = $existing?->contract;
             if ($contract === null) {
@@ -97,9 +97,21 @@ final class TeamInvitationController extends Controller
                 fn (string $permission) => ['permission' => $permission],
                 $data['permissions'] ?? [],
             ));
+
+            return $existing->fresh();
         });
 
-        return response()->json(['message' => 'Приглашение отправлено.'], 201);
+        $membership->load(['contract.permissions', 'user.profile.activeAvatar']);
+
+        return response()->json([
+            'message' => 'Приглашение отправлено.',
+            'invitation' => [
+                'id' => $membership->id,
+                'html' => view('theme::pages.teams.partials.pending-invitation', [
+                    'invitation' => $membership,
+                ])->render(),
+            ],
+        ], 201);
     }
 
     public function respond(int $membership, Request $request, TeamRosterService $rosters): RedirectResponse
