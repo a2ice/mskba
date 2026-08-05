@@ -41,7 +41,7 @@
 
     @if($canManageRoles)
     <section class="team-profile__section" aria-labelledby="team-sport-roles-title">
-        <div class="team-profile__section-heading"><i class="ti ti-user-cog"></i><div><span>Участие в команде</span><h2 id="team-sport-roles-title">Спортивные роли участников</h2></div></div>
+        <div class="team-profile__section-heading team-profile__section-heading--without-icon"><div><span>Участие в команде</span><h2 id="team-sport-roles-title">Спортивные роли участников</h2></div></div>
         <p class="form-hint">Спортивные роли не изменяют договорные права. Роли владельца может менять только сам владелец.</p>
         <div class="team-sport-role-list">
             @foreach($activeMemberships as $member)
