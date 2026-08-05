@@ -7,6 +7,7 @@ enum TeamInvitationStatusEnum: string
     case PENDING = 'pending';
     case ACCEPTED = 'accepted';
     case DECLINED = 'declined';
+    case REVOKED = 'revoked';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum TeamInvitationStatusEnum: string
             self::PENDING => 'Ожидает подтверждения',
             self::ACCEPTED => 'Участник команды',
             self::DECLINED => 'Отклонено',
+            self::REVOKED => 'Приглашение отозвано',
         };
     }
 }
