@@ -26,7 +26,8 @@ final class TeamMemberSportsController extends Controller
         abort_if($actor === null, 403);
 
         $data = $request->validate([
-            'member_type' => ['required', Rule::enum(TeamMemberTypeEnum::class)],
+            'sport_roles' => ['nullable', 'array'],
+            'sport_roles.*' => ['required', 'distinct', Rule::enum(TeamMemberTypeEnum::class)],
             'is_captain' => ['nullable', 'boolean'],
             'is_default_starter' => ['nullable', 'boolean'],
         ]);
@@ -39,7 +40,7 @@ final class TeamMemberSportsController extends Controller
                 $item,
                 $teamMembership,
                 $actor,
-                TeamMemberTypeEnum::from($data['member_type']),
+                $data['sport_roles'] ?? [],
                 (bool) ($data['is_captain'] ?? false),
                 (bool) ($data['is_default_starter'] ?? false),
             );
@@ -47,6 +48,6 @@ final class TeamMemberSportsController extends Controller
             return back()->withInput()->with('error', $exception->getMessage());
         }
 
-        return back()->with('status', 'Спортивная роль участника обновлена.');
+        return back()->with('status', 'Спортивные роли участника обновлены.');
     }
 }
