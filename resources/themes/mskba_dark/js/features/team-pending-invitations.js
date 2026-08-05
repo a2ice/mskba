@@ -25,6 +25,38 @@ if (root && invitation && pending) {
         if (empty) empty.hidden = total > 0;
     };
 
+    pending.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-pending-invitation-revoke]');
+        if (!button) return;
+        if (!window.confirm('Отозвать приглашение?')) return;
+
+        const card = button.closest('[data-pending-invitation-id]');
+        button.disabled = true;
+
+        try {
+            const response = await fetch(button.dataset.revokeUrl, {
+                method: 'PATCH',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrf,
+                },
+                body: JSON.stringify({ decision: 'revoke' }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.message || 'Не удалось отозвать приглашение.');
+            }
+
+            card?.remove();
+            refreshCount();
+            showFeedback(payload.message || 'Приглашение отозвано.');
+        } catch (error) {
+            showFeedback(error.message, true);
+            button.disabled = false;
+        }
+    });
+
     form?.addEventListener('submit', async (event) => {
         event.preventDefault();
         event.stopImmediatePropagation();
