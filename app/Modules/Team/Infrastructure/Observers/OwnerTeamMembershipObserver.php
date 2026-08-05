@@ -10,6 +10,7 @@ use App\Modules\Team\Application\Services\TeamRosterService;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class OwnerTeamMembershipObserver
@@ -47,16 +48,13 @@ final class OwnerTeamMembershipObserver
 
         $membership->sport_roles = $roles->map(fn (TeamMemberTypeEnum $role) => $role->value)->all();
         $membership->member_type = $primaryRole;
-        $membership->is_captain = $hasPlayerRole && request()->boolean('creator_is_captain');
+        $membership->is_captain = $hasPlayerRole;
         $membership->is_default_starter = $hasPlayerRole && request()->boolean('creator_is_default_starter');
     }
 
     public function created(ContractMembership $membership): void
     {
-        if ($membership->scope_type !== ContractMembershipScopeTypeEnum::TEAM
-            || $membership->invitation_status !== TeamInvitationStatusEnum::ACCEPTED
-            || ! $membership->isPlayingMember()
-            || $membership->contract()->where('status', ContractStatusEnum::ACTIVE->value)->doesntExist()) {
+        if (! $this->isAcceptedActivePlayer($membership)) {
             return;
         }
 
@@ -64,5 +62,38 @@ final class OwnerTeamMembershipObserver
         if ($team !== null) {
             app(TeamRosterService::class)->synchronizePlayer($team, $membership->id);
         }
+    }
+
+    public function updated(ContractMembership $membership): void
+    {
+        if (! $membership->wasChanged('invitation_status') || ! $this->isAcceptedActivePlayer($membership)) {
+            return;
+        }
+
+        DB::transaction(function () use ($membership): void {
+            $team = Team::query()->whereKey($membership->scope_id)->lockForUpdate()->first();
+            if ($team === null) {
+                return;
+            }
+
+            $captainExists = $team->memberships()
+                ->whereKeyNot($membership->id)
+                ->where('is_captain', true)
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
+                ->exists();
+
+            if (! $captainExists) {
+                ContractMembership::query()->whereKey($membership->id)->update(['is_captain' => true]);
+            }
+        });
+    }
+
+    private function isAcceptedActivePlayer(ContractMembership $membership): bool
+    {
+        return $membership->scope_type === ContractMembershipScopeTypeEnum::TEAM
+            && $membership->invitation_status === TeamInvitationStatusEnum::ACCEPTED
+            && $membership->isPlayingMember()
+            && $membership->contract()->where('status', ContractStatusEnum::ACTIVE->value)->exists();
     }
 }
