@@ -28,6 +28,7 @@ For each moved action verify:
 - [x] Removal action exposes `data-team-member-remove-url`.
 - [x] Invitation search and submission selectors match `team-management.js`.
 - [x] Global administrator receives no implicit user-management access.
+- [x] User update route rejects the administrative `status` field.
 - [ ] Browser-check drag/drop and mobile move button.
 - [ ] Browser-check modal open/close integration.
 
@@ -40,18 +41,32 @@ For each moved action verify:
 - [x] Participant groups and status forms expose the selectors used by AJAX updates.
 - [x] Management URL is shown only when actor-based user permissions allow it.
 - [x] Global administrator receives no implicit event-management access.
+- [x] Result photo upload, description, participant tagging, and deletion were restored in management context.
+- [x] Result photo editor selectors match `event-show.js`.
+- [x] Mini-game creation sends required side rosters, side sizes, names, and scoring type.
 - [ ] Browser-check participant predictive search and group movement.
 - [ ] Browser-check responsibility forms and validation feedback.
-- [ ] Browser-check result photo editing remains available only in management context where intended.
+- [ ] Browser-check photo upload, tag placement, save, and delete.
+- [ ] Browser-check mini-game creation with valid and invalid rosters.
 
 ## Games
 
 - [x] Public game page receives no management permissions.
-- [x] Control page remains `events.game.manage` and keeps score/statistics/roster endpoints.
+- [x] Dedicated `GameControlController` renders `events.game` with effective permissions and statistics fields.
+- [x] `/events/{event}/game` is registered as a control route before the legacy redirecting GET route.
 - [x] Statistics form selectors match `event-show.js`.
 - [x] Mini-game schedule selectors match `event-show.js`.
+- [ ] Confirm route registration order locally with `php artisan route:list --name=events.game`.
 - [ ] Browser-check calculated score, manual score override, save, and complete flow.
 - [ ] Browser-check roster form and lifecycle controls.
+
+## Coordination
+
+- [x] Public page keeps voting, vote changes, suggestions, and result viewing.
+- [x] Closing, deciding, and cancelling are available only in `/coordination/{coordination}/management`.
+- [x] Management route performs server-side `CoordinationAccess` authorization.
+- [x] Event creation and applying a coordinated move remain contextual result actions by design.
+- [ ] Browser-check vote, suggestion, close, decision, and cancel transitions.
 
 ## Venues
 
@@ -67,13 +82,20 @@ For each moved action verify:
 - [x] Admin detail pages do not reuse owner/organizer management forms.
 - [ ] Add explicit force-action endpoints only when an administrative use case requires them.
 
-## Required automated checks before merge
+## Required local checks before merge
 
-- Team public/management separation.
-- Event public/management separation.
-- Global admin denied from user-management routes without domain membership/responsibility.
-- Admin routes denied to regular users.
-- Personal participation actions remain available on public event pages.
-- Named route generation for all new management and admin links.
+```bash
+php artisan route:list --name=teams
+php artisan route:list --name=events
+php artisan route:list --name=coordination
+php artisan view:cache
+php artisan test tests/Feature/Team/TeamOwnerSportRoleProtectionTest.php
+php artisan test tests/Feature/Event/EventInterfaceContextSeparationTest.php
+php artisan test tests/Feature/Coordination/CoordinationInterfaceContextSeparationTest.php
+php artisan test tests/Feature/Team
+php artisan test tests/Feature/Event
+php artisan test tests/Feature/Coordination
+npm run build
+```
 
-Automated tests were not executed while preparing this report.
+Automated tests and frontend build were not executed while preparing this report.
