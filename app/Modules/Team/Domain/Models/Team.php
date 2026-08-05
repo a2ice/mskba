@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'alias',
     'description',
     'status',
+    'accepts_join_requests',
 ])]
 class Team extends Model
 {
@@ -64,6 +65,11 @@ class Team extends Model
             ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value);
     }
 
+    public function joinRequests(): HasMany
+    {
+        return $this->hasMany(TeamJoinRequest::class);
+    }
+
     public function sportProfiles(): HasMany
     {
         return $this->hasMany(TeamSportProfile::class);
@@ -91,6 +97,7 @@ class Team extends Model
         return [
             'status' => TeamStatusEnum::class,
             'name_sequence' => 'integer',
+            'accepts_join_requests' => 'boolean',
         ];
     }
 }
