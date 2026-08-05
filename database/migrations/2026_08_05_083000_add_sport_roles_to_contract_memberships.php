@@ -14,12 +14,19 @@ return new class extends Migration
         });
 
         DB::table('contract_memberships')
-            ->whereNotNull('member_type')
             ->orderBy('id')
             ->eachById(function ($membership): void {
+                $role = $membership->member_type;
+                if ($role === null && $membership->access_level === 'coach') {
+                    $role = 'coach';
+                }
+                if ($role === null) {
+                    return;
+                }
+
                 DB::table('contract_memberships')
                     ->where('id', $membership->id)
-                    ->update(['sport_roles' => json_encode([$membership->member_type], JSON_THROW_ON_ERROR)]);
+                    ->update(['sport_roles' => json_encode([$role], JSON_THROW_ON_ERROR)]);
             });
     }
 
