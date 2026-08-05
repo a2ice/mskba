@@ -45,13 +45,24 @@ final class EventLifecycleServiceProvider extends ServiceProvider
             $event = $data['event'] ?? null;
 
             // Public pages keep personal contextual actions, but never expose
-            // forms that mutate the event or other participants.
+            // forms that mutate the event, game state or other participants.
             $view->with('effectivePermissions', collect());
 
-            if (($data['canManage'] ?? false) && $event !== null) {
-                $view->with('contextManagementUrl', route('events.management', $event->routeIdentifier()));
-                $view->with('contextManagementLabel', 'Управление мероприятием');
+            if (! ($data['canManage'] ?? false) || $event === null) {
+                return;
             }
+
+            $isGameView = $view->getName() === 'theme::pages.events.game-show';
+            $view->with(
+                'contextManagementUrl',
+                $isGameView
+                    ? route('events.game.manage', $event->routeIdentifier())
+                    : route('events.management', $event->routeIdentifier()),
+            );
+            $view->with(
+                'contextManagementLabel',
+                $isGameView ? 'Управление игрой' : 'Управление мероприятием',
+            );
         });
     }
 }
