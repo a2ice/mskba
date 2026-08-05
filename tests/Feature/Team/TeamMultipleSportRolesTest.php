@@ -48,7 +48,6 @@ final class TeamMultipleSportRolesTest extends TestCase
                 TeamMemberTypeEnum::COACH->value,
                 TeamMemberTypeEnum::MANAGER->value,
             ],
-            'is_captain' => 1,
             'is_default_starter' => 1,
         ])->assertSessionHas('status')->assertSessionHasNoErrors();
 
@@ -69,6 +68,61 @@ final class TeamMultipleSportRolesTest extends TestCase
             ->assertSee('Игрок, Тренер, Менеджер');
     }
 
+    public function test_first_player_is_captain_and_cannot_remove_player_role_before_reassignment(): void
+    {
+        $owner = User::factory()->create([
+            'username' => 'first-player-owner',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $candidate = User::factory()->create([
+            'username' => 'second-player',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $this->actingAs($owner)->post(route('teams.store'), [
+            'name' => 'Команда с обязательным капитаном',
+            'creator_sport_roles' => [],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $team = Team::query()->where('name', 'Команда с обязательным капитаном')->firstOrFail();
+        $ownerMembership = $team->memberships()->where('user_id', $owner->id)->firstOrFail();
+
+        $this->put(route('teams.members.sports.update', [$team->routeIdentifier(), $ownerMembership->id]), [
+            'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+        ])->assertSessionHas('status')->assertSessionHasNoErrors();
+        $this->assertTrue($ownerMembership->fresh()->is_captain);
+
+        $this->put(route('teams.members.sports.update', [$team->routeIdentifier(), $ownerMembership->id]), [
+            'sport_roles' => [],
+        ])->assertSessionHas('error', 'Сначала назначьте другого игрока капитаном команды.');
+        $this->assertTrue($ownerMembership->fresh()->isPlayingMember());
+        $this->assertTrue($ownerMembership->fresh()->is_captain);
+
+        $this->actingAs($owner)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
+            'user_id' => $candidate->id,
+            'member_type' => TeamMemberTypeEnum::PLAYER->value,
+        ])->assertCreated();
+        $candidateMembership = $team->memberships()->where('user_id', $candidate->id)->firstOrFail();
+
+        $this->actingAs($candidate)->patch(route('teams.invitations.respond', $candidateMembership->id), [
+            'decision' => 'accept',
+        ])->assertRedirect();
+        $this->assertFalse($candidateMembership->fresh()->is_captain);
+
+        $this->actingAs($owner)->patchJson(route('teams.members.captain', [
+            $team->routeIdentifier(),
+            $candidateMembership->id,
+        ]))->assertOk();
+        $this->assertTrue($candidateMembership->fresh()->is_captain);
+        $this->assertFalse($ownerMembership->fresh()->is_captain);
+
+        $this->put(route('teams.members.sports.update', [$team->routeIdentifier(), $ownerMembership->id]), [
+            'sport_roles' => [],
+        ])->assertSessionHas('status')->assertSessionHasNoErrors();
+        $this->assertFalse($ownerMembership->fresh()->isPlayingMember());
+        $this->assertFalse($ownerMembership->fresh()->is_captain);
+    }
+
     public function test_creator_can_select_multiple_roles_during_team_creation(): void
     {
         $owner = User::factory()->create([
@@ -83,7 +137,6 @@ final class TeamMultipleSportRolesTest extends TestCase
                 TeamMemberTypeEnum::PLAYER->value,
                 TeamMemberTypeEnum::COACH->value,
             ],
-            'creator_is_captain' => 1,
             'creator_is_default_starter' => 1,
         ])->assertRedirect()->assertSessionHasNoErrors();
 
