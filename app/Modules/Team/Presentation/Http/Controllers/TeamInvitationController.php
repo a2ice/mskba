@@ -116,8 +116,8 @@ final class TeamInvitationController extends Controller
 
         DB::transaction(function () use ($member, $team, $data, $rosters): void {
             $accepted = $data['decision'] === 'accept';
-            $member->update(['invitation_status' => $accepted ? TeamInvitationStatusEnum::ACCEPTED : TeamInvitationStatusEnum::DECLINED]);
             $member->contract->update(['status' => $accepted ? ContractStatusEnum::ACTIVE : ContractStatusEnum::INACTIVE]);
+            $member->update(['invitation_status' => $accepted ? TeamInvitationStatusEnum::ACCEPTED : TeamInvitationStatusEnum::DECLINED]);
             if ($accepted && $member->isPlayingMember()) {
                 $rosters->synchronizePlayer($team, $member->id);
             }
