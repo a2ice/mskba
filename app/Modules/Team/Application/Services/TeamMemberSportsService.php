@@ -3,6 +3,7 @@
 namespace App\Modules\Team\Application\Services;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -48,6 +49,12 @@ final class TeamMemberSportsService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if ($lockedMembership->access_level === TeamMembershipAccessLevelEnum::OWNER->value
+                && $lockedMembership->user_id !== $actor->user_id
+                && ! ($actor->user?->isAdmin() ?? false)) {
+                throw new InvalidArgumentException('Спортивные роли владельца может менять только сам владелец или администратор.');
+            }
+
             $roles = collect($sportRoles)
                 ->map(fn ($role) => $role instanceof TeamMemberTypeEnum ? $role : TeamMemberTypeEnum::from((string) $role))
                 ->unique(fn (TeamMemberTypeEnum $role) => $role->value)
@@ -71,7 +78,6 @@ final class TeamMemberSportsService
                 ->lockForUpdate()
                 ->exists();
 
-            // The first active player becomes captain automatically.
             if ($isPlayer && ! $otherCaptainExists) {
                 $isCaptain = true;
             }
