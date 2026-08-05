@@ -16,7 +16,8 @@
         && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true);
     $canManageResult = $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT)
         || $allows(EventResponsibilityPermissionEnum::COMPLETE_EVENT);
-    $canManageResultPhotos = $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT);
+    $canManageResultPhotos = $event->status === EventStatusEnum::COMPLETED
+        && $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT);
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -133,11 +134,7 @@
     <p class="form-hint">Создание и оперативное управление играми выполняется в отдельном рабочем интерфейсе.</p>
     @foreach($event->childGames as $miniGame)<a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('events.game.manage', $miniGame->routeIdentifier()) }}">{{ $miniGame->title }}</a>@endforeach
     @if($canCreateMiniGame)
-    <form method="POST" action="{{ route('events.games.store', $event->routeIdentifier()) }}" class="mt-3">@csrf
-        <input type="hidden" name="title" value="Мини-игра">
-        <input type="hidden" name="side_a_size" value="3"><input type="hidden" name="side_b_size" value="3">
-        <button class="btn btn--primary btn--sm" type="submit">Добавить мини-игру 3×3</button>
-    </form>
+        @include('theme::pages.events.partials.mini-game-create-management')
     @endif
 </section>
 @endif
