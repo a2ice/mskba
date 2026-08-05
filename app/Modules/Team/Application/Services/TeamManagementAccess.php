@@ -29,10 +29,6 @@ final class TeamManagementAccess
             return false;
         }
 
-        if ($user->isAdmin()) {
-            return true;
-        }
-
         if ($this->isCreator($team, $actor)) {
             return true;
         }
