@@ -2,7 +2,6 @@
 
 namespace App\Modules\Venue\Application\Services;
 
-use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
@@ -72,10 +71,6 @@ final class VenueAccessResolver
             return false;
         }
 
-        if ($user?->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
-            return true;
-        }
-
         if ($user !== null && $this->memberships->allows($user, $venue, VenuePermissionEnum::EDIT_SCHEDULE)) {
             return true;
         }
@@ -84,33 +79,25 @@ final class VenueAccessResolver
             || $this->isActorCreator($actor, $venue);
     }
 
-    /**
-     * @return array<int>
-     */
+    /** @return array<int> */
     public function contractViewableVenueIdsFor(?User $user): array
     {
         return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::VIEW);
     }
 
-    /**
-     * @return array<int>
-     */
+    /** @return array<int> */
     public function contractedVenueIdsFor(?User $user): array
     {
         return $user === null ? [] : $this->memberships->contractedVenueIdsFor($user);
     }
 
-    /**
-     * @return array<int>
-     */
+    /** @return array<int> */
     public function bootstrapOwnedVenueIdsFor(?User $user): array
     {
         return $user === null ? [] : $this->memberships->bootstrapOwnedVenueIdsFor($user);
     }
 
-    /**
-     * @return array<int>
-     */
+    /** @return array<int> */
     public function actorOwnedVenueIdsFor(?Actor $actor): array
     {
         return $actor?->user_id === null
@@ -123,17 +110,13 @@ final class VenueAccessResolver
                 ->all();
     }
 
-    /**
-     * @return array<int>
-     */
+    /** @return array<int> */
     public function contractEditableVenueIdsFor(?User $user): array
     {
         return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT);
     }
 
-    /**
-     * @return array<int>
-     */
+    /** @return array<int> */
     public function contractScheduleEditableVenueIdsFor(?User $user): array
     {
         return $user === null ? [] : $this->memberships->allowedVenueIdsFor($user, VenuePermissionEnum::EDIT_SCHEDULE);
