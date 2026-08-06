@@ -2282,7 +2282,7 @@ body.telegram-mini-app .event-show {
 .team-profile__sports span { padding: 4px 10px; border: 1px solid #454a45; border-radius: 999px; color: #c3c6c1; background: #222522; font-size: 12px; }
 .team-profile__section { padding: 22px; }
 .team-profile__section-heading { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
-.team-profile__section-heading > i { display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid rgba(255, 116, 23, .4); border-radius: 14px; color: #ff7a21; font-size: 25px; background: rgba(255, 116, 23, .08); }
+.team-profile__section-heading > i { display: grid; flex: 0 0 46px; place-items: center; width: 46px; height: 46px; box-sizing: border-box; border: 1px solid rgba(255, 116, 23, .4); border-radius: 14px; color: #ff7a21; font-size: 25px; background: rgba(255, 116, 23, .08); }
 .team-profile__section-heading span { color: #969a96; font-size: 12px; font-weight: 700; text-transform: uppercase; }
 .team-profile__section-heading h2 { margin: 1px 0 0; font-size: 25px; }
 .team-profile__section-heading--compact h2 { font-size: 21px; }
@@ -2301,6 +2301,9 @@ body.telegram-mini-app .event-show {
 .team-person__name { display: block; min-width: 0; }
 .team-person__name strong { display: block; }
 .team-person div > span { color: #969a96; font-size: 12px; }
+.team-person__roles { display: flex; flex-wrap: wrap; gap: 0; }
+.team-person__roles > span:not(:last-child)::after { color: #969a96; content: ",\00a0"; }
+.team-person__roles > span.is-current { color: #f1f2ef; }
 .team-person .team-person__captain { display: inline-flex; align-items: center; gap: 4px; color: #ff8735; }
 .team-person__captain i { font-size: 15px; }
 .team-person--coach { border-color: rgba(255, 116, 23, .28); }

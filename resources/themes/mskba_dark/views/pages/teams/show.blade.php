@@ -12,8 +12,6 @@
             ? 'images/blank/avatar/avatar-female.png'
             : 'images/blank/avatar/avatar-male.png');
     $isCaptain = static fn ($membership): bool => (bool) $membership->is_captain;
-    $roleText = static fn ($membership): string => $membership->sportRoles()
-        ->map(fn ($role) => $role->label())->join(', ') ?: 'Без спортивной роли';
     $memberCountText = static function (int $count): string {
         $modulo100 = $count % 100;
         $modulo10 = $count % 10;
@@ -106,10 +104,10 @@
     @endauth
 
     <section class="team-profile__section" aria-labelledby="team-coaches-title">
-        <div class="team-profile__section-heading"><i class="ti ti-user-cog"></i><div><span>Тренерский штаб</span><h2 id="team-coaches-title">Тренеры</h2></div></div>
+        <div class="team-profile__section-heading"><i class="ti ti-user-cog"></i><div><h2 id="team-coaches-title">Тренеры</h2></div></div>
         <div class="team-coaches">
             @forelse($coaches as $coach)
-                <div class="team-person team-person--coach"><img src="{{ $avatarUrl($coach) }}" alt=""><div><strong>{{ $memberName($coach) }}</strong><span>{{ $roleText($coach) }}</span></div></div>
+                <div class="team-person team-person--coach"><img src="{{ $avatarUrl($coach) }}" alt=""><div><strong>{{ $memberName($coach) }}</strong><span class="team-person__roles">@foreach($coach->sportRoles() as $role)<span @class(['is-current' => $role === \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::COACH])>{{ $role->label() }}</span>@endforeach</span></div></div>
             @empty
                 <p class="team-profile__empty">Тренер пока не назначен.</p>
             @endforelse
@@ -117,10 +115,10 @@
     </section>
 
     <section class="team-profile__section" aria-labelledby="team-managers-title">
-        <div class="team-profile__section-heading"><i class="ti ti-briefcase"></i><div><span>Организация команды</span><h2 id="team-managers-title">Менеджеры</h2></div></div>
+        <div class="team-profile__section-heading"><i class="ti ti-briefcase"></i><div><h2 id="team-managers-title">Менеджеры</h2></div></div>
         <div class="team-coaches">
             @forelse($managers as $manager)
-                <div class="team-person team-person--coach"><img src="{{ $avatarUrl($manager) }}" alt=""><div><strong>{{ $memberName($manager) }}</strong><span>{{ $roleText($manager) }}</span></div></div>
+                <div class="team-person team-person--coach"><img src="{{ $avatarUrl($manager) }}" alt=""><div><strong>{{ $memberName($manager) }}</strong><span class="team-person__roles">@foreach($manager->sportRoles() as $role)<span @class(['is-current' => $role === \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::MANAGER])>{{ $role->label() }}</span>@endforeach</span></div></div>
             @empty
                 <p class="team-profile__empty">Менеджерская роль пока никому не назначена.</p>
             @endforelse
@@ -128,7 +126,7 @@
     </section>
 
     <section class="team-profile__section" aria-labelledby="team-lineups-title">
-        <div class="team-profile__section-heading"><i class="ti ti-layout-grid"></i><div><span>Игровые группы</span><h2 id="team-lineups-title">Составы по дисциплинам</h2></div></div>
+        <div class="team-profile__section-heading"><i class="ti ti-layout-grid"></i><div><h2 id="team-lineups-title">Состав команды</h2></div></div>
         <div class="team-sport-groups">
         @foreach($startingLineups as $lineup)
             <section class="team-sport-group" data-team-roster data-sport-type="{{ $lineup['sport_type'] }}" data-limit="{{ $lineup['size'] }}" data-editable="0">
