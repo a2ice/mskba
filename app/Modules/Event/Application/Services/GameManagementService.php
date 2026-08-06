@@ -484,9 +484,6 @@ final class GameManagementService
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
             $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertGameHasEnded($lockedGame);
-            if ($lockedGame->scheduled_ends_at?->isFuture()) {
-                throw new InvalidArgumentException('Подтвердить итоговую статистику можно после окончания игры.');
-            }
 
             $this->confirmLockedStatistics($lockedGame, $actor);
         });

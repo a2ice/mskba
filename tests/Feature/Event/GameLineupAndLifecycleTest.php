@@ -61,8 +61,8 @@ final class GameLineupAndLifecycleTest extends TestCase
         $this->assertSame(GameLineupRoleEnum::STARTER, $entries[$ownerA->id]->lineup_role);
         $this->assertSame(GameLineupRoleEnum::STARTER, $entries[$playerA->id]->lineup_role);
 
-        $this->setSports($ownerA, $teamA, $ownerAMembership->id, [TeamMemberTypeEnum::PLAYER], false, false);
         $this->setSports($ownerA, $teamA, $playerAMembership->id, [TeamMemberTypeEnum::PLAYER], true, true);
+        $this->setSports($ownerA, $teamA, $ownerAMembership->id, [TeamMemberTypeEnum::PLAYER], false, false);
 
         $this->assertTrue($game->gameRosterEntries()->where('user_id', $ownerA->id)->firstOrFail()->is_captain);
         $this->assertFalse($game->gameRosterEntries()->where('user_id', $playerA->id)->firstOrFail()->is_captain);
