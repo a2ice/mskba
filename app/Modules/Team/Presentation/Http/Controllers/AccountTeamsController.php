@@ -30,7 +30,9 @@ final class AccountTeamsController extends Controller
         $user = $request->user();
         $createdOnly = $request->boolean('created_only');
         $condition = (string) ($filters['condition'] ?? '');
-        $status = (string) ($filters['status'] ?? TeamStatusEnum::ACTIVE->value);
+        $status = $request->has('status')
+            ? (string) ($filters['status'] ?? '')
+            : TeamStatusEnum::ACTIVE->value;
         $createdTeamsCount = Team::query()
             ->whereNull('temporary_for_event_id')
             ->whereHas('createdByActor', fn ($actor) => $actor->where('user_id', $user->id))
