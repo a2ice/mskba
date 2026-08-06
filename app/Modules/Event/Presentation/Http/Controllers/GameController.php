@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
+use App\Modules\Event\Application\Services\LegacyGameRouteResolver;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -20,6 +22,8 @@ use InvalidArgumentException;
 
 final class GameController extends Controller
 {
+    public function __construct(private readonly LegacyGameRouteResolver $legacyGames) {}
+
     public function createMiniGame(
         Request $request,
         string $event,
@@ -76,7 +80,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
         $data = $request->validate([
             'side_a_user_ids' => ['required', 'array', 'min:1'],
             'side_a_user_ids.*' => ['integer'],
@@ -105,7 +109,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'has_scheduled_time' => ['nullable', 'boolean'],
@@ -129,7 +133,7 @@ final class GameController extends Controller
                 $data['side_b_name'],
                 (int) $data['side_a_size'],
                 (int) $data['side_b_size'],
-                GameScoringTypeEnum::from($data['scoring_type'] ?? $game->gameDetail->scoring_type->value),
+                GameScoringTypeEnum::from($data['scoring_type'] ?? $game->scoring_type->value),
             ),
             'Параметры мини-игры обновлены.',
         );
@@ -143,8 +147,8 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
-        $parentIdentifier = $game->parentEvent?->routeIdentifier();
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
+        $parentIdentifier = $game->event->routeIdentifier();
 
         try {
             $games->deleteMiniGame($game, $actor);
@@ -164,7 +168,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
         $data = $this->validatedStatistics($request);
 
         try {
@@ -194,7 +198,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
         $data = $request->validate([
             'scores' => ['required', 'array'],
             'scores.A' => ['required', 'integer', 'min:0', 'max:999'],
@@ -224,7 +228,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
 
         try {
             $games->cancelMiniGame($game, $actor);
@@ -237,11 +241,11 @@ final class GameController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Игра отменена.',
-                'redirect_url' => route('events.show', $game->parentEvent->routeIdentifier()),
+                'redirect_url' => route('events.show', $game->event->routeIdentifier()),
             ]);
         }
 
-        return redirect()->route('events.show', $game->parentEvent->routeIdentifier())
+        return redirect()->route('events.show', $game->event->routeIdentifier())
             ->with('status', 'Игра отменена.');
     }
 
@@ -253,8 +257,8 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
-        $access->assertAllows($game, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+        $access->assertAllows($game->event, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
         $data = $this->validatedStatistics($request);
 
         try {
@@ -270,13 +274,13 @@ final class GameController extends Controller
         $message = 'Игра завершена. Статистика подтверждена и учтена в показателях игроков.';
 
         if (! $request->expectsJson()) {
-            return redirect()->route('events.show', $game->routeIdentifier())
+            return redirect()->route('events.show', $game->legacyEvent->routeIdentifier())
                 ->with('status', $message);
         }
 
         return $this->statisticsJson($game, $message, [
             'completed' => true,
-            'redirect_url' => route('events.show', $game->routeIdentifier()),
+            'redirect_url' => route('events.show', $game->legacyEvent->routeIdentifier()),
         ]);
     }
 
@@ -288,7 +292,7 @@ final class GameController extends Controller
         EventManagementAccess $access,
         GameManagementService $games,
     ): RedirectResponse|JsonResponse {
-        [$game, $actor] = $this->managedEvent($request, $event, $events, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+        [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
 
         try {
             $games->confirmStatistics($game, $actor);
@@ -337,6 +341,22 @@ final class GameController extends Controller
         ]);
     }
 
+    /** @return array{Game, Actor} */
+    private function managedGame(
+        Request $request,
+        string $identifier,
+        CurrentActorResolver $actors,
+        EventManagementAccess $access,
+        EventResponsibilityPermissionEnum $permission,
+    ): array {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $game = $this->legacyGames->resolve($identifier)->load(['event', 'legacyEvent']);
+        abort_unless($access->allows($game->event, $actor, $permission), 403);
+
+        return [$game, $actor];
+    }
+
     /** @return array<string, mixed> */
     private function validatedStatistics(Request $request): array
     {
@@ -354,25 +374,25 @@ final class GameController extends Controller
     }
 
     /** @param array<string, mixed> $extra */
-    private function statisticsJson(Event $game, string $message, array $extra = []): JsonResponse
+    private function statisticsJson(Game $game, string $message, array $extra = []): JsonResponse
     {
         $game->refresh()->load([
-            'gameSides',
-            'gamePlayerStatistics',
+            'sides',
+            'playerStatistics',
         ]);
-        $scores = $game->gameSides
+        $scores = $game->sides
             ->mapWithKeys(fn ($side): array => [$side->slot => $side->score])
             ->all();
-        $playerPoints = $game->gamePlayerStatistics
+        $playerPoints = $game->playerStatistics
             ->mapWithKeys(fn (GamePlayerStatistic $statistic): array => [
-                (string) $statistic->user_id => $statistic->points($game->gameDetail->scoring_type),
+                (string) $statistic->user_id => $statistic->points($game->scoring_type),
             ])
             ->all();
-        $calculatedScores = $game->gameSides
+        $calculatedScores = $game->sides
             ->mapWithKeys(fn ($side): array => [
-                $side->slot => $game->gamePlayerStatistics
+                $side->slot => $game->playerStatistics
                     ->where('game_side_id', $side->id)
-                    ->sum(fn (GamePlayerStatistic $statistic): int => $statistic->points($game->gameDetail->scoring_type)),
+                    ->sum(fn (GamePlayerStatistic $statistic): int => $statistic->points($game->scoring_type)),
             ])
             ->all();
 

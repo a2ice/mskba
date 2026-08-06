@@ -10,10 +10,11 @@ use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
-use App\Modules\Event\Domain\Models\GameDetail;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -206,7 +207,7 @@ final class GameManagementService
     }
 
     public function updateMiniGame(
-        Event $game,
+        Game $game,
         Actor $actor,
         string $title,
         ?string $startsAt,
@@ -229,21 +230,14 @@ final class GameManagementService
             $sideBSize,
             $scoringType,
         ): void {
-            if ($game->parent_event_id === null) {
-                throw new InvalidArgumentException('Этот сценарий доступен только для мини-игры.');
-            }
-
-            // Во всех сценариях с двумя мероприятиями сохраняем единый порядок:
-            // родитель → дочерняя игра. Это снижает риск взаимной блокировки.
-            $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
+            $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            if ($lockedGame->parent_event_id !== $lockedParent->id) {
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
+            if ($lockedGame->event_id !== $lockedParent->id) {
                 throw new InvalidArgumentException('Связь мини-игры с тренировкой была изменена.');
             }
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
-            $this->assertGameIsEditable($lockedGame, $detail);
-            if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+            $this->assertGameIsEditable($lockedGame);
+            if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Мини-игру с подтверждённой статистикой изменять нельзя.');
             }
 
@@ -259,27 +253,12 @@ final class GameManagementService
                 throw new InvalidArgumentException('Мини-игра должна целиком входить во время тренировки.');
             }
 
-            if ($isTimeScheduled) {
-                $overlap = Event::query()
-                    ->where('parent_event_id', $lockedParent->id)
-                    ->where('id', '!=', $lockedGame->id)
-                    ->whereNotIn('status', [EventStatusEnum::CANCELLED->value])
-                    ->whereHas('gameDetail', fn ($query) => $query->where('is_time_scheduled', true))
-                    ->where('starts_at', '<', $end)
-                    ->where('ends_at', '>', $start)
-                    ->lockForUpdate()
-                    ->exists();
-                if ($overlap) {
-                    throw new InvalidArgumentException('В выбранное время уже запланирована другая мини-игра.');
-                }
-            }
-
-            $selectedBySide = $lockedGame->gameRosterEntries()
+            $selectedBySide = $lockedGame->rosterEntries()
                 ->selectRaw('game_side_id, count(*) as aggregate')
                 ->where('status', GameRosterStatusEnum::SELECTED->value)
                 ->groupBy('game_side_id')
                 ->pluck('aggregate', 'game_side_id');
-            $sides = $lockedGame->gameSides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
+            $sides = $lockedGame->sides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
             if ((int) ($selectedBySide[$sides['A']->id] ?? 0) > $sideASize
                 || (int) ($selectedBySide[$sides['B']->id] ?? 0) > $sideBSize) {
                 throw new InvalidArgumentException('Новый лимит меньше уже выбранного состава.');
@@ -287,14 +266,11 @@ final class GameManagementService
 
             $lockedGame->update([
                 'title' => $title,
-                'starts_at' => $start,
-                'ends_at' => $end,
-            ]);
-            $detail->update([
                 'side_a_size' => $sideASize,
                 'side_b_size' => $sideBSize,
-                'is_time_scheduled' => $isTimeScheduled,
                 'scoring_type' => $scoringType,
+                'scheduled_starts_at' => $isTimeScheduled ? $start : null,
+                'scheduled_ends_at' => $isTimeScheduled ? $end : null,
             ]);
             foreach (['A' => $sideAName, 'B' => $sideBName] as $slot => $name) {
                 $side = $sides[$slot];
@@ -303,26 +279,21 @@ final class GameManagementService
             }
         });
 
-        event(new EventChanged((int) $game->parent_event_id));
+        event(new EventChanged($game->event_id));
     }
 
-    public function deleteMiniGame(Event $game, Actor $actor): void
+    public function deleteMiniGame(Game $game, Actor $actor): void
     {
-        $parentEventId = (int) $game->parent_event_id;
+        $parentEventId = (int) $game->event_id;
 
         DB::transaction(function () use ($game, $actor): void {
-            if ($game->parent_event_id === null) {
-                throw new InvalidArgumentException('Удалить здесь можно только мини-игру.');
-            }
-
-            $lockedParent = Event::query()->whereKey($game->parent_event_id)->lockForUpdate()->firstOrFail();
+            $lockedParent = Event::query()->whereKey($game->event_id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::DELETE_MINI_GAME);
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            if ($lockedGame->parent_event_id !== $lockedParent->id) {
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
+            if ($lockedGame->event_id !== $lockedParent->id) {
                 throw new InvalidArgumentException('Связь мини-игры с тренировкой была изменена.');
             }
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
-            if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+            if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Мини-игру с подтверждённой статистикой удалить нельзя.');
             }
 
@@ -332,33 +303,28 @@ final class GameManagementService
         event(new EventChanged($parentEventId));
     }
 
-    public function cancelMiniGame(Event $game, Actor $actor): void
+    public function cancelMiniGame(Game $game, Actor $actor): void
     {
-        $parentEventId = (int) $game->parent_event_id;
+        $parentEventId = (int) $game->event_id;
 
         DB::transaction(function () use ($game, $actor): void {
-            if ($game->parent_event_id === null) {
-                throw new InvalidArgumentException('Отменить здесь можно только мини-игру.');
-            }
-
-            $lockedParent = Event::query()->whereKey($game->parent_event_id)->lockForUpdate()->firstOrFail();
+            $lockedParent = Event::query()->whereKey($game->event_id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
 
-            if ($lockedGame->status === EventStatusEnum::CANCELLED) {
+            if ($lockedGame->status === GameStatusEnum::CANCELLED) {
                 return;
             }
-            if ($lockedGame->status === EventStatusEnum::COMPLETED
-                || $detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+            if ($lockedGame->status === GameStatusEnum::COMPLETED
+                || $lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Завершённую игру отменить нельзя.');
             }
-            if ($this->hasRecordedGameData($lockedGame, $detail)) {
+            if ($this->hasRecordedGameData($lockedGame)) {
                 throw new InvalidArgumentException('В игре уже есть счёт или статистика. Сначала проверьте данные и завершите игру.');
             }
 
             $lockedGame->forceFill([
-                'status' => EventStatusEnum::CANCELLED,
+                'status' => GameStatusEnum::CANCELLED,
                 'cancelled_at' => now(),
                 'cancelled_by_actor_id' => $actor->id,
                 'cancellation_reason' => 'Игра не состоялась.',
@@ -372,28 +338,25 @@ final class GameManagementService
      * @param  array<int, int>  $sideAUserIds
      * @param  array<int, int>  $sideBUserIds
      */
-    public function replaceRoster(Event $game, Actor $actor, array $sideAUserIds, array $sideBUserIds): void
+    public function replaceRoster(Game $game, Actor $actor, array $sideAUserIds, array $sideBUserIds): void
     {
         DB::transaction(function () use ($game, $actor, $sideAUserIds, $sideBUserIds): void {
-            if ($game->parent_event_id !== null) {
-                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
-                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
-            }
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
-            $this->assertGameIsEditable($lockedGame, $detail);
-            if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+            $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
+            $this->assertGameIsEditable($lockedGame);
+            if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Состав игры с подтверждённой статистикой изменять нельзя.');
             }
-            $sides = $lockedGame->gameSides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
+            $sides = $lockedGame->sides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
             if ($sides->count() !== 2) {
                 throw new InvalidArgumentException('Для игры не настроены две стороны.');
             }
             $this->assertRosterSizes(
                 $sideAUserIds,
                 $sideBUserIds,
-                (int) $detail->side_a_size,
-                (int) $detail->side_b_size,
+                (int) $lockedGame->side_a_size,
+                (int) $lockedGame->side_b_size,
             );
 
             $allIds = collect([...$sideAUserIds, ...$sideBUserIds])->map(fn ($id) => (int) $id);
@@ -405,7 +368,7 @@ final class GameManagementService
             if ($allIds->diff($candidates->keys())->isNotEmpty()) {
                 throw new InvalidArgumentException('Один или несколько игроков недоступны для этой игры.');
             }
-            if ($lockedGame->parent_event_id === null) {
+            if ($lockedParent->type === EventTypeEnum::GAME) {
                 foreach (['A' => $sideAUserIds, 'B' => $sideBUserIds] as $slot => $userIds) {
                     $invalid = collect($userIds)->map(fn ($id) => (int) $id)
                         ->filter(fn ($id) => ($candidates[$id]['slot'] ?? null) !== $slot);
@@ -417,16 +380,17 @@ final class GameManagementService
 
             // Статистика относится к снимку состава. При изменении состава черновую
             // статистику нужно очистить, иначе старые строки попадут в подтверждение.
-            $lockedGame->gamePlayerStatistics()->delete();
-            $lockedGame->gameRosterEntries()->delete();
-            $detail->update([
+            $lockedGame->playerStatistics()->delete();
+            $lockedGame->rosterEntries()->delete();
+            $lockedGame->update([
                 'statistics_status' => GameStatisticsStatusEnum::NOT_STARTED,
-                'statistics_version' => $detail->statistics_version + 1,
+                'statistics_version' => $lockedGame->statistics_version + 1,
             ]);
             foreach (['A' => $sideAUserIds, 'B' => $sideBUserIds] as $slot => $userIds) {
                 foreach ($userIds as $userId) {
                     $source = $candidates[(int) $userId];
-                    $lockedGame->gameRosterEntries()->create([
+                    $lockedGame->rosterEntries()->create([
+                        'event_id' => $lockedGame->legacy_event_id,
                         'game_side_id' => $sides[$slot]->id,
                         'user_id' => (int) $userId,
                         'source_contract_membership_id' => $source['membership_id'] ?? null,
@@ -443,38 +407,32 @@ final class GameManagementService
     /**
      * @param  array<string, mixed>  $statistics
      */
-    public function saveStatistics(Event $game, Actor $actor, array $statistics): void
+    public function saveStatistics(Game $game, Actor $actor, array $statistics): void
     {
         DB::transaction(function () use ($game, $actor, $statistics): void {
-            if ($game->parent_event_id !== null) {
-                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
-                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
-            }
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertGameIsLive($lockedGame);
-            $this->persistStatistics($lockedGame, $detail, $statistics);
+            $this->persistStatistics($lockedGame, $statistics);
         });
 
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
     /** @param array{A:int, B:int} $scores */
-    public function saveScore(Event $game, Actor $actor, array $scores): void
+    public function saveScore(Game $game, Actor $actor, array $scores): void
     {
         DB::transaction(function () use ($game, $actor, $scores): void {
-            if ($game->parent_event_id !== null) {
-                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
-                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
-            }
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertGameIsLive($lockedGame);
-            $this->assertGameIsEditable($lockedGame, $detail);
-            if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+            $this->assertGameIsEditable($lockedGame);
+            if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Счёт подтверждённой игры изменять нельзя.');
             }
-            $sides = $lockedGame->gameSides()->lockForUpdate()->get()->keyBy('slot');
+            $sides = $lockedGame->sides()->lockForUpdate()->get()->keyBy('slot');
             if (! $sides->has('A') || ! $sides->has('B')) {
                 throw new InvalidArgumentException('Для игры не настроены две стороны.');
             }
@@ -486,24 +444,21 @@ final class GameManagementService
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
-    public function confirmStatistics(Event $game, Actor $actor): void
+    public function confirmStatistics(Game $game, Actor $actor): void
     {
         DB::transaction(function () use ($game, $actor): void {
-            if ($game->parent_event_id !== null) {
-                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
-                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
-            }
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertGameHasEnded($lockedGame);
-            if ($lockedGame->ends_at->isFuture()) {
+            if ($lockedGame->scheduled_ends_at?->isFuture()) {
                 throw new InvalidArgumentException('Подтвердить итоговую статистику можно после окончания игры.');
             }
 
-            $this->confirmLockedStatistics($lockedGame, $detail, $actor);
+            $this->confirmLockedStatistics($lockedGame, $actor);
         });
 
-        event(new GameStatisticsConfirmed($game->id));
+        event(new GameStatisticsConfirmed($game->legacy_event_id ?? $game->event_id));
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
@@ -512,50 +467,46 @@ final class GameManagementService
      *
      * @param  array<string, mixed>  $statistics
      */
-    public function saveAndCompleteStatistics(Event $game, Actor $actor, array $statistics): void
+    public function saveAndCompleteStatistics(Game $game, Actor $actor, array $statistics): void
     {
         DB::transaction(function () use ($game, $actor, $statistics): void {
             // Для дочерних игр сохраняем единый порядок блокировок: сначала
             // мероприятие-агрегат, затем мини-игра. Это снижает риск deadlock
             // при одновременной синхронизации мероприятия и его игр.
-            if ($game->parent_event_id !== null) {
-                $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
-                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
-                $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
-            }
-
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
+            $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+            $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertGameHasEnded($lockedGame);
 
-            if ($detail->is_time_scheduled && $lockedGame->starts_at->isFuture()) {
+            if ($lockedGame->scheduled_starts_at?->isFuture()) {
                 throw new InvalidArgumentException('Завершить игру можно только после её начала.');
             }
 
-            $this->persistStatistics($lockedGame, $detail, $statistics);
-            $this->confirmLockedStatistics($lockedGame, $detail->fresh(), $actor);
+            $this->persistStatistics($lockedGame, $statistics);
+            $this->confirmLockedStatistics($lockedGame->fresh(), $actor);
             $lockedGame->update([
-                'status' => EventStatusEnum::COMPLETED,
+                'status' => GameStatusEnum::COMPLETED,
                 'completed_at' => now(),
                 'completed_by_actor_id' => $actor->id,
             ]);
         });
 
-        event(new GameStatisticsConfirmed($game->id));
+        event(new GameStatisticsConfirmed($game->legacy_event_id ?? $game->event_id));
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
     /**
      * @param  array<string, mixed>  $statistics
      */
-    private function persistStatistics(Event $game, GameDetail $detail, array $statistics): void
+    private function persistStatistics(Game $game, array $statistics): void
     {
-        $this->assertGameIsEditable($game, $detail);
-        if ($detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+        $this->assertGameIsEditable($game);
+        if ($game->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('Подтверждённую статистику изменять нельзя.');
         }
 
-        $sides = $game->gameSides()->lockForUpdate()->get()->keyBy('slot');
+        $sides = $game->sides()->lockForUpdate()->get()->keyBy('slot');
         if (! $sides->has('A') || ! $sides->has('B')) {
             throw new InvalidArgumentException('Для игры не настроены две стороны.');
         }
@@ -564,7 +515,7 @@ final class GameManagementService
             $sides[$slot]->update(['score' => $score === null ? null : (int) $score]);
         }
 
-        $roster = $game->gameRosterEntries()->get()->keyBy('user_id');
+        $roster = $game->rosterEntries()->get()->keyBy('user_id');
         foreach (($statistics['players'] ?? []) as $userId => $values) {
             $entry = $roster->get((int) $userId);
             if ($entry === null) {
@@ -579,78 +530,82 @@ final class GameManagementService
                     throw new InvalidArgumentException('Попаданий не может быть больше попыток.');
                 }
             }
-            $game->gamePlayerStatistics()->updateOrCreate(
+            $game->playerStatistics()->updateOrCreate(
                 ['user_id' => (int) $userId],
-                [...$normalized, 'game_side_id' => $entry->game_side_id],
+                [
+                    ...$normalized,
+                    'event_id' => $game->legacy_event_id,
+                    'game_side_id' => $entry->game_side_id,
+                ],
             );
         }
 
-        $detail->update([
+        $game->update([
             'statistics_status' => GameStatisticsStatusEnum::READY,
-            'statistics_version' => $detail->statistics_version + 1,
+            'statistics_version' => $game->statistics_version + 1,
         ]);
     }
 
-    private function confirmLockedStatistics(Event $game, GameDetail $detail, Actor $actor): void
+    private function confirmLockedStatistics(Game $game, Actor $actor): void
     {
-        if ($detail->statistics_status !== GameStatisticsStatusEnum::READY) {
+        if ($game->statistics_status !== GameStatisticsStatusEnum::READY) {
             throw new InvalidArgumentException('Сначала сохраните готовую статистику.');
         }
-        if ($game->gameSides()->whereNull('score')->exists()) {
+        if ($game->sides()->whereNull('score')->exists()) {
             throw new InvalidArgumentException('Укажите итоговый счёт обеих сторон.');
         }
 
-        $selectedPlayers = $game->gameRosterEntries()
+        $selectedPlayers = $game->rosterEntries()
             ->where('status', GameRosterStatusEnum::SELECTED->value)
             ->count();
-        $statisticPlayers = $game->gamePlayerStatistics()->count();
+        $statisticPlayers = $game->playerStatistics()->count();
         if ($selectedPlayers === 0 || $statisticPlayers !== $selectedPlayers) {
             throw new InvalidArgumentException('Сохраните статистику для каждого игрока выбранного состава.');
         }
-        $selectedBySide = $game->gameRosterEntries()
+        $selectedBySide = $game->rosterEntries()
             ->selectRaw('game_side_id, count(*) as aggregate')
             ->where('status', GameRosterStatusEnum::SELECTED->value)
             ->groupBy('game_side_id')
             ->pluck('aggregate', 'game_side_id');
-        $sides = $game->gameSides()->get()->keyBy('slot');
+        $sides = $game->sides()->get()->keyBy('slot');
         if ($sides->count() !== 2
             || (int) ($selectedBySide[$sides['A']->id] ?? 0) < 1
             || (int) ($selectedBySide[$sides['B']->id] ?? 0) < 1
-            || (int) ($selectedBySide[$sides['A']->id] ?? 0) > $detail->side_a_size
-            || (int) ($selectedBySide[$sides['B']->id] ?? 0) > $detail->side_b_size) {
+            || (int) ($selectedBySide[$sides['A']->id] ?? 0) > $game->side_a_size
+            || (int) ($selectedBySide[$sides['B']->id] ?? 0) > $game->side_b_size) {
             throw new InvalidArgumentException('Проверьте составы: на каждой стороне должен быть хотя бы один игрок и не больше указанного формата.');
         }
 
-        $detail->update([
+        $game->update([
             'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
             'statistics_confirmed_at' => now(),
             'statistics_confirmed_by_actor_id' => $actor->id,
         ]);
-        $game->gameRosterEntries()
+        $game->rosterEntries()
             ->where('status', GameRosterStatusEnum::SELECTED->value)
             ->update(['status' => GameRosterStatusEnum::PLAYED->value]);
 
     }
 
-    private function hasRecordedGameData(Event $game, GameDetail $detail): bool
+    private function hasRecordedGameData(Game $game): bool
     {
-        return $detail->statistics_status !== GameStatisticsStatusEnum::NOT_STARTED
-            || $game->gamePlayerStatistics()->exists()
-            || $game->gameSides()->where('score', '>', 0)->exists();
+        return $game->statistics_status !== GameStatisticsStatusEnum::NOT_STARTED
+            || $game->playerStatistics()->exists()
+            || $game->sides()->where('score', '>', 0)->exists();
     }
 
-    private function assertGameIsEditable(Event $game, GameDetail $detail): void
+    private function assertGameIsEditable(Game $game): void
     {
-        if ($game->status === EventStatusEnum::CANCELLED) {
+        if ($game->status === GameStatusEnum::CANCELLED) {
             throw new InvalidArgumentException('Отменённую игру изменять нельзя.');
         }
-        if ($game->status === EventStatusEnum::COMPLETED
-            || $detail->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
+        if ($game->status === GameStatusEnum::COMPLETED
+            || $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('Завершённую игру изменять нельзя.');
         }
     }
 
-    private function assertGameIsLive(Event $game): void
+    private function assertGameIsLive(Game $game): void
     {
         if ($game->actual_started_at === null) {
             throw new InvalidArgumentException('Сначала необходимо начать игру.');
@@ -660,7 +615,7 @@ final class GameManagementService
         }
     }
 
-    private function assertGameHasEnded(Event $game): void
+    private function assertGameHasEnded(Game $game): void
     {
         if ($game->actual_ended_at === null) {
             throw new InvalidArgumentException('Сначала необходимо закончить фактическое проведение игры.');
@@ -813,16 +768,16 @@ final class GameManagementService
         return [$start, $end, true];
     }
 
-    private function aggregateEventId(Event $game): int
+    private function aggregateEventId(Game $game): int
     {
-        return (int) ($game->parent_event_id ?: $game->id);
+        return (int) $game->event_id;
     }
 
     /** @return Collection<int, array{membership_id?: int, participant_id?: int}> */
-    private function rosterCandidates(Event $game): Collection
+    private function rosterCandidates(Game $game): Collection
     {
-        if ($game->parent_event_id !== null) {
-            return $game->parentEvent->participants()
+        if ($game->event->type !== EventTypeEnum::GAME) {
+            return $game->event->participants()
                 ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
                 ->get()
                 ->mapWithKeys(fn ($participant) => [
@@ -830,7 +785,7 @@ final class GameManagementService
                 ]);
         }
 
-        return $game->gameSides()
+        return $game->sides()
             ->with(['team.memberships' => fn ($query) => $query->whereHas(
                 'contract',
                 fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE->value),
