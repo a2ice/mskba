@@ -19,12 +19,12 @@ final class EventPlayerStatisticsSummaryBuilder
      *     assists: int,
      *     turnovers: int,
      *     fouls: int,
-     *     last_game_identifier: string
+     *     last_game_id: int
      * }>
      */
     public function build(Event $event): Collection
     {
-        $event->loadMissing(['games.legacyEvent', 'games.playerStatistics']);
+        $event->loadMissing(['games.playerStatistics']);
 
         $confirmedGames = $event->games
             ->filter(fn (Game $game): bool => $game->status === GameStatusEnum::COMPLETED
@@ -51,18 +51,18 @@ final class EventPlayerStatisticsSummaryBuilder
                 $summary['assists'] += $statistic->assists;
                 $summary['turnovers'] += $statistic->turnovers;
                 $summary['fouls'] += $statistic->fouls;
-                $summary['last_game_identifier'] = $game->legacyEvent?->routeIdentifier() ?? '';
+                $summary['last_game_id'] = $game->id;
                 $summaries[$statistic->user_id] = $summary;
             }
         }
 
-        /** @var Collection<int, array{shots_made: int, shots_attempted: int, rebounds: int, assists: int, turnovers: int, fouls: int, last_game_identifier: string}> $result */
+        /** @var Collection<int, array{shots_made: int, shots_attempted: int, rebounds: int, assists: int, turnovers: int, fouls: int, last_game_id: int}> $result */
         $result = collect($summaries);
 
         return $result;
     }
 
-    /** @return array{shots_made: int, shots_attempted: int, rebounds: int, assists: int, turnovers: int, fouls: int, last_game_identifier: string} */
+    /** @return array{shots_made: int, shots_attempted: int, rebounds: int, assists: int, turnovers: int, fouls: int, last_game_id: int} */
     private function emptySummary(): array
     {
         return [
@@ -72,7 +72,7 @@ final class EventPlayerStatisticsSummaryBuilder
             'assists' => 0,
             'turnovers' => 0,
             'fouls' => 0,
-            'last_game_identifier' => '',
+            'last_game_id' => 0,
         ];
     }
 

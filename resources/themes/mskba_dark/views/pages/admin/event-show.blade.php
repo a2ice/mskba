@@ -37,16 +37,18 @@
     </dl>
 </section>
 
-@if($event->parentEvent)
-<section class="section-card mb-4"><h2>Родительское мероприятие</h2><a href="{{ route('admin.events.show', $event->parentEvent->routeIdentifier()) }}">{{ $event->parentEvent->title }}</a></section>
-@endif
-
-@if($event->gameDetail)
-<section class="section-card mb-4"><h2>Параметры игры</h2><p>{{ $event->gameDetail->formatLabel() }} · {{ $event->gameDetail->scoring_type->label() }}</p><p class="form-hint">Команды: {{ $event->gameSides->map(fn($side) => $side->display_name.' — '.$side->score)->join(' / ') ?: 'не сформированы' }}</p></section>
-@endif
-
-@if($event->childGames->isNotEmpty())
-<section class="section-card mb-4"><h2>Мини-игры</h2>@foreach($event->childGames as $game)<a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('admin.events.show', $game->routeIdentifier()) }}">{{ $game->title }}</a>@endforeach</section>
+@if($event->games->isNotEmpty())
+<section class="section-card mb-4">
+    <h2>Игры мероприятия</h2>
+    @foreach($event->games as $game)
+        <article class="section-card mb-2">
+            <strong>{{ $game->title ?: 'Игра #'.$game->id }}</strong>
+            <p>{{ $game->formatLabel() }} · {{ $game->scoring_type->label() }}</p>
+            <p class="form-hint">Стороны: {{ $game->sides->map(fn($side) => $side->display_name.' — '.($side->score ?? '—'))->join(' / ') ?: 'не сформированы' }}</p>
+            <a class="btn btn--secondary btn--sm" href="{{ route('events.games.show', [$event->routeIdentifier(), $game->id]) }}">Открыть игру</a>
+        </article>
+    @endforeach
+</section>
 @endif
 
 <section class="section-card">

@@ -841,7 +841,7 @@
                                             ],
                                             'details_url' => $statistics === null
                                                 ? null
-                                                : route('events.show', $statistics['last_game_identifier']),
+                                                : route('events.games.show', [$event->routeIdentifier(), $statistics['last_game_id']]),
                                         ];
                                     })->values();
                                 @endphp

@@ -28,13 +28,10 @@ final class AdminEventsController extends Controller
             ->with([
                 'venue',
                 'organizerActor.user.profile',
-                'parentEvent',
-                'childGames.gameDetail',
                 'participants.user.profile',
                 'participants.responsibilityPermissions',
                 'booking',
-                'gameDetail',
-                'gameSides',
+                'games.sides',
             ])
             ->firstOrFail();
 

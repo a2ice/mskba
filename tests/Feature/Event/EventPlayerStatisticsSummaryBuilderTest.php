@@ -3,7 +3,6 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Event\Application\Services\EventPlayerStatisticsSummaryBuilder;
-use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
@@ -69,7 +68,7 @@ final class EventPlayerStatisticsSummaryBuilderTest extends TestCase
         $this->assertSame(3, $summary['assists']);
         $this->assertSame(1, $summary['turnovers']);
         $this->assertSame(2, $summary['fouls']);
-        $this->assertSame($latestGame->legacyEvent->routeIdentifier(), $summary['last_game_identifier']);
+        $this->assertSame($latestGame->id, $summary['last_game_id']);
     }
 
     private function createMiniGame(
@@ -77,18 +76,8 @@ final class EventPlayerStatisticsSummaryBuilderTest extends TestCase
         mixed $completedAt,
         GameStatisticsStatusEnum $statisticsStatus,
     ): Game {
-        $legacyEvent = Event::factory()->create([
-            'parent_event_id' => $parent->id,
-            'type' => EventTypeEnum::GAME,
-            'status' => EventStatusEnum::COMPLETED,
-            'starts_at' => $completedAt->copy()->subHour(),
-            'ends_at' => $completedAt,
-            'completed_at' => $completedAt,
-        ]);
-
         return Game::query()->create([
             'event_id' => $parent->id,
-            'legacy_event_id' => $legacyEvent->id,
             'created_by_actor_id' => $parent->organizer_actor_id,
             'status' => $statisticsStatus === GameStatisticsStatusEnum::CONFIRMED
                 ? GameStatusEnum::COMPLETED
@@ -104,13 +93,13 @@ final class EventPlayerStatisticsSummaryBuilderTest extends TestCase
     private function createStatistics(Game $game, User $player, array $values): void
     {
         $side = $game->sides()->create([
-            'event_id' => $game->legacy_event_id,
+            'event_id' => $game->event_id,
             'slot' => 'A',
             'display_name' => 'Команда A',
         ]);
 
         GamePlayerStatistic::query()->create([
-            'event_id' => $game->legacy_event_id,
+            'event_id' => $game->event_id,
             'game_id' => $game->id,
             'game_side_id' => $side->id,
             'user_id' => $player->id,
