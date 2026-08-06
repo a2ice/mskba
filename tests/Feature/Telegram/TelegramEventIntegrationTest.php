@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Application\UseCases\HandleEventParticipationCallback;
@@ -49,7 +50,7 @@ final class TelegramEventIntegrationTest extends TestCase
     {
         $event = Event::factory()->create([
             'title' => 'Игра у метро',
-            'type' => EventTypeEnum::GAME,
+            'type' => EventTypeEnum::GAME_TRAINING,
             'description' => null,
             'max_participants' => 10,
         ]);
@@ -75,14 +76,17 @@ final class TelegramEventIntegrationTest extends TestCase
             'title' => 'Игра до семи',
             'type' => EventTypeEnum::GAME,
         ]);
-        $miniGame->gameDetail()->create([
+        $game = Game::query()->create([
+            'event_id' => $event->id,
+            'legacy_event_id' => $miniGame->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'title' => 'Игра до семи',
             'side_a_size' => 2,
             'side_b_size' => 2,
-            'is_time_scheduled' => false,
         ]);
-        $miniGame->gameSides()->createMany([
-            ['slot' => 'A', 'display_name' => 'Оранжевые', 'score' => 7],
-            ['slot' => 'B', 'display_name' => 'Чёрные', 'score' => 5],
+        $game->sides()->createMany([
+            ['event_id' => $miniGame->id, 'slot' => 'A', 'display_name' => 'Оранжевые', 'score' => 7],
+            ['event_id' => $miniGame->id, 'slot' => 'B', 'display_name' => 'Чёрные', 'score' => 5],
         ]);
         TelegramEventPublication::query()->create([
             'event_id' => $event->id,
@@ -112,7 +116,7 @@ final class TelegramEventIntegrationTest extends TestCase
             return $request->url() === 'https://api.telegram.org/bot123456:test-token/sendMessage'
                 && $request['chat_id'] === '-1002136558099'
                 && str_contains($request['text'], '<b>Играем на '.$event->venue->name.'</b>')
-                && str_contains($request['text'], 'Тип активности: Игра')
+                && str_contains($request['text'], 'Тип активности: Игровая тренировка')
                 && str_contains($request['text'], 'Описание: —')
                 && str_contains($request['text'], 'Участники: 2/10')
                 && str_contains($request['text'], 'Ответственные: game-responsible')

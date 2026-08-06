@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use Illuminate\Support\Str;
 
@@ -46,18 +47,18 @@ final class TelegramEventMessageBuilder
             $lines[] = '🛡 Ответственные: '.$this->escape($responsibles->join(', '));
         }
 
-        if ($event->childGames->isNotEmpty()) {
+        if ($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty()) {
             $lines[] = '';
             $lines[] = '🎮 <b>Мини-игры</b>';
-            foreach ($event->childGames as $childGame) {
-                $sides = $childGame->gameSides->keyBy('slot');
+            foreach ($event->games as $game) {
+                $sides = $game->sides->keyBy('slot');
                 $sideA = $sides->get('A');
                 $sideB = $sides->get('B');
-                $score = $childGame->status === EventStatusEnum::COMPLETED
+                $score = $game->status === GameStatusEnum::COMPLETED
                     && $sideA?->score !== null && $sideB?->score !== null
                     ? "{$sideA->score}:{$sideB->score}"
                     : '—:—';
-                $lines[] = '• <b>'.$this->escape($childGame->title).'</b>';
+                $lines[] = '• <b>'.$this->escape($game->title ?: 'Игра #'.$game->id).'</b>';
                 $lines[] = $this->escape($sideA?->display_name ?: 'Команда A')
                     .' <b>'.$score.'</b> '
                     .$this->escape($sideB?->display_name ?: 'Команда B');
