@@ -19,6 +19,7 @@ use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\LegacyGameRoute;
 use App\Modules\Event\Infrastructure\Jobs\RecalculatePlayerObjectiveAssessmentsJob;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
@@ -472,7 +473,10 @@ final class GameAndTeamWorkflowTest extends TestCase
 
     public function test_published_legacy_game_url_redirects_without_a_child_event_row(): void
     {
+        $organizer = User::factory()->create(['username' => 'legacy-route-organizer']);
+        $organizerActor = Actor::factory()->create(['user_id' => $organizer->id]);
         $event = Event::factory()->create([
+            'organizer_actor_id' => $organizerActor->id,
             'status' => EventStatusEnum::PUBLISHED,
             'visibility' => EventVisibilityEnum::PUBLIC,
             'type' => EventTypeEnum::GAME_TRAINING,
@@ -491,6 +495,9 @@ final class GameAndTeamWorkflowTest extends TestCase
         ]);
 
         $this->get(route('events.show', '999999-old-mini-game'))
+            ->assertRedirect(route('events.games.show', [$event->routeIdentifier(), $game->id]));
+        $this->actingAs($organizer)
+            ->get(route('events.game.manage', '999999-old-mini-game'))
             ->assertRedirect(route('events.games.show', [$event->routeIdentifier(), $game->id]));
     }
 
