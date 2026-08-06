@@ -469,28 +469,29 @@
             @endforeach
             </div>
 
-            @if($event->childGames->isNotEmpty())
+            @if($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty())
                 <section class="event-card event-mini-games event-mini-games--public">
                     <div>
                         <span class="eyebrow">Мини-игры</span>
                         <h2>Игры внутри мероприятия</h2>
                     </div>
                     <div class="event-mini-games__list">
-                        @foreach($event->childGames as $childGame)
+                        @foreach($event->games as $game)
                             @php
-                                $childSides = $childGame->gameSides->keyBy('slot');
+                                $childSides = $game->sides->keyBy('slot');
                                 $childSideA = $childSides->get('A');
                                 $childSideB = $childSides->get('B');
                                 $childHasScore = $childSideA?->score !== null && $childSideB?->score !== null;
+                                $legacyGameIdentifier = $game->legacyEvent?->routeIdentifier();
                             @endphp
                             <article>
-                                <a class="event-mini-games__summary" href="{{ route('events.show', $childGame->routeIdentifier()) }}">
-                                    <strong>{{ $childGame->title }}</strong>
+                                <a class="event-mini-games__summary" href="{{ $legacyGameIdentifier ? route('events.show', $legacyGameIdentifier) : '#' }}">
+                                    <strong>{{ $game->title ?: 'Игра #'.$game->id }}</strong>
                                     <span>
-                                        {{ $childGame->gameDetail?->is_time_scheduled
-                                            ? $childGame->starts_at->format('H:i').'–'.$childGame->ends_at->format('H:i')
+                                        {{ $game->scheduled_starts_at && $game->scheduled_ends_at
+                                            ? $game->scheduled_starts_at->format('H:i').'–'.$game->scheduled_ends_at->format('H:i')
                                             : 'Время не задано' }}
-                                        · {{ $childGame->gameDetail?->formatLabel() }}
+                                        · {{ $game->formatLabel() }}
                                     </span>
                                     <span class="event-mini-games__matchup">
                                         {{ $childSideA?->display_name ?: 'Команда A' }}
@@ -498,8 +499,8 @@
                                         {{ $childSideB?->display_name ?: 'Команда B' }}
                                     </span>
                                 </a>
-                                @if(collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
-                                    <a class="btn btn--secondary btn--sm" href="{{ route('events.game.manage', $childGame->routeIdentifier()) }}">Управлять</a>
+                                @if($legacyGameIdentifier && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
+                                    <a class="btn btn--secondary btn--sm" href="{{ route('events.game.manage', $legacyGameIdentifier) }}">Управлять</a>
                                 @endif
                             </article>
                         @endforeach
@@ -520,7 +521,7 @@
                         <i class="ti ti-chevron-down"></i>
                     </summary>
                     <div class="event-management__body">
-                        @if($event->type === EventTypeEnum::GAME && $event->gameDetail
+                        @if($event->type === EventTypeEnum::GAME && $event->games->isNotEmpty()
                             && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
                             <section class="event-game-management-link">
                                 <div>
