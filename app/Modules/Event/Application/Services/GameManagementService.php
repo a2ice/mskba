@@ -241,6 +241,9 @@ final class GameManagementService
             if ($lockedGame->event_id !== $lockedParent->id) {
                 throw new InvalidArgumentException('Связь мини-игры с тренировкой была изменена.');
             }
+            if ($lockedGame->legacy_event_id === $lockedGame->event_id) {
+                throw new InvalidArgumentException('Этот сценарий доступен только для игры внутри мероприятия.');
+            }
             $this->assertGameIsEditable($lockedGame);
             if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Мини-игру с подтверждённой статистикой изменять нельзя.');
@@ -277,6 +280,17 @@ final class GameManagementService
                 'scheduled_starts_at' => $isTimeScheduled ? $start : null,
                 'scheduled_ends_at' => $isTimeScheduled ? $end : null,
             ]);
+            $lockedGame->legacyEvent?->update([
+                'title' => $title,
+                'starts_at' => $start,
+                'ends_at' => $end,
+            ]);
+            $lockedGame->legacyEvent?->gameDetail()?->update([
+                'side_a_size' => $sideASize,
+                'side_b_size' => $sideBSize,
+                'is_time_scheduled' => $isTimeScheduled,
+                'scoring_type' => $scoringType,
+            ]);
             foreach (['A' => $sideAName, 'B' => $sideBName] as $slot => $name) {
                 $side = $sides[$slot];
                 $side->update(['display_name' => $name]);
@@ -301,8 +315,13 @@ final class GameManagementService
             if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Мини-игру с подтверждённой статистикой удалить нельзя.');
             }
+            if ($lockedGame->legacy_event_id === $lockedGame->event_id) {
+                throw new InvalidArgumentException('Удалить здесь можно только игру внутри мероприятия.');
+            }
 
+            $legacyEvent = $lockedGame->legacyEvent;
             $lockedGame->delete();
+            $legacyEvent?->delete();
         });
 
         event(new EventChanged($parentEventId));
@@ -333,6 +352,12 @@ final class GameManagementService
                 'cancelled_at' => now(),
                 'cancelled_by_actor_id' => $actor->id,
                 'cancellation_reason' => 'Игра не состоялась.',
+            ])->save();
+            $lockedGame->legacyEvent?->forceFill([
+                'status' => EventStatusEnum::CANCELLED,
+                'cancelled_at' => $lockedGame->cancelled_at,
+                'cancelled_by_actor_id' => $actor->id,
+                'cancellation_reason' => $lockedGame->cancellation_reason,
             ])->save();
         });
 
@@ -390,6 +415,10 @@ final class GameManagementService
             $lockedGame->update([
                 'statistics_status' => GameStatisticsStatusEnum::NOT_STARTED,
                 'statistics_version' => $lockedGame->statistics_version + 1,
+            ]);
+            $lockedGame->legacyEvent?->gameDetail()?->update([
+                'statistics_status' => GameStatisticsStatusEnum::NOT_STARTED,
+                'statistics_version' => $lockedGame->statistics_version,
             ]);
             foreach (['A' => $sideAUserIds, 'B' => $sideBUserIds] as $slot => $userIds) {
                 foreach ($userIds as $userId) {
@@ -495,6 +524,11 @@ final class GameManagementService
                 'completed_at' => now(),
                 'completed_by_actor_id' => $actor->id,
             ]);
+            $lockedGame->legacyEvent?->update([
+                'status' => EventStatusEnum::COMPLETED,
+                'completed_at' => $lockedGame->completed_at,
+                'completed_by_actor_id' => $actor->id,
+            ]);
         });
 
         event(new GameStatisticsConfirmed($game->id));
@@ -549,6 +583,10 @@ final class GameManagementService
             'statistics_status' => GameStatisticsStatusEnum::READY,
             'statistics_version' => $game->statistics_version + 1,
         ]);
+        $game->legacyEvent?->gameDetail()?->update([
+            'statistics_status' => GameStatisticsStatusEnum::READY,
+            'statistics_version' => $game->statistics_version,
+        ]);
     }
 
     private function confirmLockedStatistics(Game $game, Actor $actor): void
@@ -584,6 +622,11 @@ final class GameManagementService
         $game->update([
             'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
             'statistics_confirmed_at' => now(),
+            'statistics_confirmed_by_actor_id' => $actor->id,
+        ]);
+        $game->legacyEvent?->gameDetail()?->update([
+            'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
+            'statistics_confirmed_at' => $game->statistics_confirmed_at,
             'statistics_confirmed_by_actor_id' => $actor->id,
         ]);
         $game->rosterEntries()

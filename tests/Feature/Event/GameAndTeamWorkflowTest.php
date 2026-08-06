@@ -240,7 +240,7 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->assertSame(EventTypeEnum::GAME, $miniGame->type);
         $this->assertNull($miniGame->booking);
         $this->assertSame(2, $miniGame->gameRosterEntries()->count());
-        $this->assertSame(2, Team::query()->where('temporary_for_event_id', $miniGame->id)->count());
+        $this->assertSame(2, Team::query()->where('temporary_for_event_id', $training->id)->count());
         $this->assertSame(
             ['Оранжевые', 'Чёрные'],
             $miniGame->gameSides()->orderBy('slot')->pluck('display_name')->all(),
