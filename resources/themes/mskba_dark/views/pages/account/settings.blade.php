@@ -46,45 +46,20 @@
                 @if($user->password !== null)
                     <div class="form-group field mb-3">
                         <label for="currentPassword" class="form-label">Текущий пароль</label>
-                        <input
-                            id="currentPassword"
-                            type="password"
-                            name="current_password"
-                            class="form-control @error('current_password') is-invalid @enderror"
-                            autocomplete="current-password"
-                            required
-                        >
-                        @error('current_password')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <input id="currentPassword" type="password" name="current_password" class="form-control @error('current_password') is-invalid @enderror" autocomplete="current-password" required>
+                        @error('current_password')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 @endif
 
                 <div class="form-group field mb-3">
                     <label for="newPassword" class="form-label">Новый пароль</label>
-                    <input
-                        id="newPassword"
-                        type="password"
-                        name="password"
-                        class="form-control @error('password') is-invalid @enderror"
-                        autocomplete="new-password"
-                        required
-                    >
-                    @error('password')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                    <input id="newPassword" type="password" name="password" class="form-control @error('password') is-invalid @enderror" autocomplete="new-password" required>
+                    @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="form-group field mb-4">
                     <label for="newPasswordConfirmation" class="form-label">Повторите новый пароль</label>
-                    <input
-                        id="newPasswordConfirmation"
-                        type="password"
-                        name="password_confirmation"
-                        class="form-control"
-                        autocomplete="new-password"
-                        required
-                    >
+                    <input id="newPasswordConfirmation" type="password" name="password_confirmation" class="form-control" autocomplete="new-password" required>
                 </div>
 
                 <p class="text-muted mb-4">
@@ -98,9 +73,9 @@
         </section>
 
         <section class="account-settings-card account-privacy" aria-labelledby="account-privacy-title">
-            <h2 id="account-privacy-title" class="h3 mb-3">Настройки приватности</h2>
+            <h2 id="account-privacy-title" class="h3 mb-3">Настройки приватности и уведомлений</h2>
             <p class="text-muted mb-4">
-                Управляйте своей видимостью и тем, кто может взаимодействовать с вами на портале.
+                Управляйте своей видимостью, взаимодействиями и доставкой уведомлений.
             </p>
 
             <form method="POST" action="{{ route('account.settings.privacy.update') }}" class="account-privacy__form">
@@ -117,66 +92,27 @@
                         $allowedUsers = $privacyAllowedUsers->get($type->value, collect());
                     @endphp
 
-                    <fieldset
-                        class="account-privacy__rule"
-                        data-privacy-rule
-                        data-user-search-url="{{ route('account.settings.privacy.users') }}"
-                    >
+                    <fieldset class="account-privacy__rule" data-privacy-rule data-user-search-url="{{ route('account.settings.privacy.users') }}">
                         <legend>{{ $type->label() }}</legend>
                         <p class="account-privacy__description">{{ $type->description() }}</p>
 
                         <label class="form-label" for="privacy-{{ $type->value }}">Доступ</label>
-                        <select
-                            id="privacy-{{ $type->value }}"
-                            class="form-control account-privacy__visibility"
-                            name="privacy[{{ $type->value }}][visibility]"
-                            data-privacy-visibility
-                        >
+                        <select id="privacy-{{ $type->value }}" class="form-control account-privacy__visibility" name="privacy[{{ $type->value }}][visibility]" data-privacy-visibility>
                             @foreach($privacyVisibilities as $visibilityOption)
-                                <option
-                                    value="{{ $visibilityOption->value }}"
-                                    @selected($visibility === $visibilityOption->value)
-                                >{{ $visibilityOption->label() }}</option>
+                                <option value="{{ $visibilityOption->value }}" @selected($visibility === $visibilityOption->value)>{{ $visibilityOption->label() }}</option>
                             @endforeach
                         </select>
 
-                        @error("privacy.{$type->value}.visibility")
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
+                        @error("privacy.{$type->value}.visibility")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
-                        <div
-                            class="account-privacy__users"
-                            data-privacy-users
-                            @if($visibility !== \App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum::SELECTED_USERS->value) hidden @endif
-                        >
-                            <label class="form-label" for="privacy-users-{{ $type->value }}">
-                                Разрешённые пользователи
-                            </label>
+                        <div class="account-privacy__users" data-privacy-users @if($visibility !== \App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum::SELECTED_USERS->value) hidden @endif>
+                            <label class="form-label" for="privacy-users-{{ $type->value }}">Разрешённые пользователи</label>
                             <div class="predictive-search__input-wrap">
-                                <input
-                                    id="privacy-users-{{ $type->value }}"
-                                    type="text"
-                                    class="form-control predictive-search__input"
-                                    placeholder="Начните вводить имя или логин..."
-                                    autocomplete="off"
-                                    data-privacy-user-search
-                                >
-                                <button
-                                    type="button"
-                                    class="predictive-search__control"
-                                    data-privacy-user-control
-                                    hidden
-                                    aria-label="Очистить поиск"
-                                ></button>
-                                <div
-                                    class="predictive-search__list account-privacy__results d-none"
-                                    role="listbox"
-                                    data-privacy-user-results
-                                ></div>
+                                <input id="privacy-users-{{ $type->value }}" type="text" class="form-control predictive-search__input" placeholder="Начните вводить имя или логин..." autocomplete="off" data-privacy-user-search>
+                                <button type="button" class="predictive-search__control" data-privacy-user-control hidden aria-label="Очистить поиск"></button>
+                                <div class="predictive-search__list account-privacy__results d-none" role="listbox" data-privacy-user-results></div>
                             </div>
-                            <p class="predictive-search__message account-privacy__search-message text-muted" data-privacy-user-message>
-                                Введите не менее двух символов.
-                            </p>
+                            <p class="predictive-search__message account-privacy__search-message text-muted" data-privacy-user-message>Введите не менее двух символов.</p>
                             <div class="account-privacy__selected" data-privacy-selected>
                                 @foreach($allowedUsers as $allowedUser)
                                     @php
@@ -187,29 +123,21 @@
                                     @endphp
                                     <span class="account-privacy__chip" data-privacy-user-id="{{ $allowedUser->id }}">
                                         <span>{{ $allowedName }}</span>
-                                        @if($allowedUser->username)
-                                            <small>{{ '@'.$allowedUser->username }}</small>
-                                        @endif
-                                        <input
-                                            type="hidden"
-                                            name="privacy[{{ $type->value }}][allowed_user_ids][]"
-                                            value="{{ $allowedUser->id }}"
-                                        >
+                                        @if($allowedUser->username)<small>{{ '@'.$allowedUser->username }}</small>@endif
+                                        <input type="hidden" name="privacy[{{ $type->value }}][allowed_user_ids][]" value="{{ $allowedUser->id }}">
                                         <button type="button" aria-label="Убрать {{ $allowedName }}" data-privacy-user-remove>×</button>
                                     </span>
                                 @endforeach
                             </div>
-                            @error("privacy.{$type->value}.allowed_user_ids")
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                            @error("privacy.{$type->value}.allowed_user_ids.*")
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
+                            @error("privacy.{$type->value}.allowed_user_ids")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            @error("privacy.{$type->value}.allowed_user_ids.*")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                     </fieldset>
                 @endforeach
 
-                <button type="submit" class="btn btn--primary btn--sm">Сохранить приватность</button>
+                @include('theme::pages.account.partials.messenger-notifications-setting', ['user' => $user])
+
+                <button type="submit" class="btn btn--primary btn--sm">Сохранить настройки</button>
             </form>
         </section>
 

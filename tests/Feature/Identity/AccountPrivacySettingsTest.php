@@ -3,6 +3,7 @@
 namespace Tests\Feature\Identity;
 
 use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
+use App\Modules\Identity\Domain\Enums\UserMessengerNotificationPreferenceEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -15,23 +16,30 @@ final class AccountPrivacySettingsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_settings_page_uses_safe_privacy_defaults(): void
+    public function test_settings_page_uses_safe_privacy_and_notification_defaults(): void
     {
         $user = User::factory()->create();
 
         $this->actingAs($user)
             ->get(route('account.settings'))
             ->assertOk()
-            ->assertSee('Настройки приватности')
-            ->assertSee('Общая видимость')
+            ->assertSee('Настройки приватности и уведомлений')
+            ->assertSee('Видимость в поиске')
             ->assertSee('Показывать мои контакты')
             ->assertSee('Кто может писать мне сообщения')
-            ->assertSee('Кто может добавлять меня в группы');
+            ->assertSee('Кто может добавлять меня в группы')
+            ->assertSee('Уведомления в Telegram')
+            ->assertSee('Все уведомления');
 
+        $this->assertSame(
+            UserPrivacyVisibilityEnum::EVERYONE,
+            UserPrivacySettingTypeEnum::GROUP_INVITATIONS->defaultVisibility(),
+        );
         $this->assertDatabaseCount('user_privacy_settings', 0);
+        $this->assertDatabaseCount('user_notification_settings', 0);
     }
 
-    public function test_user_can_update_all_privacy_settings_atomically(): void
+    public function test_user_can_update_all_privacy_and_notification_settings_atomically(): void
     {
         $user = User::factory()->create();
         $allowedUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
@@ -53,17 +61,22 @@ final class AccountPrivacySettingsTest extends TestCase
                     'allowed_user_ids' => [$allowedUser->getKey()],
                 ],
             ],
+            'messenger_notifications' => UserMessengerNotificationPreferenceEnum::REQUESTS_ONLY->value,
         ]);
 
         $response
             ->assertRedirect(route('account.settings'))
-            ->assertSessionHas('status', 'Настройки приватности сохранены.');
+            ->assertSessionHas('status', 'Настройки приватности и уведомлений сохранены.');
 
         $this->assertDatabaseCount('user_privacy_settings', 4);
         $this->assertDatabaseHas('user_privacy_settings', [
             'user_id' => $user->getKey(),
             'type' => UserPrivacySettingTypeEnum::MESSAGES->value,
             'visibility' => UserPrivacyVisibilityEnum::EVERYONE->value,
+        ]);
+        $this->assertDatabaseHas('user_notification_settings', [
+            'user_id' => $user->getKey(),
+            'messenger_notifications' => UserMessengerNotificationPreferenceEnum::REQUESTS_ONLY->value,
         ]);
         $this->assertDatabaseCount('user_privacy_setting_allowed_users', 2);
     }
@@ -97,16 +110,9 @@ final class AccountPrivacySettingsTest extends TestCase
         $otherUser = User::factory()->create();
         $service = app(UserPrivacyAccessService::class);
 
-        $this->assertTrue($service->allows(
-            $subject,
-            $otherUser,
-            UserPrivacySettingTypeEnum::DISCOVERABILITY,
-        ));
-        $this->assertFalse($service->allows(
-            $subject,
-            $otherUser,
-            UserPrivacySettingTypeEnum::CONTACTS,
-        ));
+        $this->assertTrue($service->allows($subject, $otherUser, UserPrivacySettingTypeEnum::DISCOVERABILITY));
+        $this->assertTrue($service->allows($subject, $otherUser, UserPrivacySettingTypeEnum::GROUP_INVITATIONS));
+        $this->assertFalse($service->allows($subject, $otherUser, UserPrivacySettingTypeEnum::CONTACTS));
 
         $setting = UserPrivacySetting::query()->create([
             'user_id' => $subject->getKey(),
@@ -115,21 +121,9 @@ final class AccountPrivacySettingsTest extends TestCase
         ]);
         $setting->allowedUsers()->attach($allowedUser);
 
-        $this->assertTrue($service->allows(
-            $subject,
-            $allowedUser,
-            UserPrivacySettingTypeEnum::CONTACTS,
-        ));
-        $this->assertFalse($service->allows(
-            $subject,
-            $otherUser,
-            UserPrivacySettingTypeEnum::CONTACTS,
-        ));
-        $this->assertTrue($service->allows(
-            $subject,
-            $subject,
-            UserPrivacySettingTypeEnum::CONTACTS,
-        ));
+        $this->assertTrue($service->allows($subject, $allowedUser, UserPrivacySettingTypeEnum::CONTACTS));
+        $this->assertFalse($service->allows($subject, $otherUser, UserPrivacySettingTypeEnum::CONTACTS));
+        $this->assertTrue($service->allows($subject, $subject, UserPrivacySettingTypeEnum::CONTACTS));
     }
 
     public function test_user_search_respects_general_visibility(): void
@@ -157,9 +151,6 @@ final class AccountPrivacySettingsTest extends TestCase
             ->assertJsonMissing(['id' => $hiddenUser->getKey()]);
     }
 
-    /**
-     * @return array{privacy: array<string, array{visibility: string}>}
-     */
     private function validPayload(): array
     {
         return [
@@ -168,6 +159,7 @@ final class AccountPrivacySettingsTest extends TestCase
                     $type->value => ['visibility' => $type->defaultVisibility()->value],
                 ])
                 ->all(),
+            'messenger_notifications' => UserMessengerNotificationPreferenceEnum::ALL->value,
         ];
     }
 }

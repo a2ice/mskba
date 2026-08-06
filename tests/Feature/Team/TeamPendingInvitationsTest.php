@@ -3,6 +3,8 @@
 namespace Tests\Feature\Team;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -30,6 +32,7 @@ final class TeamPendingInvitationsTest extends TestCase
             'first_name' => 'Ожидающий',
             'last_name' => 'Игрок',
         ]);
+        $this->allowGroupInvitations($candidate);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
 
         $this->actingAs($creator)
@@ -73,6 +76,7 @@ final class TeamPendingInvitationsTest extends TestCase
             'status' => UserStatusEnum::CONFIRMED,
         ]);
         $candidate->profile()->create(['first_name' => 'Отозванный', 'last_name' => 'Игрок']);
+        $this->allowGroupInvitations($candidate);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
 
         $this->actingAs($creator)
@@ -127,5 +131,14 @@ final class TeamPendingInvitationsTest extends TestCase
 
         $this->assertSame(TeamInvitationStatusEnum::PENDING, $membership->fresh()->invitation_status);
         $this->assertSame(ContractStatusEnum::INACTIVE, $membership->contract->fresh()->status);
+    }
+
+    private function allowGroupInvitations(User $user): void
+    {
+        $user->privacySettings()->updateOrCreate([
+            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+        ], [
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
     }
 }

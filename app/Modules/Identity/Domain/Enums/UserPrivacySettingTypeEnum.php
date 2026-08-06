@@ -12,7 +12,7 @@ enum UserPrivacySettingTypeEnum: string
     public function label(): string
     {
         return match ($this) {
-            self::DISCOVERABILITY => 'Общая видимость',
+            self::DISCOVERABILITY => 'Видимость в поиске',
             self::CONTACTS => 'Показывать мои контакты',
             self::MESSAGES => 'Кто может писать мне сообщения',
             self::GROUP_INVITATIONS => 'Кто может добавлять меня в группы',
@@ -22,7 +22,7 @@ enum UserPrivacySettingTypeEnum: string
     public function description(): string
     {
         return match ($this) {
-            self::DISCOVERABILITY => 'Определяет, появляетесь ли вы в поиске и списках выбора пользователей.',
+            self::DISCOVERABILITY => 'Кто сможет находить вас в поиске и списках выбора пользователей. Статус аккаунта, подтверждение, блокировка и удаление проверяются отдельно.',
             self::CONTACTS => 'Кому доступны опубликованные вами контактные данные.',
             self::MESSAGES => 'Кто сможет начать с вами личную переписку.',
             self::GROUP_INVITATIONS => 'Кто сможет приглашать вас в команды, чаты и другие группы.',
@@ -31,8 +31,9 @@ enum UserPrivacySettingTypeEnum: string
 
     public function defaultVisibility(): UserPrivacyVisibilityEnum
     {
-        return $this === self::DISCOVERABILITY
-            ? UserPrivacyVisibilityEnum::EVERYONE
-            : UserPrivacyVisibilityEnum::NOBODY;
+        return match ($this) {
+            self::DISCOVERABILITY, self::GROUP_INVITATIONS => UserPrivacyVisibilityEnum::EVERYONE,
+            self::CONTACTS, self::MESSAGES => UserPrivacyVisibilityEnum::NOBODY,
+        };
     }
 }

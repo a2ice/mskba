@@ -16,10 +16,14 @@ final class UpdateAccountPrivacySettingsController extends Controller
         UpdateUserPrivacySettingsHandler $updatePrivacySettings,
     ): RedirectResponse {
         $user = $accountCheck->handle($request->user());
-        $updatePrivacySettings->handle($user, $request->settings());
+        $updatePrivacySettings->handle(
+            $user,
+            $request->settings(),
+            $request->messengerNotifications(),
+        );
 
         return redirect()
             ->route('account.settings')
-            ->with('status', 'Настройки приватности сохранены.');
+            ->with('status', 'Настройки приватности и уведомлений сохранены.');
     }
 }

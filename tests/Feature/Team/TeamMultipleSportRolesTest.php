@@ -3,6 +3,8 @@
 namespace Tests\Feature\Team;
 
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
@@ -73,6 +75,10 @@ final class TeamMultipleSportRolesTest extends TestCase
         $candidate = User::factory()->create([
             'username' => 'second-player',
             'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $candidate->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
         ]);
 
         $this->actingAs($owner)->post(route('teams.store'), [

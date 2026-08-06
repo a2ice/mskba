@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Team;
 
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -23,6 +25,10 @@ final class TeamOwnerSportRoleProtectionTest extends TestCase
         $delegate = User::factory()->create([
             'username' => 'delegated-role-manager',
             'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $delegate->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
         ]);
         $admin = User::factory()->create([
             'username' => 'system-role-admin',
