@@ -2,6 +2,8 @@
 
 namespace App\Modules\Telegram\Infrastructure\Jobs;
 
+use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Enums\UserMessengerNotificationPreferenceEnum;
 use App\Modules\Identity\Domain\Models\UserNotificationSetting;
 use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
@@ -44,14 +46,23 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
         $category = UserNotificationDeliveryCategoryEnum::tryFrom(
             (string) data_get($notification->payload, 'delivery_category', UserNotificationDeliveryCategoryEnum::GENERAL->value),
         ) ?? UserNotificationDeliveryCategoryEnum::GENERAL;
-        $preference = UserNotificationSetting::query()
+        $preference = UserMessengerNotificationPreferenceEnum::tryFrom((string) UserNotificationSetting::query()
             ->where('user_id', $notification->user_id)
-            ->value('messenger_notifications');
-        $preference = UserMessengerNotificationPreferenceEnum::tryFrom((string) $preference)
-            ?? UserMessengerNotificationPreferenceEnum::ALL;
+            ->value('messenger_notifications')) ?? UserMessengerNotificationPreferenceEnum::ALL;
 
         if (! $this->allows($preference, $category)) {
             $delivery->update(['status' => 'skipped', 'last_error' => 'Disabled by user preference.']);
+            return;
+        }
+
+        $hasVerifiedTelegramContact = Contact::query()
+            ->where('contactable_type', 'user')
+            ->where('contactable_id', $notification->user_id)
+            ->where('type', ContactTypeEnum::TELEGRAM->value)
+            ->whereNotNull('verified_at')
+            ->exists();
+        if (! $hasVerifiedTelegramContact) {
+            $delivery->update(['status' => 'skipped', 'last_error' => 'Verified Telegram contact is missing.']);
             return;
         }
 
