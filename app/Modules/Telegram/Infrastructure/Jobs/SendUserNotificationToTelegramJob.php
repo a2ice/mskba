@@ -46,9 +46,8 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
         $category = UserNotificationDeliveryCategoryEnum::tryFrom(
             (string) data_get($notification->payload, 'delivery_category', UserNotificationDeliveryCategoryEnum::GENERAL->value),
         ) ?? UserNotificationDeliveryCategoryEnum::GENERAL;
-        $preference = UserMessengerNotificationPreferenceEnum::tryFrom((string) UserNotificationSetting::query()
-            ->where('user_id', $notification->user_id)
-            ->value('messenger_notifications')) ?? UserMessengerNotificationPreferenceEnum::ALL;
+        $setting = UserNotificationSetting::query()->where('user_id', $notification->user_id)->first();
+        $preference = $setting?->messenger_notifications ?? UserMessengerNotificationPreferenceEnum::ALL;
 
         if (! $this->allows($preference, $category)) {
             $delivery->update(['status' => 'skipped', 'last_error' => 'Disabled by user preference.']);
