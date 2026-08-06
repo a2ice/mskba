@@ -93,13 +93,11 @@ final class EventPlayerStatisticsSummaryBuilderTest extends TestCase
     private function createStatistics(Game $game, User $player, array $values): void
     {
         $side = $game->sides()->create([
-            'event_id' => $game->event_id,
             'slot' => 'A',
             'display_name' => 'Команда A',
         ]);
 
         GamePlayerStatistic::query()->create([
-            'event_id' => $game->event_id,
             'game_id' => $game->id,
             'game_side_id' => $side->id,
             'user_id' => $player->id,

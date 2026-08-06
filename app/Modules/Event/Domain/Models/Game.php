@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'event_id',
-    'legacy_event_id',
     'created_by_actor_id',
     'title',
     'description',
@@ -50,11 +49,6 @@ class Game extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
-    }
-
-    public function legacyEvent(): BelongsTo
-    {
-        return $this->belongsTo(Event::class, 'legacy_event_id');
     }
 
     public function createdByActor(): BelongsTo

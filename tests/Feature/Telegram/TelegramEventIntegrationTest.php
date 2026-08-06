@@ -70,23 +70,16 @@ final class TelegramEventIntegrationTest extends TestCase
             'confirmation_version' => (int) ($event->participation_confirmation_version ?? 1),
             'responsibility_status' => EventResponsibilityStatusEnum::ACCEPTED,
         ]);
-        $miniGame = Event::factory()->create([
-            'parent_event_id' => $event->id,
-            'venue_id' => $event->venue_id,
-            'title' => 'Игра до семи',
-            'type' => EventTypeEnum::GAME,
-        ]);
         $game = Game::query()->create([
             'event_id' => $event->id,
-            'legacy_event_id' => $miniGame->id,
             'created_by_actor_id' => $event->organizer_actor_id,
             'title' => 'Игра до семи',
             'side_a_size' => 2,
             'side_b_size' => 2,
         ]);
         $game->sides()->createMany([
-            ['event_id' => $miniGame->id, 'slot' => 'A', 'display_name' => 'Оранжевые', 'score' => 7],
-            ['event_id' => $miniGame->id, 'slot' => 'B', 'display_name' => 'Чёрные', 'score' => 5],
+            ['slot' => 'A', 'display_name' => 'Оранжевые', 'score' => 7],
+            ['slot' => 'B', 'display_name' => 'Чёрные', 'score' => 5],
         ]);
         TelegramEventPublication::query()->create([
             'event_id' => $event->id,

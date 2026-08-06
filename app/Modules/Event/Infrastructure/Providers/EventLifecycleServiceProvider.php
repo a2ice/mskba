@@ -7,8 +7,6 @@ use App\Modules\Event\Domain\Models\GameRosterEntry;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameLifecycleState;
 use App\Modules\Event\Infrastructure\Observers\GameRosterEntryObserver;
 use App\Modules\Event\Presentation\Http\Controllers\EventManagementController;
-use App\Modules\Event\Presentation\Http\Controllers\GameLifecycleController;
-use App\Modules\Event\Presentation\Http\Controllers\GameLineupController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -29,19 +27,6 @@ final class EventLifecycleServiceProvider extends ServiceProvider
             ->get('/admin/events/{event}', [AdminEventsController::class, 'show'])
             ->name('admin.events.show')
             ->defaults('breadcrumb', 'Мероприятие');
-
-        Route::middleware(['web', 'auth'])
-            ->prefix('game-lifecycle')
-            ->group(function (): void {
-                Route::get('/{event}', [GameLifecycleController::class, 'show'])
-                    ->name('events.game.lifecycle.show');
-                Route::post('/{event}/start', [GameLifecycleController::class, 'start'])
-                    ->name('events.game.lifecycle.start');
-                Route::post('/{event}/end', [GameLifecycleController::class, 'end'])
-                    ->name('events.game.lifecycle.end');
-                Route::put('/{event}/lineup', GameLineupController::class)
-                    ->name('events.game.lineup.update');
-            });
 
         View::composer([
             'theme::pages.events.show',

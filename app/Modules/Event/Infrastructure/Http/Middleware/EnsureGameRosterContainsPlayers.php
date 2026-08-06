@@ -3,9 +3,7 @@
 namespace App\Modules\Event\Infrastructure\Http\Middleware;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
-use App\Modules\Event\Application\Services\LegacyGameRouteResolver;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
-use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use Closure;
@@ -14,18 +12,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class EnsureGameRosterContainsPlayers
 {
-    public function __construct(private readonly LegacyGameRouteResolver $games) {}
-
     public function handle(Request $request, Closure $next): Response
     {
         $routeName = $request->route()?->getName();
-        if (! in_array($routeName, ['events.game.roster', 'events.games.roster'], true)) {
+        if ($routeName !== 'events.games.roster') {
             return $next($request);
         }
 
-        $game = $routeName === 'events.games.roster'
-            ? $this->resolveNestedGame($request)
-            : $this->games->resolve((string) $request->route('event'))->load(['event', 'sides.team']);
+        $game = $this->resolveNestedGame($request);
 
         // A mini-game roster is formed from confirmed event participants rather
         // than permanent team memberships, so team sport roles do not apply.

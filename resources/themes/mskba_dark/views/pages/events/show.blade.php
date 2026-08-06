@@ -718,8 +718,7 @@
                             </section>
                         @endif
 
-                        @if($event->parent_event_id === null
-                            && $allows(EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES)
+                        @if($allows(EventResponsibilityPermissionEnum::MANAGE_RESPONSIBILITIES)
                             && $event->ends_at->isFuture()
                             && ! in_array($event->status, [EventStatusEnum::CANCELLED, EventStatusEnum::COMPLETED], true))
                             @if($confirmedParticipants->where('role', EventParticipantRoleEnum::PARTICIPANT)->isNotEmpty())

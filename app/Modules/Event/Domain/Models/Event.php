@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
-    'parent_event_id',
     'venue_id',
     'organizer_actor_id',
     'title',
@@ -34,10 +33,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'result_description',
     'starts_at',
     'ends_at',
-    'actual_started_at',
-    'actual_started_by_actor_id',
-    'actual_ended_at',
-    'actual_ended_by_actor_id',
     'max_participants',
     'completed_at',
     'completed_by_actor_id',
@@ -76,16 +71,6 @@ class Event extends Model
         return $this->belongsTo(Venue::class);
     }
 
-    public function parentEvent(): BelongsTo
-    {
-        return $this->belongsTo(self::class, 'parent_event_id');
-    }
-
-    public function childGames(): HasMany
-    {
-        return $this->hasMany(self::class, 'parent_event_id');
-    }
-
     public function organizerActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'organizer_actor_id');
@@ -101,44 +86,14 @@ class Event extends Model
         return $this->hasOne(VenueBooking::class);
     }
 
-    public function gameDetail(): HasOne
-    {
-        return $this->hasOne(GameDetail::class);
-    }
-
     public function games(): HasMany
     {
         return $this->hasMany(Game::class);
     }
 
-    public function gameSides(): HasMany
-    {
-        return $this->hasMany(GameSide::class);
-    }
-
-    public function gameRosterEntries(): HasMany
-    {
-        return $this->hasMany(GameRosterEntry::class);
-    }
-
-    public function gamePlayerStatistics(): HasMany
-    {
-        return $this->hasMany(GamePlayerStatistic::class);
-    }
-
     public function telegramPublications(): HasMany
     {
         return $this->hasMany(TelegramEventPublication::class);
-    }
-
-    public function actualStartedByActor(): BelongsTo
-    {
-        return $this->belongsTo(Actor::class, 'actual_started_by_actor_id');
-    }
-
-    public function actualEndedByActor(): BelongsTo
-    {
-        return $this->belongsTo(Actor::class, 'actual_ended_by_actor_id');
     }
 
     public function completedByActor(): BelongsTo
@@ -164,8 +119,6 @@ class Event extends Model
             'visibility' => EventVisibilityEnum::class,
             'starts_at' => 'immutable_datetime',
             'ends_at' => 'immutable_datetime',
-            'actual_started_at' => 'immutable_datetime',
-            'actual_ended_at' => 'immutable_datetime',
             'max_participants' => 'integer',
             'completed_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',

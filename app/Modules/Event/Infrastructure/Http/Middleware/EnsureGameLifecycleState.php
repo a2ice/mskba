@@ -2,7 +2,6 @@
 
 namespace App\Modules\Event\Infrastructure\Http\Middleware;
 
-use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use Closure;
 use Illuminate\Http\Request;
@@ -18,27 +17,18 @@ final class EnsureGameLifecycleState
         }
 
         $beforeStartOnly = [
-            'events.game.roster',
             'events.games.roster',
-            'events.game.lineup.update',
             'events.games.lineup.update',
-            'events.game.update',
             'events.games.update',
-            'events.game.destroy',
             'events.games.destroy',
-            'events.game.cancel',
             'events.games.cancel',
         ];
         $liveOnly = [
-            'events.game.statistics',
             'events.games.statistics',
-            'events.game.score',
             'events.games.score',
         ];
         $afterEndOnly = [
-            'events.game.statistics.complete',
             'events.games.statistics.complete',
-            'events.game.statistics.confirm',
             'events.games.statistics.confirm',
         ];
 
@@ -46,9 +36,7 @@ final class EnsureGameLifecycleState
             return $next($request);
         }
 
-        $game = str_starts_with($routeName, 'events.games.')
-            ? $this->resolveNestedGame($request)
-            : Event::query()->whereRouteIdentifier((string) $request->route('event'))->firstOrFail();
+        $game = $this->resolveNestedGame($request);
 
         if (in_array($routeName, $beforeStartOnly, true) && $game->actual_started_at !== null) {
             return $this->reject($request, 'После начала игры состав и параметры изменять нельзя.');

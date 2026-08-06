@@ -2,7 +2,8 @@
 
 ## Статус
 
-Принято 6 августа 2026 года. Реализация выполняется поэтапно в задаче 084.
+Принято и реализовано 6 августа 2026 года в задаче 084. Runtime использует только `Game`;
+legacy-схема удалена, таблица `legacy_game_routes` оставлена исключительно для HTTP-редиректов.
 
 ## Контекст и решение
 
@@ -24,7 +25,6 @@
 
 - `id`;
 - `event_id` — обязательный внешний ключ;
-- `legacy_event_id` — nullable unique, временное соответствие старому игровому Event;
 - `created_by_actor_id`;
 - `title`, `description` — nullable;
 - `status`: `scheduled`, `in_progress`, `awaiting_result`, `completed`, `cancelled`;
@@ -86,7 +86,7 @@
 
 ## Миграция данных
 
-Переход выполняется двумя releases в maintenance-окно:
+Переход выполнен двумя releases в maintenance-окно:
 
 1. добавить `games` и nullable `game_id` без удаления legacy;
 2. создать одну Game для каждого обычного игрового Event;
@@ -110,6 +110,10 @@
 Старый URL дочернего mini-game Event сохраняется в `legacy_game_routes` до удаления Event и отвечает
 постоянным redirect на `/events/{parent}/games/{game}`. Таблица mapping не зависит от существования
 старой строки Event и удаляется только после согласованного срока совместимости.
+
+Cleanup удалил `game_details`, `events.parent_event_id`, игровые lifecycle-поля из `events`,
+`games.legacy_event_id` и старые `event_id` из игровых таблиц. Команда переноса и совместимые
+mutation-маршруты удалены: после cleanup единственным источником игровых данных является `Game`.
 
 ## Турнирное расширение
 

@@ -40,7 +40,6 @@
     $parentCandidates = $event->participants
         ->where('status', EventParticipantStatusEnum::CONFIRMED)
         ->map(fn ($participant) => $participant->user)->keyBy('id') ?? collect();
-    $legacyIdentifier = $game->legacyEvent?->routeIdentifier();
     $isEmbeddedGame = $event->type !== EventTypeEnum::GAME;
     $gameRouteParameters = [$event->routeIdentifier(), $game->id];
 @endphp

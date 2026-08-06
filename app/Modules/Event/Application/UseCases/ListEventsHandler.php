@@ -36,7 +36,6 @@ final class ListEventsHandler
             : CarbonImmutable::parse($dateTo, $timezone)->endOfDay()->utc();
 
         return Event::query()
-            ->whereNull('parent_event_id')
             ->with([
                 'venue.schedule',
                 'venue.location.address',
@@ -47,7 +46,7 @@ final class ListEventsHandler
                     ->limit(1),
                 'booking',
                 'games' => fn ($query) => $query
-                    ->with(['legacyEvent', 'sides'])
+                    ->with('sides')
                     ->orderByRaw('scheduled_starts_at nulls last')
                     ->orderBy('id'),
             ])

@@ -51,13 +51,6 @@ final class GameLifecycleService
                     ? GameStatisticsStatusEnum::ENTERING
                     : $lockedGame->statistics_status,
             ]);
-            $lockedGame->legacyEvent?->update([
-                'actual_started_at' => $lockedGame->actual_started_at,
-                'actual_started_by_actor_id' => $actor->id,
-            ]);
-            $lockedGame->legacyEvent?->gameDetail()?->update([
-                'statistics_status' => $lockedGame->statistics_status,
-            ]);
 
             return $lockedGame->fresh();
         }, 3);
@@ -94,13 +87,6 @@ final class GameLifecycleService
                 'statistics_status' => $lockedGame->statistics_status === GameStatisticsStatusEnum::ENTERING
                     ? GameStatisticsStatusEnum::READY
                     : $lockedGame->statistics_status,
-            ]);
-            $lockedGame->legacyEvent?->update([
-                'actual_ended_at' => $lockedGame->actual_ended_at,
-                'actual_ended_by_actor_id' => $actor->id,
-            ]);
-            $lockedGame->legacyEvent?->gameDetail()?->update([
-                'statistics_status' => $lockedGame->statistics_status,
             ]);
 
             return $lockedGame->fresh();

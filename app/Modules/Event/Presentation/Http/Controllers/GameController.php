@@ -5,7 +5,6 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
-use App\Modules\Event\Application\Services\LegacyGameRouteResolver;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
@@ -21,8 +20,6 @@ use InvalidArgumentException;
 
 final class GameController extends Controller
 {
-    public function __construct(private readonly LegacyGameRouteResolver $legacyGames) {}
-
     public function createMiniGame(
         Request $request,
         string $event,
@@ -338,16 +335,13 @@ final class GameController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         $gameId = $request->route('game');
-        if ($gameId !== null) {
-            $parent = Event::query()->whereRouteIdentifier($identifier)->firstOrFail();
-            $game = Game::query()
-                ->whereKey((int) $gameId)
-                ->whereBelongsTo($parent)
-                ->with(['event', 'legacyEvent'])
-                ->firstOrFail();
-        } else {
-            $game = $this->legacyGames->resolve($identifier)->load(['event', 'legacyEvent']);
-        }
+        abort_if($gameId === null, 404);
+        $parent = Event::query()->whereRouteIdentifier($identifier)->firstOrFail();
+        $game = Game::query()
+            ->whereKey((int) $gameId)
+            ->whereBelongsTo($parent)
+            ->with('event')
+            ->firstOrFail();
         abort_unless($access->allows($game->event, $actor, $permission), 403);
 
         return [$game, $actor];

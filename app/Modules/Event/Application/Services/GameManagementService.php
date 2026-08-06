@@ -40,7 +40,7 @@ final class GameManagementService
         int $sideBSize = 5,
         GameScoringTypeEnum $scoringType = GameScoringTypeEnum::STREETBALL,
     ): void {
-        if ($event->type !== EventTypeEnum::GAME || $event->parent_event_id !== null) {
+        if ($event->type !== EventTypeEnum::GAME) {
             throw new InvalidArgumentException('Составы команд доступны только для самостоятельной игры.');
         }
         $this->assertSideSizeLimits($sideASize, $sideBSize);
@@ -64,7 +64,6 @@ final class GameManagementService
 
         $game = Game::query()->create([
             'event_id' => $event->id,
-            'legacy_event_id' => $event->id,
             'created_by_actor_id' => $event->organizer_actor_id,
             'status' => GameStatusEnum::SCHEDULED,
             'side_a_size' => $sideASize,
@@ -74,22 +73,12 @@ final class GameManagementService
             'scheduled_ends_at' => $event->ends_at,
         ]);
 
-        // Transitional mirror for old installations. Runtime reads Game; this
-        // row is removed by the final legacy cleanup migration.
-        $event->gameDetail()->create([
-            'side_a_size' => $sideASize,
-            'side_b_size' => $sideBSize,
-            'scoring_type' => $scoringType,
-        ]);
-
         $sideA = $game->sides()->create([
-            'event_id' => $event->id,
             'team_id' => $teamAId,
             'slot' => 'A',
             'display_name' => $teams[$teamAId]->name,
         ]);
         $sideB = $game->sides()->create([
-            'event_id' => $event->id,
             'team_id' => $teamBId,
             'slot' => 'B',
             'display_name' => $teams[$teamBId]->name,
@@ -182,13 +171,11 @@ final class GameManagementService
             $teamA = $this->createTemporaryTeam($lockedParent, $game, $actor, $sideAName);
             $teamB = $this->createTemporaryTeam($lockedParent, $game, $actor, $sideBName);
             $sideA = $game->sides()->create([
-                'event_id' => $lockedParent->id,
                 'team_id' => $teamA->id,
                 'slot' => 'A',
                 'display_name' => $teamA->name,
             ]);
             $sideB = $game->sides()->create([
-                'event_id' => $lockedParent->id,
                 'team_id' => $teamB->id,
                 'slot' => 'B',
                 'display_name' => $teamB->name,
@@ -235,9 +222,6 @@ final class GameManagementService
             if ($lockedGame->event_id !== $lockedParent->id) {
                 throw new InvalidArgumentException('Связь мини-игры с тренировкой была изменена.');
             }
-            if ($lockedGame->legacy_event_id === $lockedGame->event_id) {
-                throw new InvalidArgumentException('Этот сценарий доступен только для игры внутри мероприятия.');
-            }
             $this->assertGameIsEditable($lockedGame);
             if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Мини-игру с подтверждённой статистикой изменять нельзя.');
@@ -274,17 +258,6 @@ final class GameManagementService
                 'scheduled_starts_at' => $isTimeScheduled ? $start : null,
                 'scheduled_ends_at' => $isTimeScheduled ? $end : null,
             ]);
-            $lockedGame->legacyEvent?->update([
-                'title' => $title,
-                'starts_at' => $start,
-                'ends_at' => $end,
-            ]);
-            $lockedGame->legacyEvent?->gameDetail()?->update([
-                'side_a_size' => $sideASize,
-                'side_b_size' => $sideBSize,
-                'is_time_scheduled' => $isTimeScheduled,
-                'scoring_type' => $scoringType,
-            ]);
             foreach (['A' => $sideAName, 'B' => $sideBName] as $slot => $name) {
                 $side = $sides[$slot];
                 $side->update(['display_name' => $name]);
@@ -309,17 +282,11 @@ final class GameManagementService
             if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Мини-игру с подтверждённой статистикой удалить нельзя.');
             }
-            if ($lockedGame->legacy_event_id === $lockedGame->event_id) {
-                throw new InvalidArgumentException('Удалить здесь можно только игру внутри мероприятия.');
-            }
-
-            $legacyEvent = $lockedGame->legacyEvent;
             $temporaryTeamIds = $lockedGame->sides()
                 ->whereHas('team', fn ($query) => $query->where('temporary_for_event_id', $lockedParent->id))
                 ->pluck('team_id')
                 ->filter();
             $lockedGame->forceDelete();
-            $legacyEvent?->delete();
             Team::query()->whereKey($temporaryTeamIds)->delete();
         });
 
@@ -351,12 +318,6 @@ final class GameManagementService
                 'cancelled_at' => now(),
                 'cancelled_by_actor_id' => $actor->id,
                 'cancellation_reason' => 'Игра не состоялась.',
-            ])->save();
-            $lockedGame->legacyEvent?->forceFill([
-                'status' => EventStatusEnum::CANCELLED,
-                'cancelled_at' => $lockedGame->cancelled_at,
-                'cancelled_by_actor_id' => $actor->id,
-                'cancellation_reason' => $lockedGame->cancellation_reason,
             ])->save();
         });
 
@@ -415,15 +376,10 @@ final class GameManagementService
                 'statistics_status' => GameStatisticsStatusEnum::NOT_STARTED,
                 'statistics_version' => $lockedGame->statistics_version + 1,
             ]);
-            $lockedGame->legacyEvent?->gameDetail()?->update([
-                'statistics_status' => GameStatisticsStatusEnum::NOT_STARTED,
-                'statistics_version' => $lockedGame->statistics_version,
-            ]);
             foreach (['A' => $sideAUserIds, 'B' => $sideBUserIds] as $slot => $userIds) {
                 foreach ($userIds as $userId) {
                     $source = $candidates[(int) $userId];
                     $lockedGame->rosterEntries()->create([
-                        'event_id' => $lockedGame->legacy_event_id ?? $lockedGame->event_id,
                         'game_side_id' => $sides[$slot]->id,
                         'user_id' => (int) $userId,
                         'source_contract_membership_id' => $source['membership_id'] ?? null,
@@ -520,11 +476,6 @@ final class GameManagementService
                 'completed_at' => now(),
                 'completed_by_actor_id' => $actor->id,
             ]);
-            $lockedGame->legacyEvent?->update([
-                'status' => EventStatusEnum::COMPLETED,
-                'completed_at' => $lockedGame->completed_at,
-                'completed_by_actor_id' => $actor->id,
-            ]);
         });
 
         event(new GameStatisticsConfirmed($game->id));
@@ -569,7 +520,6 @@ final class GameManagementService
                 ['user_id' => (int) $userId],
                 [
                     ...$normalized,
-                    'event_id' => $game->legacy_event_id ?? $game->event_id,
                     'game_side_id' => $entry->game_side_id,
                 ],
             );
@@ -578,10 +528,6 @@ final class GameManagementService
         $game->update([
             'statistics_status' => GameStatisticsStatusEnum::READY,
             'statistics_version' => $game->statistics_version + 1,
-        ]);
-        $game->legacyEvent?->gameDetail()?->update([
-            'statistics_status' => GameStatisticsStatusEnum::READY,
-            'statistics_version' => $game->statistics_version,
         ]);
     }
 
@@ -618,11 +564,6 @@ final class GameManagementService
         $game->update([
             'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
             'statistics_confirmed_at' => now(),
-            'statistics_confirmed_by_actor_id' => $actor->id,
-        ]);
-        $game->legacyEvent?->gameDetail()?->update([
-            'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
-            'statistics_confirmed_at' => $game->statistics_confirmed_at,
             'statistics_confirmed_by_actor_id' => $actor->id,
         ]);
         $game->rosterEntries()
@@ -685,7 +626,6 @@ final class GameManagementService
                 continue;
             }
             $game->rosterEntries()->create([
-                'event_id' => $game->event_id,
                 'game_side_id' => $side->id,
                 'user_id' => $membership->user_id,
                 'source_contract_membership_id' => $membership->id,
@@ -710,7 +650,6 @@ final class GameManagementService
         foreach ($userIds as $userId) {
             $participant = $participants[(int) $userId];
             $game->rosterEntries()->create([
-                'event_id' => $game->event_id,
                 'game_side_id' => $side->id,
                 'user_id' => (int) $userId,
                 'source_event_participant_id' => $participant->id,

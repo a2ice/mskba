@@ -5,7 +5,6 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameLifecycleService;
-use App\Modules\Event\Application\Services\LegacyGameRouteResolver;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
@@ -22,9 +21,8 @@ final class GameLifecycleController extends Controller
         string $event,
         CurrentActorResolver $actors,
         EventManagementAccess $access,
-        LegacyGameRouteResolver $games,
     ): JsonResponse {
-        $game = $this->findGame($request, $games, $event);
+        $game = $this->findGame($request, $event);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
@@ -68,7 +66,6 @@ final class GameLifecycleController extends Controller
 
         $nestedEvent = $request->route('event');
         $nestedGame = $request->route('game');
-        $usesNestedRoute = $nestedGame !== null;
 
         return response()->json([
             'started' => $started,
@@ -83,15 +80,9 @@ final class GameLifecycleController extends Controller
             'can_manage_score' => $canManageScore && $started && ! $ended && ! $cancelled && ! $completed,
             'can_manage_lineup' => $canManageRoster && ! $started && ! $cancelled && ! $completed,
             'can_confirm_result' => $canComplete && $canManageStatistics && $ended && ! $cancelled && ! $completed,
-            'start_url' => $usesNestedRoute
-                ? route('events.games.start', [$nestedEvent, $nestedGame])
-                : route('events.game.lifecycle.start', $game->legacyEvent->routeIdentifier()),
-            'end_url' => $usesNestedRoute
-                ? route('events.games.end', [$nestedEvent, $nestedGame])
-                : route('events.game.lifecycle.end', $game->legacyEvent->routeIdentifier()),
-            'lineup_update_url' => $usesNestedRoute
-                ? route('events.games.lineup.update', [$nestedEvent, $nestedGame])
-                : route('events.game.lineup.update', $game->legacyEvent->routeIdentifier()),
+            'start_url' => route('events.games.start', [$nestedEvent, $nestedGame]),
+            'end_url' => route('events.games.end', [$nestedEvent, $nestedGame]),
+            'lineup_update_url' => route('events.games.lineup.update', [$nestedEvent, $nestedGame]),
             'roster' => $roster,
         ]);
     }
@@ -101,13 +92,12 @@ final class GameLifecycleController extends Controller
         string $event,
         CurrentActorResolver $actors,
         GameLifecycleService $lifecycle,
-        LegacyGameRouteResolver $games,
     ): JsonResponse {
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
         try {
-            $game = $lifecycle->start($this->findGame($request, $games, $event), $actor);
+            $game = $lifecycle->start($this->findGame($request, $event), $actor);
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -123,13 +113,12 @@ final class GameLifecycleController extends Controller
         string $event,
         CurrentActorResolver $actors,
         GameLifecycleService $lifecycle,
-        LegacyGameRouteResolver $games,
     ): JsonResponse {
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
         try {
-            $game = $lifecycle->end($this->findGame($request, $games, $event), $actor);
+            $game = $lifecycle->end($this->findGame($request, $event), $actor);
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -140,19 +129,17 @@ final class GameLifecycleController extends Controller
         ]);
     }
 
-    private function findGame(Request $request, LegacyGameRouteResolver $games, string $identifier): Game
+    private function findGame(Request $request, string $identifier): Game
     {
         $gameId = $request->route('game');
-        $game = $gameId === null
-            ? $games->resolve($identifier)
-            : Game::query()
-                ->whereKey((int) $gameId)
-                ->whereHas('event', fn ($query) => $query->whereRouteIdentifier($identifier))
-                ->firstOrFail();
+        abort_if($gameId === null, 404);
+        $game = Game::query()
+            ->whereKey((int) $gameId)
+            ->whereHas('event', fn ($query) => $query->whereRouteIdentifier($identifier))
+            ->firstOrFail();
 
         return $game->load([
             'event',
-            'legacyEvent',
             'sides',
             'rosterEntries.user.profile',
         ]);

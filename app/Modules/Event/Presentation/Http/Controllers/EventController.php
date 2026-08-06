@@ -34,7 +34,6 @@ use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventParticipant;
-use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\LegacyGameRoute;
 use App\Modules\Event\Presentation\Http\Requests\CancelEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
@@ -118,7 +117,7 @@ final class EventController extends Controller
             'hasMiniGames' => $hasMiniGames,
             'search' => $search,
             'filterVenues' => Venue::query()
-                ->whereHas('events', fn ($query) => $query->whereNull('parent_event_id'))
+                ->whereHas('events')
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ]);
@@ -214,8 +213,8 @@ final class EventController extends Controller
         PageSeoResolver $pageSeo,
     ): Response|RedirectResponse {
         $actor = $actors->resolveForRequest($request);
-        $legacyEvent = Event::query()->whereRouteIdentifier($event)->first(['id', 'parent_event_id']);
-        if ($legacyEvent === null) {
+        $eventExists = Event::query()->whereRouteIdentifier($event)->exists();
+        if (! $eventExists) {
             $legacyRoute = LegacyGameRoute::query()
                 ->where(function ($query) use ($event): void {
                     $query->where('legacy_identifier', $event);
@@ -229,14 +228,6 @@ final class EventController extends Controller
 
             return redirect()->route('events.games.show', [$parent->routeIdentifier(), $legacyRoute->game_id], 301);
         }
-        if ($legacyEvent->parent_event_id !== null) {
-            $game = Game::query()->where('legacy_event_id', $legacyEvent->id)->firstOrFail();
-            $parentReference = Event::query()->findOrFail($game->event_id);
-            $parent = $events->handle($parentReference->routeIdentifier(), $actor);
-
-            return redirect()->route('events.games.show', [$parent->routeIdentifier(), $game->id], 301);
-        }
-
         $item = $events->handle($event, $actor);
         $currentParticipant = $request->user() === null
             ? null

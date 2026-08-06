@@ -44,17 +44,10 @@ class SiteSummaryTest extends TestCase
             'status' => EventStatusEnum::PUBLISHED,
             'starts_at' => Carbon::parse('2026-07-23 18:00:00', 'Europe/Moscow')->utc(),
         ]);
-        $parentEvent = Event::factory()->create([
+        Event::factory()->create([
             'type' => EventTypeEnum::GAME_TRAINING,
             'status' => EventStatusEnum::COMPLETED,
             'starts_at' => Carbon::parse('2026-07-23 20:00:00', 'Europe/Moscow')->utc(),
-        ]);
-        Event::factory()->create([
-            'parent_event_id' => $parentEvent->id,
-            'venue_id' => $parentEvent->venue_id,
-            'type' => EventTypeEnum::GAME,
-            'status' => EventStatusEnum::COMPLETED,
-            'starts_at' => Carbon::parse('2026-07-23 20:30:00', 'Europe/Moscow')->utc(),
         ]);
         Event::factory()->create([
             'type' => EventTypeEnum::TRAINING,
@@ -99,15 +92,6 @@ class SiteSummaryTest extends TestCase
             'status' => EventStatusEnum::PUBLISHED,
             'starts_at' => Carbon::parse('2026-07-23 20:00:00', 'Europe/Moscow')->utc(),
         ]);
-        $parentEvent = Event::query()->where('title', 'Игровая тренировка')->firstOrFail();
-        Event::factory()->create([
-            'parent_event_id' => $parentEvent->id,
-            'venue_id' => $parentEvent->venue_id,
-            'title' => 'Внутренняя мини-игра',
-            'type' => EventTypeEnum::GAME,
-            'status' => EventStatusEnum::PUBLISHED,
-            'starts_at' => Carbon::parse('2026-07-23 20:30:00', 'Europe/Moscow')->utc(),
-        ]);
         Event::factory()->create([
             'title' => 'Обычная тренировка',
             'type' => EventTypeEnum::TRAINING,
@@ -123,7 +107,6 @@ class SiteSummaryTest extends TestCase
             ->assertOk()
             ->assertSee('Обычная игра')
             ->assertSee('Игровая тренировка')
-            ->assertSee('Внутренняя мини-игра')
             ->assertDontSee('Обычная тренировка')
             ->assertSee('Игры и игровые тренировки');
     }

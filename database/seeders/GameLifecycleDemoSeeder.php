@@ -25,7 +25,6 @@ use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Event\Domain\Models\GameRosterEntry;
 use App\Modules\Event\Domain\Models\GameSide;
-use App\Modules\Event\Domain\Models\LegacyGameRoute;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
@@ -63,7 +62,6 @@ class GameLifecycleDemoSeeder extends Seeder
         }
 
         DB::transaction(function (): void {
-            $this->removeLegacyDemoMiniGameEvents();
             $organizer = $this->user(self::ORGANIZER_USERNAME, 'Демо', 'Организатор');
             $actor = app(CurrentActorResolver::class)->resolve($organizer, null);
             if ($actor === null) {
@@ -80,19 +78,6 @@ class GameLifecycleDemoSeeder extends Seeder
             $this->trainingWithMiniGames($actor, $venue, $playersA, $playersB);
             $this->completedGame($actor, $venue, $teamA, $teamB, $playersA, $playersB);
         });
-    }
-
-    private function removeLegacyDemoMiniGameEvents(): void
-    {
-        Event::withTrashed()
-            ->whereIn('alias', ['demo-mini-game-live', 'demo-mini-game-review'])
-            ->get()
-            ->each(function (Event $legacyEvent): void {
-                $games = Game::withTrashed()->where('legacy_event_id', $legacyEvent->id)->get();
-                LegacyGameRoute::query()->whereIn('game_id', $games->modelKeys())->delete();
-                $games->each->forceDelete();
-                $legacyEvent->forceDelete();
-            });
     }
 
     /** @return array<int, User> */
@@ -348,7 +333,6 @@ class GameLifecycleDemoSeeder extends Seeder
         return Event::withTrashed()->updateOrCreate(
             ['alias' => $alias],
             [
-                'parent_event_id' => null,
                 'venue_id' => $venue->id,
                 'organizer_actor_id' => $actor->id,
                 'title' => $title,
@@ -400,7 +384,6 @@ class GameLifecycleDemoSeeder extends Seeder
         $game = Game::withTrashed()->updateOrCreate(
             ['event_id' => $event->id, 'title' => $title],
             [
-                'legacy_event_id' => $event->type === EventTypeEnum::GAME ? $event->id : null,
                 'created_by_actor_id' => $actor?->id ?? $event->organizer_actor_id,
                 'description' => $title ? 'Демонстрационная игра внутри мероприятия.' : null,
                 'status' => $confirmed
@@ -431,11 +414,11 @@ class GameLifecycleDemoSeeder extends Seeder
 
         $sideA = GameSide::query()->updateOrCreate(
             ['game_id' => $game->id, 'slot' => 'A'],
-            ['event_id' => $event->id, 'team_id' => $teamA?->id, 'display_name' => $teamA?->name ?? 'Красные', 'score' => $ready || $confirmed ? 21 : 0],
+            ['team_id' => $teamA?->id, 'display_name' => $teamA?->name ?? 'Красные', 'score' => $ready || $confirmed ? 21 : 0],
         );
         $sideB = GameSide::query()->updateOrCreate(
             ['game_id' => $game->id, 'slot' => 'B'],
-            ['event_id' => $event->id, 'team_id' => $teamB?->id, 'display_name' => $teamB?->name ?? 'Синие', 'score' => $ready || $confirmed ? 18 : 0],
+            ['team_id' => $teamB?->id, 'display_name' => $teamB?->name ?? 'Синие', 'score' => $ready || $confirmed ? 18 : 0],
         );
 
         $this->roster($game, $sideA, $teamA, $playersA, $participants, $locked, $confirmed);
@@ -458,7 +441,6 @@ class GameLifecycleDemoSeeder extends Seeder
             $entry = GameRosterEntry::query()->updateOrCreate(
                 ['game_id' => $game->id, 'user_id' => $player->id],
                 [
-                    'event_id' => $game->event_id,
                     'game_side_id' => $side->id,
                     'source_contract_membership_id' => $team ? $this->memberships[$team->alias.':'.$player->id]->id : null,
                     'source_event_participant_id' => ($participants[$player->id] ?? null)?->id,
@@ -473,7 +455,6 @@ class GameLifecycleDemoSeeder extends Seeder
                 GamePlayerStatistic::query()->updateOrCreate(
                     ['game_id' => $game->id, 'user_id' => $player->id],
                     [
-                        'event_id' => $game->event_id,
                         'game_side_id' => $side->id,
                         'minutes' => $index < 3 ? 30 : 12,
                         'close_made' => $index === 0 ? 3 : 0,

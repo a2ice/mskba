@@ -15,7 +15,6 @@ use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
-use App\Modules\Event\Presentation\Http\Controllers\GameControlController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Event\Presentation\Http\Controllers\NestedGameController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
@@ -301,7 +300,6 @@ Route::prefix('events')->group(function () {
             ->middleware('throttle:30,1')->whereNumber('photo')->name('events.result.photos.update');
         Route::delete('/{event}/result/photos/{photo}', [EventController::class, 'destroyResultPhoto'])
             ->middleware('throttle:20,1')->whereNumber('photo')->name('events.result.photos.destroy');
-        Route::get('/{event}/game', GameControlController::class)->name('events.game.manage');
         Route::post('/{event}/games', [GameController::class, 'createMiniGame'])->name('events.games.store');
         Route::get('/{event}/games/{game}/manage', [NestedGameController::class, 'manage'])->whereNumber('game')->name('events.games.manage');
         Route::put('/{event}/games/{game}', [NestedGameController::class, 'update'])->whereNumber('game')->name('events.games.update');
@@ -316,16 +314,6 @@ Route::prefix('events')->group(function () {
         Route::post('/{event}/games/{game}/start', [NestedGameController::class, 'start'])->whereNumber('game')->name('events.games.start');
         Route::post('/{event}/games/{game}/end', [NestedGameController::class, 'end'])->whereNumber('game')->name('events.games.end');
         Route::put('/{event}/games/{game}/lineup', [NestedGameController::class, 'lineup'])->whereNumber('game')->name('events.games.lineup.update');
-        Route::put('/{event}/game', [GameController::class, 'updateMiniGame'])->name('events.game.update');
-        Route::delete('/{event}/game', [GameController::class, 'destroyMiniGame'])->name('events.game.destroy');
-        Route::patch('/{event}/game/cancel', [GameController::class, 'cancelMiniGame'])->name('events.game.cancel');
-        Route::patch('/{event}/game/roster', [GameController::class, 'roster'])->name('events.game.roster');
-        Route::patch('/{event}/game/statistics', [GameController::class, 'statistics'])->name('events.game.statistics');
-        Route::patch('/{event}/game/score', [GameController::class, 'score'])->name('events.game.score');
-        Route::patch('/{event}/game/statistics/complete', [GameController::class, 'completeStatistics'])
-            ->name('events.game.statistics.complete');
-        Route::post('/{event}/game/statistics/confirm', [GameController::class, 'confirmStatistics'])
-            ->name('events.game.statistics.confirm');
     });
 
     Route::get('/{event}', [EventController::class, 'show'])

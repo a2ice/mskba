@@ -36,7 +36,6 @@ final class ShowEventHandler
                 'participants.responsibilityPermissions',
                 'games' => fn ($query) => $query
                     ->with([
-                        'legacyEvent',
                         'sides.team',
                         'rosterEntries.user.profile.activeAvatar',
                         'playerStatistics',

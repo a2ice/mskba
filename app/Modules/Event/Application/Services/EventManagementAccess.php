@@ -19,16 +19,15 @@ final class EventManagementAccess
 
     public function allows(Event $event, Actor $actor, EventResponsibilityPermissionEnum $permission): bool
     {
-        $managementEvent = $this->managementEvent($event);
         $isOrganizer = $actor->user_id !== null
-            && $managementEvent->organizerActor()->where('user_id', $actor->user_id)->exists();
+            && $event->organizerActor()->where('user_id', $actor->user_id)->exists();
 
         if ($isOrganizer) {
             return true;
         }
 
         return $actor->user_id !== null
-            && $managementEvent->participants()
+            && $event->participants()
                 ->where('user_id', $actor->user_id)
                 ->where('responsibility_status', EventResponsibilityStatusEnum::ACCEPTED->value)
                 ->whereHas('responsibilityPermissions', fn ($query) => $query
@@ -58,11 +57,7 @@ final class EventManagementAccess
 
     public function assertOwnsManagementScope(Event $event): void
     {
-        if ($event->parent_event_id !== null) {
-            throw new InvalidArgumentException(
-                'Ответственных назначают на основном мероприятии, а не на отдельной мини-игре.',
-            );
-        }
+        // Game permissions are always evaluated through the owning Event.
     }
 
     /**
@@ -72,10 +67,6 @@ final class EventManagementAccess
      */
     public function managementEvent(Event $event): Event
     {
-        if ($event->parent_event_id === null) {
-            return $event;
-        }
-
-        return $event->parentEvent()->firstOrFail();
+        return $event;
     }
 }

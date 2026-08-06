@@ -35,7 +35,6 @@ final class EventGameController extends Controller
                 'rosterEntries.gameSide',
                 'rosterEntries.user.profile.activeAvatar',
                 'playerStatistics',
-                'legacyEvent',
             ])
             ->firstOrFail();
 

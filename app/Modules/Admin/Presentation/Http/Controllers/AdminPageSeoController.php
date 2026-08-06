@@ -84,7 +84,7 @@ final class AdminPageSeoController extends Controller
     {
         return match ($type) {
             SeoEntityTypeEnum::VENUE => Venue::query(),
-            SeoEntityTypeEnum::EVENT => Event::query()->whereNull('parent_event_id'),
+            SeoEntityTypeEnum::EVENT => Event::query(),
             SeoEntityTypeEnum::TEAM => Team::query()->whereNull('temporary_for_event_id'),
         };
     }
