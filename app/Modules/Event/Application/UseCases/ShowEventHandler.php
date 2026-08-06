@@ -28,19 +28,12 @@ final class ShowEventHandler
                     ->orderBy('sort_order')
                     ->orderBy('id'),
                 'booking',
-                'parentEvent.participants.user.profile.activeAvatar',
                 'organizerActor.user.profile.activeAvatar',
                 'organizerActor.user.telegramAccount',
                 'organizerActor.user.contacts',
                 'participants.user.profile.activeAvatar',
                 'participants.statusChangedByActor.user.profile',
                 'participants.responsibilityPermissions',
-                'gameDetail',
-                'gameSides.team.memberships.contract',
-                'gameSides.team.memberships.user.profile.activeAvatar',
-                'gameRosterEntries.gameSide',
-                'gameRosterEntries.user.profile.activeAvatar',
-                'gamePlayerStatistics',
                 'games' => fn ($query) => $query
                     ->with([
                         'legacyEvent',
@@ -50,9 +43,6 @@ final class ShowEventHandler
                     ])
                     ->orderByRaw('scheduled_starts_at nulls last')
                     ->orderBy('id'),
-                'childGames' => fn ($query) => $query
-                    ->with(['gameDetail', 'gameSides.team', 'gamePlayerStatistics'])
-                    ->orderBy('starts_at'),
                 'media' => fn ($query) => $query
                     ->where('collection', 'event_results')
                     ->with('eventResultPhotoTags.user.profile')
@@ -61,9 +51,8 @@ final class ShowEventHandler
             ])
             ->firstOrFail();
 
-        $visibilitySource = $event->parentEvent ?? $event;
-        $isPublic = in_array($visibilitySource->status, [EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED], true)
-            && $visibilitySource->visibility === EventVisibilityEnum::PUBLIC;
+        $isPublic = in_array($event->status, [EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED], true)
+            && $event->visibility === EventVisibilityEnum::PUBLIC;
         $canManage = $actor !== null && $this->access->canManage($event, $actor);
 
         if (! $isPublic && ! $canManage) {

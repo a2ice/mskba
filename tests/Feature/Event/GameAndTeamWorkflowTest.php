@@ -58,6 +58,35 @@ final class GameAndTeamWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_event_presets_create_the_expected_number_of_games(): void
+    {
+        $organizer = User::factory()->create(['username' => 'event-game-preset-owner']);
+        $opponent = User::factory()->create(['username' => 'event-game-preset-opponent']);
+        $teamA = $this->createTeam($organizer, 'Preset A');
+        $teamB = $this->createTeam($opponent, 'Preset B');
+        [$gameVenue, $gameStart, $gameEnd] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(route('events.store'), [
+            ...$this->eventPayload($gameVenue, $gameStart, $gameEnd, EventTypeEnum::GAME),
+            'team_a_id' => $teamA->id,
+            'team_b_id' => $teamB->id,
+            'side_a_size' => 1,
+            'side_b_size' => 1,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $gameEvent = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $this->assertCount(1, $gameEvent->games);
+        $this->assertCount(2, $gameEvent->games->first()->sides);
+
+        [$trainingVenue, $trainingStart, $trainingEnd] = $this->availableVenue();
+        $this->actingAs($organizer)->post(route('events.store'), [
+            ...$this->eventPayload($trainingVenue, $trainingStart, $trainingEnd, EventTypeEnum::TRAINING),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $training = Event::query()->where('type', EventTypeEnum::TRAINING->value)->firstOrFail();
+        $this->assertCount(0, $training->games);
+    }
+
     public function test_team_can_support_multiple_sport_types_without_limiting_roster_size(): void
     {
         $owner = User::factory()->create(['username' => 'streetball-owner', 'status' => UserStatusEnum::CONFIRMED]);

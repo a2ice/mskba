@@ -30,7 +30,6 @@ final class GameManagementService
 {
     public function __construct(
         private readonly EventManagementAccess $access,
-        private readonly LegacyGamesMigrationService $legacyMigration,
     ) {}
 
     public function initializeStandalone(
@@ -63,26 +62,41 @@ final class GameManagementService
             throw new InvalidArgumentException('Обе команды должны быть активными постоянными командами.');
         }
 
+        $game = Game::query()->create([
+            'event_id' => $event->id,
+            'legacy_event_id' => $event->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => GameStatusEnum::SCHEDULED,
+            'side_a_size' => $sideASize,
+            'side_b_size' => $sideBSize,
+            'scoring_type' => $scoringType,
+            'scheduled_starts_at' => $event->starts_at,
+            'scheduled_ends_at' => $event->ends_at,
+        ]);
+
+        // Transitional mirror for old installations. Runtime reads Game; this
+        // row is removed by the final legacy cleanup migration.
         $event->gameDetail()->create([
             'side_a_size' => $sideASize,
             'side_b_size' => $sideBSize,
             'scoring_type' => $scoringType,
         ]);
 
-        $sideA = $event->gameSides()->create([
+        $sideA = $game->sides()->create([
+            'event_id' => $event->id,
             'team_id' => $teamAId,
             'slot' => 'A',
             'display_name' => $teams[$teamAId]->name,
         ]);
-        $sideB = $event->gameSides()->create([
+        $sideB = $game->sides()->create([
+            'event_id' => $event->id,
             'team_id' => $teamBId,
             'slot' => 'B',
             'display_name' => $teams[$teamBId]->name,
         ]);
 
-        $sideAUsers = $this->snapshotTeamRoster($event, $sideA, $teams[$teamAId]);
-        $this->snapshotTeamRoster($event, $sideB, $teams[$teamBId], $sideAUsers);
-        $this->legacyMigration->ensureMigrated($event->fresh(['gameDetail', 'parentEvent']));
+        $sideAUsers = $this->snapshotTeamRoster($game, $sideA, $teams[$teamAId]);
+        $this->snapshotTeamRoster($game, $sideB, $teams[$teamBId], $sideAUsers);
     }
 
     /**
@@ -660,7 +674,7 @@ final class GameManagementService
      * @return Collection<int, int>
      */
     private function snapshotTeamRoster(
-        Event $event,
+        Game $game,
         GameSide $side,
         Team $team,
         ?Collection $excludedUserIds = null,
@@ -673,7 +687,8 @@ final class GameManagementService
             if ($excludedUserIds?->contains($membership->user_id)) {
                 continue;
             }
-            $event->gameRosterEntries()->create([
+            $game->rosterEntries()->create([
+                'event_id' => $game->event_id,
                 'game_side_id' => $side->id,
                 'user_id' => $membership->user_id,
                 'source_contract_membership_id' => $membership->id,
@@ -683,23 +698,6 @@ final class GameManagementService
         }
 
         return $selected;
-    }
-
-    /**
-     * @param  array<int, int>  $userIds
-     * @param  Collection<int, mixed>  $participants
-     */
-    private function snapshotParticipantRoster(Event $event, GameSide $side, array $userIds, Collection $participants): void
-    {
-        foreach ($userIds as $userId) {
-            $participant = $participants[(int) $userId];
-            $event->gameRosterEntries()->create([
-                'game_side_id' => $side->id,
-                'user_id' => (int) $userId,
-                'source_event_participant_id' => $participant->id,
-                'status' => GameRosterStatusEnum::SELECTED,
-            ]);
-        }
     }
 
     /**

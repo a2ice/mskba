@@ -3,7 +3,6 @@
 namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
 use App\Modules\Event\Application\Services\LegacyGameRouteResolver;
@@ -326,19 +325,6 @@ final class GameController extends Controller
             : $access->allows($event, $actor, $permission), 403);
 
         return [$event, $actor];
-    }
-
-    private function loadGame(Event $game): Event
-    {
-        return $game->load([
-            'parentEvent.participants.user.profile.activeAvatar',
-            'gameDetail',
-            'gameSides.team.memberships' => fn ($query) => $query
-                ->whereHas('contract', fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE->value))
-                ->with('user.profile.activeAvatar'),
-            'gameRosterEntries.user.profile.activeAvatar',
-            'gamePlayerStatistics',
-        ]);
     }
 
     /** @return array{Game, Actor} */
