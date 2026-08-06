@@ -28,7 +28,10 @@ use InvalidArgumentException;
 
 final class GameManagementService
 {
-    public function __construct(private readonly EventManagementAccess $access) {}
+    public function __construct(
+        private readonly EventManagementAccess $access,
+        private readonly LegacyGamesMigrationService $legacyMigration,
+    ) {}
 
     public function initializeStandalone(
         Event $event,
@@ -79,6 +82,7 @@ final class GameManagementService
 
         $sideAUsers = $this->snapshotTeamRoster($event, $sideA, $teams[$teamAId]);
         $this->snapshotTeamRoster($event, $sideB, $teams[$teamBId], $sideAUsers);
+        $this->legacyMigration->ensureMigrated($event->fresh(['gameDetail', 'parentEvent']));
     }
 
     /**
@@ -197,6 +201,7 @@ final class GameManagementService
 
             $this->snapshotParticipantRoster($game, $sideA, $sideAUserIds, $confirmedParticipants);
             $this->snapshotParticipantRoster($game, $sideB, $sideBUserIds, $confirmedParticipants);
+            $this->legacyMigration->ensureMigrated($game->fresh(['gameDetail', 'parentEvent']));
 
             return $game->load(['gameDetail', 'gameSides', 'gameRosterEntries.user.profile']);
         });

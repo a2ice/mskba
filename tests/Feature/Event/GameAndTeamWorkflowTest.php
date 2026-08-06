@@ -102,6 +102,10 @@ final class GameAndTeamWorkflowTest extends TestCase
         ])->assertRedirect();
 
         $game = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $this->assertDatabaseHas('games', [
+            'event_id' => $game->id,
+            'legacy_event_id' => $game->id,
+        ]);
         $this->assertSame(2, $game->gameRosterEntries()->count());
         $this->assertSame('3×4', $game->gameDetail->formatLabel());
         $this->assertCount(2, $game->gameSides);
@@ -229,6 +233,10 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertSessionMissing('error');
 
         $miniGame = Event::query()->where('parent_event_id', $training->id)->firstOrFail();
+        $this->assertDatabaseHas('games', [
+            'event_id' => $training->id,
+            'legacy_event_id' => $miniGame->id,
+        ]);
         $this->assertSame(EventTypeEnum::GAME, $miniGame->type);
         $this->assertNull($miniGame->booking);
         $this->assertSame(2, $miniGame->gameRosterEntries()->count());
