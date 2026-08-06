@@ -11,6 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'user_id',
     'telegram_user_id',
+    'private_chat_id',
+    'private_chat_started_at',
+    'private_chat_available_at',
+    'private_chat_unavailable_at',
+    'last_delivery_error',
     'username',
     'first_name',
     'last_name',
@@ -27,6 +32,10 @@ final class TelegramAccount extends Model
     {
         return [
             'telegram_user_id' => 'integer',
+            'private_chat_id' => 'integer',
+            'private_chat_started_at' => 'datetime',
+            'private_chat_available_at' => 'datetime',
+            'private_chat_unavailable_at' => 'datetime',
             'last_auth_at' => 'datetime',
             'raw_data' => 'array',
         ];

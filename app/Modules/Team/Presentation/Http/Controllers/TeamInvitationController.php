@@ -16,6 +16,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Application\Services\TeamNotificationService;
 use App\Modules\Team\Application\Services\TeamRosterService;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
@@ -35,13 +36,10 @@ final class TeamInvitationController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS), 403);
         $data = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
-        $excluded = $item->memberships()
-            ->whereIn('invitation_status', [
-                TeamInvitationStatusEnum::PENDING->value,
-                TeamInvitationStatusEnum::ACCEPTED->value,
-            ])
-            ->pluck('user_id')
-            ->all();
+        $excluded = $item->memberships()->whereIn('invitation_status', [
+            TeamInvitationStatusEnum::PENDING->value,
+            TeamInvitationStatusEnum::ACCEPTED->value,
+        ])->pluck('user_id')->all();
 
         return response()->json(['users' => $users->handle(
             $actor->user,
@@ -61,6 +59,7 @@ final class TeamInvitationController extends Controller
         CurrentActorResolver $actors,
         TeamManagementAccess $access,
         UserPrivacyAccessService $privacy,
+        TeamNotificationService $teamNotifications,
     ): JsonResponse {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
@@ -76,9 +75,7 @@ final class TeamInvitationController extends Controller
 
         $targetUser = User::query()->findOrFail($data['user_id']);
         if (! $privacy->allows($targetUser, $actor->user, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
-            return response()->json([
-                'message' => 'Пользователь запретил приглашать себя в команды и другие группы.',
-            ], 422);
+            return response()->json(['message' => 'Пользователь запретил приглашать себя в команды и другие группы.'], 422);
         }
 
         $memberType = TeamMemberTypeEnum::from($data['member_type']);
@@ -115,7 +112,11 @@ final class TeamInvitationController extends Controller
                 'invitation_status' => TeamInvitationStatusEnum::PENDING,
                 'is_captain' => false,
             ]);
-            $contract->update(['status' => ContractStatusEnum::INACTIVE, 'assigned_by' => $actor->user_id, 'assigned_at' => now()]);
+            $contract->update([
+                'status' => ContractStatusEnum::INACTIVE,
+                'assigned_by' => $actor->user_id,
+                'assigned_at' => now(),
+            ]);
             $contract->permissions()->delete();
             $contract->permissions()->createMany(array_map(
                 fn (string $permission) => ['permission' => $permission],
@@ -125,15 +126,14 @@ final class TeamInvitationController extends Controller
             return $existing->fresh();
         });
 
+        $teamNotifications->invitationSent($item, $membership, $actor->user);
         $membership->load(['contract.permissions', 'user.profile.activeAvatar']);
 
         return response()->json([
             'message' => 'Приглашение отправлено.',
             'invitation' => [
                 'id' => $membership->id,
-                'html' => view('theme::pages.teams.partials.pending-invitation', [
-                    'invitation' => $membership,
-                ])->render(),
+                'html' => view('theme::pages.teams.partials.pending-invitation', ['invitation' => $membership])->render(),
             ],
         ], 201);
     }
@@ -144,6 +144,7 @@ final class TeamInvitationController extends Controller
         TeamRosterService $rosters,
         CurrentActorResolver $actors,
         TeamManagementAccess $access,
+        TeamNotificationService $teamNotifications,
     ): JsonResponse|RedirectResponse {
         $data = $request->validate(['decision' => ['required', Rule::in(['accept', 'decline', 'revoke'])]]);
         $user = $request->user();
@@ -159,34 +160,27 @@ final class TeamInvitationController extends Controller
         if ($data['decision'] === 'revoke') {
             $actor = $actors->resolveForRequest($request);
             abort_if($actor === null || ! $access->allows($team, $actor, TeamPermissionEnum::INVITE_MEMBERS), 403);
-
             if ($member->invitation_status !== TeamInvitationStatusEnum::PENDING) {
                 return response()->json(['message' => 'Отозвать можно только ожидающее приглашение.'], 422);
             }
-
             DB::transaction(function () use ($member): void {
                 $member->contract->update(['status' => ContractStatusEnum::INACTIVE]);
                 $member->update(['invitation_status' => TeamInvitationStatusEnum::REVOKED]);
             });
 
-            return response()->json([
-                'message' => 'Приглашение отозвано.',
-                'membership_id' => $member->id,
-            ]);
+            return response()->json(['message' => 'Приглашение отозвано.', 'membership_id' => $member->id]);
         }
 
         abort_if($member->user_id !== $user->id, 403);
-
         if ($member->invitation_status === TeamInvitationStatusEnum::REVOKED) {
             return back()->with('error', 'Приглашение было отозвано.');
         }
-
         if ($member->invitation_status !== TeamInvitationStatusEnum::PENDING) {
             return back()->with('error', 'Приглашение уже обработано.');
         }
 
-        DB::transaction(function () use ($member, $team, $data, $rosters): void {
-            $accepted = $data['decision'] === 'accept';
+        $accepted = $data['decision'] === 'accept';
+        DB::transaction(function () use ($member, $team, $accepted, $rosters): void {
             $member->contract->update(['status' => $accepted ? ContractStatusEnum::ACTIVE : ContractStatusEnum::INACTIVE]);
             $member->update(['invitation_status' => $accepted ? TeamInvitationStatusEnum::ACCEPTED : TeamInvitationStatusEnum::DECLINED]);
             if ($accepted && $member->isPlayingMember()) {
@@ -194,6 +188,8 @@ final class TeamInvitationController extends Controller
             }
         });
 
-        return back()->with('status', $data['decision'] === 'accept' ? 'Приглашение принято.' : 'Приглашение отклонено.');
+        $teamNotifications->invitationResponded($team, $member->fresh('contract'), $accepted);
+
+        return back()->with('status', $accepted ? 'Приглашение принято.' : 'Приглашение отклонено.');
     }
 }

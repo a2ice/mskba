@@ -5,6 +5,7 @@ namespace App\Modules\Notification\Application\UseCases;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\Services\UserNotificationCounterStore;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
+use App\Modules\Notification\Domain\Events\UserNotificationCreated;
 use App\Modules\Notification\Domain\Models\UserNotification;
 
 final class CreateUserNotificationHandler
@@ -27,6 +28,7 @@ final class CreateUserNotificationHandler
         ]);
 
         $this->counterStore->forget($data->userId);
+        UserNotificationCreated::dispatch($notification->id);
 
         return $notification;
     }
