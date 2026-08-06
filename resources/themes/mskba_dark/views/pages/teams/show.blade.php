@@ -88,11 +88,11 @@
                     <p class="form-hint">Ваша заявка отправлена и ожидает решения.</p>
                 @elseif($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::BLOCKED)
                     <p class="form-hint">Отправка заявок в эту команду для вас заблокирована.</p>
-                    @if($currentJoinRequest->review_reason)<div class="alert alert-danger mt-3"><strong>Причина:</strong><br>{!! nl2br(e($currentJoinRequest->review_reason)) !!}</div>@endif
+                    @if($currentJoinRequest->review_reason)<div class="alert alert-danger mt-3"><strong>Причина:</strong><span class="review-reason">{!! nl2br(e($currentJoinRequest->review_reason)) !!}</span></div>@endif
                 @elseif($team->accepts_join_requests && $canApplyToTeam)
                     @if($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::REJECTED)
                         <p class="form-hint mb-3">Предыдущая заявка была отклонена. Вы можете отправить новую.</p>
-                        @if($currentJoinRequest->review_reason)<div class="alert alert-danger mb-3"><strong>Причина:</strong><br>{!! nl2br(e($currentJoinRequest->review_reason)) !!}</div>@endif
+                        @if($currentJoinRequest->review_reason)<div class="alert alert-danger mb-3"><strong>Причина:</strong><span class="review-reason">{!! nl2br(e($currentJoinRequest->review_reason)) !!}</span></div>@endif
                     @endif
                     <form method="POST" action="{{ route('teams.join-requests.store', $team->routeIdentifier()) }}" onsubmit="return confirm('Отправить заявку на вступление в команду «{{ addslashes($team->name) }}»?')">
                         @csrf
