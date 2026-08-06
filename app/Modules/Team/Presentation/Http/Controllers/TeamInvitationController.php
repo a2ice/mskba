@@ -85,14 +85,12 @@ final class TeamInvitationController extends Controller
                     'scope_id' => $item->id,
                     'user_id' => $data['user_id'],
                     'access_level' => $accessLevel,
-                    'member_type' => $memberType,
                     'sport_roles' => [$memberType->value],
                     'invitation_status' => TeamInvitationStatusEnum::PENDING,
                 ]);
             }
             $existing->update([
                 'access_level' => $accessLevel,
-                'member_type' => $memberType,
                 'sport_roles' => [$memberType->value],
                 'invitation_status' => TeamInvitationStatusEnum::PENDING,
                 'is_captain' => false,
