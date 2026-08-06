@@ -26,17 +26,13 @@ final class TeamSportRolesSchemaTest extends TestCase
             'creator_sport_roles' => [],
         ])->assertRedirect()->assertSessionHasNoErrors();
 
-        $membership = Team::query()
-            ->where('name', 'Команда без legacy-роли')
-            ->firstOrFail()
-            ->memberships()
-            ->where('user_id', $owner->id)
-            ->firstOrFail();
+        $team = Team::query()->where('name', 'Команда без legacy-роли')->firstOrFail();
+        $membership = $team->memberships()->where('user_id', $owner->id)->firstOrFail();
 
         $this->assertSame([], $membership->sportRoleValues());
 
         $this->put(route('teams.members.sports.update', [
-            $membership->scope_id,
+            $team->routeIdentifier(),
             $membership->id,
         ]), [
             'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
