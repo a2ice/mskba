@@ -20,19 +20,19 @@ return new class extends Migration
                 UPDATE contract_memberships
                 SET sport_roles = jsonb_build_array(member_type)
                 WHERE member_type IS NOT NULL
-                  AND (sport_roles IS NULL OR sport_roles = '[]'::jsonb)
+                  AND sport_roles IS NULL
             SQL),
             'sqlite' => DB::statement(<<<'SQL'
                 UPDATE contract_memberships
                 SET sport_roles = json_array(member_type)
                 WHERE member_type IS NOT NULL
-                  AND (sport_roles IS NULL OR sport_roles = '[]')
+                  AND sport_roles IS NULL
             SQL),
             'mysql', 'mariadb' => DB::statement(<<<'SQL'
                 UPDATE contract_memberships
                 SET sport_roles = JSON_ARRAY(member_type)
                 WHERE member_type IS NOT NULL
-                  AND (sport_roles IS NULL OR JSON_LENGTH(sport_roles) = 0)
+                  AND sport_roles IS NULL
             SQL),
             default => throw new RuntimeException("Unsupported database driver: {$driver}"),
         };
