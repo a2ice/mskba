@@ -10,7 +10,6 @@ use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Models\Team;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -91,7 +90,6 @@ final class TeamMemberSportsService
 
             $lockedMembership->update([
                 'sport_roles' => $roles->map->value->all(),
-                'member_type' => $this->compatiblePrimaryRole($roles),
                 'is_captain' => $isCaptain,
                 'is_default_starter' => $isDefaultStarter,
             ]);
@@ -103,17 +101,5 @@ final class TeamMemberSportsService
                 $lockedMembership->sportLineupAssignments()->delete();
             }
         });
-    }
-
-    /** @param Collection<int, TeamMemberTypeEnum> $roles */
-    private function compatiblePrimaryRole(Collection $roles): ?TeamMemberTypeEnum
-    {
-        foreach ([TeamMemberTypeEnum::PLAYER, TeamMemberTypeEnum::COACH, TeamMemberTypeEnum::MANAGER] as $role) {
-            if ($roles->contains($role)) {
-                return $role;
-            }
-        }
-
-        return null;
     }
 }

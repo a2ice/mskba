@@ -21,7 +21,7 @@ final class TeamRosterService
             Team::query()->whereKey($team->id)->lockForUpdate()->firstOrFail();
             $profile = $team->sportProfiles()->where('sport_type', $sport->value)->lockForUpdate()->firstOrFail();
             $membershipIds = $team->memberships()
-                ->where('member_type', TeamMemberTypeEnum::PLAYER->value)
+                ->withSportRole(TeamMemberTypeEnum::PLAYER)
                 ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
                 ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
                 ->orderBy('id')->lockForUpdate()->pluck('id')->all();

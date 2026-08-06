@@ -139,12 +139,10 @@ final class GameLifecycleWorkflowTest extends TestCase
         $this->actingAs($owner)->post(route('teams.store'), [
             'name' => $name,
             'description' => null,
+            'creator_sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
         ])->assertRedirect();
 
-        $team = Team::query()->where('name', $name)->firstOrFail();
-        $team->memberships()->where('user_id', $owner->id)->update(['member_type' => TeamMemberTypeEnum::PLAYER]);
-
-        return $team;
+        return Team::query()->where('name', $name)->firstOrFail();
     }
 
     /** @return array{Venue, CarbonImmutable, CarbonImmutable} */

@@ -22,7 +22,7 @@ final class TeamRoleController extends Controller
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROLES), 403);
         $captain = $item->memberships()->whereKey($membership)
-            ->where('member_type', TeamMemberTypeEnum::PLAYER->value)
+            ->withSportRole(TeamMemberTypeEnum::PLAYER)
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
             ->firstOrFail();

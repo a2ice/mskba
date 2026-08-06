@@ -133,7 +133,6 @@ final class TeamJoinRequestController extends Controller
                         'scope_id' => $item->id,
                         'user_id' => $lockedEntry->user_id,
                         'access_level' => TeamMembershipAccessLevelEnum::PLAYER,
-                        'member_type' => TeamMemberTypeEnum::PLAYER,
                         'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
                         'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
                     ]);
@@ -145,7 +144,6 @@ final class TeamJoinRequestController extends Controller
                     ]);
                     $membership->update([
                         'access_level' => TeamMembershipAccessLevelEnum::PLAYER,
-                        'member_type' => TeamMemberTypeEnum::PLAYER,
                         'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
                         'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
                         'is_captain' => false,
