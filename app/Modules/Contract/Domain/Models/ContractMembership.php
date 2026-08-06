@@ -55,7 +55,7 @@ class ContractMembership extends Model
     {
         $roles = $this->sport_roles;
 
-        if (is_array($roles) && $roles !== []) {
+        if (is_array($roles)) {
             return array_values(array_unique(array_map(
                 static fn ($role): string => $role instanceof TeamMemberTypeEnum ? $role->value : (string) $role,
                 $roles,
