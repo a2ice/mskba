@@ -12,8 +12,11 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
+use App\Modules\Event\Domain\Models\LegacyGameRoute;
 use App\Modules\Event\Infrastructure\Jobs\RecalculatePlayerObjectiveAssessmentsJob;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
@@ -465,6 +468,30 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertRedirect(route('events.show', $event->routeIdentifier()));
         $this->assertCount(1, $event->fresh()->games);
         $this->assertSame(2, Team::query()->where('temporary_for_event_id', $event->id)->count());
+    }
+
+    public function test_published_legacy_game_url_redirects_without_a_child_event_row(): void
+    {
+        $event = Event::factory()->create([
+            'status' => EventStatusEnum::PUBLISHED,
+            'visibility' => EventVisibilityEnum::PUBLIC,
+            'type' => EventTypeEnum::GAME_TRAINING,
+        ]);
+        $game = Game::query()->create([
+            'event_id' => $event->id,
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'status' => GameStatusEnum::SCHEDULED,
+            'side_a_size' => 1,
+            'side_b_size' => 1,
+        ]);
+        LegacyGameRoute::query()->create([
+            'legacy_event_id' => 999999,
+            'legacy_identifier' => '999999-old-mini-game',
+            'game_id' => $game->id,
+        ]);
+
+        $this->get(route('events.show', '999999-old-mini-game'))
+            ->assertRedirect(route('events.games.show', [$event->routeIdentifier(), $game->id]));
     }
 
     public function test_accepted_responsible_manages_parent_event_and_its_mini_games(): void

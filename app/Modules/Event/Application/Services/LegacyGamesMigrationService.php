@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
+use App\Modules\Event\Domain\Models\LegacyGameRoute;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -156,6 +157,13 @@ final class LegacyGamesMigrationService
             DB::table('game_player_statistics')->where('event_id', $legacyEvent->id)->update(['game_id' => $game->id]);
 
             if ($legacyEvent->parent_event_id !== null) {
+                LegacyGameRoute::query()->updateOrCreate(
+                    ['legacy_event_id' => $legacyEvent->id],
+                    [
+                        'legacy_identifier' => $legacyEvent->routeIdentifier(),
+                        'game_id' => $game->id,
+                    ],
+                );
                 DB::table('teams')
                     ->where('temporary_for_event_id', $legacyEvent->id)
                     ->update(['temporary_for_event_id' => $parent->id]);

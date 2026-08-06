@@ -35,6 +35,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventParticipant;
 use App\Modules\Event\Domain\Models\Game;
+use App\Modules\Event\Domain\Models\LegacyGameRoute;
 use App\Modules\Event\Presentation\Http\Requests\CancelEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
@@ -213,7 +214,21 @@ final class EventController extends Controller
         PageSeoResolver $pageSeo,
     ): Response|RedirectResponse {
         $actor = $actors->resolveForRequest($request);
-        $legacyEvent = Event::query()->whereRouteIdentifier($event)->firstOrFail(['id', 'parent_event_id']);
+        $legacyEvent = Event::query()->whereRouteIdentifier($event)->first(['id', 'parent_event_id']);
+        if ($legacyEvent === null) {
+            $legacyRoute = LegacyGameRoute::query()
+                ->where(function ($query) use ($event): void {
+                    $query->where('legacy_identifier', $event);
+                    if (preg_match('/^(\d+)-/', $event, $matches) === 1) {
+                        $query->orWhere('legacy_event_id', (int) $matches[1]);
+                    }
+                })
+                ->with('game.event')
+                ->firstOrFail();
+            $parent = $events->handle($legacyRoute->game->event->routeIdentifier(), $actor);
+
+            return redirect()->route('events.games.show', [$parent->routeIdentifier(), $legacyRoute->game_id], 301);
+        }
         if ($legacyEvent->parent_event_id !== null) {
             $game = Game::query()->where('legacy_event_id', $legacyEvent->id)->firstOrFail();
             $parentReference = Event::query()->findOrFail($game->event_id);
