@@ -14,6 +14,15 @@
     $isCaptain = static fn ($membership): bool => (bool) $membership->is_captain;
     $roleText = static fn ($membership): string => $membership->sportRoles()
         ->map(fn ($role) => $role->label())->join(', ') ?: 'Без спортивной роли';
+    $memberCountText = static function (int $count): string {
+        $modulo100 = $count % 100;
+        $modulo10 = $count % 10;
+        $label = $modulo100 >= 11 && $modulo100 <= 14
+            ? 'участников'
+            : match ($modulo10) { 1 => 'участник', 2, 3, 4 => 'участника', default => 'участников' };
+
+        return "{$count} {$label}";
+    };
     $canManageRoster = false;
     $canManageRoles = false;
     $canManagePermissions = false;
@@ -24,6 +33,8 @@
         \App\Modules\Team\Domain\Enums\TeamStatusEnum::BLOCKED => 'ti-lock',
         \App\Modules\Team\Domain\Enums\TeamStatusEnum::ARCHIVED => 'ti-archive',
     };
+    $headerCoach = $coaches->first();
+    $headerCaptain = $activeMemberships->first(fn ($membership) => $membership->is_captain);
 @endphp
 @section('section-sidebar')
 <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команда</h2><ul class="sidebar-nav nav flex-column">
@@ -59,6 +70,15 @@
                 </span>
             </div>
             <p class="team-profile__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
+            <div class="team-profile__meta">
+                <p title="{{ $memberCountText($activeMemberships->count()) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $memberCountText($activeMemberships->count()) }}"><i class="ti ti-users" aria-hidden="true"></i><span class="team-profile__member-count">{{ $activeMemberships->count() }}</span><span class="team-profile__member-label"> {{ str($memberCountText($activeMemberships->count()))->after(' ') }}</span></p>
+                @if($headerCoach)
+                    <p title="Тренер: {{ $memberName($headerCoach) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="Тренер: {{ $memberName($headerCoach) }}"><i class="ti ti-user-cog" aria-hidden="true"></i><span>Тренер: {{ $memberName($headerCoach) }}</span></p>
+                @endif
+                @if($headerCaptain)
+                    <p title="Капитан: {{ $memberName($headerCaptain) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="Капитан: {{ $memberName($headerCaptain) }}"><i class="ti ti-star" aria-hidden="true"></i><span>Капитан: {{ $memberName($headerCaptain) }}</span></p>
+                @endif
+            </div>
         </div>
     </header>
 

@@ -104,6 +104,30 @@
     overflow-wrap: anywhere;
 }
 
+.team-profile__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.team-profile__meta p {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    color: #d7d9d5;
+    font-size: 13px;
+    text-decoration: none;
+    cursor: default;
+}
+
+.team-profile__meta i {
+    color: #ff7a21;
+    font-size: 18px;
+}
+
 .team-help-heading,
 .team-role-legend {
     display: flex;
@@ -303,7 +327,8 @@
     }
 
     .team-profile__header--overview .team-profile__header-statuses {
-        gap: 7px;
+        flex-wrap: nowrap;
+        gap: 4px;
     }
 
     .team-profile__header--overview .team-profile__status,
@@ -336,6 +361,24 @@
         overflow: hidden;
         -webkit-box-orient: vertical;
         -webkit-line-clamp: 2;
+    }
+
+    .team-profile__meta {
+        flex-wrap: nowrap;
+        gap: 11px;
+        margin-top: 10px;
+    }
+
+    .team-profile__meta p {
+        gap: 3px;
+    }
+
+    .team-profile__meta p:not(:first-child) span {
+        display: none;
+    }
+
+    .team-profile__member-label {
+        display: none;
     }
 
     [data-roster-save] {

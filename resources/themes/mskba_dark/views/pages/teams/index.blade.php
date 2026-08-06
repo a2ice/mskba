@@ -66,6 +66,15 @@
                                 ?: $membership->user->username
                                 ?: '—';
                         };
+                        $memberCountText = static function (int $count): string {
+                            $modulo100 = $count % 100;
+                            $modulo10 = $count % 10;
+                            $label = $modulo100 >= 11 && $modulo100 <= 14
+                                ? 'участников'
+                                : match ($modulo10) { 1 => 'участник', 2, 3, 4 => 'участника', default => 'участников' };
+
+                            return "{$count} {$label}";
+                        };
                         $activePlayerIds = $team->memberships
                             ->filter(fn ($membership) => $membership->hasSportRole(\App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::PLAYER))
                             ->pluck('id');
@@ -108,9 +117,9 @@
                             <h2 class="catalog-card__title"><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
                             <p class="catalog-card__description team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
                             <div class="team-catalog-card__meta">
-                                <p class="team-catalog-card__members" aria-label="{{ $team->active_memberships_count }} участников"><i class="ti ti-users"></i><span class="team-catalog-card__member-count">{{ $team->active_memberships_count }}</span><span class="team-catalog-card__member-label"> участников</span></p>
-                                <p class="team-catalog-card__members team-catalog-card__coach @if($coach === null) is-missing @endif" aria-label="Тренер: {{ $memberName($coach) }}"><i class="ti ti-user-cog"></i><span>Тренер: {{ $memberName($coach) }}</span></p>
-                                <p class="team-catalog-card__members team-catalog-card__captain @if($captain === null) is-missing @endif" aria-label="Капитан: {{ $memberName($captain) }}"><i class="ti ti-star"></i><span>Капитан: {{ $memberName($captain) }}</span></p>
+                                <p class="team-catalog-card__members" title="{{ $memberCountText($team->active_memberships_count) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $memberCountText($team->active_memberships_count) }}"><i class="ti ti-users"></i><span class="team-catalog-card__member-count">{{ $team->active_memberships_count }}</span><span class="team-catalog-card__member-label"> {{ str($memberCountText($team->active_memberships_count))->after(' ') }}</span></p>
+                                <p class="team-catalog-card__members team-catalog-card__coach @if($coach === null) is-missing @endif" title="Тренер: {{ $memberName($coach) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="Тренер: {{ $memberName($coach) }}"><i class="ti ti-user-cog"></i><span>Тренер: {{ $memberName($coach) }}</span></p>
+                                <p class="team-catalog-card__members team-catalog-card__captain @if($captain === null) is-missing @endif" title="Капитан: {{ $memberName($captain) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="Капитан: {{ $memberName($captain) }}"><i class="ti ti-star"></i><span>Капитан: {{ $memberName($captain) }}</span></p>
                             </div>
                         </div>
                         <div class="catalog-card__actions team-catalog-card__actions">
