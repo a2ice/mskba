@@ -57,7 +57,7 @@
             <div class="teams-catalog-results">
                 @forelse($teams as $team)
                     @php
-                        $coach = $team->memberships->first(fn ($membership) => $membership->member_type?->value === 'coach');
+                        $coach = $team->memberships->first(fn ($membership) => $membership->hasSportRole(\App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::COACH));
                         $captain = $team->memberships->first(fn ($membership) => $membership->is_captain);
                         $memberName = function ($membership): string {
                             if ($membership === null) return '—';
@@ -66,7 +66,9 @@
                                 ?: $membership->user->username
                                 ?: '—';
                         };
-                        $activePlayerIds = $team->memberships->where('member_type', \App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::PLAYER)->pluck('id');
+                        $activePlayerIds = $team->memberships
+                            ->filter(fn ($membership) => $membership->hasSportRole(\App\Modules\Team\Domain\Enums\TeamMemberTypeEnum::PLAYER))
+                            ->pluck('id');
                         $rosterComplete = $team->sportProfiles->every(function ($profile) use ($activePlayerIds): bool {
                             $required = $profile->sport_type === \App\Modules\Team\Domain\Enums\TeamSportTypeEnum::STREETBALL ? 3 : 5;
                             return $profile->lineupMembers
