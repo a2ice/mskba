@@ -87,9 +87,27 @@ final class TeamJoinRequestsTest extends TestCase
 
         $this->actingAs($owner)
             ->patch(route('teams.join-requests.respond', [$team->routeIdentifier(), $entry->id]), [
-                'action' => 'block',
-            ])->assertRedirect();
+                'action' => 'reject',
+            ])->assertSessionHasErrorsIn('joinRequest'.$entry->id, 'review_reason');
+        $this->assertSame(TeamJoinRequestStatusEnum::PENDING, $entry->fresh()->status);
+
+        $this->patch(route('teams.join-requests.respond', [$team->routeIdentifier(), $entry->id]), [
+            'action' => 'block',
+        ])->assertSessionHasErrorsIn('joinRequest'.$entry->id, 'review_reason');
+        $this->assertSame(TeamJoinRequestStatusEnum::PENDING, $entry->fresh()->status);
+
+        $reason = 'Повторные заявки после нарушения правил команды.';
+        $this->patch(route('teams.join-requests.respond', [$team->routeIdentifier(), $entry->id]), [
+            'action' => 'block',
+            'review_reason' => $reason,
+        ])->assertRedirect();
         $this->assertSame(TeamJoinRequestStatusEnum::BLOCKED, $entry->fresh()->status);
+        $this->assertSame($reason, $entry->fresh()->review_reason);
+
+        $this->actingAs($applicant)
+            ->get(route('teams.show', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee($reason);
 
         $this->actingAs($applicant)
             ->post(route('teams.join-requests.store', $team->routeIdentifier()))

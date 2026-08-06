@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'team_id',
     'user_id',
     'status',
+    'review_reason',
     'reviewed_by_user_id',
     'reviewed_at',
 ])]

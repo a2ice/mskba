@@ -75,6 +75,7 @@ final class TeamJoinRequestController extends Controller
 
         $joinRequest->fill([
             'status' => TeamJoinRequestStatusEnum::PENDING,
+            'review_reason' => null,
             'reviewed_by_user_id' => null,
             'reviewed_at' => null,
         ])->save();
@@ -90,18 +91,31 @@ final class TeamJoinRequestController extends Controller
         TeamManagementAccess $access,
         TeamRosterService $rosters,
     ): RedirectResponse {
-        $data = $request->validate(['action' => ['required', Rule::in(['accept', 'reject', 'block', 'unblock'])]]);
+        $data = $request->validateWithBag('joinRequest'.$joinRequest, [
+            'action' => ['required', Rule::in(['accept', 'reject', 'block', 'unblock'])],
+            'review_reason' => [
+                'nullable',
+                'string',
+                'max:2000',
+                Rule::requiredIf(fn (): bool => in_array($request->input('action'), ['reject', 'block'], true)),
+            ],
+        ], [
+            'review_reason.required' => 'Укажите причину отклонения или блокировки.',
+            'review_reason.max' => 'Причина не должна превышать 2000 символов.',
+        ]);
         $item = Team::query()->whereRouteIdentifier($team)->with('sportProfiles.lineupMembers')->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::MANAGE_JOIN_REQUESTS), 403);
 
         $entry = TeamJoinRequest::query()->where('team_id', $item->id)->whereKey($joinRequest)->firstOrFail();
         $action = $data['action'];
+        $reviewReason = filled($data['review_reason'] ?? null) ? trim($data['review_reason']) : null;
 
         if ($action === 'unblock') {
             abort_if($entry->status !== TeamJoinRequestStatusEnum::BLOCKED, 422, 'Разблокировать можно только заблокированную заявку.');
             $entry->update([
                 'status' => TeamJoinRequestStatusEnum::REJECTED,
+                'review_reason' => null,
                 'reviewed_by_user_id' => $actor->user_id,
                 'reviewed_at' => now(),
             ]);
@@ -112,7 +126,7 @@ final class TeamJoinRequestController extends Controller
         abort_if($entry->status !== TeamJoinRequestStatusEnum::PENDING, 422, 'Эта заявка уже обработана.');
 
         if ($action === 'accept') {
-            DB::transaction(function () use ($item, $entry, $actor, $rosters): void {
+            DB::transaction(function () use ($item, $entry, $actor, $rosters, $reviewReason): void {
                 $lockedEntry = TeamJoinRequest::query()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
                 abort_if($lockedEntry->status !== TeamJoinRequestStatusEnum::PENDING, 422, 'Эта заявка уже обработана.');
 
@@ -153,6 +167,7 @@ final class TeamJoinRequestController extends Controller
                 $contract->permissions()->delete();
                 $lockedEntry->update([
                     'status' => TeamJoinRequestStatusEnum::ACCEPTED,
+                    'review_reason' => $reviewReason,
                     'reviewed_by_user_id' => $actor->user_id,
                     'reviewed_at' => now(),
                 ]);
@@ -164,6 +179,7 @@ final class TeamJoinRequestController extends Controller
 
         $entry->update([
             'status' => $action === 'block' ? TeamJoinRequestStatusEnum::BLOCKED : TeamJoinRequestStatusEnum::REJECTED,
+            'review_reason' => $reviewReason,
             'reviewed_by_user_id' => $actor->user_id,
             'reviewed_at' => now(),
         ]);
