@@ -31,14 +31,15 @@ final class TeamMultipleSportRolesTest extends TestCase
         $membership = $team->memberships()->where('user_id', $owner->id)->firstOrFail();
 
         $this->assertSame(TeamMembershipAccessLevelEnum::OWNER->value, $membership->access_level);
-        $this->assertNull($membership->member_type);
+        $this->assertSame(TeamMemberTypeEnum::MANAGER, $membership->member_type);
         $this->assertSame([], $membership->sportRoleValues());
         $this->assertFalse($membership->is_captain);
         $this->assertFalse($membership->is_default_starter);
 
-        $this->get(route('teams.show', $team->routeIdentifier()))
+        $this->get(route('teams.management', $team->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Спортивные роли участников')
+            ->assertSee('Участники команды')
+            ->assertSee('Спортивные роли')
             ->assertSee('Владелец команды')
             ->assertSee('owner-without-sport-role');
 
@@ -53,10 +54,7 @@ final class TeamMultipleSportRolesTest extends TestCase
 
         $membership->refresh();
         $this->assertSame(TeamMemberTypeEnum::PLAYER, $membership->member_type);
-        $this->assertSame(
-            ['player', 'coach', 'manager'],
-            $membership->sportRoleValues(),
-        );
+        $this->assertSame(['player', 'coach', 'manager'], $membership->sportRoleValues());
         $this->assertTrue($membership->is_captain);
         $this->assertTrue($membership->is_default_starter);
         $this->assertSame(1, $membership->sportLineupAssignments()->count());
