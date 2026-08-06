@@ -15,12 +15,41 @@ final class TeamInvitationPrivacyTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_with_default_nobody_group_invitation_setting_is_hidden_and_cannot_be_invited_directly(): void
+    public function test_group_invitations_are_allowed_by_default(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $candidate = User::factory()->create([
+            'username' => 'default-team-candidate',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $team = $this->createTeam($owner, 'Команда приглашений по умолчанию');
+
+        $this->actingAs($owner)
+            ->getJson(route('teams.invitations.search', [
+                'team' => $team->routeIdentifier(),
+                'q' => 'default-team',
+            ]))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $candidate->getKey()]);
+
+        $this->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
+            'user_id' => $candidate->getKey(),
+            'member_type' => 'player',
+            'permissions' => [],
+        ])->assertCreated();
+    }
+
+    public function test_user_with_nobody_group_invitation_setting_is_hidden_and_cannot_be_invited_directly(): void
     {
         $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $candidate = User::factory()->create([
             'username' => 'private-team-candidate',
             'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        UserPrivacySetting::query()->create([
+            'user_id' => $candidate->getKey(),
+            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+            'visibility' => UserPrivacyVisibilityEnum::NOBODY,
         ]);
         $team = $this->createTeam($owner, 'Команда приватных приглашений');
 
