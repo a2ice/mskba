@@ -9,6 +9,6 @@ final class RecalculatePlayerObjectiveAssessments
 {
     public function handle(GameStatisticsConfirmed $event): void
     {
-        RecalculatePlayerObjectiveAssessmentsJob::dispatch($event->eventId)->afterCommit();
+        RecalculatePlayerObjectiveAssessmentsJob::dispatch($event->gameId)->afterCommit();
     }
 }

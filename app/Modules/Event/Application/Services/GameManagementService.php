@@ -463,7 +463,7 @@ final class GameManagementService
             $this->confirmLockedStatistics($lockedGame, $actor);
         });
 
-        event(new GameStatisticsConfirmed($game->legacy_event_id ?? $game->event_id));
+        event(new GameStatisticsConfirmed($game->id));
         event(new EventChanged($this->aggregateEventId($game)));
     }
 
@@ -497,7 +497,7 @@ final class GameManagementService
             ]);
         });
 
-        event(new GameStatisticsConfirmed($game->legacy_event_id ?? $game->event_id));
+        event(new GameStatisticsConfirmed($game->id));
         event(new EventChanged($this->aggregateEventId($game)));
     }
 

@@ -7,8 +7,9 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
-use App\Modules\Event\Domain\Models\GameDetail;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,15 +69,15 @@ final class EventPlayerStatisticsSummaryBuilderTest extends TestCase
         $this->assertSame(3, $summary['assists']);
         $this->assertSame(1, $summary['turnovers']);
         $this->assertSame(2, $summary['fouls']);
-        $this->assertSame($latestGame->routeIdentifier(), $summary['last_game_identifier']);
+        $this->assertSame($latestGame->legacyEvent->routeIdentifier(), $summary['last_game_identifier']);
     }
 
     private function createMiniGame(
         Event $parent,
         mixed $completedAt,
         GameStatisticsStatusEnum $statisticsStatus,
-    ): Event {
-        $game = Event::factory()->create([
+    ): Game {
+        $legacyEvent = Event::factory()->create([
             'parent_event_id' => $parent->id,
             'type' => EventTypeEnum::GAME,
             'status' => EventStatusEnum::COMPLETED,
@@ -84,26 +85,33 @@ final class EventPlayerStatisticsSummaryBuilderTest extends TestCase
             'ends_at' => $completedAt,
             'completed_at' => $completedAt,
         ]);
-        GameDetail::query()->create([
-            'event_id' => $game->id,
+
+        return Game::query()->create([
+            'event_id' => $parent->id,
+            'legacy_event_id' => $legacyEvent->id,
+            'created_by_actor_id' => $parent->organizer_actor_id,
+            'status' => $statisticsStatus === GameStatisticsStatusEnum::CONFIRMED
+                ? GameStatusEnum::COMPLETED
+                : GameStatusEnum::AWAITING_RESULT,
             'side_a_size' => 1,
             'side_b_size' => 1,
             'statistics_status' => $statisticsStatus,
+            'completed_at' => $completedAt,
         ]);
-
-        return $game;
     }
 
     /** @param array<string, int> $values */
-    private function createStatistics(Event $game, User $player, array $values): void
+    private function createStatistics(Game $game, User $player, array $values): void
     {
-        $side = $game->gameSides()->create([
+        $side = $game->sides()->create([
+            'event_id' => $game->legacy_event_id,
             'slot' => 'A',
             'display_name' => 'Команда A',
         ]);
 
         GamePlayerStatistic::query()->create([
-            'event_id' => $game->id,
+            'event_id' => $game->legacy_event_id,
+            'game_id' => $game->id,
             'game_side_id' => $side->id,
             'user_id' => $player->id,
             ...$values,

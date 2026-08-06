@@ -11,10 +11,10 @@ final class PlayerObjectiveAssessmentCalculator
 {
     private const FORMULA_VERSION = 1;
 
-    public function recalculateForGame(int $eventId): void
+    public function recalculateForGame(int $gameId): void
     {
         GamePlayerStatistic::query()
-            ->where('event_id', $eventId)
+            ->where('game_id', $gameId)
             ->distinct()
             ->pluck('user_id')
             ->each(fn (int $userId) => Cache::lock("player-objective-assessment:{$userId}", 30)
@@ -25,7 +25,7 @@ final class PlayerObjectiveAssessmentCalculator
     {
         $statistics = GamePlayerStatistic::query()
             ->where('user_id', $userId)
-            ->whereHas('event.gameDetail', fn ($query) => $query
+            ->whereHas('game', fn ($query) => $query
                 ->where('statistics_status', GameStatisticsStatusEnum::CONFIRMED->value))
             ->get();
 
@@ -33,7 +33,7 @@ final class PlayerObjectiveAssessmentCalculator
             return;
         }
 
-        $gamesCount = $statistics->pluck('event_id')->unique()->count();
+        $gamesCount = $statistics->pluck('game_id')->unique()->count();
         $minutes = max(1, $statistics->sum('minutes'));
         $assists = $statistics->sum('assists');
         $turnovers = $statistics->sum('turnovers');

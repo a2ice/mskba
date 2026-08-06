@@ -3,7 +3,9 @@
 namespace App\Modules\Event\Application\Services;
 
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use Illuminate\Support\Collection;
 
@@ -22,15 +24,17 @@ final class EventPlayerStatisticsSummaryBuilder
      */
     public function build(Event $event): Collection
     {
-        $event->loadMissing(['childGames.gameDetail', 'childGames.gamePlayerStatistics']);
+        $event->loadMissing(['games.legacyEvent', 'games.playerStatistics']);
 
-        $confirmedGames = $event->childGames
-            ->filter(fn (Event $game): bool => $game->gameDetail?->statistics_status === GameStatisticsStatusEnum::CONFIRMED)
-            ->sortBy(fn (Event $game): string => sprintf(
+        $confirmedGames = $event->games
+            ->filter(fn (Game $game): bool => $game->status === GameStatusEnum::COMPLETED
+                && $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED)
+            ->sortBy(fn (Game $game): string => sprintf(
                 '%s-%020d',
                 $game->completed_at?->format('Y-m-d H:i:s.u')
-                    ?? $game->ends_at?->format('Y-m-d H:i:s.u')
-                    ?? $game->starts_at?->format('Y-m-d H:i:s.u')
+                    ?? $game->actual_ended_at?->format('Y-m-d H:i:s.u')
+                    ?? $game->scheduled_ends_at?->format('Y-m-d H:i:s.u')
+                    ?? $game->scheduled_starts_at?->format('Y-m-d H:i:s.u')
                     ?? '0000-00-00 00:00:00.000000',
                 $game->id,
             ));
@@ -39,7 +43,7 @@ final class EventPlayerStatisticsSummaryBuilder
         $summaries = [];
 
         foreach ($confirmedGames as $game) {
-            foreach ($game->gamePlayerStatistics as $statistic) {
+            foreach ($game->playerStatistics as $statistic) {
                 $summary = $summaries[$statistic->user_id] ?? $this->emptySummary();
                 $summary['shots_made'] += $this->shotsMade($statistic);
                 $summary['shots_attempted'] += $this->shotsAttempted($statistic);
@@ -47,7 +51,7 @@ final class EventPlayerStatisticsSummaryBuilder
                 $summary['assists'] += $statistic->assists;
                 $summary['turnovers'] += $statistic->turnovers;
                 $summary['fouls'] += $statistic->fouls;
-                $summary['last_game_identifier'] = $game->routeIdentifier();
+                $summary['last_game_identifier'] = $game->legacyEvent?->routeIdentifier() ?? '';
                 $summaries[$statistic->user_id] = $summary;
             }
         }

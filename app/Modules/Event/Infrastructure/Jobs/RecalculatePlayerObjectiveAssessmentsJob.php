@@ -18,15 +18,15 @@ final class RecalculatePlayerObjectiveAssessmentsJob implements ShouldBeUnique, 
     /** @var list<int> */
     public array $backoff = [10, 30, 90];
 
-    public function __construct(public readonly int $eventId) {}
+    public function __construct(public readonly int $gameId) {}
 
     public function uniqueId(): string
     {
-        return (string) $this->eventId;
+        return (string) $this->gameId;
     }
 
     public function handle(PlayerObjectiveAssessmentCalculator $calculator): void
     {
-        $calculator->recalculateForGame($this->eventId);
+        $calculator->recalculateForGame($this->gameId);
     }
 }
