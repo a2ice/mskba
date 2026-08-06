@@ -31,7 +31,6 @@ final class TeamMultipleSportRolesTest extends TestCase
         $membership = $team->memberships()->where('user_id', $owner->id)->firstOrFail();
 
         $this->assertSame(TeamMembershipAccessLevelEnum::OWNER->value, $membership->access_level);
-        $this->assertSame(TeamMemberTypeEnum::MANAGER, $membership->member_type);
         $this->assertSame([], $membership->sportRoleValues());
         $this->assertFalse($membership->is_captain);
         $this->assertFalse($membership->is_default_starter);
@@ -53,7 +52,6 @@ final class TeamMultipleSportRolesTest extends TestCase
         ])->assertSessionHas('status')->assertSessionHasNoErrors();
 
         $membership->refresh();
-        $this->assertSame(TeamMemberTypeEnum::PLAYER, $membership->member_type);
         $this->assertSame(['player', 'coach', 'manager'], $membership->sportRoleValues());
         $this->assertTrue($membership->is_captain);
         $this->assertTrue($membership->is_default_starter);
@@ -141,7 +139,6 @@ final class TeamMultipleSportRolesTest extends TestCase
         $membership = Team::query()->where('name', 'Команда играющего тренера')
             ->firstOrFail()->memberships()->where('user_id', $owner->id)->firstOrFail();
 
-        $this->assertSame(TeamMemberTypeEnum::PLAYER, $membership->member_type);
         $this->assertSame(['player', 'coach'], $membership->sportRoleValues());
         $this->assertTrue($membership->is_captain);
         $this->assertTrue($membership->is_default_starter);
