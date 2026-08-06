@@ -11,7 +11,7 @@ use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
-use App\Modules\Identity\Application\Services\UserPrivacyAccess;
+use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -60,7 +60,7 @@ final class TeamInvitationController extends Controller
         Request $request,
         CurrentActorResolver $actors,
         TeamManagementAccess $access,
-        UserPrivacyAccess $privacy,
+        UserPrivacyAccessService $privacy,
     ): JsonResponse {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
