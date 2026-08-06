@@ -141,7 +141,6 @@ final class TeamController extends Controller
                     'scope_id' => $team->id,
                     'user_id' => $actor->user_id,
                     'access_level' => TeamMembershipAccessLevelEnum::OWNER->value,
-                    'member_type' => TeamMemberTypeEnum::MANAGER,
                     'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
                 ]);
 
@@ -165,7 +164,6 @@ final class TeamController extends Controller
             'except' => ['nullable', 'integer', 'exists:teams,id'],
         ]);
         $except = isset($data['except']) ? Team::query()->find($data['except']) : null;
-
         $actor = $actors->resolveForRequest($request);
 
         return response()->json($names->suggest(
@@ -191,14 +189,13 @@ final class TeamController extends Controller
                 && $membership->invitation_status === TeamInvitationStatusEnum::ACCEPTED)
             ->values();
         $coaches = $activeMemberships
-            ->filter(fn ($membership) => $membership->member_type === TeamMemberTypeEnum::COACH
-                || $membership->access_level === TeamMembershipAccessLevelEnum::COACH->value)
+            ->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::COACH))
             ->values();
         $managers = $activeMemberships
-            ->filter(fn ($membership) => $membership->member_type === TeamMemberTypeEnum::MANAGER)
+            ->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::MANAGER))
             ->values();
         $players = $activeMemberships
-            ->filter(fn ($membership) => $membership->member_type === TeamMemberTypeEnum::PLAYER)
+            ->filter(fn ($membership) => $membership->hasSportRole(TeamMemberTypeEnum::PLAYER))
             ->sortBy('id')
             ->values();
         $startingLineups = $item->sportProfiles
@@ -419,7 +416,7 @@ final class TeamController extends Controller
         foreach ($values as $sportType) {
             $profile = $team->sportProfiles()->updateOrCreate(['sport_type' => $sportType]);
             $playerIds = $team->memberships()
-                ->where('member_type', TeamMemberTypeEnum::PLAYER->value)
+                ->withSportRole(TeamMemberTypeEnum::PLAYER)
                 ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
                 ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
                 ->orderBy('id')->pluck('id');
