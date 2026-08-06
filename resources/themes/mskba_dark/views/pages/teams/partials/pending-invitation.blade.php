@@ -7,9 +7,7 @@
         ?? asset($invitation->user->profile?->gender === \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE
             ? 'images/blank/avatar/avatar-female.png'
             : 'images/blank/avatar/avatar-male.png');
-    $invitedRole = $invitation->sportRoles()->map(fn ($role) => $role->label())->join(', ')
-        ?: $invitation->member_type?->label()
-        ?: 'Участник';
+    $invitedRole = $invitation->sportRoles()->map(fn ($role) => $role->label())->join(', ') ?: 'Участник';
 @endphp
 <article class="team-pending-invitation" data-pending-invitation-id="{{ $invitation->id }}">
     <img class="team-pending-invitation__avatar" src="{{ $invitedAvatar }}" alt="Аватар {{ $invitedName }}">

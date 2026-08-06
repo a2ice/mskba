@@ -40,14 +40,8 @@ final class OwnerTeamMembershipObserver
 
         $roles = $roles->unique(fn (TeamMemberTypeEnum $role) => $role->value)->values();
         $hasPlayerRole = $roles->contains(TeamMemberTypeEnum::PLAYER);
-        $primaryRole = collect([
-            TeamMemberTypeEnum::PLAYER,
-            TeamMemberTypeEnum::COACH,
-            TeamMemberTypeEnum::MANAGER,
-        ])->first(fn (TeamMemberTypeEnum $role) => $roles->contains($role));
 
         $membership->sport_roles = $roles->map(fn (TeamMemberTypeEnum $role) => $role->value)->all();
-        $membership->member_type = $primaryRole;
         $membership->is_captain = $hasPlayerRole;
         $membership->is_default_starter = $hasPlayerRole && request()->boolean('creator_is_default_starter');
     }

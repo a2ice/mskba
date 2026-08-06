@@ -61,7 +61,6 @@ final class GameLineupAndLifecycleTest extends TestCase
         $this->assertSame(GameLineupRoleEnum::STARTER, $entries[$ownerA->id]->lineup_role);
         $this->assertSame(GameLineupRoleEnum::STARTER, $entries[$playerA->id]->lineup_role);
 
-        // Later team changes must not rewrite an already created historical snapshot.
         $this->setSports($ownerA, $teamA, $ownerAMembership->id, TeamMemberTypeEnum::PLAYER, false, false);
         $this->setSports($ownerA, $teamA, $playerAMembership->id, TeamMemberTypeEnum::PLAYER, true, true);
 
@@ -109,10 +108,7 @@ final class GameLineupAndLifecycleTest extends TestCase
             ->postJson(route('events.game.lifecycle.start', $game->routeIdentifier()))
             ->assertOk();
 
-        $this->assertSame(
-            4,
-            $game->gameRosterEntries()->whereNotNull('locked_at')->count(),
-        );
+        $this->assertSame(4, $game->gameRosterEntries()->whereNotNull('locked_at')->count());
 
         $this->actingAs($ownerA)->putJson(
             route('events.game.lineup.update', $game->routeIdentifier()),
@@ -140,9 +136,7 @@ final class GameLineupAndLifecycleTest extends TestCase
         $game = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
 
         $this->actingAs($ownerA)
-            ->patchJson(route('events.game.score', $game->routeIdentifier()), [
-                'scores' => ['A' => 3, 'B' => 2],
-            ])
+            ->patchJson(route('events.game.score', $game->routeIdentifier()), ['scores' => ['A' => 3, 'B' => 2]])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Сначала необходимо начать игру.');
 
@@ -151,9 +145,7 @@ final class GameLineupAndLifecycleTest extends TestCase
             ->assertOk();
 
         $this->actingAs($ownerA)
-            ->patchJson(route('events.game.score', $game->routeIdentifier()), [
-                'scores' => ['A' => 3, 'B' => 2],
-            ])
+            ->patchJson(route('events.game.score', $game->routeIdentifier()), ['scores' => ['A' => 3, 'B' => 2]])
             ->assertOk();
 
         $this->actingAs($ownerA)
@@ -166,9 +158,7 @@ final class GameLineupAndLifecycleTest extends TestCase
             ->assertOk();
 
         $this->actingAs($ownerA)
-            ->patchJson(route('events.game.score', $game->routeIdentifier()), [
-                'scores' => ['A' => 4, 'B' => 2],
-            ])
+            ->patchJson(route('events.game.score', $game->routeIdentifier()), ['scores' => ['A' => 4, 'B' => 2]])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Игра уже закончена. Оперативный ввод закрыт.');
     }
@@ -191,14 +181,14 @@ final class GameLineupAndLifecycleTest extends TestCase
 
         $this->actingAs($owner)->from(route('teams.edit', $team->routeIdentifier()))
             ->put(route('teams.members.sports.update', [$team->routeIdentifier(), $coachMembership->id]), [
-                'member_type' => TeamMemberTypeEnum::COACH->value,
+                'sport_roles' => [TeamMemberTypeEnum::COACH->value],
                 'is_captain' => 1,
                 'is_default_starter' => 1,
             ])
             ->assertSessionHas('error', 'Капитаном и стартовым участником может быть только игрок.');
 
         $coachMembership->refresh();
-        $this->assertSame(TeamMemberTypeEnum::PLAYER, $coachMembership->member_type);
+        $this->assertTrue($coachMembership->hasSportRole(TeamMemberTypeEnum::PLAYER));
         $this->assertFalse($coachMembership->is_captain);
         $this->assertFalse($coachMembership->is_default_starter);
     }
@@ -252,7 +242,7 @@ final class GameLineupAndLifecycleTest extends TestCase
         $this->actingAs($manager)->put(
             route('teams.members.sports.update', [$team->routeIdentifier(), $membershipId]),
             [
-                'member_type' => $type->value,
+                'sport_roles' => [$type->value],
                 'is_captain' => $captain,
                 'is_default_starter' => $starter,
             ],
@@ -269,7 +259,7 @@ final class GameLineupAndLifecycleTest extends TestCase
             'requires_payment' => false,
             'requires_booking_approval' => false,
         ]);
-        $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
+        $schedule = VenueSchedule::factory()->for($venue, 'schedule')->create(['timezone' => 'Europe/Moscow']);
         VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
             'day_of_week' => $start->isoWeekday(),
             'starts_at' => '09:00',

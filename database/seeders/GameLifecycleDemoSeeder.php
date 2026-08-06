@@ -209,7 +209,7 @@ class GameLifecycleDemoSeeder extends Seeder
                 'scope_id' => $team->id,
                 'user_id' => $user->id,
                 'access_level' => $access,
-                'member_type' => $type,
+                'sport_roles' => [$type->value],
                 'is_captain' => $captain,
                 'is_default_starter' => $starter,
                 'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
