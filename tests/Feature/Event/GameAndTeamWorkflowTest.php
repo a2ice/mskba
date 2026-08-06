@@ -4,6 +4,7 @@ namespace Tests\Feature\Event;
 
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Event\Application\Services\PlayerObjectiveAssessmentCalculator;
+use App\Modules\Event\Application\Services\LegacyGamesMigrationService;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
@@ -89,6 +90,52 @@ final class GameAndTeamWorkflowTest extends TestCase
 
         $training = Event::query()->where('type', EventTypeEnum::TRAINING->value)->firstOrFail();
         $this->assertCount(0, $training->games);
+    }
+
+    public function test_legacy_child_game_participants_are_merged_into_parent_event(): void
+    {
+        $organizer = User::factory()->create();
+        $existingUser = User::factory()->create();
+        $childOnlyUser = User::factory()->create();
+        $actor = Actor::factory()->create(['user_id' => $organizer->id]);
+        $venue = Venue::factory()->create();
+        $parent = Event::factory()->create([
+            'venue_id' => $venue->id,
+            'organizer_actor_id' => $actor->id,
+            'type' => EventTypeEnum::GAME_TRAINING,
+        ]);
+        $child = Event::factory()->create([
+            'parent_event_id' => $parent->id,
+            'venue_id' => $venue->id,
+            'organizer_actor_id' => $actor->id,
+            'type' => EventTypeEnum::GAME,
+            'starts_at' => $parent->starts_at,
+            'ends_at' => $parent->ends_at,
+        ]);
+        $parent->participants()->create([
+            'user_id' => $existingUser->id,
+            'status' => EventParticipantStatusEnum::TENTATIVE,
+        ]);
+        $child->participants()->createMany([
+            ['user_id' => $existingUser->id, 'status' => EventParticipantStatusEnum::CONFIRMED],
+            ['user_id' => $childOnlyUser->id, 'status' => EventParticipantStatusEnum::CONFIRMED],
+        ]);
+        $child->gameDetail()->create(['side_a_size' => 1, 'side_b_size' => 1]);
+
+        $result = app(LegacyGamesMigrationService::class)->run(true);
+
+        $this->assertSame([], $result['conflicts']);
+        $this->assertSame(1, $result['migrated']);
+        $this->assertDatabaseHas('games', [
+            'event_id' => $parent->id,
+            'legacy_event_id' => $child->id,
+        ]);
+        $this->assertSame(2, $parent->participants()->count());
+        $this->assertSame(0, $child->participants()->count());
+        $this->assertSame(
+            EventParticipantStatusEnum::CONFIRMED,
+            $parent->participants()->where('user_id', $existingUser->id)->firstOrFail()->status,
+        );
     }
 
     public function test_team_can_support_multiple_sport_types_without_limiting_roster_size(): void
