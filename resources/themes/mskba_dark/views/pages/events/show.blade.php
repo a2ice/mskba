@@ -482,10 +482,10 @@
                                 $childSideA = $childSides->get('A');
                                 $childSideB = $childSides->get('B');
                                 $childHasScore = $childSideA?->score !== null && $childSideB?->score !== null;
-                                $legacyGameIdentifier = $game->legacyEvent?->routeIdentifier();
+                                $gameRouteParameters = [$event->routeIdentifier(), $game->id];
                             @endphp
                             <article>
-                                <a class="event-mini-games__summary" href="{{ $legacyGameIdentifier ? route('events.show', $legacyGameIdentifier) : '#' }}">
+                                <a class="event-mini-games__summary" href="{{ route('events.games.show', $gameRouteParameters) }}">
                                     <strong>{{ $game->title ?: 'Игра #'.$game->id }}</strong>
                                     <span>
                                         {{ $game->scheduled_starts_at && $game->scheduled_ends_at
@@ -499,8 +499,8 @@
                                         {{ $childSideB?->display_name ?: 'Команда B' }}
                                     </span>
                                 </a>
-                                @if($legacyGameIdentifier && collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
-                                    <a class="btn btn--secondary btn--sm" href="{{ route('events.game.manage', $legacyGameIdentifier) }}">Управлять</a>
+                                @if(collect(EventResponsibilityPermissionEnum::miniGamePermissions())->except([0])->contains(fn ($permission) => $allows($permission)))
+                                    <a class="btn btn--secondary btn--sm" href="{{ route('events.games.manage', $gameRouteParameters) }}">Управлять</a>
                                 @endif
                             </article>
                         @endforeach
@@ -529,7 +529,7 @@
                                     <h3>Состав, счёт и статистика</h3>
                                     <p>Зафиксируйте участников матча и внесите показатели игроков.</p>
                                 </div>
-                                <a class="btn btn--primary btn--sm" href="{{ route('events.game.manage', $event->routeIdentifier()) }}">Управлять игрой</a>
+                                <a class="btn btn--primary btn--sm" href="{{ route('events.games.manage', [$event->routeIdentifier(), $event->games->first()->id]) }}">Управлять игрой</a>
                             </section>
                         @endif
 

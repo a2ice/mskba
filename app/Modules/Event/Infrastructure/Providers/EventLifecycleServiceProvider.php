@@ -49,6 +49,8 @@ final class EventLifecycleServiceProvider extends ServiceProvider
         ], function ($view): void {
             $data = $view->getData();
             $event = $data['event'] ?? null;
+            $game = $data['game']
+                ?? ($event?->type->value === 'game' ? $event->games->first() : null);
 
             // Public pages keep personal contextual actions, but never expose
             // forms that mutate the event or other participants.
@@ -57,13 +59,13 @@ final class EventLifecycleServiceProvider extends ServiceProvider
             if (($data['canManage'] ?? false) && $event !== null) {
                 $view->with(
                     'contextManagementUrl',
-                    $event->type->value === 'game'
-                        ? route('events.game.manage', $event->routeIdentifier())
+                    $game !== null
+                        ? route('events.games.manage', [$event->routeIdentifier(), $game->id])
                         : route('events.management', $event->routeIdentifier()),
                 );
                 $view->with(
                     'contextManagementLabel',
-                    $event->type->value === 'game' ? 'Управление игрой' : 'Управление мероприятием',
+                    $game !== null ? 'Управление игрой' : 'Управление мероприятием',
                 );
             }
         });

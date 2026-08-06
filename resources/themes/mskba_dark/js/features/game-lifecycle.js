@@ -3,11 +3,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!root) return;
 
-    const identifier = currentEventIdentifier();
-    if (!identifier) return;
+    const lifecycleUrl = root.dataset.gameLifecycleUrl || legacyLifecycleUrl();
+    if (!lifecycleUrl) return;
 
     try {
-        const state = await requestJson(`/game-lifecycle/${encodeURIComponent(identifier)}`);
+        const state = await requestJson(lifecycleUrl);
         applyLifecycleState(root, state);
     } catch (error) {
         if (error.status !== 401 && error.status !== 403) {
@@ -16,9 +16,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function currentEventIdentifier() {
+function legacyLifecycleUrl() {
     const match = window.location.pathname.match(/^\/events\/([^/]+)$/);
-    return match ? decodeURIComponent(match[1]) : null;
+    return match ? `/game-lifecycle/${encodeURIComponent(decodeURIComponent(match[1]))}` : null;
 }
 
 function applyLifecycleState(root, state) {

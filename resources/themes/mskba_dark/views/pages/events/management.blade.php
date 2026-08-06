@@ -133,7 +133,7 @@
     <h2>Игры и мини-игры</h2>
     <p class="form-hint">Создание и оперативное управление играми выполняется в отдельном рабочем интерфейсе.</p>
     @foreach($event->games as $game)
-        @if($game->legacyEvent)<a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('events.game.manage', $game->legacyEvent->routeIdentifier()) }}">{{ $game->title ?: 'Игра #'.$game->id }}</a>@endif
+        <a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('events.games.manage', [$event->routeIdentifier(), $game->id]) }}">{{ $game->title ?: 'Игра #'.$game->id }}</a>
     @endforeach
     @if($canCreateMiniGame)
         @include('theme::pages.events.partials.mini-game-create-management')

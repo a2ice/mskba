@@ -5,6 +5,8 @@ namespace App\Modules\Event\Infrastructure\Http\Middleware;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Application\Services\LegacyGameRouteResolver;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use Closure;
 use Illuminate\Http\Request;
@@ -16,12 +18,14 @@ final class EnsureGameRosterContainsPlayers
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->route()?->getName() !== 'events.game.roster') {
+        $routeName = $request->route()?->getName();
+        if (! in_array($routeName, ['events.game.roster', 'events.games.roster'], true)) {
             return $next($request);
         }
 
-        $identifier = (string) $request->route('event');
-        $game = $this->games->resolve($identifier)->load(['event', 'sides.team']);
+        $game = $routeName === 'events.games.roster'
+            ? $this->resolveNestedGame($request)
+            : $this->games->resolve((string) $request->route('event'))->load(['event', 'sides.team']);
 
         // A mini-game roster is formed from confirmed event participants rather
         // than permanent team memberships, so team sport roles do not apply.
@@ -54,6 +58,19 @@ final class EnsureGameRosterContainsPlayers
         }
 
         return $next($request);
+    }
+
+    private function resolveNestedGame(Request $request): Game
+    {
+        $event = Event::query()
+            ->whereRouteIdentifier((string) $request->route('event'))
+            ->firstOrFail();
+
+        return Game::query()
+            ->whereKey((int) $request->route('game'))
+            ->whereBelongsTo($event)
+            ->with(['event', 'sides.team'])
+            ->firstOrFail();
     }
 
     private function reject(Request $request, string $message): Response

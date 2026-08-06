@@ -365,6 +365,20 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->get(route('events.games.show', [$training->routeIdentifier(), $gameAggregate->id]))
             ->assertOk()
             ->assertSee('Закрытая мини-игра');
+        $this->actingAs($organizer)
+            ->getJson(route('events.games.lifecycle.show', [$training->routeIdentifier(), $gameAggregate->id]))
+            ->assertOk()
+            ->assertJsonPath(
+                'start_url',
+                route('events.games.start', [$training->routeIdentifier(), $gameAggregate->id]),
+            )
+            ->assertJsonPath(
+                'lineup_update_url',
+                route('events.games.lineup.update', [$training->routeIdentifier(), $gameAggregate->id]),
+            );
+        $this->actingAs($organizer)
+            ->get(route('events.games.manage', [$training->routeIdentifier(), $gameAggregate->id]))
+            ->assertOk();
         $otherTraining = Event::factory()->create([
             'organizer_actor_id' => $training->organizer_actor_id,
             'type' => EventTypeEnum::TRAINING,
@@ -372,6 +386,9 @@ final class GameAndTeamWorkflowTest extends TestCase
         ]);
         $this->actingAs($organizer)
             ->get(route('events.games.show', [$otherTraining->routeIdentifier(), $gameAggregate->id]))
+            ->assertNotFound();
+        $this->actingAs($organizer)
+            ->getJson(route('events.games.lifecycle.show', [$otherTraining->routeIdentifier(), $gameAggregate->id]))
             ->assertNotFound();
     }
 

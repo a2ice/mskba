@@ -66,6 +66,10 @@ final class GameLifecycleController extends Controller
             ]];
         });
 
+        $nestedEvent = $request->route('event');
+        $nestedGame = $request->route('game');
+        $usesNestedRoute = $nestedGame !== null;
+
         return response()->json([
             'started' => $started,
             'ended' => $ended,
@@ -79,9 +83,15 @@ final class GameLifecycleController extends Controller
             'can_manage_score' => $canManageScore && $started && ! $ended && ! $cancelled && ! $completed,
             'can_manage_lineup' => $canManageRoster && ! $started && ! $cancelled && ! $completed,
             'can_confirm_result' => $canComplete && $canManageStatistics && $ended && ! $cancelled && ! $completed,
-            'start_url' => route('events.game.lifecycle.start', $game->legacyEvent->routeIdentifier()),
-            'end_url' => route('events.game.lifecycle.end', $game->legacyEvent->routeIdentifier()),
-            'lineup_update_url' => route('events.game.lineup.update', $game->legacyEvent->routeIdentifier()),
+            'start_url' => $usesNestedRoute
+                ? route('events.games.start', [$nestedEvent, $nestedGame])
+                : route('events.game.lifecycle.start', $game->legacyEvent->routeIdentifier()),
+            'end_url' => $usesNestedRoute
+                ? route('events.games.end', [$nestedEvent, $nestedGame])
+                : route('events.game.lifecycle.end', $game->legacyEvent->routeIdentifier()),
+            'lineup_update_url' => $usesNestedRoute
+                ? route('events.games.lineup.update', [$nestedEvent, $nestedGame])
+                : route('events.game.lineup.update', $game->legacyEvent->routeIdentifier()),
             'roster' => $roster,
         ]);
     }
