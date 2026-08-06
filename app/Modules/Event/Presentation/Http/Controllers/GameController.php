@@ -68,7 +68,7 @@ final class GameController extends Controller
             return back()->withInput()->with('error', $exception->getMessage());
         }
 
-        return redirect()->route('events.show', $game->routeIdentifier())
+        return redirect()->route('events.games.show', [$parent->routeIdentifier(), $game->id])
             ->with('status', 'Мини-игра создана.');
     }
 
@@ -274,13 +274,13 @@ final class GameController extends Controller
         $message = 'Игра завершена. Статистика подтверждена и учтена в показателях игроков.';
 
         if (! $request->expectsJson()) {
-            return redirect()->route('events.show', $game->legacyEvent->routeIdentifier())
+            return redirect()->route('events.games.show', [$game->event->routeIdentifier(), $game->id])
                 ->with('status', $message);
         }
 
         return $this->statisticsJson($game, $message, [
             'completed' => true,
-            'redirect_url' => route('events.show', $game->legacyEvent->routeIdentifier()),
+            'redirect_url' => route('events.games.show', [$game->event->routeIdentifier(), $game->id]),
         ]);
     }
 
@@ -351,7 +351,17 @@ final class GameController extends Controller
     ): array {
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
-        $game = $this->legacyGames->resolve($identifier)->load(['event', 'legacyEvent']);
+        $gameId = $request->route('game');
+        if ($gameId !== null) {
+            $parent = Event::query()->whereRouteIdentifier($identifier)->firstOrFail();
+            $game = Game::query()
+                ->whereKey((int) $gameId)
+                ->whereBelongsTo($parent)
+                ->with(['event', 'legacyEvent'])
+                ->firstOrFail();
+        } else {
+            $game = $this->legacyGames->resolve($identifier)->load(['event', 'legacyEvent']);
+        }
         abort_unless($access->allows($game->event, $actor, $permission), 403);
 
         return [$game, $actor];

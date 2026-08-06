@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -16,9 +17,11 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class NestedGameController extends Controller
 {
-    public function manage(Request $request, string $event, int $game): Response
+    public function manage(Request $request, string $event, int $game): RedirectResponse
     {
-        return $this->forward($request, $event, $game, GameControlController::class, '__invoke');
+        $this->resolve($event, $game);
+
+        return redirect()->route('events.games.show', [$event, $game]);
     }
 
     public function update(Request $request, string $event, int $game): Response
@@ -88,17 +91,21 @@ final class NestedGameController extends Controller
         string $controller,
         string $method,
     ): Response {
-        $event = Event::query()->whereRouteIdentifier($eventIdentifier)->firstOrFail();
-        $game = Game::query()
-            ->whereKey($gameId)
-            ->where('event_id', $event->id)
-            ->with('legacyEvent')
-            ->firstOrFail();
-        abort_if($game->legacyEvent === null, 410, 'Legacy game adapter is unavailable.');
+        $this->resolve($eventIdentifier, $gameId);
 
         return app()->call([app($controller), $method], [
             'request' => $request,
-            'event' => $game->legacyEvent->routeIdentifier(),
+            'event' => $eventIdentifier,
         ]);
+    }
+
+    private function resolve(string $eventIdentifier, int $gameId): Game
+    {
+        $event = Event::query()->whereRouteIdentifier($eventIdentifier)->firstOrFail();
+
+        return Game::query()
+            ->whereKey($gameId)
+            ->whereBelongsTo($event)
+            ->firstOrFail();
     }
 }

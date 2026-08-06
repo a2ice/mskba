@@ -352,15 +352,12 @@ final class GameAndTeamWorkflowTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $miniGame = Event::query()->where('parent_event_id', $training->id)->firstOrFail();
-
+        $this->assertFalse(Event::query()->where('parent_event_id', $training->id)->exists());
+        $gameAggregate = $training->games()->sole();
+        $this->assertNull($gameAggregate->legacy_event_id);
         $this->actingAs($stranger)
-            ->get(route('events.show', $miniGame->routeIdentifier()))
+            ->get(route('events.games.show', [$training->routeIdentifier(), $gameAggregate->id]))
             ->assertNotFound();
-        $gameAggregate = $training->games()->where('legacy_event_id', $miniGame->id)->firstOrFail();
-        $this->actingAs($organizer)
-            ->get(route('events.show', $miniGame->routeIdentifier()))
-            ->assertRedirect(route('events.games.show', [$training->routeIdentifier(), $gameAggregate->id]));
         $this->actingAs($organizer)
             ->get(route('events.games.show', [$training->routeIdentifier(), $gameAggregate->id]))
             ->assertOk()
@@ -378,7 +375,7 @@ final class GameAndTeamWorkflowTest extends TestCase
             );
         $this->actingAs($organizer)
             ->get(route('events.games.manage', [$training->routeIdentifier(), $gameAggregate->id]))
-            ->assertOk();
+            ->assertRedirect(route('events.games.show', [$training->routeIdentifier(), $gameAggregate->id]));
         $otherTraining = Event::factory()->create([
             'organizer_actor_id' => $training->organizer_actor_id,
             'type' => EventTypeEnum::TRAINING,
@@ -390,6 +387,55 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->actingAs($organizer)
             ->getJson(route('events.games.lifecycle.show', [$otherTraining->routeIdentifier(), $gameAggregate->id]))
             ->assertNotFound();
+    }
+
+    public function test_parallel_games_are_created_without_child_events_or_bookings(): void
+    {
+        $organizer = User::factory()->create(['username' => 'parallel-game-organizer']);
+        $participant = User::factory()->create(['username' => 'parallel-game-player']);
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(route('events.store'), [
+            ...$this->eventPayload($venue, $start, $end, EventTypeEnum::GAME_TRAINING),
+        ])->assertRedirect();
+        $event = Event::query()->where('type', EventTypeEnum::GAME_TRAINING->value)->firstOrFail();
+        $event->participants()->create([
+            'user_id' => $participant->id,
+            'role' => EventParticipantRoleEnum::PARTICIPANT,
+            'status' => EventParticipantStatusEnum::CONFIRMED,
+            'joined_at' => now(),
+            'confirmation_version' => $event->participation_confirmation_version,
+        ]);
+        $payload = [
+            'has_scheduled_time' => true,
+            'starts_at' => $start->format('H:i'),
+            'ends_at' => $start->addHour()->format('H:i'),
+            'side_a_name' => 'Сторона A',
+            'side_b_name' => 'Сторона B',
+            'side_a_size' => 1,
+            'side_b_size' => 1,
+            'side_a_user_ids' => [$organizer->id],
+            'side_b_user_ids' => [$participant->id],
+        ];
+
+        foreach (['Параллельная игра 1', 'Параллельная игра 2'] as $title) {
+            $this->actingAs($organizer)
+                ->post(route('events.games.store', $event->routeIdentifier()), [...$payload, 'title' => $title])
+                ->assertRedirect()
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->assertCount(2, $event->fresh()->games);
+        $this->assertFalse(Event::query()->where('parent_event_id', $event->id)->exists());
+        $this->assertSame(1, $event->booking()->count());
+        $this->assertFalse($event->games()->whereNotNull('legacy_event_id')->exists());
+
+        $gameToDelete = $event->games()->oldest('id')->firstOrFail();
+        $this->actingAs($organizer)
+            ->delete(route('events.games.destroy', [$event->routeIdentifier(), $gameToDelete->id]))
+            ->assertRedirect(route('events.show', $event->routeIdentifier()));
+        $this->assertCount(1, $event->fresh()->games);
+        $this->assertSame(2, Team::query()->where('temporary_for_event_id', $event->id)->count());
     }
 
     public function test_accepted_responsible_manages_parent_event_and_its_mini_games(): void

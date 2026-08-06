@@ -5,6 +5,7 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\GameLineupService;
 use App\Modules\Event\Application\Services\LegacyGameRouteResolver;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +35,13 @@ final class GameLineupController extends Controller
             'captains.B' => ['required', 'integer'],
         ]);
 
-        $game = $games->resolve($event);
+        $gameId = $request->route('game');
+        $game = $gameId === null
+            ? $games->resolve($event)
+            : Game::query()
+                ->whereKey((int) $gameId)
+                ->whereHas('event', fn ($query) => $query->whereRouteIdentifier($event))
+                ->firstOrFail();
 
         try {
             $lineups->update($game, $actor, $data['starters'], $data['captains']);

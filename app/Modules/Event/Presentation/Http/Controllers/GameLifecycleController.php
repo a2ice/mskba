@@ -24,7 +24,7 @@ final class GameLifecycleController extends Controller
         EventManagementAccess $access,
         LegacyGameRouteResolver $games,
     ): JsonResponse {
-        $game = $this->findGame($games, $event);
+        $game = $this->findGame($request, $games, $event);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
@@ -107,7 +107,7 @@ final class GameLifecycleController extends Controller
         abort_if($actor === null, 403);
 
         try {
-            $game = $lifecycle->start($games->resolve($event), $actor);
+            $game = $lifecycle->start($this->findGame($request, $games, $event), $actor);
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -129,7 +129,7 @@ final class GameLifecycleController extends Controller
         abort_if($actor === null, 403);
 
         try {
-            $game = $lifecycle->end($games->resolve($event), $actor);
+            $game = $lifecycle->end($this->findGame($request, $games, $event), $actor);
         } catch (InvalidArgumentException $exception) {
             return response()->json(['message' => $exception->getMessage()], 422);
         }
@@ -140,9 +140,17 @@ final class GameLifecycleController extends Controller
         ]);
     }
 
-    private function findGame(LegacyGameRouteResolver $games, string $identifier): Game
+    private function findGame(Request $request, LegacyGameRouteResolver $games, string $identifier): Game
     {
-        return $games->resolve($identifier)->load([
+        $gameId = $request->route('game');
+        $game = $gameId === null
+            ? $games->resolve($identifier)
+            : Game::query()
+                ->whereKey((int) $gameId)
+                ->whereHas('event', fn ($query) => $query->whereRouteIdentifier($identifier))
+                ->firstOrFail();
+
+        return $game->load([
             'event',
             'legacyEvent',
             'sides',

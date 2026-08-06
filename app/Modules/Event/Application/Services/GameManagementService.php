@@ -102,7 +102,7 @@ final class GameManagementService
         int $sideASize = 5,
         int $sideBSize = 5,
         GameScoringTypeEnum $scoringType = GameScoringTypeEnum::STREETBALL,
-    ): Event {
+    ): Game {
         if (! in_array($parent->type, [EventTypeEnum::TRAINING, EventTypeEnum::GAME_TRAINING], true)) {
             throw new InvalidArgumentException('Мини-игры можно создавать только внутри тренировки.');
         }
@@ -120,7 +120,7 @@ final class GameManagementService
             $sideASize,
             $sideBSize,
             $scoringType,
-        ): Event {
+        ): Game {
             $lockedParent = Event::query()->lockForUpdate()->findOrFail($parent->id);
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::CREATE_MINI_GAME);
             if ($lockedParent->status !== EventStatusEnum::PUBLISHED
@@ -133,20 +133,6 @@ final class GameManagementService
             if ($isTimeScheduled && ($start->lessThan($lockedParent->starts_at)
                 || $end->greaterThan($lockedParent->ends_at))) {
                 throw new InvalidArgumentException('Мини-игра должна целиком входить во время тренировки.');
-            }
-
-            if ($isTimeScheduled) {
-                $overlap = Event::query()
-                    ->where('parent_event_id', $lockedParent->id)
-                    ->whereNotIn('status', [EventStatusEnum::CANCELLED->value])
-                    ->whereHas('gameDetail', fn ($query) => $query->where('is_time_scheduled', true))
-                    ->where('starts_at', '<', $end)
-                    ->where('ends_at', '>', $start)
-                    ->lockForUpdate()
-                    ->exists();
-                if ($overlap) {
-                    throw new InvalidArgumentException('В выбранное время уже запланирована другая мини-игра.');
-                }
             }
 
             $confirmedParticipants = $lockedParent->participants()
@@ -167,43 +153,37 @@ final class GameManagementService
                 throw new InvalidArgumentException('В состав можно включить только подтверждённых участников тренировки, по одному разу.');
             }
 
-            $game = Event::query()->create([
-                'parent_event_id' => $lockedParent->id,
-                'venue_id' => $lockedParent->venue_id,
-                'organizer_actor_id' => $actor->id,
+            $game = Game::query()->create([
+                'event_id' => $lockedParent->id,
+                'created_by_actor_id' => $actor->id,
                 'title' => $title,
-                'alias' => Str::slug($title).'-'.Str::lower(Str::random(6)),
-                'type' => EventTypeEnum::GAME,
-                'status' => EventStatusEnum::PUBLISHED,
-                'visibility' => $lockedParent->visibility,
-                'starts_at' => $start,
-                'ends_at' => $end,
-            ]);
-
-            $teamA = $this->createTemporaryTeam($game, $actor, $sideAName);
-            $teamB = $this->createTemporaryTeam($game, $actor, $sideBName);
-            $game->gameDetail()->create([
+                'status' => GameStatusEnum::SCHEDULED,
                 'side_a_size' => $sideASize,
                 'side_b_size' => $sideBSize,
-                'is_time_scheduled' => $isTimeScheduled,
                 'scoring_type' => $scoringType,
+                'scheduled_starts_at' => $isTimeScheduled ? $start : null,
+                'scheduled_ends_at' => $isTimeScheduled ? $end : null,
             ]);
-            $sideA = $game->gameSides()->create([
+
+            $teamA = $this->createTemporaryTeam($lockedParent, $game, $actor, $sideAName);
+            $teamB = $this->createTemporaryTeam($lockedParent, $game, $actor, $sideBName);
+            $sideA = $game->sides()->create([
+                'event_id' => $lockedParent->id,
                 'team_id' => $teamA->id,
                 'slot' => 'A',
                 'display_name' => $teamA->name,
             ]);
-            $sideB = $game->gameSides()->create([
+            $sideB = $game->sides()->create([
+                'event_id' => $lockedParent->id,
                 'team_id' => $teamB->id,
                 'slot' => 'B',
                 'display_name' => $teamB->name,
             ]);
 
-            $this->snapshotParticipantRoster($game, $sideA, $sideAUserIds, $confirmedParticipants);
-            $this->snapshotParticipantRoster($game, $sideB, $sideBUserIds, $confirmedParticipants);
-            $this->legacyMigration->ensureMigrated($game->fresh(['gameDetail', 'parentEvent']));
+            $this->snapshotGameParticipantRoster($game, $sideA, $sideAUserIds, $confirmedParticipants);
+            $this->snapshotGameParticipantRoster($game, $sideB, $sideBUserIds, $confirmedParticipants);
 
-            return $game->load(['gameDetail', 'gameSides', 'gameRosterEntries.user.profile']);
+            return $game->load(['sides', 'rosterEntries.user.profile']);
         });
 
         event(new EventChanged($parent->id));
@@ -320,8 +300,13 @@ final class GameManagementService
             }
 
             $legacyEvent = $lockedGame->legacyEvent;
-            $lockedGame->delete();
+            $temporaryTeamIds = $lockedGame->sides()
+                ->whereHas('team', fn ($query) => $query->where('temporary_for_event_id', $lockedParent->id))
+                ->pluck('team_id')
+                ->filter();
+            $lockedGame->forceDelete();
             $legacyEvent?->delete();
+            Team::query()->whereKey($temporaryTeamIds)->delete();
         });
 
         event(new EventChanged($parentEventId));
@@ -424,7 +409,7 @@ final class GameManagementService
                 foreach ($userIds as $userId) {
                     $source = $candidates[(int) $userId];
                     $lockedGame->rosterEntries()->create([
-                        'event_id' => $lockedGame->legacy_event_id,
+                        'event_id' => $lockedGame->legacy_event_id ?? $lockedGame->event_id,
                         'game_side_id' => $sides[$slot]->id,
                         'user_id' => (int) $userId,
                         'source_contract_membership_id' => $source['membership_id'] ?? null,
@@ -573,7 +558,7 @@ final class GameManagementService
                 ['user_id' => (int) $userId],
                 [
                     ...$normalized,
-                    'event_id' => $game->legacy_event_id,
+                    'event_id' => $game->legacy_event_id ?? $game->event_id,
                     'game_side_id' => $entry->game_side_id,
                 ],
             );
@@ -717,10 +702,32 @@ final class GameManagementService
         }
     }
 
-    private function createTemporaryTeam(Event $game, Actor $actor, string $name): Team
+    /**
+     * @param  array<int, int>  $userIds
+     * @param  Collection<int, mixed>  $participants
+     */
+    private function snapshotGameParticipantRoster(
+        Game $game,
+        GameSide $side,
+        array $userIds,
+        Collection $participants,
+    ): void {
+        foreach ($userIds as $userId) {
+            $participant = $participants[(int) $userId];
+            $game->rosterEntries()->create([
+                'event_id' => $game->event_id,
+                'game_side_id' => $side->id,
+                'user_id' => (int) $userId,
+                'source_event_participant_id' => $participant->id,
+                'status' => GameRosterStatusEnum::SELECTED,
+            ]);
+        }
+    }
+
+    private function createTemporaryTeam(Event $event, Game $game, Actor $actor, string $name): Team
     {
         return Team::query()->create([
-            'temporary_for_event_id' => $game->id,
+            'temporary_for_event_id' => $event->id,
             'created_by_actor_id' => $actor->id,
             'name' => $name,
             'alias' => 'game-'.$game->id.'-'.Str::lower(Str::random(6)),
