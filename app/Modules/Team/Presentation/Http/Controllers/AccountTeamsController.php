@@ -5,9 +5,11 @@ namespace App\Modules\Team\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
 use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
+use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
@@ -16,17 +18,29 @@ use Illuminate\Validation\Rule;
 
 final class AccountTeamsController extends Controller
 {
+    private const CREATION_LIMIT = 5;
+
     public function __invoke(Request $request): Response
     {
         $filters = $request->validate([
             'condition' => ['nullable', Rule::in(array_column(TeamInvitationStatusEnum::cases(), 'value'))],
+            'status' => ['nullable', Rule::in(array_column(TeamStatusEnum::cases(), 'value'))],
             'created_only' => ['nullable', 'boolean'],
         ]);
         $user = $request->user();
         $createdOnly = $request->boolean('created_only');
         $condition = (string) ($filters['condition'] ?? '');
+        $status = (string) ($filters['status'] ?? TeamStatusEnum::ACTIVE->value);
+        $createdTeamsCount = Team::query()
+            ->whereNull('temporary_for_event_id')
+            ->whereHas('createdByActor', fn ($actor) => $actor->where('user_id', $user->id))
+            ->count();
+        $canCreateTeam = $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
+            || $createdTeamsCount < self::CREATION_LIMIT;
+
         $teams = Team::query()
             ->whereNull('temporary_for_event_id')
+            ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($createdOnly,
                 fn ($query) => $query->whereHas('createdByActor', fn ($actor) => $actor->where('user_id', $user->id)),
                 fn ($query) => $query->where(function ($query) use ($user): void {
@@ -58,7 +72,11 @@ final class AccountTeamsController extends Controller
 
         return ThemeResolver::page('account.teams', [
             'teams' => $teams,
-            'filters' => ['condition' => $condition, 'created_only' => $createdOnly],
+            'statuses' => TeamStatusEnum::cases(),
+            'filters' => ['condition' => $condition, 'status' => $status, 'created_only' => $createdOnly],
+            'canCreateTeam' => $canCreateTeam,
+            'createdTeamsCount' => $createdTeamsCount,
+            'teamCreationLimit' => self::CREATION_LIMIT,
         ]);
     }
 }
