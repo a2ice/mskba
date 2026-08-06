@@ -3,6 +3,8 @@
 namespace Tests\Feature\Team;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -52,6 +54,7 @@ final class TeamRosterAndInvitationsTest extends TestCase
             'status' => UserStatusEnum::CONFIRMED,
         ]);
         $candidate->profile()->create(['first_name' => 'Новый', 'last_name' => 'Игрок']);
+        $this->allowGroupInvitations($candidate);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
 
         $this->actingAs($creator)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
@@ -85,6 +88,7 @@ final class TeamRosterAndInvitationsTest extends TestCase
             'username' => 'inline-permissions-player',
             'status' => UserStatusEnum::CONFIRMED,
         ]);
+        $this->allowGroupInvitations($candidate);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
 
         $this->actingAs($creator)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
@@ -134,5 +138,14 @@ final class TeamRosterAndInvitationsTest extends TestCase
             ->assertSee('title="Стритбол"', false)
             ->assertSee('class="is-sport__short" aria-hidden="true">5x5', false)
             ->assertSee('class="is-sport__short" aria-hidden="true">3x3', false);
+    }
+
+    private function allowGroupInvitations(User $user): void
+    {
+        $user->privacySettings()->updateOrCreate([
+            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+        ], [
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
     }
 }
