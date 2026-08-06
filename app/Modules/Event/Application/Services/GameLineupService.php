@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Models\Actor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -19,34 +20,24 @@ final class GameLineupService
      * @param  array{A: array<int, int>, B: array<int, int>}  $starterUserIds
      * @param  array{A: int|null, B: int|null}  $captainUserIds
      */
-    public function update(Event $game, Actor $actor, array $starterUserIds, array $captainUserIds): void
+    public function update(Game $game, Actor $actor, array $starterUserIds, array $captainUserIds): void
     {
         DB::transaction(function () use ($game, $actor, $starterUserIds, $captainUserIds): void {
-            if ($game->parent_event_id !== null) {
-                $parent = Event::query()->lockForUpdate()->findOrFail($game->parent_event_id);
-                $this->access->assertAllows($parent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
-            }
+            $event = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
 
-            $lockedGame = Event::query()->lockForUpdate()->findOrFail($game->id);
-            if ($lockedGame->parent_event_id === null) {
-                $this->access->assertAllows(
-                    $lockedGame,
-                    $actor,
-                    EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER,
-                );
-            }
             if ($lockedGame->actual_started_at !== null) {
                 throw new InvalidArgumentException('После начала игры стартовый состав и капитана изменять нельзя.');
             }
 
-            $detail = $lockedGame->gameDetail()->lockForUpdate()->firstOrFail();
-            $sides = $lockedGame->gameSides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
+            $sides = $lockedGame->sides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
             if (! $sides->has('A') || ! $sides->has('B')) {
                 throw new InvalidArgumentException('Для игры не настроены две стороны.');
             }
 
             foreach (['A', 'B'] as $slot) {
-                $entries = $lockedGame->gameRosterEntries()
+                $entries = $lockedGame->rosterEntries()
                     ->where('game_side_id', $sides[$slot]->id)
                     ->where('status', GameRosterStatusEnum::SELECTED->value)
                     ->lockForUpdate()
@@ -55,29 +46,28 @@ final class GameLineupService
                     $entries,
                     collect($starterUserIds[$slot] ?? [])->map(fn ($id) => (int) $id),
                     isset($captainUserIds[$slot]) ? (int) $captainUserIds[$slot] : null,
-                    $slot === 'A' ? (int) $detail->side_a_size : (int) $detail->side_b_size,
+                    $slot === 'A' ? (int) $lockedGame->side_a_size : (int) $lockedGame->side_b_size,
                 );
             }
-        });
+        }, 3);
     }
 
-    public function prepareAndLockForStart(Event $game): void
+    public function prepareAndLockForStart(Game $game): void
     {
-        $detail = $game->gameDetail()->lockForUpdate()->firstOrFail();
-        $sides = $game->gameSides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
+        $sides = $game->sides()->orderBy('slot')->lockForUpdate()->get()->keyBy('slot');
         if (! $sides->has('A') || ! $sides->has('B')) {
             throw new InvalidArgumentException('Для игры не настроены две стороны.');
         }
 
         foreach (['A', 'B'] as $slot) {
-            $entries = $game->gameRosterEntries()
+            $entries = $game->rosterEntries()
                 ->where('game_side_id', $sides[$slot]->id)
                 ->where('status', GameRosterStatusEnum::SELECTED->value)
                 ->orderByDesc('is_captain')
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();
-            $required = $slot === 'A' ? (int) $detail->side_a_size : (int) $detail->side_b_size;
+            $required = $slot === 'A' ? (int) $game->side_a_size : (int) $game->side_b_size;
             if ($entries->count() < $required) {
                 throw new InvalidArgumentException("Для стороны {$slot} недостаточно игроков для стартового состава.");
             }
@@ -86,13 +76,11 @@ final class GameLineupService
             if ($starters->count() > $required) {
                 throw new InvalidArgumentException("Для стороны {$slot} выбрано слишком много стартовых игроков.");
             }
-
             if ($starters->count() < $required) {
-                $need = $required - $starters->count();
                 $entries->where('lineup_role', '!=', GameLineupRoleEnum::STARTER)
-                    ->take($need)
+                    ->take($required - $starters->count())
                     ->each(fn ($entry) => $entry->update(['lineup_role' => GameLineupRoleEnum::STARTER]));
-                $entries = $game->gameRosterEntries()
+                $entries = $game->rosterEntries()
                     ->where('game_side_id', $sides[$slot]->id)
                     ->where('status', GameRosterStatusEnum::SELECTED->value)
                     ->orderByDesc('is_captain')
@@ -106,11 +94,11 @@ final class GameLineupService
                 throw new InvalidArgumentException("Для стороны {$slot} может быть выбран только один капитан.");
             }
             if ($captains->isEmpty()) {
-                $captain = $entries->firstWhere('lineup_role', GameLineupRoleEnum::STARTER) ?? $entries->first();
-                $captain?->update(['is_captain' => true]);
+                ($entries->firstWhere('lineup_role', GameLineupRoleEnum::STARTER) ?? $entries->first())
+                    ?->update(['is_captain' => true]);
             }
 
-            $game->gameRosterEntries()
+            $game->rosterEntries()
                 ->where('game_side_id', $sides[$slot]->id)
                 ->where('status', GameRosterStatusEnum::SELECTED->value)
                 ->update(['locked_at' => now()]);

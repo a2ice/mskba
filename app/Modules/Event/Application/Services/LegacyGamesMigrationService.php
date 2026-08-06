@@ -12,6 +12,21 @@ use Illuminate\Support\Facades\DB;
 
 final class LegacyGamesMigrationService
 {
+    public function ensureMigrated(Event $legacyEvent): Game
+    {
+        $existing = Game::query()->where('legacy_event_id', $legacyEvent->id)->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $conflicts = $this->conflictsFor($legacyEvent->loadMissing(['gameDetail', 'parentEvent']));
+        if ($conflicts->isNotEmpty()) {
+            throw new \InvalidArgumentException($conflicts->implode('; '));
+        }
+
+        return $this->migrate($legacyEvent->id);
+    }
+
     /**
      * @return array{candidates: int, migrated: int, existing: int, conflicts: list<string>}
      */
@@ -94,16 +109,17 @@ final class LegacyGamesMigrationService
         return $conflicts;
     }
 
-    private function migrate(int $legacyEventId): void
+    private function migrate(int $legacyEventId): Game
     {
-        DB::transaction(function () use ($legacyEventId): void {
+        return DB::transaction(function () use ($legacyEventId): Game {
             $legacyEvent = Event::query()->lockForUpdate()->findOrFail($legacyEventId);
             $parent = $legacyEvent->parent_event_id === null
                 ? $legacyEvent
                 : Event::query()->lockForUpdate()->findOrFail($legacyEvent->parent_event_id);
 
-            if (Game::query()->where('legacy_event_id', $legacyEvent->id)->lockForUpdate()->exists()) {
-                return;
+            $existing = Game::query()->where('legacy_event_id', $legacyEvent->id)->lockForUpdate()->first();
+            if ($existing !== null) {
+                return $existing;
             }
 
             $detail = $legacyEvent->gameDetail()->lockForUpdate()->firstOrFail();
@@ -144,6 +160,8 @@ final class LegacyGamesMigrationService
                     ->where('temporary_for_event_id', $legacyEvent->id)
                     ->update(['temporary_for_event_id' => $parent->id]);
             }
+
+            return $game;
         }, 3);
     }
 
