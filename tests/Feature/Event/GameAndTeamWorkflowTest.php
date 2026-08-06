@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -356,10 +357,22 @@ final class GameAndTeamWorkflowTest extends TestCase
         $this->actingAs($stranger)
             ->get(route('events.show', $miniGame->routeIdentifier()))
             ->assertNotFound();
+        $gameAggregate = $training->games()->where('legacy_event_id', $miniGame->id)->firstOrFail();
         $this->actingAs($organizer)
             ->get(route('events.show', $miniGame->routeIdentifier()))
+            ->assertRedirect(route('events.games.show', [$training->routeIdentifier(), $gameAggregate->id]));
+        $this->actingAs($organizer)
+            ->get(route('events.games.show', [$training->routeIdentifier(), $gameAggregate->id]))
             ->assertOk()
             ->assertSee('Закрытая мини-игра');
+        $otherTraining = Event::factory()->create([
+            'organizer_actor_id' => $training->organizer_actor_id,
+            'type' => EventTypeEnum::TRAINING,
+            'visibility' => EventVisibilityEnum::PRIVATE,
+        ]);
+        $this->actingAs($organizer)
+            ->get(route('events.games.show', [$otherTraining->routeIdentifier(), $gameAggregate->id]))
+            ->assertNotFound();
     }
 
     public function test_accepted_responsible_manages_parent_event_and_its_mini_games(): void

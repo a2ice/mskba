@@ -34,6 +34,7 @@ use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventParticipant;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Presentation\Http\Requests\CancelEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\CreateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\StoreEventResultPhotoRequest;
@@ -210,16 +211,25 @@ final class EventController extends Controller
         EventPlayerStatisticsSummaryBuilder $playerStatisticsSummaryBuilder,
         GameStatisticsFields $statisticsFields,
         PageSeoResolver $pageSeo,
-    ): Response {
-        $item = $events->handle($event, $actors->resolveForRequest($request));
+    ): Response|RedirectResponse {
+        $actor = $actors->resolveForRequest($request);
+        $legacyEvent = Event::query()->whereRouteIdentifier($event)->firstOrFail(['id', 'parent_event_id']);
+        if ($legacyEvent->parent_event_id !== null) {
+            $game = Game::query()->where('legacy_event_id', $legacyEvent->id)->firstOrFail();
+            $parentReference = Event::query()->findOrFail($game->event_id);
+            $parent = $events->handle($parentReference->routeIdentifier(), $actor);
+
+            return redirect()->route('events.games.show', [$parent->routeIdentifier(), $game->id], 301);
+        }
+
+        $item = $events->handle($event, $actor);
         $currentParticipant = $request->user() === null
             ? null
             : $item->participants->firstWhere('user_id', $request->user()->id);
 
-        $actor = $actors->resolveForRequest($request);
-
         return ThemeResolver::page($item->type === EventTypeEnum::GAME ? 'events.game-show' : 'events.show', [
             'event' => $item,
+            'game' => $item->games->first(),
             'eventPlayerStatistics' => $playerStatisticsSummaryBuilder->build($item),
             'currentParticipant' => $currentParticipant,
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED

@@ -14,6 +14,7 @@ use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
+use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameControlController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
@@ -251,6 +252,10 @@ Route::prefix('events')->group(function () {
     Route::get('/', [EventController::class, 'index'])
         ->name('events.index')
         ->defaults('breadcrumb', 'Мероприятия');
+    Route::get('/{event}/games/{game}', [EventGameController::class, 'show'])
+        ->whereNumber('game')
+        ->name('events.games.show')
+        ->defaults('breadcrumb', 'Игра');
 
     Route::middleware('auth')->group(function () {
         Route::get('/create', [EventController::class, 'create'])
