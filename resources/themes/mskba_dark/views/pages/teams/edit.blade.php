@@ -55,7 +55,16 @@
 </section>
 
 @if($canDeleteTeam)
-<section class="section-card mb-4"><h2>Удаление команды</h2><p class="form-hint">Команда будет перенесена в черновики. Удаление недоступно, пока команда связана с мероприятием или турниром.</p>
-<form class="mt-2" method="POST" action="{{ route('teams.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Вы уверены, что хотите удалить команду? Команда будет перенесена в черновики.')">@csrf @method('DELETE')<button class="btn btn--danger" type="submit">Удалить команду</button></form></section>
+<section class="section-card mb-4">
+    <h2>Перевод в черновик</h2>
+    <p class="form-hint">Команда будет скрыта из публичного списка, но её состав, приглашения, заявки и история сохранятся. Перевод недоступен, пока команда связана с мероприятием или турниром.</p>
+    <form class="mt-2" method="POST" action="{{ route('teams.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Перевести команду в черновик? Она будет скрыта из публичного списка, но данные сохранятся.')">@csrf @method('DELETE')<button class="btn btn--danger" type="submit">Перевести в черновик</button></form>
+</section>
+@elseif($team->status === \App\Modules\Team\Domain\Enums\TeamStatusEnum::DRAFT)
+<section class="section-card mb-4">
+    <h2>Восстановление команды</h2>
+    <p class="form-hint">После восстановления команда снова появится в публичном списке. Сценарий восстановления пока находится в разработке.</p>
+    <button class="btn btn--primary" type="button" disabled aria-disabled="true">Восстановить команду</button>
+</section>
 @endif
 @endsection
