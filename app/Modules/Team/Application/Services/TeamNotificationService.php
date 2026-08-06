@@ -3,17 +3,16 @@
 namespace App\Modules\Team\Application\Services;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
-use App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Team\Domain\Models\TeamJoinRequest;
-use App\Modules\Contract\Domain\Models\ContractMembership;
-use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Collection;
 
 final class TeamNotificationService
@@ -76,26 +75,22 @@ final class TeamNotificationService
         }
     }
 
-    public function joinRequestReviewed(Team $team, TeamJoinRequest $request): void
+    public function joinRequestReviewed(Team $team, TeamJoinRequest $request, string $action): void
     {
-        $status = $request->status;
-        [$title, $body] = match ($status) {
-            TeamJoinRequestStatusEnum::ACCEPTED => [
-                'Заявка принята',
-                'Вас приняли в команду «'.$team->name.'».',
-            ],
-            TeamJoinRequestStatusEnum::REJECTED => [
-                'Заявка отклонена',
-                'Команда «'.$team->name.'» отклонила вашу заявку.',
-            ],
-            TeamJoinRequestStatusEnum::BLOCKED => [
+        [$title, $body, $source] = match ($action) {
+            'accept' => ['Заявка принята', 'Вас приняли в команду «'.$team->name.'».', 'team.join_request.accepted'],
+            'reject' => ['Заявка отклонена', 'Команда «'.$team->name.'» отклонила вашу заявку.', 'team.join_request.rejected'],
+            'block' => [
                 'Отправка заявок заблокирована',
                 'Вы больше не можете отправлять заявки в команду «'.$team->name.'».',
+                'team.join_request.blocked',
             ],
-            default => [
+            'unblock' => [
                 'Отправка заявок снова доступна',
                 'Вы снова можете подать заявку в команду «'.$team->name.'».',
+                'team.join_request.unblocked',
             ],
+            default => ['Статус заявки изменён', 'Статус вашей заявки в команду «'.$team->name.'» изменён.', 'team.join_request.changed'],
         };
         if (filled($request->review_reason)) {
             $body .= ' Причина: '.$request->review_reason;
@@ -107,7 +102,7 @@ final class TeamNotificationService
             $body,
             route('teams.show', $team->routeIdentifier()),
             'Открыть команду',
-            'team.join_request.'.$status->value,
+            $source,
             ['team_id' => $team->id, 'join_request_id' => $request->id],
         );
     }
