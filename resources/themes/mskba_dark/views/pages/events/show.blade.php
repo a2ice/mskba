@@ -825,7 +825,7 @@
                         <div class="event-result-photos" aria-label="Фотографии мероприятия">
                             @foreach($event->media as $index => $photo)
                                 @php
-                                    $photoTags = $photo->eventResultPhotoTags->map(function ($tag) use ($photoTagDisplayName, $eventPlayerStatistics) {
+                                    $photoTags = $photo->eventResultPhotoTags->map(function ($tag) use ($event, $photoTagDisplayName, $eventPlayerStatistics) {
                                         $statistics = $eventPlayerStatistics->get($tag->user_id);
 
                                         return [
