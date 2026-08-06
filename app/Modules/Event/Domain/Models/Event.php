@@ -106,6 +106,11 @@ class Event extends Model
         return $this->hasOne(GameDetail::class);
     }
 
+    public function games(): HasMany
+    {
+        return $this->hasMany(Game::class);
+    }
+
     public function gameSides(): HasMany
     {
         return $this->hasMany(GameSide::class);

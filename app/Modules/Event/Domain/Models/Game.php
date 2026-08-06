@@ -1,0 +1,116 @@
+<?php
+
+namespace App\Modules\Event\Domain\Models;
+
+use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
+use App\Modules\Event\Domain\Enums\GameStatisticsModeEnum;
+use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Media\Domain\Models\Media;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+#[Fillable([
+    'event_id',
+    'legacy_event_id',
+    'created_by_actor_id',
+    'title',
+    'description',
+    'status',
+    'side_a_size',
+    'side_b_size',
+    'scoring_type',
+    'statistics_mode',
+    'statistics_status',
+    'statistics_version',
+    'statistics_confirmed_at',
+    'statistics_confirmed_by_actor_id',
+    'scheduled_starts_at',
+    'scheduled_ends_at',
+    'actual_started_at',
+    'actual_started_by_actor_id',
+    'actual_ended_at',
+    'actual_ended_by_actor_id',
+    'completed_at',
+    'completed_by_actor_id',
+    'cancelled_at',
+    'cancelled_by_actor_id',
+    'cancellation_reason',
+    'winner_game_side_id',
+])]
+class Game extends Model
+{
+    use SoftDeletes;
+
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
+
+    public function legacyEvent(): BelongsTo
+    {
+        return $this->belongsTo(Event::class, 'legacy_event_id');
+    }
+
+    public function createdByActor(): BelongsTo
+    {
+        return $this->belongsTo(Actor::class, 'created_by_actor_id');
+    }
+
+    public function sides(): HasMany
+    {
+        return $this->hasMany(GameSide::class);
+    }
+
+    public function rosterEntries(): HasMany
+    {
+        return $this->hasMany(GameRosterEntry::class);
+    }
+
+    public function playerStatistics(): HasMany
+    {
+        return $this->hasMany(GamePlayerStatistic::class);
+    }
+
+    public function winnerSide(): BelongsTo
+    {
+        return $this->belongsTo(GameSide::class, 'winner_game_side_id');
+    }
+
+    public function statisticsConfirmedByActor(): BelongsTo
+    {
+        return $this->belongsTo(Actor::class, 'statistics_confirmed_by_actor_id');
+    }
+
+    public function media(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'mediable');
+    }
+
+    public function formatLabel(): string
+    {
+        return $this->side_a_size.'×'.$this->side_b_size;
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'status' => GameStatusEnum::class,
+            'scoring_type' => GameScoringTypeEnum::class,
+            'statistics_mode' => GameStatisticsModeEnum::class,
+            'statistics_status' => GameStatisticsStatusEnum::class,
+            'statistics_confirmed_at' => 'immutable_datetime',
+            'scheduled_starts_at' => 'immutable_datetime',
+            'scheduled_ends_at' => 'immutable_datetime',
+            'actual_started_at' => 'immutable_datetime',
+            'actual_ended_at' => 'immutable_datetime',
+            'completed_at' => 'immutable_datetime',
+            'cancelled_at' => 'immutable_datetime',
+        ];
+    }
+}

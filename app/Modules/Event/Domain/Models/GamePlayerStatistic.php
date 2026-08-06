@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'event_id',
+    'game_id',
     'game_side_id',
     'user_id',
     'minutes',
@@ -53,6 +54,11 @@ class GamePlayerStatistic extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function game(): BelongsTo
+    {
+        return $this->belongsTo(Game::class);
     }
 
     public function gameSide(): BelongsTo

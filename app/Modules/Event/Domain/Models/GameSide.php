@@ -8,12 +8,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['event_id', 'team_id', 'slot', 'display_name', 'score'])]
+#[Fillable(['event_id', 'game_id', 'team_id', 'slot', 'display_name', 'score'])]
 class GameSide extends Model
 {
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function game(): BelongsTo
+    {
+        return $this->belongsTo(Game::class);
     }
 
     public function team(): BelongsTo
