@@ -11,6 +11,7 @@ use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Application\Services\TeamNotificationService;
 use App\Modules\Team\Application\Services\TeamRosterService;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum;
@@ -51,7 +52,7 @@ final class TeamJoinRequestController extends Controller
         ]);
     }
 
-    public function store(string $team, Request $request): RedirectResponse
+    public function store(string $team, Request $request, TeamNotificationService $teamNotifications): RedirectResponse
     {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $user = $request->user();
@@ -65,10 +66,7 @@ final class TeamJoinRequestController extends Controller
             ->exists();
         abort_if($alreadyMember, 422, 'Вы уже состоите в этой команде.');
 
-        $joinRequest = TeamJoinRequest::query()->firstOrNew([
-            'team_id' => $item->id,
-            'user_id' => $user->id,
-        ]);
+        $joinRequest = TeamJoinRequest::query()->firstOrNew(['team_id' => $item->id, 'user_id' => $user->id]);
         abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::BLOCKED, 422, 'Отправка заявок в эту команду для вас заблокирована.');
         abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::PENDING, 422, 'Ваша заявка уже ожидает решения.');
         abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::ACCEPTED, 422, 'Ваша заявка уже была принята.');
@@ -79,6 +77,7 @@ final class TeamJoinRequestController extends Controller
             'reviewed_by_user_id' => null,
             'reviewed_at' => null,
         ])->save();
+        $teamNotifications->joinRequestSubmitted($item, $joinRequest);
 
         return back()->with('status', 'Заявка на вступление отправлена.');
     }
@@ -90,6 +89,7 @@ final class TeamJoinRequestController extends Controller
         CurrentActorResolver $actors,
         TeamManagementAccess $access,
         TeamRosterService $rosters,
+        TeamNotificationService $teamNotifications,
     ): RedirectResponse {
         $data = $request->validateWithBag('joinRequest'.$joinRequest, [
             'action' => ['required', Rule::in(['accept', 'reject', 'block', 'unblock'])],
@@ -119,6 +119,7 @@ final class TeamJoinRequestController extends Controller
                 'reviewed_by_user_id' => $actor->user_id,
                 'reviewed_at' => now(),
             ]);
+            $teamNotifications->joinRequestReviewed($item, $entry->fresh(), 'unblock');
 
             return back()->with('status', 'Пользователь разблокирован и сможет отправить заявку повторно.');
         }
@@ -132,7 +133,6 @@ final class TeamJoinRequestController extends Controller
 
                 $membership = $item->memberships()->where('user_id', $lockedEntry->user_id)->lockForUpdate()->first();
                 $contract = $membership?->contract;
-
                 if ($contract === null) {
                     $contract = Contract::create([
                         'family' => ContractFamilyEnum::MEMBERSHIP,
@@ -173,6 +173,7 @@ final class TeamJoinRequestController extends Controller
                 ]);
                 $rosters->synchronizePlayer($item, $membership->id);
             });
+            $teamNotifications->joinRequestReviewed($item, $entry->fresh(), 'accept');
 
             return back()->with('status', 'Заявка принята. Пользователь добавлен в команду.');
         }
@@ -183,6 +184,7 @@ final class TeamJoinRequestController extends Controller
             'reviewed_by_user_id' => $actor->user_id,
             'reviewed_at' => now(),
         ]);
+        $teamNotifications->joinRequestReviewed($item, $entry->fresh(), $action);
 
         return back()->with('status', $action === 'block' ? 'Пользователь заблокирован.' : 'Заявка отклонена.');
     }
