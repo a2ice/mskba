@@ -412,7 +412,8 @@ final class GameAndTeamWorkflowTest extends TestCase
 
         $this->actingAs($responsible)
             ->get(route('events.game.manage', $miniGame->routeIdentifier()))
-            ->assertRedirect(route('events.show', $miniGame->routeIdentifier()));
+            ->assertOk()
+            ->assertSee('Состав и статистика');
 
         $this->actingAs($responsible)
             ->get(route('events.show', $miniGame->routeIdentifier()))

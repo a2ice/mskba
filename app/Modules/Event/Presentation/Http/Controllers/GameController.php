@@ -8,7 +8,6 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
-use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\GamePlayerStatistic;
@@ -21,19 +20,6 @@ use InvalidArgumentException;
 
 final class GameController extends Controller
 {
-    public function manage(
-        Request $request,
-        string $event,
-        ShowEventHandler $events,
-        CurrentActorResolver $actors,
-        EventManagementAccess $access,
-    ): RedirectResponse {
-        [$game] = $this->managedEvent($request, $event, $events, $actors, $access);
-        abort_unless($game->type === EventTypeEnum::GAME && $game->gameDetail !== null, 404);
-
-        return redirect()->route('events.show', $game->routeIdentifier());
-    }
-
     public function createMiniGame(
         Request $request,
         string $event,

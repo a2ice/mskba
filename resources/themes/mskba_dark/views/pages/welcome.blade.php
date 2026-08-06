@@ -112,29 +112,24 @@
                             data-today-events-link
                             @if($siteSummary->todayEvents === 0) hidden @endif
                         >{{ $siteSummary->todayEventsText() }}</a>
-                        <span data-today-events-empty @if($siteSummary->todayEvents > 0) hidden @endif>На сегодня игр нет</span>
                         @auth
                             <a
-                                class="site-summary-create"
+                                class="site-summary-empty-action"
                                 href="{{ $createGameUrl }}"
-                                aria-label="Создать игру"
-                                title="Создать игру"
-                                data-tooltip-variant="title"
-                                data-tooltip-icon
-                            >+</a>
+                                data-today-events-empty
+                                @if($siteSummary->todayEvents > 0) hidden @endif
+                            >Новая игра</a>
                         @else
                             <button
-                                class="site-summary-create js-handler"
+                                class="site-summary-empty-action js-handler"
                                 type="button"
-                                aria-label="Создать игру"
-                                title="Создать игру"
-                                data-tooltip-variant="title"
-                                data-tooltip-icon
                                 data-handler="modal"
                                 data-modal-action="open"
                                 data-modal-target="auth-entry-classic"
                                 data-auth-redirect-url="{{ route('events.create', ['type' => 'game'], false) }}"
-                            >+</button>
+                                data-today-events-empty
+                                @if($siteSummary->todayEvents > 0) hidden @endif
+                            >Новая игра</button>
                         @endauth
                     </div>
 

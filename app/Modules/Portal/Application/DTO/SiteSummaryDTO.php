@@ -13,7 +13,7 @@ final readonly class SiteSummaryDTO
     public function todayEventsText(): string
     {
         if ($this->todayEvents === 0) {
-            return 'На сегодня игр нет';
+            return 'Новая игра';
         }
 
         $modulo100 = $this->todayEvents % 100;

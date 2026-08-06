@@ -40,7 +40,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('data-venue-filter-toggle', false)
             ->assertSee('data-venue-view="list"', false)
             ->assertSee('data-venue-view="map"', false)
-            ->assertSee('На сегодня игр нет')
+            ->assertSee('Новая игра')
             ->assertSee('Добавить')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
             ->assertSee('data-auth-redirect-url="'.route('venues.create', [], false).'"', false)

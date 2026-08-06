@@ -53,10 +53,10 @@ For each moved action verify:
 
 - [x] Public game page receives no management permissions.
 - [x] Dedicated `GameControlController` renders `events.game` with effective permissions and statistics fields.
-- [x] `/events/{event}/game` is registered as a control route before the legacy redirecting GET route.
+- [x] `/events/{event}/game` has one canonical GET route handled by `GameControlController`.
 - [x] Statistics form selectors match `event-show.js`.
 - [x] Mini-game schedule selectors match `event-show.js`.
-- [ ] Confirm route registration order locally with `php artisan route:list --name=events.game`.
+- [x] Confirm the canonical control route locally with `php artisan route:list --name=events.game.manage`.
 - [ ] Browser-check calculated score, manual score override, save, and complete flow.
 - [ ] Browser-check roster form and lifecycle controls.
 

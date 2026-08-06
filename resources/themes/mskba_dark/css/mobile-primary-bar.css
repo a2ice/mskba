@@ -72,17 +72,6 @@
         text-overflow: ellipsis;
     }
 
-    .mobile-primary-bar__stat .site-summary-create {
-        width: 19px;
-        height: 19px;
-        flex: 0 0 19px;
-    }
-
-    .mobile-primary-bar__stat .site-summary-create::before,
-    .mobile-primary-bar__stat .site-summary-create::after {
-        width: 8px;
-    }
-
     .mobile-primary-bar__stat + .mobile-primary-bar__stat {
         /* border-left: 1px solid rgba(255, 255, 255, 0.1); */
     }

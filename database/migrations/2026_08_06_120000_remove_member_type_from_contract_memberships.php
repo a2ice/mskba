@@ -38,6 +38,7 @@ return new class extends Migration
         };
 
         Schema::table('contract_memberships', function (Blueprint $table): void {
+            $table->dropIndex('contract_memberships_scope_member_type_idx');
             $table->dropColumn('member_type');
         });
     }
@@ -50,6 +51,10 @@ return new class extends Migration
 
         Schema::table('contract_memberships', function (Blueprint $table): void {
             $table->string('member_type')->nullable()->after('access_level');
+            $table->index(
+                ['scope_type', 'scope_id', 'member_type'],
+                'contract_memberships_scope_member_type_idx',
+            );
         });
 
         $driver = DB::connection()->getDriverName();

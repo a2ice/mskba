@@ -80,11 +80,7 @@ class SiteSummaryTest extends TestCase
                 'type' => 'games',
                 'date_from' => '2026-07-23',
                 'date_to' => '2026-07-23',
-            ]))
-            ->assertSee('aria-label="Создать игру"', false)
-            ->assertSee('title="Создать игру"', false)
-            ->assertSee('data-tooltip-variant="title"', false)
-            ->assertSee('data-tooltip-icon', false);
+            ]));
     }
 
     public function test_games_filter_combines_games_and_game_trainings_for_selected_day(): void
@@ -138,7 +134,7 @@ class SiteSummaryTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('На сегодня игр нет');
+            ->assertSee('Новая игра');
 
         $this->assertMatchesRegularExpression(
             '/data-online-summary\s+hidden/u',
@@ -157,7 +153,7 @@ class SiteSummaryTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'today_events' => 0,
-                'today_events_text' => 'На сегодня игр нет',
+                'today_events_text' => 'Новая игра',
                 'online_users' => 1,
                 'total_users' => 2,
             ]);

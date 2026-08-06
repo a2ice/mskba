@@ -14,6 +14,7 @@ use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
+use App\Modules\Event\Presentation\Http\Controllers\GameControlController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
@@ -294,7 +295,7 @@ Route::prefix('events')->group(function () {
             ->middleware('throttle:30,1')->whereNumber('photo')->name('events.result.photos.update');
         Route::delete('/{event}/result/photos/{photo}', [EventController::class, 'destroyResultPhoto'])
             ->middleware('throttle:20,1')->whereNumber('photo')->name('events.result.photos.destroy');
-        Route::get('/{event}/game', [GameController::class, 'manage'])->name('events.game.manage');
+        Route::get('/{event}/game', GameControlController::class)->name('events.game.manage');
         Route::post('/{event}/games', [GameController::class, 'createMiniGame'])->name('events.games.store');
         Route::put('/{event}/game', [GameController::class, 'updateMiniGame'])->name('events.game.update');
         Route::delete('/{event}/game', [GameController::class, 'destroyMiniGame'])->name('events.game.destroy');

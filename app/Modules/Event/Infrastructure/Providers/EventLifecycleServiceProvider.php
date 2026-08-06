@@ -7,7 +7,6 @@ use App\Modules\Event\Domain\Models\GameRosterEntry;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameLifecycleState;
 use App\Modules\Event\Infrastructure\Observers\GameRosterEntryObserver;
 use App\Modules\Event\Presentation\Http\Controllers\EventManagementController;
-use App\Modules\Event\Presentation\Http\Controllers\GameControlController;
 use App\Modules\Event\Presentation\Http\Controllers\GameLifecycleController;
 use App\Modules\Event\Presentation\Http\Controllers\GameLineupController;
 use Illuminate\Support\Facades\Route;
@@ -21,18 +20,10 @@ final class EventLifecycleServiceProvider extends ServiceProvider
         GameRosterEntry::observe(GameRosterEntryObserver::class);
         $this->app['router']->pushMiddlewareToGroup('web', EnsureGameLifecycleState::class);
 
-        Route::middleware(['web', 'auth'])->group(function (): void {
-            Route::get('/events/{event}/management', EventManagementController::class)
-                ->name('events.management')
-                ->defaults('breadcrumb', 'Управление мероприятием');
-
-            // Registered before routes/web.php so the existing
-            // events.game.manage URL resolves to the dedicated control page
-            // instead of redirecting back to the public game view.
-            Route::get('/events/{event}/game', GameControlController::class)
-                ->name('events.game.control')
-                ->defaults('breadcrumb', 'Управление игрой');
-        });
+        Route::middleware(['web', 'auth'])
+            ->get('/events/{event}/management', EventManagementController::class)
+            ->name('events.management')
+            ->defaults('breadcrumb', 'Управление мероприятием');
 
         Route::middleware(['web', 'auth', 'can:access-admin-panel'])
             ->get('/admin/events/{event}', [AdminEventsController::class, 'show'])
@@ -67,7 +58,7 @@ final class EventLifecycleServiceProvider extends ServiceProvider
                 $view->with(
                     'contextManagementUrl',
                     $event->type->value === 'game'
-                        ? route('events.game.control', $event->routeIdentifier())
+                        ? route('events.game.manage', $event->routeIdentifier())
                         : route('events.management', $event->routeIdentifier()),
                 );
                 $view->with(
