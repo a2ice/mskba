@@ -27,7 +27,7 @@ final class GameRosterEntryObserver
             return false;
         }
 
-        $sportType = $entry->event()->first()?->gameDetail()->value('scoring_type');
+        $sportType = $entry->game()->value('scoring_type');
         $sportAssignment = $sportType === null ? null : TeamSportLineupMember::query()
             ->where('contract_membership_id', $membership->id)
             ->whereHas('sportProfile', fn ($profile) => $profile
