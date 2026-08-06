@@ -67,7 +67,6 @@ jobs:
             $COMPOSE run -T --rm phpfpm sh -lc "mkdir -p storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && rm -f bootstrap/cache/*.php" </dev/null
             $COMPOSE run -T --rm phpfpm php artisan storage:link </dev/null
             $COMPOSE run -T --rm phpfpm php artisan migrate --force </dev/null
-            $COMPOSE run -T --rm phpfpm php artisan games:migrate-legacy --apply </dev/null
             $COMPOSE run -T --rm phpfpm php artisan telegram:sync-profile-avatars --missing </dev/null
             $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
