@@ -22,10 +22,14 @@ final class TelegramUserNotificationMessageBuilder
         ];
 
         if (filled($notification->action_url)) {
+            $actionUrl = str_starts_with($notification->action_url, 'http://')
+                || str_starts_with($notification->action_url, 'https://')
+                ? $notification->action_url
+                : url($notification->action_url);
             $payload['reply_markup'] = [
                 'inline_keyboard' => [[[
                     'text' => $notification->action_text ?: 'Открыть',
-                    'url' => $notification->action_url,
+                    'url' => $actionUrl,
                 ]]],
             ];
         }
