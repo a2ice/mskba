@@ -6,6 +6,7 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -36,20 +37,22 @@ final class CancelEventHandler
                 throw new InvalidArgumentException('Завершившееся мероприятие нельзя отменить.');
             }
 
-            $activeGames = $event->childGames()
-                ->whereNotIn('status', [EventStatusEnum::CANCELLED->value, EventStatusEnum::COMPLETED->value]);
+            $activeGames = $event->games()
+                ->whereNotIn('status', [GameStatusEnum::CANCELLED->value, GameStatusEnum::COMPLETED->value])
+                ->lockForUpdate();
             $hasActiveGameData = (clone $activeGames)->where(function ($query): void {
                 $query
-                    ->whereHas('gameDetail', fn ($detail) => $detail->where('statistics_status', '!=', GameStatisticsStatusEnum::NOT_STARTED->value))
-                    ->orWhereHas('gamePlayerStatistics')
-                    ->orWhereHas('gameSides', fn ($side) => $side->where('score', '>', 0));
+                    ->whereIn('status', [GameStatusEnum::IN_PROGRESS->value, GameStatusEnum::AWAITING_RESULT->value])
+                    ->orWhere('statistics_status', '!=', GameStatisticsStatusEnum::NOT_STARTED->value)
+                    ->orWhereHas('playerStatistics')
+                    ->orWhereHas('sides', fn ($side) => $side->where('score', '>', 0));
             })->exists();
             if ($hasActiveGameData) {
                 throw new InvalidArgumentException('Сначала завершите активные мини-игры, в которых уже есть счёт или статистика.');
             }
 
             (clone $activeGames)->update([
-                'status' => EventStatusEnum::CANCELLED->value,
+                'status' => GameStatusEnum::CANCELLED->value,
                 'cancelled_at' => now(),
                 'cancelled_by_actor_id' => $actor->id,
                 'cancellation_reason' => 'Родительское мероприятие отменено.',

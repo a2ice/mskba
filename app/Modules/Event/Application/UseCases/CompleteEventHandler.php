@@ -5,6 +5,7 @@ namespace App\Modules\Event\Application\UseCases;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -30,6 +31,14 @@ final class CompleteEventHandler
 
             if ($event->ends_at->isFuture()) {
                 throw new InvalidArgumentException('Подвести итог можно после окончания мероприятия.');
+            }
+
+            $hasUnfinishedGames = $event->games()
+                ->whereNotIn('status', [GameStatusEnum::COMPLETED->value, GameStatusEnum::CANCELLED->value])
+                ->lockForUpdate()
+                ->exists();
+            if ($hasUnfinishedGames) {
+                throw new InvalidArgumentException('Сначала завершите или отмените все игры мероприятия.');
             }
 
             $event->forceFill([
