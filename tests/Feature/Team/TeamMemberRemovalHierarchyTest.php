@@ -4,6 +4,8 @@ namespace Tests\Feature\Team;
 
 use App\Modules\Contract\Domain\Enums\TeamMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Models\Team;
@@ -77,6 +79,12 @@ final class TeamMemberRemovalHierarchyTest extends TestCase
         string $memberType,
         array $permissions = [],
     ): ContractMembership {
+        $candidate->privacySettings()->updateOrCreate([
+            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+        ], [
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+
         $this->actingAs($owner)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
             'user_id' => $candidate->id,
             'member_type' => $memberType,
