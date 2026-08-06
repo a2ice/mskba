@@ -52,9 +52,10 @@ At factual start:
 ## Planned and factual time
 
 ```text
-starts_at / ends_at                 planned interval
-actual_started_at / actual_ended_at factual interval
-completed_at                        official confirmed completion
+Event.starts_at / Event.ends_at                     общий организационный интервал
+Game.scheduled_starts_at / Game.scheduled_ends_at   внутренний необязательный слот
+Game.actual_started_at / Game.actual_ended_at       фактический интервал игры
+Game.completed_at                                   официальное подтверждение результата
 ```
 
 Factual lifecycle:
@@ -77,7 +78,7 @@ Server-side rules:
 - UI visibility and HTTP middleware are early guards only and never replace
   application-service validation;
 - the application service checks the factual phase after locking the parent
-  event, game and game details, so concurrent requests cannot bypass the
+  event, game and game sides, so concurrent requests cannot bypass the
   lifecycle invariant.
 
 ## Temporary teams and mini-games
