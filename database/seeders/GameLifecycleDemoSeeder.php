@@ -235,7 +235,8 @@ class GameLifecycleDemoSeeder extends Seeder
     private function trainingWithMiniGames(Actor $actor, Venue $venue, array $playersA, array $playersB): void
     {
         $participants = [...$playersA, ...$playersB];
-        $start = now()->subHour();
+        // Интервал контейнера обязан охватывать внутренние слоты обеих demo-игр.
+        $start = now()->subHours(3);
         $training = $this->event(
             $actor,
             $venue,
@@ -243,7 +244,7 @@ class GameLifecycleDemoSeeder extends Seeder
             '[DEMO] Игровая тренировка с мини-играми',
             EventTypeEnum::GAME_TRAINING,
             $start,
-            $start->copy()->addHours(3),
+            $start->copy()->addHours(5),
         );
         $participantModels = [];
         foreach ($participants as $player) {
