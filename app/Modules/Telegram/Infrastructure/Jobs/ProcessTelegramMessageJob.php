@@ -20,6 +20,7 @@ final class ProcessTelegramMessageJob implements ShouldQueue
     {
         $this->registerPrivateChat();
         $handler->handle($this->message);
+        $this->registerPrivateChat();
     }
 
     private function registerPrivateChat(): void
