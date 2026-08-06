@@ -37,11 +37,8 @@ final class EnsureGameRosterContainsPlayers
             }
 
             $allowedUserIds = $side->team->memberships()
+                ->withSportRole(TeamMemberTypeEnum::PLAYER)
                 ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
-                ->where(function ($query): void {
-                    $query->whereNull('member_type')
-                        ->orWhere('member_type', TeamMemberTypeEnum::PLAYER->value);
-                })
                 ->pluck('user_id')
                 ->map(fn ($id) => (int) $id);
 
@@ -51,7 +48,7 @@ final class EnsureGameRosterContainsPlayers
             if ($selectedUserIds->diff($allowedUserIds)->isNotEmpty()) {
                 return $this->reject(
                     $request,
-                    'В игровой состав можно включать только участников команды с типом «Игрок».',
+                    'В игровой состав можно включать только участников команды с ролью «Игрок».',
                 );
             }
         }
