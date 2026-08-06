@@ -18,6 +18,12 @@
     $canManageRoles = false;
     $canManagePermissions = false;
     $canRemoveMembers = false;
+    $teamStatusIcon = match ($team->status) {
+        \App\Modules\Team\Domain\Enums\TeamStatusEnum::ACTIVE => 'ti-circle-check',
+        \App\Modules\Team\Domain\Enums\TeamStatusEnum::DRAFT => 'ti-pencil',
+        \App\Modules\Team\Domain\Enums\TeamStatusEnum::BLOCKED => 'ti-lock',
+        \App\Modules\Team\Domain\Enums\TeamStatusEnum::ARCHIVED => 'ti-archive',
+    };
 @endphp
 @section('section-sidebar')
 <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команда</h2><ul class="sidebar-nav nav flex-column">
@@ -36,14 +42,21 @@
         <img class="team-profile__logo" src="{{ $team->logo?->publicUrl() ?? asset('images/team-placeholder.webp') }}" alt="Логотип команды {{ $team->name }}">
         <div class="team-profile__header-content">
             <div class="team-profile__header-statuses">
-                <span class="team-profile__status">{{ $team->status->label() }}</span>
+                <span class="team-profile__status team-status-badge" title="{{ $team->status->label() }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $team->status->label() }}">
+                    <span class="team-status-badge__label">{{ $team->status->label() }}</span>
+                    <i class="ti {{ $teamStatusIcon }} team-status-badge__icon" aria-hidden="true"></i>
+                </span>
                 @foreach($team->sportProfiles as $profile)
-                    <span class="team-profile__sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" aria-label="{{ $profile->sport_type->label() }}">
+                    <span class="team-profile__sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $profile->sport_type->label() }}">
                         <span class="team-profile__sport-full">{{ $profile->sport_type->label() }}</span>
                         <span class="team-profile__sport-short">{{ $profile->sport_type->shortLabel() }}</span>
                     </span>
                 @endforeach
-                <span @class(['team-profile__status', 'is-incomplete' => ! $hasCompleteRoster])>{{ $hasCompleteRoster ? 'Состав укомплектован' : 'Неполный состав' }}</span>
+                @php($rosterStatusLabel = $hasCompleteRoster ? 'Состав укомплектован' : 'Неполный состав')
+                <span @class(['team-profile__status', 'team-status-badge', 'is-incomplete' => ! $hasCompleteRoster]) title="{{ $rosterStatusLabel }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $rosterStatusLabel }}">
+                    <span class="team-status-badge__label">{{ $rosterStatusLabel }}</span>
+                    <i @class(['ti', 'team-status-badge__icon', 'ti-users-group' => $hasCompleteRoster, 'ti-alert-triangle' => ! $hasCompleteRoster]) aria-hidden="true"></i>
+                </span>
             </div>
             <p class="team-profile__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
         </div>

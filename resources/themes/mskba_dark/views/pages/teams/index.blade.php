@@ -75,6 +75,12 @@
                                 ->where('assignment', \App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum::STARTER)
                                 ->whereIn('contract_membership_id', $activePlayerIds)->count() === $required;
                         });
+                        $teamStatusIcon = match ($team->status) {
+                            \App\Modules\Team\Domain\Enums\TeamStatusEnum::ACTIVE => 'ti-circle-check',
+                            \App\Modules\Team\Domain\Enums\TeamStatusEnum::DRAFT => 'ti-pencil',
+                            \App\Modules\Team\Domain\Enums\TeamStatusEnum::BLOCKED => 'ti-lock',
+                            \App\Modules\Team\Domain\Enums\TeamStatusEnum::ARCHIVED => 'ti-archive',
+                        };
                     @endphp
                     <article class="catalog-card team-catalog-card">
                         <a class="catalog-card__image team-catalog-card__image" href="{{ route('teams.show', $team->routeIdentifier()) }}">
@@ -82,14 +88,22 @@
                         </a>
                         <div class="catalog-card__body team-catalog-card__body">
                             <div class="catalog-card__badges team-catalog-card__badges">
-                                <span class="catalog-card__badge">{{ $team->status->label() }}</span>
+                                <span class="catalog-card__badge team-status-badge" title="{{ $team->status->label() }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $team->status->label() }}">
+                                    <span class="team-status-badge__label">{{ $team->status->label() }}</span>
+                                    <i class="ti {{ $teamStatusIcon }} team-status-badge__icon" aria-hidden="true"></i>
+                                </span>
                                 @foreach($team->sportProfiles as $profile)
-                                    <span class="catalog-card__badge is-sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" aria-label="{{ $profile->sport_type->label() }}">
+                                    <span class="catalog-card__badge is-sport" title="{{ $profile->sport_type->label() }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $profile->sport_type->label() }}">
                                         <span class="is-sport__full" aria-hidden="true">{{ $profile->sport_type->label() }}</span>
                                         <span class="is-sport__short" aria-hidden="true">{{ $profile->sport_type->shortLabel() }}</span>
                                     </span>
                                 @endforeach
-                                @unless($rosterComplete)<span class="catalog-card__badge is-incomplete">Неполный состав</span>@endunless
+                                @unless($rosterComplete)
+                                    <span class="catalog-card__badge is-incomplete team-status-badge" title="Неполный состав" data-tooltip-variant="title" data-tooltip-icon aria-label="Неполный состав">
+                                        <span class="team-status-badge__label">Неполный состав</span>
+                                        <i class="ti ti-alert-triangle team-status-badge__icon" aria-hidden="true"></i>
+                                    </span>
+                                @endunless
                             </div>
                             <h2 class="catalog-card__title"><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
                             <p class="catalog-card__description team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>

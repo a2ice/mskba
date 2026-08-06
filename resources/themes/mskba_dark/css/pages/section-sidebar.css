@@ -70,6 +70,25 @@
     background: #222522;
     font-size: 12px;
     font-weight: 700;
+    text-decoration: none;
+    cursor: default;
+}
+
+.team-profile__sport > span {
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+}
+
+.team-status-badge {
+    text-decoration: none;
+    cursor: default;
+}
+
+.team-status-badge__icon {
+    display: none;
+    font-size: 14px;
+    line-height: 1;
 }
 
 .team-profile__sport-short {
@@ -289,8 +308,8 @@
 
     .team-profile__header--overview .team-profile__status,
     .team-profile__header--overview .team-profile__sport {
-        padding: 4px 9px;
-        font-size: 11px;
+        padding: 4px 7px;
+        font-size: 10px;
     }
 
     .team-profile__sport-full {
@@ -299,6 +318,14 @@
 
     .team-profile__sport-short {
         display: inline;
+    }
+
+    .team-status-badge__label {
+        display: none;
+    }
+
+    .team-status-badge__icon {
+        display: inline-block;
     }
 
     .team-profile__description {
