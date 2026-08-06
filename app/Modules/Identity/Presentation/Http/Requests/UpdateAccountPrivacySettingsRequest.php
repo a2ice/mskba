@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Presentation\Http\Requests;
 
+use App\Modules\Identity\Domain\Enums\UserMessengerNotificationPreferenceEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -16,9 +17,6 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
         return $this->user() !== null;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     public function rules(): array
     {
         return [
@@ -33,6 +31,7 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
                     ->where('status', '!=', UserStatusEnum::BLOCKED->value)),
                 Rule::notIn([(int) $this->user()?->getKey()]),
             ],
+            'messenger_notifications' => ['required', Rule::enum(UserMessengerNotificationPreferenceEnum::class)],
         ];
     }
 
@@ -77,14 +76,18 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
         ];
     }
 
-    /**
-     * @return array<string, array{visibility: string, allowed_user_ids?: array<int, int>}>
-     */
     public function settings(): array
     {
         /** @var array<string, array{visibility: string, allowed_user_ids?: array<int, int>}> $settings */
         $settings = $this->validated('privacy');
 
         return $settings;
+    }
+
+    public function messengerNotifications(): UserMessengerNotificationPreferenceEnum
+    {
+        return UserMessengerNotificationPreferenceEnum::from(
+            (string) $this->validated('messenger_notifications'),
+        );
     }
 }
