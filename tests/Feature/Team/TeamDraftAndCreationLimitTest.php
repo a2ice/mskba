@@ -73,13 +73,18 @@ final class TeamDraftAndCreationLimitTest extends TestCase
             'sport_types' => ['basketball'],
         ])->assertRedirect();
 
-        Team::query()->where('name', 'Команда в черновике')->firstOrFail()
-            ->update(['status' => TeamStatusEnum::DRAFT]);
+        $team = Team::query()->where('name', 'Команда в черновике')->firstOrFail();
+        $team->update(['status' => TeamStatusEnum::DRAFT]);
 
         $this->get(route('account.teams', ['status' => TeamStatusEnum::DRAFT->value]))
             ->assertOk()
             ->assertSee('Команда в черновике')
-            ->assertSee('Восстановить команду', false)
+            ->assertSee('Черновик')
             ->assertSee('Открыть настройки');
+
+        $this->get(route('teams.edit', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Восстановление команды')
+            ->assertSee('Восстановить команду');
     }
 }
