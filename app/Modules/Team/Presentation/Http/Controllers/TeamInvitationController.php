@@ -11,7 +11,9 @@ use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
+use App\Modules\Identity\Application\Services\UserPrivacyAccess;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Application\Services\TeamRosterService;
@@ -41,15 +43,25 @@ final class TeamInvitationController extends Controller
             ->pluck('user_id')
             ->all();
 
-        return response()->json(['users' => $users->handle($actor->user, $data['q'], $excluded)->map(fn (User $user) => [
+        return response()->json(['users' => $users->handle(
+            $actor->user,
+            $data['q'],
+            $excluded,
+            requiredAccess: UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+        )->map(fn (User $user) => [
             'id' => $user->id,
             'username' => $user->username,
             'name' => trim(($user->profile?->first_name ?? '').' '.($user->profile?->last_name ?? '')) ?: $user->username,
         ])->values()]);
     }
 
-    public function store(string $team, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): JsonResponse
-    {
+    public function store(
+        string $team,
+        Request $request,
+        CurrentActorResolver $actors,
+        TeamManagementAccess $access,
+        UserPrivacyAccess $privacy,
+    ): JsonResponse {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS), 403);
@@ -61,6 +73,14 @@ final class TeamInvitationController extends Controller
         ]);
         abort_if(($data['permissions'] ?? []) !== []
             && ! $access->allows($item, $actor, TeamPermissionEnum::MANAGE_PERMISSIONS), 403);
+
+        $targetUser = User::query()->findOrFail($data['user_id']);
+        if (! $privacy->allows($targetUser, $actor->user, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
+            return response()->json([
+                'message' => 'Пользователь запретил приглашать себя в команды и другие группы.',
+            ], 422);
+        }
+
         $memberType = TeamMemberTypeEnum::from($data['member_type']);
         $accessLevel = match ($memberType) {
             TeamMemberTypeEnum::PLAYER => TeamMembershipAccessLevelEnum::PLAYER,
