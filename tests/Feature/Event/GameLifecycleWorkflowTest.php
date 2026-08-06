@@ -5,6 +5,7 @@ namespace Tests\Feature\Event;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -38,10 +39,12 @@ final class GameLifecycleWorkflowTest extends TestCase
             'side_b_size' => 1,
         ])->assertRedirect();
 
-        $game = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $game = $event->games()->firstOrFail();
+        $routeParameters = [$event->routeIdentifier(), $game->id];
 
         $this->actingAs($ownerA)
-            ->getJson(route('events.game.lifecycle.show', $game->routeIdentifier()))
+            ->getJson(route('events.games.lifecycle.show', $routeParameters))
             ->assertOk()
             ->assertJsonPath('started', false)
             ->assertJsonPath('ended', false)
@@ -51,7 +54,7 @@ final class GameLifecycleWorkflowTest extends TestCase
             ->assertJsonPath('can_manage_score', false);
 
         $this->actingAs($ownerA)
-            ->postJson(route('events.game.lifecycle.start', $game->routeIdentifier()))
+            ->postJson(route('events.games.start', $routeParameters))
             ->assertOk()
             ->assertJsonPath('message', 'Игра началась.');
 
@@ -59,13 +62,11 @@ final class GameLifecycleWorkflowTest extends TestCase
         $this->assertNotNull($game->actual_started_at);
         $this->assertNotNull($game->actual_started_by_actor_id);
         $this->assertNull($game->actual_ended_at);
-        $this->assertSame(
-            GameStatisticsStatusEnum::ENTERING,
-            $game->gameDetail()->firstOrFail()->statistics_status,
-        );
+        $this->assertSame(GameStatisticsStatusEnum::ENTERING, $game->statistics_status);
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->fresh()->status);
 
         $this->actingAs($ownerA)
-            ->getJson(route('events.game.lifecycle.show', $game->routeIdentifier()))
+            ->getJson(route('events.games.lifecycle.show', $routeParameters))
             ->assertOk()
             ->assertJsonPath('started', true)
             ->assertJsonPath('ended', false)
@@ -75,26 +76,24 @@ final class GameLifecycleWorkflowTest extends TestCase
             ->assertJsonPath('can_manage_score', true);
 
         $this->actingAs($ownerA)
-            ->postJson(route('events.game.lifecycle.start', $game->routeIdentifier()))
+            ->postJson(route('events.games.start', $routeParameters))
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Игра уже началась.');
 
         $this->actingAs($ownerA)
-            ->postJson(route('events.game.lifecycle.end', $game->routeIdentifier()))
+            ->postJson(route('events.games.end', $routeParameters))
             ->assertOk();
 
         $game->refresh();
         $this->assertNotNull($game->actual_ended_at);
         $this->assertNotNull($game->actual_ended_by_actor_id);
         $this->assertTrue($game->actual_ended_at->greaterThanOrEqualTo($game->actual_started_at));
-        $this->assertSame(EventStatusEnum::PUBLISHED, $game->status);
-        $this->assertSame(
-            GameStatisticsStatusEnum::READY,
-            $game->gameDetail()->firstOrFail()->statistics_status,
-        );
+        $this->assertSame(GameStatusEnum::AWAITING_RESULT, $game->status);
+        $this->assertSame(GameStatisticsStatusEnum::READY, $game->statistics_status);
+        $this->assertSame(EventStatusEnum::PUBLISHED, $event->fresh()->status);
 
         $this->actingAs($ownerA)
-            ->getJson(route('events.game.lifecycle.show', $game->routeIdentifier()))
+            ->getJson(route('events.games.lifecycle.show', $routeParameters))
             ->assertOk()
             ->assertJsonPath('started', true)
             ->assertJsonPath('ended', true)
@@ -104,7 +103,7 @@ final class GameLifecycleWorkflowTest extends TestCase
             ->assertJsonPath('can_confirm_result', true);
 
         $this->actingAs($ownerA)
-            ->postJson(route('events.game.lifecycle.end', $game->routeIdentifier()))
+            ->postJson(route('events.games.end', $routeParameters))
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Игра уже закончена.');
     }
@@ -125,10 +124,11 @@ final class GameLifecycleWorkflowTest extends TestCase
             'side_b_size' => 1,
         ])->assertRedirect();
 
-        $game = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $game = $event->games()->firstOrFail();
 
         $this->actingAs($ownerA)
-            ->postJson(route('events.game.lifecycle.end', $game->routeIdentifier()))
+            ->postJson(route('events.games.end', [$event->routeIdentifier(), $game->id]))
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Сначала необходимо начать игру.');
     }
