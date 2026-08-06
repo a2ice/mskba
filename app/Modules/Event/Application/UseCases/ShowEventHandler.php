@@ -41,6 +41,15 @@ final class ShowEventHandler
                 'gameRosterEntries.gameSide',
                 'gameRosterEntries.user.profile.activeAvatar',
                 'gamePlayerStatistics',
+                'games' => fn ($query) => $query
+                    ->with([
+                        'legacyEvent',
+                        'sides.team',
+                        'rosterEntries.user.profile.activeAvatar',
+                        'playerStatistics',
+                    ])
+                    ->orderByRaw('scheduled_starts_at nulls last')
+                    ->orderBy('id'),
                 'childGames' => fn ($query) => $query
                     ->with(['gameDetail', 'gameSides.team', 'gamePlayerStatistics'])
                     ->orderBy('starts_at'),

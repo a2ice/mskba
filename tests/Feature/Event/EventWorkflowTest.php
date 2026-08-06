@@ -9,7 +9,7 @@ use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
-use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -90,13 +90,12 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('Сбросить параметры');
 
         foreach (range(1, 3) as $number) {
-            Event::factory()->create([
-                'parent_event_id' => $event->id,
-                'venue_id' => $venue->id,
-                'organizer_actor_id' => $event->organizer_actor_id,
+            Game::query()->create([
+                'event_id' => $event->id,
+                'created_by_actor_id' => $event->organizer_actor_id,
                 'title' => "Мини-игра {$number}",
-                'starts_at' => $event->starts_at->addMinutes($number * 10),
-                'ends_at' => $event->starts_at->addMinutes(($number + 1) * 10),
+                'scheduled_starts_at' => $event->starts_at->addMinutes($number * 10),
+                'scheduled_ends_at' => $event->starts_at->addMinutes(($number + 1) * 10),
             ]);
         }
 

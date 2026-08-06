@@ -46,9 +46,10 @@ final class ListEventsHandler
                     ->orderBy('sort_order')
                     ->limit(1),
                 'booking',
-                'childGames' => fn ($query) => $query
-                    ->with(['gameDetail', 'gameSides'])
-                    ->orderBy('starts_at'),
+                'games' => fn ($query) => $query
+                    ->with(['legacyEvent', 'sides'])
+                    ->orderByRaw('scheduled_starts_at nulls last')
+                    ->orderBy('id'),
             ])
             ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
             ->when(
@@ -84,7 +85,9 @@ final class ListEventsHandler
             ->when($startsFrom, fn ($query) => $query->where('starts_at', '>=', $startsFrom))
             ->when($startsTo, fn ($query) => $query->where('starts_at', '<=', $startsTo))
             ->when($venueId !== null, fn ($query) => $query->where('venue_id', $venueId))
-            ->when($hasMiniGames, fn ($query) => $query->whereHas('childGames'))
+            ->when($hasMiniGames, fn ($query) => $query
+                ->where('type', '!=', EventTypeEnum::GAME->value)
+                ->whereHas('games'))
             ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                 $query->whereLike('title', "%{$search}%")
                     ->orWhereLike('description', "%{$search}%")

@@ -1,5 +1,6 @@
 @php
     use App\Modules\Event\Domain\Enums\EventStatusEnum;
+    use App\Modules\Event\Domain\Enums\EventTypeEnum;
 
     $title = 'Мероприятия';
     $activeFilterCount = collect([
@@ -120,11 +121,11 @@
                                 <p><i class="ti ti-clock"></i><span>{{ $startsAt->format('d.m.Y · H:i') }}–{{ $endsAt->format('H:i') }}</span></p>
                                 <p><i class="ti ti-users"></i><span>{{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : ' / ∞' }} участников</span></p>
                             </div>
-                            <aside @class(['catalog-card__actions', 'event-catalog-card__games', 'has-mini-games' => $event->childGames->isNotEmpty()])>
-                                @if($event->childGames->isNotEmpty())
-                                    <strong><i class="ti ti-device-gamepad-2"></i>Мини-игры: {{ $event->childGames->count() }}</strong>
-                                    @foreach($event->childGames->take(2) as $childGame)<span>{{ $childGame->title }}</span>@endforeach
-                                    @if($event->childGames->count() > 2)<small>И еще {{ $event->childGames->count() - 2 }}…</small>@endif
+                            <aside @class(['catalog-card__actions', 'event-catalog-card__games', 'has-mini-games' => $event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty()])>
+                                @if($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty())
+                                    <strong><i class="ti ti-device-gamepad-2"></i>Мини-игры: {{ $event->games->count() }}</strong>
+                                    @foreach($event->games->take(2) as $game)<span>{{ $game->title ?: 'Игра #'.$game->id }}</span>@endforeach
+                                    @if($event->games->count() > 2)<small>И еще {{ $event->games->count() - 2 }}…</small>@endif
                                 @endif
                                 <a class="btn btn--secondary btn--sm" href="{{ route('events.show', $event->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>
                             </aside>
