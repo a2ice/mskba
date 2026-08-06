@@ -128,11 +128,13 @@
 </section>
 @endif
 
-@if($canCreateMiniGame || $event->childGames->isNotEmpty())
+@if($canCreateMiniGame || $event->games->isNotEmpty())
 <section class="section-card mb-4">
     <h2>Игры и мини-игры</h2>
     <p class="form-hint">Создание и оперативное управление играми выполняется в отдельном рабочем интерфейсе.</p>
-    @foreach($event->childGames as $miniGame)<a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('events.game.manage', $miniGame->routeIdentifier()) }}">{{ $miniGame->title }}</a>@endforeach
+    @foreach($event->games as $game)
+        @if($game->legacyEvent)<a class="btn btn--secondary btn--sm me-2 mb-2" href="{{ route('events.game.manage', $game->legacyEvent->routeIdentifier()) }}">{{ $game->title ?: 'Игра #'.$game->id }}</a>@endif
+    @endforeach
     @if($canCreateMiniGame)
         @include('theme::pages.events.partials.mini-game-create-management')
     @endif
