@@ -38,6 +38,7 @@ import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
 import './features/event-show.js';
+import './features/game-shot-quick-action.js';
 import './features/game-control.js';
 import './features/game-lifecycle.js';
 import './features/coordination-form.js';
