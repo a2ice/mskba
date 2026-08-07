@@ -60,6 +60,34 @@ final class EventGameArchitectureTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_game_live_route_renders_scoreboard_for_owning_event(): void
+    {
+        $event = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
+        $game = $this->game($event, 'Live игра');
+        $game->sides()->createMany([
+            ['slot' => 'A', 'display_name' => 'Красные', 'score' => 11],
+            ['slot' => 'B', 'display_name' => 'Синие', 'score' => 8],
+        ]);
+
+        $this->get(route('events.games.live', [$event->routeIdentifier(), $game->id]))
+            ->assertOk()
+            ->assertSee('Live игра')
+            ->assertSee('Красные')
+            ->assertSee('Синие')
+            ->assertSee('data-game-live-score="A"', false)
+            ->assertSee('data-game-live-score="B"', false);
+    }
+
+    public function test_game_live_route_rejects_game_from_another_event(): void
+    {
+        $firstEvent = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
+        $secondEvent = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
+        $game = $this->game($secondEvent, 'Чужой live');
+
+        $this->get(route('events.games.live', [$firstEvent->routeIdentifier(), $game->id]))
+            ->assertNotFound();
+    }
+
     public function test_published_legacy_url_redirects_to_canonical_game_route(): void
     {
         $event = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
