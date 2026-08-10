@@ -29,6 +29,9 @@
     $shortSideName = static function (string $value): string {
         return mb_strlen($value) > 15 ? mb_substr($value, 0, 15).'…' : $value;
     };
+    $visibleRosterPlayers = max(1, $game->format?->sideSize() ?? max($game->side_a_size, $game->side_b_size));
+    $rosterViewportHeight = ($visibleRosterPlayers * 132) + (($visibleRosterPlayers - 1) * 10);
+    $compactRosterViewportHeight = ($visibleRosterPlayers * 108) + (($visibleRosterPlayers - 1) * 10);
 @endphp
 
 @extends('theme::layouts.app', ['title' => 'Live · '.$title])
@@ -103,7 +106,10 @@
                     <button type="button" data-game-live-stats-close aria-label="Закрыть"><i class="ti ti-x"></i></button>
                 </header>
 
-                <div class="game-live-stats__content">
+                <div
+                    class="game-live-stats__content"
+                    style="--game-live-roster-height: {{ $rosterViewportHeight }}px; --game-live-roster-height-compact: {{ $compactRosterViewportHeight }}px;"
+                >
                     @foreach(['A' => $sideA, 'B' => $sideB] as $slot => $side)
                         <section class="game-live-stats-team">
                             @php $fullSideName = $sideName($side, $slot); @endphp
@@ -137,7 +143,7 @@
                         </section>
                     @endforeach
                     @if($game->timing_mode === GameTimingModeEnum::PERIODS)
-                        <section class="game-live-stats-team game-live-stats-periods"><h3>По периодам</h3>@foreach($periodStatistics as $period)<details><summary>Период {{ $period['number'] }} · {{ $period['score_a'] ?? 0 }}:{{ $period['score_b'] ?? 0 }}</summary>@forelse($period['players'] as $userId => $values)<p><strong>{{ $name($game->rosterEntries->firstWhere('user_id', $userId)?->user) }}</strong>: {{ collect($values)->map(fn($value, $field) => ($statisticsFields[$field]['label'] ?? ($field === 'points' ? 'Очки' : $field)).' '.$value)->implode(', ') }}</p>@empty<p>Действий пока нет.</p>@endforelse</details>@endforeach</section>
+                        <hr><section class="game-live-stats-team game-live-stats-periods"><h3>По периодам</h3>@foreach($periodStatistics as $period)<details><summary>Период {{ $period['number'] }} · {{ $period['score_a'] ?? 0 }}:{{ $period['score_b'] ?? 0 }}</summary>@forelse($period['players'] as $userId => $values)<p><strong>{{ $name($game->rosterEntries->firstWhere('user_id', $userId)?->user) }}</strong>: {{ collect($values)->map(fn($value, $field) => ($statisticsFields[$field]['label'] ?? ($field === 'points' ? 'Очки' : $field)).' '.$value)->implode(', ') }}</p>@empty<p>Действий пока нет.</p>@endforelse</details>@endforeach</section>
                     @endif
                 </div>
             </div>
