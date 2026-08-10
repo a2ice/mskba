@@ -11,12 +11,22 @@ function setupMatchTimingMode(timingMode) {
     const gameFormat = form?.querySelector('[data-match-game-format]');
     const periodsCount = form?.querySelector('[data-match-periods-count]');
     const periodsField = periodsCount?.closest('[data-match-periods-field]');
-    if (!(gameFormat instanceof HTMLSelectElement) || !(periodsCount instanceof HTMLSelectElement)) return;
+    if (!(form instanceof HTMLFormElement) || !(gameFormat instanceof HTMLSelectElement) || !(periodsCount instanceof HTMLSelectElement)) return;
+
+    const timingModeFallback = document.createElement('input');
+    timingModeFallback.type = 'hidden';
+    timingModeFallback.name = timingMode.name;
+    timingModeFallback.disabled = true;
+    form.append(timingModeFallback);
 
     const sync = () => {
         const supportsPeriods = gameFormat.value === 'basketball_5x5';
         if (!supportsPeriods) timingMode.value = 'whole_game';
+
         timingMode.disabled = !supportsPeriods;
+        timingModeFallback.value = timingMode.value;
+        timingModeFallback.disabled = supportsPeriods;
+
         const periodsEnabled = supportsPeriods && timingMode.value === 'periods';
         periodsCount.disabled = !periodsEnabled;
         periodsField?.classList.toggle('is-disabled', !periodsEnabled);
