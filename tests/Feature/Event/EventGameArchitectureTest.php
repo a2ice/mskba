@@ -4,6 +4,8 @@ namespace Tests\Feature\Event;
 
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
+use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\LegacyGameRoute;
@@ -76,6 +78,27 @@ final class EventGameArchitectureTest extends TestCase
             ->assertSee('Синие')
             ->assertSee('data-game-live-score="A"', false)
             ->assertSee('data-game-live-score="B"', false);
+    }
+
+    public function test_game_live_route_displays_active_period(): void
+    {
+        $event = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
+        $game = $this->game($event, 'Игра по периодам');
+        $game->update([
+            'timing_mode' => GameTimingModeEnum::PERIODS,
+            'periods_count' => 4,
+        ]);
+        $game->periods()->createMany([
+            ['number' => 1, 'status' => GamePeriodStatusEnum::COMPLETED],
+            ['number' => 2, 'status' => GamePeriodStatusEnum::IN_PROGRESS],
+            ['number' => 3, 'status' => GamePeriodStatusEnum::SCHEDULED],
+            ['number' => 4, 'status' => GamePeriodStatusEnum::SCHEDULED],
+        ]);
+
+        $this->get(route('events.games.live', [$event->routeIdentifier(), $game->id]))
+            ->assertOk()
+            ->assertSee('ПЕРИОД 2 ИЗ 4')
+            ->assertSee('data-game-live-active-period="2"', false);
     }
 
     public function test_game_live_route_rejects_game_from_another_event(): void

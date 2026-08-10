@@ -71,6 +71,13 @@ body.has-game-live-screen .site-content {
     background: rgba(32, 201, 116, 0.08);
 }
 
+.game-live-header__period {
+    padding-left: 10px;
+    border-left: 1px solid currentColor;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
 .game-live-pulse,
 .game-live-entry__pulse {
     position: relative;

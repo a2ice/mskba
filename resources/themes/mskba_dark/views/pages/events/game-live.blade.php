@@ -1,5 +1,6 @@
 @php
     use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
+    use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
     use App\Modules\Event\Domain\Enums\GameStatusEnum;
     use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 
@@ -10,6 +11,7 @@
     $roster = $game->rosterEntries->groupBy('game_side_id');
     $stats = $game->playerStatistics->keyBy('user_id');
     $activeSide = $game->latestTeamAction?->gameSide?->slot;
+    $activePeriod = $game->periods->first(fn ($period) => $period->status === GamePeriodStatusEnum::IN_PROGRESS);
     $statisticsConfirmed = $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED;
     $isFinished = $game->status === GameStatusEnum::COMPLETED || $statisticsConfirmed;
     $isCancelled = $game->status === GameStatusEnum::CANCELLED;
@@ -51,6 +53,11 @@
             <div class="game-live-header__status {{ $isLiveNow ? 'is-live' : '' }}">
                 @if($isLiveNow)<span class="game-live-pulse" aria-hidden="true"></span>@endif
                 <span>{{ $isLiveNow ? 'LIVE' : ($isFinished ? 'ЗАВЕРШЕНА' : ($isCancelled ? 'ОТМЕНЕНА' : 'ТРАНСЛЯЦИЯ')) }}</span>
+                @if($activePeriod !== null)
+                    <span class="game-live-header__period" data-game-live-active-period="{{ $activePeriod->number }}">
+                        ПЕРИОД {{ $activePeriod->number }} ИЗ {{ $game->periods_count }}
+                    </span>
+                @endif
             </div>
             <a class="game-live-close" href="{{ route('events.games.show', [$event->routeIdentifier(), $game->id]) }}" aria-label="Вернуться к игре">
                 <i class="ti ti-x"></i>
