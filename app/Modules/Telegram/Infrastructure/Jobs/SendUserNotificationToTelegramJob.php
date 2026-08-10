@@ -51,6 +51,7 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
 
         if (! $this->allows($preference, $category)) {
             $delivery->update(['status' => 'skipped', 'last_error' => 'Disabled by user preference.']);
+
             return;
         }
 
@@ -62,12 +63,14 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
             ->exists();
         if (! $hasVerifiedTelegramContact) {
             $delivery->update(['status' => 'skipped', 'last_error' => 'Verified Telegram contact is missing.']);
+
             return;
         }
 
         $account = TelegramAccount::query()->where('user_id', $notification->user_id)->first();
         if ($account === null || $account->private_chat_id === null || $account->private_chat_unavailable_at !== null) {
             $delivery->update(['status' => 'skipped', 'last_error' => 'Private chat with bot is unavailable.']);
+
             return;
         }
 
@@ -103,6 +106,7 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
                     'last_delivery_error' => $message,
                 ]);
                 $delivery->update(['status' => 'failed', 'last_error' => $message, 'failed_at' => now()]);
+
                 return;
             }
 

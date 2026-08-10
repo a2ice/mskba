@@ -3,12 +3,14 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
-use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Enums\GameActionTypeEnum;
 use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\LegacyGameRoute;
+use App\Modules\Event\Infrastructure\Broadcasting\GameLiveUpdated;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -16,6 +18,15 @@ use Tests\TestCase;
 final class EventGameArchitectureTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_game_live_broadcast_uses_versioned_public_channel_contract(): void
+    {
+        $broadcast = new GameLiveUpdated(42);
+
+        $this->assertSame('game.live.42', $broadcast->broadcastOn()[0]->name);
+        $this->assertSame('game.live.updated', $broadcast->broadcastAs());
+        $this->assertSame(42, $broadcast->broadcastWith()['game_id']);
+    }
 
     public function test_legacy_game_schema_is_removed(): void
     {
@@ -99,6 +110,72 @@ final class EventGameArchitectureTest extends TestCase
             ->assertOk()
             ->assertSee('ПЕРИОД 2 ИЗ 4')
             ->assertSee('data-game-live-active-period="2"', false);
+    }
+
+    public function test_game_live_snapshot_exposes_stable_public_contract(): void
+    {
+        $event = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
+        $game = $this->game($event, 'Snapshot game');
+        $game->update([
+            'timing_mode' => GameTimingModeEnum::PERIODS,
+            'periods_count' => 4,
+            'actual_started_at' => now(),
+        ]);
+        $game->sides()->createMany([
+            ['slot' => 'A', 'display_name' => 'Красные', 'score' => 7],
+            ['slot' => 'B', 'display_name' => 'Синие', 'score' => 5],
+        ]);
+        $game->periods()->create([
+            'number' => 1,
+            'status' => GamePeriodStatusEnum::IN_PROGRESS,
+            'side_a_score' => 7,
+            'side_b_score' => 5,
+        ]);
+
+        $url = route('events.games.live.snapshot', [$event->routeIdentifier(), $game->id]);
+        $response = $this->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('schema', 1)
+            ->assertJsonPath('game_id', $game->id)
+            ->assertJsonPath('scores.A', 7)
+            ->assertJsonPath('scores.B', 5)
+            ->assertJsonPath('timing.active_period', 1)
+            ->assertJsonPath('teams.A.name', 'Красные')
+            ->assertJsonPath('teams.B.name', 'Синие')
+            ->assertJsonStructure(['revision', 'generated_at', 'status', 'scores', 'timing', 'teams']);
+
+        $this->assertSame($response->json('revision'), $this->getJson($url)->json('revision'));
+    }
+
+    public function test_game_live_snapshot_uses_spectator_friendly_shot_labels(): void
+    {
+        $event = Event::factory()->create(['type' => EventTypeEnum::GAME_TRAINING]);
+        $game = $this->game($event, 'Live action labels');
+        $side = $game->sides()->create(['slot' => 'A', 'display_name' => 'Красные']);
+        $url = route('events.games.live.snapshot', [$event->routeIdentifier(), $game->id]);
+
+        $actions = [
+            [GameActionTypeEnum::SHOT_MADE, 1, 'close', '1 очко'],
+            [GameActionTypeEnum::SHOT_MADE, 2, 'mid', '2 очка'],
+            [GameActionTypeEnum::SHOT_MADE, 3, 'three', '3 очка'],
+            [GameActionTypeEnum::SHOT_MADE, 1, 'free_throw', 'Штрафной'],
+            [GameActionTypeEnum::SHOT_MISSED, 0, 'three', 'Мимо'],
+        ];
+
+        foreach ($actions as $index => [$type, $points, $range, $label]) {
+            $game->actions()->create([
+                'sequence' => $index + 1,
+                'game_side_id' => $side->id,
+                'type' => $type,
+                'points' => $points,
+                'payload' => ['range' => $range],
+                'occurred_at' => now(),
+            ]);
+
+            $this->getJson($url)
+                ->assertOk()
+                ->assertJsonPath('latest_action.label', $label);
+        }
     }
 
     public function test_game_live_route_rejects_game_from_another_event(): void

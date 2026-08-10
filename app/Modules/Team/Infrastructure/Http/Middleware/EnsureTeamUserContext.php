@@ -18,8 +18,7 @@ final class EnsureTeamUserContext
     public function __construct(
         private readonly CurrentActorResolver $actors,
         private readonly TeamManagementAccess $access,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {

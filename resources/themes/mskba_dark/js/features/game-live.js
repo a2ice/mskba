@@ -1,3 +1,5 @@
+import { realtimeState, subscribePublic } from '../../../../js/realtime.js';
+
 const liveScreen = document.querySelector('[data-game-live-screen]');
 
 if (liveScreen) {
@@ -16,6 +18,9 @@ if (liveScreen) {
         ['A', 'B'].map((slot) => [slot, liveScreen.querySelector(`[data-game-live-score="${slot}"]`)]),
     );
     let eventTimer = null;
+    let revision = null;
+    let latestActionSequence = null;
+    let snapshotRequest = null;
 
     liveScreen.querySelectorAll('[data-game-live-team-logo]').forEach((logo) => {
         logo.addEventListener('error', () => {
@@ -115,6 +120,157 @@ if (liveScreen) {
 
         setActiveSide(scores.activeSide || scores.slot || scores.side || scores.gameSideSlot);
     };
+
+    const renderPlayer = (player) => {
+        const node = statsPanel?.querySelector(`[data-game-live-player="${player.user_id}"]`);
+        if (!node) {
+            return;
+        }
+
+        const points = node.querySelector('[data-game-live-player-points]');
+        if (points) {
+            points.replaceChildren(document.createTextNode(String(player.points)), document.createTextNode(' '));
+            const unit = document.createElement('small');
+            unit.textContent = 'очк.';
+            points.append(unit);
+        }
+
+        const list = node.querySelector('dl');
+        if (!list) {
+            return;
+        }
+
+        list.replaceChildren(...player.statistics.map((statistic) => {
+            const item = document.createElement('div');
+            const term = document.createElement('dt');
+            const value = document.createElement('dd');
+            term.textContent = statistic.label;
+            value.textContent = String(statistic.value);
+            value.dataset.gameLiveStat = statistic.field;
+            item.append(term, value);
+            return item;
+        }));
+    };
+
+    const renderPeriods = (timing, teams, labels) => {
+        const root = statsPanel?.querySelector('[data-game-live-periods]');
+        if (!root) {
+            return;
+        }
+
+        const names = Object.fromEntries(
+            Object.values(teams).flatMap((team) => team.players.map((player) => [player.user_id, player.name])),
+        );
+        const heading = document.createElement('h3');
+        heading.textContent = 'По периодам';
+
+        root.replaceChildren(heading, ...timing.periods.map((period) => {
+            const details = document.createElement('details');
+            const summary = document.createElement('summary');
+            summary.textContent = `Период ${period.number} · ${period.score_a ?? 0}:${period.score_b ?? 0}`;
+            details.append(summary);
+            const players = Object.entries(period.players || {});
+            if (!players.length) {
+                const empty = document.createElement('p');
+                empty.textContent = 'Действий пока нет.';
+                details.append(empty);
+            } else {
+                players.forEach(([userId, values]) => {
+                    const line = document.createElement('p');
+                    const name = document.createElement('strong');
+                    name.textContent = names[userId] || `Игрок #${userId}`;
+                    line.append(name, document.createTextNode(`: ${Object.entries(values).map(([field, value]) => `${labels[field] || field} ${value}`).join(', ')}`));
+                    details.append(line);
+                });
+            }
+            return details;
+        }));
+    };
+
+    const applySnapshot = (snapshot, announceAction = true) => {
+        if (!snapshot || snapshot.revision === revision) {
+            return;
+        }
+
+        updateScore({ ...snapshot.scores, activeSide: snapshot.active_side });
+        Object.values(snapshot.teams).forEach((team) => team.players.forEach(renderPlayer));
+        renderPeriods(snapshot.timing, snapshot.teams, snapshot.statistics_labels || {});
+
+        const periodNode = liveScreen.querySelector('[data-game-live-active-period]');
+        if (periodNode && snapshot.timing.active_period) {
+            periodNode.textContent = `ПЕРИОД ${snapshot.timing.active_period} ИЗ ${snapshot.timing.periods_count}`;
+            periodNode.dataset.gameLiveActivePeriod = snapshot.timing.active_period;
+            periodNode.hidden = false;
+        } else if (periodNode) {
+            periodNode.hidden = true;
+        }
+
+        const statusRoot = liveScreen.querySelector('.game-live-header__status');
+        const statusNode = liveScreen.querySelector('[data-game-live-status]');
+        const pulse = statusRoot?.querySelector('.game-live-pulse');
+        const isCancelled = snapshot.status.value === 'cancelled';
+        const statusLabel = snapshot.status.is_live ? 'LIVE' : (snapshot.status.is_finished ? 'ЗАВЕРШЕНА' : (isCancelled ? 'ОТМЕНЕНА' : 'ТРАНСЛЯЦИЯ'));
+        if (statusNode) statusNode.textContent = statusLabel;
+        statusRoot?.classList.toggle('is-live', snapshot.status.is_live);
+        if (pulse) pulse.hidden = !snapshot.status.is_live;
+
+        const action = snapshot.latest_action;
+        if (announceAction && action && latestActionSequence !== null && action.sequence > latestActionSequence) {
+            showEvent({
+                activeSide: action.slot,
+                label: action.label,
+                playerName: action.player_name,
+                teamName: action.team_name,
+                teamLogo: action.team_logo,
+            });
+        }
+
+        latestActionSequence = action?.sequence ?? latestActionSequence;
+        revision = snapshot.revision;
+    };
+
+    const refreshSnapshot = async (announceAction = true) => {
+        if (!liveScreen.dataset.gameLiveSnapshotUrl || snapshotRequest) {
+            return snapshotRequest;
+        }
+
+        snapshotRequest = fetch(liveScreen.dataset.gameLiveSnapshotUrl, {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Snapshot request failed: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((snapshot) => applySnapshot(snapshot, announceAction))
+            .catch(() => undefined)
+            .finally(() => { snapshotRequest = null; });
+
+        return snapshotRequest;
+    };
+
+    refreshSnapshot(false);
+    const unsubscribe = liveScreen.dataset.gameLiveChannel
+        ? subscribePublic(liveScreen.dataset.gameLiveChannel, '.game.live.updated', () => refreshSnapshot(true))
+        : () => {};
+    const onRealtimeState = (event) => {
+        if (event.detail.state === 'connected') {
+            refreshSnapshot(true);
+        }
+    };
+    window.addEventListener('mskba:realtime-state', onRealtimeState);
+    const fallbackTimer = window.setInterval(() => {
+        if (realtimeState() !== 'connected') {
+            refreshSnapshot(true);
+        }
+    }, 10000);
+    window.addEventListener('pagehide', () => {
+        window.clearInterval(fallbackTimer);
+        window.removeEventListener('mskba:realtime-state', onRealtimeState);
+        unsubscribe();
+    }, { once: true });
 
     window.addEventListener('mskba:game-live-event', (event) => showEvent(event.detail));
     window.addEventListener('mskba:game-live-score', (event) => updateScore(event.detail));

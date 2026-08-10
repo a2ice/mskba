@@ -9,8 +9,8 @@ use Illuminate\Support\Collection;
 final class TeamLineupResolver
 {
     /**
-     * @param Collection<int, mixed> $profiles
-     * @param Collection<int, mixed> $players
+     * @param  Collection<int, mixed>  $profiles
+     * @param  Collection<int, mixed>  $players
      * @return Collection<string, array<string, mixed>>
      */
     public function resolve(Collection $profiles, Collection $players): Collection

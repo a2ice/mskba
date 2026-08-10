@@ -15,6 +15,7 @@ RUN apt-get update \
         exif \
         gd \
         intl \
+        pcntl \
         pdo_pgsql \
         zip \
         opcache \

@@ -104,6 +104,41 @@ Tournament demo data is intentionally excluded until the tournament domain
 model is implemented; a tournament must not be represented as a specially
 named event.
 
+## Realtime live projection
+
+The public game broadcast uses an HTTP snapshot as its canonical read model.
+Reverb publishes only the signal that a game has changed on the public channel
+`game.live.{gameId}` with the event name `game.live.updated`. The browser then
+requests `GET /events/{event}/games/{game}/live/snapshot` and applies the new
+revision. This deliberately avoids treating WebSocket delivery as durable state:
+after reconnect or a missed message the client converges to the current database
+state without replaying an event log.
+
+`EventChanged` remains a transport-independent domain notification. An
+infrastructure listener maps it to a lightweight synchronous broadcast after
+the database transaction. This avoids the polling delay of the general database
+queue; authoritative state still remains in the snapshot. The shared lazy Echo transport owns connection state and channel
+subscriptions; the game page owns only its snapshot rendering. If Reverb is
+unavailable, the page polls the same snapshot endpoint every ten seconds.
+
+Public scoreboards use public channels because their content is public. Future
+notifications, toast actions and messages must use separately authorised private
+or presence channels such as `users.{id}`; they must not reuse the public game
+contract or expose personal payloads through it.
+
+Local transport path:
+
+```text
+browser /app -> nginx -> reverb:8080
+queue worker -> Reverb application API
+game live page -> public channel signal -> HTTP snapshot
+```
+
+Run Reverb together with the regular Compose stack. Credentials and public
+browser endpoint are configured through `REVERB_*` and `VITE_REVERB_*` values
+shown in `.env.example`. Production must set an explicit
+`REVERB_ALLOWED_ORIGINS` list and terminate TLS at the public reverse proxy.
+
 ## Permanent team sport profile
 
 A permanent team stores one or more supported sport profiles independently

@@ -45,19 +45,19 @@
         data-game-id="{{ $game->id }}"
         data-game-event-id="{{ $event->id }}"
         data-game-live-active-side="{{ $activeSide }}"
+        data-game-live-channel="game.live.{{ $game->id }}"
+        data-game-live-snapshot-url="{{ route('events.games.live.snapshot', [$event->routeIdentifier(), $game->id]) }}"
     >
         <header class="game-live-header">
             <a class="game-live-brand" href="{{ route('welcome') }}" aria-label="MSKBA">
                 <img src="{{ asset('images/logo-header-cropped.png') }}" alt="MSKBA">
             </a>
             <div class="game-live-header__status {{ $isLiveNow ? 'is-live' : '' }}">
-                @if($isLiveNow)<span class="game-live-pulse" aria-hidden="true"></span>@endif
-                <span>{{ $isLiveNow ? 'LIVE' : ($isFinished ? 'ЗАВЕРШЕНА' : ($isCancelled ? 'ОТМЕНЕНА' : 'ТРАНСЛЯЦИЯ')) }}</span>
-                @if($activePeriod !== null)
-                    <span class="game-live-header__period" data-game-live-active-period="{{ $activePeriod->number }}">
-                        ПЕРИОД {{ $activePeriod->number }} ИЗ {{ $game->periods_count }}
-                    </span>
-                @endif
+                <span class="game-live-pulse" aria-hidden="true" @if(!$isLiveNow) hidden @endif></span>
+                <span data-game-live-status>{{ $isLiveNow ? 'LIVE' : ($isFinished ? 'ЗАВЕРШЕНА' : ($isCancelled ? 'ОТМЕНЕНА' : 'ТРАНСЛЯЦИЯ')) }}</span>
+                <span class="game-live-header__period" data-game-live-active-period="{{ $activePeriod?->number }}" @if($activePeriod === null) hidden @endif>
+                    @if($activePeriod !== null)ПЕРИОД {{ $activePeriod->number }} ИЗ {{ $game->periods_count }}@endif
+                </span>
             </div>
             <a class="game-live-close" href="{{ route('events.games.show', [$event->routeIdentifier(), $game->id]) }}" aria-label="Вернуться к игре">
                 <i class="ti ti-x"></i>
@@ -121,7 +121,7 @@
                         <section class="game-live-stats-team">
                             @php $fullSideName = $sideName($side, $slot); @endphp
                             <h3 title="{{ $fullSideName }}" data-tooltip-variant="title">{{ $shortSideName($fullSideName) }}</h3>
-                            <div class="game-live-stats-team__players">
+                            <div class="game-live-stats-team__players" data-game-live-team-players="{{ $slot }}">
                                 @forelse($roster->get($side?->id, collect()) as $entry)
                                     @php $stat = $stats->get($entry->user_id); @endphp
                                     <article class="game-live-stat-player" data-game-live-player="{{ $entry->user_id }}">
@@ -150,7 +150,7 @@
                         </section>
                     @endforeach
                     @if($game->timing_mode === GameTimingModeEnum::PERIODS)
-                        <hr><section class="game-live-stats-team game-live-stats-periods"><h3>По периодам</h3>@foreach($periodStatistics as $period)<details><summary>Период {{ $period['number'] }} · {{ $period['score_a'] ?? 0 }}:{{ $period['score_b'] ?? 0 }}</summary>@forelse($period['players'] as $userId => $values)<p><strong>{{ $name($game->rosterEntries->firstWhere('user_id', $userId)?->user) }}</strong>: {{ collect($values)->map(fn($value, $field) => ($statisticsFields[$field]['label'] ?? ($field === 'points' ? 'Очки' : $field)).' '.$value)->implode(', ') }}</p>@empty<p>Действий пока нет.</p>@endforelse</details>@endforeach</section>
+                        <hr><section class="game-live-stats-team game-live-stats-periods" data-game-live-periods><h3>По периодам</h3>@foreach($periodStatistics as $period)<details><summary>Период {{ $period['number'] }} · {{ $period['score_a'] ?? 0 }}:{{ $period['score_b'] ?? 0 }}</summary>@forelse($period['players'] as $userId => $values)<p><strong>{{ $name($game->rosterEntries->firstWhere('user_id', $userId)?->user) }}</strong>: {{ collect($values)->map(fn($value, $field) => ($statisticsFields[$field]['label'] ?? ($field === 'points' ? 'Очки' : $field)).' '.$value)->implode(', ') }}</p>@empty<p>Действий пока нет.</p>@endforelse</details>@endforeach</section>
                     @endif
                 </div>
             </div>

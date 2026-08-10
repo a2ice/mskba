@@ -50,7 +50,7 @@ jobs:
 
             mkdir -p bootstrap/cache public/build
 
-            $COMPOSE build phpfpm queue scheduler telegram
+            $COMPOSE build phpfpm queue reverb scheduler telegram
             $COMPOSE up -d db redis
 
             $COMPOSE run -T --rm phpfpm composer install \
@@ -87,6 +87,6 @@ jobs:
               echo "::warning::Telegram update configuration was skipped after three failed attempts." >&2
             fi
 
-            $COMPOSE up -d --force-recreate phpfpm nginx queue scheduler telegram
+            $COMPOSE up -d --force-recreate phpfpm nginx queue reverb scheduler telegram
 
-            $COMPOSE restart phpfpm nginx queue scheduler telegram
+            $COMPOSE restart phpfpm nginx queue reverb scheduler telegram

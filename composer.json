@@ -9,6 +9,7 @@
         "php": "^8.3",
         "ext-gd": "*",
         "laravel/framework": "^13.8",
+        "laravel/reverb": "^1.0",
         "laravel/tinker": "^3.0",
         "symfony/html-sanitizer": "^8.0"
     },

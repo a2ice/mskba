@@ -10,6 +10,9 @@ services:
   queue:
     container_name: mskbanew-queue
 
+  reverb:
+    container_name: mskbanew-reverb
+
   scheduler:
     container_name: mskbanew-scheduler
 

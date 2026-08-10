@@ -14,6 +14,9 @@ services:
     environment:
       MAIL_HOST: mailpit
 
+  reverb:
+    container_name: mskbabrandnew-reverb
+
   scheduler:
     container_name: mskbabrandnew-scheduler
     environment:
