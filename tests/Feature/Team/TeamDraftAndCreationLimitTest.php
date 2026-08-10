@@ -28,7 +28,6 @@ final class TeamDraftAndCreationLimitTest extends TestCase
                 'sport_types' => ['basketball'],
             ])->assertRedirect()->assertSessionHasNoErrors();
         }
-
         $this->post(route('teams.store'), [
             'name' => 'Шестая команда',
             'sport_types' => ['basketball'],

@@ -27,8 +27,9 @@ final class UpdateVenueScheduleHandler
         array $intervalsByDay,
         array $exceptions = [],
         ?VenueOperationalStatusEnum $operationalStatus = null,
+        bool $force = false,
     ): Venue {
-        return DB::transaction(function () use ($alias, $user, $timezone, $intervalsByDay, $exceptions, $operationalStatus): Venue {
+        return DB::transaction(function () use ($alias, $user, $timezone, $intervalsByDay, $exceptions, $operationalStatus, $force): Venue {
             $venue = Venue::query()
                 ->whereRouteIdentifier($alias)
                 ->lockForUpdate()
@@ -38,7 +39,7 @@ final class UpdateVenueScheduleHandler
                 throw new VenueNotFoundException;
             }
 
-            if (! $this->access->canEditSchedule($user, $venue)) {
+            if (! $force && ! $this->access->canEditSchedule($user, $venue)) {
                 throw new VenueAccessDeniedException;
             }
 

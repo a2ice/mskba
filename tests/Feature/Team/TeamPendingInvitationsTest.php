@@ -135,10 +135,15 @@ final class TeamPendingInvitationsTest extends TestCase
 
     private function allowGroupInvitations(User $user): void
     {
-        $user->privacySettings()->updateOrCreate([
-            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
-        ], [
-            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
-        ]);
+        foreach ([
+            UserPrivacySettingTypeEnum::DISCOVERABILITY,
+            UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+        ] as $type) {
+            $user->privacySettings()->updateOrCreate([
+                'type' => $type,
+            ], [
+                'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+            ]);
+        }
     }
 }

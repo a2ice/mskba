@@ -67,7 +67,7 @@ final class TeamOwnerSportRoleProtectionTest extends TestCase
 
         $this->get(route('teams.management', $team->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Изменять спортивные роли владельца может только сам владелец.')
+            ->assertSee('Роли владельца может менять только сам владелец.')
             ->assertDontSee('action="'.$ownerUpdateUrl.'"', false);
 
         $this->put($ownerUpdateUrl, ['sport_roles' => ['coach']])

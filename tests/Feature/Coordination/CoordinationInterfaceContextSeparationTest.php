@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Coordination;
 
+use App\Modules\Coordination\Domain\Enums\PollSubjectTypeEnum;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,7 +23,7 @@ final class CoordinationInterfaceContextSeparationTest extends TestCase
                 'title' => 'Выбор времени тренировки',
                 'description' => 'Проверка контекстов интерфейса.',
                 'question' => 'Во сколько играем?',
-                'subject_type' => 'free_text',
+                'subject_type' => PollSubjectTypeEnum::TEXT->value,
                 'selection_mode' => 'single',
                 'results_visibility' => 'always',
                 'allows_vote_changes' => '1',

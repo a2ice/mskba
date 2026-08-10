@@ -11,7 +11,7 @@ use App\Modules\Portal\Application\Services\OnlineUserPresence;
 use App\Modules\Portal\Application\Services\SiteSummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class SiteSummaryTest extends TestCase
@@ -22,8 +22,9 @@ class SiteSummaryTest extends TestCase
     {
         parent::setUp();
 
-        Redis::connection((string) config('site_summary.presence_redis_connection', 'cache'))
-            ->del('site-summary:online-presence');
+        config()->set('site_summary.presence_store', 'array');
+        config()->set('site_summary.cache_store', 'array');
+        Cache::store('array')->clear();
         app(SiteSummaryService::class)->forgetTodayEvents();
         app(SiteSummaryService::class)->forgetTotalUsers();
     }

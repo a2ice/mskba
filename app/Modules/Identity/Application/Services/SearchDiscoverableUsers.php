@@ -22,7 +22,8 @@ final class SearchDiscoverableUsers
         int $limit = 15,
         ?UserPrivacySettingTypeEnum $requiredAccess = null,
     ): Collection {
-        $normalizedQuery = mb_strtolower(trim($query));
+        $rawQuery = trim($query);
+        $normalizedQuery = mb_strtolower($rawQuery);
 
         if (mb_strlen($normalizedQuery) < 2) {
             return collect();
@@ -43,13 +44,16 @@ final class SearchDiscoverableUsers
                     $viewer,
                     $requiredAccess,
                 )))
-            ->where(function ($userQuery) use ($normalizedQuery): void {
+            ->where(function ($userQuery) use ($normalizedQuery, $rawQuery): void {
                 $userQuery
                     ->whereRaw('LOWER(username) LIKE ?', ["%{$normalizedQuery}%"])
-                    ->orWhereHas('profile', function ($profileQuery) use ($normalizedQuery): void {
+                    ->orWhereLike('username', "%{$rawQuery}%")
+                    ->orWhereHas('profile', function ($profileQuery) use ($normalizedQuery, $rawQuery): void {
                         $profileQuery
                             ->whereRaw('LOWER(first_name) LIKE ?', ["%{$normalizedQuery}%"])
-                            ->orWhereRaw('LOWER(last_name) LIKE ?', ["%{$normalizedQuery}%"]);
+                            ->orWhereRaw('LOWER(last_name) LIKE ?', ["%{$normalizedQuery}%"])
+                            ->orWhereLike('first_name', "%{$rawQuery}%")
+                            ->orWhereLike('last_name', "%{$rawQuery}%");
                     });
             })
             ->orderBy('username')

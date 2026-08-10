@@ -14,8 +14,10 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Team\Application\Services\TeamLogoManager;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Application\Services\TeamMembershipHierarchy;
 use App\Modules\Team\Application\Services\TeamNameAllocator;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
@@ -38,6 +40,8 @@ use InvalidArgumentException;
 
 final class TeamController extends Controller
 {
+    private const int CREATION_LIMIT = 5;
+
     public function index(Request $request): Response
     {
         $filters = $request->validate([
@@ -106,6 +110,17 @@ final class TeamController extends Controller
         unset($data['sport_types']);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor?->user_id === null, 403);
+        if (! $request->user()?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
+            $teamCount = Team::query()
+                ->whereNull('temporary_for_event_id')
+                ->whereHas('createdByActor', fn ($query) => $query->where('user_id', $actor->user_id))
+                ->count();
+            abort_if(
+                $teamCount >= self::CREATION_LIMIT,
+                422,
+                'Достигнут лимит: можно создать не более 5 команд.',
+            );
+        }
 
         $hadDuplicate = false;
         try {
@@ -386,8 +401,14 @@ final class TeamController extends Controller
         return back()->with('status', 'Логотип команды удалён.');
     }
 
-    public function removeMember(string $team, int $membership, Request $request, CurrentActorResolver $actors, TeamManagementAccess $access): RedirectResponse|JsonResponse
-    {
+    public function removeMember(
+        string $team,
+        int $membership,
+        Request $request,
+        CurrentActorResolver $actors,
+        TeamManagementAccess $access,
+        TeamMembershipHierarchy $hierarchy,
+    ): RedirectResponse|JsonResponse {
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::REMOVE_MEMBERS), 403);
@@ -398,6 +419,18 @@ final class TeamController extends Controller
         abort_if($member->access_level === TeamMembershipAccessLevelEnum::OWNER->value, 422, 'Владельца команды удалить нельзя.');
         abort_if($member->is_captain, 422, 'Капитана нельзя исключить из команды. Сначала назначьте другого капитана.');
         abort_if($member->user_id === $actor->user_id, 422, 'Нельзя исключить самого себя через управление командой.');
+        if (! $access->isCreator($item, $actor)) {
+            $actorMembership = $item->memberships()
+                ->where('user_id', $actor->user_id)
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
+                ->first();
+            abort_if(
+                $actorMembership === null || ! $hierarchy->canRemove($actorMembership, $member),
+                422,
+                'Нельзя исключить участника с равным или более высоким уровнем управления.',
+            );
+        }
 
         DB::transaction(function () use ($member): void {
             $lockedMember = ContractMembership::query()->whereKey($member->id)->lockForUpdate()->firstOrFail();

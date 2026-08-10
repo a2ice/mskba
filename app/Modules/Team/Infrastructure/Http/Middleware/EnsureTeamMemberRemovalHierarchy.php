@@ -31,11 +31,13 @@ final class EnsureTeamMemberRemovalHierarchy
 
         $teamParameter = $request->route('team');
         $membershipParameter = $request->route('membership');
-        if (! is_string($teamParameter) || ! is_numeric($membershipParameter)) {
+        if ((! is_string($teamParameter) && ! $teamParameter instanceof Team) || ! is_numeric($membershipParameter)) {
             return $next($request);
         }
 
-        $team = Team::query()->whereRouteIdentifier($teamParameter)->first();
+        $team = $teamParameter instanceof Team
+            ? $teamParameter
+            : Team::query()->whereRouteIdentifier($teamParameter)->first();
         $actor = $this->actors->resolveForRequest($request);
         if ($team === null || $actor?->user_id === null) {
             return $next($request);

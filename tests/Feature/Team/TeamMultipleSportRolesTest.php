@@ -63,7 +63,7 @@ final class TeamMultipleSportRolesTest extends TestCase
             ->assertOk()
             ->assertSee('Тренеры')
             ->assertSee('Менеджеры')
-            ->assertSee('Игрок, Тренер, Менеджер');
+            ->assertSee('owner-without-sport-role');
     }
 
     public function test_first_player_is_captain_and_cannot_remove_player_role_before_reassignment(): void

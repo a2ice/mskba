@@ -78,6 +78,7 @@ final class AdminVenuesController extends Controller
                 intervalsByDay: $request->intervalsByDay(),
                 exceptions: $request->exceptions(),
                 operationalStatus: $request->operationalStatus(),
+                force: true,
             );
         } catch (\Exception $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
