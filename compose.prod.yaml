@@ -12,8 +12,6 @@ services:
 
   reverb:
     container_name: mskbanew-reverb
-    ports:
-      - "${REVERB_FORWARD_PORT:-127.0.0.1:8080}:8080"
 
   scheduler:
     container_name: mskbanew-scheduler

@@ -107,3 +107,7 @@ jobs:
               echo "Reverb did not become ready on port 8080." >&2
               exit 1
             fi
+
+            # Re-resolve the upstream after Docker has recreated the Reverb
+            # container and potentially assigned it a different network IP.
+            $COMPOSE exec -T nginx nginx -s reload
