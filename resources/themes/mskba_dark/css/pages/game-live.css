@@ -2,18 +2,24 @@ body.has-game-live-screen {
     overflow: hidden;
 }
 
+body.has-game-live-screen .site-content {
+    z-index: 250;
+}
+
 .game-live-screen {
+    --game-live-bottom-clearance: 0px;
+    --game-live-team-gap: clamp(32px, 9vw, 180px);
     position: fixed;
-    inset: 0;
+    inset: 0 0 var(--game-live-bottom-clearance);
     z-index: 10000;
     display: flex;
     flex-direction: column;
     min-width: 100vw;
     width: 100vw;
-    min-height: 100vh;
-    min-height: 100dvh;
-    height: 100vh;
-    height: 100dvh;
+    min-height: calc(100vh - var(--game-live-bottom-clearance));
+    min-height: calc(100dvh - var(--game-live-bottom-clearance));
+    height: calc(100vh - var(--game-live-bottom-clearance));
+    height: calc(100dvh - var(--game-live-bottom-clearance));
     overflow: hidden;
     color: #f6f3ea;
     background:
@@ -144,32 +150,68 @@ body.has-game-live-screen {
 }
 
 .game-live-score {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: clamp(18px, 3vw, 58px);
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: var(--game-live-team-gap);
+    width: min(1220px, 92vw);
     min-height: clamp(150px, 24vh, 290px);
     font-variant-numeric: tabular-nums;
-    line-height: 0.86;
 }
 
 .game-live-score strong {
+    justify-self: center;
     min-width: 1.05em;
+    color: #f6f3ea;
+    background-image: linear-gradient(
+        180deg,
+        #ffffff 0%,
+        #f7f5ef 24%,
+        #c9c8c4 49%,
+        #f3f1eb 68%,
+        #aaa9a5 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    font-family: "Bebas Neue", var(--font-display);
     font-size: clamp(112px, 20vh, 260px);
     font-weight: 900;
-    letter-spacing: -0.07em;
+    letter-spacing: -0.025em;
+    line-height: 0.86;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
+    transition: filter 0.24s ease, text-shadow 0.24s ease;
+}
+
+.game-live-score strong.is-active {
+    background-image: linear-gradient(
+        180deg,
+        #ffc25a 0%,
+        #ff941f 27%,
+        #dc5708 51%,
+        #ff8b17 70%,
+        #b93800 100%
+    );
+    filter: saturate(1.08);
+    text-shadow: 0 10px 38px rgba(255, 103, 24, 0.28);
 }
 
 .game-live-score span {
+    position: absolute;
+    left: 50%;
+    align-self: center;
     color: rgba(246, 243, 234, 0.44);
     font-size: clamp(70px, 11vh, 150px);
     font-weight: 500;
+    line-height: 1;
+    transform: translateX(-50%);
 }
 
 .game-live-teams {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: clamp(32px, 9vw, 180px);
+    gap: var(--game-live-team-gap);
     width: min(1220px, 92vw);
     margin-top: clamp(8px, 1.5vh, 24px);
 }
@@ -185,8 +227,8 @@ body.has-game-live-screen {
 .game-live-team__logo {
     display: grid;
     place-items: center;
-    width: clamp(70px, 10vh, 126px);
-    height: clamp(70px, 10vh, 126px);
+    width: clamp(210px, 30vh, 378px);
+    height: clamp(210px, 30vh, 378px);
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 50%;
@@ -201,7 +243,7 @@ body.has-game-live-screen {
 
 .game-live-team__logo .ti {
     color: var(--accent-text, #ff7417);
-    font-size: clamp(42px, 6vh, 78px);
+    font-size: clamp(126px, 18vh, 234px);
 }
 
 .game-live-team.is-b .game-live-team__logo .ti {
@@ -212,12 +254,18 @@ body.has-game-live-screen {
     width: 100%;
     margin: 0;
     overflow: hidden;
-    font-size: clamp(30px, 4.5vh, 66px);
+    font-size: clamp(15px, 2.25vh, 33px);
     font-weight: 900;
     letter-spacing: -0.035em;
     line-height: 1;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.game-live-team h1.ui-tooltip-source--title,
+.game-live-stats-team h3.ui-tooltip-source--title,
+.game-live-event__team.ui-tooltip-source--title {
+    text-decoration: none;
 }
 
 .game-live-stats-button {
@@ -245,8 +293,14 @@ body.has-game-live-screen {
 .game-live-stats,
 .game-live-event {
     position: fixed;
-    inset: 0;
-    z-index: 10002;
+    inset: 0 0 var(--game-live-bottom-clearance, 0px);
+    z-index: 30000;
+}
+
+.game-live-stats {
+    display: grid;
+    place-items: center;
+    padding: clamp(12px, 3vw, 32px);
 }
 
 .game-live-stats[hidden],
@@ -267,18 +321,17 @@ body.has-game-live-screen {
 }
 
 .game-live-stats__sheet {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
+    position: relative;
+    z-index: 1;
+    display: flex;
     width: min(1120px, 100%);
-    max-height: min(82dvh, 920px);
+    max-height: min(calc(100dvh - var(--game-live-bottom-clearance, 0px) - clamp(24px, 6vw, 64px)), 920px);
+    flex-direction: column;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    border-bottom: 0;
-    border-radius: 28px 28px 0 0;
+    border-radius: 28px;
     background: #131713;
-    transform: translateX(-50%);
-    box-shadow: 0 -30px 80px rgba(0, 0, 0, 0.42);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.42);
 }
 
 .game-live-stats__sheet > header {
@@ -322,7 +375,7 @@ body.has-game-live-screen {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 28px;
-    max-height: calc(min(82dvh, 920px) - 92px);
+    min-height: 0;
     padding: 24px clamp(20px, 4vw, 42px) max(28px, env(safe-area-inset-bottom));
     overflow: auto;
 }
@@ -418,7 +471,7 @@ body.has-game-live-screen {
 }
 
 .game-live-event {
-    z-index: 10003;
+    z-index: 30001;
     display: grid;
     place-items: center;
 }
@@ -498,7 +551,22 @@ body.has-game-live-screen {
     color: var(--accent-text, #ff7417) !important;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
+    .game-live-screen,
+    .game-live-stats,
+    .game-live-event {
+        --game-live-bottom-clearance: calc(
+            var(--mobile-primary-actions-height, 68px)
+            + var(--mobile-primary-stats-height, 38px)
+            + var(--mobile-primary-bar-inset, 4px)
+            + env(safe-area-inset-bottom)
+        );
+    }
+
+    .game-live-screen {
+        --game-live-team-gap: 20px;
+    }
+
     .game-live-header {
         grid-template-columns: 1fr auto;
     }
@@ -514,7 +582,7 @@ body.has-game-live-screen {
     }
 
     .game-live-score {
-        gap: 17px;
+        width: 100%;
         min-height: 21vh;
     }
 
@@ -527,18 +595,17 @@ body.has-game-live-screen {
     }
 
     .game-live-teams {
-        gap: 20px;
         width: 100%;
     }
 
     .game-live-team h1 {
-        font-size: clamp(24px, 4.2vh, 38px);
-        white-space: normal;
+        font-size: clamp(14px, 2.1vh, 20px);
     }
 
     .game-live-team__logo {
-        width: clamp(64px, 9vh, 90px);
-        height: clamp(64px, 9vh, 90px);
+        width: min(100%, clamp(192px, 27vh, 270px));
+        height: auto;
+        aspect-ratio: 1;
     }
 
     .game-live-stats-button {
@@ -551,29 +618,121 @@ body.has-game-live-screen {
 }
 
 @media (max-height: 620px) and (orientation: landscape) {
+    .game-live-screen {
+        --game-live-team-gap: 16px;
+    }
+
     .game-live-header {
-        min-height: 64px;
-        padding-top: 12px;
+        min-height: 48px;
+        padding: 6px 18px;
+    }
+
+    .game-live-brand img {
+        width: 94px;
+    }
+
+    .game-live-close {
+        width: 38px;
+        height: 38px;
+    }
+
+    .game-live-close .ti {
+        font-size: 22px;
+    }
+
+    .game-live-header__status {
+        top: 9px;
+    }
+
+    .game-live-stage {
+        padding: 0 16px 8px;
+    }
+
+    .game-live-stage__eyebrow {
+        margin-bottom: 0;
+        font-size: 9px;
     }
 
     .game-live-score {
-        min-height: 28vh;
+        min-height: 74px;
     }
 
     .game-live-score strong {
-        font-size: 27vh;
+        font-size: clamp(60px, 21vh, 78px);
+    }
+
+    .game-live-score span {
+        font-size: clamp(34px, 12vh, 44px);
+    }
+
+    .game-live-teams {
+        margin-top: 2px;
     }
 
     .game-live-team__logo {
-        width: 15vh;
-        height: 15vh;
+        width: 114px;
+        height: 114px;
+    }
+
+    .game-live-team__logo .ti {
+        font-size: 76px;
     }
 
     .game-live-team h1 {
-        font-size: 7vh;
+        font-size: 10px;
+        line-height: 1.1;
     }
 
     .game-live-stats-button {
-        margin-top: 3vh;
+        min-height: 34px;
+        margin-top: 8px;
+        padding: 6px 14px;
+        font-size: 12px;
+    }
+
+    .game-live-stats {
+        padding: 8px;
+    }
+
+    .game-live-stats__sheet {
+        max-height: calc(100dvh - var(--game-live-bottom-clearance, 0px) - 16px);
+        border-radius: 18px;
+    }
+
+    .game-live-stats__sheet > header {
+        padding: 10px 16px;
+    }
+
+    .game-live-stats__sheet h2 {
+        margin-top: 0;
+        font-size: 20px;
+    }
+
+    .game-live-stats__sheet > header button {
+        width: 34px;
+        height: 34px;
+    }
+
+    .game-live-stats__content {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        padding: 12px 16px 16px;
+    }
+
+    .game-live-stats-team h3 {
+        margin-bottom: 8px;
+        font-size: 16px;
+    }
+
+    .game-live-stat-player {
+        padding: 8px;
+        border-radius: 12px;
+    }
+
+    .game-live-stat-player__identity img,
+    .game-live-stat-player__identity > span {
+        width: 30px;
+        height: 30px;
+        flex-basis: 30px;
     }
 }

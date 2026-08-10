@@ -45,6 +45,7 @@
 @endsection
 
 @section('section-content')
+    <div class="d-flex justify-content-end mb-3">@if(auth()->user()?->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED)<a class="btn btn--primary" href="{{ route('tournaments.create') }}">Создать турнир</a>@endif</div>
     <details class="section-list-item event-filters-shell mb-4">
         <summary class="event-filters-shell__summary">
             <span>Поиск</span>
@@ -85,7 +86,17 @@
         </form>
     </details>
 
-    <div class="alert alert-info">
-        Раздел турниров находится в разработке. Здесь появятся турниры, подходящие под выбранные период и фильтры.
-    </div>
+    @forelse($tournaments as $tournament)
+        <article class="section-list-item mb-3">
+            <span class="eyebrow">{{ $tournament->status->label() }}</span>
+            <h2><a href="{{ route('tournaments.show', $tournament->routeIdentifier()) }}">{{ $tournament->title }}</a></h2>
+            <p>{{ $tournament->starts_on->format('d.m.Y') }}@if($tournament->ends_on) — {{ $tournament->ends_on->format('d.m.Y') }}@endif</p>
+            @if($tournament->short_description)<p>{{ $tournament->short_description }}</p>@endif
+            <br>
+            <a class="btn btn--secondary btn--sm" href="{{ route('tournaments.show', $tournament->routeIdentifier()) }}">Подробнее</a>
+        </article>
+    @empty
+        <div class="alert alert-info">Турниры по выбранным условиям не найдены.</div>
+    @endforelse
+    {{ $tournaments->links() }}
 @endsection

@@ -7,10 +7,14 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\GameActionTypeEnum;
+use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
@@ -20,6 +24,7 @@ use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Tournament\Application\Services\TournamentEntryRosterResolver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +35,7 @@ final class GameManagementService
 {
     public function __construct(
         private readonly EventManagementAccess $access,
+        private readonly TournamentEntryRosterResolver $tournamentEntryRosters,
     ) {}
 
     public function initializeStandalone(
@@ -39,11 +45,22 @@ final class GameManagementService
         int $sideASize = 5,
         int $sideBSize = 5,
         GameScoringTypeEnum $scoringType = GameScoringTypeEnum::STREETBALL,
+        ?GameFormatEnum $format = null,
+        GameTimingModeEnum $timingMode = GameTimingModeEnum::WHOLE_GAME,
+        ?int $periodsCount = null,
     ): void {
         if ($event->type !== EventTypeEnum::GAME) {
             throw new InvalidArgumentException('Составы команд доступны только для самостоятельной игры.');
         }
         $this->assertSideSizeLimits($sideASize, $sideBSize);
+        [$format, $periodsCount] = $this->normalizeFormat(
+            $format,
+            $sideASize,
+            $sideBSize,
+            $scoringType,
+            $periodsCount,
+        );
+        $periodsCount = $this->normalizePeriodConfiguration($timingMode, $periodsCount);
 
         if ($teamAId === $teamBId) {
             throw new InvalidArgumentException('Для игры нужны две разные команды.');
@@ -66,11 +83,12 @@ final class GameManagementService
             'event_id' => $event->id,
             'created_by_actor_id' => $event->organizer_actor_id,
             'status' => GameStatusEnum::SCHEDULED,
+            'format' => $format,
+            'timing_mode' => $timingMode,
             'side_a_size' => $sideASize,
             'side_b_size' => $sideBSize,
             'scoring_type' => $scoringType,
-            'scheduled_starts_at' => $event->starts_at,
-            'scheduled_ends_at' => $event->ends_at,
+            'periods_count' => $periodsCount,
         ]);
 
         $sideA = $game->sides()->create([
@@ -86,6 +104,9 @@ final class GameManagementService
 
         $sideAUsers = $this->snapshotTeamRoster($game, $sideA, $teams[$teamAId]);
         $this->snapshotTeamRoster($game, $sideB, $teams[$teamBId], $sideAUsers);
+        $this->createPeriods($game, $periodsCount);
+
+        $event->forceFill(['primary_game_id' => $game->id])->save();
     }
 
     /**
@@ -150,6 +171,14 @@ final class GameManagementService
                 $confirmedParticipants->count(),
             );
             $this->assertRosterSizes($sideAUserIds, $sideBUserIds, $sideASize, $sideBSize);
+            [$format, $periodsCount] = $this->normalizeFormat(
+                null,
+                $sideASize,
+                $sideBSize,
+                $scoringType,
+                null,
+            );
+            $periodsCount = $this->normalizePeriodConfiguration(GameTimingModeEnum::WHOLE_GAME, $periodsCount);
             $allUserIds = collect([...$sideAUserIds, ...$sideBUserIds])->map(fn ($id) => (int) $id);
             if ($allUserIds->duplicates()->isNotEmpty()
                 || $allUserIds->diff($confirmedParticipants->keys())->isNotEmpty()) {
@@ -161,9 +190,11 @@ final class GameManagementService
                 'created_by_actor_id' => $actor->id,
                 'title' => $title,
                 'status' => GameStatusEnum::SCHEDULED,
+                'format' => $format,
                 'side_a_size' => $sideASize,
                 'side_b_size' => $sideBSize,
                 'scoring_type' => $scoringType,
+                'periods_count' => $periodsCount,
                 'scheduled_starts_at' => $isTimeScheduled ? $start : null,
                 'scheduled_ends_at' => $isTimeScheduled ? $end : null,
             ]);
@@ -234,6 +265,14 @@ final class GameManagementService
                 ->where('confirmation_version', $lockedParent->participation_confirmation_version)
                 ->count();
             $this->assertMiniGameFormat($sideASize, $sideBSize, $confirmedParticipantsCount);
+            [$format, $periodsCount] = $this->normalizeFormat(
+                $lockedGame->format,
+                $sideASize,
+                $sideBSize,
+                $scoringType,
+                $lockedGame->periods_count,
+            );
+            $periodsCount = $this->normalizePeriodConfiguration(GameTimingModeEnum::WHOLE_GAME, $periodsCount);
             if ($isTimeScheduled
                 && ($start->lessThan($lockedParent->starts_at) || $end->greaterThan($lockedParent->ends_at))) {
                 throw new InvalidArgumentException('Мини-игра должна целиком входить во время тренировки.');
@@ -252,9 +291,11 @@ final class GameManagementService
 
             $lockedGame->update([
                 'title' => $title,
+                'format' => $format,
                 'side_a_size' => $sideASize,
                 'side_b_size' => $sideBSize,
                 'scoring_type' => $scoringType,
+                'periods_count' => $periodsCount,
                 'scheduled_starts_at' => $isTimeScheduled ? $start : null,
                 'scheduled_ends_at' => $isTimeScheduled ? $end : null,
             ]);
@@ -328,9 +369,15 @@ final class GameManagementService
      * @param  array<int, int>  $sideAUserIds
      * @param  array<int, int>  $sideBUserIds
      */
-    public function replaceRoster(Game $game, Actor $actor, array $sideAUserIds, array $sideBUserIds): void
-    {
-        DB::transaction(function () use ($game, $actor, $sideAUserIds, $sideBUserIds): void {
+    public function replaceRoster(
+        Game $game,
+        Actor $actor,
+        array $sideAUserIds,
+        array $sideBUserIds,
+        ?array $starterUserIds = null,
+        ?array $captainUserIds = null,
+    ): void {
+        DB::transaction(function () use ($game, $actor, $sideAUserIds, $sideBUserIds, $starterUserIds, $captainUserIds): void {
             $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);
             $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
@@ -342,12 +389,43 @@ final class GameManagementService
             if ($sides->count() !== 2) {
                 throw new InvalidArgumentException('Для игры не настроены две стороны.');
             }
-            $this->assertRosterSizes(
-                $sideAUserIds,
-                $sideBUserIds,
-                (int) $lockedGame->side_a_size,
-                (int) $lockedGame->side_b_size,
-            );
+            if ($lockedParent->type === EventTypeEnum::GAME) {
+                $this->assertPermanentTeamRosterSizes(
+                    $sideAUserIds,
+                    $sideBUserIds,
+                    (int) $lockedGame->side_a_size,
+                    (int) $lockedGame->side_b_size,
+                );
+            } else {
+                $this->assertRosterSizes(
+                    $sideAUserIds,
+                    $sideBUserIds,
+                    (int) $lockedGame->side_a_size,
+                    (int) $lockedGame->side_b_size,
+                );
+            }
+
+            if (($starterUserIds === null) !== ($captainUserIds === null)) {
+                throw new InvalidArgumentException('Стартовый состав и капитаны должны сохраняться вместе с составом игры.');
+            }
+            if ($starterUserIds !== null && $captainUserIds !== null) {
+                foreach (['A' => $sideAUserIds, 'B' => $sideBUserIds] as $slot => $selectedIds) {
+                    $selected = collect($selectedIds)->map(fn ($id) => (int) $id);
+                    $starters = collect($starterUserIds[$slot] ?? [])->map(fn ($id) => (int) $id);
+                    $captain = isset($captainUserIds[$slot]) ? (int) $captainUserIds[$slot] : null;
+                    $required = $slot === 'A' ? (int) $lockedGame->side_a_size : (int) $lockedGame->side_b_size;
+
+                    if ($starters->duplicates()->isNotEmpty() || $starters->diff($selected)->isNotEmpty()) {
+                        throw new InvalidArgumentException('Стартовый состав содержит недоступного или повторяющегося игрока.');
+                    }
+                    if ($starters->count() !== $required) {
+                        throw new InvalidArgumentException("В стартовом составе стороны {$slot} должно быть ровно {$required} игроков.");
+                    }
+                    if ($captain === null || ! $selected->contains($captain)) {
+                        throw new InvalidArgumentException("Капитан стороны {$slot} должен входить в состав на игру.");
+                    }
+                }
+            }
 
             $allIds = collect([...$sideAUserIds, ...$sideBUserIds])->map(fn ($id) => (int) $id);
             if ($allIds->duplicates()->isNotEmpty()) {
@@ -379,13 +457,20 @@ final class GameManagementService
             foreach (['A' => $sideAUserIds, 'B' => $sideBUserIds] as $slot => $userIds) {
                 foreach ($userIds as $userId) {
                     $source = $candidates[(int) $userId];
-                    $lockedGame->rosterEntries()->create([
+                    $attributes = [
                         'game_side_id' => $sides[$slot]->id,
                         'user_id' => (int) $userId,
                         'source_contract_membership_id' => $source['membership_id'] ?? null,
                         'source_event_participant_id' => $source['participant_id'] ?? null,
                         'status' => GameRosterStatusEnum::SELECTED,
-                    ]);
+                    ];
+                    if ($starterUserIds !== null && $captainUserIds !== null) {
+                        $attributes['lineup_role'] = in_array((int) $userId, array_map('intval', $starterUserIds[$slot] ?? []), true)
+                            ? GameLineupRoleEnum::STARTER
+                            : GameLineupRoleEnum::BENCH;
+                        $attributes['is_captain'] = (int) $userId === (int) ($captainUserIds[$slot] ?? 0);
+                    }
+                    $lockedGame->rosterEntries()->create($attributes);
                 }
             }
         });
@@ -396,14 +481,17 @@ final class GameManagementService
     /**
      * @param  array<string, mixed>  $statistics
      */
-    public function saveStatistics(Game $game, Actor $actor, array $statistics): void
+    public function saveStatistics(Game $game, Actor $actor, array $statistics, ?array $action = null): void
     {
-        DB::transaction(function () use ($game, $actor, $statistics): void {
+        DB::transaction(function () use ($game, $actor, $statistics, $action): void {
             $lockedParent = Event::query()->lockForUpdate()->findOrFail($game->event_id);
             $this->access->assertAllows($lockedParent, $actor, EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
             $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertGameIsLive($lockedGame);
             $this->persistStatistics($lockedGame, $statistics);
+            if ($action !== null) {
+                $this->recordAction($lockedGame, $actor, $action);
+            }
         });
 
         event(new EventChanged($this->aggregateEventId($game)));
@@ -425,9 +513,22 @@ final class GameManagementService
             if (! $sides->has('A') || ! $sides->has('B')) {
                 throw new InvalidArgumentException('Для игры не настроены две стороны.');
             }
+            $previousScores = $sides->mapWithKeys(fn (GameSide $side): array => [
+                $side->slot => $side->score,
+            ])->all();
             foreach (['A', 'B'] as $slot) {
                 $sides[$slot]->update(['score' => (int) $scores[$slot]]);
             }
+            $this->recordAction($lockedGame, $actor, [
+                'type' => GameActionTypeEnum::SCORE_CORRECTION->value,
+                'payload' => [
+                    'before' => $previousScores,
+                    'after' => [
+                        'A' => (int) $scores['A'],
+                        'B' => (int) $scores['B'],
+                    ],
+                ],
+            ]);
         });
 
         event(new EventChanged($this->aggregateEventId($game)));
@@ -442,6 +543,7 @@ final class GameManagementService
             $this->assertGameHasEnded($lockedGame);
 
             $this->confirmLockedStatistics($lockedGame, $actor);
+            $this->completeStandaloneParent($lockedParent, $lockedGame, $actor);
         });
 
         event(new GameStatisticsConfirmed($game->id));
@@ -465,17 +567,9 @@ final class GameManagementService
             $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
             $this->assertGameHasEnded($lockedGame);
 
-            if ($lockedGame->scheduled_starts_at?->isFuture()) {
-                throw new InvalidArgumentException('Завершить игру можно только после её начала.');
-            }
-
             $this->persistStatistics($lockedGame, $statistics);
             $this->confirmLockedStatistics($lockedGame->fresh(), $actor);
-            $lockedGame->update([
-                'status' => GameStatusEnum::COMPLETED,
-                'completed_at' => now(),
-                'completed_by_actor_id' => $actor->id,
-            ]);
+            $this->completeStandaloneParent($lockedParent, $lockedGame, $actor);
         });
 
         event(new GameStatisticsConfirmed($game->id));
@@ -531,6 +625,99 @@ final class GameManagementService
         ]);
     }
 
+    /** @param array<string, mixed> $action */
+    private function recordAction(Game $game, Actor $actor, array $action): void
+    {
+        $type = GameActionTypeEnum::from((string) $action['type']);
+        $periodId = $this->activePeriodIdForAction($game);
+        if ($type === GameActionTypeEnum::SCORE_CORRECTION) {
+            if (isset($action['user_id'])) {
+                throw new InvalidArgumentException('Коррекция счёта сохраняется только через управление счётом.');
+            }
+
+            $game->actions()->create([
+                'sequence' => ((int) $game->actions()->max('sequence')) + 1,
+                'game_period_id' => $periodId,
+                'created_by_actor_id' => $actor->id,
+                'type' => $type,
+                'payload' => $action['payload'] ?? null,
+                'occurred_at' => now(),
+            ]);
+
+            return;
+        }
+
+        $userId = (int) $action['user_id'];
+        $entry = $game->rosterEntries()
+            ->where('user_id', $userId)
+            ->first();
+        if ($entry === null) {
+            throw new InvalidArgumentException('Игровое действие относится к игроку вне состава.');
+        }
+
+        $points = $this->validatedActionPoints($game, $type, $action);
+
+        $game->actions()->create([
+            'sequence' => ((int) $game->actions()->max('sequence')) + 1,
+            'game_period_id' => $periodId,
+            'game_side_id' => $entry->game_side_id,
+            'user_id' => $userId,
+            'created_by_actor_id' => $actor->id,
+            'type' => $type,
+            'points' => $points,
+            'payload' => $action['payload'] ?? null,
+            'occurred_at' => now(),
+        ]);
+    }
+
+    private function activePeriodIdForAction(Game $game): ?int
+    {
+        if ($game->timing_mode === GameTimingModeEnum::WHOLE_GAME) {
+            return null;
+        }
+
+        $periodId = $game->periods()
+            ->where('status', 'in_progress')
+            ->lockForUpdate()
+            ->value('id');
+        if ($periodId === null) {
+            throw new InvalidArgumentException('Сначала начните период для записи игровых показателей.');
+        }
+
+        return (int) $periodId;
+    }
+
+    /** @param array<string, mixed> $action */
+    private function validatedActionPoints(Game $game, GameActionTypeEnum $type, array $action): ?int
+    {
+        if (! in_array($type, [GameActionTypeEnum::SHOT_MADE, GameActionTypeEnum::SHOT_MISSED], true)) {
+            if (isset($action['points'])) {
+                throw new InvalidArgumentException('Очки можно указывать только для броска.');
+            }
+
+            return null;
+        }
+
+        $range = $action['payload']['range'] ?? null;
+        if (! in_array($range, ['close', 'mid', 'three', 'free_throw'], true)) {
+            throw new InvalidArgumentException('Для броска нужна корректная дистанция.');
+        }
+
+        $expectedPoints = match ($range) {
+            'three' => $game->scoring_type === GameScoringTypeEnum::STREETBALL ? 2 : 3,
+            'free_throw' => 1,
+            default => $game->scoring_type === GameScoringTypeEnum::STREETBALL ? 1 : 2,
+        };
+        $points = isset($action['points']) ? (int) $action['points'] : null;
+        $expected = $type === GameActionTypeEnum::SHOT_MADE ? $expectedPoints : 0;
+
+        if ($points !== $expected) {
+            throw new InvalidArgumentException('Количество очков не соответствует типу и дистанции броска.');
+        }
+
+        return $points;
+    }
+
     private function confirmLockedStatistics(Game $game, Actor $actor): void
     {
         if ($game->statistics_status !== GameStatisticsStatusEnum::READY) {
@@ -547,29 +734,47 @@ final class GameManagementService
         if ($selectedPlayers === 0 || $statisticPlayers !== $selectedPlayers) {
             throw new InvalidArgumentException('Сохраните статистику для каждого игрока выбранного состава.');
         }
-        $selectedBySide = $game->rosterEntries()
+        $startersBySide = $game->rosterEntries()
             ->selectRaw('game_side_id, count(*) as aggregate')
             ->where('status', GameRosterStatusEnum::SELECTED->value)
+            ->where('lineup_role', GameLineupRoleEnum::STARTER->value)
             ->groupBy('game_side_id')
             ->pluck('aggregate', 'game_side_id');
         $sides = $game->sides()->get()->keyBy('slot');
         if ($sides->count() !== 2
-            || (int) ($selectedBySide[$sides['A']->id] ?? 0) < 1
-            || (int) ($selectedBySide[$sides['B']->id] ?? 0) < 1
-            || (int) ($selectedBySide[$sides['A']->id] ?? 0) > $game->side_a_size
-            || (int) ($selectedBySide[$sides['B']->id] ?? 0) > $game->side_b_size) {
-            throw new InvalidArgumentException('Проверьте составы: на каждой стороне должен быть хотя бы один игрок и не больше указанного формата.');
+            || (int) ($startersBySide[$sides['A']->id] ?? 0) !== (int) $game->side_a_size
+            || (int) ($startersBySide[$sides['B']->id] ?? 0) !== (int) $game->side_b_size) {
+            throw new InvalidArgumentException('Проверьте стартовые составы: количество игроков на площадке должно соответствовать формату игры.');
         }
 
         $game->update([
+            'status' => GameStatusEnum::COMPLETED,
             'statistics_status' => GameStatisticsStatusEnum::CONFIRMED,
             'statistics_confirmed_at' => now(),
             'statistics_confirmed_by_actor_id' => $actor->id,
+            'completed_at' => now(),
+            'completed_by_actor_id' => $actor->id,
         ]);
         $game->rosterEntries()
             ->where('status', GameRosterStatusEnum::SELECTED->value)
             ->update(['status' => GameRosterStatusEnum::PLAYED->value]);
 
+    }
+
+    private function completeStandaloneParent(Event $event, Game $game, Actor $actor): void
+    {
+        if ($event->type !== EventTypeEnum::GAME) {
+            return;
+        }
+        if ($event->primary_game_id !== $game->id) {
+            throw new InvalidArgumentException('Основная игра мероприятия была изменена. Обновите страницу.');
+        }
+
+        $event->forceFill([
+            'status' => EventStatusEnum::COMPLETED,
+            'completed_at' => now(),
+            'completed_by_actor_id' => $actor->id,
+        ])->save();
     }
 
     private function hasRecordedGameData(Game $game): bool
@@ -597,6 +802,56 @@ final class GameManagementService
         }
         if ($game->actual_ended_at !== null) {
             throw new InvalidArgumentException('Игра уже закончена. Оперативный ввод закрыт.');
+        }
+    }
+
+    /** @return array{GameFormatEnum, int|null} */
+    private function normalizeFormat(
+        ?GameFormatEnum $format,
+        int $sideASize,
+        int $sideBSize,
+        GameScoringTypeEnum $scoringType,
+        ?int $periodsCount,
+    ): array {
+        if ($scoringType !== GameScoringTypeEnum::BASKETBALL) {
+            $periodsCount = null;
+        } else {
+            $periodsCount ??= 4;
+            if ($periodsCount < 1 || $periodsCount > 20) {
+                throw new InvalidArgumentException('Количество периодов должно быть от 1 до 20.');
+            }
+        }
+
+        if ($format === null
+            || $format === GameFormatEnum::CUSTOM
+            || $format->sideSize() !== $sideASize
+            || $format->sideSize() !== $sideBSize
+            || $format->scoringType() !== $scoringType) {
+            $format = GameFormatEnum::CUSTOM;
+        }
+
+        return [$format, $periodsCount];
+    }
+
+    private function normalizePeriodConfiguration(GameTimingModeEnum $mode, ?int $periodsCount): ?int
+    {
+        if ($mode === GameTimingModeEnum::WHOLE_GAME) {
+            return null;
+        }
+        if (! in_array($periodsCount, [2, 4], true)) {
+            throw new InvalidArgumentException('Для периодной игры выберите 2 или 4 периода.');
+        }
+
+        return $periodsCount;
+    }
+
+    private function createPeriods(Game $game, ?int $periodsCount): void
+    {
+        if ($periodsCount === null) {
+            return;
+        }
+        foreach (range(1, $periodsCount) as $number) {
+            $game->periods()->create(['number' => $number]);
         }
     }
 
@@ -688,6 +943,22 @@ final class GameManagementService
         }
     }
 
+    /**
+     * У постоянной команды формат задаёт размер стартовой пятёрки/тройки,
+     * а снимок состава конкретной игры может также включать запасных.
+     */
+    private function assertPermanentTeamRosterSizes(
+        array $sideAUserIds,
+        array $sideBUserIds,
+        int $sideASize,
+        int $sideBSize,
+    ): void {
+        $this->assertSideSizeLimits($sideASize, $sideBSize);
+        if (count($sideAUserIds) < $sideASize || count($sideBUserIds) < $sideBSize) {
+            throw new InvalidArgumentException('В составе на игру должно хватать игроков для стартового состава каждой стороны.');
+        }
+    }
+
     private function assertSideSizeLimits(int $sideASize, int $sideBSize): void
     {
         if ($sideASize < 1 || $sideASize > 7 || $sideBSize < 1 || $sideBSize > 7) {
@@ -765,6 +1036,23 @@ final class GameManagementService
     /** @return Collection<int, array{membership_id?: int, participant_id?: int}> */
     private function rosterCandidates(Game $game): Collection
     {
+        $tournamentMatch = $game->tournamentMatch()
+            ->with(['entryA', 'entryB'])
+            ->first();
+        if ($tournamentMatch !== null) {
+            return collect(['A' => $tournamentMatch->entryA, 'B' => $tournamentMatch->entryB])
+                ->flatMap(fn ($entry, string $slot) => $this->tournamentEntryRosters->resolve($entry)->map(fn (array $member) => [
+                    'member' => $member,
+                    'slot' => $slot,
+                ]))
+                ->mapWithKeys(fn (array $item) => [
+                    $item['member']['user_id'] => [
+                        'membership_id' => $item['member']['source_contract_membership_id'],
+                        'slot' => $item['slot'],
+                    ],
+                ]);
+        }
+
         if ($game->event->type !== EventTypeEnum::GAME) {
             return $game->event->participants()
                 ->where('status', EventParticipantStatusEnum::CONFIRMED->value)

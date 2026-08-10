@@ -35,7 +35,9 @@ final class GameRosterEntryObserver
                 ->where('sport_type', $sportType))
             ->value('assignment');
         $isStarter = $sportAssignment !== null
-            ? $sportAssignment === TeamLineupAssignmentEnum::STARTER->value
+            ? TeamLineupAssignmentEnum::tryFrom(
+                $sportAssignment instanceof TeamLineupAssignmentEnum ? $sportAssignment->value : (string) $sportAssignment,
+            ) === TeamLineupAssignmentEnum::STARTER
             : $membership->is_default_starter;
         $entry->lineup_role = $isStarter
             ? GameLineupRoleEnum::STARTER

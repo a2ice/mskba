@@ -13,6 +13,7 @@ use App\Modules\Event\Application\UseCases\AddEventParticipantHandler;
 use App\Modules\Event\Application\UseCases\CancelEventHandler;
 use App\Modules\Event\Application\UseCases\CompleteEventHandler;
 use App\Modules\Event\Application\UseCases\CreateEventHandler;
+use App\Modules\Event\Application\UseCases\CreateStandaloneGameHandler;
 use App\Modules\Event\Application\UseCases\JoinEventHandler;
 use App\Modules\Event\Application\UseCases\LeaveEventHandler;
 use App\Modules\Event\Application\UseCases\ListEventsHandler;
@@ -46,6 +47,7 @@ use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
 use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
+use App\Modules\Tournament\Application\Services\TournamentEntryRosterResolver;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
@@ -161,6 +163,7 @@ final class EventController extends Controller
     public function store(
         CreateEventRequest $request,
         CreateEventHandler $events,
+        CreateStandaloneGameHandler $standaloneGames,
         CurrentActorResolver $actors,
         TelegramChatRegistry $telegramChats,
         PrepareTelegramEventPublicationsHandler $prepareTelegramPublications,
@@ -178,9 +181,12 @@ final class EventController extends Controller
                 $actor,
                 $data,
                 $events,
+                $standaloneGames,
                 $prepareTelegramPublications,
             ) {
-                $event = $events->handle($actor, $data);
+                $event = $data['type'] === EventTypeEnum::GAME->value
+                    ? $standaloneGames->handle($actor, $data)
+                    : $events->handle($actor, $data);
 
                 if ((bool) ($data['publish_to_telegram'] ?? false)) {
                     $prepareTelegramPublications->handle(
@@ -211,6 +217,7 @@ final class EventController extends Controller
         EventPlayerStatisticsSummaryBuilder $playerStatisticsSummaryBuilder,
         GameStatisticsFields $statisticsFields,
         PageSeoResolver $pageSeo,
+        TournamentEntryRosterResolver $entryRosters,
     ): Response|RedirectResponse {
         $actor = $actors->resolveForRequest($request);
         $eventExists = Event::query()->whereRouteIdentifier($event)->exists();
@@ -232,10 +239,17 @@ final class EventController extends Controller
         $currentParticipant = $request->user() === null
             ? null
             : $item->participants->firstWhere('user_id', $request->user()->id);
+        $tournamentMatch = $item->primaryGame?->tournamentMatch;
+        $tournamentCandidates = $tournamentMatch === null
+            ? collect()
+            : collect([
+                'A' => $entryRosters->resolveUsers($tournamentMatch->entryA),
+                'B' => $entryRosters->resolveUsers($tournamentMatch->entryB),
+            ]);
 
         return ThemeResolver::page($item->type === EventTypeEnum::GAME ? 'events.game-show' : 'events.show', [
             'event' => $item,
-            'game' => $item->games->first(),
+            'game' => $item->primaryGame,
             'eventPlayerStatistics' => $playerStatisticsSummaryBuilder->build($item),
             'currentParticipant' => $currentParticipant,
             'isParticipating' => $currentParticipant?->status === EventParticipantStatusEnum::CONFIRMED
@@ -248,6 +262,7 @@ final class EventController extends Controller
                 'mini_game' => EventResponsibilityPermissionEnum::miniGamePermissions(),
             ],
             'statisticsFields' => $statisticsFields->all(),
+            'tournamentCandidates' => $tournamentCandidates,
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::EVENT,
                 $item->id,

@@ -1,6 +1,7 @@
 @php
     use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
     use App\Modules\Event\Domain\Enums\GameStatusEnum;
+    use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 
     $title = $game->title ?: $event->title;
     $sides = $game->sides->keyBy('slot');
@@ -8,15 +9,14 @@
     $sideB = $sides->get('B');
     $roster = $game->rosterEntries->groupBy('game_side_id');
     $stats = $game->playerStatistics->keyBy('user_id');
+    $activeSide = $game->latestTeamAction?->gameSide?->slot;
     $statisticsConfirmed = $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED;
     $isFinished = $game->status === GameStatusEnum::COMPLETED || $statisticsConfirmed;
     $isCancelled = $game->status === GameStatusEnum::CANCELLED;
     $effectiveStartsAt = $game->scheduled_starts_at ?? $event->starts_at;
     $effectiveEndsAt = $game->scheduled_ends_at ?? $event->ends_at;
-    $isLiveNow = ! $isFinished
-        && ! $isCancelled
-        && ! $effectiveStartsAt->isFuture()
-        && ! $effectiveEndsAt->isPast();
+    $isLiveNow = ! $isFinished && ! $isCancelled
+        && $game->actual_started_at !== null && $game->actual_ended_at === null;
     $name = static function ($user): string {
         $profile = $user->profile;
 
@@ -25,6 +25,10 @@
             ?: 'Пользователь #'.$user->id;
     };
     $sideLogo = static fn ($side): ?string => $side?->team?->logo?->publicUrl();
+    $sideName = static fn ($side, string $slot): string => $side?->display_name ?: 'Команда '.$slot;
+    $shortSideName = static function (string $value): string {
+        return mb_strlen($value) > 15 ? mb_substr($value, 0, 15).'…' : $value;
+    };
 @endphp
 
 @extends('theme::layouts.app', ['title' => 'Live · '.$title])
@@ -35,6 +39,7 @@
         data-game-live-screen
         data-game-id="{{ $game->id }}"
         data-game-event-id="{{ $event->id }}"
+        data-game-live-active-side="{{ $activeSide }}"
     >
         <header class="game-live-header">
             <a class="game-live-brand" href="{{ route('welcome') }}" aria-label="MSKBA">
@@ -52,22 +57,31 @@
         <section class="game-live-stage" aria-label="Счёт игры">
             <p class="game-live-stage__eyebrow">{{ $title }}</p>
             <div class="game-live-score" aria-label="{{ $sideA?->score ?? 0 }} : {{ $sideB?->score ?? 0 }}">
-                <strong data-game-live-score="A">{{ $sideA?->score ?? 0 }}</strong>
+                <strong data-game-live-score="A" @class(['is-active' => $activeSide === 'A'])>{{ $sideA?->score ?? 0 }}</strong>
                 <span>:</span>
-                <strong data-game-live-score="B">{{ $sideB?->score ?? 0 }}</strong>
+                <strong data-game-live-score="B" @class(['is-active' => $activeSide === 'B'])>{{ $sideB?->score ?? 0 }}</strong>
             </div>
 
             <div class="game-live-teams">
                 @foreach(['A' => $sideA, 'B' => $sideB] as $slot => $side)
+                    @php $fullSideName = $sideName($side, $slot); @endphp
                     <article class="game-live-team is-{{ strtolower($slot) }}">
                         <div class="game-live-team__logo">
                             @if($sideLogo($side))
-                                <img src="{{ $sideLogo($side) }}" alt="Логотип {{ $side?->display_name ?: 'Команда '.$slot }}">
-                            @else
-                                <i class="ti ti-shirt-sport" aria-hidden="true"></i>
+                                <img
+                                    src="{{ $sideLogo($side) }}"
+                                    alt="Логотип {{ $fullSideName }}"
+                                    data-game-live-team-logo
+                                >
                             @endif
+                            <i
+                                class="ti ti-shirt-sport"
+                                aria-hidden="true"
+                                data-game-live-team-logo-fallback
+                                @if($sideLogo($side)) hidden @endif
+                            ></i>
                         </div>
-                        <h1>{{ $side?->display_name ?: 'Команда '.$slot }}</h1>
+                        <h1 title="{{ $fullSideName }}" data-tooltip-variant="title" aria-label="{{ $fullSideName }}">{{ $shortSideName($fullSideName) }}</h1>
                     </article>
                 @endforeach
             </div>
@@ -90,9 +104,13 @@
                 </header>
 
                 <div class="game-live-stats__content">
+                    @if($game->timing_mode === GameTimingModeEnum::PERIODS)
+                        <section class="game-live-stats-team"><h3>По периодам</h3>@foreach($periodStatistics as $period)<details><summary>Период {{ $period['number'] }} · {{ $period['score_a'] ?? 0 }}:{{ $period['score_b'] ?? 0 }}</summary>@forelse($period['players'] as $userId => $values)<p><strong>{{ $name($game->rosterEntries->firstWhere('user_id', $userId)?->user) }}</strong>: {{ collect($values)->map(fn($value, $field) => ($statisticsFields[$field]['label'] ?? ($field === 'points' ? 'Очки' : $field)).' '.$value)->implode(', ') }}</p>@empty<p>Действий пока нет.</p>@endforelse</details>@endforeach</section>
+                    @endif
                     @foreach(['A' => $sideA, 'B' => $sideB] as $slot => $side)
                         <section class="game-live-stats-team">
-                            <h3>{{ $side?->display_name ?: 'Команда '.$slot }}</h3>
+                            @php $fullSideName = $sideName($side, $slot); @endphp
+                            <h3 title="{{ $fullSideName }}" data-tooltip-variant="title">{{ $shortSideName($fullSideName) }}</h3>
                             <div class="game-live-stats-team__players">
                                 @forelse($roster->get($side?->id, collect()) as $entry)
                                     @php $stat = $stats->get($entry->user_id); @endphp

@@ -35,4 +35,9 @@ class GameSide extends Model
     {
         return $this->hasMany(GamePlayerStatistic::class);
     }
+
+    public function actions(): HasMany
+    {
+        return $this->hasMany(GameAction::class);
+    }
 }

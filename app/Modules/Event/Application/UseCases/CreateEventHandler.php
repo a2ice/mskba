@@ -9,7 +9,9 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
+use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -98,6 +100,9 @@ final class CreateEventHandler
                     (int) ($data['side_a_size'] ?? 5),
                     (int) ($data['side_b_size'] ?? 5),
                     GameScoringTypeEnum::from($data['scoring_type'] ?? GameScoringTypeEnum::STREETBALL->value),
+                    GameFormatEnum::from($data['game_format'] ?? GameFormatEnum::STREETBALL_3X3->value),
+                    GameTimingModeEnum::from($data['timing_mode'] ?? GameTimingModeEnum::WHOLE_GAME->value),
+                    isset($data['periods_count']) ? (int) $data['periods_count'] : null,
                 );
             }
 

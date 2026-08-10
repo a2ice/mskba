@@ -12,7 +12,28 @@ if (liveScreen) {
     const eventPlayer = liveScreen.querySelector('[data-game-live-event-player]');
     const eventLogo = liveScreen.querySelector('[data-game-live-event-logo]');
     const eventLogoFallback = liveScreen.querySelector('[data-game-live-event-logo-fallback]');
+    const scoreNodes = Object.fromEntries(
+        ['A', 'B'].map((slot) => [slot, liveScreen.querySelector(`[data-game-live-score="${slot}"]`)]),
+    );
     let eventTimer = null;
+
+    liveScreen.querySelectorAll('[data-game-live-team-logo]').forEach((logo) => {
+        logo.addEventListener('error', () => {
+            logo.hidden = true;
+            logo.nextElementSibling.hidden = false;
+        });
+    });
+
+    eventLogo?.addEventListener('error', () => {
+        eventLogo.hidden = true;
+        eventLogoFallback.hidden = false;
+    });
+
+    [statsPanel, eventOverlay].forEach((overlay) => {
+        if (overlay) {
+            document.body.append(overlay);
+        }
+    });
 
     const setStatsOpen = (isOpen) => {
         if (!statsPanel) {
@@ -37,6 +58,20 @@ if (liveScreen) {
         eventTimer = null;
     };
 
+    const setActiveSide = (slot) => {
+        const normalizedSlot = String(slot || '').toUpperCase();
+
+        Object.entries(scoreNodes).forEach(([scoreSlot, node]) => {
+            node?.classList.toggle('is-active', scoreSlot === normalizedSlot);
+        });
+    };
+
+    const shortTeamName = (value) => {
+        const characters = Array.from(String(value || ''));
+
+        return characters.length > 15 ? `${characters.slice(0, 15).join('')}…` : characters.join('');
+    };
+
     const showEvent = (payload = {}) => {
         if (!eventOverlay || !eventLabel) {
             return;
@@ -44,7 +79,12 @@ if (liveScreen) {
 
         window.clearTimeout(eventTimer);
 
-        eventTeam.textContent = payload.teamName || '';
+        setActiveSide(payload.activeSide || payload.slot || payload.side || payload.gameSideSlot);
+
+        eventTeam.textContent = shortTeamName(payload.teamName);
+        eventTeam.dataset.tooltip = payload.teamName || '';
+        eventTeam.classList.toggle('ui-tooltip-source', Boolean(payload.teamName));
+        eventTeam.classList.toggle('ui-tooltip-source--title', Boolean(payload.teamName));
         eventLabel.textContent = payload.label || payload.eventLabel || 'Событие';
         eventPlayer.textContent = payload.playerName || '';
 
@@ -66,12 +106,14 @@ if (liveScreen) {
 
     const updateScore = (scores = {}) => {
         ['A', 'B'].forEach((slot) => {
-            const node = liveScreen.querySelector(`[data-game-live-score="${slot}"]`);
+            const node = scoreNodes[slot];
 
             if (node && scores[slot] !== undefined) {
                 node.textContent = String(scores[slot]);
             }
         });
+
+        setActiveSide(scores.activeSide || scores.slot || scores.side || scores.gameSideSlot);
     };
 
     window.addEventListener('mskba:game-live-event', (event) => showEvent(event.detail));
@@ -96,6 +138,7 @@ if (liveScreen) {
         showEvent,
         hideEvent,
         updateScore,
+        setActiveSide,
         openStatistics: () => setStatsOpen(true),
         closeStatistics: () => setStatsOpen(false),
     };
@@ -108,7 +151,10 @@ if (gameControl) {
     const statusChip = chips?.querySelector('.is-live, .is-complete, .is-expired, .is-planned');
 
     if (chips && statusChip && !chips.querySelector('.game-live-entry')) {
-        const liveUrl = `${window.location.pathname.replace(/\/$/, '')}/live`;
+        const liveUrl = gameControl.dataset.gameLiveUrl;
+        if (!liveUrl) {
+            return;
+        }
         const link = document.createElement('a');
         const isLive = statusChip.classList.contains('is-live');
 

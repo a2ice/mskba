@@ -5,8 +5,11 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameManagementService;
+use App\Modules\Event\Application\UseCases\CancelEventHandler;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\GameActionTypeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
@@ -16,6 +19,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
 final class GameController extends Controller
@@ -38,7 +42,7 @@ final class GameController extends Controller
             'side_b_name' => ['nullable', 'string', 'max:80', 'different:side_a_name'],
             'side_a_size' => ['required', 'integer', 'min:1', 'max:6'],
             'side_b_size' => ['required', 'integer', 'min:1', 'max:5'],
-            'scoring_type' => ['nullable', 'enum:'.GameScoringTypeEnum::class],
+            'scoring_type' => ['nullable', Rule::enum(GameScoringTypeEnum::class)],
             'side_a_user_ids' => ['required', 'array', 'min:1'],
             'side_a_user_ids.*' => ['integer'],
             'side_b_user_ids' => ['required', 'array', 'min:1'],
@@ -82,19 +86,38 @@ final class GameController extends Controller
             'side_a_user_ids.*' => ['integer'],
             'side_b_user_ids' => ['required', 'array', 'min:1'],
             'side_b_user_ids.*' => ['integer'],
+            'starters' => ['sometimes', 'required', 'array'],
+            'starters.A' => ['required_with:starters', 'array'],
+            'starters.A.*' => ['integer'],
+            'starters.B' => ['required_with:starters', 'array'],
+            'starters.B.*' => ['integer'],
+            'captains' => ['sometimes', 'required', 'array'],
+            'captains.A' => ['required_with:captains', 'integer'],
+            'captains.B' => ['required_with:captains', 'integer'],
         ]);
 
         try {
-            $games->replaceRoster($game, $actor, $data['side_a_user_ids'] ?? [], $data['side_b_user_ids'] ?? []);
+            $games->replaceRoster(
+                $game,
+                $actor,
+                $data['side_a_user_ids'] ?? [],
+                $data['side_b_user_ids'] ?? [],
+                $data['starters'] ?? null,
+                $data['captains'] ?? null,
+            );
         } catch (InvalidArgumentException $exception) {
             return $request->expectsJson()
                 ? response()->json(['message' => $exception->getMessage()], 422)
                 : back()->withInput()->with('error', $exception->getMessage());
         }
 
+        $message = isset($data['starters'], $data['captains'])
+            ? 'Состав игры, стартовые игроки и капитаны сохранены.'
+            : 'Состав игры сохранён.';
+
         return $request->expectsJson()
-            ? response()->json(['message' => 'Состав игры сохранён.'])
-            : back()->with('status', 'Состав игры сохранён.');
+            ? response()->json(['message' => $message])
+            : back()->with('status', $message);
     }
 
     public function updateMiniGame(
@@ -115,7 +138,7 @@ final class GameController extends Controller
             'side_b_name' => ['required', 'string', 'max:80', 'different:side_a_name'],
             'side_a_size' => ['required', 'integer', 'min:1', 'max:6'],
             'side_b_size' => ['required', 'integer', 'min:1', 'max:5'],
-            'scoring_type' => ['nullable', 'enum:'.GameScoringTypeEnum::class],
+            'scoring_type' => ['nullable', Rule::enum(GameScoringTypeEnum::class)],
         ]);
 
         return $this->perform(
@@ -168,7 +191,7 @@ final class GameController extends Controller
         $data = $this->validatedStatistics($request);
 
         try {
-            $games->saveStatistics($game, $actor, $data);
+            $games->saveStatistics($game, $actor, $data, $data['action'] ?? null);
         } catch (InvalidArgumentException $exception) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => $exception->getMessage()], 422);
@@ -223,11 +246,16 @@ final class GameController extends Controller
         CurrentActorResolver $actors,
         EventManagementAccess $access,
         GameManagementService $games,
+        CancelEventHandler $cancelEvents,
     ): RedirectResponse|JsonResponse {
         [$game, $actor] = $this->managedGame($request, $event, $actors, $access, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
 
         try {
-            $games->cancelMiniGame($game, $actor);
+            if ($game->event->type === EventTypeEnum::GAME) {
+                $cancelEvents->handle($game->event->routeIdentifier(), $actor, 'Игра отменена организатором.');
+            } else {
+                $games->cancelMiniGame($game, $actor);
+            }
         } catch (InvalidArgumentException $exception) {
             return $request->expectsJson()
                 ? response()->json(['message' => $exception->getMessage()], 422)
@@ -355,6 +383,11 @@ final class GameController extends Controller
             'scores.A' => ['required', 'integer', 'min:0', 'max:999'],
             'scores.B' => ['required', 'integer', 'min:0', 'max:999'],
             'players' => ['array'],
+            'action' => ['nullable', 'array'],
+            'action.type' => ['required_with:action', Rule::enum(GameActionTypeEnum::class)],
+            'action.user_id' => ['required_with:action', 'integer'],
+            'action.points' => ['nullable', 'integer', 'min:0', 'max:255'],
+            'action.payload' => ['nullable', 'array'],
         ];
         foreach (GamePlayerStatistic::COUNTING_FIELDS as $field) {
             $rules['players.*.'.$field] = ['nullable', 'integer', 'min:0', 'max:999'];

@@ -2,12 +2,22 @@
 
 namespace Tests\Feature\Tournament;
 
+use App\Modules\Tournament\Domain\Models\Tournament;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 final class TournamentIndexTest extends TestCase
 {
-    public function test_tournament_placeholder_exposes_periods_and_filters(): void
+    use RefreshDatabase;
+
+    public function test_tournament_catalog_exposes_periods_filters_and_real_records(): void
     {
+        Tournament::factory()->create([
+            'title' => 'Летний кубок',
+            'starts_on' => '2026-08-15',
+            'ends_on' => '2026-08-20',
+        ]);
+
         $this->get(route('tournaments.index', [
             'period' => 'upcoming',
             'query' => 'Летний кубок',
@@ -19,7 +29,8 @@ final class TournamentIndexTest extends TestCase
             ->assertSee('Летний кубок')
             ->assertSee('Поиск по названию')
             ->assertSeeInOrder(['Все', 'Текущие', 'Предстоящие', 'Прошедшие'])
-            ->assertSee('Раздел турниров находится в разработке.');
+            ->assertSee('Подробнее')
+            ->assertDontSee('Раздел турниров находится в разработке.');
     }
 
     public function test_tournament_filters_are_validated(): void

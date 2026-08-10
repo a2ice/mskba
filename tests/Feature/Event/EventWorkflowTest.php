@@ -967,7 +967,13 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($organizer)
             ->get(route('events.show', $event->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Отметить состоявшимся');
+            ->assertSee(route('events.management', $event->routeIdentifier()), false)
+            ->assertDontSee('name="result_description"', false);
+
+        $this->actingAs($organizer)
+            ->get(route('events.management', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('name="result_description"', false);
 
         $this->actingAs($organizer)
             ->put(route('events.result.update', $event->routeIdentifier()), [
@@ -1115,8 +1121,12 @@ final class EventWorkflowTest extends TestCase
         $this->actingAs($organizer)
             ->get(route('events.show', $event->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Для создания мини-игры нужны хотя бы два участника.')
-            ->assertSee('href="#event-participant-management"', false);
+            ->assertDontSee('Для создания мини-игры нужны хотя бы два участника.');
+
+        $this->actingAs($organizer)
+            ->get(route('events.management', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Для создания мини-игры нужны хотя бы два подтверждённых участника.');
 
         $event->forceFill([
             'starts_at' => now()->subHours(2),

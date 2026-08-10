@@ -9,7 +9,9 @@ use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Tournament\Application\Services\TournamentEntryRosterResolver;
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -23,7 +25,9 @@ final class EventGameController extends Controller
         CurrentActorResolver $actors,
         EventManagementAccess $access,
         GameStatisticsFields $statisticsFields,
-    ): Response {
+        TournamentEntryRosterResolver $entryRosters,
+    ): Response|RedirectResponse {
+        $managementMode = $request->attributes->getBoolean('game_management_mode');
         $actor = $actors->resolveForRequest($request);
         $parent = $events->handle($event, $actor);
         $gameModel = Game::query()
@@ -32,19 +36,38 @@ final class EventGameController extends Controller
             ->with([
                 'sides.team.memberships.contract',
                 'sides.team.memberships.user.profile.activeAvatar',
+                'sides.team.logo',
+                'sides.team.sportProfiles.lineupMembers',
+                'tournamentMatch.entryA.members.user.profile.activeAvatar',
+                'tournamentMatch.entryB.members.user.profile.activeAvatar',
                 'rosterEntries.gameSide',
                 'rosterEntries.user.profile.activeAvatar',
                 'playerStatistics',
+                'periods',
             ])
             ->firstOrFail();
+        abort_if($parent->type->value === 'game' && $parent->primary_game_id !== $gameModel->id, 404);
+        if (! $managementMode && $parent->type->value === 'game') {
+            return redirect()->route('events.show', $parent->routeIdentifier(), 301);
+        }
+        $canManage = $actor !== null && $access->canManage($parent, $actor);
+        abort_if($managementMode && ! $canManage, 403);
+        $tournamentCandidates = $gameModel->tournamentMatch === null
+            ? collect()
+            : collect([
+                'A' => $entryRosters->resolveUsers($gameModel->tournamentMatch->entryA),
+                'B' => $entryRosters->resolveUsers($gameModel->tournamentMatch->entryB),
+            ]);
 
         return ThemeResolver::page('events.game-show', [
             'event' => $parent,
             'game' => $gameModel,
-            'canManage' => $actor !== null && $access->canManage($parent, $actor),
+            'canManage' => $canManage,
             'effectivePermissions' => collect($actor === null ? [] : $access->effectivePermissions($parent, $actor))
                 ->map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value),
             'statisticsFields' => $statisticsFields->all(),
+            'managementMode' => $managementMode,
+            'tournamentCandidates' => $tournamentCandidates,
         ]);
     }
 }

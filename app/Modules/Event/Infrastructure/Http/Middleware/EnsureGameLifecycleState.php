@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Infrastructure\Http\Middleware;
 
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use Closure;
 use Illuminate\Http\Request;

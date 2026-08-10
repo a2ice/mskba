@@ -3,6 +3,7 @@
 namespace App\Modules\Contract\Domain\Enums;
 
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Models\Venue;
 
 enum ContractMembershipScopeTypeEnum: string
@@ -11,6 +12,7 @@ enum ContractMembershipScopeTypeEnum: string
     case EVENT = 'event';
     case TEAM = 'team';
     case COMPANY = 'company';
+    case TOURNAMENT = 'tournament';
 
     public function label(): string
     {
@@ -19,6 +21,7 @@ enum ContractMembershipScopeTypeEnum: string
             self::EVENT => 'Событие',
             self::TEAM => 'Команда',
             self::COMPANY => 'Компания',
+            self::TOURNAMENT => 'Турнир',
         };
     }
 
@@ -27,6 +30,7 @@ enum ContractMembershipScopeTypeEnum: string
         return match ($this) {
             self::VENUE => Venue::class,
             self::TEAM => Team::class,
+            self::TOURNAMENT => Tournament::class,
 
             self::EVENT,
             self::COMPANY => null,
@@ -38,6 +42,7 @@ enum ContractMembershipScopeTypeEnum: string
         return match ($this) {
             self::VENUE => 'venues.show',
             self::TEAM => 'teams.show',
+            self::TOURNAMENT => 'tournaments.show',
 
             self::EVENT,
             self::COMPANY => null,
@@ -49,6 +54,7 @@ enum ContractMembershipScopeTypeEnum: string
         return match ($this) {
             self::VENUE,
             self::TEAM => 'name',
+            self::TOURNAMENT => 'title',
 
             self::EVENT,
             self::COMPANY => 'id',
@@ -62,7 +68,8 @@ enum ContractMembershipScopeTypeEnum: string
             self::TEAM => TeamMembershipAccessLevelEnum::class,
 
             self::EVENT,
-            self::COMPANY => null,
+            self::COMPANY,
+            self::TOURNAMENT => null,
         };
     }
 }

@@ -13,12 +13,15 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
+use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsModeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventParticipant;
 use App\Modules\Event\Domain\Models\Game;
@@ -32,6 +35,8 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
@@ -75,7 +80,7 @@ class GameLifecycleDemoSeeder extends Seeder
             $teamB = $this->team($actor, $organizer, 'demo-blue', '[DEMO] Синие', $playersB);
 
             $this->standalonePlannedGame($actor, $venue, $teamA, $teamB, $playersA, $playersB);
-            $this->trainingWithMiniGames($actor, $venue, $playersA, $playersB);
+            $this->trainingWithMiniGames($actor, $venue, $teamA, $teamB, $playersA, $playersB);
             $this->completedGame($actor, $venue, $teamA, $teamB, $playersA, $playersB);
         });
     }
@@ -118,10 +123,23 @@ class GameLifecycleDemoSeeder extends Seeder
 
     private function venue(): Venue
     {
+        $address = Address::query()->updateOrCreate(
+            ['full_address' => 'Москва, Демо-проезд, 1'],
+            [
+                'city' => 'Москва',
+                'street' => 'Демо-проезд',
+                'building' => '1',
+                'latitude' => 55.751244,
+                'longitude' => 37.618423,
+            ],
+        );
+        $location = Location::query()->firstOrCreate(['address_id' => $address->id]);
+
         return Venue::query()->updateOrCreate(
             ['alias' => 'demo-basketball-arena'],
             [
                 'name' => '[DEMO] Баскетбольная арена',
+                'location_id' => $location->id,
                 'type' => VenueTypeEnum::ARENA,
                 'status' => VenueStatusEnum::CONFIRMED,
                 'raw_address' => 'Москва, Демо-проезд, 1',
@@ -233,8 +251,14 @@ class GameLifecycleDemoSeeder extends Seeder
     }
 
     /** @param array<int, User> $playersA @param array<int, User> $playersB */
-    private function trainingWithMiniGames(Actor $actor, Venue $venue, array $playersA, array $playersB): void
-    {
+    private function trainingWithMiniGames(
+        Actor $actor,
+        Venue $venue,
+        Team $teamA,
+        Team $teamB,
+        array $playersA,
+        array $playersB,
+    ): void {
         $participants = [...$playersA, ...$playersB];
         // Интервал контейнера обязан охватывать внутренние слоты обеих demo-игр.
         $start = now()->subHours(3);
@@ -263,8 +287,8 @@ class GameLifecycleDemoSeeder extends Seeder
         $liveStart = now()->subMinutes(20);
         $this->game(
             $training,
-            null,
-            null,
+            $teamA,
+            $teamB,
             array_slice($playersA, 0, 4),
             array_slice($playersB, 0, 4),
             $participantModels,
@@ -279,8 +303,8 @@ class GameLifecycleDemoSeeder extends Seeder
         $endedStart = now()->subHours(2);
         $this->game(
             $training,
-            null,
-            null,
+            $teamA,
+            $teamB,
             array_slice($playersA, 0, 4),
             array_slice($playersB, 0, 4),
             $participantModels,
@@ -391,9 +415,12 @@ class GameLifecycleDemoSeeder extends Seeder
                     : ($ready
                         ? GameStatusEnum::AWAITING_RESULT
                         : ($actualStartedAt ? GameStatusEnum::IN_PROGRESS : GameStatusEnum::SCHEDULED)),
+                'format' => GameFormatEnum::CUSTOM,
+                'timing_mode' => GameTimingModeEnum::PERIODS,
                 'side_a_size' => 3,
                 'side_b_size' => 3,
                 'scoring_type' => GameScoringTypeEnum::BASKETBALL,
+                'periods_count' => 4,
                 'statistics_mode' => GameStatisticsModeEnum::FULL,
                 'statistics_status' => $statisticsStatus,
                 'statistics_version' => 1,
@@ -410,6 +437,26 @@ class GameLifecycleDemoSeeder extends Seeder
                 'deleted_at' => null,
             ],
         );
+        if ($event->type === EventTypeEnum::GAME && $event->primary_game_id !== $game->id) {
+            $event->forceFill(['primary_game_id' => $game->id])->save();
+        }
+        foreach (range(1, 4) as $periodNumber) {
+            $periodCompleted = $ready || $confirmed;
+            $periodActive = ! $periodCompleted && $actualStartedAt !== null && $periodNumber === 1;
+            $game->periods()->updateOrCreate(['number' => $periodNumber], [
+                'status' => $periodCompleted
+                    ? GamePeriodStatusEnum::COMPLETED
+                    : ($periodActive
+                        ? GamePeriodStatusEnum::IN_PROGRESS
+                        : GamePeriodStatusEnum::SCHEDULED),
+                'actual_started_at' => ($periodCompleted || $periodActive) ? $actualStartedAt : null,
+                'started_by_actor_id' => ($periodCompleted || $periodActive) ? ($actor?->id ?? $event->organizer_actor_id) : null,
+                'actual_ended_at' => $periodCompleted ? $actualEndedAt : null,
+                'ended_by_actor_id' => $periodCompleted ? ($actor?->id ?? $event->organizer_actor_id) : null,
+                'side_a_score' => $periodCompleted ? 21 : null,
+                'side_b_score' => $periodCompleted ? 18 : null,
+            ]);
+        }
         GamePlayerStatistic::query()->where('game_id', $game->id)->delete();
 
         $sideA = GameSide::query()->updateOrCreate(

@@ -55,4 +55,21 @@ final class TeamManagementAccess
 
         return false;
     }
+
+    public function canManageMembersAndRoster(Team $team, Actor $actor): bool
+    {
+        foreach ([
+            TeamPermissionEnum::MANAGE_ROSTER,
+            TeamPermissionEnum::INVITE_MEMBERS,
+            TeamPermissionEnum::MANAGE_ROLES,
+            TeamPermissionEnum::MANAGE_PERMISSIONS,
+            TeamPermissionEnum::REMOVE_MEMBERS,
+        ] as $permission) {
+            if ($this->allows($team, $actor, $permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

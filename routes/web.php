@@ -40,7 +40,14 @@ use App\Modules\Telegram\Presentation\Http\Controllers\StartTelegramBotLoginCont
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramBotLoginStatusController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramWebLoginController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentAdmissionController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentCandidateSearchController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentFormationController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchSchedulingController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Presentation\Theming\ThemeResolver;
@@ -313,6 +320,8 @@ Route::prefix('events')->group(function () {
         Route::get('/{event}/games/{game}/lifecycle', [NestedGameController::class, 'lifecycle'])->whereNumber('game')->name('events.games.lifecycle.show');
         Route::post('/{event}/games/{game}/start', [NestedGameController::class, 'start'])->whereNumber('game')->name('events.games.start');
         Route::post('/{event}/games/{game}/end', [NestedGameController::class, 'end'])->whereNumber('game')->name('events.games.end');
+        Route::post('/{event}/games/{game}/periods/end', [NestedGameController::class, 'endPeriod'])->whereNumber('game')->name('events.games.periods.end');
+        Route::post('/{event}/games/{game}/periods/start-next', [NestedGameController::class, 'startNextPeriod'])->whereNumber('game')->name('events.games.periods.start-next');
         Route::put('/{event}/games/{game}/lineup', [NestedGameController::class, 'lineup'])->whereNumber('game')->name('events.games.lineup.update');
     });
 
@@ -320,9 +329,37 @@ Route::prefix('events')->group(function () {
         ->name('events.show');
 });
 
-Route::get('/tournaments', [TournamentController::class, 'index'])
-    ->name('tournaments.index')
-    ->defaults('breadcrumb', 'Турниры');
+Route::prefix('tournaments')->group(function () {
+    Route::get('/', [TournamentController::class, 'index'])->name('tournaments.index')->defaults('breadcrumb', 'Турниры');
+    Route::middleware('auth')->group(function () {
+        Route::get('/create', [TournamentController::class, 'create'])->name('tournaments.create')->defaults('breadcrumb', 'Новый турнир');
+        Route::post('/', [TournamentController::class, 'store'])->name('tournaments.store');
+        Route::get('/{tournament}/manage', [TournamentController::class, 'manage'])->name('tournaments.manage');
+        Route::put('/{tournament}', [TournamentController::class, 'update'])->name('tournaments.update');
+        Route::patch('/{tournament}/status', [TournamentController::class, 'status'])->name('tournaments.status');
+        Route::post('/{tournament}/staff', [TournamentController::class, 'inviteStaff'])->name('tournaments.staff.invite');
+        Route::get('/{tournament}/staff/candidates', TournamentStaffCandidateSearchController::class)->name('tournaments.staff.candidates');
+        Route::post('/{tournament}/admissions/invite', [TournamentAdmissionController::class, 'invite'])->name('tournaments.admissions.invite');
+        Route::get('/{tournament}/admissions/candidates', TournamentCandidateSearchController::class)->name('tournaments.admissions.candidates');
+        Route::post('/{tournament}/admissions/apply', [TournamentAdmissionController::class, 'apply'])->name('tournaments.admissions.apply');
+        Route::post('/{tournament}/admissions/{admission}/respond', [TournamentAdmissionController::class, 'respond'])->whereNumber('admission')->name('tournaments.admissions.respond');
+        Route::delete('/{tournament}/admissions/{admission}', [TournamentAdmissionController::class, 'revoke'])->whereNumber('admission')->name('tournaments.admissions.revoke');
+        Route::post('/{tournament}/formation/preview', [TournamentFormationController::class, 'preview'])->name('tournaments.formation.preview');
+        Route::post('/{tournament}/formation/apply', [TournamentFormationController::class, 'apply'])->name('tournaments.formation.apply');
+        Route::post('/{tournament}/schedule/preview', [TournamentScheduleController::class, 'preview'])->name('tournaments.schedule.preview');
+        Route::post('/{tournament}/schedule/apply', [TournamentScheduleController::class, 'apply'])->name('tournaments.schedule.apply');
+        Route::post('/{tournament}/matches', [TournamentMatchController::class, 'store'])->name('tournaments.matches.store');
+        Route::patch('/{tournament}/matches/reorder', [TournamentMatchController::class, 'reorder'])->name('tournaments.matches.reorder');
+        Route::delete('/{tournament}/matches/{match}', [TournamentMatchController::class, 'destroy'])->whereNumber('match')->name('tournaments.matches.destroy');
+        Route::post('/{tournament}/matches/{match}/schedule', TournamentMatchSchedulingController::class)->whereNumber('match')->name('tournaments.matches.schedule');
+        Route::put('/{tournament}/matches/{match}/schedule', [TournamentMatchSchedulingController::class, 'update'])->whereNumber('match')->name('tournaments.matches.reschedule');
+        Route::patch('/{tournament}/staff/{membership}', [TournamentController::class, 'updateStaff'])->whereNumber('membership')->name('tournaments.staff.update');
+        Route::post('/{tournament}/staff/{membership}/respond', [TournamentController::class, 'respondStaff'])->whereNumber('membership')->name('tournaments.staff.respond');
+        Route::delete('/{tournament}/staff/{membership}', [TournamentController::class, 'revokeStaff'])->whereNumber('membership')->name('tournaments.staff.revoke');
+        Route::delete('/{tournament}', [TournamentController::class, 'destroy'])->name('tournaments.destroy');
+    });
+    Route::get('/{tournament}', [TournamentController::class, 'show'])->name('tournaments.show');
+});
 
 Route::prefix('teams')->group(function () {
     Route::get('/', [TeamController::class, 'index'])->name('teams.index')->defaults('breadcrumb', 'Команды');

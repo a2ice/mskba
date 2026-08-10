@@ -6,6 +6,14 @@
         ? $venues->firstWhere('id', (int) $selectedVenueId)
         : null;
     $selectedDuration = (int) old('duration_minutes', $coordinatedDuration ?? $defaultDuration);
+    $selectedScoringType = old(
+        'scoring_type',
+        \App\Modules\Event\Domain\Enums\GameScoringTypeEnum::STREETBALL->value,
+    );
+    $selectedGameFormat = old('game_format', \App\Modules\Event\Domain\Enums\GameFormatEnum::STREETBALL_3X3->value);
+    $selectedTimingMode = old('timing_mode', $selectedGameFormat === \App\Modules\Event\Domain\Enums\GameFormatEnum::BASKETBALL_5X5->value ? 'periods' : 'whole_game');
+    $defaultSideSize = \App\Modules\Event\Domain\Enums\GameFormatEnum::tryFrom($selectedGameFormat)?->sideSize()
+        ?? ($selectedScoringType === \App\Modules\Event\Domain\Enums\GameScoringTypeEnum::BASKETBALL->value ? 5 : 3);
     $displayDurationOptions = collect($durationOptions)
         ->when(
             $selectedDuration > 0 && !in_array($selectedDuration, $durationOptions, true),
@@ -32,7 +40,9 @@
         <fieldset class="form-group field mb-4" data-game-team-fields @if(old('type', $defaultType->value) !== \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME->value) hidden @endif>
             <legend class="form-label">Команды и формат игры</legend>
             <p class="form-text mb-3">Выберите две постоянные команды. Текущий активный состав будет сохранён как снимок этой игры и его можно будет скорректировать перед началом.</p>
-            <div class="form-group field mb-3"><label class="form-label" for="{{ $formIdPrefix }}ScoringType">Правила подсчёта</label><select id="{{ $formIdPrefix }}ScoringType" class="form-select" name="scoring_type">@foreach(\App\Modules\Event\Domain\Enums\GameScoringTypeEnum::cases() as $scoringType)<option value="{{ $scoringType->value }}" @selected(old('scoring_type', 'streetball') === $scoringType->value)>{{ $scoringType->label() }}</option>@endforeach</select></div>
+            <div class="form-group field mb-3"><label class="form-label" for="{{ $formIdPrefix }}GameFormat">Предустановка формата</label><select id="{{ $formIdPrefix }}GameFormat" class="form-select" name="game_format" data-game-format>@foreach(\App\Modules\Event\Domain\Enums\GameFormatEnum::cases() as $format)<option value="{{ $format->value }}" data-side-size="{{ $format->sideSize() }}" data-scoring-type="{{ $format->scoringType()?->value }}" data-timing-mode="{{ $format === \App\Modules\Event\Domain\Enums\GameFormatEnum::BASKETBALL_5X5 ? 'periods' : 'whole_game' }}" data-periods-count="{{ $format === \App\Modules\Event\Domain\Enums\GameFormatEnum::BASKETBALL_5X5 ? 4 : '' }}" @selected($selectedGameFormat === $format->value)>{{ $format->label() }}</option>@endforeach</select></div>
+            <div class="form-group field mb-3"><label class="form-label" for="{{ $formIdPrefix }}ScoringType">Правила подсчёта</label><select id="{{ $formIdPrefix }}ScoringType" class="form-select" name="scoring_type" data-game-scoring-type>@foreach(\App\Modules\Event\Domain\Enums\GameScoringTypeEnum::cases() as $scoringType)<option value="{{ $scoringType->value }}" @selected($selectedScoringType === $scoringType->value)>{{ $scoringType->label() }}</option>@endforeach</select></div>
+            <div class="row g-3 mb-3"><div class="col-md-6 form-group field"><label class="form-label" for="{{ $formIdPrefix }}TimingMode">Режим времени</label><select id="{{ $formIdPrefix }}TimingMode" class="form-select" name="timing_mode" data-game-timing-mode>@foreach(\App\Modules\Event\Domain\Enums\GameTimingModeEnum::cases() as $mode)<option value="{{ $mode->value }}" @selected($selectedTimingMode === $mode->value)>{{ $mode->label() }}</option>@endforeach</select></div><div class="col-md-6 form-group field" data-game-periods-field @if($selectedTimingMode !== 'periods') hidden @endif><label class="form-label" for="{{ $formIdPrefix }}PeriodsCount">Количество периодов</label><select id="{{ $formIdPrefix }}PeriodsCount" class="form-select" name="periods_count" data-game-periods-count>@foreach(\App\Modules\Event\Domain\Enums\GamePeriodsCountEnum::cases() as $count)<option value="{{ $count->value }}" @selected((int) old('periods_count', 4) === $count->value)>{{ $count->label() }}</option>@endforeach</select></div></div>
             <div class="row g-3 mb-3">
                 <div class="col-md-6 form-group field">
                     <label class="form-label" for="{{ $formIdPrefix }}TeamA">Команда A</label>
@@ -58,14 +68,14 @@
             <div class="row g-3">
                 <div class="col-md-6 form-group field">
                     <label class="form-label" for="{{ $formIdPrefix }}SideASize">Игроков на площадке у A</label>
-                    <select id="{{ $formIdPrefix }}SideASize" class="form-select" name="side_a_size">
-                        @foreach(range(1, 7) as $size)<option value="{{ $size }}" @selected((int) old('side_a_size', 5) === $size)>{{ $size }}</option>@endforeach
+                    <select id="{{ $formIdPrefix }}SideASize" class="form-select" name="side_a_size" data-game-side-size>
+                        @foreach(range(1, 7) as $size)<option value="{{ $size }}" @selected((int) old('side_a_size', $defaultSideSize) === $size)>{{ $size }}</option>@endforeach
                     </select>
                 </div>
                 <div class="col-md-6 form-group field">
                     <label class="form-label" for="{{ $formIdPrefix }}SideBSize">Игроков на площадке у B</label>
-                    <select id="{{ $formIdPrefix }}SideBSize" class="form-select" name="side_b_size">
-                        @foreach(range(1, 7) as $size)<option value="{{ $size }}" @selected((int) old('side_b_size', 5) === $size)>{{ $size }}</option>@endforeach
+                    <select id="{{ $formIdPrefix }}SideBSize" class="form-select" name="side_b_size" data-game-side-size>
+                        @foreach(range(1, 7) as $size)<option value="{{ $size }}" @selected((int) old('side_b_size', $defaultSideSize) === $size)>{{ $size }}</option>@endforeach
                     </select>
                 </div>
             </div>

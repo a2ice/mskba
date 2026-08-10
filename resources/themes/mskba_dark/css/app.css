@@ -237,6 +237,13 @@ body:not(.main) .site-header {
     flex: 1 1 auto;
 }
 
+@media screen and (max-width: 1050px) {
+    .site-auth__button--register {
+        display: none;
+    }
+}
+
+
 @media screen and (max-width: 768px) {
     .site-header-right {
         justify-content: end;

@@ -4,6 +4,7 @@ namespace App\Modules\Event\Infrastructure\Http\Middleware;
 
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use Closure;

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameLifecycleService;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use Illuminate\Http\JsonResponse;
@@ -66,6 +68,16 @@ final class GameLifecycleController extends Controller
 
         $nestedEvent = $request->route('event');
         $nestedGame = $request->route('game');
+        $periods = $game->periods->map(fn ($period): array => [
+            'number' => $period->number,
+            'status' => $period->status->value,
+            'label' => $period->status->label(),
+            'side_a_score' => $period->side_a_score,
+            'side_b_score' => $period->side_b_score,
+        ])->values();
+        $activePeriod = $game->periods->first(fn ($period) => $period->status === GamePeriodStatusEnum::IN_PROGRESS);
+        $completedPeriods = $game->periods->where('status', GamePeriodStatusEnum::COMPLETED)->count();
+        $usesPeriods = $game->timing_mode === GameTimingModeEnum::PERIODS;
 
         return response()->json([
             'started' => $started,
@@ -75,13 +87,26 @@ final class GameLifecycleController extends Controller
             'actual_started_at' => $game->actual_started_at?->toIso8601String(),
             'actual_ended_at' => $game->actual_ended_at?->toIso8601String(),
             'can_start' => $canComplete && ! $started && ! $cancelled && ! $completed,
-            'can_end' => $canComplete && $started && ! $ended && ! $cancelled && ! $completed,
-            'can_enter_statistics' => $canManageStatistics && $started && ! $ended && ! $cancelled && ! $completed,
-            'can_manage_score' => $canManageScore && $started && ! $ended && ! $cancelled && ! $completed,
+            'can_end' => $canComplete && $started && ! $ended && ! $cancelled && ! $completed
+                && (! $usesPeriods || $activePeriod?->number === (int) $game->periods_count),
+            'can_end_period' => $canComplete && $usesPeriods && $activePeriod !== null
+                && $activePeriod->number < (int) $game->periods_count,
+            'can_start_next_period' => $canComplete && $usesPeriods && $started && ! $ended
+                && $activePeriod === null && $completedPeriods < (int) $game->periods_count,
+            'can_enter_statistics' => $canManageStatistics && $started && ! $ended && ! $cancelled && ! $completed
+                && (! $usesPeriods || $activePeriod !== null),
+            'can_manage_score' => $canManageScore && $started && ! $ended && ! $cancelled && ! $completed
+                && (! $usesPeriods || $activePeriod !== null),
             'can_manage_lineup' => $canManageRoster && ! $started && ! $cancelled && ! $completed,
             'can_confirm_result' => $canComplete && $canManageStatistics && $ended && ! $cancelled && ! $completed,
             'start_url' => route('events.games.start', [$nestedEvent, $nestedGame]),
             'end_url' => route('events.games.end', [$nestedEvent, $nestedGame]),
+            'end_period_url' => route('events.games.periods.end', [$nestedEvent, $nestedGame]),
+            'start_next_period_url' => route('events.games.periods.start-next', [$nestedEvent, $nestedGame]),
+            'timing_mode' => $game->timing_mode->value,
+            'periods_count' => $game->periods_count,
+            'active_period' => $activePeriod?->number,
+            'periods' => $periods,
             'lineup_update_url' => route('events.games.lineup.update', [$nestedEvent, $nestedGame]),
             'roster' => $roster,
         ]);
@@ -129,6 +154,40 @@ final class GameLifecycleController extends Controller
         ]);
     }
 
+    public function endPeriod(
+        Request $request,
+        string $event,
+        CurrentActorResolver $actors,
+        GameLifecycleService $lifecycle,
+    ): JsonResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        try {
+            $game = $lifecycle->endPeriod($this->findGame($request, $event), $actor);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Период завершён.', 'game_id' => $game->id]);
+    }
+
+    public function startNextPeriod(
+        Request $request,
+        string $event,
+        CurrentActorResolver $actors,
+        GameLifecycleService $lifecycle,
+    ): JsonResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        try {
+            $game = $lifecycle->startNextPeriod($this->findGame($request, $event), $actor);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Следующий период начался.', 'game_id' => $game->id]);
+    }
+
     private function findGame(Request $request, string $identifier): Game
     {
         $gameId = $request->route('game');
@@ -142,6 +201,7 @@ final class GameLifecycleController extends Controller
             'event',
             'sides',
             'rosterEntries.user.profile',
+            'periods',
         ]);
     }
 }

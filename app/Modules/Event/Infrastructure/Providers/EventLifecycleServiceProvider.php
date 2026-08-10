@@ -35,11 +35,15 @@ final class EventLifecycleServiceProvider extends ServiceProvider
             $data = $view->getData();
             $event = $data['event'] ?? null;
             $game = $data['game']
-                ?? ($event?->type->value === 'game' ? $event->games->first() : null);
+                ?? ($event?->type->value === 'game' ? $event->primaryGame : null);
 
             // Public pages keep personal contextual actions, but never expose
-            // forms that mutate the event or other participants.
-            $view->with('effectivePermissions', collect());
+            // forms that mutate the event or other participants. The explicit
+            // game management route preserves the permissions resolved by its
+            // controller and renders the operational controls.
+            if (! ($data['managementMode'] ?? false)) {
+                $view->with('effectivePermissions', collect());
+            }
 
             if (($data['canManage'] ?? false) && $event !== null) {
                 $view->with(

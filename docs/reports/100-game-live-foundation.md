@@ -57,6 +57,7 @@ window.MSKBAGameLive.showEvent({
 
 ## Следующий этап
 
+- Реализован append-only журнал `game_actions` и восстановление последней активной стороны после reload.
 - Laravel Reverb + Echo.
 - Канал конкретной игры.
 - Broadcast events для счёта и игровых действий.

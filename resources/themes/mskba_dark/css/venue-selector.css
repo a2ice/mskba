@@ -122,6 +122,11 @@
     color: var(--muted);
 }
 
+.venue-selector-map-fallback { display: grid; gap: 8px; margin-bottom: 12px; }
+.venue-selector-map-fallback__item { display: grid; gap: 3px; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--surface); text-align: left; }
+.venue-selector-map-fallback__item:hover { border-color: var(--accent); }
+.venue-selector-map-fallback__item span { color: var(--muted); font-size: 13px; }
+
 .venue-selector-map-modal__dialog {
     width: min(1040px, 100%);
 }

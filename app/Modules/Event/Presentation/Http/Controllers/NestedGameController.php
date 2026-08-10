@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -17,11 +16,16 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class NestedGameController extends Controller
 {
-    public function manage(Request $request, string $event, int $game): RedirectResponse
+    public function manage(Request $request, string $event, int $game): Response
     {
         $this->resolve($event, $game);
+        $request->attributes->set('game_management_mode', true);
 
-        return redirect()->route('events.games.show', [$event, $game]);
+        return app()->call([app(EventGameController::class), 'show'], [
+            'request' => $request,
+            'event' => $event,
+            'game' => $game,
+        ]);
     }
 
     public function update(Request $request, string $event, int $game): Response
@@ -79,6 +83,16 @@ final class NestedGameController extends Controller
         return $this->forward($request, $event, $game, GameLifecycleController::class, 'end');
     }
 
+    public function endPeriod(Request $request, string $event, int $game): Response
+    {
+        return $this->forward($request, $event, $game, GameLifecycleController::class, 'endPeriod');
+    }
+
+    public function startNextPeriod(Request $request, string $event, int $game): Response
+    {
+        return $this->forward($request, $event, $game, GameLifecycleController::class, 'startNextPeriod');
+    }
+
     public function lineup(Request $request, string $event, int $game): Response
     {
         return $this->forward($request, $event, $game, GameLineupController::class, '__invoke');
@@ -103,9 +117,13 @@ final class NestedGameController extends Controller
     {
         $event = Event::query()->whereRouteIdentifier($eventIdentifier)->firstOrFail();
 
-        return Game::query()
+        $game = Game::query()
             ->whereKey($gameId)
             ->whereBelongsTo($event)
             ->firstOrFail();
+
+        abort_if($event->type->value === 'game' && $event->primary_game_id !== $game->id, 404);
+
+        return $game;
     }
 }

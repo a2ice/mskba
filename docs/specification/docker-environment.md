@@ -179,6 +179,9 @@ make ENV=prod fresh-seed
 - `make fresh` - пересоздать БД;
 - `make fresh-seed` - пересоздать БД и выполнить сидеры;
 - `make seed` - выполнить сидеры;
+- `make tournament-lab-fresh` - локально пересоздать БД и оставить только production-safe
+  bootstrap, 10 команд, 75 игроков и 4 подтверждённые площадки для самостоятельного создания
+  турнира; команда запрещена сидером вне `local/testing`;
 - `make cache-clear` - очистить Laravel caches;
 - `make optimize-clear` - выполнить `artisan optimize:clear`;
 - `make queue` - смотреть логи queue worker;

@@ -49,6 +49,7 @@ final class TeamJoinRequestController extends Controller
             'team' => $item,
             'joinRequests' => $requests,
             'canEditSettings' => $access->allows($item, $actor, TeamPermissionEnum::EDIT_SETTINGS),
+            'canManageMembersAndRoster' => $access->canManageMembersAndRoster($item, $actor),
         ]);
     }
 

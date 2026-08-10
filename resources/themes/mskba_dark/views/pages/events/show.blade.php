@@ -529,7 +529,7 @@
                                     <h3>Состав, счёт и статистика</h3>
                                     <p>Зафиксируйте участников матча и внесите показатели игроков.</p>
                                 </div>
-                                <a class="btn btn--primary btn--sm" href="{{ route('events.games.manage', [$event->routeIdentifier(), $event->games->first()->id]) }}">Управлять игрой</a>
+                                <a class="btn btn--primary btn--sm" href="{{ route('events.games.manage', [$event->routeIdentifier(), $event->primaryGame->id]) }}">Управлять игрой</a>
                             </section>
                         @endif
 

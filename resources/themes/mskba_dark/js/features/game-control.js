@@ -37,12 +37,21 @@ function initGameControl(root) {
         });
     };
 
-    const saveStatistics = async () => {
+    const saveStatistics = async (action = null) => {
         setLoading(form, true);
         try {
+            const body = new FormData(form);
+            if (action) {
+                body.append('action[type]', action.type);
+                body.append('action[user_id]', action.userId);
+                if (action.points !== undefined) body.append('action[points]', action.points);
+                Object.entries(action.payload || {}).forEach(([key, payloadValue]) => {
+                    body.append(`action[payload][${key}]`, payloadValue);
+                });
+            }
             const response = await fetch(form.action, {
                 method: 'POST',
-                body: new FormData(form),
+                body,
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
             const data = await response.json();
@@ -80,7 +89,20 @@ function initGameControl(root) {
         const input = field(player, button.dataset.gameStatIncrement);
         if (!input) return;
         input.value = Number(input.value || 0) + 1;
-        try { await saveStatistics(); } catch { input.value = Math.max(0, Number(input.value) - 1); }
+        const actionTypes = {
+            assists: 'assist',
+            defensive_rebounds: 'rebound',
+            offensive_rebounds: 'rebound',
+            steals: 'steal',
+            fouls: 'foul',
+        };
+        try {
+            await saveStatistics({
+                type: actionTypes[button.dataset.gameStatIncrement] || 'statistics_correction',
+                userId: player.dataset.gamePlayer,
+                payload: { field: button.dataset.gameStatIncrement },
+            });
+        } catch { input.value = Math.max(0, Number(input.value) - 1); }
     }));
 
     form.querySelectorAll('[data-game-shot-open]').forEach((button) => button.addEventListener('click', () => {
@@ -117,13 +139,20 @@ function initGameControl(root) {
         const previousAttempted = attempted.value;
         const previousMade = made.value;
         const previousScore = scoreInput?.value;
+        const isStreetball = form.dataset.scoringType === 'streetball';
+        const points = range === 'three' ? (isStreetball ? 2 : 3) : (isStreetball ? 1 : 2);
         attempted.value = Number(attempted.value || 0) + 1;
         if (isMade) {
             made.value = Number(made.value || 0) + 1;
-            if (scoreInput) scoreInput.value = Number(scoreInput.value || 0) + (range === 'three' ? 3 : 2);
+            if (scoreInput) scoreInput.value = Number(scoreInput.value || 0) + points;
         }
         try {
-            await saveStatistics();
+            await saveStatistics({
+                type: isMade ? 'shot_made' : 'shot_missed',
+                userId: activePlayer.dataset.gamePlayer,
+                points: isMade ? points : 0,
+                payload: { range },
+            });
             closeGameModal('game-shot-modal');
         } catch {
             attempted.value = previousAttempted;
@@ -140,7 +169,13 @@ function initGameControl(root) {
             const input = field(activePlayer, name);
             if (input) input.value = Math.max(0, Number(newValue || 0));
         });
-        try { await saveStatistics(); closeGameModal('game-inline-statistics-modal'); } catch { /* keep modal open */ }
+        try {
+            await saveStatistics({
+                type: 'statistics_correction',
+                userId: activePlayer.dataset.gamePlayer,
+            });
+            closeGameModal('game-inline-statistics-modal');
+        } catch { /* keep modal open */ }
     };
 
     const renderReview = () => {
@@ -212,27 +247,57 @@ function initGameControl(root) {
         }
     });
 
-    root.querySelectorAll('[data-roster-editor-open]').forEach((button) => button.addEventListener('click', () => {
-        const editor = root.querySelector('[data-roster-editor]');
-        if (editor) { editor.hidden = false; editor.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-    }));
-    root.querySelector('[data-roster-editor-close]')?.addEventListener('click', () => { root.querySelector('[data-roster-editor]').hidden = true; });
+    root.querySelectorAll('[data-game-playing]').forEach((playing) => {
+        playing.addEventListener('change', () => {
+            const player = playing.closest('[data-game-player]');
+            const dependent = player?.querySelectorAll('[data-game-starter], [data-game-captain]') || [];
+            dependent.forEach((input) => {
+                input.disabled = !playing.checked;
+                if (!playing.checked) input.checked = false;
+            });
+            player?.classList.toggle('is-not-playing', !playing.checked);
+            const panel = playing.closest('[data-game-side]');
+            const count = panel?.querySelector('[data-game-side-player-count]');
+            if (count) count.textContent = panel.querySelectorAll('[data-game-playing]:checked').length;
+        });
+    });
 
-    const rosterForm = root.querySelector('[data-game-roster-ajax]');
-    rosterForm?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const surface = rosterForm.closest('[data-roster-editor]');
-        setLoading(surface, true);
+    root.querySelectorAll('[data-game-composition-save]').forEach((button) => button.addEventListener('click', async () => {
+        const form = button.closest('[data-game-live-statistics]');
+        const url = form?.dataset.gameCompositionUrl;
+        if (!form || !url) return;
+
+        const body = new FormData();
+        body.append('_method', 'PATCH');
+        ['A', 'B'].forEach((slot) => {
+            const panel = form.querySelector(`[data-game-side="${slot}"]`);
+            panel?.querySelectorAll('[data-game-playing]:checked').forEach((input) => body.append(`side_${slot.toLowerCase()}_user_ids[]`, input.value));
+            panel?.querySelectorAll('[data-game-starter]:checked').forEach((input) => body.append(`starters[${slot}][]`, input.value));
+            const captain = panel?.querySelector('[data-game-captain]:checked');
+            if (captain) body.append(`captains[${slot}]`, captain.value);
+        });
+
+        root.querySelectorAll('[data-game-composition-save]').forEach((saveButton) => { saveButton.disabled = true; });
+        setLoading(form, true);
         try {
-            const response = await fetch(rosterForm.action, { method: 'POST', body: new FormData(rosterForm), headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            const response = await fetch(url, {
+                method: 'POST',
+                body,
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+            });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Не удалось сохранить состав.');
-            const page = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            const html = new DOMParser().parseFromString(await page.text(), 'text/html');
-            const replacement = html.querySelector('[data-game-control]');
-            if (replacement) { root.replaceWith(replacement); initGameControl(replacement); }
-        } catch (error) { setMessage(error.message, true); setLoading(surface, false); }
-    });
+            window.location.reload();
+        } catch (error) {
+            setMessage(error.message, true);
+            setLoading(form, false);
+            root.querySelectorAll('[data-game-composition-save]').forEach((saveButton) => { saveButton.disabled = false; });
+        }
+    }));
 }
 
 document.querySelectorAll('[data-game-control]').forEach(initGameControl);

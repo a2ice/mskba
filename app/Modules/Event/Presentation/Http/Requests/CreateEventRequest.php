@@ -4,7 +4,9 @@ namespace App\Modules\Event\Presentation\Http\Requests;
 
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
+use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -14,9 +16,25 @@ final class CreateEventRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'publish_to_telegram' => $this->boolean('publish_to_telegram'),
-        ]);
+        $prepared = ['publish_to_telegram' => $this->boolean('publish_to_telegram')];
+        if ($this->input('type') === EventTypeEnum::GAME->value && ! $this->filled('game_format')) {
+            $sizeA = (int) $this->input('side_a_size', 3);
+            $sizeB = (int) $this->input('side_b_size', 3);
+            $scoring = (string) $this->input('scoring_type', GameScoringTypeEnum::STREETBALL->value);
+            $prepared['game_format'] = match ([$sizeA, $sizeB, $scoring]) {
+                [5, 5, GameScoringTypeEnum::BASKETBALL->value] => GameFormatEnum::BASKETBALL_5X5->value,
+                [3, 3, GameScoringTypeEnum::STREETBALL->value] => GameFormatEnum::STREETBALL_3X3->value,
+                [1, 1, GameScoringTypeEnum::STREETBALL->value] => GameFormatEnum::STREETBALL_1X1->value,
+                default => GameFormatEnum::CUSTOM->value,
+            };
+        }
+        if ($this->input('type') === EventTypeEnum::GAME->value && ! $this->filled('timing_mode')) {
+            $prepared['timing_mode'] = ($prepared['game_format'] ?? $this->input('game_format')) === GameFormatEnum::BASKETBALL_5X5->value
+                ? GameTimingModeEnum::PERIODS->value
+                : GameTimingModeEnum::WHOLE_GAME->value;
+        }
+
+        $this->merge($prepared);
     }
 
     public function authorize(): bool
@@ -72,7 +90,23 @@ final class CreateEventRequest extends FormRequest
             ],
             'scoring_type' => [
                 'nullable',
-                'enum:'.GameScoringTypeEnum::class,
+                Rule::enum(GameScoringTypeEnum::class),
+            ],
+            'game_format' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'nullable',
+                Rule::enum(GameFormatEnum::class),
+            ],
+            'timing_mode' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'nullable',
+                Rule::enum(GameTimingModeEnum::class),
+            ],
+            'periods_count' => [
+                Rule::requiredIf($this->input('timing_mode') === GameTimingModeEnum::PERIODS->value),
+                'nullable',
+                'integer',
+                Rule::in([2, 4]),
             ],
             'participant_user_ids' => ['nullable', 'array', 'max:499'],
             'participant_user_ids.*' => ['integer', 'distinct', 'exists:users,id'],

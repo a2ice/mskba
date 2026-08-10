@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Event\Application\Services\GamePeriodStatisticsBuilder;
 use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Models\Game;
@@ -20,6 +21,7 @@ final class GameLiveController extends Controller
         ShowEventHandler $events,
         CurrentActorResolver $actors,
         GameStatisticsFields $statisticsFields,
+        GamePeriodStatisticsBuilder $periodStatistics,
     ): Response {
         $actor = $actors->resolveForRequest($request);
         $parent = $events->handle($event, $actor);
@@ -31,6 +33,8 @@ final class GameLiveController extends Controller
                 'rosterEntries.gameSide',
                 'rosterEntries.user.profile.activeAvatar',
                 'playerStatistics',
+                'latestTeamAction.gameSide',
+                'periods.actions',
             ])
             ->firstOrFail();
 
@@ -38,6 +42,7 @@ final class GameLiveController extends Controller
             'event' => $parent,
             'game' => $gameModel,
             'statisticsFields' => $statisticsFields->all(),
+            'periodStatistics' => $periodStatistics->build($gameModel),
         ]);
     }
 }

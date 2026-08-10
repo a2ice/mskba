@@ -34,7 +34,7 @@ final class TeamManagementController extends Controller
             ->firstOrFail();
 
         $actor = $actors->resolveForRequest($request);
-        abort_if($actor === null || ! $access->canManage($item, $actor), 403);
+        abort_if($actor === null || ! $access->canManageMembersAndRoster($item, $actor), 403);
 
         $activeMemberships = $item->memberships
             ->filter(fn ($membership) => $membership->contract?->status === ContractStatusEnum::ACTIVE
@@ -62,6 +62,7 @@ final class TeamManagementController extends Controller
             'canManageRoles' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROLES),
             'canManagePermissions' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_PERMISSIONS),
             'canRemoveMembers' => $access->allows($item, $actor, TeamPermissionEnum::REMOVE_MEMBERS),
+            'canManageMembersAndRoster' => true,
             'currentUserId' => $actor->user_id,
             'teamPermissions' => TeamPermissionEnum::cases(),
         ]);

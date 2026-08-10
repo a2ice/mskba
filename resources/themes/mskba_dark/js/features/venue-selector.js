@@ -19,6 +19,7 @@ function initVenueSelector(container) {
     const mapModal = document.querySelector(`[data-modal="${container.dataset.mapModal}"]`);
     const mapElement = mapModal?.querySelector('[data-venue-selector-map]');
     const mapMessage = mapModal?.querySelector('[data-venue-selector-map-message]');
+    const mapFallback = mapModal?.querySelector('[data-venue-selector-map-fallback]');
     const previewModal = document.querySelector(`[data-modal="${container.dataset.previewModal}"]`);
     let searchTimer = null;
     let searchController = null;
@@ -132,7 +133,7 @@ function initVenueSelector(container) {
         setControlState('loading');
 
         try {
-            const venues = await fetchVenues(query, 30, controller.signal);
+            const venues = await fetchVenues(query, 30, controller.signal, null, false);
             renderOptions(venues);
 
             if (venues.length === 0) {
@@ -150,8 +151,8 @@ function initVenueSelector(container) {
         }
     }
 
-    async function fetchVenues(query = '', limit = 30, signal = null, venueId = null) {
-        const parameters = buildParameters(query, limit, venueId);
+    async function fetchVenues(query = '', limit = 30, signal = null, venueId = null, checkAvailability = true) {
+        const parameters = buildParameters(query, limit, venueId, checkAvailability);
         const response = await fetch(`${container.dataset.searchUrl}?${parameters.toString()}`, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
@@ -166,7 +167,7 @@ function initVenueSelector(container) {
         return Array.isArray(payload.venues) ? payload.venues : [];
     }
 
-    function buildParameters(query, limit, venueId = null) {
+    function buildParameters(query, limit, venueId = null, checkAvailability = true) {
         const parameters = new URLSearchParams({
             query,
             confirmed_only: container.dataset.confirmedOnly || '0',
@@ -181,7 +182,7 @@ function initVenueSelector(container) {
             parameters.set('operational_status', container.dataset.operationalStatus);
         }
 
-        if (startInput?.value && durationInput?.value) {
+        if (checkAvailability && startInput?.value && durationInput?.value) {
             parameters.set('starts_at', startInput.value);
             parameters.set('duration_minutes', durationInput.value);
         }
@@ -284,6 +285,7 @@ function initVenueSelector(container) {
         }
 
         valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+        revalidateSelectedVenue();
     }
 
     function clearSelectedVenue() {
@@ -331,12 +333,20 @@ function initVenueSelector(container) {
         mapMessage.hidden = false;
 
         try {
-            const venues = (await fetchVenues('', 200)).filter(
+            const venues = await fetchVenues('', 200, null, null, false);
+            const mappedVenues = venues.filter(
                 (venue) => Number.isFinite(Number(venue.latitude)) && Number.isFinite(Number(venue.longitude)),
             );
+            const unmappedVenues = venues.filter((venue) => !mappedVenues.includes(venue));
+            renderMapFallback(unmappedVenues);
 
             if (!venues.length) {
                 mapMessage.textContent = 'Подходящие площадки с координатами не найдены.';
+                return;
+            }
+
+            if (!mappedVenues.length) {
+                mapMessage.textContent = 'У площадок пока нет координат. Выберите площадку из списка.';
                 return;
             }
 
@@ -355,7 +365,7 @@ function initVenueSelector(container) {
                 controls: ['zoomControl', 'fullscreenControl'],
             });
 
-            venues.forEach((venue) => {
+            mappedVenues.forEach((venue) => {
                 const placemark = new window.ymaps.Placemark(
                     [Number(venue.latitude), Number(venue.longitude)],
                     {
@@ -377,10 +387,32 @@ function initVenueSelector(container) {
                 checkZoomRange: true,
                 zoomMargin: 40,
             });
-            mapMessage.hidden = true;
+            if (unmappedVenues.length) {
+                mapMessage.textContent = 'Площадки без координат можно выбрать из списка ниже.';
+            } else {
+                mapMessage.hidden = true;
+            }
         } catch (error) {
             mapMessage.textContent = error.message || 'Не удалось загрузить карту площадок.';
         }
+    }
+
+    function renderMapFallback(venues) {
+        if (!mapFallback) return;
+
+        mapFallback.replaceChildren();
+        mapFallback.hidden = venues.length === 0;
+        venues.forEach((venue) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'venue-selector-map-fallback__item';
+            button.innerHTML = `<strong>${escapeHtml(venue.name)}</strong><span>${escapeHtml(displayAddress(venue.address))}</span>`;
+            button.addEventListener('click', () => {
+                selectVenue(venue);
+                mapModal?.querySelector('[data-modal-action="close"]')?.click();
+            });
+            mapFallback.append(button);
+        });
     }
 
     async function loadPreview() {
@@ -458,6 +490,12 @@ function initVenueSelector(container) {
                 image.alt = '';
             }
         }
+    }
+
+    function escapeHtml(value) {
+        const element = document.createElement('div');
+        element.textContent = String(value || '');
+        return element.innerHTML;
     }
 
     function setText(selector, text) {

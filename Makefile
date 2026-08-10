@@ -20,7 +20,7 @@ ARTISAN := $(PHP) artisan
 SR_ROLE := $(word 2,$(MAKECMDGOALS))
 SR_LOGIN := $(word 3,$(MAKECMDGOALS))
 
-.PHONY: help install update dev serve vite build test lint format migrate fresh fresh-seed seed cache-clear optimize-clear queue queue-restart logs shell artisan npm sr up rebuild down restart ps config db-up db-down db-restart db-logs module delete-module
+.PHONY: help install update dev serve vite build test lint format migrate fresh fresh-seed seed acceptance-seed tournament-lab-fresh cache-clear optimize-clear queue queue-restart logs shell artisan npm sr up rebuild down restart ps config db-up db-down db-restart db-logs module delete-module
 
 help:
 	@echo "Available commands:"
@@ -42,6 +42,8 @@ help:
 	@echo "  make fresh                  Recreate database"
 	@echo "  make fresh-seed             Recreate database and seed"
 	@echo "  make seed                   Run database seeders"
+	@echo "  make acceptance-seed        Seed local standalone/training/tournament scenarios"
+	@echo "  make tournament-lab-fresh   Recreate DB with teams, players and venues only"
 	@echo "  make cache-clear            Clear Laravel caches"
 	@echo "  make optimize-clear         Clear cached bootstrap files"
 	@echo "  make queue                  Tail queue worker logs"
@@ -110,6 +112,16 @@ fresh-seed:
 
 seed:
 	$(ARTISAN) db:seed
+
+acceptance-seed:
+	$(ARTISAN) db:seed --class=TournamentAcceptanceSeeder
+
+tournament-lab-fresh:
+	$(ARTISAN) migrate:fresh $(ARTISAN_FORCE)
+	$(ARTISAN) db:seed --class=DatabaseSeeder $(ARTISAN_FORCE)
+	$(ARTISAN) db:seed --class=TournamentLabSeeder $(ARTISAN_FORCE)
+	$(ARTISAN) cache:clear
+	$(DOCKER_COMPOSE) restart queue
 
 cache-clear:
 	$(ARTISAN) cache:clear

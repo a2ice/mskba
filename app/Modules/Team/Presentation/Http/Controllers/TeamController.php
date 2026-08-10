@@ -225,6 +225,7 @@ final class TeamController extends Controller
             'startingLineups' => $startingLineups,
             'hasCompleteRoster' => $startingLineups->every('is_complete'),
             'canManage' => $actor !== null && $access->canManage($item, $actor),
+            'canManageMembersAndRoster' => $actor !== null && $access->canManageMembersAndRoster($item, $actor),
             'canManageRoster' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROSTER),
             'canInviteMembers' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS),
             'canManageRoles' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROLES),
@@ -250,7 +251,7 @@ final class TeamController extends Controller
             ->with(['logo', 'sportProfiles', 'memberships.contract', 'memberships.user.profile'])
             ->firstOrFail();
         $actor = $actors->resolveForRequest($request);
-        abort_if($actor === null || ! $access->canManage($item, $actor), 403);
+        abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::EDIT_SETTINGS), 403);
 
         return ThemeResolver::page('teams.edit', [
             'team' => $item,
@@ -258,6 +259,8 @@ final class TeamController extends Controller
             'canModerateStatus' => $actor->user?->isAdmin() ?? false,
             'canDeleteTeam' => $access->isCreator($item, $actor)
                 && $item->status === TeamStatusEnum::ACTIVE,
+            'canManageMembersAndRoster' => $access->canManageMembersAndRoster($item, $actor),
+            'canManageJoinRequests' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_JOIN_REQUESTS),
         ]);
     }
 

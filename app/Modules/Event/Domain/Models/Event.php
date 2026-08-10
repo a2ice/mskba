@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'venue_id',
     'organizer_actor_id',
+    'primary_game_id',
     'title',
     'alias',
     'type',
@@ -59,6 +60,10 @@ class Event extends Model
     /** @param Builder<Event> $query */
     public function scopeWhereRouteIdentifier(Builder $query, string $identifier): Builder
     {
+        if (ctype_digit($identifier)) {
+            return $query->whereKey((int) $identifier);
+        }
+
         if (preg_match('/^(\d+)-/', $identifier, $matches) === 1) {
             return $query->whereKey((int) $matches[1]);
         }
@@ -89,6 +94,11 @@ class Event extends Model
     public function games(): HasMany
     {
         return $this->hasMany(Game::class);
+    }
+
+    public function primaryGame(): BelongsTo
+    {
+        return $this->belongsTo(Game::class, 'primary_game_id');
     }
 
     public function telegramPublications(): HasMany

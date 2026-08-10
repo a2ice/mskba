@@ -34,11 +34,19 @@ final class ShowEventHandler
                 'participants.user.profile.activeAvatar',
                 'participants.statusChangedByActor.user.profile',
                 'participants.responsibilityPermissions',
+                'primaryGame' => fn ($query) => $query->with([
+                    'sides.team.logo',
+                    'rosterEntries.user.profile.activeAvatar',
+                    'playerStatistics',
+                    'periods',
+                    'tournamentMatch.tournament',
+                ]),
                 'games' => fn ($query) => $query
                     ->with([
-                        'sides.team',
+                        'sides.team.logo',
                         'rosterEntries.user.profile.activeAvatar',
                         'playerStatistics',
+                        'periods',
                     ])
                     ->orderByRaw('scheduled_starts_at nulls last')
                     ->orderBy('id'),

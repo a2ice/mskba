@@ -111,6 +111,7 @@
 ])
     <h2 class="modal_title" id="modal-title-{{ $mapModalId }}">Выбрать площадку на карте</h2>
     <p class="venue-selector-map__message" data-venue-selector-map-message>Загружаем площадки…</p>
+    <div class="venue-selector-map-fallback" data-venue-selector-map-fallback hidden></div>
     <div
         class="venue-selector-map"
         data-venue-selector-map
