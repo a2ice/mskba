@@ -90,3 +90,20 @@ jobs:
             $COMPOSE up -d --force-recreate phpfpm nginx queue reverb scheduler telegram
 
             $COMPOSE restart phpfpm nginx queue reverb scheduler telegram
+
+            REVERB_READY=0
+            for ATTEMPT in $(seq 1 15); do
+              if $COMPOSE exec -T reverb php -r '$socket = @fsockopen("127.0.0.1", 8080); exit($socket === false ? 1 : 0);'; then
+                REVERB_READY=1
+                break
+              fi
+
+              sleep 2
+            done
+
+            if [ "$REVERB_READY" -ne 1 ]; then
+              $COMPOSE ps >&2
+              $COMPOSE logs --tail=100 reverb >&2
+              echo "Reverb did not become ready on port 8080." >&2
+              exit 1
+            fi
