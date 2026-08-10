@@ -52,6 +52,9 @@ function applyLifecycleState(root, state) {
     if (state.can_end_period) {
         actions.append(createLifecycleButton('Закончить период', 'ti-player-pause-filled', state.end_period_url, 'end-period'));
     }
+    if (state.can_end_early) {
+        actions.append(createLifecycleButton('Закончить игру досрочно', 'ti-player-stop-filled', state.end_early_url, 'end-early'));
+    }
     if (state.can_start_next_period) {
         actions.append(createLifecycleButton('Начать следующий период', 'ti-player-track-next-filled', state.start_next_period_url, 'start-period'));
     }
@@ -82,14 +85,24 @@ function lifecycleActions(root) {
 function createLifecycleButton(label, icon, url, action) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = action === 'end' ? 'btn btn--danger' : 'game-complete-button';
+    button.className = ['end', 'end-early'].includes(action) ? 'btn btn--danger' : 'game-complete-button';
     button.dataset.gameLifecycleAction = action;
     button.innerHTML = `<i class="ti ${icon}"></i>${label}`;
 
     button.addEventListener('click', async () => {
         button.disabled = true;
         try {
-            await requestJson(url, { method: 'POST' });
+            const options = { method: 'POST' };
+            if (action === 'end-early') {
+                const comment = window.prompt('Укажите причину досрочного завершения игры:')?.trim();
+                if (!comment) {
+                    button.disabled = false;
+                    return;
+                }
+                options.body = JSON.stringify({ comment });
+                options.headers = { 'Content-Type': 'application/json' };
+            }
+            await requestJson(url, options);
             window.location.reload();
         } catch (error) {
             button.disabled = false;

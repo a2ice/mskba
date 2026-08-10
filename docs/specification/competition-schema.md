@@ -131,11 +131,17 @@ number unsigned smallint not null
 status enum scheduled|in_progress|completed
 actual_started_at / actual_ended_at nullable
 started_by_actor_id / ended_by_actor_id nullable FK actors restrict
+ended_early boolean not null default false
+status_comment text nullable
 side_a_score unsigned smallint nullable
 side_b_score unsigned smallint nullable
 created_at / updated_at
 unique(game_id, number)
 ```
+
+Для периодной игры штатное завершение доступно в последнем активном периоде. Досрочное
+завершение доступно в более раннем активном периоде, требует комментарий, закрывает текущий
+период и переводит Game в ожидание подтверждения результата; оставшиеся периоды не запускаются.
 
 `game_actions.game_period_id` nullable FK. Для whole_game он null; для periods application invariant
 требует ссылку на единственный активный период этой же Game.

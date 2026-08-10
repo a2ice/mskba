@@ -320,6 +320,7 @@ Route::prefix('events')->group(function () {
         Route::get('/{event}/games/{game}/lifecycle', [NestedGameController::class, 'lifecycle'])->whereNumber('game')->name('events.games.lifecycle.show');
         Route::post('/{event}/games/{game}/start', [NestedGameController::class, 'start'])->whereNumber('game')->name('events.games.start');
         Route::post('/{event}/games/{game}/end', [NestedGameController::class, 'end'])->whereNumber('game')->name('events.games.end');
+        Route::post('/{event}/games/{game}/end-early', [NestedGameController::class, 'endEarly'])->whereNumber('game')->name('events.games.end-early');
         Route::post('/{event}/games/{game}/periods/end', [NestedGameController::class, 'endPeriod'])->whereNumber('game')->name('events.games.periods.end');
         Route::post('/{event}/games/{game}/periods/start-next', [NestedGameController::class, 'startNextPeriod'])->whereNumber('game')->name('events.games.periods.start-next');
         Route::put('/{event}/games/{game}/lineup', [NestedGameController::class, 'lineup'])->whereNumber('game')->name('events.games.lineup.update');

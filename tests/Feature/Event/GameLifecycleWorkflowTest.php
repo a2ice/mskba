@@ -125,6 +125,7 @@ final class GameLifecycleWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Идёт')
             ->assertSee('data-game-shot-open', false)
+            ->assertSee('value="free_throw"', false)
             ->assertSee('data-game-stat-increment="assists"', false)
             ->assertSee('data-game-stat-increment="defensive_rebounds"', false)
             ->assertSee('data-game-score-open', false);
@@ -373,6 +374,50 @@ final class GameLifecycleWorkflowTest extends TestCase
 
         $this->assertSame(GamePeriodStatusEnum::COMPLETED, $game->periods()->where('number', 2)->firstOrFail()->status);
         $this->assertNotNull($game->fresh()->actual_ended_at);
+    }
+
+    public function test_period_game_can_be_ended_early_with_required_comment(): void
+    {
+        $ownerA = User::factory()->create();
+        $ownerB = User::factory()->create();
+        $teamA = $this->createTeam($ownerA, 'Early A');
+        $teamB = $this->createTeam($ownerB, 'Early B');
+        [$venue, $start, $end] = $this->availableVenue();
+        $this->actingAs($ownerA)->post(route('events.store'), [
+            ...$this->eventPayload($venue, $start, $end),
+            'team_a_id' => $teamA->id,
+            'team_b_id' => $teamB->id,
+            'game_format' => GameFormatEnum::CUSTOM->value,
+            'side_a_size' => 1,
+            'side_b_size' => 1,
+            'scoring_type' => 'basketball',
+            'timing_mode' => GameTimingModeEnum::PERIODS->value,
+            'periods_count' => 4,
+        ])->assertRedirect();
+        $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $game = $event->primaryGame()->firstOrFail();
+        $route = [$event->routeIdentifier(), $game->id];
+
+        $this->actingAs($ownerA)->postJson(route('events.games.start', $route))->assertOk();
+        $this->actingAs($ownerA)->getJson(route('events.games.lifecycle.show', $route))
+            ->assertOk()
+            ->assertJsonPath('can_end', false)
+            ->assertJsonPath('can_end_early', true);
+        $this->actingAs($ownerA)->postJson(route('events.games.end-early', $route), [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('comment');
+        $this->actingAs($ownerA)->postJson(route('events.games.end-early', $route), [
+            'comment' => 'Игрок получил травму, продолжение невозможно.',
+        ])->assertOk();
+
+        $game->refresh();
+        $this->assertTrue($game->ended_early);
+        $this->assertSame('Игрок получил травму, продолжение невозможно.', $game->status_comment);
+        $this->assertSame(GameStatusEnum::AWAITING_RESULT, $game->status);
+        $this->assertSame(GameStatisticsStatusEnum::READY, $game->statistics_status);
+        $this->assertNotNull($game->actual_ended_at);
+        $this->assertSame(GamePeriodStatusEnum::COMPLETED, $game->periods()->where('number', 1)->firstOrFail()->status);
+        $this->assertSame(GamePeriodStatusEnum::SCHEDULED, $game->periods()->where('number', 2)->firstOrFail()->status);
     }
 
     private function createTeam(User $owner, string $name): Team

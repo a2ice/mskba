@@ -90,6 +90,10 @@
                 <div class="game-control__meta"><span><i class="ti ti-map-pin"></i>{{ $event->venue->name }}</span><span><i class="ti ti-clock"></i>{{ $effectiveStartsAt && $effectiveEndsAt ? $effectiveStartsAt->format('H:i').'–'.$effectiveEndsAt->format('H:i') : 'Время на игру не задано' }}</span></div>
             </header>
 
+            @if($game->status_comment)
+                <div class="alert alert-info"><strong>Комментарий к состоянию игры:</strong> {{ $game->status_comment }}</div>
+            @endif
+
             @if($canManage && !$managementMode)
                 <section class="event-card event-game-management-link">
                     <div>
@@ -211,7 +215,7 @@
     </section>
 
     @component('theme::partials.modal.layout', ['id' => 'game-shot-modal'])
-        <form data-game-shot-form><h2 class="modal_title" id="modal-title-game-shot-modal">Добавить бросок</h2><fieldset class="game-shot-range"><legend class="form-label">Тип броска</legend><label><input type="radio" name="range" value="close" checked><span>Ближний</span></label><label><input type="radio" name="range" value="mid"><span>Средний</span></label><label><input type="radio" name="range" value="three"><span>Трёхочковый</span></label></fieldset>@include('theme::partials.forms.toggle', ['id' => 'game-shot-made', 'name' => 'made', 'title' => 'Попадание', 'description' => 'По умолчанию бросок считается промахом.', 'checked' => false])<button class="btn btn--primary" type="submit">Сохранить</button></form>
+        <form data-game-shot-form><h2 class="modal_title" id="modal-title-game-shot-modal">Добавить бросок</h2><fieldset class="game-shot-range"><legend class="form-label">Тип броска</legend><label><input type="radio" name="range" value="close" checked><span>Ближний</span></label><label><input type="radio" name="range" value="mid"><span>Средний</span></label><label><input type="radio" name="range" value="three"><span>Дальний</span></label><label><input type="radio" name="range" value="free_throw"><span>Штрафной</span></label></fieldset>@include('theme::partials.forms.toggle', ['id' => 'game-shot-made', 'name' => 'made', 'title' => 'Попадание', 'description' => 'По умолчанию бросок считается промахом.', 'checked' => false])<button class="btn btn--primary" type="submit">Сохранить</button></form>
     @endcomponent
 
     @component('theme::partials.modal.layout', ['id' => 'game-score-modal'])

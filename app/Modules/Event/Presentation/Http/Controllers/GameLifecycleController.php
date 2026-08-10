@@ -91,6 +91,8 @@ final class GameLifecycleController extends Controller
                 && (! $usesPeriods || $activePeriod?->number === (int) $game->periods_count),
             'can_end_period' => $canComplete && $usesPeriods && $activePeriod !== null
                 && $activePeriod->number < (int) $game->periods_count,
+            'can_end_early' => $canComplete && $usesPeriods && $started && ! $ended && ! $cancelled && ! $completed
+                && $activePeriod !== null && $activePeriod->number < (int) $game->periods_count,
             'can_start_next_period' => $canComplete && $usesPeriods && $started && ! $ended
                 && $activePeriod === null && $completedPeriods < (int) $game->periods_count,
             'can_enter_statistics' => $canManageStatistics && $started && ! $ended && ! $cancelled && ! $completed
@@ -102,6 +104,7 @@ final class GameLifecycleController extends Controller
             'start_url' => route('events.games.start', [$nestedEvent, $nestedGame]),
             'end_url' => route('events.games.end', [$nestedEvent, $nestedGame]),
             'end_period_url' => route('events.games.periods.end', [$nestedEvent, $nestedGame]),
+            'end_early_url' => route('events.games.end-early', [$nestedEvent, $nestedGame]),
             'start_next_period_url' => route('events.games.periods.start-next', [$nestedEvent, $nestedGame]),
             'timing_mode' => $game->timing_mode->value,
             'periods_count' => $game->periods_count,
@@ -169,6 +172,30 @@ final class GameLifecycleController extends Controller
         }
 
         return response()->json(['message' => 'Период завершён.', 'game_id' => $game->id]);
+    }
+
+    public function endEarly(
+        Request $request,
+        string $event,
+        CurrentActorResolver $actors,
+        GameLifecycleService $lifecycle,
+    ): JsonResponse {
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 403);
+        $data = $request->validate([
+            'comment' => ['required', 'string', 'min:3', 'max:2000'],
+        ]);
+
+        try {
+            $game = $lifecycle->endEarly($this->findGame($request, $event), $actor, $data['comment']);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => 'Игра завершена досрочно. Проверьте и подтвердите результат.',
+            'actual_ended_at' => $game->actual_ended_at?->toIso8601String(),
+        ]);
     }
 
     public function startNextPeriod(

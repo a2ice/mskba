@@ -140,7 +140,7 @@ function initGameControl(root) {
         const previousMade = made.value;
         const previousScore = scoreInput?.value;
         const isStreetball = form.dataset.scoringType === 'streetball';
-        const points = range === 'three' ? (isStreetball ? 2 : 3) : (isStreetball ? 1 : 2);
+        const points = range === 'free_throw' ? 1 : (range === 'three' ? (isStreetball ? 2 : 3) : (isStreetball ? 1 : 2));
         attempted.value = Number(attempted.value || 0) + 1;
         if (isMade) {
             made.value = Number(made.value || 0) + 1;

@@ -2668,7 +2668,7 @@ body.telegram-mini-app .event-show {
 .game-final-review-modal__dialog { width: min(920px, calc(100vw - 30px)); }
 .game-final-review__score { display: flex; justify-content: center; gap: 14px; margin: 20px 0; font-size: 54px; }
 .game-final-review__actions { justify-content: flex-end; }
-.game-shot-range { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 0 0 20px; padding: 0; border: 0; }
+.game-shot-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 0 0 20px; padding: 0; border: 0; }
 .game-shot-range legend { grid-column: 1 / -1; margin-bottom: 2px; }
 .game-shot-range label { min-width: 0; cursor: pointer; }
 .game-shot-range input { position: absolute; opacity: 0; pointer-events: none; }

@@ -83,6 +83,11 @@ final class NestedGameController extends Controller
         return $this->forward($request, $event, $game, GameLifecycleController::class, 'end');
     }
 
+    public function endEarly(Request $request, string $event, int $game): Response
+    {
+        return $this->forward($request, $event, $game, GameLifecycleController::class, 'endEarly');
+    }
+
     public function endPeriod(Request $request, string $event, int $game): Response
     {
         return $this->forward($request, $event, $game, GameLifecycleController::class, 'endPeriod');

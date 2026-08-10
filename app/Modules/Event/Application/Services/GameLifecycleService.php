@@ -146,6 +146,48 @@ final class GameLifecycleService
         return $game;
     }
 
+    public function endEarly(Game $game, Actor $actor, string $comment): Game
+    {
+        $game = DB::transaction(function () use ($game, $actor, $comment): Game {
+            $event = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
+
+            if ($lockedGame->timing_mode !== GameTimingModeEnum::PERIODS
+                || $lockedGame->actual_started_at === null
+                || $lockedGame->actual_ended_at !== null
+                || $lockedGame->status === GameStatusEnum::CANCELLED) {
+                throw new InvalidArgumentException('Эту игру нельзя завершить досрочно.');
+            }
+
+            $activePeriod = $lockedGame->periods()
+                ->where('status', GamePeriodStatusEnum::IN_PROGRESS->value)
+                ->lockForUpdate()
+                ->first();
+            if ($activePeriod === null || $activePeriod->number >= (int) $lockedGame->periods_count) {
+                throw new InvalidArgumentException('Досрочное завершение доступно только до последнего активного периода.');
+            }
+
+            $this->completePeriod($lockedGame, $activePeriod, $actor);
+            $lockedGame->update([
+                'status' => GameStatusEnum::AWAITING_RESULT,
+                'actual_ended_at' => now(),
+                'actual_ended_by_actor_id' => $actor->id,
+                'ended_early' => true,
+                'status_comment' => trim($comment),
+                'statistics_status' => $lockedGame->statistics_status === GameStatisticsStatusEnum::ENTERING
+                    ? GameStatisticsStatusEnum::READY
+                    : $lockedGame->statistics_status,
+            ]);
+
+            return $lockedGame->fresh();
+        }, 3);
+
+        event(new EventChanged($game->event_id));
+
+        return $game;
+    }
+
     public function startNextPeriod(Game $game, Actor $actor): Game
     {
         $game = DB::transaction(function () use ($game, $actor): Game {
