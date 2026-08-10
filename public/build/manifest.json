@@ -46,12 +46,12 @@
     "src": "resources/themes/mskba_dark/images/event-about-basketball.webp"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-BYteV9we.js",
+    "file": "assets/app-DLMTPx4K.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
     "css": [
-      "assets/app-BRT-Mu4T.css"
+      "assets/app-DtZiVQx5.css"
     ]
   },
   "resources/themes/mskba_streetball/css/app.css": {
