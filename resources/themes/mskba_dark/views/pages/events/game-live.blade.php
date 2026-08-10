@@ -104,9 +104,6 @@
                 </header>
 
                 <div class="game-live-stats__content">
-                    @if($game->timing_mode === GameTimingModeEnum::PERIODS)
-                        <section class="game-live-stats-team"><h3>По периодам</h3>@foreach($periodStatistics as $period)<details><summary>Период {{ $period['number'] }} · {{ $period['score_a'] ?? 0 }}:{{ $period['score_b'] ?? 0 }}</summary>@forelse($period['players'] as $userId => $values)<p><strong>{{ $name($game->rosterEntries->firstWhere('user_id', $userId)?->user) }}</strong>: {{ collect($values)->map(fn($value, $field) => ($statisticsFields[$field]['label'] ?? ($field === 'points' ? 'Очки' : $field)).' '.$value)->implode(', ') }}</p>@empty<p>Действий пока нет.</p>@endforelse</details>@endforeach</section>
-                    @endif
                     @foreach(['A' => $sideA, 'B' => $sideB] as $slot => $side)
                         <section class="game-live-stats-team">
                             @php $fullSideName = $sideName($side, $slot); @endphp
@@ -139,6 +136,9 @@
                             </div>
                         </section>
                     @endforeach
+                    @if($game->timing_mode === GameTimingModeEnum::PERIODS)
+                        <section class="game-live-stats-team game-live-stats-periods"><h3>По периодам</h3>@foreach($periodStatistics as $period)<details><summary>Период {{ $period['number'] }} · {{ $period['score_a'] ?? 0 }}:{{ $period['score_b'] ?? 0 }}</summary>@forelse($period['players'] as $userId => $values)<p><strong>{{ $name($game->rosterEntries->firstWhere('user_id', $userId)?->user) }}</strong>: {{ collect($values)->map(fn($value, $field) => ($statisticsFields[$field]['label'] ?? ($field === 'points' ? 'Очки' : $field)).' '.$value)->implode(', ') }}</p>@empty<p>Действий пока нет.</p>@endforelse</details>@endforeach</section>
+                    @endif
                 </div>
             </div>
         </section>

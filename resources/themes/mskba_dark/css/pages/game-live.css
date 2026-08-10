@@ -385,6 +385,10 @@ body.has-game-live-screen .site-content {
     font-size: 21px;
 }
 
+.game-live-stats-periods {
+    grid-column: 1 / -1;
+}
+
 .game-live-stats-team__players {
     display: grid;
     gap: 10px;
