@@ -51,7 +51,7 @@
 
         <a class="mobile-primary-bar__action mobile-primary-bar__action--home" href="{{ route('welcome') }}" aria-label="На главную">
             <span class="mobile-primary-bar__home-mark" aria-hidden="true">
-                <img src="{{ asset('apple-touch-icon.png') }}" alt="">
+                <img src="{{ asset('images/logo.png') }}" alt="">
             </span>
             <span>Домой</span>
         </a>
