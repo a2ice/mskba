@@ -12,11 +12,16 @@ use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationSourceEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationChannel;
+use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCreatedBroadcast;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -167,6 +172,89 @@ class UserNotificationTest extends TestCase
         ]);
 
         $this->assertNotNull($notification->refresh()->read_at);
+    }
+
+    public function test_json_read_response_contains_synchronized_unread_count(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $notification = UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Realtime',
+            'body' => 'Проверка счётчика.',
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('account.notifications.read', $notification))
+            ->assertOk()
+            ->assertJsonPath('notification_id', $notification->id)
+            ->assertJsonPath('unread_count', 0);
+    }
+
+    public function test_user_can_synchronize_latest_new_notifications_for_a_new_tab(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Непрочитанное',
+            'body' => 'Должно появиться в новой вкладке.',
+        ]);
+        UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::READ,
+            'title' => 'Прочитанное',
+            'body' => 'Не должно появиться.',
+            'read_at' => now(),
+        ]);
+        UserNotification::query()->create([
+            'user_id' => $other->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Чужое',
+            'body' => 'Не должно быть доступно.',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('account.notifications.new'))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonCount(1, 'notifications')
+            ->assertJsonPath('notifications.0.title', 'Непрочитанное');
+    }
+
+    public function test_created_notification_is_broadcast_to_its_private_user_channel(): void
+    {
+        Event::fake([UserNotificationCreatedBroadcast::class]);
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
+            userId: $user->id,
+            type: UserNotificationTypeEnum::SYSTEM,
+            title: 'Новое уведомление',
+            body: 'Доставлено через realtime.',
+        ));
+
+        Event::assertDispatched(UserNotificationCreatedBroadcast::class, function ($event) use ($user): bool {
+            return $event->userId === $user->id
+                && $event->unreadCount === 1
+                && $event->notification['title'] === 'Новое уведомление';
+        });
+    }
+
+    public function test_user_can_authorize_only_own_private_notification_channel(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $channel = app(UserNotificationChannel::class);
+
+        $this->assertTrue($channel->join($user, $user->id));
+        $this->assertFalse($channel->join($user, $other->id));
     }
 
     public function test_user_can_view_notifications_page(): void

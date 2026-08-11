@@ -6,9 +6,12 @@ use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\Services\UserNotificationCounterStore;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -17,7 +20,10 @@ use Illuminate\Support\Collection;
 
 final class TeamNotificationService
 {
-    public function __construct(private readonly CreateUserNotificationHandler $notifications) {}
+    public function __construct(
+        private readonly CreateUserNotificationHandler $notifications,
+        private readonly UserNotificationCounterStore $notificationCounters,
+    ) {}
 
     public function invitationSent(Team $team, ContractMembership $membership, User $inviter): void
     {
@@ -77,6 +83,10 @@ final class TeamNotificationService
 
     public function joinRequestReviewed(Team $team, TeamJoinRequest $request, string $action): void
     {
+        if ($action !== 'unblock') {
+            $this->markJoinRequestNotificationsAsRead($request);
+        }
+
         [$title, $body, $source] = match ($action) {
             'accept' => ['Заявка принята', 'Вас приняли в команду «'.$team->name.'».', 'team.join_request.accepted'],
             'reject' => ['Заявка отклонена', 'Команда «'.$team->name.'» отклонила вашу заявку.', 'team.join_request.rejected'],
@@ -105,6 +115,33 @@ final class TeamNotificationService
             $source,
             ['team_id' => $team->id, 'join_request_id' => $request->id],
         );
+    }
+
+    private function markJoinRequestNotificationsAsRead(TeamJoinRequest $request): void
+    {
+        $notifications = UserNotification::query()
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->where('payload->source', 'team.join_request.submitted')
+            ->where('payload->join_request_id', $request->id)
+            ->get(['id', 'user_id']);
+
+        if ($notifications->isEmpty()) {
+            return;
+        }
+
+        UserNotification::query()
+            ->whereKey($notifications->pluck('id'))
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->update([
+                'status' => UserNotificationStatusEnum::READ,
+                'read_at' => now(),
+            ]);
+
+        $notifications
+            ->pluck('user_id')
+            ->map(fn ($userId): int => (int) $userId)
+            ->unique()
+            ->each(fn (int $userId) => $this->notificationCounters->forget($userId));
     }
 
     /** @return Collection<int, int> */

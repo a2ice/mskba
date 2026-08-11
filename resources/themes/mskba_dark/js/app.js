@@ -3,6 +3,7 @@ import '../css/pages/team-roster-save.css';
 import '../css/pages/team-pending-invitations.css';
 import '../css/pages/team-member-panels.css';
 import '../css/pages/game-live.css';
+import '../css/pages/notification-toasts.css';
 
 window.$ = $;
 window.jQuery = $;
@@ -46,6 +47,7 @@ import './features/game-shot-quick-action.js';
 import './features/game-control.js';
 import './features/game-lifecycle.js';
 import './features/game-live.js';
+import './features/notification-toasts.js';
 import './features/coordination-form.js';
 import './features/venue-selector.js';
 import './features/site-summary.js';

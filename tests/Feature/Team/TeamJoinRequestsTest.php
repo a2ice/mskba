@@ -5,6 +5,8 @@ namespace Tests\Feature\Team;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -49,6 +51,12 @@ final class TeamJoinRequestsTest extends TestCase
             ->where('user_id', $applicant->id)
             ->firstOrFail();
         $this->assertSame(TeamJoinRequestStatusEnum::PENDING, $entry->status);
+        $requestNotification = UserNotification::query()
+            ->where('user_id', $owner->id)
+            ->where('payload->source', 'team.join_request.submitted')
+            ->where('payload->join_request_id', $entry->id)
+            ->firstOrFail();
+        $this->assertSame(UserNotificationStatusEnum::NEW, $requestNotification->status);
 
         $this->actingAs($owner)
             ->get(route('teams.join-requests.index', $team->routeIdentifier()))
@@ -67,6 +75,13 @@ final class TeamJoinRequestsTest extends TestCase
         $this->assertSame(TeamInvitationStatusEnum::ACCEPTED, $membership->invitation_status);
         $this->assertSame(ContractStatusEnum::ACTIVE, $membership->contract->status);
         $this->assertCount(0, $membership->contract->permissions);
+        $this->assertSame(UserNotificationStatusEnum::READ, $requestNotification->fresh()->status);
+        $this->assertNotNull($requestNotification->fresh()->read_at);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $applicant->id,
+            'status' => UserNotificationStatusEnum::NEW->value,
+            'title' => 'Заявка принята',
+        ]);
     }
 
     public function test_blocked_applicant_cannot_reapply_until_unblocked(): void

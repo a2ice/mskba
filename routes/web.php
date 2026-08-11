@@ -494,6 +494,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:60,1')
             ->name('account.settings.privacy.users');
         Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications');
+        Route::get('/notifications/new', [AccountController::class, 'newNotifications'])
+            ->name('account.notifications.new');
         Route::patch('/notifications/read-all', [AccountController::class, 'readAllNotifications'])
             ->name('account.notifications.read-all');
         Route::patch('/notifications/{notification}/read', [AccountController::class, 'readNotification'])

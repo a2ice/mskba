@@ -34,15 +34,18 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
+use App\Modules\Notification\Application\UseCases\ListNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsReadHandler;
 use App\Modules\Notification\Application\UseCases\MarkUserNotificationAsReadHandler;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowAccountVenueScheduleHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueScheduleHandler;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueScheduleRequest;
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use InvalidArgumentException;
@@ -307,20 +310,52 @@ class AccountController extends Controller
     public function readNotification(
         UserNotification $notification,
         MarkUserNotificationAsReadHandler $markUserNotificationAsRead,
-    ): RedirectResponse {
-        $user = $this->accountCheckForPresentationService->handle(request()->user());
+    ): JsonResponse|RedirectResponse {
+        $request = request();
+        $user = $this->accountCheckForPresentationService->handle($request->user());
         $markUserNotificationAsRead->handle($user, $notification);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Уведомление прочитано.',
+                'notification_id' => $notification->id,
+                'unread_count' => app(CountNewUserNotificationsHandler::class)->handle($user),
+            ]);
+        }
 
         return redirect()
             ->route('account.notifications')
             ->with('status', 'Уведомление прочитано.');
     }
 
+    public function newNotifications(
+        ListNewUserNotificationsHandler $listNewUserNotifications,
+        CountNewUserNotificationsHandler $countNewUserNotifications,
+        UserNotificationPresenter $presenter,
+    ): JsonResponse {
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+
+        return response()->json([
+            'notifications' => $listNewUserNotifications->handle($user)
+                ->map(fn (UserNotification $notification): array => $presenter->present($notification))
+                ->values(),
+            'unread_count' => $countNewUserNotifications->handle($user),
+        ]);
+    }
+
     public function readAllNotifications(
         MarkAllUserNotificationsAsReadHandler $markAllUserNotificationsAsRead,
-    ): RedirectResponse {
-        $user = $this->accountCheckForPresentationService->handle(request()->user());
+    ): JsonResponse|RedirectResponse {
+        $request = request();
+        $user = $this->accountCheckForPresentationService->handle($request->user());
         $updatedCount = $markAllUserNotificationsAsRead->handle($user);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $updatedCount > 0 ? 'Все уведомления прочитаны.' : 'Новых уведомлений нет.',
+                'unread_count' => 0,
+            ]);
+        }
 
         return redirect()
             ->route('account.notifications')

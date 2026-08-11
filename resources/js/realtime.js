@@ -60,4 +60,19 @@ export const subscribePublic = (channelName, eventName, handler) => {
     };
 };
 
+export const subscribePrivate = (channelName, eventName, handler) => {
+    const client = echo || createEcho();
+
+    if (!client) {
+        return () => {};
+    }
+
+    client.private(channelName).listen(eventName, handler);
+
+    return () => {
+        client.private(channelName).stopListening(eventName, handler);
+        client.leave(channelName);
+    };
+};
+
 export const realtimeState = () => state;

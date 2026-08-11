@@ -42,7 +42,7 @@ final class TeamSportsServiceProvider extends ServiceProvider
             Route::get('/teams/{team}/join-requests', [TeamJoinRequestController::class, 'index'])
                 ->name('teams.join-requests.index');
             Route::post('/teams/{team}/join-requests', [TeamJoinRequestController::class, 'store'])
-                ->middleware('throttle:5,60')
+                ->middleware('throttle:5,1')
                 ->name('teams.join-requests.store');
             Route::patch('/teams/{team}/join-requests/{joinRequest}', [TeamJoinRequestController::class, 'respond'])
                 ->whereNumber('joinRequest')
