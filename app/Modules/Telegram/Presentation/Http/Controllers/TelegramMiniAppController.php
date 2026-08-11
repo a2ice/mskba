@@ -63,7 +63,10 @@ final class TelegramMiniAppController extends Controller
         return response()->json([
             'status' => 'success',
             'created' => $result['created'],
-            'start_destination' => $destinations->resolve(is_string($startParam) ? $startParam : null),
+            'start_destination' => $destinations->resolve(
+                is_string($startParam) ? $startParam : null,
+                $user->id,
+            ),
             'user' => [
                 'id' => $user->id,
                 'username' => $user->username,

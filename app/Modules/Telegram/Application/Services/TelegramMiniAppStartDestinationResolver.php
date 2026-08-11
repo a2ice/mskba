@@ -5,10 +5,11 @@ namespace App\Modules\Telegram\Application\Services;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Notification\Domain\Models\UserNotification;
 
 final class TelegramMiniAppStartDestinationResolver
 {
-    public function resolve(?string $startParam): ?string
+    public function resolve(?string $startParam, ?int $userId = null): ?string
     {
         if ($startParam === null) {
             return null;
@@ -38,6 +39,22 @@ final class TelegramMiniAppStartDestinationResolver
             return $content === null
                 ? null
                 : route('news.show', $content->alias, false);
+        }
+
+        if ($userId !== null && preg_match('/\Anotification_(\d+)\z/D', $startParam, $matches) === 1) {
+            $notification = UserNotification::query()
+                ->whereKey((int) $matches[1])
+                ->where('user_id', $userId)
+                ->first();
+
+            if ($notification === null) {
+                return null;
+            }
+
+            return is_string($notification->action_url)
+                && str_starts_with($notification->action_url, '/')
+                    ? $notification->action_url
+                    : route('account.notifications', [], false);
         }
 
         return null;

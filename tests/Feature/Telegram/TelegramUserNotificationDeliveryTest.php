@@ -11,6 +11,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Telegram\Application\Services\TelegramMiniAppStartDestinationResolver;
 use App\Modules\Telegram\Application\Services\TelegramUserNotificationMessageBuilder;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Infrastructure\Jobs\SendUserNotificationToTelegramJob;
@@ -25,7 +26,10 @@ final class TelegramUserNotificationDeliveryTest extends TestCase
 
     public function test_request_notification_is_sent_to_verified_available_private_chat(): void
     {
-        config(['telegram.bot_token' => 'test-token']);
+        config([
+            'telegram.bot_token' => 'test-token',
+            'telegram.bot_username' => 'MSKBATestBot',
+        ]);
         Http::fake(['*' => Http::response(['ok' => true, 'result' => ['message_id' => 321]])]);
         [$user, $account] = $this->telegramUser(UserMessengerNotificationPreferenceEnum::ALL);
         $notification = $this->notification($user, UserNotificationDeliveryCategoryEnum::REQUEST);
@@ -43,7 +47,23 @@ final class TelegramUserNotificationDeliveryTest extends TestCase
             'external_message_id' => '321',
         ]);
         Http::assertSent(fn ($request): bool => $request['chat_id'] === $account->private_chat_id
-            && str_contains((string) $request['text'], 'Новая заявка'));
+            && str_contains((string) $request['text'], 'Новая заявка')
+            && $request['reply_markup']['inline_keyboard'][0][0]['url']
+                === 'https://t.me/MSKBATestBot?startapp=notification_'.$notification->id);
+    }
+
+    public function test_notification_start_destination_is_available_only_to_its_owner(): void
+    {
+        $owner = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $notification = $this->notification($owner, UserNotificationDeliveryCategoryEnum::REQUEST);
+        $resolver = app(TelegramMiniAppStartDestinationResolver::class);
+
+        $this->assertSame(
+            '/teams/1/join-requests',
+            $resolver->resolve('notification_'.$notification->id, $owner->id),
+        );
+        $this->assertNull($resolver->resolve('notification_'.$notification->id, $otherUser->id));
     }
 
     public function test_request_notification_is_skipped_for_system_only_preference(): void
