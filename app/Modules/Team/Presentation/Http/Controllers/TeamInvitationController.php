@@ -15,6 +15,8 @@ use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\UseCases\MarkUserNotificationAsReadHandler;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Application\Services\TeamNotificationService;
 use App\Modules\Team\Application\Services\TeamRosterService;
@@ -145,6 +147,7 @@ final class TeamInvitationController extends Controller
         CurrentActorResolver $actors,
         TeamManagementAccess $access,
         TeamNotificationService $teamNotifications,
+        MarkUserNotificationAsReadHandler $markNotificationAsRead,
     ): JsonResponse|RedirectResponse {
         $data = $request->validate(['decision' => ['required', Rule::in(['accept', 'decline', 'revoke'])]]);
         $user = $request->user();
@@ -173,10 +176,14 @@ final class TeamInvitationController extends Controller
 
         abort_if($member->user_id !== $user->id, 403);
         if ($member->invitation_status === TeamInvitationStatusEnum::REVOKED) {
-            return back()->with('error', 'Приглашение было отозвано.');
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Приглашение было отозвано.'], 422)
+                : back()->with('error', 'Приглашение было отозвано.');
         }
         if ($member->invitation_status !== TeamInvitationStatusEnum::PENDING) {
-            return back()->with('error', 'Приглашение уже обработано.');
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Приглашение уже обработано.'], 422)
+                : back()->with('error', 'Приглашение уже обработано.');
         }
 
         $accepted = $data['decision'] === 'accept';
@@ -190,6 +197,20 @@ final class TeamInvitationController extends Controller
 
         $teamNotifications->invitationResponded($team, $member->fresh('contract'), $accepted);
 
-        return back()->with('status', $accepted ? 'Приглашение принято.' : 'Приглашение отклонено.');
+        $notification = UserNotification::query()
+            ->where('user_id', $user->id)
+            ->where('payload->source', 'team.invitation.created')
+            ->where('payload->membership_id', $member->id)
+            ->latest('id')
+            ->first();
+        if ($notification !== null) {
+            $markNotificationAsRead->handle($user, $notification);
+        }
+
+        $message = $accepted ? 'Приглашение принято.' : 'Приглашение отклонено.';
+
+        return $request->expectsJson()
+            ? response()->json(['message' => $message, 'membership_id' => $member->id])
+            : back()->with('status', $message);
     }
 }

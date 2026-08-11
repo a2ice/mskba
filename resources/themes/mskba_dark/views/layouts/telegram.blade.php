@@ -26,5 +26,6 @@
         <main class="telegram-app-content">
             @yield('content')
         </main>
+        @include('theme::partials.notification-toasts')
     </body>
 </html>

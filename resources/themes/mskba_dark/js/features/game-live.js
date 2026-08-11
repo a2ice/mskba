@@ -308,22 +308,21 @@ if (gameControl) {
 
     if (chips && statusChip && !chips.querySelector('.game-live-entry')) {
         const liveUrl = gameControl.dataset.gameLiveUrl;
-        if (!liveUrl) {
-            return;
-        }
-        const link = document.createElement('a');
-        const isLive = statusChip.classList.contains('is-live');
+        if (liveUrl) {
+            const link = document.createElement('a');
+            const isLive = statusChip.classList.contains('is-live');
 
-        link.href = liveUrl;
-        link.className = `game-live-entry${isLive ? ' is-live' : ''}`;
-        link.innerHTML = isLive
-            ? '<span class="game-live-entry__pulse" aria-hidden="true"></span><span>LIVE</span>'
-            : '<i class="ti ti-broadcast" aria-hidden="true"></i><span>Live</span>';
+            link.href = liveUrl;
+            link.className = `game-live-entry${isLive ? ' is-live' : ''}`;
+            link.innerHTML = isLive
+                ? '<span class="game-live-entry__pulse" aria-hidden="true"></span><span>LIVE</span>'
+                : '<i class="ti ti-broadcast" aria-hidden="true"></i><span>Live</span>';
 
-        if (isLive) {
-            statusChip.replaceWith(link);
-        } else {
-            statusChip.insertAdjacentElement('afterend', link);
+            if (isLive) {
+                statusChip.replaceWith(link);
+            } else {
+                statusChip.insertAdjacentElement('afterend', link);
+            }
         }
     }
 }

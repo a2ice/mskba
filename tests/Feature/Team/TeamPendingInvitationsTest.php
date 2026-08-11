@@ -7,6 +7,8 @@ use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use Database\Seeders\GameLifecycleDemoSeeder;
@@ -56,12 +58,31 @@ final class TeamPendingInvitationsTest extends TestCase
         $this->assertStringContainsString('data-pending-invitation-revoke', $response->json('invitation.html'));
         $this->assertStringContainsString('Ожидающий Игрок', $response->json('invitation.html'));
 
-        $this->get(route('teams.management', $team->routeIdentifier()))
+        $notification = UserNotification::query()
+            ->where('user_id', $candidate->id)
+            ->where('payload->source', 'team.invitation.created')
+            ->firstOrFail();
+
+        $this->actingAs($candidate)
+            ->get(route('account.notifications'))
+            ->assertOk()
+            ->assertSee('Принять')
+            ->assertSee('Отклонить')
+            ->assertDontSee('Просмотреть приглашение');
+
+        $this->actingAs($creator)->get(route('teams.management', $team->routeIdentifier()))
             ->assertOk()
             ->assertSee('Ожидающий Игрок')
             ->assertSee('@pending-team-member')
             ->assertSee('приглашение ожидает ответа')
             ->assertSee('Отозвать');
+
+        $this->actingAs($candidate)
+            ->patchJson(route('teams.invitations.respond', $response->json('invitation.id')), [
+                'decision' => 'accept',
+            ])->assertOk()->assertJsonPath('message', 'Приглашение принято.');
+
+        $this->assertSame(UserNotificationStatusEnum::READ, $notification->refresh()->status);
     }
 
     public function test_manager_can_revoke_find_and_reinvite_user_while_stale_acceptance_is_rejected(): void

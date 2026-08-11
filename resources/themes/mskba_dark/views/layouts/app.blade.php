@@ -121,5 +121,6 @@
         </div>
 
         @include('theme::partials.modal')
+        @include('theme::partials.notification-toasts')
     </body>
 </html>
