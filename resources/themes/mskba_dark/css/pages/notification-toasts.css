@@ -62,4 +62,8 @@
         right: max(.75rem, env(safe-area-inset-right));
         width: calc(100vw - 1.5rem - env(safe-area-inset-left) - env(safe-area-inset-right));
     }
+
+    body.telegram-mini-app .notification-toast-region {
+        top: calc(var(--telegram-content-top, env(safe-area-inset-top, 0px)) + .75rem);
+    }
 }
