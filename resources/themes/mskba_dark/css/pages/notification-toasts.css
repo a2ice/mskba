@@ -64,6 +64,7 @@
     }
 
     body.telegram-mini-app .notification-toast-region {
-        top: calc(var(--telegram-content-top, env(safe-area-inset-top, 0px)) + .75rem);
+        top: calc(var(--telegram-content-top, env(safe-area-inset-top, 0px)) + .75rem + 15px);
+        width: min(20rem, 75vw);
     }
 }
