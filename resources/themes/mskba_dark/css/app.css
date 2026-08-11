@@ -34,6 +34,13 @@ body {
     background-color: var(--page);
 }
 
+.mobile-primary-bar__home-mark {
+    background-image: url('../images/logo-image-mobile.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
 body[data-telegram-auth-bootstrap] {
     overflow: hidden;
 }

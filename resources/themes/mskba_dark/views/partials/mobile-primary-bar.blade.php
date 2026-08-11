@@ -50,10 +50,8 @@
         </a>
 
         <a class="mobile-primary-bar__action mobile-primary-bar__action--home" href="{{ route('welcome') }}" aria-label="На главную">
-            <span class="mobile-primary-bar__home-mark" aria-hidden="true">
-                <img src="{{ asset('images/logo.png') }}" alt="">
-            </span>
-            <span>Домой</span>
+            <span class="mobile-primary-bar__home-mark" aria-hidden="true"></span>
+            <span>MSKBA</span>
         </a>
 
         <a class="mobile-primary-bar__action" href="{{ route('events.index', ['type' => 'training']) }}">
@@ -184,21 +182,12 @@
         place-items: center;
         border: 4px solid rgba(7, 8, 8, 0.98);
         border-radius: 50%;
-        background:
-            radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .2), transparent 34%),
-            linear-gradient(145deg, #ff8c2b, #df4b0b);
+        overflow: hidden;
+        background-color: #121712;
         box-shadow:
             0 8px 22px rgba(0, 0, 0, .46),
             0 0 24px rgba(236, 127, 18, .28);
         transform: translateX(-50%);
-    }
-
-    .mobile-primary-bar__home-mark img {
-        display: block;
-        width: 38px;
-        height: 38px;
-        object-fit: contain;
-        filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .25));
     }
 
     .mobile-primary-bar__action--home > span:last-child {

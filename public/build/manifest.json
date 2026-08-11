@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-C5yVPt-_.css",
+    "file": "assets/app-CyIV1GhV.css",
     "name": "app",
     "names": [
       "app.css"
@@ -38,12 +38,17 @@
     "src": "resources/themes/mskba_dark/css/app.css",
     "isEntry": true,
     "assets": [
-      "assets/event-about-basketball-CPQ0p9SD.webp"
+      "assets/event-about-basketball-CPQ0p9SD.webp",
+      "assets/logo-image-mobile-Xx0tUfiQ.png"
     ]
   },
   "resources/themes/mskba_dark/images/event-about-basketball.webp": {
     "file": "assets/event-about-basketball-CPQ0p9SD.webp",
     "src": "resources/themes/mskba_dark/images/event-about-basketball.webp"
+  },
+  "resources/themes/mskba_dark/images/logo-image-mobile.png": {
+    "file": "assets/logo-image-mobile-Xx0tUfiQ.png",
+    "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
     "file": "assets/app-DDdirEn0.js",
