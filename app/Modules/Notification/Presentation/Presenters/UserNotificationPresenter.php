@@ -15,9 +15,15 @@ final class UserNotificationPresenter
             'id' => $notification->id,
             'title' => $notification->title,
             'body' => $notification->body,
-            'href' => $notification->action_url ?: route('account.notifications'),
-            'read_url' => route('account.notifications.read', $notification),
+            'href' => $notification->action_url ?: route('account.notifications', absolute: false),
+            'read_url' => route('account.notifications.read', $notification, absolute: false),
             'created_at' => $notification->created_at?->toIso8601String(),
+            'context' => array_filter([
+                'source' => $notification->payload['source'] ?? null,
+                'tournament_id' => $notification->payload['tournament_id'] ?? null,
+                'tournament_admission_id' => $notification->payload['tournament_admission_id'] ?? null,
+                'tournament_admission_status' => $notification->payload['tournament_admission_status'] ?? null,
+            ], static fn ($value): bool => $value !== null),
             'actions' => $this->actions($notification),
         ];
     }
@@ -41,7 +47,7 @@ final class UserNotificationPresenter
             return [];
         }
 
-        $url = route('teams.invitations.respond', $membership->id);
+        $url = route('teams.invitations.respond', $membership->id, absolute: false);
 
         return [
             ['key' => 'accept', 'label' => 'Принять', 'url' => $url, 'method' => 'PATCH', 'variant' => 'primary'],

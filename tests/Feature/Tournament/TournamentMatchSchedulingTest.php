@@ -3,6 +3,7 @@
 namespace Tests\Feature\Tournament;
 
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -36,6 +37,7 @@ final class TournamentMatchSchedulingTest extends TestCase
             $entry = $tournament->entries()->create([
                 'source' => TournamentEntrySourceEnum::ASSEMBLED,
                 'name' => $name,
+                'logo_preset' => sprintf('crest-%02d', $position),
                 'status' => TournamentEntryStatusEnum::ACTIVE,
                 'position' => $position + 1,
             ]);
@@ -43,6 +45,7 @@ final class TournamentMatchSchedulingTest extends TestCase
 
             return $entry;
         });
+        $tournament->forceFill(['participant_pool_locked_at' => now()])->save();
         $match = $tournament->matches()->create(['entry_a_id' => $entries[0]->id, 'entry_b_id' => $entries[1]->id, 'round' => 1, 'sequence' => 1]);
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED, 'requires_payment' => false, 'requires_booking_approval' => false]);
         $startsAt = CarbonImmutable::now('Europe/Moscow')->addDays(8)->startOfDay()->addHours(12);
@@ -60,10 +63,30 @@ final class TournamentMatchSchedulingTest extends TestCase
         $this->assertSame($event->primary_game_id, $match->fresh()->game_id);
         $this->assertSame($venue->id, $event->booking->venue_id);
         $this->assertSame(['Красные', 'Синие'], $event->primaryGame->sides->sortBy('slot')->pluck('display_name')->all());
+        $this->assertSame(['crest-00', 'crest-01'], $event->primaryGame->sides->sortBy('slot')->pluck('logo_preset')->all());
         $this->assertCount(8, $event->primaryGame->rosterEntries);
         $this->assertDatabaseCount('events', 1);
         $this->assertDatabaseCount('venue_bookings', 1);
         $this->assertDatabaseCount('games', 1);
+        $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))->assertOk()->assertSee('Расписание готово');
+        $updatePayload = [
+            'title' => 'Кубок обновлён',
+            'starts_on' => $tournament->starts_on->format('Y-m-d'),
+            'ends_on' => $tournament->ends_on->format('Y-m-d'),
+            'format' => $tournament->format->value,
+            'recruitment_mode' => $tournament->recruitment_mode->value,
+        ];
+        $this->actingAs($owner)->put(route('tournaments.update', $tournament->routeIdentifier()), [
+            ...$updatePayload,
+            'starts_on' => $startsAt->addDay()->format('Y-m-d'),
+        ])->assertSessionHas('error', 'Новый диапазон дат должен включать все назначенные матчи.');
+        $this->actingAs($owner)->put(route('tournaments.update', $tournament->routeIdentifier()), $updatePayload)->assertSessionHasNoErrors();
+        $this->assertSame('Кубок обновлён', $tournament->fresh()->title);
+        $this->actingAs($owner)->postJson(route('tournaments.formation.preview', $tournament->routeIdentifier()), [
+            'assessment_source' => 'self_assessment',
+            'team_count' => 2,
+            'seed' => 42,
+        ])->assertUnprocessable()->assertJsonPath('message', 'После назначения хотя бы одного матча переформировывать команды нельзя.');
 
         $routeParameters = [$event->routeIdentifier(), $event->primaryGame->id];
         $this->actingAs($owner)
@@ -105,6 +128,16 @@ final class TournamentMatchSchedulingTest extends TestCase
         $this->assertSame($targetVenue->id, $event->booking->fresh()->venue_id);
         $this->assertSame(120, (int) $event->starts_at->diffInMinutes($event->ends_at));
         $this->assertTrue($event->primaryGame->fresh()->scheduled_starts_at->equalTo($event->starts_at));
+
+        $event->primaryGame->forceFill(['status' => GameStatusEnum::IN_PROGRESS, 'actual_started_at' => now()])->save();
+        $this->actingAs($owner)->post(route('tournaments.matches.store', $tournament->routeIdentifier()), [
+            'entry_a_id' => $entries[0]->id,
+            'entry_b_id' => $entries[1]->id,
+        ])->assertSessionHas('error', 'После начала турнира добавлять новые матчи нельзя.');
+        $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))
+            ->assertOk()
+            ->assertDontSee('Добавить отдельный матч')
+            ->assertSee('Добавление новых матчей закрыто: турнир уже начался.');
     }
 
     public function test_unavailable_venue_rolls_back_entire_tournament_game_aggregate(): void

@@ -8,6 +8,7 @@
     $canManageStaff = $effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::MANAGE_STAFF);
     $canManageStatus = $effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::MANAGE_STATUS);
     $canDeleteTournament = $effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::DELETE);
+    $participantPoolLocked = (bool) $participantPoolLocked;
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -25,7 +26,7 @@
         <ul class="sidebar-nav nav flex-column">
             @if($pendingMembership)<li class="nav-item"><a class="nav-link" href="#invitation">Приглашение</a></li>@endif
             @if($canManageMain)<li class="nav-item"><a class="nav-link" href="#main">Основное</a></li>@endif
-            @if($canManageGames)<li class="nav-item"><a class="nav-link" href="#participants">Участники</a></li>@if($entries->count() >= 2)<li class="nav-item"><a class="nav-link" href="#matches">Матчи и расписание</a></li>@endif @endif
+            @if($canManageGames)<li class="nav-item"><a class="nav-link" href="#participants">Участники</a></li>@if($entries->count() >= 2 && $participantPoolLocked)<li class="nav-item"><a class="nav-link" href="#matches">Матчи и расписание</a></li>@endif @endif
             @if($canManageStaff)<li class="nav-item"><a class="nav-link" href="#staff">Ответственные</a></li>@endif
             @if($canManageStatus)<li class="nav-item"><a class="nav-link" href="#status">Статус</a></li>@endif
             @if($canDeleteTournament)<li class="nav-item"><a class="nav-link" href="#delete">Удаление</a></li>@endif
@@ -35,6 +36,13 @@
         <h2 class="section-sidebar-block__title">Турнир</h2>
         <a class="btn btn--secondary btn--sm" href="{{ route('tournaments.show', $tournament->routeIdentifier()) }}">Публичная страница</a>
     </div>
+@endsection
+
+@section('section-heading-action')
+    <span class="tournament-preparation-status {{ $preparationStatus['modifier'] }}">
+        <i class="ti {{ $preparationStatus['icon'] }}" aria-hidden="true"></i>
+        {{ $preparationStatus['label'] }}
+    </span>
 @endsection
 
 @section('section-content')
@@ -109,6 +117,7 @@
         <div class="event-card mb-4" id="participants">
             <h2>Участники турнира</h2>
             <p><strong>Режим:</strong> {{ $tournament->recruitment_mode->label() }}</p>
+            @php($hasFormedTeams = $entries->contains(fn ($entry) => $entry->source === \App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum::ASSEMBLED))
             @if($acceptsAdmissions)
             <form method="POST" action="{{ route('tournaments.admissions.invite', $tournament->routeIdentifier()) }}" class="mb-4" data-tournament-candidate-search data-search-url="{{ route('tournaments.admissions.candidates', $tournament->routeIdentifier()) }}">@csrf
                 @include('theme::partials.forms.entity-predictive-search', [
@@ -120,13 +129,37 @@
                 ])
                 <button class="btn btn--primary btn--sm mt-3">Пригласить</button>
             </form>
+            @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS && $entries->count() >= 2)
+                <form class="mb-4" method="POST" action="{{ route('tournaments.participant-pool.lock', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Завершить набор команд? Новые заявки и отзыв принятых команд будут закрыты.')">
+                    @csrf
+                    <button class="btn btn--primary" type="submit">Завершить набор команд</button>
+                </form>
+            @endif
             @else
-                <div class="alert alert-info mb-4">Приём заявок и приглашений на этот турнир закрыт.</div>
+                <div class="alert alert-info mb-4">
+                    @if($hasFormedTeams ?? false)
+                        Приём заявок и приглашений закрыт: команды уже сформированы. Чтобы изменить пул участников, сначала расформируйте команды.
+                    @elseif($participantPoolLocked && $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS)
+                        Набор готовых команд завершён. Принятые команды зафиксированы для формирования расписания.
+                    @elseif($competitionStarted)
+                        Приём заявок и приглашений закрыт: турнир уже начался.
+                    @elseif($tournament->status !== \App\Modules\Tournament\Domain\Enums\TournamentStatusEnum::CONFIRMED)
+                        Приём заявок и приглашений закрыт из-за текущего статуса турнира.
+                    @else
+                        Приём заявок и приглашений на этот турнир закрыт.
+                    @endif
+                </div>
+                @if($participantPoolLocked && $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS && ! $matches->contains(fn ($match) => $match->game_id !== null))
+                    <form class="mb-4" method="POST" action="{{ route('tournaments.participant-pool.unlock', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Возобновить набор команд? Черновая схема матчей будет удалена.')">
+                        @csrf @method('DELETE')
+                        <button class="btn btn--secondary" type="submit">Возобновить набор команд</button>
+                    </form>
+                @endif
             @endif
             @forelse($admissions as $admission)
                 <div class="border rounded p-3 mb-3">
                     <strong>{{ $admission->team?->name ?? trim(($admission->user?->profile?->first_name ?? '').' '.($admission->user?->profile?->last_name ?? '')) ?: $admission->user?->username }}</strong>
-                    <div class="text-muted">{{ $admission->direction->value === 'application' ? 'Заявка' : 'Приглашение' }} · {{ $admission->status->label() }}</div>
+                    <div class="text-muted">{{ $admission->direction->value === 'application' ? 'Заявка' : 'Приглашение' }}@if($admission->roles?->isNotEmpty()) · {{ $admission->roles->map->label()->join(', ') }}@endif · {{ $admission->status->label() }}</div>
                     @if($admission->direction->value === 'application' && $admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::PENDING)
                         <div class="d-flex gap-2 mt-2">
                             @if($acceptsAdmissions)
@@ -135,8 +168,10 @@
                             <form method="POST" action="{{ route('tournaments.admissions.respond', [$tournament->routeIdentifier(), $admission]) }}">@csrf<input type="hidden" name="decision" value="declined"><button class="btn btn--secondary btn--sm">Отклонить</button></form>
                         </div>
                     @endif
-                    @if(in_array($admission->status, [\App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::PENDING, \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED], true))
+                    @if($admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::PENDING || ($admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED && ! $participantPoolLocked))
                         <form class="mt-2" method="POST" action="{{ route('tournaments.admissions.revoke', [$tournament->routeIdentifier(), $admission]) }}">@csrf @method('DELETE')<button class="btn btn--danger btn--sm">Отозвать</button></form>
+                    @elseif($admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED && $participantPoolLocked)
+                        <p class="form-text mt-2">Чтобы отозвать участника, сначала {{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'возобновите набор' : 'расформируйте команды' }}.</p>
                     @endif
                 </div>
             @empty<p>Заявок и приглашений пока нет.</p>@endforelse
@@ -145,8 +180,16 @@
                 <ul>@foreach($entries as $entry)<li>{{ $entry->name }} · {{ $entry->effective_members_count }} {{ trans_choice('участник|участника|участников', $entry->effective_members_count) }}</li>@endforeach</ul>
             @endif
         </div>
-        @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT && $tournament->format?->sideSize() !== 1 && $matches->isEmpty())
-            <div class="event-card mb-4" data-tournament-formation data-preview-url="{{ route('tournaments.formation.preview', $tournament->routeIdentifier()) }}" data-apply-url="{{ route('tournaments.formation.apply', $tournament->routeIdentifier()) }}">
+        @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT && $tournament->format?->sideSize() !== 1 && ! $matches->contains(fn ($match) => $match->game_id !== null))
+            <div class="event-card mb-4" @if(! $hasFormedTeams) data-tournament-formation data-preview-url="{{ route('tournaments.formation.preview', $tournament->routeIdentifier()) }}" data-apply-url="{{ route('tournaments.formation.apply', $tournament->routeIdentifier()) }}" @endif>
+                @if($hasFormedTeams)
+                    <h2>Команды сформированы</h2>
+                    <p>Чтобы изменить составы, названия, логотипы или формат турнира, сначала расформируйте команды. Подтверждённые игроки останутся в пуле.@if($matches->isNotEmpty()) Черновая круговая схема также будет удалена.@endif</p>
+                    <form class="mt-3" method="POST" action="{{ route('tournaments.formation.disband', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Расформировать команды? Составы и черновая круговая схема будут удалены, подтверждённые игроки останутся в пуле.')">
+                        @csrf @method('DELETE')
+                        <button class="btn btn--danger" type="submit">Расформировать команды</button>
+                    </form>
+                @else
                 <h2>Balanced-формирование</h2><p>В пуле: {{ $acceptedPlayerCount }} игроков. Preview можно пересчитать и скорректировать перетаскиванием.</p>
                 <form class="row g-3" data-tournament-formation-form>
                     <div class="col-md-6"><label class="form-label">Источник оценки</label><select class="form-select" name="assessment_source">@foreach($assessmentSources as $source)<option value="{{ $source->value }}">{{ $source->label() }}</option>@endforeach</select></div>
@@ -155,10 +198,11 @@
                 </form>
                 <div class="alert mt-3" data-tournament-formation-message hidden></div>
                 <div class="row g-3 mt-2" data-tournament-formation-preview></div>
-                <button class="btn btn--primary mt-3" type="button" data-tournament-formation-apply hidden>Утвердить составы</button>
+                <button class="btn btn--primary mt-3" type="button" data-tournament-formation-apply hidden>Утвердить команды</button>
+                @endif
             </div>
         @endif
-        @if($entries->count() >= 2)
+        @if($entries->count() >= 2 && $participantPoolLocked)
             @php($scheduleLocked = $matches->contains(fn ($match) => $match->game_id !== null))
             @php($pairCount = intdiv($entries->count() * ($entries->count() - 1), 2))
             @php($currentLegs = $matches->isEmpty() ? null : ($pairCount > 0 && $matches->count() === $pairCount * 2 ? 2 : 1))
@@ -203,6 +247,9 @@
                     @foreach($matches as $match)@unless($match->game)<form id="delete-match-{{ $match->id }}" method="POST" action="{{ route('tournaments.matches.destroy', [$tournament->routeIdentifier(), $match]) }}">@csrf @method('DELETE')</form>@endunless @endforeach
                 @endif
                 <hr>
+                @if(! $competitionStarted)
+                <h3>Добавить отдельный матч</h3>
+                <p class="form-text mb-3">Создаёт дополнительную пару между двумя существующими командами. Новые участники здесь не добавляются.</p>
                 <form method="POST" action="{{ route('tournaments.matches.store', $tournament->routeIdentifier()) }}" class="row g-3 my-4">@csrf
                     <div class="col-md-9 d-flex flex-wrap align-items-center gap-3">
                         @foreach(['entry_a_id' => 'Сторона A', 'entry_b_id' => 'Сторона B'] as $field => $label)
@@ -213,8 +260,8 @@
                                     'label' => $label,
                                     'placeholder' => 'Начните вводить название…',
                                     'minimumLength' => 1,
-                                    'initialMessage' => 'Введите часть названия и выберите участника.',
-                                    'options' => $entries->map(fn ($entry) => ['id' => $entry->id, 'label' => $entry->name, 'meta' => 'Участник #'.$entry->id]),
+                                    'initialMessage' => 'Введите часть названия и выберите команду.',
+                                    'options' => $entries->map(fn ($entry) => ['id' => $entry->id, 'label' => $entry->name, 'meta' => 'Команда #'.$entry->id]),
                                 ])
                             </div>
                         @endforeach
@@ -223,6 +270,9 @@
                         <button class="btn btn--primary btn--sm w-100">Добавить</button>
                     </div>
                 </form>
+                @else
+                    <div class="alert alert-info my-4">Добавление новых матчей закрыто: турнир уже начался.</div>
+                @endif
                 <hr>
                 @if($matches->isNotEmpty())
                     @foreach($matches as $match)@if(!$match->game)

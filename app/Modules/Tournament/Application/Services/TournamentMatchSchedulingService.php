@@ -126,7 +126,15 @@ final class TournamentMatchSchedulingService
             ]);
             foreach ([['entry' => $entryA, 'roster' => $entryARoster, 'slot' => 'A'], ['entry' => $entryB, 'roster' => $entryBRoster, 'slot' => 'B']] as $sideData) {
                 $entry = $sideData['entry'];
-                $side = $game->sides()->create(['team_id' => $entry->team_id, 'slot' => $sideData['slot'], 'display_name' => $entry->name]);
+                $entry->loadMissing(['team.logo', 'logo']);
+                $side = $game->sides()->create([
+                    'team_id' => $entry->team_id,
+                    'slot' => $sideData['slot'],
+                    'display_name' => $entry->name,
+                    'logo_preset' => $entry->logo_preset,
+                    'logo_disk' => $entry->logo?->disk,
+                    'logo_path' => $entry->logo?->path,
+                ]);
                 $game->rosterEntries()->createMany($sideData['roster']->map(fn (array $member): array => [
                     'game_side_id' => $side->id, 'user_id' => $member['user_id'],
                     'source_contract_membership_id' => $member['source_contract_membership_id'],

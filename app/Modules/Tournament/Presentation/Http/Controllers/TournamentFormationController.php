@@ -8,6 +8,7 @@ use App\Modules\Tournament\Application\Services\TournamentFormationService;
 use App\Modules\Tournament\Domain\Enums\TournamentAssessmentSourceEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
@@ -42,9 +43,20 @@ final class TournamentFormationController extends Controller
             'pool_fingerprint' => ['required', 'string', 'size:64'],
             'teams' => ['required', 'array', 'min:2'],
             'teams.*.number' => ['required', 'integer', 'min:1'],
+            'teams.*.name' => ['required', 'string', 'max:150'],
+            'teams.*.logo_preset' => ['required', 'string', Rule::in(array_map(fn (int $number): string => sprintf('crest-%02d', $number), range(0, 11)))],
+            'teams.*.logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
             'teams.*.user_ids' => ['required', 'array'],
             'teams.*.user_ids.*' => ['required', 'integer'],
         ]);
+        $data['teams'] = collect($data['teams'])->map(function (array $team): array {
+            if (isset($team['logo'])) {
+                $team['logo_contents'] = $team['logo']->get();
+                unset($team['logo']);
+            }
+
+            return $team;
+        })->all();
         try {
             $service->apply(
                 Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail(),
@@ -56,6 +68,20 @@ final class TournamentFormationController extends Controller
             return response()->json(['message' => $exception->getMessage()], 422);
         }
 
-        return response()->json(['message' => 'Составы утверждены.']);
+        return response()->json(['message' => 'Команды утверждены.']);
+    }
+
+    public function disband(Request $request, string $tournament, TournamentFormationService $service, CurrentActorResolver $actors): RedirectResponse
+    {
+        try {
+            $service->disband(
+                Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail(),
+                $actors->resolveForRequest($request) ?? abort(403),
+            );
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Команды расформированы. Подтверждённые игроки сохранены в пуле.');
     }
 }

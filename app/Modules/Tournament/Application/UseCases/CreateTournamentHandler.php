@@ -44,6 +44,8 @@ final class CreateTournamentHandler
             'full_description' => $data['full_description'] ?? null,
             'format' => $format,
             'recruitment_mode' => $recruitmentMode,
+            'accepts_unconfirmed_participants' => $recruitmentMode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
+                && (bool) ($data['accepts_unconfirmed_participants'] ?? false),
         ]));
     }
 

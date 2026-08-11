@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const format = document.querySelector('[data-tournament-format]');
     const recruitment = document.querySelector('[data-tournament-recruitment-mode]');
+    const unconfirmedSetting = document.querySelector('[data-tournament-unconfirmed-setting]');
     if (!(format instanceof HTMLSelectElement) || !(recruitment instanceof HTMLSelectElement)) {
         return;
     }
@@ -23,8 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
             mirror.value = recruitment.value;
             mirror.disabled = !oneOnOne;
         }
+        if (unconfirmedSetting instanceof HTMLElement) {
+            unconfirmedSetting.hidden = recruitment.value !== 'individual_draft';
+        }
     };
 
     format.addEventListener('change', sync);
+    recruitment.addEventListener('change', sync);
     sync();
 });

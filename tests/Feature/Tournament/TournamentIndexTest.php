@@ -44,4 +44,14 @@ final class TournamentIndexTest extends TestCase
             ->assertRedirect(route('tournaments.index'))
             ->assertSessionHasErrors(['period', 'date_to']);
     }
+
+    public function test_tournaments_are_sorted_by_latest_start_date_first(): void
+    {
+        Tournament::factory()->create(['title' => 'Более ранний турнир', 'starts_on' => '2026-08-10']);
+        Tournament::factory()->create(['title' => 'Более свежий турнир', 'starts_on' => '2026-08-11']);
+
+        $this->get(route('tournaments.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Более свежий турнир', 'Более ранний турнир']);
+    }
 }

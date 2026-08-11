@@ -10,9 +10,12 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\Services\UserNotificationCounterStore;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
@@ -21,6 +24,7 @@ use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionCandidateTypeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionDirectionEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentEntryStatusEnum;
@@ -38,6 +42,7 @@ final class TournamentAdmissionService
         private readonly TournamentAccess $tournamentAccess,
         private readonly TeamManagementAccess $teamAccess,
         private readonly CreateUserNotificationHandler $notifications,
+        private readonly UserNotificationCounterStore $notificationCounters,
     ) {}
 
     public function invite(Tournament $tournament, Actor $actor, Team|User $candidate): TournamentAdmission
@@ -51,6 +56,7 @@ final class TournamentAdmissionService
                 'Приглашение на турнир',
                 'Вас пригласили участвовать в турнире.',
                 $admission,
+                source: 'tournament.invitation.created',
             );
         } else {
             foreach ($this->teamRepresentativeUserIds($candidate) as $recipientId) {
@@ -61,6 +67,7 @@ final class TournamentAdmissionService
                     'Команду «'.$candidate->name.'» пригласили участвовать в турнире.',
                     $admission,
                     $candidate,
+                    'tournament.invitation.created',
                 );
             }
         }
@@ -68,14 +75,15 @@ final class TournamentAdmissionService
         return $admission;
     }
 
-    public function apply(Tournament $tournament, Actor $actor, Team|User $candidate): TournamentAdmission
+    /** @param Collection<int, TournamentAdmissionRoleEnum>|null $roles */
+    public function apply(Tournament $tournament, Actor $actor, Team|User $candidate, ?Collection $roles = null): TournamentAdmission
     {
         $this->assertCandidateMayAct($candidate, $actor);
 
-        $admission = $this->createPending($tournament, $actor, $candidate, TournamentAdmissionDirectionEnum::APPLICATION);
+        $admission = $this->createPending($tournament, $actor, $candidate, TournamentAdmissionDirectionEnum::APPLICATION, $roles);
         $ownerUserId = $tournament->createdByActor()->value('user_id');
         if ($ownerUserId !== null) {
-            $this->notify((int) $ownerUserId, $tournament, 'Новая заявка на турнир', 'Поступила новая заявка на участие.', $admission);
+            $this->notify((int) $ownerUserId, $tournament, 'Новая заявка на турнир', 'Поступила новая заявка на участие.', $admission, source: 'tournament.application.submitted');
         }
 
         return $admission;
@@ -87,7 +95,7 @@ final class TournamentAdmissionService
             throw new InvalidArgumentException('Недопустимый ответ на заявку.');
         }
 
-        return DB::transaction(function () use ($tournament, $admission, $actor, $decision): TournamentAdmission {
+        $updated = DB::transaction(function () use ($tournament, $admission, $actor, $decision): TournamentAdmission {
             $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $locked = TournamentAdmission::query()->whereKey($admission->id)->lockForUpdate()->firstOrFail();
             $this->assertBelongsToTournament($locked, $lockedTournament);
@@ -117,6 +125,15 @@ final class TournamentAdmissionService
 
             return $locked->refresh();
         });
+
+        if ($updated->direction === TournamentAdmissionDirectionEnum::APPLICATION) {
+            $this->markAdmissionNotificationsAsRead($updated, 'tournament.application.submitted');
+            $this->notifyApplicationDecision($updated, $decision);
+        } else {
+            $this->markAdmissionNotificationsAsRead($updated, 'tournament.invitation.created');
+        }
+
+        return $updated;
     }
 
     public function revoke(Tournament $tournament, TournamentAdmission $admission, Actor $actor): void
@@ -126,6 +143,9 @@ final class TournamentAdmissionService
             $this->tournamentAccess->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
             $locked = TournamentAdmission::query()->whereKey($admission->id)->lockForUpdate()->firstOrFail();
             $this->assertBelongsToTournament($locked, $lockedTournament);
+            if ($locked->status === TournamentAdmissionStatusEnum::ACCEPTED && $lockedTournament->participant_pool_locked_at !== null) {
+                throw new InvalidArgumentException('Сначала возобновите набор или расформируйте команды, чтобы отозвать принятого участника.');
+            }
             $entry = $locked->entry()->first();
             if ($entry !== null && ($entry->matchesAsA()->exists() || $entry->matchesAsB()->exists())) {
                 throw new InvalidArgumentException('Нельзя отозвать участника, уже включённого в матчи.');
@@ -135,15 +155,27 @@ final class TournamentAdmissionService
         });
     }
 
-    private function createPending(Tournament $tournament, Actor $actor, Team|User $candidate, TournamentAdmissionDirectionEnum $direction): TournamentAdmission
+    /** @param Collection<int, TournamentAdmissionRoleEnum>|null $roles */
+    private function createPending(Tournament $tournament, Actor $actor, Team|User $candidate, TournamentAdmissionDirectionEnum $direction, ?Collection $roles = null): TournamentAdmission
     {
-        return DB::transaction(function () use ($tournament, $actor, $candidate, $direction): TournamentAdmission {
+        return DB::transaction(function () use ($tournament, $actor, $candidate, $direction, $roles): TournamentAdmission {
             $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->assertTournamentAcceptsCandidates($locked);
             if ($direction === TournamentAdmissionDirectionEnum::INVITATION) {
                 $this->tournamentAccess->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
             }
             $this->assertCandidateMatchesMode($locked, $candidate);
+            if ($direction === TournamentAdmissionDirectionEnum::APPLICATION
+                && $candidate instanceof User
+                && ($roles === null || $roles->isEmpty())) {
+                throw new InvalidArgumentException('Выберите хотя бы одну роль для участия в турнире.');
+            }
+            if ($direction === TournamentAdmissionDirectionEnum::APPLICATION
+                && $candidate instanceof User
+                && $candidate->status !== UserStatusEnum::CONFIRMED
+                && ! $locked->accepts_unconfirmed_participants) {
+                throw new InvalidArgumentException('По условиям этого турнира для подачи заявки необходимо подтвердить аккаунт');
+            }
             $candidateColumn = $candidate instanceof Team ? 'team_id' : 'user_id';
             $duplicate = $locked->admissions()->where($candidateColumn, $candidate->id)
                 ->whereIn('status', [TournamentAdmissionStatusEnum::PENDING->value, TournamentAdmissionStatusEnum::ACCEPTED->value])
@@ -157,6 +189,7 @@ final class TournamentAdmissionService
                 'team_id' => $candidate instanceof Team ? $candidate->id : null,
                 'user_id' => $candidate instanceof User ? $candidate->id : null,
                 'direction' => $direction,
+                'roles' => $candidate instanceof User ? $roles : null,
                 'status' => TournamentAdmissionStatusEnum::PENDING,
                 'requested_by_actor_id' => $actor->id,
             ]);
@@ -208,7 +241,7 @@ final class TournamentAdmissionService
     private function assertCandidateMayAct(Team|User $candidate, Actor $actor): void
     {
         if ($candidate instanceof User) {
-            if ($actor->user_id !== $candidate->id || $candidate->status !== UserStatusEnum::CONFIRMED) {
+            if ($actor->user_id !== $candidate->id || $candidate->status === UserStatusEnum::BLOCKED) {
                 throw new InvalidArgumentException('Ответить может только сам приглашённый игрок.');
             }
         } elseif (! $this->teamAccess->allows($candidate, $actor, TeamPermissionEnum::MANAGE_TOURNAMENT_PARTICIPATION)) {
@@ -269,6 +302,8 @@ final class TournamentAdmissionService
         string $body,
         TournamentAdmission $admission,
         ?Team $team = null,
+        ?string $source = null,
+        ?TournamentAdmissionStatusEnum $admissionStatus = null,
     ): void {
         $this->notifications->handle(new CreateUserNotificationDTO(
             userId: $userId,
@@ -281,10 +316,57 @@ final class TournamentAdmissionService
                 : 'Открыть заявку',
             payload: array_filter([
                 'delivery_category' => UserNotificationDeliveryCategoryEnum::REQUEST->value,
+                'source' => $source,
                 'tournament_id' => $tournament->id,
                 'tournament_admission_id' => $admission->id,
+                'tournament_admission_status' => $admissionStatus?->value,
                 'team_id' => $team?->id,
             ], static fn ($value): bool => $value !== null),
         ));
+    }
+
+    private function markAdmissionNotificationsAsRead(TournamentAdmission $admission, string $source): void
+    {
+        $notifications = UserNotification::query()
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->where('payload->source', $source)
+            ->where('payload->tournament_admission_id', $admission->id)
+            ->get(['id', 'user_id']);
+
+        if ($notifications->isEmpty()) {
+            return;
+        }
+
+        UserNotification::query()
+            ->whereKey($notifications->pluck('id'))
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->update([
+                'status' => UserNotificationStatusEnum::READ,
+                'read_at' => now(),
+            ]);
+
+        $notifications->pluck('user_id')->unique()
+            ->each(fn ($userId) => $this->notificationCounters->forget((int) $userId));
+    }
+
+    private function notifyApplicationDecision(TournamentAdmission $admission, TournamentAdmissionStatusEnum $decision): void
+    {
+        if ($admission->user_id === null) {
+            return;
+        }
+
+        [$title, $body, $source] = $decision === TournamentAdmissionStatusEnum::ACCEPTED
+            ? ['Заявка на турнир принята', 'Ваша заявка на участие принята.', 'tournament.application.accepted']
+            : ['Заявка на турнир отклонена', 'Ваша заявка на участие отклонена.', 'tournament.application.declined'];
+
+        $this->notify(
+            $admission->user_id,
+            $admission->tournament,
+            $title,
+            $body,
+            $admission,
+            source: $source,
+            admissionStatus: $decision,
+        );
     }
 }

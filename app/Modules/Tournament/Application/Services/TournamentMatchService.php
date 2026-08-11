@@ -2,6 +2,7 @@
 
 namespace App\Modules\Tournament\Application\Services;
 
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Tournament\Domain\Enums\TournamentEntryStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
@@ -23,6 +24,14 @@ final class TournamentMatchService
             $this->access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
             if ($locked->status === TournamentStatusEnum::CANCELLED) {
                 throw new InvalidArgumentException('В отменённый турнир нельзя добавлять матчи.');
+            }
+            if ($locked->participant_pool_locked_at === null) {
+                throw new InvalidArgumentException('Сначала завершите набор участников.');
+            }
+            if ($locked->matches()->whereHas('game', fn ($query) => $query
+                ->whereNotNull('actual_started_at')
+                ->orWhereIn('status', [GameStatusEnum::IN_PROGRESS->value, GameStatusEnum::COMPLETED->value]))->exists()) {
+                throw new InvalidArgumentException('После начала турнира добавлять новые матчи нельзя.');
             }
             $entries = $locked->entries()->whereKey([$entryA->id, $entryB->id])->lockForUpdate()->get();
             if ($entryA->is($entryB) || $entries->count() !== 2 || $entries->contains(fn (TournamentEntry $entry) => $entry->status !== TournamentEntryStatusEnum::ACTIVE)) {

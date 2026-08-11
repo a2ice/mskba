@@ -51,6 +51,7 @@
         @if($tournament->status_comment)<div class="alert alert-info">{{ $tournament->status_comment }}</div>@endif
         @if($tournament->short_description)<p>{{ $tournament->short_description }}</p>@endif
         @if($tournament->full_description)<div>{!! nl2br(e($tournament->full_description)) !!}</div>@endif
+        @if(session('error'))<div class="alert alert-danger mt-4">{{ session('error') }}</div>@endif
 
         @auth
             @if($myPendingInvitations->isNotEmpty())
@@ -61,16 +62,49 @@
                     </div>
                 @endforeach
             @elseif($canApplyAsPlayer)
-                <form class="mt-4" method="POST" action="{{ route('tournaments.admissions.apply', $tournament->routeIdentifier()) }}">@csrf<button class="btn btn--secondary btn--sm">Подать заявку как игрок</button></form>
+                <span data-tournament-application-cta="{{ $tournament->id }}"><button class="btn btn--primary btn--sm mt-4 js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="tournament-application-role">Подать заявку</button></span>
+            @endif
+        @else
+            @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT && $tournament->acceptsAdmissions())
+                <span data-tournament-application-cta="{{ $tournament->id }}"><button
+                    class="btn btn--primary btn--sm mt-4 js-handler"
+                    type="button"
+                    data-handler="modal"
+                    data-modal-action="open"
+                    data-modal-target="auth-entry-classic"
+                    data-auth-redirect-url="{{ route('tournaments.show', $tournament->routeIdentifier(), false) }}"
+                >Подать заявку</button></span>
             @endif
         @endauth
     </article>
+
+    @auth
+        @if($canApplyAsPlayer && $myPendingInvitations->isEmpty())
+            @component('theme::partials.modal.layout', ['id' => 'tournament-application-role'])
+                <h2 class="modal_title" id="modal-title-tournament-application-role">В качестве кого?</h2>
+                <p class="modal-description">Выберите роль, в которой хотите участвовать в турнире.</p>
+                <form method="POST" action="{{ route('tournaments.admissions.apply', $tournament->routeIdentifier()) }}" data-tournament-application-role-form>
+                    @csrf
+                    <div class="d-grid mb-4">
+                        @foreach($admissionRoles as $role)
+                            <label class="form-toggle">
+                                <input class="form-toggle__input" type="checkbox" name="roles[]" value="{{ $role->value }}" data-tournament-application-role @checked($role === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum::PLAYER)>
+                                <span class="form-toggle__control" aria-hidden="true"></span>
+                                <strong class="form-toggle__title">{{ $role->label() }}</strong>
+                            </label>
+                        @endforeach
+                    </div>
+                    <button class="btn btn--primary" type="submit">Подать заявку</button>
+                </form>
+            @endcomponent
+        @endif
+    @endauth
 
     <section class="section-card mb-4" id="overview"><h2>Обзор</h2><p>{{ $tournament->short_description ?: 'Описание турнира пока не добавлено.' }}</p><div class="d-flex flex-wrap gap-3"><span>{{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Команд' : 'Участников' }}: {{ $tournament->entries->count() }}</span><span>Матчей: {{ $tournament->matches->count() }}</span><span>Подтверждено результатов: {{ (int) (collect($standings)->sum('played') / 2) }}</span></div></section>
 
     <section class="section-card mb-4" id="teams"><h2>{{ $teamsLabel }}</h2>
         @if($tournament->entries->isNotEmpty())<div class="tournament-team-grid">@foreach($tournament->entries as $entry)
-            @php($teamLogo = $entry->team?->logo?->publicUrl() ?? asset('images/team-placeholder.webp'))
+            @php($teamLogo = $entry->logoUrl())
             <article class="tournament-team-card"><img class="tournament-team-card__logo" src="{{ $teamLogo }}" alt="Логотип {{ $entry->name }}"><div>@if($entry->team)<a class="tournament-team-card__name" href="{{ route('teams.show', $entry->team->routeIdentifier()) }}">{{ $entry->name }}</a>@else<strong class="tournament-team-card__name">{{ $entry->name }}</strong>@endif<div class="text-muted">{{ $entry->effectiveMembers->count() }} в составе</div></div></article>
         @endforeach</div>@else<p>Участники ещё не определены.</p>@endif
     </section>

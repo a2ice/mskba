@@ -243,7 +243,8 @@ class UserNotificationTest extends TestCase
         Event::assertDispatched(UserNotificationCreatedBroadcast::class, function ($event) use ($user): bool {
             return $event->userId === $user->id
                 && $event->unreadCount === 1
-                && $event->notification['title'] === 'Новое уведомление';
+                && $event->notification['title'] === 'Новое уведомление'
+                && str_starts_with($event->notification['read_url'], '/account/notifications/');
         });
     }
 
@@ -283,6 +284,7 @@ class UserNotificationTest extends TestCase
         $response->assertSee('Уведомление для просмотра');
         $response->assertSee('ti-bell-ringing', false);
         $response->assertSee('ti-settings', false);
+        $response->assertSee('data-notification-sync-url="/account/notifications/new"', false);
         $response->assertSee('Отметить все прочитанными');
         $response->assertSee('>1</span>', false);
     }

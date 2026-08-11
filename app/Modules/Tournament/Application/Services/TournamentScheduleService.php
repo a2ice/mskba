@@ -71,6 +71,9 @@ final class TournamentScheduleService
         if ($tournament->status === TournamentStatusEnum::CANCELLED) {
             throw new InvalidArgumentException('Для отменённого турнира нельзя формировать расписание.');
         }
+        if ($tournament->participant_pool_locked_at === null) {
+            throw new InvalidArgumentException('Сначала завершите набор участников.');
+        }
     }
 
     private function activeEntries(Tournament $tournament)

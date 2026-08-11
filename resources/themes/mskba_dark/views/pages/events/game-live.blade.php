@@ -26,7 +26,7 @@
             ?: $user->username
             ?: 'Пользователь #'.$user->id;
     };
-    $sideLogo = static fn ($side): ?string => $side?->team?->logo?->publicUrl();
+    $sideLogo = static fn ($side): ?string => $side?->logoUrl();
     $sideName = static fn ($side, string $slot): string => $side?->display_name ?: 'Команда '.$slot;
     $shortSideName = static function (string $value): string {
         return mb_strlen($value) > 15 ? mb_substr($value, 0, 15).'…' : $value;

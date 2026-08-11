@@ -4,10 +4,11 @@ namespace App\Modules\Tournament\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
-use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Application\Services\TournamentAdmissionService;
+use App\Modules\Tournament\Application\Services\TournamentParticipantPoolService;
+use App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
@@ -27,7 +28,7 @@ final class TournamentAdmissionController extends Controller
             : ['user_id' => ['required', 'integer', 'exists:users,id']]);
         $candidate = $item->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
             ? Team::query()->findOrFail($data['team_id'])
-            : User::query()->whereKey($data['user_id'])->where('status', UserStatusEnum::CONFIRMED->value)->firstOrFail();
+            : User::query()->whereKey($data['user_id'])->firstOrFail();
 
         return $this->run(fn () => $service->invite($item, $actors->resolveForRequest($request) ?? abort(403), $candidate), 'Приглашение отправлено.');
     }
@@ -36,11 +37,21 @@ final class TournamentAdmissionController extends Controller
     {
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
         $actor = $actors->resolveForRequest($request) ?? abort(403);
-        $candidate = $item->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
-            ? Team::query()->findOrFail($request->validate(['team_id' => ['required', 'integer', 'exists:teams,id']])['team_id'])
-            : $request->user();
+        if ($item->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS) {
+            $candidate = Team::query()->findOrFail($request->validate(['team_id' => ['required', 'integer', 'exists:teams,id']])['team_id']);
+            $roles = null;
+        } else {
+            $candidate = $request->user();
+            $data = $request->validate([
+                'roles' => ['required', 'array', 'min:1'],
+                'roles.*' => ['required', 'distinct', Rule::enum(TournamentAdmissionRoleEnum::class)],
+            ]);
+            $roles = collect($data['roles'])
+                ->map(static fn (string $role): TournamentAdmissionRoleEnum => TournamentAdmissionRoleEnum::from($role))
+                ->values();
+        }
 
-        return $this->run(fn () => $service->apply($item, $actor, $candidate), 'Заявка отправлена.');
+        return $this->run(fn () => $service->apply($item, $actor, $candidate, $roles), 'Заявка отправлена.');
     }
 
     public function respond(Request $request, string $tournament, TournamentAdmission $admission, TournamentAdmissionService $service, CurrentActorResolver $actors): RedirectResponse
@@ -59,6 +70,20 @@ final class TournamentAdmissionController extends Controller
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
 
         return $this->run(fn () => $service->revoke($item, $admission, $actors->resolveForRequest($request) ?? abort(403)), 'Допуск отозван.');
+    }
+
+    public function lockPool(Request $request, string $tournament, TournamentParticipantPoolService $service, CurrentActorResolver $actors): RedirectResponse
+    {
+        $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
+
+        return $this->run(fn () => $service->lock($item, $actors->resolveForRequest($request) ?? abort(403)), 'Набор команд завершён.');
+    }
+
+    public function unlockPool(Request $request, string $tournament, TournamentParticipantPoolService $service, CurrentActorResolver $actors): RedirectResponse
+    {
+        $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
+
+        return $this->run(fn () => $service->unlock($item, $actors->resolveForRequest($request) ?? abort(403)), 'Набор команд возобновлён.');
     }
 
     private function run(callable $operation, string $message): RedirectResponse

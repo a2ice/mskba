@@ -4,6 +4,7 @@ namespace App\Modules\Tournament\Application\Services;
 
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Media\Application\Services\WebpImageNormalizer;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAssessmentSourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum;
@@ -13,7 +14,10 @@ use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Throwable;
 
 final class TournamentFormationService
 {
@@ -33,7 +37,7 @@ final class TournamentFormationService
         'height_cm' => 'рост', 'weight_kg' => 'вес', 'experience_years' => 'опыт', 'body_type' => 'телосложение',
     ];
 
-    public function __construct(private readonly TournamentAccess $access) {}
+    public function __construct(private readonly TournamentAccess $access, private readonly WebpImageNormalizer $normalizer) {}
 
     /** @return array<string, mixed> */
     public function preview(Tournament $tournament, Actor $actor, TournamentAssessmentSourceEnum $source, int $teamCount, int $seed): array
@@ -47,7 +51,7 @@ final class TournamentFormationService
         }
 
         $players = $this->scorePlayers($users, $source, $seed);
-        $teams = collect(range(1, $teamCount))->map(fn (int $number): array => ['number' => $number, 'players' => [], 'score' => 0.0, 'unknown' => 0, 'positions' => []])->all();
+        $teams = collect(range(1, $teamCount))->map(fn (int $number): array => ['number' => $number, 'name' => 'Команда '.$number, 'logo_preset' => sprintf('crest-%02d', ($number - 1) % 12), 'players' => [], 'score' => 0.0, 'unknown' => 0, 'positions' => []])->all();
         $maxSize = (int) ceil($players->count() / $teamCount);
         foreach ($players as $player) {
             $eligible = collect($teams)->filter(fn (array $team): bool => count($team['players']) < $maxSize);
@@ -73,41 +77,86 @@ final class TournamentFormationService
             'pool_fingerprint' => $this->fingerprint($tournament),
             'teams' => collect($teams)->map(fn (array $team): array => [
                 'number' => $team['number'],
+                'name' => $team['name'],
+                'logo_preset' => $team['logo_preset'],
                 'score' => round($team['score'] / max(1, count($team['players'])), 4),
                 'coverage' => round(collect($team['players'])->avg('coverage') ?? 0, 4),
-                'players' => collect($team['players'])->map(fn (array $player): array => collect($player)->only(['id', 'name', 'username', 'score', 'coverage', 'primary_position', 'missing_features'])->all())->all(),
+                'players' => collect($team['players'])->map(fn (array $player): array => collect($player)->only(['id', 'name', 'username', 'score', 'coverage', 'primary_position', 'features'])->all())->all(),
             ])->all(),
         ];
     }
 
-    /** @param array<int, array{number:int, user_ids:list<int>}> $teams */
+    /** @param array<int, array{number:int, name:string, logo_preset:string, logo_contents?:string, user_ids:list<int>}> $teams */
     public function apply(Tournament $tournament, Actor $actor, string $fingerprint, array $teams): void
     {
-        DB::transaction(function () use ($tournament, $actor, $fingerprint, $teams): void {
+        $storedPaths = [];
+        try {
+            DB::transaction(function () use ($tournament, $actor, $fingerprint, $teams, &$storedPaths): void {
+                $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
+                $this->access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+                $this->assertFormationAvailable($locked);
+                if (! hash_equals($this->fingerprint($locked), $fingerprint)) {
+                    throw new InvalidArgumentException('Пул участников изменился. Сформируйте preview заново.');
+                }
+                $poolIds = $this->pool($locked)->pluck('id')->sort()->values()->all();
+                $assigned = collect($teams)->flatMap(fn (array $team) => $team['user_ids'])->map(fn ($id): int => (int) $id)->all();
+                if (count($assigned) !== count(array_unique($assigned)) || collect($assigned)->sort()->values()->all() !== $poolIds) {
+                    throw new InvalidArgumentException('Каждый подтверждённый игрок должен входить ровно в одну команду.');
+                }
+                $minimum = $locked->format?->sideSize() ?? 1;
+                if (count($teams) < 2 || collect($teams)->contains(fn (array $team): bool => count($team['user_ids']) < $minimum)) {
+                    throw new InvalidArgumentException('В каждой команде должно быть не меньше игроков, чем требует формат.');
+                }
+                $locked->matches()->whereNull('game_id')->lockForUpdate()->get()->each->forceDelete();
+                $obsoleteEntries = $locked->entries()
+                    ->where('source', TournamentEntrySourceEnum::ASSEMBLED->value)
+                    ->with('media')->get();
+                foreach ($obsoleteEntries as $obsoleteEntry) {
+                    foreach ($obsoleteEntry->media as $media) {
+                        $media->delete();
+                        DB::afterCommit(fn () => Storage::disk($media->disk)->delete($media->path));
+                    }
+                    $obsoleteEntry->delete();
+                }
+                foreach (array_values($teams) as $index => $team) {
+                    $entry = $locked->entries()->create(['source' => TournamentEntrySourceEnum::ASSEMBLED, 'name' => trim($team['name']), 'logo_preset' => $team['logo_preset'], 'status' => TournamentEntryStatusEnum::ACTIVE, 'position' => $index + 1]);
+                    $entry->members()->createMany(collect($team['user_ids'])->values()->map(fn ($userId, int $position): array => ['user_id' => (int) $userId, 'position' => $position])->all());
+                    if (isset($team['logo_contents'])) {
+                        $image = $this->normalizer->normalize($team['logo_contents'], 500);
+                        $path = sprintf('tournaments/%d/entries/%d/%s.webp', $locked->id, $entry->id, Str::uuid());
+                        if (! Storage::disk('public')->put($path, $image['contents'])) {
+                            throw new InvalidArgumentException('Не удалось сохранить логотип команды.');
+                        }
+                        $storedPaths[] = $path;
+                        $entry->media()->create(['collection' => 'tournament_entry_logo', 'source' => 'upload', 'disk' => 'public', 'path' => $path, 'mime' => $image['mime'], 'size' => strlen($image['contents']), 'is_featured' => true]);
+                    }
+                }
+                $locked->forceFill(['participant_pool_locked_at' => now()])->save();
+            });
+        } catch (Throwable $exception) {
+            foreach ($storedPaths as $path) {
+                Storage::disk('public')->delete($path);
+            }
+            throw $exception;
+        }
+    }
+
+    public function disband(Tournament $tournament, Actor $actor): void
+    {
+        DB::transaction(function () use ($tournament, $actor): void {
             $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
             $this->assertFormationAvailable($locked);
-            if (! hash_equals($this->fingerprint($locked), $fingerprint)) {
-                throw new InvalidArgumentException('Пул участников изменился. Сформируйте preview заново.');
+            $locked->matches()->whereNull('game_id')->lockForUpdate()->get()->each->forceDelete();
+            $entries = $locked->entries()->where('source', TournamentEntrySourceEnum::ASSEMBLED->value)->with('media')->lockForUpdate()->get();
+            foreach ($entries as $entry) {
+                foreach ($entry->media as $media) {
+                    $media->delete();
+                    DB::afterCommit(fn () => Storage::disk($media->disk)->delete($media->path));
+                }
+                $entry->delete();
             }
-            $poolIds = $this->pool($locked)->pluck('id')->sort()->values()->all();
-            $assigned = collect($teams)->flatMap(fn (array $team) => $team['user_ids'])->map(fn ($id): int => (int) $id)->all();
-            if (count($assigned) !== count(array_unique($assigned)) || collect($assigned)->sort()->values()->all() !== $poolIds) {
-                throw new InvalidArgumentException('Каждый подтверждённый игрок должен входить ровно в одну команду.');
-            }
-            $minimum = $locked->format?->sideSize() ?? 1;
-            if (count($teams) < 2 || collect($teams)->contains(fn (array $team): bool => count($team['user_ids']) < $minimum)) {
-                throw new InvalidArgumentException('В каждой команде должно быть не меньше игроков, чем требует формат.');
-            }
-            $locked->entries()
-                ->where('source', TournamentEntrySourceEnum::ASSEMBLED->value)
-                ->get()
-                ->each
-                ->delete();
-            foreach (array_values($teams) as $index => $team) {
-                $entry = $locked->entries()->create(['source' => TournamentEntrySourceEnum::ASSEMBLED, 'name' => 'Команда '.($index + 1), 'status' => TournamentEntryStatusEnum::ACTIVE, 'position' => $index + 1]);
-                $entry->members()->createMany(collect($team['user_ids'])->values()->map(fn ($userId, int $position): array => ['user_id' => (int) $userId, 'position' => $position])->all());
-            }
+            $locked->forceFill(['participant_pool_locked_at' => null])->save();
         });
     }
 
@@ -116,8 +165,8 @@ final class TournamentFormationService
         if ($tournament->recruitment_mode !== TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT || $tournament->format?->sideSize() === 1) {
             throw new InvalidArgumentException('Balanced-формирование доступно только для individual draft 3×3 или 5×5.');
         }
-        if ($tournament->matches()->exists()) {
-            throw new InvalidArgumentException('После создания матчей переформировывать составы нельзя.');
+        if ($tournament->matches()->whereNotNull('game_id')->exists()) {
+            throw new InvalidArgumentException('После назначения хотя бы одного матча переформировывать команды нельзя.');
         }
     }
 
@@ -154,7 +203,14 @@ final class TournamentFormationService
             }
             $positions = $profile?->positions->pluck('position.value')->all() ?? [];
 
-            return ['user' => $user, 'values' => $values, 'primary_position' => $positions[0] ?? 'unknown'];
+            return [
+                'user' => $user,
+                'values' => $values,
+                'display_values' => collect($values)->mapWithKeys(fn ($value, string $feature): array => [
+                    $feature => $this->displayFeatureValue($feature, $value, $profile?->body_type),
+                ])->all(),
+                'primary_position' => $positions[0] ?? 'unknown',
+            ];
         });
         $medians = collect(array_keys(self::WEIGHTS))->mapWithKeys(function (string $feature) use ($rows): array {
             $known = $rows->pluck('values.'.$feature)->filter(fn ($value) => $value !== null)->sort()->values();
@@ -190,14 +246,32 @@ final class TournamentFormationService
                 'score' => round($weighted / $weightSum, 4),
                 'coverage' => round($known / count(self::WEIGHTS), 4),
                 'primary_position' => $row['primary_position'],
-                'missing_features' => collect($row['values'])
-                    ->filter(fn ($value) => $value === null)
-                    ->keys()
-                    ->map(fn (string $feature): string => self::FEATURE_LABELS[$feature])
+                'features' => collect($row['values'])
+                    ->map(fn ($value, string $feature): array => [
+                        'key' => $feature,
+                        'label' => self::FEATURE_LABELS[$feature],
+                        'value' => $row['display_values'][$feature],
+                        'filled' => $value !== null,
+                    ])
                     ->values()
                     ->all(),
                 'tie' => hash('sha256', $seed.':'.$row['user']->id),
             ];
         })->sortBy(fn (array $player): string => sprintf('%015.6f-%s', -$player['score'], $player['tie']))->values();
+    }
+
+    private function displayFeatureValue(string $feature, mixed $value, mixed $bodyType): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return match ($feature) {
+            'height_cm' => (int) $value.' см',
+            'weight_kg' => rtrim(rtrim(number_format((float) $value, 1, '.', ''), '0'), '.').' кг',
+            'experience_years' => (int) $value.' лет',
+            'body_type' => $bodyType?->label() ?? (string) $value,
+            default => rtrim(rtrim(number_format((float) $value, 2, '.', ''), '0'), '.'),
+        };
     }
 }

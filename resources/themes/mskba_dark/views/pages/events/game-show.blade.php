@@ -17,7 +17,7 @@
     $stats = $game->playerStatistics->keyBy('user_id');
     $sideA = $sides->get('A');
     $sideB = $sides->get('B');
-    $teamLogoUrl = static fn ($side): string => $side?->team?->logo?->publicUrl() ?? asset('images/team-placeholder.webp');
+    $teamLogoUrl = static fn ($side): string => $side?->logoUrl() ?? asset('images/team-placeholder.webp');
     $allows = fn (EventResponsibilityPermissionEnum $permission): bool => $effectivePermissions->contains($permission->value);
     $canUpdate = $allows(EventResponsibilityPermissionEnum::UPDATE_MINI_GAME);
     $canManageRoster = $allows(EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_ROSTER);

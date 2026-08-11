@@ -142,6 +142,7 @@ if (region) {
         knownIds.add(String(notification.id));
         pending.push(notification);
         pump();
+        document.dispatchEvent(new CustomEvent('notification:created', { detail: notification }));
     };
 
     const synchronize = () => request(region.dataset.notificationSyncUrl, 'GET')

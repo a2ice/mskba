@@ -35,6 +35,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'full_description',
     'format',
     'recruitment_mode',
+    'accepts_unconfirmed_participants',
+    'participant_pool_locked_at',
 ])]
 class Tournament extends Model
 {
@@ -110,8 +112,8 @@ class Tournament extends Model
     public function acceptsAdmissions(): bool
     {
         return $this->status === TournamentStatusEnum::CONFIRMED
-            && $this->starts_on->greaterThanOrEqualTo(today())
-            && ! $this->competitionHasStarted();
+            && ! $this->competitionHasStarted()
+            && $this->participant_pool_locked_at === null;
     }
 
     private function competitionHasStarted(): bool
@@ -148,6 +150,8 @@ class Tournament extends Model
             'status' => TournamentStatusEnum::class,
             'format' => GameFormatEnum::class,
             'recruitment_mode' => TournamentRecruitmentModeEnum::class,
+            'accepts_unconfirmed_participants' => 'boolean',
+            'participant_pool_locked_at' => 'immutable_datetime',
             'starts_on' => 'immutable_date',
             'ends_on' => 'immutable_date',
         ];

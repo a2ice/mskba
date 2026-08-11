@@ -347,6 +347,9 @@ Route::prefix('tournaments')->group(function () {
         Route::delete('/{tournament}/admissions/{admission}', [TournamentAdmissionController::class, 'revoke'])->whereNumber('admission')->name('tournaments.admissions.revoke');
         Route::post('/{tournament}/formation/preview', [TournamentFormationController::class, 'preview'])->name('tournaments.formation.preview');
         Route::post('/{tournament}/formation/apply', [TournamentFormationController::class, 'apply'])->name('tournaments.formation.apply');
+        Route::delete('/{tournament}/formation', [TournamentFormationController::class, 'disband'])->name('tournaments.formation.disband');
+        Route::post('/{tournament}/participant-pool/lock', [TournamentAdmissionController::class, 'lockPool'])->name('tournaments.participant-pool.lock');
+        Route::delete('/{tournament}/participant-pool/lock', [TournamentAdmissionController::class, 'unlockPool'])->name('tournaments.participant-pool.unlock');
         Route::post('/{tournament}/schedule/preview', [TournamentScheduleController::class, 'preview'])->name('tournaments.schedule.preview');
         Route::post('/{tournament}/schedule/apply', [TournamentScheduleController::class, 'apply'])->name('tournaments.schedule.apply');
         Route::post('/{tournament}/matches', [TournamentMatchController::class, 'store'])->name('tournaments.matches.store');

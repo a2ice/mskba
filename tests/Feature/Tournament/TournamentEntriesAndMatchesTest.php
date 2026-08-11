@@ -16,6 +16,8 @@ use App\Modules\Tournament\Domain\Models\TournamentAdmission;
 use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Tournament\Domain\Models\TournamentMatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 final class TournamentEntriesAndMatchesTest extends TestCase
@@ -30,7 +32,7 @@ final class TournamentEntriesAndMatchesTest extends TestCase
         $tournament = Tournament::query()->firstOrFail();
         $this->assertSame(TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT, $tournament->recruitment_mode);
 
-        $this->actingAs($player)->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()))
+        $this->actingAs($player)->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()), ['roles' => ['player']])
             ->assertSessionHas('status');
         $admission = TournamentAdmission::query()->firstOrFail();
         $this->assertSame(TournamentAdmissionStatusEnum::PENDING, $admission->status);
@@ -42,7 +44,7 @@ final class TournamentEntriesAndMatchesTest extends TestCase
         $this->assertSame(TournamentEntrySourceEnum::INDIVIDUAL, $entry->source);
         $this->assertSame($player->id, $entry->members->sole()->user_id);
 
-        $this->actingAs($player)->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()))
+        $this->actingAs($player)->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()), ['roles' => ['player']])
             ->assertSessionHas('error');
         $this->assertDatabaseCount('tournament_admissions', 1);
     }
@@ -53,7 +55,7 @@ final class TournamentEntriesAndMatchesTest extends TestCase
         $player = User::factory()->create(['username' => 'player-3x3', 'status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($owner)->post(route('tournaments.store'), $this->payload(GameFormatEnum::STREETBALL_3X3, TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT));
         $tournament = Tournament::query()->firstOrFail();
-        $this->actingAs($player)->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()));
+        $this->actingAs($player)->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()), ['roles' => ['player']]);
         $admission = TournamentAdmission::query()->firstOrFail();
         $this->actingAs($owner)->post(route('tournaments.admissions.respond', [$tournament->routeIdentifier(), $admission]), ['decision' => 'accepted']);
 
@@ -65,7 +67,7 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             ->assertSessionHas('error', 'Режим набора нельзя менять после первой заявки или приглашения.');
     }
 
-    public function test_started_tournament_rejects_new_application_on_the_server(): void
+    public function test_calendar_start_alone_does_not_close_admissions_before_teams_are_formed(): void
     {
         $owner = User::factory()->create(['username' => 'owner-started', 'status' => UserStatusEnum::CONFIRMED]);
         $player = User::factory()->create(['username' => 'player-late', 'status' => UserStatusEnum::CONFIRMED]);
@@ -80,19 +82,18 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             ->get(route('tournaments.show', $tournament->routeIdentifier()))
             ->assertOk()
             ->assertSee('Турнир · Идёт')
-            ->assertDontSee('Подать заявку как игрок');
+            ->assertSee('Подать заявку');
 
         $this->actingAs($player)
-            ->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()))
-            ->assertSessionHas('error', 'Приём заявок и приглашений на этот турнир уже закрыт.');
+            ->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()), ['roles' => ['player']])
+            ->assertSessionHas('status');
 
-        $this->assertDatabaseCount('tournament_admissions', 0);
+        $this->assertDatabaseCount('tournament_admissions', 1);
 
         $this->actingAs($owner)
             ->get(route('tournaments.manage', $tournament->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Приём заявок и приглашений на этот турнир закрыт.')
-            ->assertDontSee('data-tournament-candidate-search', false);
+            ->assertSee('data-tournament-candidate-search', false);
     }
 
     public function test_tournament_accepts_candidates_on_its_start_date_before_any_game_starts(): void
@@ -115,6 +116,7 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             'name' => $name,
             'status' => TournamentEntryStatusEnum::ACTIVE,
         ]));
+        $tournament->forceFill(['participant_pool_locked_at' => now()])->save();
 
         $this->actingAs($owner)->post(route('tournaments.matches.store', $tournament->routeIdentifier()), ['entry_a_id' => $entries[0]->id, 'entry_b_id' => $entries[1]->id, 'round' => 1])->assertSessionHas('status');
         $this->actingAs($owner)->post(route('tournaments.matches.store', $tournament->routeIdentifier()), ['entry_a_id' => $entries[0]->id, 'entry_b_id' => $entries[2]->id, 'round' => 2])->assertSessionHas('status');
@@ -143,6 +145,13 @@ final class TournamentEntriesAndMatchesTest extends TestCase
         $this->actingAs($owner)->post(route('tournaments.store'), $this->payload());
         $tournament = Tournament::query()->firstOrFail();
         $players = User::factory()->count(6)->create(['status' => UserStatusEnum::CONFIRMED]);
+        $profile = $players[0]->playerProfile()->create([
+            'height_cm' => 198,
+            'weight_kg' => 96.5,
+            'body_type' => 'athletic',
+            'experience_started_year' => now()->year - 8,
+        ]);
+        $profile->selfAssessment()->create(['stamina' => 8, 'speed' => 7]);
         foreach ($players as $player) {
             $tournament->admissions()->create([
                 'candidate_type' => TournamentAdmissionCandidateTypeEnum::USER,
@@ -159,13 +168,57 @@ final class TournamentEntriesAndMatchesTest extends TestCase
         $second = $this->actingAs($owner)->postJson(route('tournaments.formation.preview', $tournament->routeIdentifier()), $payload)->assertOk()->json();
         $this->assertSame($first['teams'], $second['teams']);
         $this->assertSame([3, 3], collect($first['teams'])->map(fn (array $team) => count($team['players']))->all());
+        $profilePlayer = collect($first['teams'])->flatMap(fn (array $team) => $team['players'])->firstWhere('id', $players[0]->id);
+        $this->assertCount(14, $profilePlayer['features']);
+        $this->assertSame(
+            ['key' => 'height_cm', 'label' => 'рост', 'value' => '198 см', 'filled' => true],
+            collect($profilePlayer['features'])->firstWhere('key', 'height_cm'),
+        );
+        $this->assertFalse(collect($profilePlayer['features'])->firstWhere('key', 'passing')['filled']);
 
-        $teams = collect($first['teams'])->map(fn (array $team): array => ['number' => $team['number'], 'user_ids' => collect($team['players'])->pluck('id')->all()])->all();
-        $this->actingAs($owner)->postJson(route('tournaments.formation.apply', $tournament->routeIdentifier()), ['pool_fingerprint' => $first['pool_fingerprint'], 'teams' => $teams])->assertOk();
+        $teams = collect($first['teams'])->map(fn (array $team): array => ['number' => $team['number'], 'name' => 'Состав '.$team['number'], 'logo_preset' => $team['logo_preset'], 'user_ids' => collect($team['players'])->pluck('id')->all()])->all();
+        Storage::fake('public');
+        $teams[0]['logo'] = UploadedFile::fake()->image('logo.png', 640, 640);
+        $this->actingAs($owner)->post(route('tournaments.formation.apply', $tournament->routeIdentifier()), ['pool_fingerprint' => $first['pool_fingerprint'], 'teams' => $teams], ['Accept' => 'application/json'])->assertOk();
+        unset($teams[0]['logo']);
         $this->assertSame([3, 3], TournamentEntry::query()->withCount('members')->orderBy('position')->pluck('members_count')->all());
+        $this->assertSame(['Состав 1', 'Состав 2'], TournamentEntry::query()->orderBy('position')->pluck('name')->all());
+        $this->assertSame(['crest-00', 'crest-01'], TournamentEntry::query()->orderBy('position')->pluck('logo_preset')->all());
+        $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))->assertOk()->assertSee('Команды сформированы');
+        $latePlayer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($latePlayer)->post(route('tournaments.admissions.apply', $tournament->routeIdentifier()), ['roles' => ['player']])
+            ->assertSessionHas('error', 'Приём заявок и приглашений на этот турнир уже закрыт.');
+        $this->assertDatabaseCount('tournament_admissions', 6);
+        $uploadedLogo = TournamentEntry::query()->orderBy('position')->firstOrFail()->logo()->firstOrFail();
+        Storage::disk('public')->assertExists($uploadedLogo->path);
+
+        $currentEntries = TournamentEntry::query()->orderBy('position')->get();
+        $tournament->matches()->create(['entry_a_id' => $currentEntries[0]->id, 'entry_b_id' => $currentEntries[1]->id, 'round' => 1, 'sequence' => 1]);
+        $this->actingAs($owner)->postJson(route('tournaments.formation.preview', $tournament->routeIdentifier()), $payload)->assertOk();
+        $this->actingAs($owner)->postJson(route('tournaments.formation.apply', $tournament->routeIdentifier()), ['pool_fingerprint' => $first['pool_fingerprint'], 'teams' => $teams])->assertOk();
+        $this->assertDatabaseCount('tournament_matches', 0);
+        Storage::disk('public')->assertMissing($uploadedLogo->path);
+
+        $teams[0]['name'] = '   ';
+        $this->actingAs($owner)->postJson(route('tournaments.formation.apply', $tournament->routeIdentifier()), ['pool_fingerprint' => $first['pool_fingerprint'], 'teams' => $teams])->assertJsonValidationErrors('teams.0.name');
+        $teams[0]['name'] = 'Состав 1';
 
         $teams[0]['user_ids'][] = $teams[1]['user_ids'][0];
         $this->actingAs($owner)->postJson(route('tournaments.formation.apply', $tournament->routeIdentifier()), ['pool_fingerprint' => $first['pool_fingerprint'], 'teams' => $teams])->assertUnprocessable();
+
+        $changed = $this->payload(GameFormatEnum::BASKETBALL_5X5, TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT);
+        $this->actingAs($owner)->put(route('tournaments.update', $tournament->routeIdentifier()), $changed)
+            ->assertSessionHas('error', 'Сначала разблокируйте пул участников, чтобы изменить формат турнира.');
+        $acceptedAdmission = $tournament->admissions()->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)->firstOrFail();
+        $this->actingAs($owner)->delete(route('tournaments.admissions.revoke', [$tournament->routeIdentifier(), $acceptedAdmission]))
+            ->assertSessionHas('error', 'Сначала возобновите набор или расформируйте команды, чтобы отозвать принятого участника.');
+        $this->assertSame(TournamentAdmissionStatusEnum::ACCEPTED, $acceptedAdmission->fresh()->status);
+        $this->actingAs($owner)->delete(route('tournaments.formation.disband', $tournament->routeIdentifier()))
+            ->assertSessionHas('status', 'Команды расформированы. Подтверждённые игроки сохранены в пуле.');
+        $this->assertDatabaseCount('tournament_entries', 0);
+        $this->assertDatabaseCount('tournament_admissions', 6);
+        $this->actingAs($owner)->put(route('tournaments.update', $tournament->routeIdentifier()), $changed)->assertSessionHasNoErrors();
+        $this->assertSame(GameFormatEnum::BASKETBALL_5X5, $tournament->fresh()->format);
     }
 
     public function test_round_robin_preview_and_apply_cover_every_pair_once_and_are_repeatable(): void
@@ -179,6 +232,7 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             'status' => TournamentEntryStatusEnum::ACTIVE,
             'position' => $position + 1,
         ]));
+        $tournament->forceFill(['participant_pool_locked_at' => now()])->save();
 
         $first = $this->actingAs($owner)->postJson(route('tournaments.schedule.preview', $tournament->routeIdentifier()), ['legs' => 1])->assertOk()->json();
         $second = $this->actingAs($owner)->postJson(route('tournaments.schedule.preview', $tournament->routeIdentifier()), ['legs' => 1])->assertOk()->json();
@@ -222,6 +276,7 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             'status' => TournamentEntryStatusEnum::ACTIVE,
             'position' => $position + 1,
         ]));
+        $tournament->forceFill(['participant_pool_locked_at' => now()])->save();
 
         $preview = $this->actingAs($owner)->postJson(route('tournaments.schedule.preview', $tournament->routeIdentifier()), ['legs' => 2])->assertOk()->json();
         $this->assertCount(6, $preview['rounds']);
@@ -232,6 +287,39 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             $this->assertSame($match['entry_a_id'], $secondLeg[$index]['entry_b_id']);
             $this->assertSame($match['entry_b_id'], $secondLeg[$index]['entry_a_id']);
         }
+    }
+
+    public function test_preformed_team_pool_can_be_locked_and_reopened_before_games_are_assigned(): void
+    {
+        $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($owner)->post(route('tournaments.store'), $this->payload(GameFormatEnum::STREETBALL_3X3, TournamentRecruitmentModeEnum::PREFORMED_TEAMS));
+        $tournament = Tournament::query()->firstOrFail();
+        collect(['Готовая команда A', 'Готовая команда B'])->each(fn (string $name, int $position) => $tournament->entries()->create([
+            'source' => TournamentEntrySourceEnum::TEAM,
+            'name' => $name,
+            'status' => TournamentEntryStatusEnum::ACTIVE,
+            'position' => $position + 1,
+        ]));
+
+        $this->assertTrue($tournament->acceptsAdmissions());
+        $this->actingAs($owner)->post(route('tournaments.participant-pool.lock', $tournament->routeIdentifier()))
+            ->assertSessionHas('status', 'Набор команд завершён.');
+        $this->assertNotNull($tournament->fresh()->participant_pool_locked_at);
+        $this->assertFalse($tournament->fresh()->acceptsAdmissions());
+
+        $preview = $this->actingAs($owner)->postJson(route('tournaments.schedule.preview', $tournament->routeIdentifier()), ['legs' => 1])->assertOk()->json();
+        $this->actingAs($owner)->postJson(route('tournaments.schedule.apply', $tournament->routeIdentifier()), [
+            'legs' => 1,
+            'entries_fingerprint' => $preview['entries_fingerprint'],
+        ])->assertOk();
+        $this->assertDatabaseCount('tournament_matches', 1);
+
+        $this->actingAs($owner)->delete(route('tournaments.participant-pool.unlock', $tournament->routeIdentifier()))
+            ->assertSessionHas('status', 'Набор команд возобновлён.');
+        $this->assertNull($tournament->fresh()->participant_pool_locked_at);
+        $this->assertTrue($tournament->fresh()->acceptsAdmissions());
+        $this->assertDatabaseCount('tournament_matches', 0);
+        $this->assertDatabaseCount('tournament_entries', 2);
     }
 
     /** @return array<string, mixed> */
