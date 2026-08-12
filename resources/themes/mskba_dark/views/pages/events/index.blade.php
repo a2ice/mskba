@@ -132,7 +132,7 @@
                         </article>
                     @endforeach
                 </div>
-                <div class="events-catalog__pagination">{{ $events->links() }}</div>
+                <div class="events-catalog__pagination">{{ $events->links('theme::partials.pagination') }}</div>
             @endif
         </div>
     </section>

@@ -131,7 +131,7 @@
                 @endforelse
             </div>
 
-            <div class="teams-catalog__pagination">{{ $teams->links() }}</div>
+            <div class="teams-catalog__pagination">{{ $teams->links('theme::partials.pagination') }}</div>
         </div>
     </section>
 @endsection

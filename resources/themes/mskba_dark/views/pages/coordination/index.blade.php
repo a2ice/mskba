@@ -65,6 +65,6 @@
                 </article>
             @endforeach
         </div>
-        <div class="mt-4">{{ $sessions->links() }}</div>
+        <div class="mt-4">{{ $sessions->links('theme::partials.pagination') }}</div>
     @endif
 @endsection

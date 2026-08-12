@@ -62,5 +62,5 @@
     </article>
 @empty <div class="alert alert-info">По выбранным условиям команд нет.</div>@endforelse
 </div>
-{{ $teams->links() }}
+{{ $teams->links('theme::partials.pagination') }}
 @endsection

@@ -98,5 +98,5 @@
     @empty
         <div class="alert alert-info">Турниры по выбранным условиям не найдены.</div>
     @endforelse
-    {{ $tournaments->links() }}
+    {{ $tournaments->links('theme::partials.pagination') }}
 @endsection

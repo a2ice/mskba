@@ -112,7 +112,7 @@ $notificationPresenter = app(\App\Modules\Notification\Presentation\Presenters\U
             </ul>
 
             <div class="mt-4">
-                {{ $notifications->links() }}
+                {{ $notifications->links('theme::partials.pagination') }}
             </div>
         </div>
     @else

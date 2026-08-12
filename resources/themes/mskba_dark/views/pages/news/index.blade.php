@@ -45,6 +45,6 @@
                 </article>
             @endforeach
         </div>
-        <div class="mt-4">{{ $contentItems->links() }}</div>
+        <div class="mt-4">{{ $contentItems->links('theme::partials.pagination') }}</div>
     @endif
 @endsection
