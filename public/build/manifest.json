@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-Cy_0SfBa.css",
+    "file": "assets/app-By9SI6YX.css",
     "name": "app",
     "names": [
       "app.css"
@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-CpN1Z0tQ.css",
+    "file": "assets/app-kgUfhQTK.css",
     "name": "app",
     "names": [
       "app.css"
@@ -51,7 +51,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-D0ekGo1l.js",
+    "file": "assets/app-CCjRAcjW.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,

@@ -149,7 +149,7 @@ function setupFormation(root) {
             const identity = document.createElement('div'); identity.className = 'tournament-formation-team__identity';
             const logoPicker = document.createElement('details'); logoPicker.className = 'tournament-formation-logo-picker';
             const logoToggle = document.createElement('summary'); logoToggle.setAttribute('aria-label', `Выбрать логотип команды ${team.number}`);
-            const logoImage = document.createElement('img'); let logoPreset = team.logo_preset ?? `crest-${String((team.number - 1) % 12).padStart(2, '0')}`; logoImage.src = `/images/tournament-team-logos/${logoPreset}.webp`; logoImage.alt = '';
+            const logoImage = document.createElement('img'); let logoPreset = team.logo_preset ?? `crest-${String((team.number - 1) % 15).padStart(2, '0')}`; logoImage.src = `/images/tournament-team-logos/${logoPreset}.webp`; logoImage.alt = '';
             const logoFile = document.createElement('input'); logoFile.type = 'file'; logoFile.accept = 'image/jpeg,image/png,image/webp'; logoFile.hidden = true; logoFile.dataset.formationTeamLogo = '';
             logoToggle.append(logoImage); logoPicker.append(logoToggle);
             const logoOptions = document.createElement('div'); logoOptions.className = 'tournament-formation-logo-picker__options';

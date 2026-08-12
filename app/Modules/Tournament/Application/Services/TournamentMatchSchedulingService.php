@@ -13,6 +13,7 @@ use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -76,7 +77,8 @@ final class TournamentMatchSchedulingService
                 || ($lockedTournament->ends_on && $endsAt->toDateString() > $lockedTournament->ends_on->toDateString())) {
                 throw new InvalidArgumentException('Игра должна целиком входить в даты проведения турнира.');
             }
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt);
+            $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
+            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope);
             $userIds = $entryARoster->pluck('user_id')->merge($entryBRoster->pluck('user_id'))->map(fn ($id): int => (int) $id);
             if ($userIds->duplicates()->isNotEmpty()) {
                 throw new InvalidArgumentException('Один игрок не может находиться на обеих сторонах матча.');
@@ -107,7 +109,7 @@ final class TournamentMatchSchedulingService
                 'status' => $bookingStatus === VenueBookingStatusEnum::CONFIRMED ? EventStatusEnum::PUBLISHED : EventStatusEnum::DRAFT,
                 'visibility' => EventVisibilityEnum::PUBLIC, 'starts_at' => $startsAt, 'ends_at' => $endsAt,
             ]);
-            $event->booking()->create(['venue_id' => $venue->id, 'created_by_actor_id' => $actor->id, 'status' => $bookingStatus, 'starts_at' => $startsAt, 'ends_at' => $endsAt]);
+            $event->booking()->create(['venue_id' => $venue->id, 'created_by_actor_id' => $actor->id, 'status' => $bookingStatus, 'scope' => $bookingScope, 'starts_at' => $startsAt, 'ends_at' => $endsAt]);
             $participants = $userIds->unique()->values()->map(fn (int $userId): array => [
                 'user_id' => $userId,
                 'role' => $userId === $actor->user_id ? EventParticipantRoleEnum::ORGANIZER : EventParticipantRoleEnum::PARTICIPANT,
@@ -186,7 +188,8 @@ final class TournamentMatchSchedulingService
                 || ($lockedTournament->ends_on && $endsAt->toDateString() > $lockedTournament->ends_on->toDateString())) {
                 throw new InvalidArgumentException('Игра должна целиком входить в даты проведения турнира.');
             }
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt, $booking->id);
+            $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
+            $this->availability->assertAvailable($venue, $startsAt, $endsAt, $booking->id, scope: $bookingScope);
             $userIds = $game->rosterEntries()->pluck('user_id');
             $hasPlayerConflict = Game::query()->whereKeyNot($game->id)
                 ->whereIn('status', [GameStatusEnum::SCHEDULED->value, GameStatusEnum::IN_PROGRESS->value])
@@ -201,7 +204,7 @@ final class TournamentMatchSchedulingService
                 'status' => $bookingStatus === VenueBookingStatusEnum::CONFIRMED ? EventStatusEnum::PUBLISHED : EventStatusEnum::DRAFT,
                 'participation_confirmation_version' => $event->participation_confirmation_version + 1,
             ])->save();
-            $booking->forceFill(['venue_id' => $venue->id, 'status' => $bookingStatus, 'starts_at' => $startsAt, 'ends_at' => $endsAt])->save();
+            $booking->forceFill(['venue_id' => $venue->id, 'status' => $bookingStatus, 'scope' => $bookingScope, 'starts_at' => $startsAt, 'ends_at' => $endsAt])->save();
             $game->forceFill(['scheduled_starts_at' => $startsAt, 'scheduled_ends_at' => $endsAt])->save();
 
             return $event->refresh()->load(['booking', 'primaryGame']);

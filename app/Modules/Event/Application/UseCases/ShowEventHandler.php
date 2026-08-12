@@ -19,6 +19,7 @@ final class ShowEventHandler
             ->whereRouteIdentifier($identifier)
             ->with([
                 'venue.schedule',
+                'venue.characteristics',
                 'venue.location.address',
                 'venue.location.metroStations.line',
                 'venue.amenities',

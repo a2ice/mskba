@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -110,8 +111,10 @@ final class UpdateEventHandler
             }
 
             $currentDuration = (int) $event->starts_at->diffInMinutes($event->ends_at);
+            $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? $booking->scope?->value ?? VenueBookingScopeEnum::WHOLE->value);
             $bookingChanged = $bookingDataProvided && (
                 $targetVenue->id !== $event->venue_id
+                || $bookingScope !== ($booking->scope ?? VenueBookingScopeEnum::WHOLE)
                 || $localStart->format('Y-m-d H:i') !== $event->starts_at->setTimezone($timezone)->format('Y-m-d H:i')
                 || $durationMinutes !== $currentDuration
             );
@@ -136,6 +139,7 @@ final class UpdateEventHandler
                     $startsAt,
                     $endsAt,
                     $booking->id,
+                    scope: $bookingScope,
                 );
             }
 
@@ -167,6 +171,7 @@ final class UpdateEventHandler
                 $booking->forceFill([
                     'venue_id' => $targetVenue->id,
                     'status' => VenueBookingStatusEnum::CONFIRMED,
+                    'scope' => $bookingScope,
                     'starts_at' => $startsAt,
                     'ends_at' => $endsAt,
                 ])->save();

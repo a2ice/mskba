@@ -10,6 +10,8 @@
     'durationInput' => null,
     'mapModal' => null,
     'showFavorites' => false,
+    'scopeName' => 'booking_scope',
+    'selectedScope' => 'whole',
 ])
 
 @php
@@ -31,6 +33,7 @@
     $selectedIdentifier = $selectedVenue
         ? data_get($selectedVenue, 'id').'-'.data_get($selectedVenue, 'alias')
         : null;
+    $selectedHoopsCount = (int) (data_get($selectedVenue, 'characteristics.hoops_count') ?? 1);
 @endphp
 
 <div
@@ -75,6 +78,16 @@
             role="listbox"
             data-venue-selector-list
         ></div>
+    </div>
+
+    <div class="mt-3" data-venue-booking-scope @if($selectedHoopsCount < 2) hidden @endif>
+        <label class="form-label" for="{{ $id }}Scope"><span title="Вся площадка блокирует обе половины. Бронь отдельной половины оставляет вторую доступной для параллельной игры." data-tooltip-icon>Игровая зона</span></label>
+        <select class="form-select" id="{{ $id }}Scope" name="{{ $scopeName }}" data-venue-booking-scope-input>
+            @foreach(\App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::cases() as $scope)
+                <option value="{{ $scope->value }}" @selected(old($scopeName, $selectedScope) === $scope->value)>{{ $scope->label() }}</option>
+            @endforeach
+        </select>
+        <p class="form-text">По умолчанию бронируется вся площадка.</p>
     </div>
 
     <div class="address-suggest__message predictive-search__message text-danger d-none" data-venue-selector-message></div>

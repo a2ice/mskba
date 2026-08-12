@@ -2,6 +2,8 @@
 
 namespace App\Modules\Venue\Application\Services;
 
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -43,6 +45,13 @@ final class VenueFacilitiesSynchronizer
         $hoopsCount = isset($characteristics['hoops_count'])
             ? (int) $characteristics['hoops_count']
             : null;
+        if (($hoopsCount ?? 0) < 2 && $venue->bookings()
+            ->whereIn('scope', [VenueBookingScopeEnum::HALF_A->value, VenueBookingScopeEnum::HALF_B->value])
+            ->whereIn('status', [VenueBookingStatusEnum::PENDING->value, VenueBookingStatusEnum::CONFIRMED->value])
+            ->where('ends_at', '>', now())
+            ->exists()) {
+            throw new InvalidArgumentException('Нельзя уменьшить количество колец: есть будущие бронирования отдельных половин.');
+        }
         $markingCondition = $characteristics['marking_condition']
             ?? $characteristics['first_hoop_marking']
             ?? null;

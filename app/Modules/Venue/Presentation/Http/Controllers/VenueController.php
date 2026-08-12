@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Content\Application\Services\PageSeoResolver;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\UseCases\ListMetrostationsHandler;
 use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
@@ -100,6 +101,7 @@ class VenueController extends Controller
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'starts_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
             'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:480', 'required_with:starts_at'],
+            'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
         $startsAt = isset($validated['starts_at'])
@@ -126,8 +128,12 @@ class VenueController extends Controller
                 : null,
             startsAt: $startsAt,
             durationMinutes: isset($validated['duration_minutes']) ? (int) $validated['duration_minutes'] : null,
+            bookingScope: VenueBookingScopeEnum::from($validated['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value),
             limit: isset($validated['limit']) ? (int) $validated['limit'] : 20,
         );
+
+        $hoopsByVenue = Venue::query()->with('characteristics')->whereKey(collect($venues)->pluck('id'))->get()
+            ->mapWithKeys(fn (Venue $venue): array => [$venue->id => (int) ($venue->characteristics?->hoops_count ?? 1)]);
 
         return response()->json([
             'venues' => collect($venues)->map(fn ($venue): array => [
@@ -149,6 +155,7 @@ class VenueController extends Controller
                 'longitude' => $venue->longitude,
                 'url' => route('venues.show', $venue->routeIdentifier()),
                 'preview_url' => route('venues.preview', $venue->routeIdentifier()),
+                'hoops_count' => $hoopsByVenue->get($venue->id, 1),
             ])->all(),
         ]);
     }

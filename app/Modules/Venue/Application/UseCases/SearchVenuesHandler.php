@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Application\UseCases;
 
 use App\Modules\Event\Application\Services\VenueEventAvailability;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
@@ -44,6 +45,7 @@ final readonly class SearchVenuesHandler
         ?VenueOperationalStatusEnum $operationalStatus = null,
         ?CarbonImmutable $startsAt = null,
         ?int $durationMinutes = null,
+        VenueBookingScopeEnum $bookingScope = VenueBookingScopeEnum::WHOLE,
         int $limit = 20,
     ): array {
         $parameters = [
@@ -58,6 +60,7 @@ final readonly class SearchVenuesHandler
             'operational_status' => $operationalStatus?->value,
             'starts_at' => $startsAt?->toIso8601String(),
             'duration_minutes' => $durationMinutes,
+            'booking_scope' => $bookingScope->value,
             'limit' => max(1, min($limit, 200)),
         ];
 
@@ -129,6 +132,7 @@ final readonly class SearchVenuesHandler
                 ->whereIn('id', $venues->pluck('id')->all())
                 ->get()
                 ->keyBy('id');
+            $bookingScope = VenueBookingScopeEnum::from($parameters['booking_scope']);
             $occupiedVenueIds = VenueBooking::query()
                 ->whereIn('venue_id', $models->keys()->all())
                 ->whereIn('status', [
@@ -137,11 +141,19 @@ final readonly class SearchVenuesHandler
                 ])
                 ->where('starts_at', '<', $endsAt)
                 ->where('ends_at', '>', $startsAt)
+                ->where(function ($query) use ($bookingScope): void {
+                    $query->where('scope', VenueBookingScopeEnum::WHOLE->value);
+                    if ($bookingScope === VenueBookingScopeEnum::WHOLE) {
+                        $query->orWhereIn('scope', [VenueBookingScopeEnum::HALF_A->value, VenueBookingScopeEnum::HALF_B->value]);
+                    } else {
+                        $query->orWhere('scope', $bookingScope->value);
+                    }
+                })
                 ->pluck('venue_id')
                 ->map(fn ($id): int => (int) $id)
                 ->all();
 
-            $venues = $venues->filter(function (array $document) use ($models, $occupiedVenueIds, $startsAt, $endsAt): bool {
+            $venues = $venues->filter(function (array $document) use ($models, $occupiedVenueIds, $startsAt, $endsAt, $bookingScope): bool {
                 $venue = $models->get($document['id']);
 
                 if ($venue === null || in_array($document['id'], $occupiedVenueIds, true)) {
@@ -154,6 +166,7 @@ final readonly class SearchVenuesHandler
                         $startsAt,
                         $endsAt,
                         checkBookings: false,
+                        scope: $bookingScope,
                     );
 
                     return true;

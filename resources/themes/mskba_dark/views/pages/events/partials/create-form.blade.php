@@ -85,6 +85,7 @@
         @include('theme::partials.venues.predictive-selector', [
             'id' => $formIdPrefix.'Venue',
             'selectedVenue' => $selectedVenue,
+            'selectedScope' => data_get($event ?? null, 'booking.scope.value', 'whole'),
             'confirmedOnly' => true,
             'operationalStatus' => 'active',
             'startInput' => '#'.$formIdPrefix.'StartsAt',

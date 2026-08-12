@@ -106,7 +106,8 @@
         })
         ->values();
     $address = preg_replace('/^Россия,\\s*/u', '', $event->venue->location?->address?->full_address ?: $event->venue->raw_address ?: '');
-    $locationName = $event->venue->name;
+    $bookingScopeLabel = $event->booking?->scope?->label();
+    $locationName = $event->venue->name.($bookingScopeLabel ? ' · '.$bookingScopeLabel : '');
     $coordinates = $event->venue->location?->address;
     $mapUrl = $coordinates?->latitude !== null && $coordinates?->longitude !== null
         ? 'https://yandex.ru/maps/?pt='.$coordinates->longitude.','.$coordinates->latitude.'&z=16&l=map'

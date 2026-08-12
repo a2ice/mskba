@@ -34,7 +34,7 @@
 
     <div class="venue-facilities-editor__grid">
         <fieldset class="venue-facilities-editor__control">
-            <legend><i class="ti ti-basketball-hoop" aria-hidden="true"></i> Количество колец</legend>
+            <legend><i class="ti ti-basketball-hoop" aria-hidden="true"></i> <span title="Количество колец определяет число игровых зон: при двух кольцах можно отдельно бронировать половины A и B." data-tooltip-icon>Количество колец</span></legend>
             <div class="venue-facilities-editor__segments">
                 @foreach([1, 2] as $count)
                     <label>

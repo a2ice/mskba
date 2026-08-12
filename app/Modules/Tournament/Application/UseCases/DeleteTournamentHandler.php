@@ -12,11 +12,12 @@ final class DeleteTournamentHandler
 {
     public function __construct(private readonly TournamentAccess $access) {}
 
-    public function handle(string $identifier, Actor $actor): void
+    public function handle(string $identifier, Actor $actor, string $reason): void
     {
-        DB::transaction(function () use ($identifier, $actor): void {
+        DB::transaction(function () use ($identifier, $actor, $reason): void {
             $tournament = Tournament::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($tournament, $actor, TournamentPermissionEnum::DELETE);
+            $tournament->forceFill(['status_comment' => trim($reason)])->save();
             $tournament->delete();
         });
     }

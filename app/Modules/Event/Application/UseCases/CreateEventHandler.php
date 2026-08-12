@@ -12,6 +12,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
@@ -55,7 +56,8 @@ final class CreateEventHandler
             $startsAt = $localStart;
             $endsAt = $localStart->addMinutes($durationMinutes);
 
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt);
+            $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
+            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope);
 
             $bookingStatus = $venue->hasFreeAccess()
                 ? VenueBookingStatusEnum::CONFIRMED
@@ -81,6 +83,7 @@ final class CreateEventHandler
                 'venue_id' => $venue->id,
                 'created_by_actor_id' => $actor->id,
                 'status' => $bookingStatus,
+                'scope' => $bookingScope,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
             ]);

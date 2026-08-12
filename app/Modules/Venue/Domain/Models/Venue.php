@@ -184,6 +184,11 @@ class Venue extends Model
         return $this->hasOne(VenueSchedule::class);
     }
 
+    public function characteristics(): HasOne
+    {
+        return $this->hasOne(VenueCharacteristic::class);
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(VenueReview::class);

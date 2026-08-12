@@ -44,7 +44,7 @@ final class TournamentFormationController extends Controller
             'teams' => ['required', 'array', 'min:2'],
             'teams.*.number' => ['required', 'integer', 'min:1'],
             'teams.*.name' => ['required', 'string', 'max:150'],
-            'teams.*.logo_preset' => ['required', 'string', Rule::in(array_map(fn (int $number): string => sprintf('crest-%02d', $number), range(0, 11)))],
+            'teams.*.logo_preset' => ['required', 'string', Rule::in(array_map(fn (int $number): string => sprintf('crest-%02d', $number), range(0, 14)))],
             'teams.*.logo' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:5120'],
             'teams.*.user_ids' => ['required', 'array'],
             'teams.*.user_ids.*' => ['required', 'integer'],

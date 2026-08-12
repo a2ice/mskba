@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\Services;
 
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
@@ -105,7 +106,12 @@ final class VenueEventAvailability
         CarbonImmutable $endsAt,
         ?int $excludedBookingId = null,
         bool $checkBookings = true,
+        VenueBookingScopeEnum $scope = VenueBookingScopeEnum::WHOLE,
     ): void {
+        if ($scope !== VenueBookingScopeEnum::WHOLE && (int) $venue->characteristics()->value('hoops_count') < 2) {
+            throw new InvalidArgumentException('Выбранная площадка не поддерживает бронирование отдельных половин.');
+        }
+
         if ($venue->status !== VenueStatusEnum::CONFIRMED) {
             throw new InvalidArgumentException('Создать мероприятие можно только на подтверждённой площадке.');
         }
@@ -176,6 +182,14 @@ final class VenueEventAvailability
             ])
             ->where('starts_at', '<', $endsAt)
             ->where('ends_at', '>', $startsAt)
+            ->where(function ($query) use ($scope): void {
+                $query->where('scope', VenueBookingScopeEnum::WHOLE->value);
+                if ($scope === VenueBookingScopeEnum::WHOLE) {
+                    $query->orWhereIn('scope', [VenueBookingScopeEnum::HALF_A->value, VenueBookingScopeEnum::HALF_B->value]);
+                } else {
+                    $query->orWhere('scope', $scope->value);
+                }
+            })
             ->exists();
 
         if ($hasOverlap) {

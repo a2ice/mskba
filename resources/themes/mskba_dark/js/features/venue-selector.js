@@ -9,6 +9,8 @@ function initVenueSelector(container) {
     const list = container.querySelector('[data-venue-selector-list]');
     const message = container.querySelector('[data-venue-selector-message]');
     const previewOpen = container.querySelector('[data-venue-preview-open]');
+    const scopeContainer = container.querySelector('[data-venue-booking-scope]');
+    const scopeInput = container.querySelector('[data-venue-booking-scope-input]');
     const startInput = container.dataset.startInput
         ? document.querySelector(container.dataset.startInput)
         : null;
@@ -114,9 +116,11 @@ function initVenueSelector(container) {
     [startInput, durationInput].filter(Boolean).forEach((field) => {
         field.addEventListener('change', () => {
             hideList();
+            updateScopeAvailability({ id: valueInput.value, hoops_count: container.dataset.selectedHoopsCount });
             revalidateSelectedVenue();
         });
     });
+    scopeInput?.addEventListener('change', revalidateSelectedVenue);
 
     mapOpen?.addEventListener('click', () => {
         window.setTimeout(loadMap, 0);
@@ -151,8 +155,8 @@ function initVenueSelector(container) {
         }
     }
 
-    async function fetchVenues(query = '', limit = 30, signal = null, venueId = null, checkAvailability = true) {
-        const parameters = buildParameters(query, limit, venueId, checkAvailability);
+    async function fetchVenues(query = '', limit = 30, signal = null, venueId = null, checkAvailability = true, bookingScope = null) {
+        const parameters = buildParameters(query, limit, venueId, checkAvailability, bookingScope);
         const response = await fetch(`${container.dataset.searchUrl}?${parameters.toString()}`, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
@@ -167,7 +171,7 @@ function initVenueSelector(container) {
         return Array.isArray(payload.venues) ? payload.venues : [];
     }
 
-    function buildParameters(query, limit, venueId = null, checkAvailability = true) {
+    function buildParameters(query, limit, venueId = null, checkAvailability = true, bookingScope = null) {
         const parameters = new URLSearchParams({
             query,
             confirmed_only: container.dataset.confirmedOnly || '0',
@@ -185,6 +189,7 @@ function initVenueSelector(container) {
         if (checkAvailability && startInput?.value && durationInput?.value) {
             parameters.set('starts_at', startInput.value);
             parameters.set('duration_minutes', durationInput.value);
+            parameters.set('booking_scope', bookingScope || scopeInput?.value || 'whole');
         }
 
         return parameters;
@@ -274,6 +279,14 @@ function initVenueSelector(container) {
         const address = displayAddress(venue.address);
         input.value = `${venue.name}${address ? ` — ${address}` : ''}`;
         valueInput.value = String(venue.id);
+        container.dataset.selectedHoopsCount = String(venue.hoops_count || 1);
+        if (scopeContainer && scopeInput) {
+            const supportsHalves = Number(venue.hoops_count) >= 2;
+            scopeContainer.hidden = !supportsHalves;
+            if (!supportsHalves) {
+                scopeInput.value = 'whole';
+            }
+        }
         input.setCustomValidity('');
         hideList();
         hideMessage();
@@ -285,11 +298,39 @@ function initVenueSelector(container) {
         }
 
         valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+        updateScopeAvailability(venue);
         revalidateSelectedVenue();
+    }
+
+    async function updateScopeAvailability(venue) {
+        if (!scopeInput || Number(venue.hoops_count) < 2 || !startInput?.value || !durationInput?.value) {
+            return;
+        }
+
+        await Promise.all(Array.from(scopeInput.options).map(async (option) => {
+            try {
+                const venues = await fetchVenues('', 1, null, venue.id, true, option.value);
+                const available = venues.some((item) => Number(item.id) === Number(venue.id));
+                option.disabled = !available;
+                option.textContent = `${scopeLabel(option.value)}${available ? '' : ' — занято'}`;
+            } catch (_) {
+                option.disabled = false;
+                option.textContent = scopeLabel(option.value);
+            }
+        }));
+    }
+
+    function scopeLabel(scope) {
+        return { whole: 'Вся площадка', half_a: 'Половина A', half_b: 'Половина B' }[scope] || scope;
     }
 
     function clearSelectedVenue() {
         valueInput.value = '';
+        delete container.dataset.selectedHoopsCount;
+        if (scopeContainer && scopeInput) {
+            scopeContainer.hidden = true;
+            scopeInput.value = 'whole';
+        }
         if (previewOpen) {
             previewOpen.dataset.previewUrl = '';
             previewOpen.hidden = true;

@@ -227,11 +227,11 @@
                         <legend class="visually-hidden">Количество кругов</legend>
                         <label class="tournament-scheme__choice">
                             <input type="radio" name="legs" value="1" @checked($currentLegs === 1)>
-                            <span><strong>Один круг</strong><small>Каждая пара команд играет один матч.</small></span>
+                            <span><strong>Один круг</strong><small><span class="fs-lil-smaller">Каждая пара команд играет один матч.</span></small></span>
                         </label>
                         <label class="tournament-scheme__choice">
                             <input type="radio" name="legs" value="2" @checked($currentLegs === 2)>
-                            <span><strong>Два круга</strong><small>Каждая пара играет два матча с переменой сторон.</small></span>
+                            <span><strong>Два круга</strong><small><span class="fs-lil-smaller">Каждая пара играет два матча с переменой сторон.</span></small></span>
                         </label>
                     </fieldset>
                 </form>
@@ -305,7 +305,7 @@
                             <form class="row g-3 mt-2" method="POST" action="{{ route('tournaments.matches.reschedule', [$tournament->routeIdentifier(), $match]) }}">@csrf @method('PUT')
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-move-starts">Новое начало</label><input class="form-control" id="match-{{ $match->id }}-move-starts" type="datetime-local" name="starts_at" value="{{ $match->game->event->starts_at->format('Y-m-d\TH:i') }}" required></div>
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-move-duration">Длительность, минут</label><input class="form-control" id="match-{{ $match->id }}-move-duration" type="number" name="duration_minutes" value="{{ (int) $match->game->event->starts_at->diffInMinutes($match->game->event->ends_at) }}" min="1" max="1440" required></div>
-                                <div class="col-12">@include('theme::partials.venues.predictive-selector', ['id' => 'moveMatch'.$match->id.'Venue', 'selectedVenue' => $match->game->event->venue, 'startInput' => '#match-'.$match->id.'-move-starts', 'durationInput' => '#match-'.$match->id.'-move-duration', 'confirmedOnly' => true])</div>
+                                <div class="col-12">@include('theme::partials.venues.predictive-selector', ['id' => 'moveMatch'.$match->id.'Venue', 'selectedVenue' => $match->game->event->venue, 'selectedScope' => $match->game->event->booking?->scope?->value ?? 'whole', 'startInput' => '#match-'.$match->id.'-move-starts', 'durationInput' => '#match-'.$match->id.'-move-duration', 'confirmedOnly' => true])</div>
                                 <div class="col-12"><button class="btn btn--primary" type="submit">Перенести игру и бронь</button></div>
                             </form>
                         </details>
@@ -323,6 +323,7 @@
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-readonly-starts">Начало</label><input class="form-control" id="match-{{ $match->id }}-readonly-starts" type="datetime-local" value="{{ $match->game->event->starts_at->format('Y-m-d\TH:i') }}"></div>
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-readonly-duration">Длительность, минут</label><input class="form-control" id="match-{{ $match->id }}-readonly-duration" type="number" value="{{ (int) $match->game->event->starts_at->diffInMinutes($match->game->event->ends_at) }}"></div>
                                 <div class="col-12"><label class="form-label" for="match-{{ $match->id }}-readonly-venue">Площадка</label><input class="form-control" id="match-{{ $match->id }}-readonly-venue" type="text" value="{{ $match->game->event->venue?->name ?? 'Не указана' }}"></div>
+                                <div class="col-12"><label class="form-label" for="match-{{ $match->id }}-readonly-scope">Игровая зона</label><input class="form-control" id="match-{{ $match->id }}-readonly-scope" type="text" value="{{ $match->game->event->booking?->scope?->label() ?? 'Вся площадка' }}"></div>
                             </fieldset>
                         </details>
                     @endif @endforeach
@@ -332,6 +333,6 @@
     @endif
 
     @if($effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::DELETE))
-        <div class="event-card" id="delete"><h2>Удаление</h2><form method="POST" action="{{ route('tournaments.destroy', $tournament->routeIdentifier()) }}">@csrf @method('DELETE')<button class="btn btn--danger" type="submit">Удалить турнир</button></form></div>
+        <div class="event-card" id="delete"><h2>Удаление</h2><form method="POST" action="{{ route('tournaments.destroy', $tournament->routeIdentifier()) }}" onsubmit="const reason = window.prompt('Укажите причину удаления турнира:'); if (reason === null) return false; if (!reason.trim()) { window.alert('Причина удаления обязательна.'); return false; } this.elements.deletion_reason.value = reason.trim();">@csrf @method('DELETE')<input type="hidden" name="deletion_reason" value=""><button class="btn btn--danger" type="submit">Удалить турнир</button></form></div>
     @endif
 @endsection

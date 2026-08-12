@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -47,6 +48,7 @@ final class CreateEventRequest extends FormRequest
     {
         return [
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
+            'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'title' => ['required', 'string', 'max:150'],
             'type' => ['required', Rule::enum(EventTypeEnum::class)],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],

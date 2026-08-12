@@ -51,7 +51,7 @@ final class TournamentFormationService
         }
 
         $players = $this->scorePlayers($users, $source, $seed);
-        $teams = collect(range(1, $teamCount))->map(fn (int $number): array => ['number' => $number, 'name' => 'Команда '.$number, 'logo_preset' => sprintf('crest-%02d', ($number - 1) % 12), 'players' => [], 'score' => 0.0, 'unknown' => 0, 'positions' => []])->all();
+        $teams = collect(range(1, $teamCount))->map(fn (int $number): array => ['number' => $number, 'name' => 'Команда '.$number, 'logo_preset' => sprintf('crest-%02d', ($number - 1) % 15), 'players' => [], 'score' => 0.0, 'unknown' => 0, 'positions' => []])->all();
         $maxSize = (int) ceil($players->count() / $teamCount);
         foreach ($players as $player) {
             $eligible = collect($teams)->filter(fn (array $team): bool => count($team['players']) < $maxSize);

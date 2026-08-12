@@ -75,8 +75,15 @@ final class TournamentFoundationTest extends TestCase
         ])->assertSessionHas('error', 'Отменённый турнир нельзя вернуть в активный статус.');
 
         $this->actingAs($owner)->delete(route('tournaments.destroy', $tournament->routeIdentifier()))
+            ->assertSessionHasErrors('deletion_reason');
+        $this->assertNotSoftDeleted('tournaments', ['id' => $tournament->id]);
+
+        $this->actingAs($owner)->delete(route('tournaments.destroy', $tournament->routeIdentifier()), [
+            'deletion_reason' => 'Тест удаления турнира',
+        ])
             ->assertRedirect(route('tournaments.index'));
         $this->assertSoftDeleted('tournaments', ['id' => $tournament->id]);
+        $this->assertSame('Тест удаления турнира', Tournament::withTrashed()->findOrFail($tournament->id)->status_comment);
     }
 
     public function test_tournament_alias_cannot_be_changed_after_creation(): void

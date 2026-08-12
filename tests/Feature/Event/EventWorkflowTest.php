@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
@@ -32,6 +33,39 @@ use Tests\TestCase;
 final class EventWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_two_hoop_venue_allows_opposite_halves_but_rejects_overlapping_resource(): void
+    {
+        [$venue, $start, $end] = $this->availableVenue();
+        $venue->characteristics()->create(['hoops_count' => 2]);
+        $users = User::factory()->count(4)->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        $this->actingAs($users[0])->post(route('events.store'), [
+            ...$this->payload($venue, $start, $end),
+            'title' => 'Половина A',
+            'booking_scope' => VenueBookingScopeEnum::HALF_A->value,
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($users[1])->post(route('events.store'), [
+            ...$this->payload($venue, $start, $end),
+            'title' => 'Половина B',
+            'booking_scope' => VenueBookingScopeEnum::HALF_B->value,
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($users[2])->post(route('events.store'), [
+            ...$this->payload($venue, $start, $end),
+            'title' => 'Повтор половины A',
+            'booking_scope' => VenueBookingScopeEnum::HALF_A->value,
+        ])->assertSessionHas('error', 'Выбранное время уже занято другим мероприятием.');
+        $this->actingAs($users[3])->post(route('events.store'), [
+            ...$this->payload($venue, $start, $end),
+            'title' => 'Вся площадка',
+            'booking_scope' => VenueBookingScopeEnum::WHOLE->value,
+        ])->assertSessionHas('error', 'Выбранное время уже занято другим мероприятием.');
+
+        $this->assertSame(
+            [VenueBookingScopeEnum::HALF_A, VenueBookingScopeEnum::HALF_B],
+            $venue->bookings()->orderBy('id')->pluck('scope')->all(),
+        );
+    }
 
     public function test_automatic_event_duration_uses_end_of_day_without_schedule(): void
     {

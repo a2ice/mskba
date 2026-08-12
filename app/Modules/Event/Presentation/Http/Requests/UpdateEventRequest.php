@@ -4,6 +4,7 @@ namespace App\Modules\Event\Presentation\Http\Requests;
 
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,7 @@ final class UpdateEventRequest extends FormRequest
     {
         return [
             'venue_id' => ['required_with:starts_at,duration_minutes', 'integer', 'exists:venues,id'],
+            'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'title' => ['required', 'string', 'max:150'],
             'type' => ['required', Rule::enum(EventTypeEnum::class)],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],

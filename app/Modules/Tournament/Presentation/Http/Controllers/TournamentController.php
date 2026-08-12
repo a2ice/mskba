@@ -116,7 +116,7 @@ final class TournamentController extends Controller
         TournamentEntryRosterResolver $entryRosters,
     ): Response {
         $item = Tournament::query()->whereRouteIdentifier($tournament)
-            ->with(['createdByActor.user.profile', 'cover', 'entries.team.logo', 'entries.logo', 'entries.members.user.profile', 'matches.entryA', 'matches.entryB', 'matches.game.event.venue', 'matches.game.sides.team.logo'])
+            ->with(['createdByActor.user.profile', 'cover', 'entries.team.logo', 'entries.logo', 'entries.members.user.profile', 'matches.entryA', 'matches.entryB', 'matches.game.event.venue', 'matches.game.event.booking', 'matches.game.sides.team.logo'])
             ->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         $canManage = $actor !== null && $access->canManage($item, $actor);
@@ -172,7 +172,7 @@ final class TournamentController extends Controller
         abort_if(! $access->canManage($item, $actor) && $pendingMembership === null, 403);
         $effectivePermissions = collect($access->effectivePermissions($item, $actor));
         $entries = $item->entries()->get();
-        $matches = $item->matches()->with(['entryA', 'entryB', 'game.event.venue.location.address'])->get();
+        $matches = $item->matches()->with(['entryA', 'entryB', 'game.event.venue.location.address', 'game.event.venue.characteristics', 'game.event.booking'])->get();
         $acceptedPlayerCount = $item->admissions()->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)->whereNotNull('user_id')->count();
         $competitionStarted = $matches->contains(fn ($match): bool => $match->game?->actual_started_at !== null || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true));
         $entries->each(function ($entry) use ($entryRosters): void {
@@ -256,10 +256,15 @@ final class TournamentController extends Controller
         DeleteTournamentHandler $handler,
         CurrentActorResolver $actors,
     ): RedirectResponse {
+        $data = $request->validate([
+            'deletion_reason' => ['required', 'string', 'max:2000'],
+        ], [
+            'deletion_reason.required' => 'Укажите причину удаления турнира.',
+        ]);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         try {
-            $handler->handle($tournament, $actor);
+            $handler->handle($tournament, $actor, $data['deletion_reason']);
         } catch (InvalidArgumentException $exception) {
             return back()->with('error', $exception->getMessage());
         }

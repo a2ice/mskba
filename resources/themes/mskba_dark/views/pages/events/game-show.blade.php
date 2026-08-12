@@ -87,7 +87,7 @@
             <header class="game-control__header">
                 <div class="game-control__identity"><span class="eyebrow">{{ $tournament ? 'Игра турнира' : ($isEmbeddedGame ? 'Мини-игра' : 'Игра') }}</span><h1>{{ $title }}</h1>@if($tournament)<p>Турнир «<a href="{{ route('tournaments.show', $tournament->routeIdentifier()) }}">{{ $tournament->title }}</a>»</p>@elseif($isEmbeddedGame)<p>В рамках «<a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a>»</p>@endif</div>
                 <div class="game-control__chips"><span>{{ $game->format?->label() ?? $game->formatLabel() }}</span><span>{{ $game->scoring_type->label() }} · {{ $game->timing_mode->label() }}@if($game->periods_count) · {{ $game->periods_count }}@endif</span><span class="{{ $gameState[1] }}"><i class="ti ti-point-filled"></i>{{ $gameState[0] }}</span><span><i class="ti ti-users"></i>Команды из участников</span></div>
-                <div class="game-control__meta"><span><i class="ti ti-map-pin"></i>{{ $event->venue->name }}</span><span><i class="ti ti-clock"></i>{{ $effectiveStartsAt && $effectiveEndsAt ? $effectiveStartsAt->format('H:i').'–'.$effectiveEndsAt->format('H:i') : 'Время на игру не задано' }}</span></div>
+                <div class="game-control__meta"><span><i class="ti ti-map-pin"></i>{{ $event->venue->name }}@if($event->booking?->scope) · {{ $event->booking->scope->label() }}@endif</span><span><i class="ti ti-clock"></i>{{ $effectiveStartsAt && $effectiveEndsAt ? $effectiveStartsAt->format('H:i').'–'.$effectiveEndsAt->format('H:i') : 'Время на игру не задано' }}</span></div>
             </header>
 
             @if($game->status_comment)
