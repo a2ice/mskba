@@ -7,7 +7,7 @@
                 'trophy' => 'ti ti-trophy',
                 'shield' => 'ti ti-shield',
             ][$item['icon']] ?? 'ti ti-star';
-            $itemUrl = $item['title'] === 'Больше площадок' ? route('venues') : null;
+            $itemUrl = $item['url'] ?? null;
         @endphp
 
         @if ($itemUrl)
