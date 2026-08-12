@@ -46,6 +46,7 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentFormationController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchSchedulingController;
+use App\Modules\Tournament\Presentation\Http\Controllers\TournamentOnSiteRegistrationController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
@@ -173,6 +174,13 @@ Route::prefix('admin')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard')->defaults('breadcrumb', 'Панель управления');
         Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
+        Route::get('/users/{user}/edit', [AdminUsersController::class, 'edit'])
+            ->middleware('can:manage-users-as-superadmin')
+            ->name('admin.users.edit')
+            ->defaults('breadcrumb', 'Редактирование пользователя');
+        Route::put('/users/{user}', [AdminUsersController::class, 'update'])
+            ->middleware('can:manage-users-as-superadmin')
+            ->name('admin.users.update');
         Route::post('/users/bulk-delete', [AdminUsersController::class, 'bulkDelete'])
             ->middleware('can:manage-users-as-superadmin')
             ->name('admin.users.bulk-delete');
@@ -332,6 +340,9 @@ Route::prefix('events')->group(function () {
 
 Route::prefix('tournaments')->group(function () {
     Route::get('/', [TournamentController::class, 'index'])->name('tournaments.index')->defaults('breadcrumb', 'Турниры');
+    Route::get('/{tournament}/check-in', [TournamentOnSiteRegistrationController::class, 'show'])->name('tournaments.on-site.show');
+    Route::get('/{tournament}/check-in/username', [TournamentOnSiteRegistrationController::class, 'username'])->middleware('throttle:30,1')->name('tournaments.on-site.username');
+    Route::post('/{tournament}/check-in', [TournamentOnSiteRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('tournaments.on-site.store');
     Route::middleware('auth')->group(function () {
         Route::get('/create', [TournamentController::class, 'create'])->name('tournaments.create')->defaults('breadcrumb', 'Новый турнир');
         Route::post('/', [TournamentController::class, 'store'])->name('tournaments.store');
@@ -345,6 +356,7 @@ Route::prefix('tournaments')->group(function () {
         Route::post('/{tournament}/admissions/apply', [TournamentAdmissionController::class, 'apply'])->name('tournaments.admissions.apply');
         Route::post('/{tournament}/admissions/{admission}/respond', [TournamentAdmissionController::class, 'respond'])->whereNumber('admission')->name('tournaments.admissions.respond');
         Route::delete('/{tournament}/admissions/{admission}', [TournamentAdmissionController::class, 'revoke'])->whereNumber('admission')->name('tournaments.admissions.revoke');
+        Route::patch('/{tournament}/on-site-registration', [TournamentAdmissionController::class, 'toggleOnSite'])->name('tournaments.on-site.toggle');
         Route::post('/{tournament}/formation/preview', [TournamentFormationController::class, 'preview'])->name('tournaments.formation.preview');
         Route::post('/{tournament}/formation/apply', [TournamentFormationController::class, 'apply'])->name('tournaments.formation.apply');
         Route::delete('/{tournament}/formation', [TournamentFormationController::class, 'disband'])->name('tournaments.formation.disband');

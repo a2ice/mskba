@@ -5,9 +5,11 @@ namespace App\Modules\Admin\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Admin\Application\UseCases\ListAdminUsersHandler;
 use App\Modules\Admin\Presentation\Http\Requests\BulkChangeUsersRequest;
+use App\Modules\Admin\Presentation\Http\Requests\UpdateUserBasicDetailsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserOperationalPermissionsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserStatusRequest;
 use App\Modules\Identity\Application\UseCases\AdminBulkChangeUserDeletionStateHandler;
+use App\Modules\Identity\Application\UseCases\AdminUpdateUserBasicDetailsHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
@@ -50,6 +52,25 @@ final class AdminUsersController extends Controller
         return redirect()
             ->route('admin.users')
             ->with('success', 'Операционные права пользователя обновлены.');
+    }
+
+    public function edit(User $user): Response
+    {
+        return ThemeResolver::page('admin.user-edit', [
+            'editedUser' => $user->load('profile'),
+        ]);
+    }
+
+    public function update(
+        UpdateUserBasicDetailsRequest $request,
+        User $user,
+        AdminUpdateUserBasicDetailsHandler $updateUser,
+    ): RedirectResponse {
+        $updateUser->handle($request->user(), $user->id, $request->details());
+
+        return redirect()
+            ->route('admin.users.edit', $user)
+            ->with('success', 'Базовые данные пользователя обновлены.');
     }
 
     public function updateStatus(

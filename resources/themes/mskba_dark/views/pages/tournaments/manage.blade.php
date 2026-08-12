@@ -116,6 +116,24 @@
     @if($canManageGames)
         <div class="event-card mb-4" id="participants">
             <h2>Участники турнира</h2>
+            @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT)
+                <div class="border rounded p-3 mb-4">
+                    <h3 class="h5">Регистрация на месте</h3>
+                    <p>Специальная страница для участников, которые пришли на турнир без предварительной заявки. Настройку можно отключить в любой момент.</p>
+                    <p><a href="{{ route('tournaments.on-site.show', $tournament->routeIdentifier()) }}" target="_blank" rel="noopener">Открыть страницу для QR-кода</a></p>
+                    <form method="POST" action="{{ route('tournaments.on-site.toggle', $tournament->routeIdentifier()) }}">
+                        @csrf @method('PATCH')
+                        @include('theme::partials.forms.toggle', [
+                            'id' => 'tournamentAllowsOnSiteRegistration',
+                            'name' => 'enabled',
+                            'title' => 'Разрешить регистрацию на месте',
+                            'description' => 'Если выключить, форма сразу закроется, а уже поступившие заявки сохранятся.',
+                            'checked' => $tournament->allows_on_site_registration,
+                        ])
+                        <button class="btn btn--primary btn--sm" type="submit">Сохранить</button>
+                    </form>
+                </div>
+            @endif
             <p><strong>Режим:</strong> {{ $tournament->recruitment_mode->label() }}</p>
             @php($hasFormedTeams = $entries->contains(fn ($entry) => $entry->source === \App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum::ASSEMBLED))
             @if($acceptsAdmissions)
@@ -162,11 +180,20 @@
                 <div class="border rounded p-3 mb-3">
                     <strong>{{ $candidate->team?->name ?? trim(($candidate->user?->profile?->first_name ?? '').' '.($candidate->user?->profile?->last_name ?? '')) ?: $candidate->user?->username }}</strong>
                     @foreach($admissionHistory as $admission)
-                        <div class="text-muted">{{ $admission->direction->value === 'application' ? 'Заявка' : 'Приглашение' }}@if($admission->roles?->isNotEmpty()) · {{ $admission->roles->map->label()->join(', ') }}@endif · {{ $admission->status->label() }}</div>
+                        <div class="text-muted">{{ $admission->direction->value === 'application' ? 'Заявка' : 'Приглашение' }}@if($admission->source === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionSourceEnum::ON_SITE) · <strong>Регистрация на месте</strong>@endif @if($admission->roles?->isNotEmpty()) · {{ $admission->roles->map->label()->join(', ') }}@endif · {{ $admission->status->label() }}</div>
                         @if($admission->direction->value === 'application' && $admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::PENDING)
                             <div class="d-flex gap-2 mt-2">
-                                @if($acceptsAdmissions)
-                                <form method="POST" action="{{ route('tournaments.admissions.respond', [$tournament->routeIdentifier(), $admission]) }}">@csrf<input type="hidden" name="decision" value="accepted"><button class="btn btn--primary btn--sm">Принять</button></form>
+                                @if($acceptsAdmissions || $admission->source === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionSourceEnum::ON_SITE)
+                                <form method="POST" action="{{ route('tournaments.admissions.respond', [$tournament->routeIdentifier(), $admission]) }}">@csrf<input type="hidden" name="decision" value="accepted">
+                                    @if($admission->source === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionSourceEnum::ON_SITE && ($participantPoolLocked || $matches->contains(fn ($match) => $match->game_id !== null)) && $admission->roles?->contains(\App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum::PLAYER))
+                                        <label class="form-label" for="on-site-entry-{{ $admission->id }}">Добавить в команду</label>
+                                        <select id="on-site-entry-{{ $admission->id }}" class="form-select mb-2" name="entry_id" required>
+                                            <option value="">Выберите команду</option>
+                                            @foreach($entries as $entry)<option value="{{ $entry->id }}">{{ $entry->name }}</option>@endforeach
+                                        </select>
+                                    @endif
+                                    <button class="btn btn--primary btn--sm">Принять</button>
+                                </form>
                                 @endif
                                 <form method="POST" action="{{ route('tournaments.admissions.respond', [$tournament->routeIdentifier(), $admission]) }}">@csrf<input type="hidden" name="decision" value="declined"><button class="btn btn--secondary btn--sm">Отклонить</button></form>
                             </div>

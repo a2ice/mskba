@@ -10,11 +10,74 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 final class AdminUserManagementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_superadmin_can_edit_basic_user_details_and_assign_temporary_password(): void
+    {
+        config()->set('audit.ignore_console', false);
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($superadmin)
+            ->get(route('admin.users.edit', $target))
+            ->assertOk()
+            ->assertSee($target->username);
+
+        $this->actingAs($superadmin)
+            ->put(route('admin.users.update', $target), [
+                'first_name' => 'Иван',
+                'last_name' => 'Иванов',
+                'middle_name' => 'Иванович',
+                'birth_date' => '2000-05-10',
+                'password' => 'NewStrong1!',
+                'password_confirmation' => 'NewStrong1!',
+            ])
+            ->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHas('success');
+
+        $target->refresh()->load('profile');
+        $this->assertSame('Иван', $target->profile->first_name);
+        $this->assertSame('Иванов', $target->profile->last_name);
+        $this->assertSame('Иванович', $target->profile->middle_name);
+        $this->assertSame('2000-05-10', $target->profile->birth_date->toDateString());
+        $this->assertTrue($target->is_temporary_password);
+        $this->assertTrue(Hash::check('NewStrong1!', $target->password));
+
+        $profileAudit = AuditLog::query()
+            ->where('auditable_type', $target->profile::class)
+            ->where('auditable_id', $target->profile->id)
+            ->where('event', 'updated')
+            ->latest('id')
+            ->firstOrFail();
+        $this->assertSame('Иван', $profileAudit->new_values['first_name']);
+
+        $userAudit = AuditLog::query()
+            ->where('auditable_type', User::class)
+            ->where('auditable_id', $target->id)
+            ->where('event', 'updated')
+            ->latest('id')
+            ->firstOrFail();
+        $this->assertArrayNotHasKey('password', $userAudit->new_values);
+    }
+
+    public function test_admin_cannot_open_or_update_basic_user_details(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.edit', $target))
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->put(route('admin.users.update', $target), ['first_name' => 'Недоступно'])
+            ->assertForbidden();
+    }
 
     public function test_superadmin_can_change_another_users_status(): void
     {

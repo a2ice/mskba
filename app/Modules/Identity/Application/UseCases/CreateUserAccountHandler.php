@@ -15,7 +15,7 @@ final class CreateUserAccountHandler
 {
     public function handle(
         string $username,
-        string $password,
+        ?string $password,
         UserRegistrationChannelEnum $registrationChannel,
         UserSystemRoleEnum $systemRole = UserSystemRoleEnum::USER,
         UserStatusEnum $status = UserStatusEnum::UNCONFIRMED,
@@ -23,13 +23,13 @@ final class CreateUserAccountHandler
         ?ProfileDTO $profile = null,
     ): User {
         $username = UsernameVO::fromString($username)->value;
-        $password = PasswordVO::fromString($password)->value;
+        $password = $password === null ? null : PasswordVO::fromString($password)->value;
 
         return DB::transaction(function () use ($username, $password, $registrationChannel, $systemRole, $status, $isTemporaryPassword, $profile): User {
             $user = User::query()->create([
                 'username' => $username,
                 'password' => $password,
-                'password_updated_at' => now(),
+                'password_updated_at' => $password === null ? null : now(),
                 'is_temporary_password' => $isTemporaryPassword,
                 'registration_channel' => $registrationChannel,
                 'system_role' => $systemRole,

@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'format',
     'recruitment_mode',
     'accepts_unconfirmed_participants',
+    'allows_on_site_registration',
     'participant_pool_locked_at',
 ])]
 class Tournament extends Model
@@ -151,6 +152,7 @@ class Tournament extends Model
             'format' => GameFormatEnum::class,
             'recruitment_mode' => TournamentRecruitmentModeEnum::class,
             'accepts_unconfirmed_participants' => 'boolean',
+            'allows_on_site_registration' => 'boolean',
             'participant_pool_locked_at' => 'immutable_datetime',
             'starts_on' => 'immutable_date',
             'ends_on' => 'immutable_date',

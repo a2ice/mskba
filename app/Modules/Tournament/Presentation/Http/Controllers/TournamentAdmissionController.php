@@ -6,15 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Tournament\Application\Services\TournamentAccess;
 use App\Modules\Tournament\Application\Services\TournamentAdmissionService;
+use App\Modules\Tournament\Application\Services\TournamentOnSiteRegistrationService;
 use App\Modules\Tournament\Application\Services\TournamentParticipantPoolService;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentAdmissionSourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentPhaseEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Tournament\Domain\Models\TournamentAdmission;
+use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
@@ -59,10 +66,44 @@ final class TournamentAdmissionController extends Controller
         $data = $request->validate(['decision' => ['required', Rule::in([
             TournamentAdmissionStatusEnum::ACCEPTED->value,
             TournamentAdmissionStatusEnum::DECLINED->value,
-        ])]]);
+        ])], 'entry_id' => ['nullable', 'integer', 'exists:tournament_entries,id']]);
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
+        $actor = $actors->resolveForRequest($request) ?? abort(403);
+        if ($admission->source === TournamentAdmissionSourceEnum::ON_SITE && $data['decision'] === TournamentAdmissionStatusEnum::ACCEPTED->value) {
+            $onSite = app(TournamentOnSiteRegistrationService::class);
+            $entry = isset($data['entry_id']) ? TournamentEntry::query()->findOrFail($data['entry_id']) : null;
 
-        return $this->run(fn () => $service->respond($item, $admission, $actors->resolveForRequest($request) ?? abort(403), TournamentAdmissionStatusEnum::from($data['decision'])), 'Ответ сохранён.');
+            return $this->run(fn () => $onSite->accept($item, $admission, $actor, $entry), 'Участник допущен к турниру.');
+        }
+
+        return $this->run(fn () => $service->respond($item, $admission, $actor, TournamentAdmissionStatusEnum::from($data['decision'])), 'Ответ сохранён.');
+    }
+
+    public function toggleOnSite(Request $request, string $tournament, CurrentActorResolver $actors, TournamentAccess $access): RedirectResponse
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+        $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
+        $actor = $actors->resolveForRequest($request) ?? abort(403);
+        try {
+            DB::transaction(function () use ($item, $actor, $access, $data): void {
+                $locked = Tournament::query()->whereKey($item->id)->lockForUpdate()->firstOrFail();
+                $access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+                if ($locked->recruitment_mode !== TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT) {
+                    throw new InvalidArgumentException('Регистрация на месте доступна только для турнира с отдельными игроками.');
+                }
+                if ((bool) $data['enabled'] && ($locked->format?->sideSize() ?? 1) === 1) {
+                    throw new InvalidArgumentException('Регистрация на месте пока доступна для balanced-турниров 3×3 и 5×5.');
+                }
+                if ((bool) $data['enabled'] && $locked->phase() === TournamentPhaseEnum::COMPLETED) {
+                    throw new InvalidArgumentException('Нельзя включить регистрацию на месте для завершённого турнира.');
+                }
+                $locked->forceFill(['allows_on_site_registration' => (bool) $data['enabled']])->save();
+            });
+        } catch (InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('status', (bool) $data['enabled'] ? 'Регистрация на месте включена.' : 'Регистрация на месте закрыта.');
     }
 
     public function revoke(Request $request, string $tournament, TournamentAdmission $admission, TournamentAdmissionService $service, CurrentActorResolver $actors): RedirectResponse

@@ -108,7 +108,13 @@
                                 </td>
                             @endif
                             <td>{{ $user->id }}</td>
-                            <td>{{ $user->username }}</td>
+                            <td>
+                                @if($canManageUsers && ! $showDeleted)
+                                    <a href="{{ route('admin.users.edit', $user) }}">{{ $user->username }}</a>
+                                @else
+                                    {{ $user->username }}
+                                @endif
+                            </td>
                             <td class="admin-table__presence-cell">
                                 @php
                                     $lastSeenTimestamp = $onlinePresence[$user->id] ?? null;

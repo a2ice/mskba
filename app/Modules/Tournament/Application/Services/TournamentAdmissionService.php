@@ -25,6 +25,7 @@ use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionCandidateTypeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionDirectionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentAdmissionSourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentEntryStatusEnum;
@@ -80,7 +81,7 @@ final class TournamentAdmissionService
     {
         $this->assertCandidateMayAct($candidate, $actor);
 
-        $admission = $this->createPending($tournament, $actor, $candidate, TournamentAdmissionDirectionEnum::APPLICATION, $roles);
+        $admission = $this->createPending($tournament, $actor, $candidate, TournamentAdmissionDirectionEnum::APPLICATION, $roles, TournamentAdmissionSourceEnum::STANDARD);
         $ownerUserId = $tournament->createdByActor()->value('user_id');
         if ($ownerUserId !== null) {
             $this->notify((int) $ownerUserId, $tournament, 'Новая заявка на турнир', 'Поступила новая заявка на участие.', $admission, source: 'tournament.application.submitted');
@@ -156,9 +157,9 @@ final class TournamentAdmissionService
     }
 
     /** @param Collection<int, TournamentAdmissionRoleEnum>|null $roles */
-    private function createPending(Tournament $tournament, Actor $actor, Team|User $candidate, TournamentAdmissionDirectionEnum $direction, ?Collection $roles = null): TournamentAdmission
+    private function createPending(Tournament $tournament, Actor $actor, Team|User $candidate, TournamentAdmissionDirectionEnum $direction, ?Collection $roles = null, TournamentAdmissionSourceEnum $source = TournamentAdmissionSourceEnum::STANDARD): TournamentAdmission
     {
-        return DB::transaction(function () use ($tournament, $actor, $candidate, $direction, $roles): TournamentAdmission {
+        return DB::transaction(function () use ($tournament, $actor, $candidate, $direction, $roles, $source): TournamentAdmission {
             $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->assertTournamentAcceptsCandidates($locked);
             if ($direction === TournamentAdmissionDirectionEnum::INVITATION) {
@@ -189,6 +190,7 @@ final class TournamentAdmissionService
                 'team_id' => $candidate instanceof Team ? $candidate->id : null,
                 'user_id' => $candidate instanceof User ? $candidate->id : null,
                 'direction' => $direction,
+                'source' => $source,
                 'roles' => $candidate instanceof User ? $roles : null,
                 'status' => TournamentAdmissionStatusEnum::PENDING,
                 'requested_by_actor_id' => $actor->id,

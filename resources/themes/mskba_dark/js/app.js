@@ -43,6 +43,7 @@ import './features/event-create-form.js';
 import './features/tournament-form.js';
 import './features/tournament-application.js';
 import './features/tournament-management.js';
+import './features/tournament-check-in.js';
 import './features/event-show.js';
 import './features/game-shot-quick-action.js';
 import './features/game-control.js';
