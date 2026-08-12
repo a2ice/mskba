@@ -9,6 +9,7 @@ use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Moderation\Domain\Enums\ModerationTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -31,7 +32,9 @@ final class AdminVenueEditingTest extends TestCase
         $this->actingAs($superadmin)
             ->get(route('admin.venues.edit', $venue))
             ->assertOk()
-            ->assertSee('Старое название');
+            ->assertSee('Старое название')
+            ->assertSee('Кольца, покрытие и разметка')
+            ->assertSee('Оснащение и удобства');
 
         $this->actingAs($superadmin)
             ->put(route('admin.venues.update', $venue), [
@@ -54,6 +57,46 @@ final class AdminVenueEditingTest extends TestCase
         $this->assertTrue($venue->requires_payment);
         $this->assertTrue($venue->requires_booking_approval);
         $this->assertEqualsCanonicalizing(['паркет', 'раздевалки'], $venue->tags()->pluck('name')->all());
+    }
+
+    public function test_superadmin_can_edit_venue_facilities_from_admin_panel(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+            'type' => VenueTypeEnum::SPORTS_HALL,
+        ]);
+        $shower = Amenity::query()->where('alias', 'shower')->firstOrFail();
+
+        $this->actingAs($superadmin)
+            ->put(route('admin.venues.update', $venue), [
+                'facilities_present' => '1',
+                'name' => $venue->name,
+                'type' => $venue->type->value,
+                'short_description' => $venue->short_description,
+                'full_description' => $venue->full_description,
+                'characteristics' => [
+                    'hoops_count' => 2,
+                    'hoops_condition' => 5,
+                    'surface_condition' => 4,
+                    'marking_condition' => 'good',
+                ],
+                'amenity_ids' => [$shower->id],
+            ])
+            ->assertRedirect(route('admin.venues.edit', $venue))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('venue_characteristics', [
+            'venue_id' => $venue->id,
+            'hoops_count' => 2,
+            'hoops_condition' => 5,
+            'surface_condition' => 4,
+            'marking_condition' => 'good',
+        ]);
+        $this->assertDatabaseHas('venue_amenities', [
+            'venue_id' => $venue->id,
+            'amenity_id' => $shower->id,
+        ]);
     }
 
     public function test_admin_routes_identify_venues_by_id_when_aliases_match(): void

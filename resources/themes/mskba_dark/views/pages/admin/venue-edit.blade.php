@@ -31,5 +31,11 @@
             'cancelUrl' => route('admin.venues'),
             'submitLabel' => 'Сохранить',
         ])
+
+        @include('theme::partials.venues.facilities-form', [
+            'venue' => $venue,
+            'action' => route('admin.venues.update', $venue),
+            'submitLabel' => 'Сохранить характеристики и удобства',
+        ])
     </div>
 @endsection

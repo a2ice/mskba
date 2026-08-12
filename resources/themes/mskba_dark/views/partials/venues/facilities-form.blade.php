@@ -5,9 +5,11 @@
     $revisionTags = is_array($revisionPayload['tags'] ?? null)
         ? $revisionPayload['tags']
         : $venue->tags->pluck('name')->all();
+    $action = $action ?? route('account.venues.update', $venue->routeIdentifier());
+    $submitLabel = $submitLabel ?? 'Сохранить характеристики';
 @endphp
 
-<form method="POST" action="{{ route('account.venues.update', $venue->routeIdentifier()) }}" class="venue-facilities-form">
+<form method="POST" action="{{ $action }}" class="venue-facilities-form">
     @csrf
     @method('PUT')
 
@@ -29,7 +31,7 @@
 
     <div class="d-flex flex-wrap align-items-center gap-3">
         <button type="submit" class="btn btn--primary btn--sm" @disabled($readOnly ?? false)>
-            Сохранить характеристики
+            {{ $submitLabel }}
         </button>
         @if($readOnly ?? false)
             <span class="venue-form__read-only-message">Дождитесь результата модерации.</span>

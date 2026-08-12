@@ -43,7 +43,7 @@ final class AdminVenuesController extends Controller
 
     public function edit(Venue $venue, ListMetrostationsHandler $listMetrostations, VenueGalleryManager $gallery): Response
     {
-        $venue->loadMissing('location.address', 'location.metroStations', 'tags');
+        $venue->loadMissing('location.address', 'location.metroStations', 'tags', 'characteristics', 'amenities');
 
         return ThemeResolver::page('admin.venue-edit', [
             'venue' => $venue,
