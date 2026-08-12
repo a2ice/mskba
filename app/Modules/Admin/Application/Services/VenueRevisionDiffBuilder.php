@@ -4,8 +4,11 @@ namespace App\Modules\Admin\Application\Services;
 
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\Venue\Domain\Enums\VenueMarkingConditionEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
+use App\Modules\Venue\Domain\Models\Amenity;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCharacteristic;
 use App\Modules\Venue\Domain\Models\VenueRevision;
 use Illuminate\Support\Collection;
 
@@ -13,6 +16,9 @@ final class VenueRevisionDiffBuilder
 {
     /** @var Collection<int, MetroStation>|null */
     private ?Collection $metroStations = null;
+
+    /** @var Collection<int, Amenity>|null */
+    private ?Collection $amenities = null;
 
     /**
      * @return array{
@@ -26,7 +32,7 @@ final class VenueRevisionDiffBuilder
      */
     public function build(Venue $venue, VenueRevision $revision): array
     {
-        $venue->loadMissing('location.address', 'location.metroStations.line', 'tags', 'media');
+        $venue->loadMissing('location.address', 'location.metroStations.line', 'tags', 'media', 'characteristics', 'amenities');
         $revision->loadMissing('media');
 
         $payload = $revision->payload;
@@ -74,6 +80,8 @@ final class VenueRevisionDiffBuilder
             );
         }
 
+        $this->addFacilitiesChanges($fields, $venue, $payload);
+
         $gallery = $this->galleryDiff($venue, $revision, $payload);
 
         return [
@@ -81,6 +89,59 @@ final class VenueRevisionDiffBuilder
             ...$gallery,
             'has_changes' => $fields !== [] || $gallery['gallery_changed'],
         ];
+    }
+
+    /**
+     * @param  array<int, array{label: string, before: string, after: string}>  $fields
+     * @param  array<string, mixed>  $payload
+     */
+    private function addFacilitiesChanges(array &$fields, Venue $venue, array $payload): void
+    {
+        if (! array_key_exists('facilities', $payload) || ! is_array($payload['facilities'])) {
+            return;
+        }
+
+        $facilities = $payload['facilities'];
+        $proposed = is_array($facilities['characteristics'] ?? null) ? $facilities['characteristics'] : [];
+        $current = $venue->characteristics;
+
+        $this->addChange($fields, 'Количество колец', $current?->hoops_count, $proposed['hoops_count'] ?? null);
+        $this->addChange(
+            $fields,
+            'Состояние колец',
+            $this->conditionScore($current?->hoops_condition),
+            $this->conditionScore($proposed['hoops_condition'] ?? null),
+        );
+        $this->addChange(
+            $fields,
+            'Состояние покрытия',
+            $this->conditionScore($current?->surface_condition),
+            $this->conditionScore($proposed['surface_condition'] ?? null),
+        );
+        $this->addChange(
+            $fields,
+            'Разметка',
+            $this->markingLabel($this->currentMarking($current)),
+            $this->markingLabel($proposed['marking_condition'] ?? $proposed['first_hoop_marking'] ?? null),
+        );
+
+        $currentAmenityIds = $venue->amenities->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $proposedAmenityIds = collect(is_array($facilities['amenity_ids'] ?? null) ? $facilities['amenity_ids'] : [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($this->sorted($currentAmenityIds) !== $this->sorted($proposedAmenityIds)) {
+            $this->addChange(
+                $fields,
+                'Удобства',
+                $this->amenityLabels($currentAmenityIds),
+                $this->amenityLabels($proposedAmenityIds),
+                force: true,
+            );
+        }
     }
 
     /** @param array<int, array{label: string, before: string, after: string}> $fields */
@@ -172,6 +233,37 @@ final class VenueRevisionDiffBuilder
         }
 
         return number_format((float) $latitude, 6, '.', '').', '.number_format((float) $longitude, 6, '.', '');
+    }
+
+    private function conditionScore(mixed $value): string
+    {
+        return is_numeric($value) ? (int) $value.' из 5' : '';
+    }
+
+    private function currentMarking(?VenueCharacteristic $characteristics): ?string
+    {
+        return $characteristics?->marking_condition?->value
+            ?? $characteristics?->first_hoop_marking?->value;
+    }
+
+    private function markingLabel(mixed $value): string
+    {
+        return VenueMarkingConditionEnum::tryFrom((string) $value)?->label() ?? '';
+    }
+
+    /** @param array<int, int> $ids */
+    private function amenityLabels(array $ids): string
+    {
+        $this->amenities ??= Amenity::query()->withTrashed()->get()->keyBy('id');
+
+        return collect($ids)
+            ->map(function (int $id): string {
+                $amenity = $this->amenities?->get($id);
+
+                return $amenity instanceof Amenity ? $amenity->name : "Опция #{$id}";
+            })
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->implode(', ');
     }
 
     private function display(mixed $value): string

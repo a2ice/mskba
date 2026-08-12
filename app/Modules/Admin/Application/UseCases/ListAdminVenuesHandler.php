@@ -33,6 +33,8 @@ final class ListAdminVenuesHandler
                 'location.address',
                 'location.metroStations.line',
                 'tags',
+                'characteristics',
+                'amenities',
             ])
             ->withCount([
                 'duplicateVenues',
