@@ -29,7 +29,7 @@ final class CompleteEventHandler
                 throw new InvalidArgumentException('Это мероприятие нельзя отметить состоявшимся.');
             }
 
-            if ($event->ends_at->isFuture()) {
+            if ($event->completed_at === null && $event->ends_at->isFuture()) {
                 throw new InvalidArgumentException('Подвести итог можно после окончания мероприятия.');
             }
 

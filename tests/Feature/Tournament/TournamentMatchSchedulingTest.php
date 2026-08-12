@@ -3,6 +3,7 @@
 namespace Tests\Feature\Tournament;
 
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -11,11 +12,14 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentEntryStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 final class TournamentMatchSchedulingTest extends TestCase
@@ -24,6 +28,7 @@ final class TournamentMatchSchedulingTest extends TestCase
 
     public function test_match_scheduling_atomically_creates_event_booking_game_sides_and_roster_snapshot(): void
     {
+        Storage::fake('public');
         $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($owner)->post(route('tournaments.store'), [
             'title' => 'Кубок', 'alias' => 'cup',
@@ -142,10 +147,38 @@ final class TournamentMatchSchedulingTest extends TestCase
             ->assertSee('Добавление новых матчей закрыто: турнир уже начался.');
 
         $event->primaryGame->forceFill(['status' => GameStatusEnum::COMPLETED])->save();
+        $event->forceFill(['status' => EventStatusEnum::COMPLETED, 'completed_at' => now()])->save();
         $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))
             ->assertOk()
             ->assertSee('Завершена:')
             ->assertDontSee('Перенести игру и бронь');
+
+        $staff = User::factory()->create(['username' => 'match-result-editor', 'status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($owner)->post(route('tournaments.staff.invite', $tournament->routeIdentifier()), [
+            'user_id' => $staff->id,
+            'permissions' => [TournamentPermissionEnum::MANAGE_GAMES->value],
+        ]);
+        $membership = $tournament->staffMemberships()->where('user_id', $staff->id)->firstOrFail();
+        $this->actingAs($staff)->post(route('tournaments.staff.respond', [$tournament->routeIdentifier(), $membership]), [
+            'decision' => 'accepted',
+        ]);
+        $this->actingAs($staff)->get(route('events.games.manage', $routeParameters))
+            ->assertOk()
+            ->assertSee('Как это было')
+            ->assertSee('Фотографии результата');
+        $this->actingAs($staff)->put(route('events.result.update', $event->routeIdentifier()), [
+            'result_description' => 'Решающая игра турнира.',
+        ])->assertSessionHas('status');
+        $this->assertSame('Решающая игра турнира.', $event->fresh()->result_description);
+        $this->actingAs($staff)->post(route('events.result.photos.store', $event->routeIdentifier()), [
+            'photo' => UploadedFile::fake()->image('tournament-game.jpg', 1200, 800),
+        ])->assertSessionHas('photo_status');
+        $photo = $event->media()->firstOrFail();
+        Storage::disk('public')->assertExists($photo->path);
+        $this->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Решающая игра турнира.')
+            ->assertSee($photo->publicUrl(), false);
     }
 
     public function test_unavailable_venue_rolls_back_entire_tournament_game_aggregate(): void

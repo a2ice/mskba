@@ -24,6 +24,7 @@
     $canManageScore = $allows(EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_SCORE);
     $canManageStatistics = $allows(EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS);
     $canComplete = $allows(EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME);
+    $canManageResult = $allows(EventResponsibilityPermissionEnum::MANAGE_RESULT);
     $statisticsConfirmed = $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED;
     $isCancelled = $game->status === GameStatusEnum::CANCELLED;
     $isCompleted = $game->status === GameStatusEnum::COMPLETED || $statisticsConfirmed;
@@ -81,6 +82,8 @@
         <div class="inner game-control__inner">
             @if(session('status')) <div class="alert alert-success">{{ session('status') }}</div> @endif
             @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
+            @if(session('photo_status')) <div class="alert alert-success">{{ session('photo_status') }}</div> @endif
+            @if(session('photo_error') || $errors->has('photo')) <div class="alert alert-danger">{{ session('photo_error') ?: $errors->first('photo') }}</div> @endif
 
             <a class="game-control__back" href="{{ $tournament ? route('tournaments.show', $tournament->routeIdentifier()) : route('events.show', $event->routeIdentifier()) }}"><i class="ti ti-arrow-left"></i>{{ $tournament ? 'Назад к турниру' : 'Назад к мероприятию' }}</a>
 
@@ -150,6 +153,38 @@
                         @endif
                     </div>
                 </details>
+            @endif
+
+            @if($managementMode && $tournament && $isCompleted && $canManageResult)
+                <section class="section-card mb-5">
+                    <h2>Как это было</h2>
+                    <form method="POST" action="{{ route('events.result.update', $event->routeIdentifier()) }}">
+                        @csrf @method('PUT')
+                        <label class="form-label" for="tournament-game-result-description">Описание завершённой игры</label>
+                        <textarea id="tournament-game-result-description" class="form-control @error('result_description') is-invalid @enderror" name="result_description" rows="5" maxlength="10000">{{ old('result_description', $event->result_description) }}</textarea>
+                        @error('result_description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <button class="btn btn--primary btn--sm mt-2" type="submit">Сохранить описание</button>
+                    </form>
+                </section>
+
+                @include('theme::pages.events.partials.result-photo-management')
+            @endif
+
+            @if(!$managementMode && $isCompleted && ($event->result_description || $event->media->isNotEmpty()))
+                <section class="section-card mb-5">
+                    <h2>Как это было</h2>
+                    @if($event->result_description)<p>{{ $event->result_description }}</p>@endif
+                    @if($event->media->isNotEmpty())
+                        <div class="event-result-photos" aria-label="Фотографии игры">
+                            @foreach($event->media as $photo)
+                                <figure>
+                                    <img src="{{ $photo->publicUrl() }}" alt="{{ $photo->description ?: 'Фотография с игры' }}">
+                                    @if($photo->description)<figcaption>{{ $photo->description }}</figcaption>@endif
+                                </figure>
+                            @endforeach
+                        </div>
+                    @endif
+                </section>
             @endif
 
             <form

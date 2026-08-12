@@ -54,6 +54,7 @@ final class EventManagementAccess
                 EventResponsibilityPermissionEnum::MANAGE_MINI_GAME_STATISTICS,
                 EventResponsibilityPermissionEnum::VIEW_MINI_GAME_AUDIENCE,
                 EventResponsibilityPermissionEnum::COMPLETE_MINI_GAME,
+                EventResponsibilityPermissionEnum::MANAGE_RESULT,
             ], true)
             && $this->tournaments->allows($tournamentMatch->tournament, $actor, TournamentPermissionEnum::MANAGE_GAMES)) {
             return true;
