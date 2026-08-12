@@ -53,6 +53,7 @@ final class GameLiveSnapshotBuilder
                 'is_live' => $game->actual_started_at !== null && $game->actual_ended_at === null,
                 'is_finished' => $game->status === GameStatusEnum::COMPLETED
                     || $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED,
+                'is_terminal' => $game->actual_ended_at !== null || $game->status->isTerminal(),
                 'ended_early' => (bool) $game->ended_early,
             ],
             'scores' => [
