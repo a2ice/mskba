@@ -67,6 +67,28 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             ->assertSessionHas('error', 'Режим набора нельзя менять после первой заявки или приглашения.');
     }
 
+    public function test_management_groups_admission_history_by_candidate_with_newest_first(): void
+    {
+        $owner = User::factory()->create(['username' => 'history-owner', 'status' => UserStatusEnum::CONFIRMED]);
+        $player = User::factory()->create(['username' => 'history-player-unique', 'status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($owner)->post(route('tournaments.store'), $this->payload());
+        $tournament = Tournament::query()->firstOrFail();
+        $attributes = [
+            'candidate_type' => TournamentAdmissionCandidateTypeEnum::USER,
+            'user_id' => $player->id,
+            'direction' => TournamentAdmissionDirectionEnum::APPLICATION,
+            'roles' => ['player'],
+            'requested_by_actor_id' => $tournament->created_by_actor_id,
+        ];
+        $tournament->admissions()->create([...$attributes, 'status' => TournamentAdmissionStatusEnum::REVOKED, 'created_at' => now()->subMinute()]);
+        $tournament->admissions()->create([...$attributes, 'status' => TournamentAdmissionStatusEnum::ACCEPTED, 'created_at' => now()]);
+
+        $response = $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))->assertOk();
+
+        $this->assertSame(1, substr_count($response->getContent(), 'history-player-unique'));
+        $response->assertSeeInOrder(['Принято', 'Отозвано']);
+    }
+
     public function test_calendar_start_alone_does_not_close_admissions_before_teams_are_formed(): void
     {
         $owner = User::factory()->create(['username' => 'owner-started', 'status' => UserStatusEnum::CONFIRMED]);

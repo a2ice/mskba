@@ -137,7 +137,15 @@ final class TournamentMatchSchedulingTest extends TestCase
         $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))
             ->assertOk()
             ->assertDontSee('Добавить отдельный матч')
+            ->assertSee('Сейчас играют:')
+            ->assertDontSee('Перенести игру и бронь')
             ->assertSee('Добавление новых матчей закрыто: турнир уже начался.');
+
+        $event->primaryGame->forceFill(['status' => GameStatusEnum::COMPLETED])->save();
+        $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Завершена:')
+            ->assertDontSee('Перенести игру и бронь');
     }
 
     public function test_unavailable_venue_rolls_back_entire_tournament_game_aggregate(): void
