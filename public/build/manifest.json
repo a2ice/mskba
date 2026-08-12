@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-BJ5cqkuJ.css",
+    "file": "assets/app-B49LX8xC.css",
     "name": "app",
     "names": [
       "app.css"
@@ -51,12 +51,12 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-CCjRAcjW.js",
+    "file": "assets/app-BPFtR-ei.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
     "css": [
-      "assets/app-nIBdhMOv.css"
+      "assets/app-k8zqBPHY.css"
     ]
   },
   "resources/themes/mskba_streetball/css/app.css": {

@@ -2686,6 +2686,22 @@ body.telegram-mini-app .event-show {
 .game-player-toggle .form-toggle__input:disabled ~ .form-toggle__title { opacity: .42; cursor: not-allowed; }
 .game-team-panel__footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #343935; }
 .game-team-panel__footer .form-hint { margin: 0; }
+.game-audience-report { padding: 0; overflow: hidden; }
+.game-audience-report > summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px 24px; cursor: pointer; list-style: none; }
+.game-audience-report > summary::-webkit-details-marker { display: none; }
+.game-audience-report > summary > span { display: inline-flex; align-items: center; gap: 10px; font-size: 24px; }
+.game-audience-report > summary i { color: var(--accent-text, #ff7417); }
+.game-audience-report > summary small { color: #aeb2ae; font-size: 15px; }
+.game-audience-report__content { display: grid; gap: 14px; padding: 0 24px 24px; border-top: 1px solid #363b37; }
+.game-audience-report__summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 20px 0 4px; }
+.game-audience-report__summary > div { padding: 14px; border: 1px solid #363b37; border-radius: 14px; background: rgba(18, 21, 18, .78); }
+.game-audience-report__summary dt { color: #9da19d; font-size: 13px; }
+.game-audience-report__summary dd { margin: 5px 0 0; color: #f6f3ea; font-size: 22px; font-weight: 800; }
+.game-audience-report__viewer { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px; border: 1px solid #363b37; border-radius: 14px; }
+.game-audience-report__viewer > div { display: grid; gap: 4px; }
+.game-audience-report__viewer > div:last-child { justify-items: end; text-align: right; }
+.game-audience-report__viewer small, .game-audience-report__viewer span, .game-audience-report__empty { color: #9da19d; }
+.game-audience-report__empty { margin: 8px 0 0; }
 .game-roster-editor { position: relative; margin: 22px 0; padding: 20px; border: 1px solid #454a46; border-radius: 22px; background: #151815; }
 .game-roster-management-action { display: flex; justify-content: flex-end; margin: 0 0 14px; }
 .game-roster-editor__actions, .game-final-review__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
@@ -2730,6 +2746,9 @@ body.telegram-mini-app .event-show {
     .game-live-player__points { grid-column: 2; grid-row: 1; }
     .game-team-panel > header { align-items: flex-start; flex-direction: column; }
     .game-team-panel__footer { align-items: stretch; flex-direction: column; }
+    .game-audience-report > summary, .game-audience-report__viewer { align-items: flex-start; flex-direction: column; }
+    .game-audience-report__summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .game-audience-report__viewer > div:last-child { justify-items: start; text-align: left; }
     .game-inline-statistics-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .game-shot-range { grid-template-columns: 1fr; }
     .game-lifecycle-actions { grid-template-columns: 1fr; }

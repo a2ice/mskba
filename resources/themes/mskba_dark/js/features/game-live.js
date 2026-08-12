@@ -14,6 +14,9 @@ if (liveScreen) {
     const eventPlayer = liveScreen.querySelector('[data-game-live-event-player]');
     const eventLogo = liveScreen.querySelector('[data-game-live-event-logo]');
     const eventLogoFallback = liveScreen.querySelector('[data-game-live-event-logo-fallback]');
+    const audience = liveScreen.querySelector('[data-game-live-audience]');
+    const authenticatedAudience = audience?.querySelector('[data-game-live-audience-authenticated]');
+    const totalAudience = audience?.querySelector('[data-game-live-audience-total]');
     const scoreNodes = Object.fromEntries(
         ['A', 'B'].map((slot) => [slot, liveScreen.querySelector(`[data-game-live-score="${slot}"]`)]),
     );
@@ -21,6 +24,27 @@ if (liveScreen) {
     let revision = null;
     let latestActionSequence = null;
     let snapshotRequest = null;
+    let audienceRequest = null;
+    let terminal = liveScreen.dataset.gameLiveTerminal === '1';
+    let unsubscribe = () => {};
+    let fallbackTimer = null;
+    let audienceTimer = null;
+    let stopped = false;
+
+    const stopLiveActivity = () => {
+        if (stopped) {
+            return;
+        }
+
+        stopped = true;
+        terminal = true;
+        if (fallbackTimer !== null) window.clearInterval(fallbackTimer);
+        if (audienceTimer !== null) window.clearInterval(audienceTimer);
+        window.removeEventListener('mskba:realtime-state', onRealtimeState);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        unsubscribe();
+        unsubscribe = () => {};
+    };
 
     liveScreen.querySelectorAll('[data-game-live-team-logo]').forEach((logo) => {
         logo.addEventListener('error', () => {
@@ -227,6 +251,10 @@ if (liveScreen) {
 
         latestActionSequence = action?.sequence ?? latestActionSequence;
         revision = snapshot.revision;
+
+        if (snapshot.status.is_terminal || snapshot.status.is_finished || isCancelled) {
+            stopLiveActivity();
+        }
     };
 
     const refreshSnapshot = async (announceAction = true) => {
@@ -251,25 +279,77 @@ if (liveScreen) {
         return snapshotRequest;
     };
 
-    refreshSnapshot(false);
-    const unsubscribe = liveScreen.dataset.gameLiveChannel
-        ? subscribePublic(liveScreen.dataset.gameLiveChannel, '.game.live.updated', () => refreshSnapshot(true))
-        : () => {};
+    const refreshAudience = async () => {
+        if (terminal || !liveScreen.dataset.gameLiveAudienceUrl || audienceRequest || document.visibilityState === 'hidden') {
+            return audienceRequest;
+        }
+
+        audienceRequest = fetch(liveScreen.dataset.gameLiveAudienceUrl, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+            },
+            credentials: 'same-origin',
+            body: '{}',
+        })
+            .then((response) => response.ok ? response.json() : null)
+            .then((presence) => {
+                if (!presence || !audience) {
+                    return;
+                }
+
+                if (presence.terminal) {
+                    stopLiveActivity();
+                    return;
+                }
+
+                authenticatedAudience.textContent = String(presence.authenticated ?? 0);
+                totalAudience.textContent = String(presence.total ?? 0);
+                audience.hidden = false;
+            })
+            .catch(() => undefined)
+            .finally(() => { audienceRequest = null; });
+
+        return audienceRequest;
+    };
+
     const onRealtimeState = (event) => {
-        if (event.detail.state === 'connected') {
+        if (!terminal && event.detail.state === 'connected') {
             refreshSnapshot(true);
         }
     };
-    window.addEventListener('mskba:realtime-state', onRealtimeState);
-    const fallbackTimer = window.setInterval(() => {
-        if (realtimeState() !== 'connected') {
-            refreshSnapshot(true);
+    const onVisibilityChange = () => {
+        if (!terminal && document.visibilityState === 'visible') {
+            refreshAudience();
         }
-    }, 10000);
+    };
+
+    refreshSnapshot(false);
+    if (!terminal) {
+        refreshAudience();
+        unsubscribe = liveScreen.dataset.gameLiveChannel
+            ? subscribePublic(liveScreen.dataset.gameLiveChannel, '.game.live.updated', () => refreshSnapshot(true))
+            : () => {};
+        window.addEventListener('mskba:realtime-state', onRealtimeState);
+        fallbackTimer = window.setInterval(() => {
+            if (realtimeState() !== 'connected') {
+                refreshSnapshot(true);
+            }
+        }, 10000);
+        const audienceInterval = Math.max(30, Number(liveScreen.dataset.gameLiveAudienceInterval) || 45) * 1000;
+        audienceTimer = window.setInterval(refreshAudience, audienceInterval);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+    }
     window.addEventListener('pagehide', () => {
-        window.clearInterval(fallbackTimer);
-        window.removeEventListener('mskba:realtime-state', onRealtimeState);
-        unsubscribe();
+        if (!stopped) {
+            if (fallbackTimer !== null) window.clearInterval(fallbackTimer);
+            if (audienceTimer !== null) window.clearInterval(audienceTimer);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            window.removeEventListener('mskba:realtime-state', onRealtimeState);
+            unsubscribe();
+        }
     }, { once: true });
 
     window.addEventListener('mskba:game-live-event', (event) => showEvent(event.detail));

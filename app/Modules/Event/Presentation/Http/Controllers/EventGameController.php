@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Analytics\Application\Services\GameLiveAudienceReport;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
@@ -26,6 +27,7 @@ final class EventGameController extends Controller
         EventManagementAccess $access,
         GameStatisticsFields $statisticsFields,
         TournamentEntryRosterResolver $entryRosters,
+        GameLiveAudienceReport $audienceReports,
     ): Response|RedirectResponse {
         $managementMode = $request->attributes->getBoolean('game_management_mode');
         $actor = $actors->resolveForRequest($request);
@@ -52,6 +54,9 @@ final class EventGameController extends Controller
         }
         $canManage = $actor !== null && $access->canManage($parent, $actor);
         abort_if($managementMode && ! $canManage, 403);
+        $canViewAudience = $managementMode
+            && $actor !== null
+            && $access->allows($parent, $actor, EventResponsibilityPermissionEnum::VIEW_MINI_GAME_AUDIENCE);
         $tournamentCandidates = $gameModel->tournamentMatch === null
             ? collect()
             : collect([
@@ -68,6 +73,8 @@ final class EventGameController extends Controller
             'statisticsFields' => $statisticsFields->all(),
             'managementMode' => $managementMode,
             'tournamentCandidates' => $tournamentCandidates,
+            'canViewAudience' => $canViewAudience,
+            'audienceReport' => $canViewAudience ? $audienceReports->build($gameModel->id) : null,
         ]);
     }
 }

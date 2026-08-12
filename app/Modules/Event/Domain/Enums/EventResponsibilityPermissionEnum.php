@@ -15,6 +15,7 @@ enum EventResponsibilityPermissionEnum: string
     case MANAGE_MINI_GAME_ROSTER = 'mini_game.roster.manage';
     case MANAGE_MINI_GAME_SCORE = 'mini_game.score.manage';
     case MANAGE_MINI_GAME_STATISTICS = 'mini_game.statistics.manage';
+    case VIEW_MINI_GAME_AUDIENCE = 'mini_game.audience.view';
     case COMPLETE_MINI_GAME = 'mini_game.complete';
     case DELETE_MINI_GAME = 'mini_game.delete';
 
@@ -32,6 +33,7 @@ enum EventResponsibilityPermissionEnum: string
             self::MANAGE_MINI_GAME_ROSTER => 'Назначать состав мини-игр',
             self::MANAGE_MINI_GAME_SCORE => 'Вести счёт мини-игр',
             self::MANAGE_MINI_GAME_STATISTICS => 'Вести полную статистику',
+            self::VIEW_MINI_GAME_AUDIENCE => 'Просматривать аудиторию трансляции',
             self::COMPLETE_MINI_GAME => 'Завершать мини-игры',
             self::DELETE_MINI_GAME => 'Удалять мини-игры',
         };
@@ -59,6 +61,7 @@ enum EventResponsibilityPermissionEnum: string
             self::MANAGE_MINI_GAME_ROSTER,
             self::MANAGE_MINI_GAME_SCORE,
             self::MANAGE_MINI_GAME_STATISTICS,
+            self::VIEW_MINI_GAME_AUDIENCE,
             self::COMPLETE_MINI_GAME,
             self::DELETE_MINI_GAME,
         ];

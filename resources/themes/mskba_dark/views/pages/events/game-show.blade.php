@@ -122,6 +122,36 @@
                 <section class="section-card mb-5"><h2 class="mb-3">Периоды</h2><div class="game-control__chips">@foreach($game->periods as $period)<span @class(['is-live' => $period->status === GamePeriodStatusEnum::IN_PROGRESS, 'is-complete' => $period->status === GamePeriodStatusEnum::COMPLETED])>{{ $period->number }} · {{ $period->status->label() }}@if($period->side_a_score !== null) · {{ $period->side_a_score }}:{{ $period->side_b_score }}@endif</span>@endforeach</div></section>
             @endif
 
+            @if($managementMode && $canViewAudience)
+                <details class="section-card game-audience-report mb-5">
+                    <summary>
+                        <span><i class="ti ti-eye" aria-hidden="true"></i><strong>Аудитория трансляции</strong></span>
+                        <small>{{ $audienceReport['unique_viewers'] }} уникальных зрителей</small>
+                    </summary>
+                    <div class="game-audience-report__content">
+                        <dl class="game-audience-report__summary">
+                            <div><dt>Всего</dt><dd>{{ $audienceReport['unique_viewers'] }}</dd></div>
+                            <div><dt>Авторизованные</dt><dd>{{ $audienceReport['authenticated_viewers'] }}</dd></div>
+                            <div><dt>Гости</dt><dd>{{ $audienceReport['guest_viewers'] }}</dd></div>
+                            <div><dt>Суммарное время</dt><dd>{{ floor($audienceReport['total_watched_seconds'] / 3600) }} ч {{ floor(($audienceReport['total_watched_seconds'] % 3600) / 60) }} мин</dd></div>
+                        </dl>
+
+                        @forelse($audienceReport['viewers'] as $viewer)
+                            <article class="game-audience-report__viewer">
+                                <div><strong>{{ $viewer['name'] }}</strong><small>Сеансов: {{ $viewer['sessions'] }}</small></div>
+                                <div><span>{{ $viewer['first_seen_at']->timezone(config('app.timezone'))->format('d.m.Y H:i') }} — {{ $viewer['last_seen_at']->timezone(config('app.timezone'))->format('d.m.Y H:i') }}</span><strong>{{ floor($viewer['watched_seconds'] / 60) }} мин {{ $viewer['watched_seconds'] % 60 }} сек</strong></div>
+                            </article>
+                        @empty
+                            <p class="game-audience-report__empty">Авторизованные зрители пока не зафиксированы.</p>
+                        @endforelse
+
+                        @if($audienceReport['guest_viewers'] > 0)
+                            <p class="form-hint">Гостевые просмотры учитываются только в общей статистике и не раскрываются по отдельности.</p>
+                        @endif
+                    </div>
+                </details>
+            @endif
+
             <form
                 method="POST"
                 action="{{ route('events.games.statistics', $gameRouteParameters) }}"

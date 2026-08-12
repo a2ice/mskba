@@ -126,6 +126,33 @@ notifications, toast actions and messages must use separately authorised private
 or presence channels such as `users.{id}`; they must not reuse the public game
 contract or expose personal payloads through it.
 
+Live audience presence is a separate ephemeral projection keyed by game and browser
+fingerprint. Its heartbeat returns authenticated and total viewer counts, uses a
+short expiration window and stores no list of viewers in the public response. Redis
+Sorted Sets provide atomic updates in production; the configured cache store is a
+graceful fallback. Presence failure must never affect the canonical game snapshot,
+score updates or statistics.
+
+Long-term view history belongs to the Analytics context rather than the Game
+aggregate. `game_live_view_sessions` stores continuous viewing intervals with
+nullable user and fingerprint references, start/last-seen timestamps and an
+approximate heartbeat-based duration. A gap beyond the presence window starts a
+new interval. The history gap has a small grace beyond online presence TTL so
+browser timer throttling does not split one continuous view into many sessions.
+Recording is best-effort and personal history is never exposed by
+the public audience endpoint.
+The management projection is guarded by the dedicated
+`mini_game.audience.view` responsibility permission. Event organizers and
+confirmed superadmins inherit it through the existing access service; tournament
+staff with `tournament.games.manage` may inspect their match audience. Guest
+fingerprints remain aggregated and are not rendered in management UI.
+
+After a completed or cancelled status reaches the browser, the live client
+performs terminal cleanup: it leaves the Reverb channel and stops snapshot
+fallback polling, audience heartbeat and reconnect listeners. The audience
+endpoint also refuses to record terminal games, so stale or non-JavaScript
+clients cannot keep presence and analytics active after the match.
+
 Local transport path:
 
 ```text

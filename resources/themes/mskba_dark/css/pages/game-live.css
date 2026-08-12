@@ -78,6 +78,29 @@ body.has-game-live-screen .site-content {
     white-space: nowrap;
 }
 
+.game-live-header__audience {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 10px;
+    border-left: 1px solid currentColor;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.game-live-header__audience.ui-tooltip-source--title {
+    text-decoration: none;
+}
+
+.game-live-header__audience[hidden] {
+    display: none;
+}
+
+.game-live-header__audience strong {
+    color: #f6f3ea;
+    font: inherit;
+}
+
 .game-live-pulse,
 .game-live-entry__pulse {
     position: relative;

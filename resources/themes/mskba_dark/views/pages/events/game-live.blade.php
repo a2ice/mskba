@@ -47,6 +47,9 @@
         data-game-live-active-side="{{ $activeSide }}"
         data-game-live-channel="game.live.{{ $game->id }}"
         data-game-live-snapshot-url="{{ route('events.games.live.snapshot', [$event->routeIdentifier(), $game->id]) }}"
+        data-game-live-audience-url="{{ route('events.games.live.audience', [$event->routeIdentifier(), $game->id]) }}"
+        data-game-live-audience-interval="{{ max(30, (int) config('game_live.heartbeat_interval_seconds', 45)) }}"
+        data-game-live-terminal="{{ (int) ($game->actual_ended_at !== null || $isFinished || $isCancelled) }}"
     >
         <header class="game-live-header">
             <a class="game-live-brand" href="{{ route('welcome') }}" aria-label="MSKBA">
@@ -55,6 +58,10 @@
             <div class="game-live-header__status {{ $isLiveNow ? 'is-live' : '' }}">
                 <span class="game-live-pulse" aria-hidden="true" @if(!$isLiveNow) hidden @endif></span>
                 <span data-game-live-status>{{ $isLiveNow ? 'LIVE' : ($isFinished ? 'ЗАВЕРШЕНА' : ($isCancelled ? 'ОТМЕНЕНА' : 'ТРАНСЛЯЦИЯ')) }}</span>
+                <span class="game-live-header__audience" data-game-live-audience title="Авторизованные зрители / все зрители" data-tooltip-variant="title" hidden>
+                    <i class="ti ti-eye" aria-hidden="true"></i>
+                    <span><strong data-game-live-audience-authenticated>0</strong>/<strong data-game-live-audience-total>0</strong></span>
+                </span>
                 <span class="game-live-header__period" data-game-live-active-period="{{ $activePeriod?->number }}" @if($activePeriod === null) hidden @endif>
                     @if($activePeriod !== null)ПЕРИОД {{ $activePeriod->number }} ИЗ {{ $game->periods_count }}@endif
                 </span>
