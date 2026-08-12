@@ -11,6 +11,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\LegacyGameRoute;
 use App\Modules\Event\Infrastructure\Broadcasting\GameLiveUpdated;
+use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -121,9 +122,20 @@ final class EventGameArchitectureTest extends TestCase
             'periods_count' => 4,
             'actual_started_at' => now(),
         ]);
+        $permanentTeam = Team::query()->create([
+            'created_by_actor_id' => $event->organizer_actor_id,
+            'name' => 'Постоянная команда',
+            'alias' => 'permanent-live-team',
+        ]);
+        $permanentTeam->media()->create([
+            'collection' => 'team_logo',
+            'disk' => 'public',
+            'path' => 'teams/permanent-live-team.webp',
+            'is_featured' => true,
+        ]);
         $game->sides()->createMany([
-            ['slot' => 'A', 'display_name' => 'Красные', 'score' => 7],
-            ['slot' => 'B', 'display_name' => 'Синие', 'score' => 5],
+            ['slot' => 'A', 'display_name' => 'Красные', 'logo_preset' => 'crest-03', 'score' => 7],
+            ['slot' => 'B', 'team_id' => $permanentTeam->id, 'display_name' => 'Синие', 'score' => 5],
         ]);
         $game->periods()->create([
             'number' => 1,
@@ -141,7 +153,9 @@ final class EventGameArchitectureTest extends TestCase
             ->assertJsonPath('scores.B', 5)
             ->assertJsonPath('timing.active_period', 1)
             ->assertJsonPath('teams.A.name', 'Красные')
+            ->assertJsonPath('teams.A.logo', '/images/tournament-team-logos/crest-03.webp')
             ->assertJsonPath('teams.B.name', 'Синие')
+            ->assertJsonPath('teams.B.logo', '/storage/teams/permanent-live-team.webp')
             ->assertJsonStructure(['revision', 'generated_at', 'status', 'scores', 'timing', 'teams']);
 
         $this->assertSame($response->json('revision'), $this->getJson($url)->json('revision'));
@@ -155,9 +169,9 @@ final class EventGameArchitectureTest extends TestCase
         $url = route('events.games.live.snapshot', [$event->routeIdentifier(), $game->id]);
 
         $actions = [
-            [GameActionTypeEnum::SHOT_MADE, 1, 'close', '1 очко'],
-            [GameActionTypeEnum::SHOT_MADE, 2, 'mid', '2 очка'],
-            [GameActionTypeEnum::SHOT_MADE, 3, 'three', '3 очка'],
+            [GameActionTypeEnum::SHOT_MADE, 1, 'close', '1 point'],
+            [GameActionTypeEnum::SHOT_MADE, 2, 'mid', '2 points'],
+            [GameActionTypeEnum::SHOT_MADE, 3, 'three', '3 points'],
             [GameActionTypeEnum::SHOT_MADE, 1, 'free_throw', 'Штрафной'],
             [GameActionTypeEnum::SHOT_MISSED, 0, 'three', 'Мимо'],
         ];
@@ -174,7 +188,8 @@ final class EventGameArchitectureTest extends TestCase
 
             $this->getJson($url)
                 ->assertOk()
-                ->assertJsonPath('latest_action.label', $label);
+                ->assertJsonPath('latest_action.label', $label)
+                ->assertJsonPath('latest_action.team_logo', '/images/tournament-team-logos/crest-00.webp');
         }
     }
 

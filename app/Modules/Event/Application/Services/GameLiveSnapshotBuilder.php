@@ -73,7 +73,7 @@ final class GameLiveSnapshotBuilder
                 'label' => $this->liveActionLabel($latestAction),
                 'player_name' => $latestAction->user === null ? null : $this->userName($latestAction->user),
                 'team_name' => $latestAction->gameSide?->display_name,
-                'team_logo' => $latestAction->gameSide?->team?->logo?->publicUrl(),
+                'team_logo' => $latestAction->gameSide?->logoUrl(),
             ],
             'statistics_labels' => collect($definitions)
                 ->mapWithKeys(fn (array $definition, string $field): array => [$field => $definition['label']])
@@ -111,7 +111,7 @@ final class GameLiveSnapshotBuilder
             $snapshot['teams'][$slot] = [
                 'id' => $side?->team_id,
                 'name' => $side?->display_name ?: 'Команда '.$slot,
-                'logo' => $side?->team?->logo?->publicUrl(),
+                'logo' => $side?->logoUrl(),
                 'players' => $players,
             ];
         }
@@ -147,9 +147,9 @@ final class GameLiveSnapshotBuilder
         }
 
         return match ($action->points) {
-            1 => '1 очко',
-            2 => '2 очка',
-            3 => '3 очка',
+            1 => '1 point',
+            2 => '2 points',
+            3 => '3 points',
             default => $action->type->label(),
         };
     }
