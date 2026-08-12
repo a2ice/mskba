@@ -140,6 +140,13 @@ final class TournamentController extends Controller
                 TournamentAdmissionStatusEnum::ACCEPTED->value,
             ])
             ->exists();
+        $publicParticipantCount = $item->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
+            ? $item->admissions()
+                ->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)
+                ->whereNotNull('user_id')
+                ->distinct()
+                ->count('user_id')
+            : $item->entries->count();
 
         return ThemeResolver::page('tournaments.show', [
             'tournament' => $item,
@@ -150,6 +157,7 @@ final class TournamentController extends Controller
                 && ! $hasActiveApplication,
             'admissionRoles' => TournamentAdmissionRoleEnum::cases(),
             'myPendingInvitations' => $myPendingInvitations,
+            'publicParticipantCount' => $publicParticipantCount,
             'standings' => $standings->build($item),
         ]);
     }

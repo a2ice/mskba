@@ -67,6 +67,28 @@ final class TournamentEntriesAndMatchesTest extends TestCase
             ->assertSessionHas('error', 'Режим набора нельзя менять после первой заявки или приглашения.');
     }
 
+    public function test_public_page_counts_accepted_individual_players_before_teams_are_formed(): void
+    {
+        $owner = User::factory()->create(['username' => 'public-count-owner', 'status' => UserStatusEnum::CONFIRMED]);
+        $acceptedPlayer = User::factory()->create(['username' => 'accepted-player', 'status' => UserStatusEnum::CONFIRMED]);
+        $pendingPlayer = User::factory()->create(['username' => 'pending-player', 'status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($owner)->post(route('tournaments.store'), $this->payload());
+        $tournament = Tournament::query()->firstOrFail();
+        $attributes = [
+            'candidate_type' => TournamentAdmissionCandidateTypeEnum::USER,
+            'direction' => TournamentAdmissionDirectionEnum::APPLICATION,
+            'roles' => ['player'],
+            'requested_by_actor_id' => $tournament->created_by_actor_id,
+        ];
+        $tournament->admissions()->create([...$attributes, 'user_id' => $acceptedPlayer->id, 'status' => TournamentAdmissionStatusEnum::ACCEPTED]);
+        $tournament->admissions()->create([...$attributes, 'user_id' => $pendingPlayer->id, 'status' => TournamentAdmissionStatusEnum::PENDING]);
+
+        $this->assertDatabaseCount('tournament_entries', 0);
+        $this->get(route('tournaments.show', $tournament->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Участников: 1');
+    }
+
     public function test_management_groups_admission_history_by_candidate_with_newest_first(): void
     {
         $owner = User::factory()->create(['username' => 'history-owner', 'status' => UserStatusEnum::CONFIRMED]);

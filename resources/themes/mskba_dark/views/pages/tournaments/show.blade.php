@@ -100,7 +100,7 @@
         @endif
     @endauth
 
-    <section class="section-card mb-4" id="overview"><h2>Обзор</h2><p>{{ $tournament->short_description ?: 'Описание турнира пока не добавлено.' }}</p><div class="d-flex flex-wrap gap-3"><span>{{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Команд' : 'Участников' }}: {{ $tournament->entries->count() }}</span><span>Матчей: {{ $tournament->matches->count() }}</span><span>Подтверждено результатов: {{ (int) (collect($standings)->sum('played') / 2) }}</span></div></section>
+    <section class="section-card mb-4" id="overview"><h2>Обзор</h2><p>{{ $tournament->short_description ?: 'Описание турнира пока не добавлено.' }}</p><div class="d-flex flex-wrap gap-3"><span>{{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Команд' : 'Участников' }}: {{ $publicParticipantCount }}</span><span>Матчей: {{ $tournament->matches->count() }}</span><span>Подтверждено результатов: {{ (int) (collect($standings)->sum('played') / 2) }}</span></div></section>
 
     <section class="section-card mb-4" id="teams"><h2>{{ $teamsLabel }}</h2>
         @if($tournament->entries->isNotEmpty())<div class="tournament-team-grid">@foreach($tournament->entries as $entry)
