@@ -29,6 +29,8 @@ class CreateVenueRequest extends FormRequest
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],
+            'access_type' => ['sometimes', Rule::in(['unknown', 'free', 'paid'])],
+            'requires_booking_approval' => ['sometimes', 'boolean'],
             'short_description' => ['nullable', 'string', 'max:500'],
             'full_description' => ['nullable', 'string', 'max:10000'],
             'tags' => ['nullable', 'string', 'max:1000'],
@@ -109,6 +111,7 @@ class CreateVenueRequest extends FormRequest
         return [
             'name' => 'название',
             'type' => 'тип площадки',
+            'access_type' => 'условия оплаты',
             'short_description' => 'краткое описание',
             'full_description' => 'полное описание',
             'tags' => 'теги',

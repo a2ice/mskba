@@ -14,7 +14,7 @@ final readonly class VenueListItemDTO
         public string $typeSlug,
         public string $operationalStatus,
         public string $operationalStatusSlug,
-        public bool $requiresPayment,
+        public ?bool $requiresPayment,
         public bool $requiresBookingApproval,
         public ?string $shortDescription,
         public ?string $rawAddress,
@@ -30,7 +30,7 @@ final readonly class VenueListItemDTO
 
     public function hasFreeAccess(): bool
     {
-        return ! $this->requiresPayment && ! $this->requiresBookingApproval;
+        return $this->requiresPayment === false && ! $this->requiresBookingApproval;
     }
 
     public function routeIdentifier(): string

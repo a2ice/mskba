@@ -44,6 +44,32 @@
         @enderror
     </div>
 
+    @php
+        $savedAccessType = $revisionDetails['access_type']
+            ?? ($venue?->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'));
+        $bookingApproval = old('requires_booking_approval', $revisionDetails['requires_booking_approval'] ?? $venue?->requires_booking_approval ?? false);
+    @endphp
+    <div class="mb-3">
+        <label for="venueAccessType" class="form-label">Условия оплаты</label>
+        <select id="venueAccessType" name="access_type" class="form-select @error('access_type') is-invalid @enderror" required>
+            <option value="unknown" @selected(old('access_type', $savedAccessType) === 'unknown')>Не указано</option>
+            <option value="free" @selected(old('access_type', $savedAccessType) === 'free')>Бесплатно</option>
+            <option value="paid" @selected(old('access_type', $savedAccessType) === 'paid')>Платно</option>
+        </select>
+        <div class="form-text">«Не указано» не считается бесплатным доступом и не подтверждает бронь автоматически.</div>
+        @error('access_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+
+    <div class="mb-3">
+        @include('theme::partials.forms.toggle', [
+            'name' => 'requires_booking_approval',
+            'id' => 'venueRequiresBookingApproval',
+            'checked' => (bool) $bookingApproval,
+            'title' => 'Требуется подтверждение бронирования',
+            'description' => 'Заявка на бронь должна быть подтверждена ответственным за площадку.',
+        ])
+    </div>
+
     <div class="mb-3">
         <label for="venueType" class="form-label">Тип площадки</label>
         <select

@@ -100,6 +100,26 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('Сбросить параметры');
     }
 
+    public function test_catalog_does_not_present_unknown_payment_conditions_as_free(): void
+    {
+        Venue::factory()->create([
+            'name' => 'Зал с неуточнёнными условиями',
+            'type' => VenueTypeEnum::SPORTS_HALL,
+            'status' => VenueStatusEnum::CONFIRMED,
+            'requires_payment' => null,
+            'requires_booking_approval' => false,
+        ]);
+
+        $this->get(route('venues'))
+            ->assertOk()
+            ->assertSee('Зал с неуточнёнными условиями')
+            ->assertSee('Условия уточняются');
+
+        $this->get(route('venues', ['access' => 'free']))
+            ->assertOk()
+            ->assertDontSee('Зал с неуточнёнными условиями');
+    }
+
     public function test_unconfirmed_user_sees_create_link_on_public_venues_page(): void
     {
         $user = User::factory()->create([

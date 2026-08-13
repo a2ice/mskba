@@ -81,6 +81,10 @@ final class VenueRevisionManager
         $payload['details'] = [
             'name' => (string) $data['name'],
             'type' => (string) $data['type'],
+            'access_type' => (string) ($data['access_type'] ?? $payload['details']['access_type'] ?? 'unknown'),
+            'requires_booking_approval' => array_key_exists('requires_booking_approval', $data)
+                ? (bool) $data['requires_booking_approval']
+                : (bool) ($payload['details']['requires_booking_approval'] ?? false),
             'short_description' => $data['short_description'] ?? null,
             'full_description' => $data['full_description'] ?? null,
         ];
@@ -184,6 +188,8 @@ final class VenueRevisionManager
             'details' => [
                 'name' => $venue->name,
                 'type' => $venue->type->value,
+                'access_type' => $venue->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'),
+                'requires_booking_approval' => $venue->requires_booking_approval,
                 'short_description' => $venue->short_description,
                 'full_description' => $venue->full_description,
             ],

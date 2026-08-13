@@ -61,6 +61,22 @@ final class VenueRevisionDiffBuilder
         );
         $this->addChange($fields, 'Краткое описание', $venue->short_description, $details['short_description'] ?? null);
         $this->addChange($fields, 'Полное описание', $venue->full_description, $details['full_description'] ?? null);
+        $this->addChange(
+            $fields,
+            'Условия оплаты',
+            $this->accessTypeLabel($venue->requires_payment),
+            $this->accessTypeLabel(match ($details['access_type'] ?? null) {
+                'free' => false,
+                'paid' => true,
+                default => null,
+            }),
+        );
+        $this->addChange(
+            $fields,
+            'Подтверждение бронирования',
+            $venue->requires_booking_approval ? 'Требуется' : 'Не требуется',
+            (bool) ($details['requires_booking_approval'] ?? false) ? 'Требуется' : 'Не требуется',
+        );
 
         $currentTags = $venue->tags->pluck('name')->filter()->values()->all();
         $proposedTags = array_values(array_filter($payload['tags'] ?? [], 'is_string'));
@@ -89,6 +105,15 @@ final class VenueRevisionDiffBuilder
             ...$gallery,
             'has_changes' => $fields !== [] || $gallery['gallery_changed'],
         ];
+    }
+
+    private function accessTypeLabel(?bool $requiresPayment): string
+    {
+        return match ($requiresPayment) {
+            true => 'Платно',
+            false => 'Бесплатно',
+            null => 'Не указано',
+        };
     }
 
     /**

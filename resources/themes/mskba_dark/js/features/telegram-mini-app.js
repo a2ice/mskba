@@ -801,7 +801,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 meta.textContent = [
                     venue.type,
                     venue.has_free_access ? 'Свободный доступ' : null,
-                    venue.requires_payment ? 'Платная' : null,
+                    venue.requires_payment === true
+                        ? 'Платная'
+                        : (venue.requires_payment === false ? 'Бесплатная' : 'Условия оплаты уточняются'),
                     venue.requires_booking_approval ? 'С подтверждением' : null,
                     venue.address,
                 ].filter(Boolean).join(' · ');

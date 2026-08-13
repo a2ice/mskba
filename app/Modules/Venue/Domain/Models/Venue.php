@@ -55,7 +55,7 @@ class Venue extends Model
 
     /** @var array<string, mixed> */
     protected $attributes = [
-        'requires_payment' => false,
+        'requires_payment' => null,
         'requires_booking_approval' => false,
         'content_version' => 0,
         'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
@@ -78,7 +78,7 @@ class Venue extends Model
 
     public function hasFreeAccess(): bool
     {
-        return ! $this->requires_payment && ! $this->requires_booking_approval;
+        return $this->requires_payment === false && ! $this->requires_booking_approval;
     }
 
     public function routeIdentifier(): string

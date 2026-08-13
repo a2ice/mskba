@@ -333,7 +333,7 @@
                     <div><dt><i class="ti ti-map-pin"></i>Локация</dt><dd><a href="{{ route('venues.show', $event->venue->routeIdentifier()) }}">{{ $locationName }}</a></dd></div>
                     <div><dt><i class="ti ti-building-community"></i>Адрес</dt><dd>{{ $address ?: 'Не указано' }}</dd></div>
                     <div><dt><i class="ti ti-shoe"></i>Покрытие</dt><dd>{{ $surface }}</dd></div>
-                    <div><dt><i class="ti ti-ticket"></i>Стоимость</dt><dd>{{ $event->venue->requires_payment ? 'По условиям площадки' : 'Бесплатно' }}</dd></div>
+                    <div><dt><i class="ti ti-ticket"></i>Стоимость</dt><dd>{{ $event->venue->requires_payment === true ? 'По условиям площадки' : ($event->venue->requires_payment === false ? 'Бесплатно' : 'Условия уточняются') }}</dd></div>
                     <div><dt><i class="ti ti-shield-check"></i>Бронирование</dt><dd>{{ $bookingLabel }}</dd></div>
                 </dl>
                 @if($mapUrl)

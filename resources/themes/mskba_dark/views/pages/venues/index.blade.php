@@ -61,7 +61,7 @@
                             <h2 class="catalog-card__title"><a href="{{ route('venues.show', $venue->routeIdentifier()) }}">{{ $venue->name }}</a></h2>
                             @if($venue->displayAddress)<p><i class="ti ti-map-pin"></i><span>{{ $venue->displayAddress }}</span></p>@endif
                             @if($venue->shortDescription)<p class="catalog-card__description venue-catalog-card__description">{{ $venue->shortDescription }}</p>@endif
-                            <div class="venue-catalog-card__access"><span><i class="ti {{ $venue->requiresPayment ? 'ti-currency-ruble' : 'ti-gift' }}"></i>{{ $venue->requiresPayment ? 'Платно' : 'Бесплатно' }}</span>@if($venue->requiresBookingApproval)<span><i class="ti ti-shield-check"></i>По подтверждению</span>@endif</div>
+                            <div class="venue-catalog-card__access"><span><i class="ti {{ $venue->requiresPayment === true ? 'ti-currency-ruble' : ($venue->requiresPayment === false ? 'ti-gift' : 'ti-help-circle') }}"></i>{{ $venue->requiresPayment === true ? 'Платно' : ($venue->requiresPayment === false ? 'Бесплатно' : 'Условия уточняются') }}</span>@if($venue->requiresBookingApproval)<span><i class="ti ti-shield-check"></i>По подтверждению</span>@endif</div>
                         </div>
                         <div class="catalog-card__actions venue-catalog-card__actions"><a class="btn btn--secondary btn--sm" href="{{ route('venues.show', $venue->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>@if($venue->canEdit)<a class="venue-catalog-card__edit" href="{{ route('account.venues.edit', $venue->routeIdentifier()) }}"><i class="ti ti-pencil"></i>Редактировать</a>@endif</div>
                     </article>

@@ -54,6 +54,15 @@ final class VenueDetailsUpdater
             'location_id' => $location?->id,
             'name' => $data['name'],
             'type' => $type->value,
+            'requires_payment' => match ($data['access_type'] ?? null) {
+                'free' => false,
+                'paid' => true,
+                'unknown' => null,
+                default => $venue->requires_payment,
+            },
+            'requires_booking_approval' => array_key_exists('requires_booking_approval', $data)
+                ? (bool) $data['requires_booking_approval']
+                : $venue->requires_booking_approval,
             'short_description' => $data['short_description'] ?? null,
             'full_description' => $data['full_description'] ?? null,
             'raw_address' => $hasNewLocation
