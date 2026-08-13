@@ -8,17 +8,29 @@ use Illuminate\Support\Str;
 
 final readonly class ContentBodyRenderer
 {
-    public function __construct(private ContentBodySanitizer $sanitizer) {}
+    public function __construct(
+        private ContentBodySanitizer $sanitizer,
+        private EmbeddedEntityShortcodeRenderer $shortcodes,
+    ) {}
 
     public function render(ContentItem $content): string
     {
+        $source = $this->shortcodes->extract($content->full_description);
+
         if ($content->content_format === ContentFormatEnum::SAFE_HTML) {
-            return $this->sanitizer->sanitize($content->full_description);
+            return $this->shortcodes->restore($this->sanitizer->sanitize($source));
         }
 
-        return Str::markdown($content->full_description, [
+        return $this->shortcodes->restore(Str::markdown($source, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
-        ]);
+        ]));
+    }
+
+    public function renderPlainText(?string $text): string
+    {
+        $source = $this->shortcodes->extract((string) $text);
+
+        return $this->shortcodes->restore(nl2br(e($source)));
     }
 }

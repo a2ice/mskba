@@ -34,6 +34,25 @@
     width: min(720px, 100%);
 }
 
+.embedded-entity-link {
+    appearance: none;
+    padding: 0;
+    border: 0;
+    border-bottom: 1px dotted currentColor;
+    color: var(--link, #ff7417);
+    background: transparent;
+    font: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    cursor: pointer;
+}
+
+.embedded-entity-link:hover,
+.embedded-entity-link:focus-visible {
+    color: var(--accent, #ff7417);
+    border-bottom-style: solid;
+}
+
 .venue-selector-preview__message {
     margin: 0;
     color: var(--muted);

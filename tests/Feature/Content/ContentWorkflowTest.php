@@ -12,6 +12,7 @@ use App\Modules\Telegram\Application\Services\TelegramMiniAppStartDestinationRes
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramContentPublicationJob;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -116,6 +117,36 @@ MARKDOWN,
             ->assertSee('<a href="/account/participation">Заполнить профиль игрока</a>', false)
             ->assertDontSee('<script>', false)
             ->assertDontSee('href="javascript:', false);
+    }
+
+    public function test_news_body_renders_safe_venue_preview_shortcode(): void
+    {
+        $editor = $this->editor();
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'alias' => 'school-1794',
+        ]);
+
+        $this->actingAs($editor)
+            ->post(route('admin.content.store'), [
+                'title' => 'Турнир во дворе школы',
+                'short_description' => 'Предварительная площадка турнира.',
+                'full_description' => 'Место: [popup type="venue" id="'.$venue->id.'" view="short"]Школа №1794[/popup]. <script>alert(1)</script>',
+                'type' => 'material',
+                'publish_in_feed' => '1',
+                'publish_in_telegram' => '0',
+            ])
+            ->assertRedirect();
+
+        $content = ContentItem::query()->sole();
+
+        $this->get(route('news.show', $content->alias))
+            ->assertOk()
+            ->assertSee('data-entity-preview-trigger', false)
+            ->assertSee('data-entity-type="venue"', false)
+            ->assertSee('data-entity-preview-url="/venues/'.$venue->routeIdentifier().'/preview"', false)
+            ->assertSee('>Школа №1794</button>', false)
+            ->assertDontSee('<script>', false);
     }
 
     public function test_editor_can_publish_sanitized_html_with_page_metadata(): void

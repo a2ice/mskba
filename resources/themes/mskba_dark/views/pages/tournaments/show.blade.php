@@ -50,7 +50,7 @@
         <p class="tournament-organizer"><span>Организатор:</span> <button class="tournament-organizer__trigger" type="button" title="Действия для связи с организатором появятся здесь позже" data-tooltip-variant="title" data-tournament-organizer-trigger data-organizer-id="{{ $organizer?->id }}" data-organizer-username="{{ $organizer?->username }}">{{ $organizerName }}</button></p>
         @if($tournament->status_comment)<div class="alert alert-info">{{ $tournament->status_comment }}</div>@endif
         @if($tournament->short_description)<p>{{ $tournament->short_description }}</p>@endif
-        @if($tournament->full_description)<div>{!! nl2br(e($tournament->full_description)) !!}</div>@endif
+        @if($tournament->full_description)<div>{!! app(\App\Modules\Content\Application\Services\ContentBodyRenderer::class)->renderPlainText($tournament->full_description) !!}</div>@endif
         @if(session('error'))<div class="alert alert-danger mt-4">{{ session('error') }}</div>@endif
 
         @auth
