@@ -13,6 +13,7 @@ final class EmbeddedEntityShortcodeRenderer
     public function extract(string $source): string
     {
         $this->replacements = [];
+        $source = $this->decodeShortcodeOpenings($source);
 
         $patterns = [
             '/\[popup\s+type=["\']venue["\']\s+id=["\'](\d+)["\']\s+view=["\']short["\']\]([^\[]+)\[\/popup\]/iu',
@@ -29,6 +30,19 @@ final class EmbeddedEntityShortcodeRenderer
         }
 
         return $source;
+    }
+
+    private function decodeShortcodeOpenings(string $source): string
+    {
+        return preg_replace_callback(
+            '/\[(?:popup|sc:popup;)[^\]]*\]/iu',
+            static fn (array $matches): string => html_entity_decode(
+                $matches[0],
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8',
+            ),
+            $source,
+        ) ?? $source;
     }
 
     public function restore(string $rendered): string

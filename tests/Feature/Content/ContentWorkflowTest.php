@@ -149,6 +149,33 @@ MARKDOWN,
             ->assertDontSee('<script>', false);
     }
 
+    public function test_safe_html_news_decodes_only_shortcode_attributes_for_venue_preview(): void
+    {
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'alias' => 'school-safe-html',
+        ]);
+        $editor = $this->editor();
+        $content = ContentItem::query()->create([
+            'created_by_user_id' => $editor->id,
+            'updated_by_user_id' => $editor->id,
+            'type' => 'material',
+            'title' => 'Турнир на площадке',
+            'alias' => 'venue-shortcode-safe-html',
+            'short_description' => 'Предварительное место.',
+            'full_description' => '<p>Место: [popup type&#61;&#34;venue&#34; id&#61;&#34;'.$venue->id.'&#34; view&#61;&#34;short&#34;]Школа №1794[/popup].</p>',
+            'content_format' => ContentFormatEnum::SAFE_HTML,
+            'publish_in_feed' => true,
+            'feed_published_at' => now(),
+        ]);
+
+        $this->get(route('news.show', $content->alias))
+            ->assertOk()
+            ->assertSee('data-entity-preview-trigger', false)
+            ->assertSee('>Школа №1794</button>', false)
+            ->assertDontSee('[popup', false);
+    }
+
     public function test_editor_can_publish_sanitized_html_with_page_metadata(): void
     {
         $editor = $this->editor();
