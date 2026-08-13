@@ -356,6 +356,7 @@ Route::prefix('tournaments')->group(function () {
         Route::post('/{tournament}/admissions/apply', [TournamentAdmissionController::class, 'apply'])->name('tournaments.admissions.apply');
         Route::post('/{tournament}/admissions/{admission}/respond', [TournamentAdmissionController::class, 'respond'])->whereNumber('admission')->name('tournaments.admissions.respond');
         Route::delete('/{tournament}/admissions/{admission}', [TournamentAdmissionController::class, 'revoke'])->whereNumber('admission')->name('tournaments.admissions.revoke');
+        Route::post('/{tournament}/admissions/{admission}/block-on-site', [TournamentAdmissionController::class, 'blockOnSite'])->whereNumber('admission')->name('tournaments.admissions.block-on-site');
         Route::patch('/{tournament}/on-site-registration', [TournamentAdmissionController::class, 'toggleOnSite'])->name('tournaments.on-site.toggle');
         Route::post('/{tournament}/formation/preview', [TournamentFormationController::class, 'preview'])->name('tournaments.formation.preview');
         Route::post('/{tournament}/formation/apply', [TournamentFormationController::class, 'apply'])->name('tournaments.formation.apply');

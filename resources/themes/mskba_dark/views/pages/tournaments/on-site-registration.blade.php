@@ -1,18 +1,67 @@
 @extends('theme::layouts.app', ['title' => 'Регистрация на турнир · '.$tournament->title])
 
 @section('content')
-<section class="section first-screen px-1 tournament-check-in" data-tournament-check-in @guest data-username-url="{{ route('tournaments.on-site.username', $tournament->routeIdentifier()) }}" @endguest>
+@php
+    $organizer = $tournament->createdByActor?->user;
+    $organizerName = trim(implode(' ', array_filter([
+        $organizer?->profile?->first_name,
+        $organizer?->profile?->middle_name,
+        $organizer?->profile?->last_name,
+    ]))) ?: $organizer?->username ?: 'не указан';
+@endphp
+<section class="section first-screen px-1 tournament-check-in" data-tournament-check-in @if($latestAdmission?->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::PENDING) data-pending-admission-id="{{ $latestAdmission->id }}" @endif @guest data-username-url="{{ route('tournaments.on-site.username', $tournament->routeIdentifier()) }}" @endguest>
     <div class="inner" style="max-width:760px">
-        <div class="section-heading"><h1>Регистрация на турнир</h1><p>{{ $tournament->title }}</p></div>
+        <div class="section-heading mb-4"><h1>Регистрация на турнир</h1><p class="mb-0">{{ $tournament->title }}</p></div>
         <div class="event-card">
             @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
             @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
+            @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
             @if(! $available)
-                <div class="alert alert-info mb-0"><strong>Регистрация на месте закрыта.</strong><br>Обратитесь к организатору турнира.</div>
-            @elseif($hasActiveAdmission)
-                <div class="alert alert-success mb-0">Ваша заявка уже отправлена или принята.</div>
+                <div class="alert alert-info mb-0">
+                    <strong>Регистрация на месте закрыта.</strong>
+                    <p class="mt-2 mb-2">Обратитесь к организатору турнира.</p>
+                    <span><strong>Организатор:</strong> {{ $organizerName }}@if($organizer?->username && $organizerName !== $organizer->username) · {{ '@'.$organizer->username }}@endif</span>
+                </div>
+            @elseif($latestAdmission?->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED)
+                <div class="alert alert-success">
+                    <strong>Ваша заявка принята.</strong>
+                    <p class="mt-2 mb-0">Вы допущены к участию в турнире.</p>
+                </div>
+                <a class="btn btn--primary" href="{{ route('tournaments.show', $tournament->routeIdentifier()) }}">Открыть турнир</a>
+            @elseif($latestAdmission?->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::PENDING)
+                <div class="alert alert-info">
+                    <strong>Заявка отправлена.</strong>
+                    <p class="mt-2 mb-0">Ожидайте решения ответственного за турнир. После обработки заявки вы получите уведомление, а результат отобразится на этой странице.</p>
+                </div>
+            @elseif($isBlocked)
+                <div class="alert alert-danger mb-0">
+                    <div>
+                        <strong>Повторная регистрация заблокирована.</strong>
+                        <p class="mt-2 mb-2"><strong>Причина:</strong> {{ $latestAdmission?->response_comment ?: 'не указана' }}</p>
+                        <p class="mb-2">Обратитесь к организатору турнира.</p>
+                        <span><strong>Организатор:</strong> {{ $organizerName }}@if($organizer?->username && $organizerName !== $organizer->username) · {{ '@'.$organizer->username }}@endif</span>
+                    </div>
+                </div>
             @else
+                @if($latestAdmission?->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::DECLINED)
+                    <div class="alert alert-danger">
+                        <div>
+                            <strong>Заявка отклонена.</strong>
+                            <p class="mt-2 mb-2"><strong>Причина:</strong> {{ $latestAdmission?->response_comment ?: 'не указана' }}</p>
+                            <p class="mb-2">Вы можете отправить заявку повторно. Если решение непонятно, обратитесь к организатору.</p>
+                            <span><strong>Организатор:</strong> {{ $organizerName }}@if($organizer?->username && $organizerName !== $organizer->username) · {{ '@'.$organizer->username }}@endif</span>
+                        </div>
+                    </div>
+                @endif
                 <p>Выберите, в качестве кого хотите участвовать. Ответственный за турнир рассмотрит заявку и при необходимости добавит вас в команду.</p>
+                @guest
+                    <div class="alert alert-info">
+                        <strong>Уже есть аккаунт?</strong>
+                        <p class="mb-2">Войдите обычным способом или через Telegram. После входа вы вернётесь сюда, проверите роли и самостоятельно отправите заявку.</p>
+                        <button class="btn btn--secondary btn--sm js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('tournaments.on-site.show', $tournament->routeIdentifier(), false) }}" data-check-in-auth>Войти в существующий аккаунт</button>
+                    </div>
+                    <h2 class="h5 mt-4">Или зарегистрируйтесь быстро</h2>
+                @endguest
                 <form method="POST" action="{{ route('tournaments.on-site.store', $tournament->routeIdentifier()) }}">
                     @csrf
                     @guest

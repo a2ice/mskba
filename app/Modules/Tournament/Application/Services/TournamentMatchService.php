@@ -58,6 +58,12 @@ final class TournamentMatchService
                 || collect($orderedIds)->sort()->values()->all() !== $matches->keys()->sort()->values()->all()) {
                 throw new InvalidArgumentException('Порядок должен содержать все матчи ровно по одному разу.');
             }
+            $positions = collect($orderedIds)->flip()->map(fn ($position): int => $position + 1);
+            $started = $matches->filter(fn (TournamentMatch $match): bool => $match->game_id !== null && ($match->game?->actual_started_at !== null
+                || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true)));
+            if ($started->contains(fn (TournamentMatch $match): bool => $positions->get($match->id) !== $match->sequence)) {
+                throw new InvalidArgumentException('Уже начатые и завершённые игры должны оставаться на своих позициях.');
+            }
             $this->replaceSequence($matches, $orderedIds);
         });
     }

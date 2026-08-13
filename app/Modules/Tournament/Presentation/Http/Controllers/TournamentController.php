@@ -15,6 +15,7 @@ use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Tournament\Application\Services\TournamentAccess;
 use App\Modules\Tournament\Application\Services\TournamentCoverManager;
 use App\Modules\Tournament\Application\Services\TournamentEntryRosterResolver;
+use App\Modules\Tournament\Application\Services\TournamentPlayerCharacteristics;
 use App\Modules\Tournament\Application\Services\TournamentStaffService;
 use App\Modules\Tournament\Application\Services\TournamentStandingsService;
 use App\Modules\Tournament\Application\UseCases\ChangeTournamentStatusHandler;
@@ -121,7 +122,7 @@ final class TournamentController extends Controller
         $actor = $actors->resolveForRequest($request);
         $canManage = $actor !== null && $access->canManage($item, $actor);
         abort_if($item->status === TournamentStatusEnum::UNCONFIRMED && ! $canManage, 404);
-        $item->entries->each(fn ($entry) => $entry->setRelation('effectiveMembers', $entryRosters->resolve($entry)));
+        $item->entries->each(fn ($entry) => $entry->setRelation('effectiveMembers', $entryRosters->resolveUsers($entry)));
         $myPendingInvitations = $request->user() === null ? collect() : $item->admissions()
             ->with('team')
             ->where('direction', 'invitation')
@@ -168,6 +169,7 @@ final class TournamentController extends Controller
         CurrentActorResolver $actors,
         TournamentAccess $access,
         TournamentEntryRosterResolver $entryRosters,
+        TournamentPlayerCharacteristics $characteristics,
     ): Response {
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
@@ -180,12 +182,18 @@ final class TournamentController extends Controller
         abort_if(! $access->canManage($item, $actor) && $pendingMembership === null, 403);
         $effectivePermissions = collect($access->effectivePermissions($item, $actor));
         $entries = $item->entries()->get();
-        $matches = $item->matches()->with(['entryA', 'entryB', 'game.event.venue.location.address', 'game.event.venue.characteristics', 'game.event.booking'])->get();
+        $matches = $item->matches()->with(['entryA', 'entryB', 'game.sides', 'game.event.venue.location.address', 'game.event.venue.characteristics', 'game.event.booking'])->get();
         $acceptedPlayerCount = $item->admissions()->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)->whereNotNull('user_id')->count();
         $competitionStarted = $matches->contains(fn ($match): bool => $match->game?->actual_started_at !== null || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true));
-        $entries->each(function ($entry) use ($entryRosters): void {
-            $entry->setAttribute('effective_members_count', $entryRosters->resolve($entry)->count());
+        $participantEntryNames = collect();
+        $entries->each(function ($entry) use ($entryRosters, $participantEntryNames): void {
+            $members = $entryRosters->resolveUsers($entry);
+            $entry->setRelation('effectiveMembers', $members);
+            $entry->setAttribute('effective_members_count', $members->count());
+            $members->each(fn ($member) => $participantEntryNames->put($member->id, $entry->name));
         });
+
+        $admissions = $item->admissions()->with(['team', 'user.profile', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment', 'entry'])->latest('id')->get();
 
         return ThemeResolver::page('tournaments.manage', [
             'tournament' => $item,
@@ -199,8 +207,10 @@ final class TournamentController extends Controller
             'staffMemberships' => $item->staffMemberships()
                 ->with(['user.profile', 'contract.permissions'])
                 ->latest('id')->get(),
-            'admissions' => $item->admissions()->with(['team', 'user.profile', 'entry'])->latest('id')->get(),
+            'admissions' => $admissions,
+            'admissionCharacteristics' => $admissions->whereNotNull('user_id')->unique('user_id')->mapWithKeys(fn ($admission): array => [$admission->user_id => $characteristics->forUser($admission->user)]),
             'entries' => $entries,
+            'participantEntryNames' => $participantEntryNames,
             'matches' => $matches,
             'assessmentSources' => TournamentAssessmentSourceEnum::cases(),
             'acceptedPlayerCount' => $acceptedPlayerCount,

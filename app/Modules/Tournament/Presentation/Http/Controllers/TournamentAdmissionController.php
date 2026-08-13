@@ -66,7 +66,7 @@ final class TournamentAdmissionController extends Controller
         $data = $request->validate(['decision' => ['required', Rule::in([
             TournamentAdmissionStatusEnum::ACCEPTED->value,
             TournamentAdmissionStatusEnum::DECLINED->value,
-        ])], 'entry_id' => ['nullable', 'integer', 'exists:tournament_entries,id']]);
+        ])], 'entry_id' => ['nullable', 'integer', 'exists:tournament_entries,id'], 'response_comment' => ['nullable', 'string', 'max:1000']]);
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
         $actor = $actors->resolveForRequest($request) ?? abort(403);
         if ($admission->source === TournamentAdmissionSourceEnum::ON_SITE && $data['decision'] === TournamentAdmissionStatusEnum::ACCEPTED->value) {
@@ -75,8 +75,11 @@ final class TournamentAdmissionController extends Controller
 
             return $this->run(fn () => $onSite->accept($item, $admission, $actor, $entry), 'Участник допущен к турниру.');
         }
+        if ($admission->source === TournamentAdmissionSourceEnum::ON_SITE && $data['decision'] === TournamentAdmissionStatusEnum::DECLINED->value) {
+            return $this->run(fn () => app(TournamentOnSiteRegistrationService::class)->decline($item, $admission, $actor, $data['response_comment'] ?? null), 'Заявка отклонена.');
+        }
 
-        return $this->run(fn () => $service->respond($item, $admission, $actor, TournamentAdmissionStatusEnum::from($data['decision'])), 'Ответ сохранён.');
+        return $this->run(fn () => $service->respond($item, $admission, $actor, TournamentAdmissionStatusEnum::from($data['decision']), $data['response_comment'] ?? null), 'Ответ сохранён.');
     }
 
     public function toggleOnSite(Request $request, string $tournament, CurrentActorResolver $actors, TournamentAccess $access): RedirectResponse
@@ -111,6 +114,14 @@ final class TournamentAdmissionController extends Controller
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
 
         return $this->run(fn () => $service->revoke($item, $admission, $actors->resolveForRequest($request) ?? abort(403)), 'Допуск отозван.');
+    }
+
+    public function blockOnSite(Request $request, string $tournament, TournamentAdmission $admission, TournamentOnSiteRegistrationService $service, CurrentActorResolver $actors): RedirectResponse
+    {
+        $data = $request->validate(['response_comment' => ['nullable', 'string', 'max:1000']]);
+        $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
+
+        return $this->run(fn () => $service->block($item, $admission, $actors->resolveForRequest($request) ?? abort(403), $data['response_comment'] ?? null), 'Заявка отклонена, повторная регистрация участника заблокирована.');
     }
 
     public function lockPool(Request $request, string $tournament, TournamentParticipantPoolService $service, CurrentActorResolver $actors): RedirectResponse

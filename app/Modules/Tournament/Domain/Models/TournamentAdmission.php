@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['tournament_id', 'candidate_type', 'team_id', 'user_id', 'direction', 'source', 'roles', 'status', 'requested_by_actor_id', 'responded_by_actor_id', 'responded_at', 'comment'])]
+#[Fillable(['tournament_id', 'candidate_type', 'team_id', 'user_id', 'direction', 'source', 'roles', 'status', 'requested_by_actor_id', 'responded_by_actor_id', 'responded_at', 'blocked_at', 'blocked_by_actor_id', 'comment', 'response_comment'])]
 class TournamentAdmission extends Model
 {
     use Auditable;
@@ -54,6 +54,6 @@ class TournamentAdmission extends Model
 
     protected function casts(): array
     {
-        return ['candidate_type' => TournamentAdmissionCandidateTypeEnum::class, 'direction' => TournamentAdmissionDirectionEnum::class, 'source' => TournamentAdmissionSourceEnum::class, 'roles' => AsEnumCollection::of(TournamentAdmissionRoleEnum::class), 'status' => TournamentAdmissionStatusEnum::class, 'responded_at' => 'immutable_datetime'];
+        return ['candidate_type' => TournamentAdmissionCandidateTypeEnum::class, 'direction' => TournamentAdmissionDirectionEnum::class, 'source' => TournamentAdmissionSourceEnum::class, 'roles' => AsEnumCollection::of(TournamentAdmissionRoleEnum::class), 'status' => TournamentAdmissionStatusEnum::class, 'responded_at' => 'immutable_datetime', 'blocked_at' => 'immutable_datetime'];
     }
 }

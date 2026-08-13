@@ -90,13 +90,13 @@ final class TournamentAdmissionService
         return $admission;
     }
 
-    public function respond(Tournament $tournament, TournamentAdmission $admission, Actor $actor, TournamentAdmissionStatusEnum $decision): TournamentAdmission
+    public function respond(Tournament $tournament, TournamentAdmission $admission, Actor $actor, TournamentAdmissionStatusEnum $decision, ?string $responseComment = null): TournamentAdmission
     {
         if (! in_array($decision, [TournamentAdmissionStatusEnum::ACCEPTED, TournamentAdmissionStatusEnum::DECLINED], true)) {
             throw new InvalidArgumentException('Недопустимый ответ на заявку.');
         }
 
-        $updated = DB::transaction(function () use ($tournament, $admission, $actor, $decision): TournamentAdmission {
+        $updated = DB::transaction(function () use ($tournament, $admission, $actor, $decision, $responseComment): TournamentAdmission {
             $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $locked = TournamentAdmission::query()->whereKey($admission->id)->lockForUpdate()->firstOrFail();
             $this->assertBelongsToTournament($locked, $lockedTournament);
@@ -118,6 +118,7 @@ final class TournamentAdmissionService
                 'status' => $decision,
                 'responded_by_actor_id' => $actor->id,
                 'responded_at' => now(),
+                'response_comment' => $decision === TournamentAdmissionStatusEnum::DECLINED ? $this->normalizeResponseComment($responseComment) : null,
             ])->save();
 
             if ($decision === TournamentAdmissionStatusEnum::ACCEPTED) {
@@ -360,6 +361,9 @@ final class TournamentAdmissionService
         [$title, $body, $source] = $decision === TournamentAdmissionStatusEnum::ACCEPTED
             ? ['Заявка на турнир принята', 'Ваша заявка на участие принята.', 'tournament.application.accepted']
             : ['Заявка на турнир отклонена', 'Ваша заявка на участие отклонена.', 'tournament.application.declined'];
+        if ($decision === TournamentAdmissionStatusEnum::DECLINED && $admission->response_comment !== null) {
+            $body .= ' Причина: '.$admission->response_comment;
+        }
 
         $this->notify(
             $admission->user_id,
@@ -370,5 +374,12 @@ final class TournamentAdmissionService
             source: $source,
             admissionStatus: $decision,
         );
+    }
+
+    private function normalizeResponseComment(?string $comment): ?string
+    {
+        $comment = trim((string) $comment);
+
+        return $comment === '' ? null : $comment;
     }
 }

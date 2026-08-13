@@ -9,6 +9,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\ValueObjects\UsernameVO;
 use App\Modules\Tournament\Application\Services\TournamentOnSiteRegistrationService;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentAdmissionSourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPhaseEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
@@ -29,14 +30,21 @@ final class TournamentOnSiteRegistrationController extends Controller
     {
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
 
+        $latestAdmission = $request->user() === null ? null : $item->admissions()
+            ->where('user_id', $request->user()->id)
+            ->where('source', TournamentAdmissionSourceEnum::ON_SITE->value)
+            ->latest('id')->first();
+
         return ThemeResolver::page('tournaments.on-site-registration', [
-            'tournament' => $item,
+            'tournament' => $item->loadMissing('createdByActor.user.profile'),
             'roles' => TournamentAdmissionRoleEnum::cases(),
             'available' => $item->allows_on_site_registration
                 && $item->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
                 && ($item->format?->sideSize() ?? 1) > 1
                 && $item->phase() !== TournamentPhaseEnum::COMPLETED,
-            'hasActiveAdmission' => $request->user() !== null && $item->admissions()->where('user_id', $request->user()->id)->whereIn('status', ['pending', 'accepted'])->exists(),
+            'latestAdmission' => $latestAdmission,
+            'hasActiveAdmission' => $latestAdmission !== null && in_array($latestAdmission->status->value, ['pending', 'accepted'], true),
+            'isBlocked' => $request->user() !== null && $item->admissions()->where('user_id', $request->user()->id)->whereNotNull('blocked_at')->exists(),
         ]);
     }
 
@@ -65,11 +73,16 @@ final class TournamentOnSiteRegistrationController extends Controller
                 throw ValidationException::withMessages(['username' => $exception->getMessage()]);
             }
         }
+        $guestRules = $request->user() === null
+            ? [
+                'username' => ['required', 'string', 'max:32', 'unique:users,username'],
+                'privacy_consent' => ['required', 'accepted'],
+            ]
+            : [];
         $data = $request->validate([
-            'username' => [Rule::requiredIf($request->user() === null), 'nullable', 'string', 'max:32', 'unique:users,username'],
+            ...$guestRules,
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['required', 'distinct', Rule::enum(TournamentAdmissionRoleEnum::class)],
-            'privacy_consent' => [Rule::requiredIf($request->user() === null), 'nullable', 'accepted'],
         ]);
         $roles = collect($data['roles'])->map(fn (string $role) => TournamentAdmissionRoleEnum::from($role))->values();
         try {

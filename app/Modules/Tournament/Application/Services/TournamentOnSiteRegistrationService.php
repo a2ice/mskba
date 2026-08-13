@@ -2,6 +2,7 @@
 
 namespace App\Modules\Tournament\Application\Services;
 
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\UseCases\CreateUserAccountHandler;
@@ -13,8 +14,12 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserConsent;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\Services\UserNotificationCounterStore;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionCandidateTypeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionDirectionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum;
@@ -38,6 +43,7 @@ final class TournamentOnSiteRegistrationService
         private readonly CurrentActorResolver $actors,
         private readonly TournamentAccess $access,
         private readonly CreateUserNotificationHandler $notifications,
+        private readonly UserNotificationCounterStore $notificationCounters,
     ) {}
 
     /** @param Collection<int, TournamentAdmissionRoleEnum> $roles */
@@ -85,6 +91,9 @@ final class TournamentOnSiteRegistrationService
             if ($locked->admissions()->where('user_id', $user->id)->whereIn('status', ['pending', 'accepted'])->exists()) {
                 throw new InvalidArgumentException('У вас уже есть активная заявка на этот турнир.');
             }
+            if ($locked->admissions()->where('user_id', $user->id)->whereNotNull('blocked_at')->exists()) {
+                throw new InvalidArgumentException('Повторная регистрация для вашего аккаунта заблокирована. Обратитесь к организатору турнира.');
+            }
             $admission = $this->createAdmission($locked, $user, $actor, $roles);
             DB::afterCommit(fn () => $this->notifyOrganizer($locked, $admission));
 
@@ -119,6 +128,57 @@ final class TournamentOnSiteRegistrationService
                 $this->addToFutureGames($lockedTournament, $lockedEntry, (int) $lockedAdmission->user_id);
             }
         });
+
+        $this->finishOrganizerNotifications($admission);
+        $this->notifyApplicant($admission->refresh(), true);
+    }
+
+    public function block(Tournament $tournament, TournamentAdmission $admission, Actor $actor, ?string $responseComment = null): void
+    {
+        DB::transaction(function () use ($tournament, $admission, $actor, $responseComment): void {
+            $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
+            $this->access->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+            $lockedAdmission = TournamentAdmission::query()->whereKey($admission->id)->lockForUpdate()->firstOrFail();
+            if ($lockedAdmission->tournament_id !== $lockedTournament->id
+                || $lockedAdmission->source !== TournamentAdmissionSourceEnum::ON_SITE
+                || $lockedAdmission->status !== TournamentAdmissionStatusEnum::PENDING) {
+                throw new InvalidArgumentException('Заявку нельзя заблокировать.');
+            }
+            $lockedAdmission->forceFill([
+                'status' => TournamentAdmissionStatusEnum::DECLINED,
+                'responded_by_actor_id' => $actor->id,
+                'responded_at' => now(),
+                'blocked_at' => now(),
+                'blocked_by_actor_id' => $actor->id,
+                'response_comment' => $this->normalizeResponseComment($responseComment),
+            ])->save();
+        });
+
+        $this->finishOrganizerNotifications($admission);
+        $this->notifyApplicant($admission->refresh(), false, true);
+    }
+
+    public function decline(Tournament $tournament, TournamentAdmission $admission, Actor $actor, ?string $responseComment = null): void
+    {
+        DB::transaction(function () use ($tournament, $admission, $actor, $responseComment): void {
+            $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
+            $this->access->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+            $lockedAdmission = TournamentAdmission::query()->whereKey($admission->id)->lockForUpdate()->firstOrFail();
+            if ($lockedAdmission->tournament_id !== $lockedTournament->id
+                || $lockedAdmission->source !== TournamentAdmissionSourceEnum::ON_SITE
+                || $lockedAdmission->status !== TournamentAdmissionStatusEnum::PENDING) {
+                throw new InvalidArgumentException('Заявка недоступна для отклонения.');
+            }
+            $lockedAdmission->forceFill([
+                'status' => TournamentAdmissionStatusEnum::DECLINED,
+                'responded_by_actor_id' => $actor->id,
+                'responded_at' => now(),
+                'response_comment' => $this->normalizeResponseComment($responseComment),
+            ])->save();
+        });
+
+        $this->finishOrganizerNotifications($admission);
+        $this->notifyApplicant($admission->refresh(), false);
     }
 
     private function assertAvailable(Tournament $tournament): void
@@ -187,18 +247,88 @@ final class TournamentOnSiteRegistrationService
 
     private function notifyOrganizer(Tournament $tournament, TournamentAdmission $admission): void
     {
-        $userId = $tournament->createdByActor()->value('user_id');
-        if ($userId === null) {
+        $recipientIds = collect([$tournament->createdByActor()->value('user_id')])
+            ->merge($tournament->staffMemberships()
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($contract) => $contract
+                    ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(fn ($dates) => $dates->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
+                    ->where(fn ($dates) => $dates->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                    ->whereHas('permissions', fn ($permissions) => $permissions->where('permission', TournamentPermissionEnum::MANAGE_GAMES->value)))
+                ->pluck('user_id'))
+            ->filter()->map(fn ($userId): int => (int) $userId)->unique();
+
+        $recipientIds->each(function (int $userId) use ($tournament, $admission): void {
+            $this->notifications->handle(new CreateUserNotificationDTO(
+                userId: $userId,
+                type: UserNotificationTypeEnum::REMINDER,
+                title: 'Регистрация на месте',
+                body: 'Поступила заявка участника на турнир «'.$tournament->title.'».',
+                actionUrl: route('tournaments.manage', [
+                    'tournament' => $tournament->routeIdentifier(),
+                    'admission' => $admission->id,
+                ], false).'#participants',
+                actionText: 'Рассмотреть заявку',
+                payload: ['source' => 'tournament.on_site.application', 'tournament_id' => $tournament->id, 'tournament_admission_id' => $admission->id],
+            ));
+        });
+    }
+
+    private function notifyApplicant(TournamentAdmission $admission, bool $accepted, bool $blocked = false): void
+    {
+        if ($admission->user_id === null) {
             return;
         }
+
+        $title = $accepted ? 'Заявка на турнир принята' : ($blocked ? 'Регистрация на турнир заблокирована' : 'Заявка на турнир отклонена');
+        $body = $accepted
+            ? 'Вы допущены к турниру «'.$admission->tournament->title.'».'
+            : ($blocked
+                ? 'Повторная регистрация на турнир «'.$admission->tournament->title.'» заблокирована. Обратитесь к организатору.'
+                : 'Заявка на турнир «'.$admission->tournament->title.'» отклонена. Вы можете отправить её повторно или обратиться к организатору.');
+        if (! $accepted && $admission->response_comment !== null) {
+            $body .= ' Причина: '.$admission->response_comment;
+        }
+
         $this->notifications->handle(new CreateUserNotificationDTO(
-            userId: (int) $userId,
+            userId: $admission->user_id,
             type: UserNotificationTypeEnum::REMINDER,
-            title: 'Регистрация на месте',
-            body: 'Поступила заявка участника на турнир «'.$tournament->title.'».',
-            actionUrl: route('tournaments.manage', $tournament->routeIdentifier(), false).'#participants',
-            actionText: 'Рассмотреть заявку',
-            payload: ['source' => 'tournament.on_site.application', 'tournament_id' => $tournament->id, 'tournament_admission_id' => $admission->id],
+            title: $title,
+            body: $body,
+            actionUrl: $accepted
+                ? route('tournaments.show', $admission->tournament->routeIdentifier(), false)
+                : route('tournaments.on-site.show', $admission->tournament->routeIdentifier(), false),
+            actionText: $accepted ? 'Открыть турнир' : 'Открыть регистрацию',
+            payload: [
+                'source' => $accepted ? 'tournament.on_site.accepted' : 'tournament.on_site.declined',
+                'tournament_id' => $admission->tournament_id,
+                'tournament_admission_id' => $admission->id,
+                'tournament_admission_status' => $accepted ? TournamentAdmissionStatusEnum::ACCEPTED->value : TournamentAdmissionStatusEnum::DECLINED->value,
+            ],
         ));
+    }
+
+    private function finishOrganizerNotifications(TournamentAdmission $admission): void
+    {
+        $notifications = UserNotification::query()
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->where('payload->source', 'tournament.on_site.application')
+            ->where('payload->tournament_admission_id', $admission->id)
+            ->get(['id', 'user_id']);
+        if ($notifications->isEmpty()) {
+            return;
+        }
+        UserNotification::query()->whereKey($notifications->pluck('id'))->update([
+            'status' => UserNotificationStatusEnum::READ,
+            'read_at' => now(),
+        ]);
+        $notifications->pluck('user_id')->unique()->each(fn ($userId) => $this->notificationCounters->forget((int) $userId));
+    }
+
+    private function normalizeResponseComment(?string $comment): ?string
+    {
+        $comment = trim((string) $comment);
+
+        return $comment === '' ? null : $comment;
     }
 }

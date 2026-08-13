@@ -105,7 +105,7 @@
     <section class="section-card mb-4" id="teams"><h2>{{ $teamsLabel }}</h2>
         @if($tournament->entries->isNotEmpty())<div class="tournament-team-grid">@foreach($tournament->entries as $entry)
             @php($teamLogo = $entry->logoUrl())
-            <article class="tournament-team-card"><img class="tournament-team-card__logo" src="{{ $teamLogo }}" alt="Логотип {{ $entry->name }}"><div>@if($entry->team)<a class="tournament-team-card__name" href="{{ route('teams.show', $entry->team->routeIdentifier()) }}">{{ $entry->name }}</a>@else<strong class="tournament-team-card__name">{{ $entry->name }}</strong>@endif<div class="text-muted">{{ $entry->effectiveMembers->count() }} в составе</div></div></article>
+            <article class="tournament-team-card"><img class="tournament-team-card__logo" src="{{ $teamLogo }}" alt="Логотип {{ $entry->name }}"><div>@if($entry->team)<a class="tournament-team-card__name" href="{{ route('teams.show', $entry->team->routeIdentifier()) }}">{{ $entry->name }}</a>@else<strong class="tournament-team-card__name">{{ $entry->name }}</strong>@endif<div class="text-muted">{{ $entry->effectiveMembers->count() }} в составе@if($entry->effectiveMembers->isNotEmpty()): {{ $entry->effectiveMembers->map(fn ($member) => trim(($member->profile?->first_name ?? '').' '.($member->profile?->last_name ?? '')) ?: $member->username)->join(', ') }}@endif</div></div></article>
         @endforeach</div>@else<p>Участники ещё не определены.</p>@endif
     </section>
 

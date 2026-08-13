@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Tournament;
 
-use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -11,8 +11,8 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentEntryStatusEnum;
-use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -146,12 +146,29 @@ final class TournamentMatchSchedulingTest extends TestCase
             ->assertDontSee('Перенести игру и бронь')
             ->assertSee('Добавление новых матчей закрыто: турнир уже начался.');
 
+        $event->primaryGame->sides()->where('slot', 'A')->update(['score' => 21]);
+        $event->primaryGame->sides()->where('slot', 'B')->update(['score' => 17]);
         $event->primaryGame->forceFill(['status' => GameStatusEnum::COMPLETED])->save();
         $event->forceFill(['status' => EventStatusEnum::COMPLETED, 'completed_at' => now()])->save();
+        $otherMatch = $tournament->matches()->create([
+            'entry_a_id' => $entries[1]->id,
+            'entry_b_id' => $entries[0]->id,
+            'sequence' => 2,
+        ]);
         $this->actingAs($owner)->get(route('tournaments.manage', $tournament->routeIdentifier()))
             ->assertOk()
             ->assertSee('Завершена:')
+            ->assertSee('21:17', false, false)
+            ->assertSee(route('events.show', $event->routeIdentifier()), false)
+            ->assertSee('Открыть игру')
+            ->assertSee('Начатые и завершённые игры зафиксированы.')
+            ->assertSee('data-match-order-fixed="1"', false)
+            ->assertDontSee('Сохранить порядок')
             ->assertDontSee('Перенести игру и бронь');
+
+        $this->actingAs($owner)->patch(route('tournaments.matches.reorder', $tournament->routeIdentifier()), [
+            'positions' => [$otherMatch->id => 1, $match->id => 2],
+        ])->assertSessionHas('error', 'Уже начатые и завершённые игры должны оставаться на своих позициях.');
 
         $staff = User::factory()->create(['username' => 'match-result-editor', 'status' => UserStatusEnum::CONFIRMED]);
         $this->actingAs($owner)->post(route('tournaments.staff.invite', $tournament->routeIdentifier()), [

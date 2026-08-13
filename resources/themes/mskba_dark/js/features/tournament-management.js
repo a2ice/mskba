@@ -94,6 +94,7 @@ function setupMatchOrder(form) {
     };
 
     list.querySelectorAll('[data-tournament-match-row]').forEach((row) => {
+        if (row.dataset.matchOrderFixed === '1') return;
         row.addEventListener('dragstart', (event) => {
             dragged = row;
             row.classList.add('is-dragging');
@@ -107,8 +108,11 @@ function setupMatchOrder(form) {
         row.addEventListener('dragover', (event) => {
             event.preventDefault();
             if (!(dragged instanceof HTMLElement) || dragged === row) return;
-            const bounds = row.getBoundingClientRect();
-            list.insertBefore(dragged, event.clientY < bounds.top + bounds.height / 2 ? row : row.nextSibling);
+            const marker = document.createTextNode('');
+            dragged.replaceWith(marker);
+            row.replaceWith(dragged);
+            marker.replaceWith(row);
+            updatePositions();
         });
     });
 }
