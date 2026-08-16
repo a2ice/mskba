@@ -38,6 +38,15 @@ final class AdminMenu implements MenuHandler
                 'data' => ['count' => 0], // TODO: добавить динамическое количество
             ],
             [
+                'label' => 'Дубли пользователей',
+                'description' => 'Кандидаты на объединение пользовательских аккаунтов.',
+                'url' => $this->routeUrl('admin.users.duplicates'),
+                'active' => $this->isActiveRoute('admin.users.duplicates, admin.users.duplicates.*'),
+                'visible' => $isAdmin,
+                'icon' => 'ti-users-group',
+                'data' => ['count' => 0],
+            ],
+            [
                 'label' => 'Площадки',
                 'description' => 'Каталог площадок и модерация записей.',
                 'url' => $this->routeUrl('admin.venues'),
