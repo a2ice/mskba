@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\DTO\ProfileDTO;
+use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
@@ -19,6 +20,7 @@ final class RegisterUserHandler
 {
     public function __construct(
         private readonly CreateUserAccountHandler $createUserAccount,
+        private readonly UserDuplicateDetector $duplicateDetector,
     ) {}
 
     public function handle(
@@ -63,6 +65,8 @@ final class RegisterUserHandler
 
             return $user->loadMissing('profile', 'participationRoles');
         });
+
+        $this->duplicateDetector->scan($user);
 
         // event(new UserRegistered((int) $user->id));
 
