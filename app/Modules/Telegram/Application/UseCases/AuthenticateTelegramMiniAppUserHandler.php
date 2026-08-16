@@ -2,6 +2,7 @@
 
 namespace App\Modules\Telegram\Application\UseCases;
 
+use App\Modules\Identity\Application\Services\CanonicalUserResolver;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Events\UserFirstLogin;
 use App\Modules\Identity\Domain\Models\User;
@@ -16,6 +17,7 @@ final class AuthenticateTelegramMiniAppUserHandler
     public function __construct(
         private readonly TelegramMiniAppInitDataValidator $validator,
         private readonly ResolveTelegramUserHandler $resolveTelegramUser,
+        private readonly CanonicalUserResolver $canonicalUserResolver,
     ) {}
 
     /**
@@ -44,19 +46,22 @@ final class AuthenticateTelegramMiniAppUserHandler
             authenticated: true,
         ));
 
-        Auth::login($result['user'], true);
+        $canonicalUser = $this->canonicalUserResolver->resolve($result['user']);
+        $result['user'] = $canonicalUser;
+
+        Auth::login($canonicalUser, true);
         request()->session()->regenerate();
 
         SyncTelegramProfileAvatarJob::dispatch($result['telegram_account']->id)->afterResponse();
 
         $firstLoginMarked = User::query()
-            ->whereKey($result['user']->id)
+            ->whereKey($canonicalUser->id)
             ->whereNull('first_logged_in_at')
             ->update(['first_logged_in_at' => now()]);
 
         if ($firstLoginMarked === 1) {
-            event(new UserFirstLogin((int) $result['user']->id));
-            $result['user']->forceFill(['first_logged_in_at' => now()]);
+            event(new UserFirstLogin((int) $canonicalUser->id));
+            $canonicalUser->forceFill(['first_logged_in_at' => now()]);
         }
 
         return $result;
