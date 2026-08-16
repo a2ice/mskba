@@ -39,7 +39,7 @@ final class AuthenticateTelegramWebUserHandler
             authenticated: true,
         ));
 
-        $this->completeAuthentication->handle($result['user'], $result['telegram_account']);
+        $result['user'] = $this->completeAuthentication->handle($result['user'], $result['telegram_account']);
 
         return $result;
     }
