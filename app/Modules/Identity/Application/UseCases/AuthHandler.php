@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Identity\Application\DTO\LoginResponseDTO;
+use App\Modules\Identity\Application\Services\CanonicalUserResolver;
 use App\Modules\Identity\Application\Services\UserLoginResolver;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Events\UserFirstLogin;
@@ -14,13 +15,14 @@ class AuthHandler
 {
     public function __construct(
         private readonly UserLoginResolver $userLoginResolver,
+        private readonly CanonicalUserResolver $canonicalUserResolver,
     ) {}
 
     public function login(string $login, string $password, bool $remember): LoginResponseDTO
     {
-        $user = $this->userLoginResolver->resolve($login);
+        $loginUser = $this->userLoginResolver->resolve($login);
 
-        if ($user === null) {
+        if ($loginUser === null) {
             return new LoginResponseDTO(
                 status: 'error',
                 message: 'Неверный логин, контакт или пароль.',
@@ -28,7 +30,9 @@ class AuthHandler
             );
         }
 
-        if ($user->status === UserStatusEnum::BLOCKED) {
+        $canonicalUser = $this->canonicalUserResolver->resolve($loginUser);
+
+        if ($loginUser->status === UserStatusEnum::BLOCKED || $canonicalUser->status === UserStatusEnum::BLOCKED) {
             return new LoginResponseDTO(
                 status: 'error',
                 message: 'Ваш аккаунт заблокирован. Пожалуйста, обратитесь в поддержку.',
@@ -36,7 +40,7 @@ class AuthHandler
             );
         }
 
-        if ($user->password === null || ! Hash::check($password, $user->password)) {
+        if ($loginUser->password === null || ! Hash::check($password, $loginUser->password)) {
             return new LoginResponseDTO(
                 status: 'error',
                 message: 'Неверный логин, контакт или пароль.',
@@ -44,19 +48,19 @@ class AuthHandler
             );
         }
 
-        Auth::login($user, $remember);
+        Auth::login($canonicalUser, $remember);
         request()->session()->regenerate();
 
         $firstLoginMarked = User::query()
-            ->whereKey($user->id)
+            ->whereKey($canonicalUser->id)
             ->whereNull('first_logged_in_at')
             ->update(['first_logged_in_at' => now()]);
 
         if ($firstLoginMarked === 1) {
-            event(new UserFirstLogin((int) $user->id));
+            event(new UserFirstLogin((int) $canonicalUser->id));
         }
 
-        if ($user->is_temporary_password) {
+        if ($loginUser->is_temporary_password) {
             return new LoginResponseDTO(
                 status: 'warning',
                 message: 'Вы вошли с временным паролем. Пожалуйста, смените пароль в настройках профиля.',
