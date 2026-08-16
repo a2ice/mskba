@@ -3,6 +3,7 @@
 use App\Modules\Contact\Infrastructure\Providers\ContactServiceProvider;
 use App\Modules\Coordination\Infrastructure\Providers\CoordinationInterfaceServiceProvider;
 use App\Modules\Event\Infrastructure\Providers\EventLifecycleServiceProvider;
+use App\Modules\Identity\Infrastructure\Providers\IdentityCanonicalizationServiceProvider;
 use App\Modules\Media\Infrastructure\Providers\MediaServiceProvider;
 use App\Modules\Notification\Infrastructure\Providers\NotificationServiceProvider;
 use App\Modules\Team\Infrastructure\Providers\TeamSportsServiceProvider;
@@ -17,6 +18,7 @@ return [
     ContactServiceProvider::class,
     CoordinationInterfaceServiceProvider::class,
     EventLifecycleServiceProvider::class,
+    IdentityCanonicalizationServiceProvider::class,
     MediaServiceProvider::class,
     NotificationServiceProvider::class,
     TeamSportsServiceProvider::class,
