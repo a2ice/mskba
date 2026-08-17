@@ -16,8 +16,9 @@ final class ShowAccountContractHandler
 
     public function handle(string $number, User $user): AccountContractDetailsDTO
     {
+        $identityIds = $user->canonical()->identityIds();
         $contract = Contract::query()
-            ->whereHas('membership', fn ($query) => $query->where('user_id', $user->id))
+            ->whereHas('membership', fn ($query) => $query->whereIn('user_id', $identityIds))
             ->where(function ($query) use ($number): void {
                 $query->where('number', $number);
 
