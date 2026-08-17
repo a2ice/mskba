@@ -1,6 +1,15 @@
 @php
     $title = 'Telegram';
     $telegramBotUsername = ltrim(trim((string) config('telegram.bot_username')), '@');
+    $user = auth()->user()?->canonical();
+    $linkedTelegramAccount = $user
+        ? \App\Modules\Telegram\Domain\Models\TelegramAccount::query()
+            ->whereIn('user_id', $user->identityIds())
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('last_auth_at')
+            ->orderByDesc('updated_at')
+            ->first()
+        : null;
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -23,10 +32,10 @@
                 а не просто по @username.
             </p>
 
-            @if(auth()->user()?->telegramAccount)
+            @if($linkedTelegramAccount)
                 <div class="alert alert-info mb-3">
                     Сейчас связан Telegram
-                    {{ auth()->user()->telegramAccount->username ? '@'.auth()->user()->telegramAccount->username : 'ID '.auth()->user()->telegramAccount->telegram_user_id }}.
+                    {{ $linkedTelegramAccount->username ? '@'.$linkedTelegramAccount->username : 'ID '.$linkedTelegramAccount->telegram_user_id }}.
                     Повторное подтверждение обновит данные связи.
                 </div>
             @endif
