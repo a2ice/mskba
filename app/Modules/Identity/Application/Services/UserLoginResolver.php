@@ -6,19 +6,31 @@ use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contact\Domain\ValueObjects\ContactValue;
 use App\Modules\Identity\Domain\Models\User;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
 final class UserLoginResolver
 {
     public function resolve(string $login): ?User
     {
+        return $this->resolveCandidates($login)->first();
+    }
+
+    /**
+     * Returns physical accounts that actually match the supplied login, but
+     * only when all of them belong to one canonical identity. Password checks
+     * stay in AuthHandler and are performed against these physical accounts.
+     *
+     * @return Collection<int, User>
+     */
+    public function resolveCandidates(string $login): Collection
+    {
         $login = trim($login);
         $userIds = [];
 
-        $user = User::query()->where('username', $login)->first();
-
-        if ($user !== null) {
-            $userIds[] = (int) $user->getKey();
+        $usernameUser = User::query()->where('username', $login)->first();
+        if ($usernameUser !== null) {
+            $userIds[] = (int) $usernameUser->getKey();
         }
 
         foreach ($this->contactCandidates($login) as [$type, $value]) {
@@ -26,10 +38,26 @@ final class UserLoginResolver
         }
 
         $userIds = array_values(array_unique($userIds));
+        if ($userIds === []) {
+            return collect();
+        }
 
-        return count($userIds) === 1
-            ? User::query()->find($userIds[0])
-            : null;
+        $users = User::query()
+            ->whereIn('id', $userIds)
+            ->get()
+            ->sortBy(fn (User $user): int => array_search((int) $user->id, $userIds, true))
+            ->values();
+
+        if ($users->count() !== count($userIds)) {
+            return collect();
+        }
+
+        $canonicalIds = $users
+            ->map(fn (User $user): int => (int) $user->canonical()->id)
+            ->unique()
+            ->values();
+
+        return $canonicalIds->count() === 1 ? $users : collect();
     }
 
     /**
@@ -77,7 +105,7 @@ final class UserLoginResolver
         }
 
         return $query
-            ->limit(2)
+            ->distinct()
             ->pluck('contactable_id')
             ->map(fn ($userId): int => (int) $userId)
             ->unique()
