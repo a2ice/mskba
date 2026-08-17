@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -14,8 +15,14 @@ use InvalidArgumentException;
 
 final class JoinEventHandler
 {
+    public function __construct(
+        private readonly EventIdentityParticipationService $identityParticipation,
+    ) {}
+
     public function handle(string $identifier, User $user): Event
     {
+        $user = $user->canonical();
+
         $event = DB::transaction(function () use ($identifier, $user): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
 
@@ -27,39 +34,42 @@ final class JoinEventHandler
                 throw new InvalidArgumentException('Мероприятие уже завершилось.');
             }
 
-            $participant = $event->participants()->where('user_id', $user->id)->first();
+            $participant = $this->identityParticipation->effectiveParticipant($event, $user);
 
             if ($participant?->status === EventParticipantStatusEnum::CONFIRMED) {
                 return $event;
             }
 
-            $confirmedCount = $event->participants()
-                ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
-                ->where('confirmation_version', $event->participation_confirmation_version)
-                ->count();
+            $confirmedCount = $this->identityParticipation->confirmedIdentityCount($event);
 
             if ($event->max_participants !== null && $confirmedCount >= $event->max_participants) {
                 throw new InvalidArgumentException('Все места на мероприятии уже заняты.');
             }
 
-            $event->participants()->where('user_id', $user->id)->first()?->responsibilityPermissions()->delete();
+            $participant?->responsibilityPermissions()->delete();
 
-            $event->participants()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'role' => EventParticipantRoleEnum::PARTICIPANT,
-                    'status' => EventParticipantStatusEnum::CONFIRMED,
-                    'joined_at' => now(),
-                    'left_at' => null,
-                    'confirmation_version' => $event->participation_confirmation_version,
-                    'responsibility_status' => null,
-                    'responsibility_requested_by_user_id' => null,
-                    'responsibility_requested_at' => null,
-                    'responsibility_responded_at' => null,
-                    'status_changed_by_actor_id' => null,
-                    'status_changed_at' => null,
-                ],
-            );
+            $attributes = [
+                'role' => EventParticipantRoleEnum::PARTICIPANT,
+                'status' => EventParticipantStatusEnum::CONFIRMED,
+                'joined_at' => now(),
+                'left_at' => null,
+                'confirmation_version' => $event->participation_confirmation_version,
+                'responsibility_status' => null,
+                'responsibility_requested_by_user_id' => null,
+                'responsibility_requested_at' => null,
+                'responsibility_responded_at' => null,
+                'status_changed_by_actor_id' => null,
+                'status_changed_at' => null,
+            ];
+
+            if ($participant !== null) {
+                $participant->update($attributes);
+            } else {
+                $event->participants()->create([
+                    'user_id' => $user->id,
+                    ...$attributes,
+                ]);
+            }
 
             return $event->load('participants.user');
         });
