@@ -81,8 +81,10 @@ final class HandleCoordinationVoteCallback
 
             $existingOptionIds = PollBallot::query()
                 ->where('poll_id', $pollId)
-                ->where('user_id', $user->id)
+                ->whereIn('user_id', $user->identityIds())
                 ->with('selections')
+                ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+                ->orderBy('id')
                 ->first()
                 ?->selections
                 ->pluck('option_id')
