@@ -46,6 +46,7 @@ final class UserDuplicateController extends Controller
                 canonicalUserId: (int) $validated['canonical_user_id'],
                 resolvedBy: $request->user(),
                 selfService: true,
+                selfServiceSessionId: $request->session()->getId(),
             );
         } catch (InvalidArgumentException $exception) {
             return back()->with('error', $exception->getMessage());
