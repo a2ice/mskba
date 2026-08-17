@@ -141,12 +141,19 @@ final class UserDuplicateDetector
     }
 
     /**
+     * Verified contacts are logical identity data: after a merge they may
+     * physically remain attached to any alias and must still participate in
+     * duplicate detection for the canonical user.
+     *
      * @return list<array{user: User, type: UserDuplicateEvidenceTypeEnum, value: string, metadata: array<string, mixed>}>
      */
     private function verifiedContactEvidence(User $user): array
     {
         $result = [];
-        $contacts = $user->contacts()
+        $identityIds = $user->identityIds();
+        $contacts = Contact::query()
+            ->where('contactable_type', 'user')
+            ->whereIn('contactable_id', $identityIds)
             ->whereNotNull('verified_at')
             ->whereIn('type', [
                 ContactTypeEnum::EMAIL->value,
@@ -167,7 +174,7 @@ final class UserDuplicateDetector
                 ->where('type', $contact->type->value)
                 ->where('value', $contact->value)
                 ->whereNotNull('verified_at')
-                ->where('contactable_id', '!=', $user->id)
+                ->whereNotIn('contactable_id', $identityIds)
                 ->pluck('contactable_id')
                 ->map(fn ($id): int => (int) $id)
                 ->unique();
@@ -184,6 +191,7 @@ final class UserDuplicateDetector
                     'metadata' => [
                         'contact_type' => $contact->type->value,
                         'contact_id' => (int) $contact->id,
+                        'contact_owner_user_id' => (int) $contact->contactable_id,
                         'source' => 'verified_contact',
                     ],
                 ];
