@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Identity\Application\Services\UserDuplicateSelfServiceProofStore;
 use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserDuplicate;
@@ -28,7 +29,7 @@ final class ResolveUserDuplicateHandler
             $candidate->forceFill([
                 'status' => UserDuplicateStatusEnum::REJECTED,
                 'resolved_evidence_hash' => $candidate->evidence_hash,
-                'resolved_by' => $resolvedBy?->id,
+                'resolved_by' => $resolvedBy?->canonical()->id,
                 'resolved_at' => now(),
                 'metadata' => array_replace($candidate->metadata ?? [], [
                     'resolution' => 'rejected',
@@ -87,6 +88,10 @@ final class ResolveUserDuplicateHandler
             /** @var User $other */
             $other = $users->get($pairIds[0] === $canonicalUserId ? $pairIds[1] : $pairIds[0]);
 
+            if ($requestedCanonical->trashed() || $other->trashed()) {
+                throw new InvalidArgumentException('Удалённые аккаунты нельзя объединять через механизм дублей.');
+            }
+
             $canonical = $requestedCanonical->canonical();
             $sourceCanonical = $other->canonical();
 
@@ -95,6 +100,7 @@ final class ResolveUserDuplicateHandler
             }
 
             $this->assertRoleMergeAllowed($canonical, $sourceCanonical, $selfService);
+            $this->assertStatusMergeAllowed($canonical, $sourceCanonical, $selfService);
 
             if ($selfService) {
                 if (! $this->canSelfResolve($candidate, $resolvedBy)) {
@@ -125,7 +131,7 @@ final class ResolveUserDuplicateHandler
             $candidate->forceFill([
                 'status' => UserDuplicateStatusEnum::MERGED,
                 'resolved_evidence_hash' => $candidate->evidence_hash,
-                'resolved_by' => $resolvedBy?->id,
+                'resolved_by' => $resolvedBy?->canonical()->id,
                 'resolved_at' => now(),
                 'metadata' => array_replace($candidate->metadata ?? [], [
                     'resolution' => $selfService ? 'self_service_merge' : 'admin_merge',
@@ -179,6 +185,24 @@ final class ResolveUserDuplicateHandler
             )
         ) {
             throw new InvalidArgumentException('Аккаунт с расширенными системными правами может объединить только суперадминистратор после ручной проверки.');
+        }
+    }
+
+    private function assertStatusMergeAllowed(User $canonical, User $source, bool $selfService): void
+    {
+        $hasBlockedAccount = $canonical->status === UserStatusEnum::BLOCKED
+            || $source->status === UserStatusEnum::BLOCKED;
+
+        if (! $hasBlockedAccount) {
+            return;
+        }
+
+        if ($selfService) {
+            throw new InvalidArgumentException('Заблокированный аккаунт нельзя объединить самостоятельно. Обратитесь к администратору.');
+        }
+
+        if ($canonical->status !== UserStatusEnum::BLOCKED) {
+            throw new InvalidArgumentException('При объединении с заблокированным аккаунтом заблокированный аккаунт должен остаться основным, чтобы не снять ограничение через merge.');
         }
     }
 }
