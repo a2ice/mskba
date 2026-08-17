@@ -13,7 +13,7 @@ final class UserCanonicalLoginTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_shared_verified_contact_on_aliases_of_same_identity_accepts_matching_alias_password(): void
+    public function test_shared_verified_phone_on_aliases_of_same_identity_accepts_matching_alias_password(): void
     {
         $canonical = User::factory()->create([
             'username' => 'canonical_contact_user',
@@ -31,21 +31,21 @@ final class UserCanonicalLoginTest extends TestCase
             Contact::query()->create([
                 'contactable_type' => 'user',
                 'contactable_id' => $user->id,
-                'type' => ContactTypeEnum::EMAIL,
-                'value' => 'same@example.test',
+                'type' => ContactTypeEnum::PHONE,
+                'value' => '+79990001122',
                 'verified_at' => now(),
             ]);
         }
 
         $this->post(route('auth.login'), [
-            'login' => 'same@example.test',
+            'login' => '+79990001122',
             'password' => 'alias-password',
         ])->assertRedirect('/');
 
         $this->assertAuthenticatedAs($canonical);
     }
 
-    public function test_shared_verified_contact_across_different_canonical_identities_remains_ambiguous(): void
+    public function test_shared_verified_phone_across_different_canonical_identities_remains_ambiguous(): void
     {
         $canonical = User::factory()->create([
             'username' => 'canonical_contact_user',
@@ -68,16 +68,16 @@ final class UserCanonicalLoginTest extends TestCase
             Contact::query()->create([
                 'contactable_type' => 'user',
                 'contactable_id' => $user->id,
-                'type' => ContactTypeEnum::EMAIL,
-                'value' => 'ambiguous@example.test',
+                'type' => ContactTypeEnum::PHONE,
+                'value' => '+79990002233',
                 'verified_at' => now(),
             ]);
         }
 
         $this->post(route('auth.login'), [
-            'login' => 'ambiguous@example.test',
+            'login' => '+79990002233',
             'password' => 'canonical-password',
-        ])->assertStatus(401);
+        ])->assertSessionHasErrors('login');
 
         $this->assertGuest();
     }
