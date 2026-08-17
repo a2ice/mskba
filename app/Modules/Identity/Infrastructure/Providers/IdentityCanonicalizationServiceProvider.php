@@ -45,17 +45,15 @@ final class IdentityCanonicalizationServiceProvider extends ServiceProvider
                     ->name('account.user-duplicates.merge');
             });
 
-        Route::middleware(['web', 'auth', 'can:access-admin-panel'])
+        Route::middleware(['web', 'auth', 'can:access-admin-panel', 'can:manage-users-as-superadmin'])
             ->prefix('admin/users/duplicates')
             ->group(function (): void {
                 Route::get('/', [AdminUserDuplicatesController::class, 'index'])
                     ->name('admin.users.duplicates')
                     ->defaults('breadcrumb', 'Дубли пользователей');
                 Route::post('/{userDuplicate}/merge', [AdminUserDuplicatesController::class, 'merge'])
-                    ->middleware('can:manage-users-as-superadmin')
                     ->name('admin.users.duplicates.merge');
                 Route::post('/{userDuplicate}/reject', [AdminUserDuplicatesController::class, 'reject'])
-                    ->middleware('can:manage-users-as-superadmin')
                     ->name('admin.users.duplicates.reject');
             });
     }
