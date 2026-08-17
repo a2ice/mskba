@@ -44,7 +44,7 @@ final class TeamInvitationController extends Controller
         ])->pluck('user_id')->all();
 
         return response()->json(['users' => $users->handle(
-            $actor->user,
+            $actor->user->canonical(),
             $data['q'],
             $excluded,
             requiredAccess: UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
@@ -75,8 +75,10 @@ final class TeamInvitationController extends Controller
         abort_if(($data['permissions'] ?? []) !== []
             && ! $access->allows($item, $actor, TeamPermissionEnum::MANAGE_PERMISSIONS), 403);
 
-        $targetUser = User::query()->findOrFail($data['user_id']);
-        if (! $privacy->allows($targetUser, $actor->user, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
+        $targetUser = User::query()->findOrFail($data['user_id'])->canonical();
+        $viewer = $actor->user?->canonical();
+        if (! $viewer instanceof User
+            || ! $privacy->allows($targetUser, $viewer, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
             return response()->json(['message' => 'Пользователь запретил приглашать себя в команды и другие группы.'], 422);
         }
 
@@ -87,22 +89,29 @@ final class TeamInvitationController extends Controller
             TeamMemberTypeEnum::MANAGER => TeamMembershipAccessLevelEnum::RESPONSIBLE,
         };
 
-        $membership = DB::transaction(function () use ($item, $data, $actor, $memberType, $accessLevel): ContractMembership {
-            $existing = $item->memberships()->where('user_id', $data['user_id'])->lockForUpdate()->first();
+        $membership = DB::transaction(function () use ($item, $data, $actor, $targetUser, $memberType, $accessLevel): ContractMembership {
+            $existing = $item->memberships()
+                ->whereIn('user_id', $targetUser->identityIds())
+                ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$targetUser->id])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
             $contract = $existing?->contract;
+            $assignedBy = $actor->user?->canonical()->id;
+
             if ($contract === null) {
                 $contract = Contract::create([
                     'family' => ContractFamilyEnum::MEMBERSHIP,
                     'name' => "Приглашение в команду «{$item->name}»",
                     'status' => ContractStatusEnum::INACTIVE,
-                    'assigned_by' => $actor->user_id,
+                    'assigned_by' => $assignedBy,
                     'assigned_at' => now(),
                     'assigner' => UserParticipationRoleAssignerEnum::USER,
                 ]);
                 $existing = $contract->membership()->create([
                     'scope_type' => ContractMembershipScopeTypeEnum::TEAM,
                     'scope_id' => $item->id,
-                    'user_id' => $data['user_id'],
+                    'user_id' => $targetUser->id,
                     'access_level' => $accessLevel,
                     'sport_roles' => [$memberType->value],
                     'invitation_status' => TeamInvitationStatusEnum::PENDING,
@@ -116,7 +125,7 @@ final class TeamInvitationController extends Controller
             ]);
             $contract->update([
                 'status' => ContractStatusEnum::INACTIVE,
-                'assigned_by' => $actor->user_id,
+                'assigned_by' => $assignedBy,
                 'assigned_at' => now(),
             ]);
             $contract->permissions()->delete();
@@ -128,7 +137,7 @@ final class TeamInvitationController extends Controller
             return $existing->fresh();
         });
 
-        $teamNotifications->invitationSent($item, $membership, $actor->user);
+        $teamNotifications->invitationSent($item, $membership, $viewer);
         $membership->load(['contract.permissions', 'user.profile.activeAvatar']);
 
         return response()->json([
@@ -150,7 +159,7 @@ final class TeamInvitationController extends Controller
         MarkUserNotificationAsReadHandler $markNotificationAsRead,
     ): JsonResponse|RedirectResponse {
         $data = $request->validate(['decision' => ['required', Rule::in(['accept', 'decline', 'revoke'])]]);
-        $user = $request->user();
+        $user = $request->user()->canonical();
         abort_if($user->isBlocked() || $user->trashed(), 403);
 
         $member = ContractMembership::query()
@@ -174,7 +183,7 @@ final class TeamInvitationController extends Controller
             return response()->json(['message' => 'Приглашение отозвано.', 'membership_id' => $member->id]);
         }
 
-        abort_if($member->user_id !== $user->id, 403);
+        abort_unless(in_array((int) $member->user_id, $user->identityIds(), true), 403);
         if ($member->invitation_status === TeamInvitationStatusEnum::REVOKED) {
             return $request->expectsJson()
                 ? response()->json(['message' => 'Приглашение было отозвано.'], 422)
@@ -198,7 +207,7 @@ final class TeamInvitationController extends Controller
         $teamNotifications->invitationResponded($team, $member->fresh('contract'), $accepted);
 
         $notification = UserNotification::query()
-            ->where('user_id', $user->id)
+            ->whereIn('user_id', $user->identityIds())
             ->where('payload->source', 'team.invitation.created')
             ->where('payload->membership_id', $member->id)
             ->latest('id')
