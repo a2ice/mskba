@@ -25,8 +25,14 @@ final class UserDuplicateDetector
     {
         $user = $user->canonical();
         $detected = collect();
+        $observedScanEvidence = [];
 
-        foreach ($this->verifiedContactEvidence($user) as $item) {
+        $items = array_merge(
+            $this->verifiedContactEvidence($user),
+            $this->profileEvidence($user),
+        );
+
+        foreach ($items as $item) {
             $candidate = $this->observeEvidence(
                 first: $user,
                 second: $item['user'],
@@ -35,26 +41,25 @@ final class UserDuplicateDetector
                 metadata: $item['metadata'],
             );
 
-            if ($candidate !== null) {
-                $detected->put($candidate->id, $candidate);
+            if ($candidate === null) {
+                continue;
             }
+
+            $detected->put($candidate->id, $candidate);
+            $observedScanEvidence[$this->scanEvidenceKey(
+                (int) $candidate->id,
+                $item['type'],
+                $this->evidenceValueHash($item['type'], $item['value']),
+            )] = true;
         }
 
-        foreach ($this->profileEvidence($user) as $item) {
-            $candidate = $this->observeEvidence(
-                first: $user,
-                second: $item['user'],
-                type: UserDuplicateEvidenceTypeEnum::PROFILE_IDENTITY,
-                normalizedValue: $item['value'],
-                metadata: $item['metadata'],
-            );
+        $this->deactivateMissingScanEvidence($user, array_keys($observedScanEvidence));
 
-            if ($candidate !== null) {
-                $detected->put($candidate->id, $candidate);
-            }
-        }
-
-        return $detected->values();
+        return $detected
+            ->keys()
+            ->map(fn ($id) => UserDuplicate::query()->with('evidence')->find($id))
+            ->filter()
+            ->values();
     }
 
     public function observeTelegramConflict(User $currentUser, User $telegramOwner, int $telegramUserId): ?UserDuplicate
@@ -75,7 +80,7 @@ final class UserDuplicateDetector
 
     /**
      * Records one immutable evidence identity. A rejected candidate is reopened
-     * whenever the aggregate hash of observed evidence differs from the hash
+     * whenever the aggregate hash of current evidence differs from the hash
      * that was reviewed previously.
      *
      * @param array<string, mixed> $metadata
@@ -95,7 +100,7 @@ final class UserDuplicateDetector
         }
 
         [$userId, $duplicateUserId] = $this->orderedPair((int) $first->id, (int) $second->id);
-        $valueHash = hash('sha256', $type->value.'|'.$this->normalizeEvidenceValue($normalizedValue));
+        $valueHash = $this->evidenceValueHash($type, $normalizedValue);
 
         return DB::transaction(function () use ($userId, $duplicateUserId, $type, $valueHash, $metadata): UserDuplicate {
             $candidate = UserDuplicate::query()
@@ -129,25 +134,7 @@ final class UserDuplicateDetector
                 'last_seen_at' => $now,
             ])->save();
 
-            $evidenceHash = $this->aggregateEvidenceHash($candidate);
-            $score = $this->aggregateScore($candidate);
-            $updates = [
-                'evidence_hash' => $evidenceHash,
-                'score' => $score,
-            ];
-
-            if (
-                $candidate->status === UserDuplicateStatusEnum::REJECTED
-                && $candidate->resolved_evidence_hash !== $evidenceHash
-            ) {
-                $updates = array_replace($updates, [
-                    'status' => UserDuplicateStatusEnum::PENDING,
-                    'resolved_by' => null,
-                    'resolved_at' => null,
-                ]);
-            }
-
-            $candidate->forceFill($updates)->save();
+            $this->refreshCandidateAggregate($candidate);
 
             return $candidate->refresh()->load('evidence');
         });
@@ -207,7 +194,7 @@ final class UserDuplicateDetector
     }
 
     /**
-     * @return list<array{user: User, value: string, metadata: array<string, mixed>}>
+     * @return list<array{user: User, type: UserDuplicateEvidenceTypeEnum, value: string, metadata: array<string, mixed>}>
      */
     private function profileEvidence(User $user): array
     {
@@ -247,6 +234,7 @@ final class UserDuplicateDetector
 
             $result[] = [
                 'user' => $otherUser,
+                'type' => UserDuplicateEvidenceTypeEnum::PROFILE_IDENTITY,
                 'value' => $value,
                 'metadata' => [
                     'birth_date' => $birthDate,
@@ -258,11 +246,84 @@ final class UserDuplicateDetector
         return $result;
     }
 
-    private function aggregateEvidenceHash(UserDuplicate $candidate): string
+    /** @param list<string> $observedKeys */
+    private function deactivateMissingScanEvidence(User $user, array $observedKeys): void
     {
-        $parts = $candidate->evidence()
+        $candidateIds = UserDuplicate::query()
+            ->where(function ($query) use ($user): void {
+                $query
+                    ->where('user_id', $user->id)
+                    ->orWhere('duplicate_user_id', $user->id);
+            })
+            ->pluck('id');
+
+        if ($candidateIds->isEmpty()) {
+            return;
+        }
+
+        $observed = array_fill_keys($observedKeys, true);
+        $changedCandidateIds = [];
+
+        UserDuplicateEvidence::query()
+            ->whereIn('user_duplicate_id', $candidateIds)
             ->where('is_active', true)
-            ->get(['type', 'value_hash'])
+            ->get()
+            ->each(function (UserDuplicateEvidence $evidence) use ($observed, &$changedCandidateIds): void {
+                $source = $evidence->metadata['source'] ?? null;
+                if (! in_array($source, ['verified_contact', 'exact_profile_identity'], true)) {
+                    return;
+                }
+
+                $key = $this->scanEvidenceKey(
+                    (int) $evidence->user_duplicate_id,
+                    $evidence->type,
+                    (string) $evidence->value_hash,
+                );
+
+                if (isset($observed[$key])) {
+                    return;
+                }
+
+                $evidence->forceFill(['is_active' => false])->save();
+                $changedCandidateIds[(int) $evidence->user_duplicate_id] = true;
+            });
+
+        foreach (array_keys($changedCandidateIds) as $candidateId) {
+            $candidate = UserDuplicate::query()->find($candidateId);
+            if ($candidate !== null) {
+                $this->refreshCandidateAggregate($candidate);
+            }
+        }
+    }
+
+    private function refreshCandidateAggregate(UserDuplicate $candidate): void
+    {
+        $activeEvidence = $candidate->evidence()->where('is_active', true)->get(['type', 'value_hash']);
+        $evidenceHash = $this->aggregateEvidenceHash($activeEvidence);
+        $score = $this->aggregateScore($activeEvidence);
+        $updates = [
+            'evidence_hash' => $evidenceHash,
+            'score' => $score,
+        ];
+
+        if (
+            $candidate->status === UserDuplicateStatusEnum::REJECTED
+            && $activeEvidence->isNotEmpty()
+            && $candidate->resolved_evidence_hash !== $evidenceHash
+        ) {
+            $updates = array_replace($updates, [
+                'status' => UserDuplicateStatusEnum::PENDING,
+                'resolved_by' => null,
+                'resolved_at' => null,
+            ]);
+        }
+
+        $candidate->forceFill($updates)->save();
+    }
+
+    private function aggregateEvidenceHash(Collection $activeEvidence): string
+    {
+        $parts = $activeEvidence
             ->map(fn (UserDuplicateEvidence $evidence): string => $evidence->type->value.':'.$evidence->value_hash)
             ->sort()
             ->values()
@@ -271,13 +332,28 @@ final class UserDuplicateDetector
         return hash('sha256', implode('|', $parts));
     }
 
-    private function aggregateScore(UserDuplicate $candidate): int
+    private function aggregateScore(Collection $activeEvidence): ?int
     {
-        return (int) $candidate->evidence()
-            ->where('is_active', true)
-            ->get(['type'])
+        if ($activeEvidence->isEmpty()) {
+            return null;
+        }
+
+        return (int) $activeEvidence
             ->map(fn (UserDuplicateEvidence $evidence): int => $evidence->type->defaultScore())
             ->max();
+    }
+
+    private function evidenceValueHash(UserDuplicateEvidenceTypeEnum $type, string $value): string
+    {
+        return hash('sha256', $type->value.'|'.$this->normalizeEvidenceValue($value));
+    }
+
+    private function scanEvidenceKey(
+        int $candidateId,
+        UserDuplicateEvidenceTypeEnum $type,
+        string $valueHash,
+    ): string {
+        return $candidateId.'|'.$type->value.'|'.$valueHash;
     }
 
     /** @return array{int, int} */
