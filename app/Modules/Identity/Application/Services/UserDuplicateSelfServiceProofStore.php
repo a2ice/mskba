@@ -31,6 +31,25 @@ final class UserDuplicateSelfServiceProofStore
         );
     }
 
+    public function has(
+        UserDuplicate $candidate,
+        User $actor,
+        string $sessionId,
+    ): bool {
+        $actor = $actor->canonical();
+
+        if ($sessionId === '') {
+            return false;
+        }
+
+        return $this->isValidProof(
+            Cache::get($this->key($candidate, $actor, $sessionId)),
+            $candidate,
+            $actor,
+            $sessionId,
+        );
+    }
+
     public function consume(
         UserDuplicate $candidate,
         User $actor,
@@ -42,7 +61,20 @@ final class UserDuplicateSelfServiceProofStore
             return false;
         }
 
-        $proof = Cache::pull($this->key($candidate, $actor, $sessionId));
+        return $this->isValidProof(
+            Cache::pull($this->key($candidate, $actor, $sessionId)),
+            $candidate,
+            $actor,
+            $sessionId,
+        );
+    }
+
+    private function isValidProof(
+        mixed $proof,
+        UserDuplicate $candidate,
+        User $actor,
+        string $sessionId,
+    ): bool {
         if (! is_array($proof)) {
             return false;
         }
