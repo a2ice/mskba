@@ -28,6 +28,8 @@ final class CurrentActorResolver
         }
 
         if ($user !== null) {
+            $user = $user->canonical();
+
             return $this->firstOrCreate(
                 type: ActorTypeEnum::USER,
                 user: $user,
