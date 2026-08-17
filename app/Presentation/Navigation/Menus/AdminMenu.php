@@ -16,6 +16,7 @@ final class AdminMenu implements MenuHandler
         $user = request()->user();
         $isAdmin = $user?->isAdmin() ?? false;
         $canManageContent = $user?->can('manage-content') ?? false;
+        $canManageUserDuplicates = $user?->can('manage-users-as-superadmin') ?? false;
 
         return [
             [
@@ -42,7 +43,7 @@ final class AdminMenu implements MenuHandler
                 'description' => 'Кандидаты на объединение пользовательских аккаунтов.',
                 'url' => $this->routeUrl('admin.users.duplicates'),
                 'active' => $this->isActiveRoute('admin.users.duplicates, admin.users.duplicates.*'),
-                'visible' => $isAdmin,
+                'visible' => $canManageUserDuplicates,
                 'icon' => 'ti-users-group',
                 'data' => ['count' => 0],
             ],
