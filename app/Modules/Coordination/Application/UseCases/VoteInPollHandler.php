@@ -16,13 +16,16 @@ final class VoteInPollHandler
     /** @param array<int, int> $optionIds */
     public function handle(int $pollId, User $user, array $optionIds): PollBallot
     {
+        $user = $user->canonical();
+
         if ($user->isBlocked()) {
             throw new InvalidArgumentException('Заблокированный пользователь не может голосовать.');
         }
 
+        $identityIds = $user->identityIds();
         $optionIds = array_values(array_unique(array_map('intval', $optionIds)));
 
-        $ballot = DB::transaction(function () use ($pollId, $user, $optionIds): PollBallot {
+        $ballot = DB::transaction(function () use ($pollId, $user, $identityIds, $optionIds): PollBallot {
             /** @var Poll $poll */
             $poll = Poll::query()->lockForUpdate()->findOrFail($pollId);
 
@@ -32,7 +35,9 @@ final class VoteInPollHandler
 
             $existingBallot = PollBallot::query()
                 ->where('poll_id', $poll->id)
-                ->where('user_id', $user->id)
+                ->whereIn('user_id', $identityIds)
+                ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+                ->orderBy('id')
                 ->first();
 
             if ($existingBallot !== null && ! $poll->allows_vote_changes) {
