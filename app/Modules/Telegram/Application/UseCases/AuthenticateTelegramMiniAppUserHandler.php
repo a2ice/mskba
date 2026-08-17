@@ -4,6 +4,7 @@ namespace App\Modules\Telegram\Application\UseCases;
 
 use App\Modules\Identity\Application\Services\CanonicalUserResolver;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Events\UserFirstLogin;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Application\DTO\TelegramUserIdentityDTO;
@@ -11,6 +12,7 @@ use App\Modules\Telegram\Application\Services\TelegramMiniAppInitDataValidator;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramProfileAvatarJob;
 use Illuminate\Support\Facades\Auth;
+use InvalidArgumentException;
 
 final class AuthenticateTelegramMiniAppUserHandler
 {
@@ -46,7 +48,13 @@ final class AuthenticateTelegramMiniAppUserHandler
             authenticated: true,
         ));
 
-        $canonicalUser = $this->canonicalUserResolver->resolve($result['user']);
+        $sourceUser = $result['user'];
+        $canonicalUser = $this->canonicalUserResolver->resolve($sourceUser);
+
+        if ($sourceUser->status === UserStatusEnum::BLOCKED || $canonicalUser->status === UserStatusEnum::BLOCKED) {
+            throw new InvalidArgumentException('Аккаунт заблокирован. Обратитесь в поддержку.');
+        }
+
         $result['user'] = $canonicalUser;
 
         Auth::login($canonicalUser, true);
