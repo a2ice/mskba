@@ -20,31 +20,33 @@ class AuthHandler
 
     public function login(string $login, string $password, bool $remember): LoginResponseDTO
     {
-        $loginUser = $this->userLoginResolver->resolve($login);
+        $loginCandidates = $this->userLoginResolver->resolveCandidates($login);
 
-        if ($loginUser === null) {
-            return new LoginResponseDTO(
-                status: 'error',
-                message: 'Неверный логин, контакт или пароль.',
-                httpStatus: 401,
-            );
+        if ($loginCandidates->isEmpty()) {
+            return $this->invalidCredentials();
         }
 
-        $canonicalUser = $this->canonicalUserResolver->resolve($loginUser);
+        $matchingCredentials = $loginCandidates
+            ->filter(fn (User $user): bool => $user->password !== null && Hash::check($password, $user->password))
+            ->values();
 
-        if ($loginUser->status === UserStatusEnum::BLOCKED || $canonicalUser->status === UserStatusEnum::BLOCKED) {
+        if ($matchingCredentials->isEmpty()) {
+            return $this->invalidCredentials();
+        }
+
+        /** @var User $identityUser */
+        $identityUser = $loginCandidates->first();
+        $canonicalUser = $this->canonicalUserResolver->resolve($identityUser);
+
+        /** @var User|null $loginUser */
+        $loginUser = $matchingCredentials
+            ->first(fn (User $user): bool => $user->status !== UserStatusEnum::BLOCKED);
+
+        if ($loginUser === null || $canonicalUser->status === UserStatusEnum::BLOCKED) {
             return new LoginResponseDTO(
                 status: 'error',
                 message: 'Ваш аккаунт заблокирован. Пожалуйста, обратитесь в поддержку.',
                 httpStatus: 403,
-            );
-        }
-
-        if ($loginUser->password === null || ! Hash::check($password, $loginUser->password)) {
-            return new LoginResponseDTO(
-                status: 'error',
-                message: 'Неверный логин, контакт или пароль.',
-                httpStatus: 401,
             );
         }
 
@@ -80,5 +82,14 @@ class AuthHandler
         Auth::logout();
         request()->session()->invalidate();
         request()->session()->regenerateToken();
+    }
+
+    private function invalidCredentials(): LoginResponseDTO
+    {
+        return new LoginResponseDTO(
+            status: 'error',
+            message: 'Неверный логин, контакт или пароль.',
+            httpStatus: 401,
+        );
     }
 }
