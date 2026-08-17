@@ -32,20 +32,26 @@ final class TournamentStaffService
     /** @param list<string> $permissionValues */
     public function invite(Tournament $tournament, User $user, Actor $actor, array $permissionValues): ContractMembership
     {
-        if (! $this->privacy->allows($user, $actor->user, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
+        $user = $user->canonical();
+        $viewer = $actor->user?->canonical();
+
+        if (! $viewer instanceof User
+            || ! $this->privacy->allows($user, $viewer, UserPrivacySettingTypeEnum::GROUP_INVITATIONS)) {
             throw new InvalidArgumentException('Пользователь запретил приглашать себя в команды и другие группы.');
         }
 
         $membership = DB::transaction(function () use ($tournament, $user, $actor, $permissionValues): ContractMembership {
             $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_STAFF);
-            if ($locked->createdByActor()->where('user_id', $user->id)->exists()) {
+            $identityIds = $user->identityIds();
+
+            if ($locked->createdByActor()->whereIn('user_id', $identityIds)->exists()) {
                 throw new InvalidArgumentException('Создателю турнира договор не требуется.');
             }
             $exists = ContractMembership::query()
                 ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)
                 ->where('scope_id', $locked->id)
-                ->where('user_id', $user->id)
+                ->whereIn('user_id', $identityIds)
                 ->whereIn('invitation_status', [TeamInvitationStatusEnum::PENDING->value, TeamInvitationStatusEnum::ACCEPTED->value])
                 ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
                 ->exists();
@@ -54,12 +60,13 @@ final class TournamentStaffService
             }
 
             $permissions = $this->normalizedDelegablePermissions($locked, $actor, $permissionValues);
+            $assignedByUserId = $actor->user?->canonical()->id;
             $contract = Contract::query()->create([
                 'family' => ContractFamilyEnum::MEMBERSHIP,
                 'name' => 'Ответственный за турнир «'.$locked->title.'»',
                 'status' => ContractStatusEnum::ACTIVE,
                 'starts_at' => now(),
-                'assigned_by' => $actor->user_id,
+                'assigned_by' => $assignedByUserId,
                 'assigned_at' => now(),
                 'assigner' => UserParticipationRoleAssignerEnum::USER,
             ]);
@@ -99,10 +106,13 @@ final class TournamentStaffService
         if (! in_array($decision, [TeamInvitationStatusEnum::ACCEPTED, TeamInvitationStatusEnum::DECLINED], true)) {
             throw new InvalidArgumentException('Недопустимый ответ на приглашение.');
         }
+
+        $user = $user->canonical();
         DB::transaction(function () use ($tournament, $membership, $user, $decision): void {
             $locked = ContractMembership::query()->whereKey($membership->id)->lockForUpdate()->firstOrFail();
             $this->assertBelongsToTournament($locked, $tournament);
-            if ((int) $locked->user_id !== (int) $user->id || $locked->invitation_status !== TeamInvitationStatusEnum::PENDING) {
+            if (! in_array((int) $locked->user_id, $user->identityIds(), true)
+                || $locked->invitation_status !== TeamInvitationStatusEnum::PENDING) {
                 throw new InvalidArgumentException('Это приглашение недоступно.');
             }
             $locked->forceFill(['invitation_status' => $decision])->save();
