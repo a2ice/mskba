@@ -57,39 +57,80 @@
                                 ])));
                                 return $name !== '' ? $name : ($user?->username ?: 'user #' . $user?->id);
                             };
+                            $roles = collect([$first?->canonical()?->system_role, $second?->canonical()?->system_role])->filter();
+                            $hasElevatedRole = $roles->contains(fn ($role) => $role !== \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::USER);
+                            $hasProtectedRole = $roles->contains(fn ($role) => in_array($role, [
+                                \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN,
+                                \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SYSTEM,
+                            ], true));
                         @endphp
                         <tr>
                             <td>
                                 <div><strong>#{{ $first?->id }}</strong> · {{ $label($first) }}</div>
+                                <div class="admin-muted">
+                                    {{ $first?->system_role?->label() ?? '—' }} · {{ $first?->status?->label() ?? '—' }} · {{ $first?->registration_channel?->label() ?? '—' }}
+                                </div>
                                 <div class="admin-muted">{{ $first?->telegramAccount?->username ? '@'.$first->telegramAccount->username : 'Telegram не привязан' }}</div>
-                                <div style="margin-top:.5rem"><strong>#{{ $second?->id }}</strong> · {{ $label($second) }}</div>
+                                <div class="admin-muted">Создан: {{ $first?->created_at?->format('d.m.Y H:i') ?? '—' }}</div>
+
+                                <div style="margin-top:.75rem"><strong>#{{ $second?->id }}</strong> · {{ $label($second) }}</div>
+                                <div class="admin-muted">
+                                    {{ $second?->system_role?->label() ?? '—' }} · {{ $second?->status?->label() ?? '—' }} · {{ $second?->registration_channel?->label() ?? '—' }}
+                                </div>
                                 <div class="admin-muted">{{ $second?->telegramAccount?->username ? '@'.$second->telegramAccount->username : 'Telegram не привязан' }}</div>
+                                <div class="admin-muted">Создан: {{ $second?->created_at?->format('d.m.Y H:i') ?? '—' }}</div>
                             </td>
                             <td>
-                                @foreach($duplicate->evidence->where('is_active', true) as $evidence)
-                                    <span class="admin-badge">{{ $evidence->type->label() }}</span>
-                                @endforeach
+                                @forelse($duplicate->evidence->where('is_active', true) as $evidence)
+                                    <div style="margin-bottom:.35rem">
+                                        <span class="admin-badge">{{ $evidence->type->label() }}</span>
+                                        <div class="admin-muted">
+                                            {{ $evidence->metadata['source'] ?? 'unknown' }} · последнее подтверждение {{ $evidence->last_seen_at?->format('d.m.Y H:i') ?? '—' }}
+                                        </div>
+                                    </div>
+                                @empty
+                                    <span class="admin-muted">Актуальных подтверждений больше нет</span>
+                                @endforelse
                             </td>
                             <td>{{ $duplicate->score ?? '—' }}</td>
                             <td><span class="admin-badge">{{ $duplicate->status->label() }}</span></td>
                             <td>
                                 @if($duplicate->status === \App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum::PENDING)
-                                    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-                                        <form method="POST" action="{{ route('admin.users.duplicates.merge', $duplicate) }}">
+                                    @if($hasProtectedRole)
+                                        <div class="admin-muted">
+                                            Объединение через механизм дублей запрещено: в паре есть суперадминистратор или системный пользователь.
+                                        </div>
+                                    @elseif($duplicate->evidence->where('is_active', true)->isEmpty())
+                                        <div class="admin-muted">Нельзя объединить пару без актуальных подтверждений.</div>
+                                    @else
+                                        <form method="POST" action="{{ route('admin.users.duplicates.merge', $duplicate) }}" style="display:grid;gap:.5rem;min-width:240px">
                                             @csrf
-                                            <input type="hidden" name="canonical_user_id" value="{{ $first->id }}">
-                                            <button class="btn btn--primary btn--sm" type="submit">Главный #{{ $first->id }}</button>
+                                            <label>
+                                                <input type="radio" name="canonical_user_id" value="{{ $first->id }}" required>
+                                                Основной #{{ $first->id }}
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="canonical_user_id" value="{{ $second->id }}" required>
+                                                Основной #{{ $second->id }}
+                                            </label>
+                                            <label style="display:flex;gap:.4rem;align-items:flex-start">
+                                                <input type="checkbox" name="confirm_merge" value="1" required>
+                                                <span>Я проверил оба аккаунта и понимаю, что после объединения способы входа alias будут давать доступ к основному аккаунту.</span>
+                                            </label>
+                                            @if($hasElevatedRole)
+                                                <label style="display:flex;gap:.4rem;align-items:flex-start">
+                                                    <input type="checkbox" name="confirm_privileged" value="1" required>
+                                                    <span>Я отдельно проверил системные роли и подтверждаю объединение аккаунта с расширенными правами.</span>
+                                                </label>
+                                            @endif
+                                            <button class="btn btn--primary btn--sm" type="submit">Объединить аккаунты</button>
                                         </form>
-                                        <form method="POST" action="{{ route('admin.users.duplicates.merge', $duplicate) }}">
-                                            @csrf
-                                            <input type="hidden" name="canonical_user_id" value="{{ $second->id }}">
-                                            <button class="btn btn--primary btn--sm" type="submit">Главный #{{ $second->id }}</button>
-                                        </form>
-                                        <form method="POST" action="{{ route('admin.users.duplicates.reject', $duplicate) }}">
-                                            @csrf
-                                            <button class="btn btn--secondary btn--sm" type="submit">Не дубли</button>
-                                        </form>
-                                    </div>
+                                    @endif
+
+                                    <form method="POST" action="{{ route('admin.users.duplicates.reject', $duplicate) }}" style="margin-top:.5rem">
+                                        @csrf
+                                        <button class="btn btn--secondary btn--sm" type="submit">Не дубли</button>
+                                    </form>
                                 @else
                                     <span class="admin-muted">
                                         {{ $duplicate->resolved_at?->format('d.m.Y H:i') ?? '—' }}
