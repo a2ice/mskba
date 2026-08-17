@@ -5,7 +5,6 @@ namespace App\Modules\Event\Application\Services;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
-use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Tournament\Application\Services\TournamentAccess;
@@ -26,18 +25,19 @@ final class EventManagementAccess
 
     public function allows(Event $event, Actor $actor, EventResponsibilityPermissionEnum $permission): bool
     {
-        $isConfirmedSuperadmin = $actor->user_id !== null
-            && $actor->user()
-                ->where('status', UserStatusEnum::CONFIRMED->value)
-                ->where('system_role', UserSystemRoleEnum::SUPERADMIN->value)
-                ->exists();
+        $user = $actor->user?->canonical();
+        if ($user === null || $user->isBlocked() || $user->trashed()) {
+            return false;
+        }
 
-        if ($isConfirmedSuperadmin) {
+        if ($user->isConfirmed() && $user->system_role === UserSystemRoleEnum::SUPERADMIN) {
             return true;
         }
 
-        $isOrganizer = $actor->user_id !== null
-            && $event->organizerActor()->where('user_id', $actor->user_id)->exists();
+        $identityIds = $user->identityIds();
+        $isOrganizer = $event->organizerActor()
+            ->whereIn('user_id', $identityIds)
+            ->exists();
 
         if ($isOrganizer) {
             return true;
@@ -60,13 +60,12 @@ final class EventManagementAccess
             return true;
         }
 
-        return $actor->user_id !== null
-            && $event->participants()
-                ->where('user_id', $actor->user_id)
-                ->where('responsibility_status', EventResponsibilityStatusEnum::ACCEPTED->value)
-                ->whereHas('responsibilityPermissions', fn ($query) => $query
-                    ->where('permission', $permission->value))
-                ->exists();
+        return $event->participants()
+            ->whereIn('user_id', $identityIds)
+            ->where('responsibility_status', EventResponsibilityStatusEnum::ACCEPTED->value)
+            ->whereHas('responsibilityPermissions', fn ($query) => $query
+                ->where('permission', $permission->value))
+            ->exists();
     }
 
     public function canManage(Event $event, Actor $actor): bool
