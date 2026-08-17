@@ -72,7 +72,13 @@ final class HandleCoordinationVoteCallback
                 source: 'telegram_chat_callback',
                 registrationChannel: UserRegistrationChannelEnum::TELEGRAM_CHAT,
             ));
-            $user = $resolved['user'];
+            $sourceUser = $resolved['user'];
+            $user = $sourceUser->canonical();
+
+            if ($sourceUser->isBlocked() || $user->isBlocked()) {
+                throw new InvalidArgumentException('Ваш аккаунт заблокирован.');
+            }
+
             $existingOptionIds = PollBallot::query()
                 ->where('poll_id', $pollId)
                 ->where('user_id', $user->id)
