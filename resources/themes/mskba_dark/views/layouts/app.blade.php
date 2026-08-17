@@ -18,10 +18,15 @@
     $routeClass .= $isMainPage ? ' main' : '';
     $routeClass .= $isTelegramMiniApp ? ' telegram-mini-app' : '';
 
-    $user = auth()->user();
+    $user = auth()->user()?->canonical();
     $user?->loadMissing('profile.activeAvatar');
     $headerTelegramAccount = $user
-        ? \App\Modules\Telegram\Domain\Models\TelegramAccount::query()->where('user_id', $user->id)->first()
+        ? \App\Modules\Telegram\Domain\Models\TelegramAccount::query()
+            ->whereIn('user_id', $user->identityIds())
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('last_auth_at')
+            ->orderByDesc('updated_at')
+            ->first()
         : null;
 
     $userLoginLabel = $user ? $user->username : 'Войти';
