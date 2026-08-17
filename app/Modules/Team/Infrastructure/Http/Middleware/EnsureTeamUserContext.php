@@ -23,11 +23,11 @@ final class EnsureTeamUserContext
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->routeIs('teams.create', 'teams.store', 'teams.name-suggestion')) {
-            $user = $request->user();
+            $user = $request->user()?->canonical();
             if ($user !== null && ! $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
                 $createdTeamsCount = Team::query()
                     ->whereNull('temporary_for_event_id')
-                    ->whereHas('createdByActor', fn ($actor) => $actor->where('user_id', $user->id))
+                    ->whereHas('createdByActor', fn ($actor) => $actor->whereIn('user_id', $user->identityIds()))
                     ->count();
 
                 abort_if(
