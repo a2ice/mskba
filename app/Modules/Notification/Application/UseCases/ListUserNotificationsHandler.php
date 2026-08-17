@@ -13,8 +13,10 @@ final class ListUserNotificationsHandler
      */
     public function handle(User $user, int $perPage = 20): LengthAwarePaginator
     {
+        $identityIds = $user->canonical()->identityIds();
+
         return UserNotification::query()
-            ->where('user_id', $user->id)
+            ->whereIn('user_id', $identityIds)
             ->latest()
             ->paginate($perPage);
     }
