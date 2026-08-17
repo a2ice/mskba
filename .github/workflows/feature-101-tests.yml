@@ -4,13 +4,16 @@ on:
   push:
     branches:
       - feature/101
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: feature-101-tests
+  group: feature-101-tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
