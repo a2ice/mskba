@@ -2,8 +2,8 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\Event\Application\Services\EventManagementAccess;
-use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -18,6 +18,7 @@ final class SearchEventParticipantCandidatesHandler
     public function __construct(
         private readonly EventManagementAccess $access,
         private readonly SearchDiscoverableUsers $users,
+        private readonly EventIdentityParticipationService $identityParticipation,
     ) {}
 
     /** @return Collection<int, User> */
@@ -29,17 +30,13 @@ final class SearchEventParticipantCandidatesHandler
             || $event->ends_at->lessThanOrEqualTo(now())) {
             throw new InvalidArgumentException('Состав этого мероприятия уже нельзя изменять.');
         }
-        $viewer = $actor->user;
+        $viewer = $actor->user?->canonical();
 
         if (! $viewer instanceof User) {
             throw new InvalidArgumentException('Для выбора участника требуется аккаунт пользователя.');
         }
 
-        $excludedUserIds = $event->participants()
-            ->where('status', EventParticipantStatusEnum::CONFIRMED->value)
-            ->where('confirmation_version', $event->participation_confirmation_version)
-            ->pluck('user_id')
-            ->all();
+        $excludedUserIds = $this->identityParticipation->confirmedIdentityIds($event);
 
         return $this->users->handle($viewer, $query, $excludedUserIds);
     }
