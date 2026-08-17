@@ -22,6 +22,7 @@ final class SearchDiscoverableUsers
         int $limit = 15,
         ?UserPrivacySettingTypeEnum $requiredAccess = null,
     ): Collection {
+        $viewer = $viewer->canonical();
         $rawQuery = trim($query);
         $normalizedQuery = mb_strtolower($rawQuery);
 
@@ -29,9 +30,15 @@ final class SearchDiscoverableUsers
             return collect();
         }
 
+        $excludedCanonicalIds = $this->canonicalIds([
+            (int) $viewer->id,
+            ...array_map('intval', $excludeUserIds),
+        ]);
+
         return User::query()
             ->with('profile')
-            ->whereNotIn('id', array_values(array_unique([$viewer->getKey(), ...$excludeUserIds])))
+            ->whereNull('canonical_user_id')
+            ->whereNotIn('id', $excludedCanonicalIds)
             ->where('status', '!=', UserStatusEnum::BLOCKED->value)
             ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
                 $privacyQuery,
@@ -59,6 +66,25 @@ final class SearchDiscoverableUsers
             ->orderBy('username')
             ->limit($limit)
             ->get();
+    }
+
+    /** @param list<int> $userIds
+     * @return list<int>
+     */
+    private function canonicalIds(array $userIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $userIds), fn (int $id): bool => $id > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $resolved = User::query()
+            ->whereIn('id', $ids)
+            ->get()
+            ->map(fn (User $user): int => (int) $user->canonical()->id)
+            ->all();
+
+        return array_values(array_unique([...$ids, ...$resolved]));
     }
 
     /** @param Builder<User> $query */
