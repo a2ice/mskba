@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Admin\Application\UseCases\ListAdminUserDuplicatesHandler;
 use App\Modules\Identity\Application\UseCases\ResolveUserDuplicateHandler;
 use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\UserDuplicate;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +32,20 @@ final class AdminUserDuplicatesController extends Controller
     ): RedirectResponse {
         $validated = $request->validate([
             'canonical_user_id' => ['required', 'integer'],
+            'confirm_merge' => ['accepted'],
+            'confirm_privileged' => ['nullable', 'accepted'],
         ]);
+
+        $userDuplicate->loadMissing(['user', 'duplicateUser']);
+        $hasElevatedRole = collect([$userDuplicate->user, $userDuplicate->duplicateUser])
+            ->filter()
+            ->contains(fn ($user): bool => $user->canonical()->system_role !== UserSystemRoleEnum::USER);
+
+        if ($hasElevatedRole && ! $request->boolean('confirm_privileged')) {
+            return redirect()
+                ->route('admin.users.duplicates')
+                ->with('error', 'Для пары с расширенными системными правами нужно отдельное подтверждение.');
+        }
 
         try {
             $resolve->merge(
