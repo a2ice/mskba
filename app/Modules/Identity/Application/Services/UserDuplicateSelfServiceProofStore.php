@@ -3,6 +3,8 @@
 namespace App\Modules\Identity\Application\Services;
 
 use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserDuplicate;
 use Illuminate\Support\Facades\Cache;
@@ -119,6 +121,24 @@ final class UserDuplicateSelfServiceProofStore
         $pairIds = [(int) $candidate->user_id, (int) $candidate->duplicate_user_id];
         if (! in_array((int) $actor->id, $pairIds, true)) {
             throw new InvalidArgumentException('Подтверждение не относится к текущему пользователю.');
+        }
+
+        $pairUsers = User::query()
+            ->whereIn('id', $pairIds)
+            ->get();
+        if ($pairUsers->count() !== 2) {
+            throw new InvalidArgumentException('Один из аккаунтов больше недоступен для самостоятельного объединения.');
+        }
+
+        $unsafeForSelfService = $pairUsers->contains(function (User $user): bool {
+            $canonical = $user->canonical();
+
+            return $canonical->system_role !== UserSystemRoleEnum::USER
+                || $canonical->status === UserStatusEnum::BLOCKED
+                || $canonical->trashed();
+        });
+        if ($unsafeForSelfService) {
+            throw new InvalidArgumentException('Эту пару аккаунтов может объединить только суперадминистратор после ручной проверки.');
         }
 
         $hasMatchingEvidence = $candidate->evidence()
