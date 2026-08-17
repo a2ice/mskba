@@ -57,8 +57,10 @@ final class VenueMembershipAccess
      */
     public function bootstrapOwnedVenueIdsFor(User $user): array
     {
+        $user = $user->canonical();
+
         return Venue::query()
-            ->whereHas('creatorActor', fn (Builder $query) => $query->where('user_id', $user->id))
+            ->whereHas('creatorActor', fn (Builder $query) => $query->whereIn('user_id', $user->identityIds()))
             ->whereNotIn('id', $this->activeOwnerVenueIds())
             ->pluck('id')
             ->map(fn (mixed $id): int => (int) $id)
@@ -68,10 +70,11 @@ final class VenueMembershipAccess
     private function baseContractQuery(User $user): Builder
     {
         $now = now();
+        $user = $user->canonical();
 
         return ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
-            ->where('user_id', $user->id)
+            ->whereIn('user_id', $user->identityIds())
             ->whereHas('contract', function (Builder $query) use ($now): void {
                 $query
                     ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
