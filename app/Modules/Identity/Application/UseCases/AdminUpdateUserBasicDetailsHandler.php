@@ -14,12 +14,15 @@ final class AdminUpdateUserBasicDetailsHandler
     /** @param array{first_name: ?string, last_name: ?string, middle_name: ?string, birth_date: ?string, password: ?string} $details */
     public function handle(User $actor, int $userId, array $details): void
     {
+        $actor = $actor->canonical();
         if (! $actor->isConfirmed() || ! $actor->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
             throw new AuthorizationException('Редактировать базовые данные пользователей может только superadmin.');
         }
 
         DB::transaction(function () use ($userId, $details): void {
-            $user = User::query()->whereKey($userId)->lockForUpdate()->firstOrFail();
+            $requested = User::query()->findOrFail($userId);
+            $canonicalId = (int) $requested->canonical()->id;
+            $user = User::query()->whereKey($canonicalId)->lockForUpdate()->firstOrFail();
             $profile = $user->profile()->lockForUpdate()->first();
 
             if ($profile === null) {
