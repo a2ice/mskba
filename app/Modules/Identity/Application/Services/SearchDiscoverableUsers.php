@@ -94,6 +94,7 @@ final class SearchDiscoverableUsers
         UserPrivacySettingTypeEnum $type,
     ): void {
         $defaultVisibility = $type->defaultVisibility();
+        $viewerIdentityIds = $viewer->identityIds();
 
         $query
             ->where(function (Builder $missingSettingQuery) use ($type, $defaultVisibility): void {
@@ -107,14 +108,14 @@ final class SearchDiscoverableUsers
             })
             ->orWhereHas('privacySettings', fn ($settingQuery) => $settingQuery
                 ->where('type', $type->value)
-                ->where(function ($visibilityQuery) use ($viewer): void {
+                ->where(function ($visibilityQuery) use ($viewerIdentityIds): void {
                     $visibilityQuery
                         ->where('visibility', UserPrivacyVisibilityEnum::EVERYONE->value)
-                        ->orWhere(function ($selectedQuery) use ($viewer): void {
+                        ->orWhere(function ($selectedQuery) use ($viewerIdentityIds): void {
                             $selectedQuery
                                 ->where('visibility', UserPrivacyVisibilityEnum::SELECTED_USERS->value)
                                 ->whereHas('allowedUsers', fn ($allowedQuery) => $allowedQuery
-                                    ->whereKey($viewer->getKey()));
+                                    ->whereKey($viewerIdentityIds));
                         });
                 }));
     }
