@@ -189,27 +189,61 @@ final class UserCanonicalizationTest extends TestCase
         $this->assertSame($current->id, $telegramOwner->refresh()->canonical_user_id);
     }
 
-    public function test_self_service_cannot_merge_account_with_elevated_system_role(): void
+    public function test_self_service_proof_is_not_issued_for_elevated_system_role(): void
     {
         $current = User::factory()->create();
         $editor = User::factory()->create(['system_role' => UserSystemRoleEnum::EDITOR]);
         $candidate = app(UserDuplicateDetector::class)->observeTelegramConflict($current, $editor, 777002);
 
+        $this->expectException(InvalidArgumentException::class);
         app(UserDuplicateSelfServiceProofStore::class)->issue(
             candidate: $candidate,
             actor: $current,
             telegramUserId: 777002,
             sessionId: 'session-b',
         );
+    }
+
+    public function test_self_service_proof_is_not_issued_when_pair_contains_blocked_account(): void
+    {
+        $current = User::factory()->create();
+        $blocked = User::factory()->create(['status' => UserStatusEnum::BLOCKED]);
+        $candidate = app(UserDuplicateDetector::class)->observeTelegramConflict($current, $blocked, 777003);
 
         $this->expectException(InvalidArgumentException::class);
-        app(ResolveUserDuplicateHandler::class)->merge(
+        app(UserDuplicateSelfServiceProofStore::class)->issue(
             candidate: $candidate,
-            canonicalUserId: $current->id,
-            resolvedBy: $current,
-            selfService: true,
-            selfServiceSessionId: 'session-b',
+            actor: $current,
+            telegramUserId: 777003,
+            sessionId: 'session-c',
         );
+    }
+
+    public function test_admin_merge_with_blocked_account_must_keep_blocked_identity_canonical(): void
+    {
+        $active = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $blocked = User::factory()->create(['status' => UserStatusEnum::BLOCKED]);
+        $candidate = app(UserDuplicateDetector::class)->observeEvidence(
+            first: $active,
+            second: $blocked,
+            type: UserDuplicateEvidenceTypeEnum::MANUAL,
+            normalizedValue: "{$active->id}|{$blocked->id}",
+        );
+        $resolver = app(ResolveUserDuplicateHandler::class);
+
+        try {
+            $resolver->merge($candidate, $active->id, null);
+            $this->fail('Blocked identity must not be unblocked by choosing another canonical account.');
+        } catch (InvalidArgumentException) {
+            $this->assertNull($active->refresh()->canonical_user_id);
+            $this->assertNull($blocked->refresh()->canonical_user_id);
+        }
+
+        $result = $resolver->merge($candidate->refresh(), $blocked->id, null);
+
+        $this->assertSame($blocked->id, $result->id);
+        $this->assertSame(UserStatusEnum::BLOCKED, $result->status);
+        $this->assertSame($blocked->id, $active->refresh()->canonical_user_id);
     }
 
     public function test_superadmin_and_system_accounts_cannot_be_merged_through_duplicate_resolution(): void
@@ -227,6 +261,26 @@ final class UserCanonicalizationTest extends TestCase
         app(ResolveUserDuplicateHandler::class)->merge(
             candidate: $candidate,
             canonicalUserId: $user->id,
+            resolvedBy: null,
+        );
+    }
+
+    public function test_deleted_account_cannot_be_merged(): void
+    {
+        $active = User::factory()->create();
+        $deleted = User::factory()->create();
+        $candidate = app(UserDuplicateDetector::class)->observeEvidence(
+            first: $active,
+            second: $deleted,
+            type: UserDuplicateEvidenceTypeEnum::MANUAL,
+            normalizedValue: "{$active->id}|{$deleted->id}",
+        );
+        $deleted->delete();
+
+        $this->expectException(InvalidArgumentException::class);
+        app(ResolveUserDuplicateHandler::class)->merge(
+            candidate: $candidate,
+            canonicalUserId: $active->id,
             resolvedBy: null,
         );
     }
