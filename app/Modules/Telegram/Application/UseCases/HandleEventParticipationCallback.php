@@ -75,9 +75,10 @@ final class HandleEventParticipationCallback
                 source: 'telegram_chat_callback',
                 registrationChannel: UserRegistrationChannelEnum::TELEGRAM_CHAT,
             ));
-            $user = $resolved['user'];
+            $sourceUser = $resolved['user'];
+            $user = $sourceUser->canonical();
 
-            if ($user->isBlocked()) {
+            if ($sourceUser->isBlocked() || $user->isBlocked()) {
                 throw new InvalidArgumentException('Ваш аккаунт заблокирован.');
             }
 
