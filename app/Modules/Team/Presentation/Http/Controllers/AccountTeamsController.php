@@ -27,7 +27,8 @@ final class AccountTeamsController extends Controller
             'status' => ['nullable', Rule::in(array_column(TeamStatusEnum::cases(), 'value'))],
             'created_only' => ['nullable', 'boolean'],
         ]);
-        $user = $request->user();
+        $user = $request->user()->canonical();
+        $identityIds = $user->identityIds();
         $createdOnly = $request->boolean('created_only');
         $condition = (string) ($filters['condition'] ?? '');
         $status = $request->exists('status')
@@ -35,7 +36,7 @@ final class AccountTeamsController extends Controller
             : TeamStatusEnum::ACTIVE->value;
         $createdTeamsCount = Team::query()
             ->whereNull('temporary_for_event_id')
-            ->whereHas('createdByActor', fn ($actor) => $actor->where('user_id', $user->id))
+            ->whereHas('createdByActor', fn ($actor) => $actor->whereIn('user_id', $identityIds))
             ->count();
         $canCreateTeam = $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)
             || $createdTeamsCount < self::CREATION_LIMIT;
@@ -44,18 +45,18 @@ final class AccountTeamsController extends Controller
             ->whereNull('temporary_for_event_id')
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($createdOnly,
-                fn ($query) => $query->whereHas('createdByActor', fn ($actor) => $actor->where('user_id', $user->id)),
-                fn ($query) => $query->where(function ($query) use ($user): void {
-                    $query->whereHas('createdByActor', fn ($actor) => $actor->where('user_id', $user->id))
-                        ->orWhereHas('memberships', fn ($memberships) => $memberships->where('user_id', $user->id));
+                fn ($query) => $query->whereHas('createdByActor', fn ($actor) => $actor->whereIn('user_id', $identityIds)),
+                fn ($query) => $query->where(function ($query) use ($identityIds): void {
+                    $query->whereHas('createdByActor', fn ($actor) => $actor->whereIn('user_id', $identityIds))
+                        ->orWhereHas('memberships', fn ($memberships) => $memberships->whereIn('user_id', $identityIds));
                 }),
             )
             ->when($condition !== '', fn ($query) => $query->whereHas('memberships', fn ($memberships) => $memberships
-                ->where('user_id', $user->id)->where('invitation_status', $condition)))
+                ->whereIn('user_id', $identityIds)->where('invitation_status', $condition)))
             ->with([
                 'logo', 'createdByActor', 'sportProfiles.lineupMembers.membership.contract',
                 'memberships' => fn ($memberships) => $memberships
-                    ->where('user_id', $user->id)
+                    ->whereIn('user_id', $identityIds)
                     ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
                     ->with('contract'),
             ])->orderBy('name')->paginate(20)->withQueryString();
