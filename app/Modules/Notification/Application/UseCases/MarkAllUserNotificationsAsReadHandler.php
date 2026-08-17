@@ -15,8 +15,9 @@ final class MarkAllUserNotificationsAsReadHandler
 
     public function handle(User $user): int
     {
+        $canonical = $user->canonical();
         $updatedCount = UserNotification::query()
-            ->where('user_id', $user->id)
+            ->whereIn('user_id', $canonical->identityIds())
             ->where('status', UserNotificationStatusEnum::NEW)
             ->update([
                 'status' => UserNotificationStatusEnum::READ,
@@ -24,7 +25,7 @@ final class MarkAllUserNotificationsAsReadHandler
             ]);
 
         if ($updatedCount > 0) {
-            $this->counterStore->forget((int) $user->id);
+            $this->counterStore->forget((int) $canonical->id);
         }
 
         return $updatedCount;
