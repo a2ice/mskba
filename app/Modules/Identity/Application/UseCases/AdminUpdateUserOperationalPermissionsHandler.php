@@ -16,8 +16,14 @@ final class AdminUpdateUserOperationalPermissionsHandler
      */
     public function handle(User $actor, int $targetUserId, array $allowedPermissions): void
     {
+        $actor = $actor->canonical();
+
         DB::transaction(function () use ($actor, $targetUserId, $allowedPermissions): void {
-            $target = User::query()->lockForUpdate()->findOrFail($targetUserId);
+            $requested = User::query()->findOrFail($targetUserId);
+            $target = User::query()
+                ->whereKey($requested->canonical()->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $this->authorize($actor, $target);
 
@@ -47,7 +53,7 @@ final class AdminUpdateUserOperationalPermissionsHandler
         if (
             ! $actor->isConfirmed()
             || ! $actorRole->atLeast(UserSystemRoleEnum::ADMIN)
-            || $actor->is($target)
+            || $actor->id === $target->id
             || $actorRole->numericValue() <= $targetRole->numericValue()
         ) {
             throw new AuthorizationException('Недостаточно прав для изменения операционных прав пользователя.');
