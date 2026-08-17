@@ -2,7 +2,9 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Identity\Application\Services\UserDuplicateSelfServiceProofStore;
 use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserDuplicate;
 use Illuminate\Support\Facades\DB;
@@ -10,6 +12,10 @@ use InvalidArgumentException;
 
 final class ResolveUserDuplicateHandler
 {
+    public function __construct(
+        private readonly UserDuplicateSelfServiceProofStore $selfServiceProofs,
+    ) {}
+
     public function reject(UserDuplicate $candidate, ?User $resolvedBy, ?string $reason = null): void
     {
         DB::transaction(function () use ($candidate, $resolvedBy, $reason): void {
@@ -37,12 +43,27 @@ final class ResolveUserDuplicateHandler
         int $canonicalUserId,
         ?User $resolvedBy,
         bool $selfService = false,
+        ?string $selfServiceSessionId = null,
     ): User {
-        return DB::transaction(function () use ($candidate, $canonicalUserId, $resolvedBy, $selfService): User {
+        return DB::transaction(function () use (
+            $candidate,
+            $canonicalUserId,
+            $resolvedBy,
+            $selfService,
+            $selfServiceSessionId,
+        ): User {
             $candidate = UserDuplicate::query()
                 ->whereKey($candidate->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            if ($candidate->status !== UserDuplicateStatusEnum::PENDING) {
+                throw new InvalidArgumentException('Объединить можно только активного кандидата на дублирование.');
+            }
+
+            if (! $candidate->evidence()->where('is_active', true)->exists()) {
+                throw new InvalidArgumentException('У пары больше нет актуальных подтверждений дублирования.');
+            }
 
             $pairIds = [(int) $candidate->user_id, (int) $candidate->duplicate_user_id];
 
@@ -70,18 +91,23 @@ final class ResolveUserDuplicateHandler
             $sourceCanonical = $other->canonical();
 
             if ($canonical->id === $sourceCanonical->id) {
-                $candidate->forceFill([
-                    'status' => UserDuplicateStatusEnum::MERGED,
-                    'resolved_evidence_hash' => $candidate->evidence_hash,
-                    'resolved_by' => $resolvedBy?->id,
-                    'resolved_at' => now(),
-                ])->save();
-
-                return $canonical;
+                throw new InvalidArgumentException('Эти аккаунты уже относятся к одной identity.');
             }
 
-            if ($selfService && ! $this->canSelfResolve($candidate, $resolvedBy)) {
-                throw new InvalidArgumentException('Недостаточно подтверждений для самостоятельного объединения аккаунтов.');
+            $this->assertRoleMergeAllowed($canonical, $sourceCanonical, $selfService);
+
+            if ($selfService) {
+                if (! $this->canSelfResolve($candidate, $resolvedBy)) {
+                    throw new InvalidArgumentException('Недостаточно подтверждений для самостоятельного объединения аккаунтов.');
+                }
+
+                if (
+                    $resolvedBy === null
+                    || $selfServiceSessionId === null
+                    || ! $this->selfServiceProofs->consume($candidate, $resolvedBy, $selfServiceSessionId)
+                ) {
+                    throw new InvalidArgumentException('Подтверждение Telegram устарело. Повторно подтвердите Telegram перед объединением аккаунтов.');
+                }
             }
 
             User::query()
@@ -132,5 +158,27 @@ final class ResolveUserDuplicateHandler
                 return (int) ($evidence->metadata['self_service_user_id'] ?? 0) === $resolvedCanonicalId
                     && ($evidence->metadata['source'] ?? null) === 'signed_telegram_auth';
             });
+    }
+
+    private function assertRoleMergeAllowed(User $canonical, User $source, bool $selfService): void
+    {
+        $protectedRoles = [UserSystemRoleEnum::SUPERADMIN, UserSystemRoleEnum::SYSTEM];
+
+        if (
+            in_array($canonical->system_role, $protectedRoles, true)
+            || in_array($source->system_role, $protectedRoles, true)
+        ) {
+            throw new InvalidArgumentException('Аккаунты суперадминистратора и системного пользователя нельзя объединять через механизм дублей.');
+        }
+
+        if (
+            $selfService
+            && (
+                $canonical->system_role !== UserSystemRoleEnum::USER
+                || $source->system_role !== UserSystemRoleEnum::USER
+            )
+        ) {
+            throw new InvalidArgumentException('Аккаунт с расширенными системными правами может объединить только суперадминистратор после ручной проверки.');
+        }
     }
 }
