@@ -9,7 +9,6 @@ use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Cache;
 
 final class ProcessTelegramReactionJob implements ShouldQueue
 {
@@ -61,33 +60,17 @@ final class ProcessTelegramReactionJob implements ShouldQueue
             'emojis' => $classifier->recognizedEmojis($newReactions),
         ];
 
-        $lockKey = sprintf(
-            'telegram:content-reaction:%s:%s:%s',
-            (string) $chatId,
-            (string) $messageId,
-            (string) $telegramUserId,
-        );
-
-        Cache::lock($lockKey, 15)->block(3, function () use (
-            $reactions,
-            $publication,
-            $telegramUserId,
+        $reactions->setForTelegramUser(
+            ReactionSubjectTypeEnum::CONTENT,
+            (int) $publication->content_item_id,
+            (int) $telegramUserId,
             $value,
-            $occurredAt,
+            CarbonImmutable::createFromTimestamp(
+                (int) $occurredAt,
+                (string) config('app.timezone', 'UTC'),
+            ),
+            $this->updateId,
             $metadata,
-        ): void {
-            $reactions->setForTelegramUser(
-                ReactionSubjectTypeEnum::CONTENT,
-                (int) $publication->content_item_id,
-                (int) $telegramUserId,
-                $value,
-                CarbonImmutable::createFromTimestamp(
-                    (int) $occurredAt,
-                    (string) config('app.timezone', 'UTC'),
-                ),
-                $this->updateId,
-                $metadata,
-            );
-        });
+        );
     }
 }
