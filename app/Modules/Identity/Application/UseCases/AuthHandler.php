@@ -65,7 +65,7 @@ class AuthHandler
             event(new UserFirstLogin((int) $canonicalUser->id));
         }
 
-        if ($matchingCredentials->contains(fn (User $user): bool => $user->is_temporary_password)) {
+        if ($matchingCredentials->contains(fn (User $user): bool => (bool) $user->is_temporary_password)) {
             return new LoginResponseDTO(
                 status: 'warning',
                 message: 'Вы вошли с временным паролем. Пожалуйста, смените пароль в настройках профиля.',
