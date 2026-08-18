@@ -18,6 +18,7 @@ return new class extends Migration
             $table->smallInteger('value');
             $table->string('source', 32);
             $table->timestamp('source_occurred_at')->nullable();
+            $table->unsignedBigInteger('source_sequence')->nullable();
             $table->json('source_metadata')->nullable();
             $table->timestamps();
 
