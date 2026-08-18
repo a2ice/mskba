@@ -25,6 +25,7 @@ final class TelegramReactionIntegrationTest extends TestCase
 
         config([
             'telegram.bot_token' => '123456:test-token',
+            'telegram.main_chat_id' => '-1002136558099',
             'telegram.webhook_secret' => 'reaction-webhook-secret',
             'telegram.api_ip' => null,
             'telegram.http_proxy' => null,
