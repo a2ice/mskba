@@ -364,8 +364,9 @@ final class UserCanonicalizationTest extends TestCase
         ]);
         $alias->forceFill(['canonical_user_id' => $blocked->id])->save();
 
-        $this->actingAs($alias)->get('/');
+        $response = $this->actingAs($alias)->get(route('account'));
 
+        $response->assertForbidden();
         $this->assertGuest();
     }
 

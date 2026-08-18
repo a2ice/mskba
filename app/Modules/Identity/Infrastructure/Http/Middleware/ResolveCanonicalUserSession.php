@@ -31,7 +31,11 @@ final class ResolveCanonicalUserSession
             $request->session()->regenerateToken();
             $request->setUserResolver(fn () => null);
 
-            return $next($request);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Аккаунт заблокирован.'], 403);
+            }
+
+            abort(403, 'Аккаунт заблокирован.');
         }
 
         if ($canonical->id !== $user->id) {

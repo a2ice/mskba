@@ -36,6 +36,22 @@ class VenueMembershipAccessTest extends TestCase
         $this->assertTrue($access->canEditSchedule($creator, $venue));
     }
 
+    public function test_canonical_user_keeps_bootstrap_access_to_venue_created_by_alias(): void
+    {
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create(['canonical_user_id' => $canonical->id]);
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($alias),
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $access = app(VenueAccessResolver::class);
+
+        $this->assertTrue($access->canView($canonical, $venue));
+        $this->assertTrue($access->canEdit($canonical, $venue));
+        $this->assertContains($venue->id, $access->bootstrapOwnedVenueIdsFor($canonical));
+    }
+
     public function test_creator_bootstrap_access_stops_when_active_owner_membership_exists(): void
     {
         $creator = User::factory()->create();

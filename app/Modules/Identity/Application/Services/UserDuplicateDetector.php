@@ -83,7 +83,7 @@ final class UserDuplicateDetector
      * whenever the aggregate hash of current evidence differs from the hash
      * that was reviewed previously.
      *
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function observeEvidence(
         User $first,
@@ -103,19 +103,19 @@ final class UserDuplicateDetector
         $valueHash = $this->evidenceValueHash($type, $normalizedValue);
 
         return DB::transaction(function () use ($userId, $duplicateUserId, $type, $valueHash, $metadata): UserDuplicate {
+            UserDuplicate::query()->insertOrIgnore([
+                'user_id' => $userId,
+                'duplicate_user_id' => $duplicateUserId,
+                'status' => UserDuplicateStatusEnum::PENDING->value,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
             $candidate = UserDuplicate::query()
                 ->where('user_id', $userId)
                 ->where('duplicate_user_id', $duplicateUserId)
                 ->lockForUpdate()
-                ->first();
-
-            if ($candidate === null) {
-                $candidate = UserDuplicate::query()->create([
-                    'user_id' => $userId,
-                    'duplicate_user_id' => $duplicateUserId,
-                    'status' => UserDuplicateStatusEnum::PENDING,
-                ]);
-            }
+                ->firstOrFail();
 
             $now = now();
             $evidence = UserDuplicateEvidence::query()->firstOrNew([
@@ -353,7 +353,11 @@ final class UserDuplicateDetector
 
     private function evidenceValueHash(UserDuplicateEvidenceTypeEnum $type, string $value): string
     {
-        return hash('sha256', $type->value.'|'.$this->normalizeEvidenceValue($value));
+        return hash_hmac(
+            'sha256',
+            $type->value.'|'.$this->normalizeEvidenceValue($value),
+            (string) config('app.key'),
+        );
     }
 
     private function scanEvidenceKey(

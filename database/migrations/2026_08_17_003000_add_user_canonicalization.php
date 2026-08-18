@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -52,6 +53,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::table('users')->whereNotNull('canonical_user_id')->exists()) {
+            throw new RuntimeException('Нельзя откатить canonicalization после объединения аккаунтов без отдельной процедуры восстановления данных.');
+        }
+
         Schema::dropIfExists('user_duplicate_evidence');
         Schema::dropIfExists('user_duplicates');
 

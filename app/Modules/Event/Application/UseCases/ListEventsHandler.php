@@ -34,6 +34,7 @@ final class ListEventsHandler
         $startsTo = $dateTo === null
             ? null
             : CarbonImmutable::parse($dateTo, $timezone)->endOfDay()->utc();
+        $identityIds = $actor?->user?->canonical()->identityIds() ?? [];
 
         return Event::query()
             ->with([
@@ -56,7 +57,7 @@ final class ListEventsHandler
                 fn ($query) => $query->where('ends_at', '<=', now())->orderByDesc('ends_at'),
                 fn ($query) => $query->where('ends_at', '>', now())->orderBy('starts_at'),
             )
-            ->where(function ($query) use ($actor, $period): void {
+            ->where(function ($query) use ($identityIds, $period): void {
                 $query->where(function ($public) use ($period): void {
                     $public
                         ->whereIn('status', $period === 'past'
@@ -68,9 +69,9 @@ final class ListEventsHandler
                         ->where('visibility', EventVisibilityEnum::PUBLIC->value);
                 });
 
-                if ($actor?->user_id !== null) {
-                    $query->orWhere(function ($own) use ($actor): void {
-                        $own->whereHas('organizerActor', fn ($organizer) => $organizer->where('user_id', $actor->user_id));
+                if ($identityIds !== []) {
+                    $query->orWhere(function ($own) use ($identityIds): void {
+                        $own->whereHas('organizerActor', fn ($organizer) => $organizer->whereIn('user_id', $identityIds));
                     });
                 }
             })

@@ -174,14 +174,18 @@ final class TournamentFormationService
     private function pool(Tournament $tournament): Collection
     {
         $ids = $tournament->admissions()->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)->whereNotNull('user_id')->pluck('user_id');
+        $canonicalIds = User::query()->whereKey($ids)->get()
+            ->map(fn (User $user): int => (int) $user->canonical()->id)
+            ->unique()
+            ->values();
 
-        return User::query()->whereKey($ids)->with(['profile', 'playerProfile.positions', 'playerProfile.selfAssessment', 'playerObjectiveAssessment'])->get();
+        return User::query()->whereKey($canonicalIds)->with(['profile', 'playerProfile.positions', 'playerProfile.selfAssessment', 'playerObjectiveAssessment'])->get();
     }
 
     private function fingerprint(Tournament $tournament): string
     {
-        $values = $tournament->admissions()->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)->whereNotNull('user_id')->orderBy('id')->get(['id', 'user_id', 'updated_at'])
-            ->map(fn ($item): string => $item->id.':'.$item->user_id.':'.$item->updated_at?->format('U.u'))->join('|');
+        $values = $tournament->admissions()->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)->whereNotNull('user_id')->with('user')->orderBy('id')->get()
+            ->map(fn ($item): string => $item->id.':'.$item->user?->canonical()->id.':'.$item->updated_at?->format('U.u'))->join('|');
 
         return hash('sha256', self::FORMULA_VERSION.'|'.$tournament->id.'|'.$values);
     }

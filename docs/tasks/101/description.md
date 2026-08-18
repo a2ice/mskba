@@ -74,3 +74,13 @@ Canonical merge является security-sensitive операцией: посл
 ## Безопасность и обратимость данных
 
 Первый этап не переносит внешние ключи старых сущностей и не удаляет alias accounts. Canonicalization фиксируется только после явного resolution. Исторические записи остаются обратимыми и трассируемыми.
+
+После первого реального merge стандартный rollback миграции намеренно запрещён: удаление `canonical_user_id` без отдельной процедуры восстановления разрушило бы identity graph.
+
+## Конкурентность и integration hardening
+
+- merge, смена пароля и изменение статуса блокируют всю identity group в одинаковом порядке `users.id`, чтобы не создавать инверсию блокировок и вероятный deadlock;
+- после получения блокировок use-case повторно проверяет identity roots и отменяет операцию, если параллельный merge уже изменил graph;
+- candidate pair создаётся через атомарный `insertOrIgnore`, поэтому два одновременных detector run не падают на unique constraint;
+- evidence values хешируются keyed HMAC с application key, что не позволяет подбирать телефоны и email по готовой rainbow table;
+- identity-aware reads добавлены в текущие сценарии турниров, мероприятий, команд и площадок. Исторические physical `user_id` при этом не переписываются.

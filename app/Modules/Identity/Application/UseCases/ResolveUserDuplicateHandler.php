@@ -77,21 +77,33 @@ final class ResolveUserDuplicateHandler
                 throw new InvalidArgumentException('Канонический пользователь должен входить в пару кандидата.');
             }
 
-            $users = User::withTrashed()
-                ->whereIn('id', $pairIds)
+            $pairUsers = User::withTrashed()->whereIn('id', $pairIds)->get();
+            if ($pairUsers->count() !== 2) {
+                throw new InvalidArgumentException('Один из пользователей кандидата не найден.');
+            }
+            $identityRootIds = $pairUsers
+                ->map(fn (User $user): int => (int) $user->canonical()->id)
+                ->unique()
+                ->values();
+            $identityUsers = User::withTrashed()
+                ->where(function ($query) use ($identityRootIds): void {
+                    $query
+                        ->whereIn('id', $identityRootIds)
+                        ->orWhereIn('canonical_user_id', $identityRootIds);
+                })
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get()
                 ->keyBy('id');
 
-            if ($users->count() !== 2) {
-                throw new InvalidArgumentException('Один из пользователей кандидата не найден.');
-            }
-
             /** @var User $requestedCanonical */
-            $requestedCanonical = $users->get($canonicalUserId);
+            $requestedCanonical = $identityUsers->get($canonicalUserId);
             /** @var User $other */
-            $other = $users->get($pairIds[0] === $canonicalUserId ? $pairIds[1] : $pairIds[0]);
+            $other = $identityUsers->get($pairIds[0] === $canonicalUserId ? $pairIds[1] : $pairIds[0]);
+
+            if ($requestedCanonical === null || $other === null) {
+                throw new InvalidArgumentException('Пара кандидата изменилась. Запустите проверку дублей повторно.');
+            }
 
             if ($requestedCanonical->trashed() || $other->trashed()) {
                 throw new InvalidArgumentException('Удалённые аккаунты нельзя объединять через механизм дублей.');
@@ -99,6 +111,11 @@ final class ResolveUserDuplicateHandler
 
             $canonical = $requestedCanonical->canonical();
             $sourceCanonical = $other->canonical();
+
+            $currentRootIds = collect([$canonical->id, $sourceCanonical->id])->sort()->values();
+            if ($currentRootIds->all() !== $identityRootIds->sort()->values()->all()) {
+                throw new InvalidArgumentException('Пара кандидата была изменена параллельным объединением. Повторите операцию.');
+            }
 
             if ($canonical->id === $sourceCanonical->id) {
                 throw new InvalidArgumentException('Эти аккаунты уже относятся к одной identity.');

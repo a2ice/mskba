@@ -43,6 +43,7 @@ use App\Modules\Event\Presentation\Http\Requests\UpdateEventRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultPhotoRequest;
 use App\Modules\Event\Presentation\Http\Requests\UpdateEventResultRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
@@ -236,9 +237,10 @@ final class EventController extends Controller
             return redirect()->route('events.games.show', [$parent->routeIdentifier(), $legacyRoute->game_id], 301);
         }
         $item = $events->handle($event, $actor);
-        $currentParticipant = $request->user() === null
-            ? null
-            : $item->participants->firstWhere('user_id', $request->user()->id);
+        $identityIds = $request->user()?->canonical()->identityIds() ?? [];
+        $currentParticipant = $item->participants->first(
+            fn (EventParticipant $participant): bool => in_array((int) $participant->user_id, $identityIds, true),
+        );
         $tournamentMatch = $item->primaryGame?->tournamentMatch;
         $tournamentCandidates = $tournamentMatch === null
             ? collect()
@@ -382,9 +384,10 @@ final class EventController extends Controller
         }
 
         if ($request->expectsJson()) {
+            $identityIds = User::query()->findOrFail((int) $validated['user_id'])->canonical()->identityIds();
             $participant = $managedEvent->participants()
                 ->with(['user.profile', 'statusChangedByActor.user.profile'])
-                ->where('user_id', (int) $validated['user_id'])
+                ->whereIn('user_id', $identityIds)
                 ->firstOrFail();
 
             return response()->json([
@@ -721,11 +724,12 @@ final class EventController extends Controller
 
     private function managedParticipantPayload(Event $event, EventParticipant $participant): array
     {
-        $profile = $participant->user->profile;
+        $participantUser = $participant->user->canonical();
+        $profile = $participantUser->profile;
         $name = trim(implode(' ', array_filter([$profile?->first_name, $profile?->last_name])))
-            ?: $participant->user->username
-            ?: 'Пользователь #'.$participant->user_id;
-        $changer = $participant->statusChangedByActor?->user;
+            ?: $participantUser->username
+            ?: 'Пользователь #'.$participantUser->id;
+        $changer = $participant->statusChangedByActor?->user?->canonical();
         $changerProfile = $changer?->profile;
         $changerName = $changer === null ? null : (
             trim(implode(' ', array_filter([$changerProfile?->first_name, $changerProfile?->last_name])))
@@ -733,13 +737,13 @@ final class EventController extends Controller
             ?: 'Пользователь #'.$changer->id
         );
         $isOrganizer = $changer !== null
-            && $event->organizerActor()->where('user_id', $changer->id)->exists();
+            && $event->organizerActor()->whereIn('user_id', $changer->identityIds())->exists();
 
         return [
             'id' => $participant->id,
-            'user_id' => $participant->user_id,
+            'user_id' => $participantUser->id,
             'name' => $name,
-            'username' => $participant->user->username,
+            'username' => $participantUser->username,
             'avatar_url' => $profile?->avatarUrl(),
             'initials' => mb_strtoupper(mb_substr($name, 0, 2)),
             'status' => $participant->status->value,

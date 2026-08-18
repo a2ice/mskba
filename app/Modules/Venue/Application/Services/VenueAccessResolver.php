@@ -100,10 +100,12 @@ final class VenueAccessResolver
     /** @return array<int> */
     public function actorOwnedVenueIdsFor(?Actor $actor): array
     {
-        return $actor?->user_id === null
+        $user = $actor?->user?->canonical();
+
+        return $user === null
             ? []
             : Venue::query()
-                ->whereHas('creatorActor', fn (Builder $query) => $query->where('user_id', $actor->user_id))
+                ->whereHas('creatorActor', fn (Builder $query) => $query->whereIn('user_id', $user->identityIds()))
                 ->whereNotIn('id', $this->memberships->activeOwnerVenueIds())
                 ->pluck('id')
                 ->map(fn (mixed $id): int => (int) $id)
@@ -125,18 +127,19 @@ final class VenueAccessResolver
     private function isBootstrapCreator(?User $user, Venue $venue): bool
     {
         return $user !== null
-            && $venue->creatorActor?->user_id === $user->id
+            && in_array((int) $venue->creatorActor?->user_id, $user->canonical()->identityIds(), true)
             && ! $this->memberships->hasActiveOwner($venue);
     }
 
     private function isActorCreator(?Actor $actor, Venue $venue): bool
     {
-        if ($actor?->user_id === null || $this->memberships->hasActiveOwner($venue)) {
+        $user = $actor?->user?->canonical();
+        if ($user === null || $this->memberships->hasActiveOwner($venue)) {
             return false;
         }
 
         $creator = $venue->creatorActor;
 
-        return $creator?->user_id === $actor->user_id;
+        return in_array((int) $creator?->user_id, $user->identityIds(), true);
     }
 }

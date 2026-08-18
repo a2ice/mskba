@@ -20,7 +20,7 @@ final class LinkTelegramIdentityHandler
     ) {}
 
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array{status: string, telegram_account: ?TelegramAccount, duplicate: ?UserDuplicate}
      */
     public function handle(User $currentUser, array $payload): array

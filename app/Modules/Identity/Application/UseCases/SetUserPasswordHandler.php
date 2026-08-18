@@ -16,11 +16,7 @@ final class SetUserPasswordHandler
         $password = PasswordVO::fromString($newPassword)->value;
 
         DB::transaction(function () use ($user, $currentPassword, $password): void {
-            $requested = User::query()
-                ->whereKey($user->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
-
+            $requested = User::query()->whereKey($user->getKey())->firstOrFail();
             $canonicalId = (int) ($requested->canonical_user_id ?? $requested->id);
             $identityUsers = User::query()
                 ->where(function ($query) use ($canonicalId): void {
@@ -31,6 +27,12 @@ final class SetUserPasswordHandler
                 ->orderBy('id')
                 ->lockForUpdate()
                 ->get();
+
+            if ((int) $requested->refresh()->canonical()->id !== $canonicalId) {
+                throw ValidationException::withMessages([
+                    'current_password' => 'Аккаунты были объединены параллельно. Повторите смену пароля.',
+                ]);
+            }
 
             /** @var User|null $canonical */
             $canonical = $identityUsers->firstWhere('id', $canonicalId);

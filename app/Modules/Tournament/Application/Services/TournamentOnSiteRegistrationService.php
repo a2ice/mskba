@@ -88,10 +88,11 @@ final class TournamentOnSiteRegistrationService
             if ($roles->isEmpty()) {
                 throw new InvalidArgumentException('Выберите хотя бы одну роль для участия в турнире.');
             }
-            if ($locked->admissions()->where('user_id', $user->id)->whereIn('status', ['pending', 'accepted'])->exists()) {
+            $identityIds = $user->canonical()->identityIds();
+            if ($locked->admissions()->whereIn('user_id', $identityIds)->whereIn('status', ['pending', 'accepted'])->exists()) {
                 throw new InvalidArgumentException('У вас уже есть активная заявка на этот турнир.');
             }
-            if ($locked->admissions()->where('user_id', $user->id)->whereNotNull('blocked_at')->exists()) {
+            if ($locked->admissions()->whereIn('user_id', $identityIds)->whereNotNull('blocked_at')->exists()) {
                 throw new InvalidArgumentException('Повторная регистрация для вашего аккаунта заблокирована. Обратитесь к организатору турнира.');
             }
             $admission = $this->createAdmission($locked, $user, $actor, $roles);
@@ -118,14 +119,15 @@ final class TournamentOnSiteRegistrationService
             if ($needsTeam && $lockedEntry === null) {
                 throw new InvalidArgumentException('Выберите команду для нового участника.');
             }
-            if ($lockedEntry !== null && $lockedEntry->members()->where('user_id', $lockedAdmission->user_id)->exists()) {
+            $admissionUser = $lockedAdmission->user()->firstOrFail()->canonical();
+            if ($lockedEntry !== null && $lockedEntry->members()->whereIn('user_id', $admissionUser->identityIds())->exists()) {
                 throw new InvalidArgumentException('Участник уже добавлен в эту команду.');
             }
             $lockedAdmission->forceFill(['status' => TournamentAdmissionStatusEnum::ACCEPTED, 'responded_by_actor_id' => $actor->id, 'responded_at' => now()])->save();
             if ($lockedEntry !== null && $isPlayer) {
                 $position = ((int) $lockedEntry->members()->max('position')) + 1;
-                $lockedEntry->members()->create(['user_id' => $lockedAdmission->user_id, 'position' => $position]);
-                $this->addToFutureGames($lockedTournament, $lockedEntry, (int) $lockedAdmission->user_id);
+                $lockedEntry->members()->create(['user_id' => $admissionUser->id, 'position' => $position]);
+                $this->addToFutureGames($lockedTournament, $lockedEntry, (int) $admissionUser->id);
             }
         });
 

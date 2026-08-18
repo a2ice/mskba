@@ -49,7 +49,7 @@ final class TeamMemberSportsService
                 ->firstOrFail();
 
             if ($lockedMembership->access_level === TeamMembershipAccessLevelEnum::OWNER->value
-                && $lockedMembership->user_id !== $actor->user_id) {
+                && ! in_array((int) $lockedMembership->user_id, $actor->user->identityIds(), true)) {
                 throw new InvalidArgumentException('Спортивные роли владельца может менять только сам владелец.');
             }
 

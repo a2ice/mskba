@@ -127,8 +127,12 @@
                                         </form>
                                     @endif
 
-                                    <form method="POST" action="{{ route('admin.users.duplicates.reject', $duplicate) }}" style="margin-top:.5rem">
+                                    <form method="POST" action="{{ route('admin.users.duplicates.reject', $duplicate) }}" style="display:grid;gap:.5rem;margin-top:.5rem">
                                         @csrf
+                                        <label>
+                                            Причина отклонения (необязательно)
+                                            <textarea name="reason" rows="2" maxlength="1000"></textarea>
+                                        </label>
                                         <button class="btn btn--secondary btn--sm" type="submit">Не дубли</button>
                                     </form>
                                 @else

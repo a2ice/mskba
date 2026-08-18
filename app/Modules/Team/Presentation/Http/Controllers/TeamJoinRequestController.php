@@ -142,7 +142,7 @@ final class TeamJoinRequestController extends Controller
         abort_if($entry->status !== TeamJoinRequestStatusEnum::PENDING, 422, 'Эта заявка уже обработана.');
 
         if ($action === 'accept') {
-            DB::transaction(function () use ($item, $entry, $actor, $rosters, $reviewReason, $reviewedByUserId): void {
+            DB::transaction(function () use ($item, $entry, $rosters, $reviewReason, $reviewedByUserId): void {
                 $lockedEntry = TeamJoinRequest::query()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
                 abort_if($lockedEntry->status !== TeamJoinRequestStatusEnum::PENDING, 422, 'Эта заявка уже обработана.');
 

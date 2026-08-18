@@ -77,12 +77,12 @@ final class TeamSportsServiceProvider extends ServiceProvider
 
             $actor = app(CurrentActorResolver::class)->resolveForRequest(request());
             $access = app(TeamManagementAccess::class);
-            $userId = $actor?->user_id;
-            $currentJoinRequest = $userId === null
+            $identityIds = $actor?->user?->canonical()->identityIds() ?? [];
+            $currentJoinRequest = $identityIds === []
                 ? null
-                : $team->joinRequests()->where('user_id', $userId)->first();
-            $isActiveMember = $userId !== null && $team->memberships()
-                ->where('user_id', $userId)
+                : $team->joinRequests()->whereIn('user_id', $identityIds)->latest('id')->first();
+            $isActiveMember = $identityIds !== [] && $team->memberships()
+                ->whereIn('user_id', $identityIds)
                 ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
                 ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
                 ->exists();
