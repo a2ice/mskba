@@ -49,6 +49,7 @@ jobs:
           php -l app/Modules/Telegram/Presentation/Http/Controllers/TelegramWebhookController.php
           php -l app/Modules/Telegram/Infrastructure/Services/TelegramUpdatesPoller.php
           php -l app/Console/Commands/ConfigureTelegramUpdatesCommand.php
+          php -l database/migrations/2026_08_18_090000_create_reactions_table.php
 
       - name: Validate routes
         run: |
@@ -66,3 +67,7 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Run full suite (diagnostic baseline)
+        continue-on-error: true
+        run: php artisan test
