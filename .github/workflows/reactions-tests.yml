@@ -1,0 +1,68 @@
+name: Reactions tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, dom, fileinfo, sqlite3, pdo_sqlite, gd
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Prepare application environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Validate reaction PHP syntax
+        run: |
+          find app/Modules/Reaction -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -l app/Modules/Telegram/Application/Services/TelegramReactionClassifier.php
+          php -l app/Modules/Telegram/Infrastructure/Jobs/ProcessTelegramReactionJob.php
+          php -l app/Modules/Telegram/Presentation/Http/Controllers/TelegramWebhookController.php
+          php -l app/Modules/Telegram/Infrastructure/Services/TelegramUpdatesPoller.php
+          php -l app/Console/Commands/ConfigureTelegramUpdatesCommand.php
+
+      - name: Validate routes
+        run: |
+          php artisan route:clear
+          php artisan route:cache
+          php artisan route:clear
+
+      - name: Run reaction regression tests
+        run: |
+          php artisan test \
+            tests/Feature/Reaction/ReactionFeatureTest.php \
+            tests/Feature/Reaction/TelegramReactionIntegrationTest.php \
+            tests/Feature/Content/ContentWorkflowTest.php \
+            tests/Feature/Telegram/TelegramEventIntegrationTest.php
+
+      - name: Build frontend
+        run: npm run build
