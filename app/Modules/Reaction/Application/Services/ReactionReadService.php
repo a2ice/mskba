@@ -77,7 +77,9 @@ final readonly class ReactionReadService
             foreach ($viewerReactions as $reaction) {
                 $subjectId = (int) $reaction->subject_id;
                 if (isset($data[$subjectId])) {
-                    $data[$subjectId]['viewer'] = $reaction->value;
+                    $data[$subjectId]['viewer'] = $reaction->value === ReactionValueEnum::NONE
+                        ? null
+                        : $reaction->value;
                 }
             }
         }
