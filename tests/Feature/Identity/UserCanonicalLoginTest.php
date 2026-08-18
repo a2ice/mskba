@@ -4,6 +4,7 @@ namespace Tests\Feature\Identity;
 
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Identity\Application\UseCases\SetUserPasswordHandler;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,5 +81,41 @@ final class UserCanonicalLoginTest extends TestCase
         ])->assertSessionHasErrors('login');
 
         $this->assertGuest();
+    }
+
+    public function test_password_rotation_invalidates_old_alias_password_and_keeps_alias_login_identifier(): void
+    {
+        $canonical = User::factory()->create([
+            'username' => 'canonical_password_user',
+            'password' => 'canonical-password',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $alias = User::factory()->create([
+            'username' => 'alias_password_user',
+            'password' => 'alias-password',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $alias->forceFill(['canonical_user_id' => $canonical->id])->save();
+
+        app(SetUserPasswordHandler::class)->handle(
+            $canonical,
+            'alias-password',
+            'rotated-password',
+        );
+
+        $this->assertNull($alias->fresh()->password);
+
+        $this->post(route('auth.login'), [
+            'login' => 'alias_password_user',
+            'password' => 'alias-password',
+        ])->assertSessionHasErrors('login');
+        $this->assertGuest();
+
+        $this->post(route('auth.login'), [
+            'login' => 'alias_password_user',
+            'password' => 'rotated-password',
+        ])->assertRedirect('/');
+
+        $this->assertAuthenticatedAs($canonical->fresh());
     }
 }
