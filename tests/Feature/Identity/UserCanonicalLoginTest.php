@@ -100,7 +100,7 @@ final class UserCanonicalLoginTest extends TestCase
         app(SetUserPasswordHandler::class)->handle(
             $canonical,
             'alias-password',
-            'rotated-password',
+            'RotatedPassword1',
         );
 
         $this->assertNull($alias->fresh()->password);
@@ -113,7 +113,7 @@ final class UserCanonicalLoginTest extends TestCase
 
         $this->post(route('auth.login'), [
             'login' => 'alias_password_user',
-            'password' => 'rotated-password',
+            'password' => 'RotatedPassword1',
         ])->assertRedirect('/');
 
         $this->assertAuthenticatedAs($canonical->fresh());
