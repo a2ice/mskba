@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserDuplicate;
+use App\Modules\Reaction\Application\Services\CanonicalReactionConsolidator;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -15,6 +16,7 @@ final class ResolveUserDuplicateHandler
 {
     public function __construct(
         private readonly UserDuplicateSelfServiceProofStore $selfServiceProofs,
+        private readonly CanonicalReactionConsolidator $reactionConsolidator,
     ) {}
 
     public function reject(UserDuplicate $candidate, ?User $resolvedBy, ?string $reason = null): void
@@ -149,6 +151,8 @@ final class ResolveUserDuplicateHandler
             $canonical->forceFill([
                 'canonical_user_id' => null,
             ])->save();
+
+            $this->reactionConsolidator->consolidate($canonical);
 
             $candidate->forceFill([
                 'status' => UserDuplicateStatusEnum::MERGED,

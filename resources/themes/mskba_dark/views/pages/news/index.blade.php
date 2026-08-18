@@ -24,7 +24,10 @@
     @else
         <div class="news-grid">
             @foreach($contentItems as $contentItem)
-                @php $cover = $contentItem->cover->first(); @endphp
+                @php
+                    $cover = $contentItem->cover->first();
+                    $reactionSummary = $reactionSummaries[$contentItem->id];
+                @endphp
                 <article class="news-card">
                     <a class="news-card__media" href="{{ route('news.show', $contentItem->alias) }}" @if(! $cover) aria-label="{{ $contentItem->title }}" @endif>
                         @if($cover)
@@ -40,7 +43,15 @@
                         </div>
                         <h2 class="news-card__title"><a href="{{ route('news.show', $contentItem->alias) }}">{{ $contentItem->title }}</a></h2>
                         <p class="news-card__description">{{ $contentItem->short_description }}</p>
-                        <a class="btn btn--secondary btn--sm" href="{{ route('news.show', $contentItem->alias) }}">Подробнее</a>
+                        <div class="news-card__footer">
+                            <a class="btn btn--secondary btn--sm" href="{{ route('news.show', $contentItem->alias) }}">Подробнее</a>
+                            @include('theme::partials.reaction-vote', [
+                                'summary' => $reactionSummary,
+                                'subjectType' => 'content',
+                                'subjectId' => $contentItem->id,
+                                'compact' => true,
+                            ])
+                        </div>
                     </div>
                 </article>
             @endforeach

@@ -48,8 +48,16 @@
 
         <div class="news-article__content">{!! $contentHtml !!}</div>
 
-        @if($contentItem->link_url)
-            <a class="btn btn--primary news-article__action" href="{{ $contentItem->destinationUrl() }}">Перейти</a>
-        @endif
+        <div class="news-article__footer">
+            @include('theme::partials.reaction-vote', [
+                'summary' => $reactionSummary,
+                'subjectType' => 'content',
+                'subjectId' => $contentItem->id,
+            ])
+
+            @if($contentItem->link_url)
+                <a class="btn btn--primary news-article__action" href="{{ $contentItem->destinationUrl() }}">Перейти</a>
+            @endif
+        </div>
     </article>
 @endsection
