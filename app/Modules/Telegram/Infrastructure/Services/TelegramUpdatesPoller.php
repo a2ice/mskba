@@ -4,6 +4,7 @@ namespace App\Modules\Telegram\Infrastructure\Services;
 
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramMessageJob;
+use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionJob;
 use Illuminate\Support\Facades\Cache;
 
 final class TelegramUpdatesPoller
@@ -21,7 +22,7 @@ final class TelegramUpdatesPoller
         $response = $this->telegram->call('getUpdates', array_filter([
             'offset' => is_numeric($offset) ? (int) $offset : null,
             'timeout' => $timeout,
-            'allowed_updates' => ['callback_query', 'message'],
+            'allowed_updates' => ['callback_query', 'message', 'message_reaction'],
         ], fn (mixed $value): bool => $value !== null), $timeout + 10);
         $processed = 0;
 
@@ -30,6 +31,7 @@ final class TelegramUpdatesPoller
                 continue;
             }
 
+            $updateId = (int) $update['update_id'];
             $callback = data_get($update, 'callback_query');
 
             if (is_array($callback)) {
@@ -44,7 +46,14 @@ final class TelegramUpdatesPoller
                 $processed++;
             }
 
-            Cache::forever(self::OFFSET_CACHE_KEY, ((int) $update['update_id']) + 1);
+            $reaction = data_get($update, 'message_reaction');
+
+            if (is_array($reaction)) {
+                ProcessTelegramReactionJob::dispatch($reaction, $updateId);
+                $processed++;
+            }
+
+            Cache::forever(self::OFFSET_CACHE_KEY, $updateId + 1);
         }
 
         return $processed;
