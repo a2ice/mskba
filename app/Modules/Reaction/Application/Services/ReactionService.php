@@ -12,6 +12,7 @@ use App\Modules\Reaction\Domain\Enums\ReactionValueEnum;
 use App\Modules\Reaction\Domain\Models\Reaction;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 final readonly class ReactionService
@@ -33,29 +34,49 @@ final readonly class ReactionService
         $actor = $this->actors->forUser($user);
         $sourceOccurredAt = now();
 
-        DB::transaction(function () use ($subjectType, $subjectId, $user, $actor, $value, $source, $sourceOccurredAt, $sourceMetadata): void {
-            $telegramUserId = TelegramAccount::query()
-                ->where('user_id', $user->getKey())
-                ->value('telegram_user_id');
-
-            if (is_numeric($telegramUserId)) {
-                $this->deleteActorReaction(
-                    $subjectType,
-                    $subjectId,
-                    $this->actors->telegramActor((int) $telegramUserId),
-                );
-            }
-
-            $this->persist(
+        $this->withActorLock($subjectType, $subjectId, $actor, function () use (
+            $subjectType,
+            $subjectId,
+            $user,
+            $actor,
+            $value,
+            $source,
+            $sourceOccurredAt,
+            $sourceMetadata,
+        ): void {
+            DB::transaction(function () use (
                 $subjectType,
                 $subjectId,
+                $user,
                 $actor,
                 $value,
                 $source,
                 $sourceOccurredAt,
-                null,
                 $sourceMetadata,
-            );
+            ): void {
+                $telegramUserId = TelegramAccount::query()
+                    ->where('user_id', $user->getKey())
+                    ->value('telegram_user_id');
+
+                if (is_numeric($telegramUserId)) {
+                    $this->deleteActorReaction(
+                        $subjectType,
+                        $subjectId,
+                        $this->actors->telegramActor((int) $telegramUserId),
+                    );
+                }
+
+                $this->persist(
+                    $subjectType,
+                    $subjectId,
+                    $actor,
+                    $value,
+                    $source,
+                    $sourceOccurredAt,
+                    null,
+                    $sourceMetadata,
+                );
+            });
         });
 
         return $this->read->forSubject($subjectType, $subjectId, $user);
@@ -73,25 +94,45 @@ final readonly class ReactionService
     ): ReactionSummary {
         $actor = $this->actors->forTelegramUser($telegramUserId);
 
-        DB::transaction(function () use ($subjectType, $subjectId, $telegramUserId, $actor, $value, $sourceOccurredAt, $sourceSequence, $sourceMetadata): void {
-            if ($actor->type === ReactionActorTypeEnum::USER) {
-                $this->deleteActorReaction(
-                    $subjectType,
-                    $subjectId,
-                    $this->actors->telegramActor($telegramUserId),
-                );
-            }
-
-            $this->persist(
+        $this->withActorLock($subjectType, $subjectId, $actor, function () use (
+            $subjectType,
+            $subjectId,
+            $telegramUserId,
+            $actor,
+            $value,
+            $sourceOccurredAt,
+            $sourceSequence,
+            $sourceMetadata,
+        ): void {
+            DB::transaction(function () use (
                 $subjectType,
                 $subjectId,
+                $telegramUserId,
                 $actor,
                 $value,
-                ReactionSourceEnum::TELEGRAM,
                 $sourceOccurredAt,
                 $sourceSequence,
                 $sourceMetadata,
-            );
+            ): void {
+                if ($actor->type === ReactionActorTypeEnum::USER) {
+                    $this->deleteActorReaction(
+                        $subjectType,
+                        $subjectId,
+                        $this->actors->telegramActor($telegramUserId),
+                    );
+                }
+
+                $this->persist(
+                    $subjectType,
+                    $subjectId,
+                    $actor,
+                    $value,
+                    ReactionSourceEnum::TELEGRAM,
+                    $sourceOccurredAt,
+                    $sourceSequence,
+                    $sourceMetadata,
+                );
+            });
         });
 
         return $this->read->forSubject($subjectType, $subjectId);
@@ -190,6 +231,24 @@ final readonly class ReactionService
         }
 
         return true;
+    }
+
+    /** @param callable(): void $callback */
+    private function withActorLock(
+        ReactionSubjectTypeEnum $subjectType,
+        int $subjectId,
+        ReactionActor $actor,
+        callable $callback,
+    ): void {
+        $key = sprintf(
+            'reaction:%s:%d:%s:%s',
+            $subjectType->value,
+            $subjectId,
+            $actor->type->value,
+            hash('sha256', $actor->id),
+        );
+
+        Cache::lock($key, 10)->block(3, $callback);
     }
 
     private function deleteActorReaction(
