@@ -1,4 +1,4 @@
-# Универсальные реакции: feed + Telegram
+# 097 - Универсальные реакции: feed + Telegram
 
 ## Цель
 
@@ -52,20 +52,15 @@ Webhook и polling явно подписываются на `message_reaction`. 
 
 Если `telegram_user_id` уже связан с `TelegramAccount`, Telegram и web используют actor `user:{user_id}` и физически голосуют одной записью. Если связи ещё нет, используется `telegram:{telegram_user_id}`; при следующем взаимодействии после связывания старый внешний actor для этого subject схлопывается в локального пользователя.
 
-Anonymous aggregate `message_reaction_count` в v1 не используется, потому что он не содержит идентичность голосующего и не позволяет корректно дедуплицировать web/Telegram.
+Anonymous aggregate `message_reaction_count` используется для итоговых счётчиков публикации в Telegram-канале, где персональные updates могут приходить с задержкой или быть недоступны. Такие значения хранятся отдельно от персональных голосов и не определяют реакцию текущего пользователя.
 
 ## Интеграция с task 101
 
 Web и Telegram всегда разрешают связанного пользователя в canonical identity. Если `TelegramAccount` физически остался на alias, он всё равно использует actor канонического пользователя. При объединении identity существующие user/Telegram reactions схлопываются по каждой сущности: сохраняется последнее актуальное действие, поэтому один человек не учитывается несколько раз.
 
-## Текущая проверка
+## Текущий результат
 
-На текущем `main` до merge task 101:
-
-- focused regression: 32 tests passed, 148 assertions;
-- route cache проходит;
-- frontend build проходит;
-- full suite diagnostic: 488 passed, 5 известных legacy failures, не связанных с Reaction (3 Telegram MiniApp assertions, Tournament catalog, Venue raw-address).
+Механизм реакций и task 101 находятся в `main`. Сайт показывает сумму локальных голосов и агрегатов публикаций Telegram, а связанный Telegram-пользователь использует canonical identity и не создаёт второй персональный голос.
 
 ## Проверка перед merge
 
