@@ -81,7 +81,10 @@ final class ProcessTelegramReactionJob implements ShouldQueue
                 (int) $publication->content_item_id,
                 (int) $telegramUserId,
                 $value,
-                CarbonImmutable::createFromTimestampUTC((int) $occurredAt),
+                CarbonImmutable::createFromTimestamp(
+                    (int) $occurredAt,
+                    (string) config('app.timezone', 'UTC'),
+                ),
                 $this->updateId,
                 $metadata,
             );
