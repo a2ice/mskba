@@ -31,6 +31,7 @@ final class UserCanonicalizationTest extends TestCase
         $second = User::factory()->create();
         $detector = app(UserDuplicateDetector::class);
         $resolver = app(ResolveUserDuplicateHandler::class);
+        $superadmin = $this->superadmin();
 
         $candidate = $detector->observeEvidence(
             first: $first,
@@ -40,7 +41,7 @@ final class UserCanonicalizationTest extends TestCase
         );
 
         $this->assertNotNull($candidate);
-        $resolver->reject($candidate, null, 'Не один человек');
+        $resolver->reject($candidate, $superadmin, 'Не один человек');
 
         $candidate = $detector->observeEvidence(
             first: $first,
@@ -117,7 +118,7 @@ final class UserCanonicalizationTest extends TestCase
         $result = app(ResolveUserDuplicateHandler::class)->merge(
             candidate: $candidate,
             canonicalUserId: $canonical->id,
-            resolvedBy: null,
+            resolvedBy: $this->superadmin(),
         );
 
         $this->assertSame($canonical->id, $result->id);
@@ -130,12 +131,40 @@ final class UserCanonicalizationTest extends TestCase
         );
     }
 
+    public function test_regular_user_cannot_resolve_candidate_through_application_use_case(): void
+    {
+        $first = User::factory()->create();
+        $second = User::factory()->create();
+        $regularUser = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::USER,
+        ]);
+        $resolver = app(ResolveUserDuplicateHandler::class);
+        $candidate = app(UserDuplicateDetector::class)->observeEvidence(
+            first: $first,
+            second: $second,
+            type: UserDuplicateEvidenceTypeEnum::MANUAL,
+            normalizedValue: "{$first->id}|{$second->id}",
+        );
+
+        try {
+            $resolver->merge($candidate, $first->id, $regularUser);
+            $this->fail('Regular user must not be able to merge duplicate candidates directly.');
+        } catch (InvalidArgumentException) {
+            $this->assertSame(UserDuplicateStatusEnum::PENDING, $candidate->refresh()->status);
+        }
+
+        $this->expectException(InvalidArgumentException::class);
+        $resolver->reject($candidate->refresh(), $regularUser, 'Unauthorized reject');
+    }
+
     public function test_rejected_candidate_cannot_be_merged(): void
     {
         $first = User::factory()->create();
         $second = User::factory()->create();
         $detector = app(UserDuplicateDetector::class);
         $resolver = app(ResolveUserDuplicateHandler::class);
+        $superadmin = $this->superadmin();
         $candidate = $detector->observeEvidence(
             first: $first,
             second: $second,
@@ -143,10 +172,10 @@ final class UserCanonicalizationTest extends TestCase
             normalizedValue: "{$first->id}|{$second->id}",
         );
 
-        $resolver->reject($candidate, null, 'Не дубли');
+        $resolver->reject($candidate, $superadmin, 'Не дубли');
 
         $this->expectException(InvalidArgumentException::class);
-        $resolver->merge($candidate, $first->id, null);
+        $resolver->merge($candidate, $first->id, $superadmin);
     }
 
     public function test_self_service_merge_requires_fresh_one_time_telegram_proof(): void
@@ -230,16 +259,17 @@ final class UserCanonicalizationTest extends TestCase
             normalizedValue: "{$active->id}|{$blocked->id}",
         );
         $resolver = app(ResolveUserDuplicateHandler::class);
+        $superadmin = $this->superadmin();
 
         try {
-            $resolver->merge($candidate, $active->id, null);
+            $resolver->merge($candidate, $active->id, $superadmin);
             $this->fail('Blocked identity must not be unblocked by choosing another canonical account.');
         } catch (InvalidArgumentException) {
             $this->assertNull($active->refresh()->canonical_user_id);
             $this->assertNull($blocked->refresh()->canonical_user_id);
         }
 
-        $result = $resolver->merge($candidate->refresh(), $blocked->id, null);
+        $result = $resolver->merge($candidate->refresh(), $blocked->id, $superadmin);
 
         $this->assertSame($blocked->id, $result->id);
         $this->assertSame(UserStatusEnum::BLOCKED, $result->status);
@@ -249,19 +279,19 @@ final class UserCanonicalizationTest extends TestCase
     public function test_superadmin_and_system_accounts_cannot_be_merged_through_duplicate_resolution(): void
     {
         $user = User::factory()->create();
-        $superadmin = User::factory()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN]);
+        $protectedSuperadmin = User::factory()->create(['system_role' => UserSystemRoleEnum::SUPERADMIN]);
         $candidate = app(UserDuplicateDetector::class)->observeEvidence(
             first: $user,
-            second: $superadmin,
+            second: $protectedSuperadmin,
             type: UserDuplicateEvidenceTypeEnum::MANUAL,
-            normalizedValue: "{$user->id}|{$superadmin->id}",
+            normalizedValue: "{$user->id}|{$protectedSuperadmin->id}",
         );
 
         $this->expectException(InvalidArgumentException::class);
         app(ResolveUserDuplicateHandler::class)->merge(
             candidate: $candidate,
             canonicalUserId: $user->id,
-            resolvedBy: null,
+            resolvedBy: $this->superadmin(),
         );
     }
 
@@ -281,7 +311,7 @@ final class UserCanonicalizationTest extends TestCase
         app(ResolveUserDuplicateHandler::class)->merge(
             candidate: $candidate,
             canonicalUserId: $active->id,
-            resolvedBy: null,
+            resolvedBy: $this->superadmin(),
         );
     }
 
@@ -337,5 +367,13 @@ final class UserCanonicalizationTest extends TestCase
         $this->actingAs($alias)->get('/');
 
         $this->assertGuest();
+    }
+
+    private function superadmin(): User
+    {
+        return User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
     }
 }
