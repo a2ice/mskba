@@ -14,7 +14,7 @@ return new class extends Migration
             $table->unsignedBigInteger('subject_id');
             $table->string('actor_type', 32);
             $table->string('actor_id', 64);
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained('users')->cascadeOnDelete();
             $table->smallInteger('value');
             $table->string('source', 32);
             $table->timestamp('source_occurred_at')->nullable();
