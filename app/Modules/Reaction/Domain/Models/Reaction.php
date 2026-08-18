@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'value',
     'source',
     'source_occurred_at',
+    'source_sequence',
     'source_metadata',
 ])]
 final class Reaction extends Model
@@ -37,6 +38,7 @@ final class Reaction extends Model
             'value' => ReactionValueEnum::class,
             'source' => ReactionSourceEnum::class,
             'source_occurred_at' => 'immutable_datetime',
+            'source_sequence' => 'integer',
             'source_metadata' => 'array',
         ];
     }
