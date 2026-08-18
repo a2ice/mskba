@@ -21,6 +21,7 @@ final class ResolveUserDuplicateHandler
     {
         DB::transaction(function () use ($candidate, $resolvedBy, $reason): void {
             $candidate = UserDuplicate::query()->whereKey($candidate->id)->lockForUpdate()->firstOrFail();
+            $this->assertAdminResolutionAllowed($resolvedBy);
 
             if ($candidate->status === UserDuplicateStatusEnum::MERGED) {
                 throw new InvalidArgumentException('Уже объединённую пару нельзя отклонить.');
@@ -57,6 +58,10 @@ final class ResolveUserDuplicateHandler
                 ->whereKey($candidate->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            if (! $selfService) {
+                $this->assertAdminResolutionAllowed($resolvedBy);
+            }
 
             if ($candidate->status !== UserDuplicateStatusEnum::PENDING) {
                 throw new InvalidArgumentException('Объединить можно только активного кандидата на дублирование.');
@@ -164,6 +169,20 @@ final class ResolveUserDuplicateHandler
                 return (int) ($evidence->metadata['self_service_user_id'] ?? 0) === $resolvedCanonicalId
                     && ($evidence->metadata['source'] ?? null) === 'signed_telegram_auth';
             });
+    }
+
+    private function assertAdminResolutionAllowed(?User $resolvedBy): void
+    {
+        $actor = $resolvedBy?->canonical();
+
+        if (
+            $actor === null
+            || $actor->trashed()
+            || $actor->status !== UserStatusEnum::CONFIRMED
+            || $actor->system_role !== UserSystemRoleEnum::SUPERADMIN
+        ) {
+            throw new InvalidArgumentException('Разрешать или отклонять дубли пользователей может только подтверждённый суперадминистратор.');
+        }
     }
 
     private function assertRoleMergeAllowed(User $canonical, User $source, bool $selfService): void
