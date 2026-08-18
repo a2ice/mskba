@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->smallInteger('value');
             $table->string('source', 32);
+            $table->timestamp('source_occurred_at')->nullable();
             $table->json('source_metadata')->nullable();
             $table->timestamps();
 
