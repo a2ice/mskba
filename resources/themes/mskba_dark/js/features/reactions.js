@@ -1,4 +1,5 @@
 import $ from 'jquery';
+import '../../css/pages/reactions.css';
 
 const setHint = (widget, message) => {
     const hint = widget.querySelector('[data-reaction-hint]');
