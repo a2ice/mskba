@@ -11,6 +11,7 @@ use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionJob;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -30,7 +31,7 @@ final class TelegramReactionIntegrationTest extends TestCase
     public function test_webhook_queues_message_reaction_update(): void
     {
         Queue::fake();
-        $reaction = $this->reactionPayload(777, 501, 1_787_034_000, '🔥');
+        $reaction = $this->reactionPayload(777, 501, now()->timestamp, '🔥');
 
         $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'reaction-webhook-secret')
             ->postJson(route('integrations.telegram.webhook'), [
@@ -50,8 +51,9 @@ final class TelegramReactionIntegrationTest extends TestCase
     public function test_unlinked_telegram_user_updates_one_external_vote(): void
     {
         [$content] = $this->publishedContent();
+        $baseTimestamp = now()->timestamp;
 
-        $this->runReaction($this->reactionPayload(777, 501, 1_787_034_000, '❤'), 1001);
+        $this->runReaction($this->reactionPayload(777, 501, $baseTimestamp, '❤'), 1001);
 
         $this->assertDatabaseHas('reactions', [
             'subject_type' => 'content',
@@ -64,7 +66,7 @@ final class TelegramReactionIntegrationTest extends TestCase
             'source_sequence' => 1001,
         ]);
 
-        $this->runReaction($this->reactionPayload(777, 501, 1_787_034_010, '💩'), 1002);
+        $this->runReaction($this->reactionPayload(777, 501, $baseTimestamp + 10, '💩'), 1002);
 
         $this->assertDatabaseHas('reactions', [
             'subject_type' => 'content',
@@ -74,9 +76,9 @@ final class TelegramReactionIntegrationTest extends TestCase
             'value' => -1,
             'source_sequence' => 1002,
         ]);
-        $this->assertSame(1, \DB::table('reactions')->count());
+        $this->assertSame(1, DB::table('reactions')->count());
 
-        $payload = $this->reactionPayload(777, 501, 1_787_034_020, null);
+        $payload = $this->reactionPayload(777, 501, $baseTimestamp + 20, null);
         $payload['new_reaction'] = [['type' => 'emoji', 'emoji' => '🤔']];
         $this->runReaction($payload, 1003);
 
@@ -93,6 +95,7 @@ final class TelegramReactionIntegrationTest extends TestCase
     public function test_linked_telegram_and_web_share_one_actor_and_stale_update_cannot_win(): void
     {
         [$content] = $this->publishedContent();
+        $baseTimestamp = now()->timestamp;
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         TelegramAccount::query()->create([
             'user_id' => $user->id,
@@ -100,7 +103,7 @@ final class TelegramReactionIntegrationTest extends TestCase
             'username' => 'reaction_user',
         ]);
 
-        $this->runReaction($this->reactionPayload(777, 501, 1_787_034_000, '👍'), 2001);
+        $this->runReaction($this->reactionPayload(777, 501, $baseTimestamp, '👍'), 2001);
 
         $this->assertDatabaseHas('reactions', [
             'subject_type' => 'content',
@@ -112,7 +115,7 @@ final class TelegramReactionIntegrationTest extends TestCase
             'source' => 'telegram',
         ]);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::createFromTimestampUTC(1_787_034_010));
+        CarbonImmutable::setTestNow(CarbonImmutable::createFromTimestampUTC($baseTimestamp + 10));
         $this->actingAs($user)
             ->putJson(route('reactions.set', [
                 'subjectType' => 'content',
@@ -121,7 +124,7 @@ final class TelegramReactionIntegrationTest extends TestCase
             ->assertOk()
             ->assertJson(['viewer_reaction' => -1]);
 
-        $this->runReaction($this->reactionPayload(777, 501, 1_787_034_005, '🔥'), 2002);
+        $this->runReaction($this->reactionPayload(777, 501, $baseTimestamp + 5, '🔥'), 2002);
 
         $this->assertDatabaseHas('reactions', [
             'subject_type' => 'content',
@@ -131,7 +134,7 @@ final class TelegramReactionIntegrationTest extends TestCase
             'value' => -1,
             'source' => 'web',
         ]);
-        $this->assertSame(1, \DB::table('reactions')->count());
+        $this->assertSame(1, DB::table('reactions')->count());
 
         CarbonImmutable::setTestNow();
     }
