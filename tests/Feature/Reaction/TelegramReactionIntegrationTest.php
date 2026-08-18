@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
+use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionCountJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,32 @@ final class TelegramReactionIntegrationTest extends TestCase
         );
     }
 
+    public function test_webhook_queues_channel_reaction_count_update(): void
+    {
+        Queue::fake();
+        $reactionCount = [
+            'chat' => ['id' => -1002136558099, 'type' => 'channel'],
+            'message_id' => 501,
+            'date' => now()->timestamp,
+            'reactions' => [
+                ['type' => ['type' => 'emoji', 'emoji' => '👍'], 'total_count' => 2],
+            ],
+        ];
+
+        $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'reaction-webhook-secret')
+            ->postJson(route('integrations.telegram.webhook'), [
+                'update_id' => 9002,
+                'message_reaction_count' => $reactionCount,
+            ])
+            ->assertOk();
+
+        Queue::assertPushed(
+            ProcessTelegramReactionCountJob::class,
+            fn (ProcessTelegramReactionCountJob $job): bool => $job->updateId === 9002
+                && data_get($job->update, 'message_id') === 501,
+        );
+    }
+
     public function test_polling_queues_message_reaction_update(): void
     {
         config([
@@ -82,7 +109,52 @@ final class TelegramReactionIntegrationTest extends TestCase
         );
         Http::assertSent(fn ($request): bool => $request->url()
             === 'https://api.telegram.org/bot123456:test-token/getUpdates'
-            && in_array('message_reaction', $request['allowed_updates'], true));
+            && in_array('message_reaction', $request['allowed_updates'], true)
+            && in_array('message_reaction_count', $request['allowed_updates'], true));
+    }
+
+    public function test_channel_reaction_count_updates_public_content_totals(): void
+    {
+        [$content] = $this->publishedContent();
+        $payload = [
+            'chat' => ['id' => -1002136558099, 'type' => 'channel'],
+            'message_id' => 501,
+            'date' => now()->timestamp,
+            'reactions' => [
+                ['type' => ['type' => 'emoji', 'emoji' => '👍'], 'total_count' => 2],
+                ['type' => ['type' => 'emoji', 'emoji' => '👎'], 'total_count' => 1],
+                ['type' => ['type' => 'emoji', 'emoji' => '🤔'], 'total_count' => 7],
+            ],
+        ];
+
+        app()->call([new ProcessTelegramReactionCountJob($payload, 9201), 'handle']);
+
+        $this->get(route('news.show', $content->alias))
+            ->assertOk()
+            ->assertSee('<span data-reaction-count="likes">2</span>', false)
+            ->assertSee('<span data-reaction-count="dislikes">1</span>', false);
+
+        $payload['reactions'][0]['total_count'] = 3;
+        app()->call([new ProcessTelegramReactionCountJob($payload, 9202), 'handle']);
+
+        $this->assertDatabaseHas('reaction_aggregates', [
+            'subject_type' => 'content',
+            'subject_id' => $content->id,
+            'likes_count' => 3,
+            'dislikes_count' => 1,
+            'source_sequence' => 9202,
+        ]);
+        $this->assertDatabaseCount('reaction_aggregates', 1);
+
+        $payload['reactions'][0]['total_count'] = 1;
+        app()->call([new ProcessTelegramReactionCountJob($payload, 9201), 'handle']);
+
+        $this->assertDatabaseHas('reaction_aggregates', [
+            'subject_type' => 'content',
+            'subject_id' => $content->id,
+            'likes_count' => 3,
+            'source_sequence' => 9202,
+        ]);
     }
 
     public function test_unlinked_telegram_user_updates_one_external_vote(): void

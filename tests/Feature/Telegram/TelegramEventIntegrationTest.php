@@ -388,7 +388,7 @@ final class TelegramEventIntegrationTest extends TestCase
 
         Http::assertSent(fn ($request): bool => $request['url'] === route('integrations.telegram.webhook')
             && $request['secret_token'] === 'webhook-test-secret'
-            && $request['allowed_updates'] === ['callback_query', 'message', 'message_reaction']);
+            && $request['allowed_updates'] === ['callback_query', 'message', 'message_reaction', 'message_reaction_count']);
     }
 
     public function test_polling_configuration_removes_webhook_without_dropping_updates(): void

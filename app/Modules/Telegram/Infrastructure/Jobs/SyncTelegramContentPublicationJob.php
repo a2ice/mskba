@@ -3,6 +3,9 @@
 namespace App\Modules\Telegram\Infrastructure\Jobs;
 
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Reaction\Application\Services\ReactionAggregateService;
+use App\Modules\Reaction\Domain\Enums\ReactionSourceEnum;
+use App\Modules\Reaction\Domain\Enums\ReactionSubjectTypeEnum;
 use App\Modules\Telegram\Application\Services\TelegramContentMessageBuilder;
 use App\Modules\Telegram\Application\Services\TelegramPhotoPreparer;
 use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
@@ -28,19 +31,21 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
         TelegramBotApiClient $telegram,
         TelegramContentMessageBuilder $messages,
         TelegramPhotoPreparer $photos,
+        ReactionAggregateService $reactionAggregates,
     ): void {
         if (! $telegram->isBotConfigured()) {
             return;
         }
 
         Cache::lock("telegram:content-publication:{$this->publicationId}", 30)
-            ->block(5, fn () => $this->sync($telegram, $messages, $photos));
+            ->block(5, fn () => $this->sync($telegram, $messages, $photos, $reactionAggregates));
     }
 
     private function sync(
         TelegramBotApiClient $telegram,
         TelegramContentMessageBuilder $messages,
         TelegramPhotoPreparer $photos,
+        ReactionAggregateService $reactionAggregates,
     ): void {
         $publication = TelegramContentPublication::query()
             ->with(['contentItem.cover', 'chat'])
@@ -72,6 +77,8 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
                     'synced_at' => now(),
                 ])->save();
 
+                $this->clearReactionAggregate($publication, $reactionAggregates);
+
                 return;
             }
 
@@ -92,6 +99,7 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
             }
 
             if ($publication->message_id === null) {
+                $this->clearReactionAggregate($publication, $reactionAggregates);
                 $publication->forceFill([
                     'message_id' => $this->sendMessage(
                         $telegram,
@@ -142,6 +150,18 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    private function clearReactionAggregate(
+        TelegramContentPublication $publication,
+        ReactionAggregateService $reactionAggregates,
+    ): void {
+        $reactionAggregates->clear(
+            ReactionSubjectTypeEnum::CONTENT,
+            (int) $publication->content_item_id,
+            ReactionSourceEnum::TELEGRAM,
+            "content-publication:{$publication->id}",
+        );
     }
 
     /**

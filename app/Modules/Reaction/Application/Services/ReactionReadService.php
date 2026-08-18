@@ -65,6 +65,21 @@ final readonly class ReactionReadService
             }
         }
 
+        $aggregateCounts = DB::table('reaction_aggregates')
+            ->selectRaw('subject_id, SUM(likes_count) as likes, SUM(dislikes_count) as dislikes')
+            ->where('subject_type', $subjectType->value)
+            ->whereIn('subject_id', $subjectIds)
+            ->groupBy('subject_id')
+            ->get();
+
+        foreach ($aggregateCounts as $count) {
+            $subjectId = (int) $count->subject_id;
+            if (isset($data[$subjectId])) {
+                $data[$subjectId]['likes'] += (int) $count->likes;
+                $data[$subjectId]['dislikes'] += (int) $count->dislikes;
+            }
+        }
+
         if ($viewer !== null) {
             $actor = $this->actors->forUser($viewer);
             $viewerReactions = Reaction::query()

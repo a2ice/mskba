@@ -6,6 +6,36 @@ use App\Modules\Reaction\Domain\Enums\ReactionValueEnum;
 
 final class TelegramReactionClassifier
 {
+    /**
+     * @param  list<array<string, mixed>>  $counts
+     * @return array{likes: int, dislikes: int, emojis: array<string, int>}
+     */
+    public function countSummary(array $counts): array
+    {
+        $summary = ['likes' => 0, 'dislikes' => 0, 'emojis' => []];
+
+        foreach ($counts as $count) {
+            $reaction = $count['type'] ?? null;
+            $total = $count['total_count'] ?? null;
+            if (! is_array($reaction) || ! is_numeric($total) || ($reaction['type'] ?? null) !== 'emoji') {
+                continue;
+            }
+
+            $emoji = $this->normalizeEmoji((string) ($reaction['emoji'] ?? ''));
+            $total = max(0, (int) $total);
+
+            if (in_array($emoji, $this->positive(), true)) {
+                $summary['likes'] += $total;
+                $summary['emojis'][$emoji] = $total;
+            } elseif (in_array($emoji, $this->negative(), true)) {
+                $summary['dislikes'] += $total;
+                $summary['emojis'][$emoji] = $total;
+            }
+        }
+
+        return $summary;
+    }
+
     /** @param list<array<string, mixed>> $reactions */
     public function classify(array $reactions): ?ReactionValueEnum
     {

@@ -4,6 +4,7 @@ namespace App\Modules\Telegram\Infrastructure\Services;
 
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramMessageJob;
+use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionCountJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionJob;
 use Illuminate\Support\Facades\Cache;
 
@@ -22,7 +23,7 @@ final class TelegramUpdatesPoller
         $response = $this->telegram->call('getUpdates', array_filter([
             'offset' => is_numeric($offset) ? (int) $offset : null,
             'timeout' => $timeout,
-            'allowed_updates' => ['callback_query', 'message', 'message_reaction'],
+            'allowed_updates' => ['callback_query', 'message', 'message_reaction', 'message_reaction_count'],
         ], fn (mixed $value): bool => $value !== null), $timeout + 10);
         $processed = 0;
 
@@ -50,6 +51,13 @@ final class TelegramUpdatesPoller
 
             if (is_array($reaction)) {
                 ProcessTelegramReactionJob::dispatch($reaction, $updateId);
+                $processed++;
+            }
+
+            $reactionCount = data_get($update, 'message_reaction_count');
+
+            if (is_array($reactionCount)) {
+                ProcessTelegramReactionCountJob::dispatch($reactionCount, $updateId);
                 $processed++;
             }
 

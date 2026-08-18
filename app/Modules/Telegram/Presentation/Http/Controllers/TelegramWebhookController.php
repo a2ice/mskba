@@ -5,6 +5,7 @@ namespace App\Modules\Telegram\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramMessageJob;
+use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionCountJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionJob;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,15 @@ final class TelegramWebhookController extends Controller
             $updateId = $request->input('update_id');
             ProcessTelegramReactionJob::dispatch(
                 $reaction,
+                is_numeric($updateId) ? (int) $updateId : null,
+            );
+        }
+
+        $reactionCount = $request->input('message_reaction_count');
+        if (is_array($reactionCount)) {
+            $updateId = $request->input('update_id');
+            ProcessTelegramReactionCountJob::dispatch(
+                $reactionCount,
                 is_numeric($updateId) ? (int) $updateId : null,
             );
         }
