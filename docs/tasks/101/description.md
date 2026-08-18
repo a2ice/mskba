@@ -60,6 +60,10 @@ Canonical merge является security-sensitive операцией: посл
 - нельзя merge candidate без хотя бы одного актуального evidence;
 - self-service требует свежий одноразовый proof, а не только сохранённое evidence;
 - blocked source или blocked canonical account не должен аутентифицироваться ни через обычный login, ни через Telegram;
+- уже существующая web-сессия любой alias identity на следующем запросе разрешается в canonical; если canonical account заблокирован, такая сессия немедленно инвалидируется;
+- сразу после корректного merge старые пароли alias могут использоваться как credentials той же canonical identity, чтобы пользователь не потерял доступ;
+- после первой последующей смены пароля пользователем или установки временного пароля superadmin пароль становится единым credential canonical identity: новый пароль хранится только у canonical account, пароли aliases очищаются, а `remember_token` ротируется у всей identity group; старый alias-пароль после такой ротации больше не работает;
+- старые login identifiers alias (например username или verified contact) могут продолжать находить ту же canonical identity, но после ротации принимают только актуальный пароль canonical account;
 - Telegram callbacks, создающие новые действия (участие в мероприятии, голосование), выполняются от canonical user;
 - Telegram notification delivery ищет verified доступный private chat по всей identity group, но отправляет сообщение только в один детерминированно выбранный аккаунт;
 - права и системные роли берутся только у canonical пользователя;
