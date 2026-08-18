@@ -12,6 +12,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Moderation\Domain\Models\ModerationRequest;
+use App\Modules\Notification\Domain\Enums\UserNotificationSourceEnum;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramProfileAvatarJob;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -477,6 +479,39 @@ class TelegramMiniAppAuthTest extends TestCase
         $this->assertTrue($contact->is_primary);
         $this->assertTrue($contact->hasBeenVerified());
         $this->assertSame(1, Contact::query()->count());
+    }
+
+    public function test_repeated_telegram_auth_does_not_repeat_contact_confirmation_notification(): void
+    {
+        config(['telegram.bot_token' => '123456:test-token']);
+        $initData = $this->signedInitData([
+            'id' => 779,
+            'username' => 'returning_user',
+            'first_name' => 'Returning',
+        ]);
+
+        $this->postJson(route('integrations.telegram.auth'), ['init_data' => $initData])
+            ->assertOk()
+            ->assertJsonPath('created', true);
+
+        $contact = Contact::query()
+            ->where('type', ContactTypeEnum::TELEGRAM->value)
+            ->where('value', '779')
+            ->sole();
+        $verifiedAt = $contact->verified_at;
+
+        $this->postJson(route('integrations.telegram.auth'), ['init_data' => $initData])
+            ->assertOk()
+            ->assertJsonPath('created', false);
+
+        $this->assertSame(
+            1,
+            UserNotification::query()
+                ->where('user_id', $contact->contactable_id)
+                ->where('payload->source', UserNotificationSourceEnum::CONTACT_CONFIRMATION->value)
+                ->count(),
+        );
+        $this->assertTrue($verifiedAt->equalTo($contact->fresh()->verified_at));
     }
 
     public function test_telegram_contact_does_not_replace_existing_primary_contact(): void

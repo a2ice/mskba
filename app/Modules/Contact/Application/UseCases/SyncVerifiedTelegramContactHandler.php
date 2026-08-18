@@ -18,7 +18,7 @@ final class SyncVerifiedTelegramContactHandler
         ?string $lastName,
         string $source = 'telegram_mini_app',
     ): Contact {
-        $contact = DB::transaction(function () use ($user, $telegramUserId, $username, $firstName, $lastName, $source): Contact {
+        [$contact, $becameVerified] = DB::transaction(function () use ($user, $telegramUserId, $username, $firstName, $lastName, $source): array {
             $lockedUser = User::query()
                 ->whereKey($user->getKey())
                 ->lockForUpdate()
@@ -44,10 +44,12 @@ final class SyncVerifiedTelegramContactHandler
                 $contact->restore();
             }
 
+            $becameVerified = ! $contact->hasBeenVerified();
+
             $contact->forceFill([
                 'is_primary' => $wasDeleted ? ! $hasActiveContacts : $contact->is_primary,
                 'is_public' => $wasDeleted ? false : $contact->is_public,
-                'verified_at' => now(),
+                'verified_at' => $contact->verified_at ?? now(),
                 'meta' => [
                     'source' => $source,
                     'telegram_user_id' => $telegramUserId,
@@ -57,13 +59,15 @@ final class SyncVerifiedTelegramContactHandler
                 ],
             ])->save();
 
-            return $contact->refresh();
+            return [$contact->refresh(), $becameVerified];
         });
 
-        event(new UserContactConfirmed(
-            userId: (int) $user->id,
-            contactId: (int) $contact->id,
-        ));
+        if ($becameVerified) {
+            event(new UserContactConfirmed(
+                userId: (int) $user->id,
+                contactId: (int) $contact->id,
+            ));
+        }
 
         return $contact;
     }
