@@ -16,24 +16,65 @@ final class SetUserPasswordHandler
         $password = PasswordVO::fromString($newPassword)->value;
 
         DB::transaction(function () use ($user, $currentPassword, $password): void {
-            $lockedUser = User::query()
+            $requested = User::query()
                 ->whereKey($user->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedUser->password !== null
-                && ($currentPassword === null || ! Hash::check($currentPassword, $lockedUser->password))) {
+            $canonicalId = (int) ($requested->canonical_user_id ?? $requested->id);
+            $identityUsers = User::query()
+                ->where(function ($query) use ($canonicalId): void {
+                    $query
+                        ->whereKey($canonicalId)
+                        ->orWhere('canonical_user_id', $canonicalId);
+                })
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            /** @var User|null $canonical */
+            $canonical = $identityUsers->firstWhere('id', $canonicalId);
+            if ($canonical === null) {
                 throw ValidationException::withMessages([
-                    'current_password' => 'Текущий пароль указан неверно.',
+                    'current_password' => 'Не удалось определить основной аккаунт. Повторите попытку.',
                 ]);
             }
 
-            $lockedUser->forceFill([
-                'password' => $password,
-                'password_updated_at' => now(),
-                'is_temporary_password' => false,
-                'remember_token' => Str::random(60),
-            ])->save();
+            if ($canonical->password !== null) {
+                $currentPasswordMatches = $currentPassword !== null
+                    && $identityUsers->contains(
+                        fn (User $identityUser): bool => $identityUser->password !== null
+                            && Hash::check($currentPassword, $identityUser->password),
+                    );
+
+                if (! $currentPasswordMatches) {
+                    throw ValidationException::withMessages([
+                        'current_password' => 'Текущий пароль указан неверно.',
+                    ]);
+                }
+            }
+
+            $changedAt = now();
+
+            foreach ($identityUsers as $identityUser) {
+                if ((int) $identityUser->id === $canonicalId) {
+                    $identityUser->forceFill([
+                        'password' => $password,
+                        'password_updated_at' => $changedAt,
+                        'is_temporary_password' => false,
+                        'remember_token' => Str::random(60),
+                    ])->save();
+
+                    continue;
+                }
+
+                $identityUser->forceFill([
+                    'password' => null,
+                    'password_updated_at' => $changedAt,
+                    'is_temporary_password' => false,
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
         });
     }
 }
