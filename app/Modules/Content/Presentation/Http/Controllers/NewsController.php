@@ -12,8 +12,8 @@ final class NewsController extends Controller
 {
     public function index(): Response|RedirectResponse
     {
-        if (request()->routeIs('news.index')) {
-            return redirect()->route('feed.index', request()->query(), 301);
+        if (request()->routeIs('legacy.news.index')) {
+            return redirect()->route('news.index', request()->query(), 301);
         }
 
         return ThemeResolver::page('news.index', [
@@ -33,8 +33,8 @@ final class NewsController extends Controller
             404,
         );
 
-        if (request()->routeIs('news.show')) {
-            return redirect()->route('feed.show', [
+        if (request()->routeIs('legacy.news.show')) {
+            return redirect()->route('news.show', [
                 'contentItem' => $contentItem->alias,
                 ...request()->query(),
             ], 301);
