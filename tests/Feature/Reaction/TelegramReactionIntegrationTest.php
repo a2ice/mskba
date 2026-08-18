@@ -9,9 +9,9 @@ use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionJob;
-use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -24,7 +24,10 @@ final class TelegramReactionIntegrationTest extends TestCase
         parent::setUp();
 
         config([
+            'telegram.bot_token' => '123456:test-token',
             'telegram.webhook_secret' => 'reaction-webhook-secret',
+            'telegram.api_ip' => null,
+            'telegram.http_proxy' => null,
         ]);
     }
 
@@ -46,6 +49,39 @@ final class TelegramReactionIntegrationTest extends TestCase
                 && data_get($job->reaction, 'user.id') === 777
                 && data_get($job->reaction, 'message_id') === 501,
         );
+    }
+
+    public function test_polling_queues_message_reaction_update(): void
+    {
+        config([
+            'telegram.updates_transport' => 'polling',
+            'telegram.polling_timeout' => 1,
+        ]);
+        Queue::fake();
+        $reaction = $this->reactionPayload(888, 502, now()->timestamp, '❤');
+
+        Http::fake([
+            'https://api.telegram.org/bot123456:test-token/getUpdates' => Http::response([
+                'ok' => true,
+                'result' => [[
+                    'update_id' => 9101,
+                    'message_reaction' => $reaction,
+                ]],
+            ]),
+        ]);
+
+        $this->artisan('telegram:poll-updates', ['--once' => true])
+            ->expectsOutput('Telegram updates processed: 1')
+            ->assertSuccessful();
+
+        Queue::assertPushed(
+            ProcessTelegramReactionJob::class,
+            fn (ProcessTelegramReactionJob $job): bool => $job->updateId === 9101
+                && data_get($job->reaction, 'user.id') === 888,
+        );
+        Http::assertSent(fn ($request): bool => $request->url()
+            === 'https://api.telegram.org/bot123456:test-token/getUpdates'
+            && in_array('message_reaction', $request['allowed_updates'], true));
     }
 
     public function test_unlinked_telegram_user_updates_one_external_vote(): void
@@ -95,7 +131,7 @@ final class TelegramReactionIntegrationTest extends TestCase
     public function test_linked_telegram_and_web_share_one_actor_and_stale_update_cannot_win(): void
     {
         [$content] = $this->publishedContent();
-        $baseTimestamp = now()->timestamp;
+        $baseTimestamp = now()->subMinute()->timestamp;
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         TelegramAccount::query()->create([
             'user_id' => $user->id,
@@ -115,7 +151,6 @@ final class TelegramReactionIntegrationTest extends TestCase
             'source' => 'telegram',
         ]);
 
-        CarbonImmutable::setTestNow(CarbonImmutable::createFromTimestampUTC($baseTimestamp + 10));
         $this->actingAs($user)
             ->putJson(route('reactions.set', [
                 'subjectType' => 'content',
@@ -135,8 +170,6 @@ final class TelegramReactionIntegrationTest extends TestCase
             'source' => 'web',
         ]);
         $this->assertSame(1, DB::table('reactions')->count());
-
-        CarbonImmutable::setTestNow();
     }
 
     /** @return array{ContentItem, TelegramChat, TelegramContentPublication} */
