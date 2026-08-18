@@ -44,6 +44,9 @@ jobs:
           php -l app/Modules/Identity/Application/Services/UserLoginResolver.php
           php -l app/Modules/Identity/Application/UseCases/AuthHandler.php
           php -l app/Modules/Identity/Application/UseCases/ResolveUserDuplicateHandler.php
+          php -l app/Modules/Identity/Application/UseCases/SetUserPasswordHandler.php
+          php -l app/Modules/Identity/Application/UseCases/AdminUpdateUserBasicDetailsHandler.php
+          php -l app/Modules/Identity/Infrastructure/Http/Middleware/ResolveCanonicalUserSession.php
           php -l app/Modules/Telegram/Application/Services/TelegramNotificationRecipientResolver.php
           php -l app/Modules/Event/Application/Services/EventIdentityParticipationService.php
 
@@ -52,6 +55,7 @@ jobs:
           php artisan test \
             tests/Feature/Identity/UserCanonicalizationTest.php \
             tests/Feature/Identity/UserCanonicalLoginTest.php \
+            tests/Feature/Identity/UserDuplicateAuditTest.php \
             tests/Feature/Telegram/TelegramUserNotificationDeliveryTest.php
 
       - name: Run full test suite (diagnostic baseline)
