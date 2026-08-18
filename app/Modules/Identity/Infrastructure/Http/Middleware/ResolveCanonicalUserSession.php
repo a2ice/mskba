@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Infrastructure\Http\Middleware;
 
 use App\Modules\Identity\Application\Services\CanonicalUserResolver;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,13 +19,24 @@ final class ResolveCanonicalUserSession
     {
         $user = $request->user();
 
-        if ($user !== null && $user->canonical_user_id !== null) {
-            $canonical = $this->resolver->resolve($user);
+        if ($user === null) {
+            return $next($request);
+        }
 
-            if ($canonical->id !== $user->id) {
-                Auth::setUser($canonical);
-                $request->setUserResolver(fn () => $canonical);
-            }
+        $canonical = $this->resolver->resolve($user);
+
+        if ($canonical->status === UserStatusEnum::BLOCKED) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            $request->setUserResolver(fn () => null);
+
+            return $next($request);
+        }
+
+        if ($canonical->id !== $user->id) {
+            Auth::setUser($canonical);
+            $request->setUserResolver(fn () => $canonical);
         }
 
         return $next($request);
