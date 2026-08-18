@@ -120,6 +120,37 @@ final class TournamentOnSiteRegistrationTest extends TestCase
             ->assertDontSee('Открыть турнир');
     }
 
+    public function test_canonical_user_cannot_repeat_application_created_by_alias(): void
+    {
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create(['canonical_user_id' => $canonical->id]);
+        $tournament = Tournament::factory()->create([
+            'format' => GameFormatEnum::STREETBALL_3X3,
+            'recruitment_mode' => TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT,
+            'allows_on_site_registration' => true,
+        ]);
+        TournamentAdmission::query()->create([
+            'tournament_id' => $tournament->id,
+            'candidate_type' => 'user',
+            'user_id' => $alias->id,
+            'direction' => 'application',
+            'source' => TournamentAdmissionSourceEnum::ON_SITE,
+            'roles' => ['player'],
+            'status' => TournamentAdmissionStatusEnum::PENDING,
+            'requested_by_actor_id' => Actor::factory()->create(['user_id' => $alias->id])->id,
+        ]);
+
+        $this->actingAs($canonical)
+            ->post(route('tournaments.on-site.store', $tournament->routeIdentifier()), ['roles' => ['player']])
+            ->assertSessionHas('error', 'У вас уже есть активная заявка на этот турнир.');
+
+        $this->assertSame(1, $tournament->admissions()->count());
+        $this->actingAs($canonical)
+            ->get(route('tournaments.on-site.show', $tournament->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('После обработки заявки вы получите уведомление, а результат отобразится на этой странице.');
+    }
+
     public function test_on_site_application_notifies_owner_and_active_game_manager_with_refreshing_url(): void
     {
         $owner = User::factory()->create();

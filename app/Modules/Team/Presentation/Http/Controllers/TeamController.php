@@ -110,10 +110,11 @@ final class TeamController extends Controller
         unset($data['sport_types']);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor?->user_id === null, 403);
+        $identityIds = $actor->user?->canonical()->identityIds() ?? [];
         if (! $request->user()?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
             $teamCount = Team::query()
                 ->whereNull('temporary_for_event_id')
-                ->whereHas('createdByActor', fn ($query) => $query->where('user_id', $actor->user_id))
+                ->whereHas('createdByActor', fn ($query) => $query->whereIn('user_id', $identityIds))
                 ->count();
             abort_if(
                 $teamCount >= self::CREATION_LIMIT,
@@ -418,10 +419,11 @@ final class TeamController extends Controller
             ->firstOrFail();
         abort_if($member->access_level === TeamMembershipAccessLevelEnum::OWNER->value, 422, 'Владельца команды удалить нельзя.');
         abort_if($member->is_captain, 422, 'Капитана нельзя исключить из команды. Сначала назначьте другого капитана.');
-        abort_if($member->user_id === $actor->user_id, 422, 'Нельзя исключить самого себя через управление командой.');
+        $identityIds = $actor->user?->canonical()->identityIds() ?? [];
+        abort_if(in_array((int) $member->user_id, $identityIds, true), 422, 'Нельзя исключить самого себя через управление командой.');
         if (! $access->isCreator($item, $actor)) {
             $actorMembership = $item->memberships()
-                ->where('user_id', $actor->user_id)
+                ->whereIn('user_id', $identityIds)
                 ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
                 ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
                 ->first();

@@ -15,11 +15,13 @@ final class MarkUserNotificationAsReadHandler
 
     public function handle(User $user, UserNotification $notification): UserNotification
     {
-        abort_unless((int) $notification->user_id === (int) $user->id, 404);
+        $canonical = $user->canonical();
+        $identityIds = $canonical->identityIds();
+        abort_unless(in_array((int) $notification->user_id, $identityIds, true), 404);
 
         $updated = UserNotification::query()
             ->whereKey($notification->id)
-            ->where('user_id', $user->id)
+            ->whereIn('user_id', $identityIds)
             ->where('status', UserNotificationStatusEnum::NEW)
             ->update([
                 'status' => UserNotificationStatusEnum::READ,
@@ -27,7 +29,7 @@ final class MarkUserNotificationAsReadHandler
             ]);
 
         if ($updated === 1) {
-            $this->counterStore->forget((int) $user->id);
+            $this->counterStore->forget((int) $canonical->id);
         }
 
         return $notification->refresh();

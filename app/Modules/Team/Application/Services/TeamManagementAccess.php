@@ -14,17 +14,17 @@ final class TeamManagementAccess
 {
     public function isCreator(Team $team, Actor $actor): bool
     {
-        $user = $actor->user;
+        $user = $actor->user?->canonical();
 
         return $user !== null
             && ! $user->isBlocked()
             && ! $user->trashed()
-            && $team->createdByActor()->where('user_id', $user->id)->exists();
+            && $team->createdByActor()->whereIn('user_id', $user->identityIds())->exists();
     }
 
     public function allows(Team $team, Actor $actor, TeamPermissionEnum $permission): bool
     {
-        $user = $actor->user;
+        $user = $actor->user?->canonical();
         if ($user === null || $user->isBlocked() || $user->trashed()) {
             return false;
         }
@@ -36,7 +36,7 @@ final class TeamManagementAccess
         return ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
             ->where('scope_id', $team->id)
-            ->where('user_id', $user->id)
+            ->whereIn('user_id', $user->identityIds())
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($query) => $query
                 ->where('status', ContractStatusEnum::ACTIVE->value)

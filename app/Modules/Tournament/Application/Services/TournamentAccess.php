@@ -28,8 +28,16 @@ final class TournamentAccess
 
     public function isOwner(Tournament $tournament, Actor $actor): bool
     {
-        return (int) $actor->id === (int) $tournament->created_by_actor_id
-            || ($actor->user_id !== null && $tournament->createdByActor()->where('user_id', $actor->user_id)->exists());
+        if ((int) $actor->id === (int) $tournament->created_by_actor_id) {
+            return true;
+        }
+
+        $user = $actor->user?->canonical();
+
+        return $user !== null
+            && ! $user->isBlocked()
+            && ! $user->trashed()
+            && $tournament->createdByActor()->whereIn('user_id', $user->identityIds())->exists();
     }
 
     public function allows(Tournament $tournament, Actor $actor, TournamentPermissionEnum $permission): bool
@@ -37,14 +45,16 @@ final class TournamentAccess
         if ($this->isOwner($tournament, $actor)) {
             return true;
         }
-        if ($actor->user_id === null) {
+
+        $user = $actor->user?->canonical();
+        if ($user === null || $user->isBlocked() || $user->trashed()) {
             return false;
         }
 
         return ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::TOURNAMENT->value)
             ->where('scope_id', $tournament->id)
-            ->where('user_id', $actor->user_id)
+            ->whereIn('user_id', $user->identityIds())
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($query) => $query
                 ->where('status', ContractStatusEnum::ACTIVE->value)

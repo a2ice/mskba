@@ -162,6 +162,7 @@ final class TournamentAdmissionService
     {
         return DB::transaction(function () use ($tournament, $actor, $candidate, $direction, $roles, $source): TournamentAdmission {
             $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
+            $candidate = $candidate instanceof User ? $candidate->canonical() : $candidate;
             $this->assertTournamentAcceptsCandidates($locked);
             if ($direction === TournamentAdmissionDirectionEnum::INVITATION) {
                 $this->tournamentAccess->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
@@ -179,7 +180,13 @@ final class TournamentAdmissionService
                 throw new InvalidArgumentException('По условиям этого турнира для подачи заявки необходимо подтвердить аккаунт');
             }
             $candidateColumn = $candidate instanceof Team ? 'team_id' : 'user_id';
-            $duplicate = $locked->admissions()->where($candidateColumn, $candidate->id)
+            $duplicateQuery = $locked->admissions();
+            if ($candidate instanceof User) {
+                $duplicateQuery->whereIn($candidateColumn, $candidate->identityIds());
+            } else {
+                $duplicateQuery->where($candidateColumn, $candidate->id);
+            }
+            $duplicate = $duplicateQuery
                 ->whereIn('status', [TournamentAdmissionStatusEnum::PENDING->value, TournamentAdmissionStatusEnum::ACCEPTED->value])
                 ->exists();
             if ($duplicate) {
@@ -207,13 +214,14 @@ final class TournamentAdmissionService
         }
 
         if ($admission->user_id !== null) {
+            $user = $admission->user->canonical();
             $entry = $tournament->entries()->create([
                 'admission_id' => $admission->id,
                 'source' => TournamentEntrySourceEnum::INDIVIDUAL,
-                'name' => $admission->user->profile?->first_name ?: $admission->user->username ?: 'Участник #'.$admission->user_id,
+                'name' => $user->profile?->first_name ?: $user->username ?: 'Участник #'.$user->id,
                 'status' => TournamentEntryStatusEnum::ACTIVE,
             ]);
-            $entry->members()->create(['user_id' => $admission->user_id, 'position' => 0]);
+            $entry->members()->create(['user_id' => $user->id, 'position' => 0]);
 
             return;
         }
@@ -244,7 +252,8 @@ final class TournamentAdmissionService
     private function assertCandidateMayAct(Team|User $candidate, Actor $actor): void
     {
         if ($candidate instanceof User) {
-            if ($actor->user_id !== $candidate->id || $candidate->status === UserStatusEnum::BLOCKED) {
+            $canonical = $candidate->canonical();
+            if ($actor->user_id !== $canonical->id || $canonical->status === UserStatusEnum::BLOCKED) {
                 throw new InvalidArgumentException('Ответить может только сам приглашённый игрок.');
             }
         } elseif (! $this->teamAccess->allows($candidate, $actor, TeamPermissionEnum::MANAGE_TOURNAMENT_PARTICIPATION)) {

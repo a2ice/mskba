@@ -36,7 +36,7 @@ final class TournamentEntryRosterResolver
     public function resolve(TournamentEntry $entry): Collection
     {
         if ($entry->source === TournamentEntrySourceEnum::TEAM && $entry->team_id !== null) {
-            return ContractMembership::query()
+            $roster = ContractMembership::query()
                 ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
                 ->where('scope_id', $entry->team_id)
                 ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
@@ -48,9 +48,11 @@ final class TournamentEntryRosterResolver
                     'user_id' => (int) $membership->user_id,
                     'source_contract_membership_id' => $membership->id,
                 ]);
+
+            return $this->canonicalize($roster);
         }
 
-        return $entry->members()
+        $roster = $entry->members()
             ->orderBy('position')
             ->get(['user_id', 'source_contract_membership_id'])
             ->map(static fn ($member): array => [
@@ -59,5 +61,31 @@ final class TournamentEntryRosterResolver
                     ? null
                     : (int) $member->source_contract_membership_id,
             ]);
+
+        return $this->canonicalize($roster);
+    }
+
+    /**
+     * @param  Collection<int, array{user_id: int, source_contract_membership_id: ?int}>  $roster
+     * @return Collection<int, array{user_id: int, source_contract_membership_id: ?int}>
+     */
+    private function canonicalize(Collection $roster): Collection
+    {
+        $users = User::query()->whereKey($roster->pluck('user_id'))->get()->keyBy('id');
+
+        return $roster
+            ->map(function (array $member) use ($users): ?array {
+                $user = $users->get($member['user_id']);
+                if ($user === null) {
+                    return null;
+                }
+
+                $member['user_id'] = (int) $user->canonical()->id;
+
+                return $member;
+            })
+            ->filter()
+            ->unique('user_id')
+            ->values();
     }
 }

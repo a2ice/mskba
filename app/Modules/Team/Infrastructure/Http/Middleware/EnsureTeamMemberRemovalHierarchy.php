@@ -42,6 +42,7 @@ final class EnsureTeamMemberRemovalHierarchy
         if ($team === null || $actor?->user_id === null) {
             return $next($request);
         }
+        $identityIds = $actor->user?->canonical()->identityIds() ?? [];
 
         $target = $team->memberships()
             ->whereKey((int) $membershipParameter)
@@ -56,7 +57,7 @@ final class EnsureTeamMemberRemovalHierarchy
             return $this->deny($request, 'Владельца команды удалить нельзя.');
         }
 
-        if ($target->user_id === $actor->user_id) {
+        if (in_array((int) $target->user_id, $identityIds, true)) {
             return $this->deny($request, 'Нельзя исключить самого себя через управление командой.');
         }
 
@@ -69,7 +70,7 @@ final class EnsureTeamMemberRemovalHierarchy
         }
 
         $actorMembership = $team->memberships()
-            ->where('user_id', $actor->user_id)
+            ->whereIn('user_id', $identityIds)
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
             ->first();

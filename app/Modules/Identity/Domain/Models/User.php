@@ -18,6 +18,7 @@ use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -46,6 +47,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'canonical_user_id' => 'integer',
             'password' => 'hashed',
             'is_temporary_password' => 'boolean',
             'password_updated_at' => 'datetime',
@@ -54,6 +56,63 @@ class User extends Authenticatable
             'system_role' => UserSystemRoleEnum::class,
             'status' => UserStatusEnum::class,
         ];
+    }
+
+    public function canonicalUser(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'canonical_user_id');
+    }
+
+    public function canonical(): self
+    {
+        $user = $this;
+        $visited = [];
+
+        while ($user->canonical_user_id !== null) {
+            if (isset($visited[$user->id])) {
+                break;
+            }
+
+            $visited[$user->id] = true;
+            $next = self::query()->find($user->canonical_user_id);
+
+            if ($next === null) {
+                break;
+            }
+
+            $user = $next;
+        }
+
+        return $user;
+    }
+
+    public function aliases(): HasMany
+    {
+        return $this->hasMany(self::class, 'canonical_user_id');
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function identityIds(): array
+    {
+        $canonical = $this->canonical();
+
+        return self::query()
+            ->whereKey($canonical->id)
+            ->orWhere('canonical_user_id', $canonical->id)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    public function isSameIdentity(self|int $other): bool
+    {
+        $otherId = $other instanceof self ? (int) $other->id : $other;
+
+        return in_array($otherId, $this->identityIds(), true);
     }
 
     public function profile(): HasOne

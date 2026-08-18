@@ -9,6 +9,8 @@ final class UserOperationalPermissionChecker
 {
     public function allows(User $user, UserOperationalPermissionEnum $permission): bool
     {
+        $user = $user->canonical();
+
         if ($user->isBlocked() || $user->trashed()) {
             return false;
         }

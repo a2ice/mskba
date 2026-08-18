@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
@@ -22,6 +23,7 @@ final class AddEventParticipantHandler
     public function __construct(
         private readonly EventManagementAccess $access,
         private readonly UserPrivacyAccessService $privacy,
+        private readonly EventIdentityParticipationService $identityParticipation,
     ) {}
 
     public function handle(string $identifier, Actor $actor, int $userId): Event
@@ -31,8 +33,8 @@ final class AddEventParticipantHandler
             $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
             $this->assertCanChangeParticipants($event);
 
-            $viewer = $actor->user;
-            $user = User::query()->whereKey($userId)->firstOrFail();
+            $viewer = $actor->user?->canonical();
+            $user = User::query()->whereKey($userId)->firstOrFail()->canonical();
 
             if (! $viewer instanceof User
                 || $user->status === UserStatusEnum::BLOCKED
@@ -40,7 +42,7 @@ final class AddEventParticipantHandler
                 throw new InvalidArgumentException('Этот пользователь недоступен для добавления.');
             }
 
-            $existing = $event->participants()->where('user_id', $user->id)->first();
+            $existing = $this->identityParticipation->effectiveParticipant($event, $user);
             $alreadyConfirmed = $existing?->status === EventParticipantStatusEnum::CONFIRMED
                 && $existing->confirmation_version === $event->participation_confirmation_version;
 
@@ -48,23 +50,29 @@ final class AddEventParticipantHandler
                 throw new InvalidArgumentException('Пользователь уже участвует в мероприятии.');
             }
 
-            $event->participants()->where('user_id', $userId)->first()?->responsibilityPermissions()->delete();
-            $event->participants()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'role' => EventParticipantRoleEnum::PARTICIPANT,
-                    'status' => EventParticipantStatusEnum::TENTATIVE,
-                    'joined_at' => null,
-                    'left_at' => null,
-                    'confirmation_version' => $event->participation_confirmation_version,
-                    'responsibility_status' => null,
-                    'responsibility_requested_by_user_id' => null,
-                    'responsibility_requested_at' => null,
-                    'responsibility_responded_at' => null,
-                    'status_changed_by_actor_id' => $actor->id,
-                    'status_changed_at' => now(),
-                ],
-            );
+            $existing?->responsibilityPermissions()->delete();
+            $attributes = [
+                'role' => EventParticipantRoleEnum::PARTICIPANT,
+                'status' => EventParticipantStatusEnum::TENTATIVE,
+                'joined_at' => null,
+                'left_at' => null,
+                'confirmation_version' => $event->participation_confirmation_version,
+                'responsibility_status' => null,
+                'responsibility_requested_by_user_id' => null,
+                'responsibility_requested_at' => null,
+                'responsibility_responded_at' => null,
+                'status_changed_by_actor_id' => $actor->id,
+                'status_changed_at' => now(),
+            ];
+
+            if ($existing !== null) {
+                $existing->update($attributes);
+            } else {
+                $event->participants()->create([
+                    'user_id' => $user->id,
+                    ...$attributes,
+                ]);
+            }
 
             return $event;
         });

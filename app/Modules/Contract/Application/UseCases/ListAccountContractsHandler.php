@@ -18,8 +18,10 @@ final class ListAccountContractsHandler
      */
     public function handle(User $user): array
     {
+        $identityIds = $user->canonical()->identityIds();
+
         return Contract::query()
-            ->whereHas('membership', fn ($query) => $query->where('user_id', $user->id))
+            ->whereHas('membership', fn ($query) => $query->whereIn('user_id', $identityIds))
             ->with(['membership', 'permissions'])
             ->orderBy('id')
             ->get()

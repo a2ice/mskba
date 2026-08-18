@@ -5,6 +5,7 @@ namespace App\Modules\Telegram\Application\Services;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Coordination\Domain\Models\CoordinationSession;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Domain\Models\UserNotification;
 
 final class TelegramMiniAppStartDestinationResolver
@@ -42,9 +43,14 @@ final class TelegramMiniAppStartDestinationResolver
         }
 
         if ($userId !== null && preg_match('/\Anotification_(\d+)\z/D', $startParam, $matches) === 1) {
+            $user = User::query()->find($userId);
+            if ($user === null) {
+                return null;
+            }
+
             $notification = UserNotification::query()
                 ->whereKey((int) $matches[1])
-                ->where('user_id', $userId)
+                ->whereIn('user_id', $user->canonical()->identityIds())
                 ->first();
 
             if ($notification === null) {

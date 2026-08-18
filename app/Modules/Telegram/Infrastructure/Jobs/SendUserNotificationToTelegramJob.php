@@ -2,15 +2,13 @@
 
 namespace App\Modules\Telegram\Infrastructure\Jobs;
 
-use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
-use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Enums\UserMessengerNotificationPreferenceEnum;
 use App\Modules\Identity\Domain\Models\UserNotificationSetting;
 use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Domain\Models\UserNotificationDelivery;
+use App\Modules\Telegram\Application\Services\TelegramNotificationRecipientResolver;
 use App\Modules\Telegram\Application\Services\TelegramUserNotificationMessageBuilder;
-use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Infrastructure\Exceptions\TelegramBotApiException;
 use App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,13 +26,17 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
 
     public function __construct(public readonly int $notificationId) {}
 
-    public function handle(TelegramBotApiClient $client, TelegramUserNotificationMessageBuilder $builder): void
-    {
+    public function handle(
+        TelegramBotApiClient $client,
+        TelegramUserNotificationMessageBuilder $builder,
+        TelegramNotificationRecipientResolver $recipientResolver,
+    ): void {
         $notification = UserNotification::query()->with('user')->find($this->notificationId);
-        if ($notification === null) {
+        if ($notification === null || $notification->user === null) {
             return;
         }
 
+        $canonicalUser = $notification->user->canonical();
         $delivery = UserNotificationDelivery::query()->firstOrCreate(
             ['user_notification_id' => $notification->id, 'channel' => 'telegram'],
             ['status' => 'pending', 'queued_at' => now()],
@@ -46,7 +48,7 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
         $category = UserNotificationDeliveryCategoryEnum::tryFrom(
             (string) data_get($notification->payload, 'delivery_category', UserNotificationDeliveryCategoryEnum::GENERAL->value),
         ) ?? UserNotificationDeliveryCategoryEnum::GENERAL;
-        $setting = UserNotificationSetting::query()->where('user_id', $notification->user_id)->first();
+        $setting = UserNotificationSetting::query()->where('user_id', $canonicalUser->id)->first();
         $preference = $setting?->messenger_notifications ?? UserMessengerNotificationPreferenceEnum::ALL;
 
         if (! $this->allows($preference, $category)) {
@@ -55,21 +57,9 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
             return;
         }
 
-        $hasVerifiedTelegramContact = Contact::query()
-            ->where('contactable_type', 'user')
-            ->where('contactable_id', $notification->user_id)
-            ->where('type', ContactTypeEnum::TELEGRAM->value)
-            ->whereNotNull('verified_at')
-            ->exists();
-        if (! $hasVerifiedTelegramContact) {
-            $delivery->update(['status' => 'skipped', 'last_error' => 'Verified Telegram contact is missing.']);
-
-            return;
-        }
-
-        $account = TelegramAccount::query()->where('user_id', $notification->user_id)->first();
-        if ($account === null || $account->private_chat_id === null || $account->private_chat_unavailable_at !== null) {
-            $delivery->update(['status' => 'skipped', 'last_error' => 'Private chat with bot is unavailable.']);
+        $account = $recipientResolver->resolve($canonicalUser);
+        if ($account === null) {
+            $delivery->update(['status' => 'skipped', 'last_error' => 'Verified available Telegram private chat is missing.']);
 
             return;
         }

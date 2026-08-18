@@ -158,8 +158,9 @@ final class VenueProximityService
             ->when($actor !== null, fn (Builder $query) => $query->whereHas(
                 'creatorActor',
                 function (Builder $query) use ($actor): void {
-                    if ($actor->user_id !== null) {
-                        $query->where('user_id', $actor->user_id);
+                    $identityIds = $actor->user?->canonical()->identityIds() ?? [];
+                    if ($identityIds !== []) {
+                        $query->whereIn('user_id', $identityIds);
                     } else {
                         $query->whereRaw('1 = 0');
                     }

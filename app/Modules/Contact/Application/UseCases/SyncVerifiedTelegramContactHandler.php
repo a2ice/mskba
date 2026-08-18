@@ -3,6 +3,7 @@
 namespace App\Modules\Contact\Application\UseCases;
 
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
+use App\Modules\Contact\Domain\Events\UserContactConfirmed;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ final class SyncVerifiedTelegramContactHandler
         ?string $lastName,
         string $source = 'telegram_mini_app',
     ): Contact {
-        return DB::transaction(function () use ($user, $telegramUserId, $username, $firstName, $lastName, $source): Contact {
+        $contact = DB::transaction(function () use ($user, $telegramUserId, $username, $firstName, $lastName, $source): Contact {
             $lockedUser = User::query()
                 ->whereKey($user->getKey())
                 ->lockForUpdate()
@@ -58,5 +59,12 @@ final class SyncVerifiedTelegramContactHandler
 
             return $contact->refresh();
         });
+
+        event(new UserContactConfirmed(
+            userId: (int) $user->id,
+            contactId: (int) $contact->id,
+        ));
+
+        return $contact;
     }
 }

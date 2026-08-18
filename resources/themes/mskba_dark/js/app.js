@@ -22,6 +22,7 @@ import './features/auth.js';
 import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
 import './features/account-privacy.js';
+import './features/account-telegram-link.js';
 import './features/score-range.js';
 import './features/tooltips.js';
 import './features/catalog-filter-defaults.js';

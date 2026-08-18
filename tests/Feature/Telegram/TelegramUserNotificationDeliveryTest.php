@@ -12,6 +12,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Telegram\Application\Services\TelegramMiniAppStartDestinationResolver;
+use App\Modules\Telegram\Application\Services\TelegramNotificationRecipientResolver;
 use App\Modules\Telegram\Application\Services\TelegramUserNotificationMessageBuilder;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Infrastructure\Jobs\SendUserNotificationToTelegramJob;
@@ -34,10 +35,7 @@ final class TelegramUserNotificationDeliveryTest extends TestCase
         [$user, $account] = $this->telegramUser(UserMessengerNotificationPreferenceEnum::ALL);
         $notification = $this->notification($user, UserNotificationDeliveryCategoryEnum::REQUEST);
 
-        (new SendUserNotificationToTelegramJob($notification->id))->handle(
-            app(TelegramBotApiClient::class),
-            app(TelegramUserNotificationMessageBuilder::class),
-        );
+        $this->deliver($notification);
 
         $this->assertDatabaseHas('user_notification_deliveries', [
             'user_notification_id' => $notification->id,
@@ -52,16 +50,59 @@ final class TelegramUserNotificationDeliveryTest extends TestCase
                 === 'https://t.me/MSKBATestBot?startapp=notification_'.$notification->id);
     }
 
-    public function test_notification_start_destination_is_available_only_to_its_owner(): void
+    public function test_canonical_notification_uses_verified_telegram_account_kept_on_alias(): void
     {
-        $owner = User::factory()->create();
+        config([
+            'telegram.bot_token' => 'test-token',
+            'telegram.bot_username' => 'MSKBATestBot',
+        ]);
+        Http::fake(['*' => Http::response(['ok' => true, 'result' => ['message_id' => 654]])]);
+
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create();
+        $alias->forceFill(['canonical_user_id' => $canonical->id])->save();
+        UserNotificationSetting::query()->create([
+            'user_id' => $canonical->id,
+            'messenger_notifications' => UserMessengerNotificationPreferenceEnum::ALL,
+        ]);
+        Contact::query()->create([
+            'contactable_type' => 'user',
+            'contactable_id' => $alias->id,
+            'type' => ContactTypeEnum::TELEGRAM,
+            'value' => '200500',
+            'verified_at' => now(),
+        ]);
+        $account = TelegramAccount::query()->create([
+            'user_id' => $alias->id,
+            'telegram_user_id' => 200500,
+            'private_chat_id' => 200500,
+            'private_chat_started_at' => now(),
+            'private_chat_available_at' => now(),
+        ]);
+        $notification = $this->notification($canonical, UserNotificationDeliveryCategoryEnum::REQUEST);
+
+        $this->deliver($notification);
+
+        $this->assertDatabaseHas('user_notification_deliveries', [
+            'user_notification_id' => $notification->id,
+            'status' => 'sent',
+            'recipient' => (string) $account->private_chat_id,
+        ]);
+        Http::assertSent(fn ($request): bool => $request['chat_id'] === $account->private_chat_id);
+    }
+
+    public function test_notification_start_destination_is_available_only_to_its_identity_owner(): void
+    {
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create();
+        $alias->forceFill(['canonical_user_id' => $canonical->id])->save();
         $otherUser = User::factory()->create();
-        $notification = $this->notification($owner, UserNotificationDeliveryCategoryEnum::REQUEST);
+        $notification = $this->notification($alias, UserNotificationDeliveryCategoryEnum::REQUEST);
         $resolver = app(TelegramMiniAppStartDestinationResolver::class);
 
         $this->assertSame(
             '/teams/1/join-requests',
-            $resolver->resolve('notification_'.$notification->id, $owner->id),
+            $resolver->resolve('notification_'.$notification->id, $canonical->id),
         );
         $this->assertNull($resolver->resolve('notification_'.$notification->id, $otherUser->id));
     }
@@ -73,10 +114,7 @@ final class TelegramUserNotificationDeliveryTest extends TestCase
         [$user] = $this->telegramUser(UserMessengerNotificationPreferenceEnum::SYSTEM_ONLY);
         $notification = $this->notification($user, UserNotificationDeliveryCategoryEnum::REQUEST);
 
-        (new SendUserNotificationToTelegramJob($notification->id))->handle(
-            app(TelegramBotApiClient::class),
-            app(TelegramUserNotificationMessageBuilder::class),
-        );
+        $this->deliver($notification);
 
         $this->assertDatabaseHas('user_notification_deliveries', [
             'user_notification_id' => $notification->id,
@@ -123,5 +161,14 @@ final class TelegramUserNotificationDeliveryTest extends TestCase
             'action_text' => 'Просмотреть заявку',
             'payload' => ['delivery_category' => $category->value],
         ]);
+    }
+
+    private function deliver(UserNotification $notification): void
+    {
+        (new SendUserNotificationToTelegramJob($notification->id))->handle(
+            app(TelegramBotApiClient::class),
+            app(TelegramUserNotificationMessageBuilder::class),
+            app(TelegramNotificationRecipientResolver::class),
+        );
     }
 }

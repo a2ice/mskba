@@ -9,6 +9,7 @@ use App\Modules\Contract\Domain\Models\ContractRelation;
 use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserDuplicate;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use App\Modules\Identity\Domain\Models\UserParticipationRole;
 use App\Modules\Location\Domain\Models\Address;
@@ -36,6 +37,7 @@ return [
 
     'auditable' => [
         User::class,
+        UserDuplicate::class,
         UserOperationalPermission::class,
         Profile::class,
         PlayerProfile::class,

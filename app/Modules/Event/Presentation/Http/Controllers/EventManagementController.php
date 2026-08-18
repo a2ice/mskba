@@ -7,6 +7,7 @@ use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Models\EventParticipant;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
@@ -29,9 +30,10 @@ final class EventManagementController extends Controller
 
         $permissions = collect($access->effectivePermissions($item, $actor))
             ->map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value);
-        $currentParticipant = $request->user() === null
-            ? null
-            : $item->participants->firstWhere('user_id', $request->user()->id);
+        $identityIds = $request->user()?->canonical()->identityIds() ?? [];
+        $currentParticipant = $item->participants->first(
+            fn (EventParticipant $participant): bool => in_array((int) $participant->user_id, $identityIds, true),
+        );
 
         return ThemeResolver::page('events.management', [
             'event' => $item,

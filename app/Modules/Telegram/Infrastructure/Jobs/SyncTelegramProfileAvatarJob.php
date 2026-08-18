@@ -28,10 +28,10 @@ final class SyncTelegramProfileAvatarJob implements ShouldQueue
     public function handle(StoreProfileAvatarHandler $storeProfileAvatar, TelegramBotApiClient $telegram): void
     {
         $account = TelegramAccount::query()
-            ->with('user.profile.activeAvatar')
+            ->with('user')
             ->find($this->telegramAccountId);
-
-        $profile = $account?->user?->profile;
+        $canonicalUser = $account?->user?->canonical();
+        $profile = $canonicalUser?->profile()->with('activeAvatar')->first();
         $photoUrl = $account?->photo_url;
 
         if ($profile === null) {

@@ -26,6 +26,8 @@ final class RespondEventResponsibilityHandler
             throw new InvalidArgumentException('Недопустимый ответ на назначение.');
         }
 
+        $user = $user->canonical();
+
         $event = DB::transaction(function () use ($identifier, $participantId, $user, $decision): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
             $this->access->assertOwnsManagementScope($event);
@@ -37,7 +39,7 @@ final class RespondEventResponsibilityHandler
 
             $participant = $event->participants()->whereKey($participantId)->lockForUpdate()->firstOrFail();
 
-            if ($participant->user_id !== $user->id
+            if (! in_array((int) $participant->user_id, $user->identityIds(), true)
                 || $participant->responsibility_status !== EventResponsibilityStatusEnum::PENDING) {
                 throw new InvalidArgumentException('Это приглашение недоступно.');
             }

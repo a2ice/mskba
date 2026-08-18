@@ -2,6 +2,7 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
+use App\Modules\Event\Application\Services\EventIdentityParticipationService;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Events\EventChanged;
@@ -12,11 +13,17 @@ use InvalidArgumentException;
 
 final class LeaveEventHandler
 {
+    public function __construct(
+        private readonly EventIdentityParticipationService $identityParticipation,
+    ) {}
+
     public function handle(string $identifier, User $user): Event
     {
+        $user = $user->canonical();
+
         $event = DB::transaction(function () use ($identifier, $user): Event {
             $event = Event::query()->whereRouteIdentifier($identifier)->lockForUpdate()->firstOrFail();
-            $participant = $event->participants()->where('user_id', $user->id)->first();
+            $participant = $this->identityParticipation->effectiveParticipant($event, $user);
 
             if ($participant === null || $participant->status !== EventParticipantStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Вы не участвуете в этом мероприятии.');

@@ -123,19 +123,20 @@ final class TournamentController extends Controller
         $canManage = $actor !== null && $access->canManage($item, $actor);
         abort_if($item->status === TournamentStatusEnum::UNCONFIRMED && ! $canManage, 404);
         $item->entries->each(fn ($entry) => $entry->setRelation('effectiveMembers', $entryRosters->resolveUsers($entry)));
-        $myPendingInvitations = $request->user() === null ? collect() : $item->admissions()
+        $identityIds = $request->user()?->canonical()->identityIds() ?? [];
+        $myPendingInvitations = $identityIds === [] ? collect() : $item->admissions()
             ->with('team')
             ->where('direction', 'invitation')
             ->where('status', 'pending')
             ->get()
-            ->filter(fn ($admission): bool => (int) $admission->user_id === (int) $request->user()->id
+            ->filter(fn ($admission): bool => in_array((int) $admission->user_id, $identityIds, true)
                 || ($actor !== null
                     && $admission->team !== null
                     && $teamAccess->allows($admission->team, $actor, TeamPermissionEnum::MANAGE_TOURNAMENT_PARTICIPATION)))
             ->values();
-        $hasActiveApplication = $request->user() !== null && $item->admissions()
+        $hasActiveApplication = $identityIds !== [] && $item->admissions()
             ->where('direction', TournamentAdmissionDirectionEnum::APPLICATION->value)
-            ->where('user_id', $request->user()->id)
+            ->whereIn('user_id', $identityIds)
             ->whereIn('status', [
                 TournamentAdmissionStatusEnum::PENDING->value,
                 TournamentAdmissionStatusEnum::ACCEPTED->value,
@@ -145,8 +146,12 @@ final class TournamentController extends Controller
             ? $item->admissions()
                 ->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)
                 ->whereNotNull('user_id')
-                ->distinct()
-                ->count('user_id')
+                ->with('user')
+                ->get()
+                ->map(fn ($admission): ?int => $admission->user?->canonical()->id)
+                ->filter()
+                ->unique()
+                ->count()
             : $item->entries->count();
 
         return ThemeResolver::page('tournaments.show', [
@@ -174,8 +179,9 @@ final class TournamentController extends Controller
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
-        $pendingMembership = $request->user() === null ? null : $item->staffMemberships()
-            ->where('user_id', $request->user()->id)
+        $identityIds = $request->user()?->canonical()->identityIds() ?? [];
+        $pendingMembership = $identityIds === [] ? null : $item->staffMemberships()
+            ->whereIn('user_id', $identityIds)
             ->where('invitation_status', TeamInvitationStatusEnum::PENDING->value)
             ->with('contract.permissions')
             ->first();
@@ -183,7 +189,14 @@ final class TournamentController extends Controller
         $effectivePermissions = collect($access->effectivePermissions($item, $actor));
         $entries = $item->entries()->get();
         $matches = $item->matches()->with(['entryA', 'entryB', 'game.sides', 'game.event.venue.location.address', 'game.event.venue.characteristics', 'game.event.booking'])->get();
-        $acceptedPlayerCount = $item->admissions()->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)->whereNotNull('user_id')->count();
+        $acceptedPlayerCount = $item->admissions()
+            ->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)
+            ->whereNotNull('user_id')
+            ->with('user')
+            ->get()
+            ->map(fn ($admission): int => $admission->user->canonical()->id)
+            ->unique()
+            ->count();
         $competitionStarted = $matches->contains(fn ($match): bool => $match->game?->actual_started_at !== null || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true));
         $participantEntryNames = collect();
         $entries->each(function ($entry) use ($entryRosters, $participantEntryNames): void {
@@ -194,6 +207,13 @@ final class TournamentController extends Controller
         });
 
         $admissions = $item->admissions()->with(['team', 'user.profile', 'user.playerProfile.positions', 'user.playerProfile.selfAssessment', 'entry'])->latest('id')->get();
+        $admissions->whereNotNull('user_id')->each(function ($admission): void {
+            $admission->setRelation('user', $admission->user->canonical()->loadMissing([
+                'profile',
+                'playerProfile.positions',
+                'playerProfile.selfAssessment',
+            ]));
+        });
 
         return ThemeResolver::page('tournaments.manage', [
             'tournament' => $item,
@@ -208,7 +228,7 @@ final class TournamentController extends Controller
                 ->with(['user.profile', 'contract.permissions'])
                 ->latest('id')->get(),
             'admissions' => $admissions,
-            'admissionCharacteristics' => $admissions->whereNotNull('user_id')->unique('user_id')->mapWithKeys(fn ($admission): array => [$admission->user_id => $characteristics->forUser($admission->user)]),
+            'admissionCharacteristics' => $admissions->whereNotNull('user_id')->mapWithKeys(fn ($admission): array => [$admission->user_id => $characteristics->forUser($admission->user)]),
             'entries' => $entries,
             'participantEntryNames' => $participantEntryNames,
             'matches' => $matches,

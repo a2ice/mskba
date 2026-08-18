@@ -54,10 +54,18 @@ final class AdminUsersController extends Controller
             ->with('success', 'Операционные права пользователя обновлены.');
     }
 
-    public function edit(User $user): Response
+    public function edit(User $user): Response|RedirectResponse
     {
+        $canonical = $user->canonical();
+
+        if ((int) $canonical->id !== (int) $user->id) {
+            return redirect()
+                ->route('admin.users.edit', $canonical)
+                ->with('info', "Аккаунт #{$user->id} является alias пользователя #{$canonical->id}. Редактируется основной аккаунт.");
+        }
+
         return ThemeResolver::page('admin.user-edit', [
-            'editedUser' => $user->load('profile'),
+            'editedUser' => $canonical->load('profile'),
         ]);
     }
 
@@ -66,10 +74,11 @@ final class AdminUsersController extends Controller
         User $user,
         AdminUpdateUserBasicDetailsHandler $updateUser,
     ): RedirectResponse {
-        $updateUser->handle($request->user(), $user->id, $request->details());
+        $canonical = $user->canonical();
+        $updateUser->handle($request->user(), $canonical->id, $request->details());
 
         return redirect()
-            ->route('admin.users.edit', $user)
+            ->route('admin.users.edit', $canonical)
             ->with('success', 'Базовые данные пользователя обновлены.');
     }
 

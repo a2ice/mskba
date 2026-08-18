@@ -10,7 +10,10 @@ final class UserPrivacyAccessService
 {
     public function allows(User $subject, ?User $viewer, UserPrivacySettingTypeEnum $type): bool
     {
-        if ($viewer?->is($subject)) {
+        $subject = $subject->canonical();
+        $viewer = $viewer?->canonical();
+
+        if ($viewer !== null && $viewer->id === $subject->id) {
             return true;
         }
 
@@ -23,7 +26,7 @@ final class UserPrivacyAccessService
             UserPrivacyVisibilityEnum::EVERYONE => true,
             UserPrivacyVisibilityEnum::NOBODY => false,
             UserPrivacyVisibilityEnum::SELECTED_USERS => $viewer !== null
-                && $setting?->allowedUsers()->whereKey($viewer->getKey())->exists() === true,
+                && $setting?->allowedUsers()->whereKey($viewer->identityIds())->exists() === true,
         };
     }
 }

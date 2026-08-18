@@ -229,11 +229,13 @@ final class ShowVenueHandler
             return 4;
         }
 
-        if ($user !== null && $creator->user_id === $user->id) {
+        $identityIds = $user?->canonical()->identityIds() ?? $actor?->user?->canonical()->identityIds() ?? [];
+
+        if ($user !== null && in_array((int) $creator->user_id, $identityIds, true)) {
             return 3;
         }
 
-        if ($actor?->user_id !== null && $creator->user_id === $actor->user_id) {
+        if ($actor?->user_id !== null && in_array((int) $creator->user_id, $identityIds, true)) {
             return 2;
         }
 

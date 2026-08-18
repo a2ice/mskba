@@ -30,8 +30,9 @@ final class TournamentOnSiteRegistrationController extends Controller
     {
         $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
 
-        $latestAdmission = $request->user() === null ? null : $item->admissions()
-            ->where('user_id', $request->user()->id)
+        $identityIds = $request->user()?->canonical()->identityIds() ?? [];
+        $latestAdmission = $identityIds === [] ? null : $item->admissions()
+            ->whereIn('user_id', $identityIds)
             ->where('source', TournamentAdmissionSourceEnum::ON_SITE->value)
             ->latest('id')->first();
 
@@ -44,7 +45,7 @@ final class TournamentOnSiteRegistrationController extends Controller
                 && $item->phase() !== TournamentPhaseEnum::COMPLETED,
             'latestAdmission' => $latestAdmission,
             'hasActiveAdmission' => $latestAdmission !== null && in_array($latestAdmission->status->value, ['pending', 'accepted'], true),
-            'isBlocked' => $request->user() !== null && $item->admissions()->where('user_id', $request->user()->id)->whereNotNull('blocked_at')->exists(),
+            'isBlocked' => $identityIds !== [] && $item->admissions()->whereIn('user_id', $identityIds)->whereNotNull('blocked_at')->exists(),
         ]);
     }
 

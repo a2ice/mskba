@@ -12,15 +12,28 @@ final class AdminUpdateUserStatusHandler
 {
     public function handle(?User $actor, int $userId, UserStatusEnum $status): User
     {
+        $actor = $actor?->canonical();
         $this->assertSuperadmin($actor);
 
-        if ($actor->id === $userId) {
-            throw new UserCannotBeChangedException('Нельзя изменить статус собственного аккаунта.');
-        }
+        return DB::transaction(function () use ($actor, $userId, $status): User {
+            $requested = User::query()->findOrFail($userId);
+            $canonicalId = (int) $requested->canonical()->id;
+            $identityUsers = User::query()
+                ->whereKey($canonicalId)
+                ->orWhere('canonical_user_id', $canonicalId)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
 
-        return DB::transaction(function () use ($userId, $status): User {
-            $user = User::query()->lockForUpdate()->findOrFail($userId);
+            if ((int) $requested->refresh()->canonical()->id !== $canonicalId) {
+                throw new UserCannotBeChangedException('Аккаунты были объединены параллельно. Повторите изменение статуса.');
+            }
 
+            if ((int) $actor->id === $canonicalId) {
+                throw new UserCannotBeChangedException('Нельзя изменить статус собственного аккаунта.');
+            }
+
+            $user = $identityUsers->firstWhere('id', $canonicalId) ?? User::query()->findOrFail($canonicalId);
             $user->forceFill(['status' => $status])->save();
 
             return $user->refresh();

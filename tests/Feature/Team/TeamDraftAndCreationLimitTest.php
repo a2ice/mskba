@@ -60,6 +60,29 @@ final class TeamDraftAndCreationLimitTest extends TestCase
             ->count());
     }
 
+    public function test_creation_limit_includes_teams_created_by_alias(): void
+    {
+        $alias = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        $this->actingAs($alias);
+        foreach (range(1, 5) as $number) {
+            $this->post(route('teams.store'), [
+                'name' => "Команда alias {$number}",
+                'sport_types' => ['basketball'],
+            ])->assertRedirect();
+        }
+
+        $canonical = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $alias->forceFill(['canonical_user_id' => $canonical->id])->save();
+
+        $this->actingAs($canonical)->post(route('teams.store'), [
+            'name' => 'Шестая команда identity',
+            'sport_types' => ['basketball'],
+        ])->assertStatus(422);
+
+        $this->assertDatabaseMissing('teams', ['name' => 'Шестая команда identity']);
+    }
+
     public function test_my_teams_can_be_filtered_by_draft_status(): void
     {
         $user = User::factory()->create([

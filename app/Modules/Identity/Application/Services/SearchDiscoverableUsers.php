@@ -22,6 +22,7 @@ final class SearchDiscoverableUsers
         int $limit = 15,
         ?UserPrivacySettingTypeEnum $requiredAccess = null,
     ): Collection {
+        $viewer = $viewer->canonical();
         $rawQuery = trim($query);
         $normalizedQuery = mb_strtolower($rawQuery);
 
@@ -29,9 +30,15 @@ final class SearchDiscoverableUsers
             return collect();
         }
 
+        $excludedCanonicalIds = $this->canonicalIds([
+            (int) $viewer->id,
+            ...array_map('intval', $excludeUserIds),
+        ]);
+
         return User::query()
             ->with('profile')
-            ->whereNotIn('id', array_values(array_unique([$viewer->getKey(), ...$excludeUserIds])))
+            ->whereNull('canonical_user_id')
+            ->whereNotIn('id', $excludedCanonicalIds)
             ->where('status', '!=', UserStatusEnum::BLOCKED->value)
             ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
                 $privacyQuery,
@@ -61,6 +68,25 @@ final class SearchDiscoverableUsers
             ->get();
     }
 
+    /** @param list<int> $userIds
+     * @return list<int>
+     */
+    private function canonicalIds(array $userIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $userIds), fn (int $id): bool => $id > 0)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $resolved = User::query()
+            ->whereIn('id', $ids)
+            ->get()
+            ->map(fn (User $user): int => (int) $user->canonical()->id)
+            ->all();
+
+        return array_values(array_unique([...$ids, ...$resolved]));
+    }
+
     /** @param Builder<User> $query */
     private function applyPrivacyFilter(
         Builder $query,
@@ -68,6 +94,7 @@ final class SearchDiscoverableUsers
         UserPrivacySettingTypeEnum $type,
     ): void {
         $defaultVisibility = $type->defaultVisibility();
+        $viewerIdentityIds = $viewer->identityIds();
 
         $query
             ->where(function (Builder $missingSettingQuery) use ($type, $defaultVisibility): void {
@@ -81,14 +108,14 @@ final class SearchDiscoverableUsers
             })
             ->orWhereHas('privacySettings', fn ($settingQuery) => $settingQuery
                 ->where('type', $type->value)
-                ->where(function ($visibilityQuery) use ($viewer): void {
+                ->where(function ($visibilityQuery) use ($viewerIdentityIds): void {
                     $visibilityQuery
                         ->where('visibility', UserPrivacyVisibilityEnum::EVERYONE->value)
-                        ->orWhere(function ($selectedQuery) use ($viewer): void {
+                        ->orWhere(function ($selectedQuery) use ($viewerIdentityIds): void {
                             $selectedQuery
                                 ->where('visibility', UserPrivacyVisibilityEnum::SELECTED_USERS->value)
                                 ->whereHas('allowedUsers', fn ($allowedQuery) => $allowedQuery
-                                    ->whereKey($viewer->getKey()));
+                                    ->whereKey($viewerIdentityIds));
                         });
                 }));
     }
