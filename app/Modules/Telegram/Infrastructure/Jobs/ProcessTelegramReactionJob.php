@@ -31,11 +31,13 @@ final class ProcessTelegramReactionJob implements ShouldQueue
         $chatId = data_get($this->reaction, 'chat.id');
         $messageId = data_get($this->reaction, 'message_id');
         $telegramUserId = data_get($this->reaction, 'user.id');
+        $isBot = data_get($this->reaction, 'user.is_bot');
         $occurredAt = data_get($this->reaction, 'date');
         $newReactions = data_get($this->reaction, 'new_reaction', []);
 
         if (
-            ! is_numeric($chatId)
+            $isBot === true
+            || ! is_numeric($chatId)
             || ! is_numeric($messageId)
             || ! is_numeric($telegramUserId)
             || ! is_numeric($occurredAt)
