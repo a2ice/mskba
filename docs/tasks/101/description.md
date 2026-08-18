@@ -47,7 +47,7 @@ Detection только создаёт/обновляет кандидата и �
 `canonical_user_id` может измениться только после явного resolution:
 
 1. **Self-service** — только пользователь, входящий в пару, после свежей подписанной Telegram-аутентификации. Результат Telegram-аутентификации превращается в одноразовый server-side proof, привязанный к candidate, canonical actor и текущей session. Proof живёт ограниченное время (по умолчанию 10 минут) и потребляется при merge. Сохранённого historical evidence недостаточно.
-2. **Admin resolution** — только подтверждённый `SUPERADMIN` через защищённый admin route. Перед merge требуется явное подтверждение того, что способы входа alias после canonicalization получат доступ к canonical account. Для пар с расширенными ролями требуется дополнительное подтверждение.
+2. **Admin resolution** — только подтверждённый `SUPERADMIN`. HTTP route защищён Gate, а сам application use-case независимо повторно проверяет canonical actor, его статус и системную роль, поэтому будущий внутренний caller не сможет обойти эту границу доверия. Перед merge требуется явное подтверждение того, что способы входа alias после canonicalization получат доступ к canonical account. Для пар с расширенными ролями требуется дополнительное подтверждение.
 
 Self-service разрешён только между обычными `USER` accounts. `SUPERADMIN` и `SYSTEM` вообще нельзя объединять через механизм дублей. Пары с `EDITOR`/`MODERATOR`/`ADMIN` доступны только для ручного superadmin resolution.
 
@@ -59,6 +59,7 @@ Canonical merge является security-sensitive операцией: посл
 - `rejected` и `merged` candidate нельзя повторно объединить через обычный resolution;
 - нельзя merge candidate без хотя бы одного актуального evidence;
 - self-service требует свежий одноразовый proof, а не только сохранённое evidence;
+- non-self-service merge/reject требует подтверждённого `SUPERADMIN` не только на HTTP-слое, но и внутри application use-case;
 - blocked source или blocked canonical account не должен аутентифицироваться ни через обычный login, ни через Telegram;
 - уже существующая web-сессия любой alias identity на следующем запросе разрешается в canonical; если canonical account заблокирован, такая сессия немедленно инвалидируется;
 - сразу после корректного merge старые пароли alias могут использоваться как credentials той же canonical identity, чтобы пользователь не потерял доступ;
@@ -67,6 +68,7 @@ Canonical merge является security-sensitive операцией: посл
 - Telegram callbacks, создающие новые действия (участие в мероприятии, голосование), выполняются от canonical user;
 - Telegram notification delivery ищет verified доступный private chat по всей identity group, но отправляет сообщение только в один детерминированно выбранный аккаунт;
 - права и системные роли берутся только у canonical пользователя;
+- merge/reject `UserDuplicate` входят в общий audit trail: сохраняются изменения candidate вместе с actor/context аудита;
 - `identityIds()` нельзя механически применять ко всем `user_id` запросам: identity-wide lookup допускается только там, где нужно читать физически сохранённую внешнюю identity/историю alias.
 
 ## Безопасность и обратимость данных
