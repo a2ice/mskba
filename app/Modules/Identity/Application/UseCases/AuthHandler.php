@@ -26,7 +26,15 @@ class AuthHandler
             return $this->invalidCredentials();
         }
 
-        $matchingCredentials = $loginCandidates
+        /** @var User $identityUser */
+        $identityUser = $loginCandidates->first();
+        $canonicalUser = $this->canonicalUserResolver->resolve($identityUser);
+
+        $credentialUsers = User::query()
+            ->whereIn('id', $canonicalUser->identityIds())
+            ->get();
+
+        $matchingCredentials = $credentialUsers
             ->filter(fn (User $user): bool => $user->password !== null && Hash::check($password, $user->password))
             ->values();
 
@@ -34,15 +42,10 @@ class AuthHandler
             return $this->invalidCredentials();
         }
 
-        /** @var User $identityUser */
-        $identityUser = $loginCandidates->first();
-        $canonicalUser = $this->canonicalUserResolver->resolve($identityUser);
-
-        /** @var User|null $loginUser */
-        $loginUser = $matchingCredentials
-            ->first(fn (User $user): bool => $user->status !== UserStatusEnum::BLOCKED);
-
-        if ($loginUser === null || $canonicalUser->status === UserStatusEnum::BLOCKED) {
+        if (
+            $canonicalUser->status === UserStatusEnum::BLOCKED
+            || $credentialUsers->contains(fn (User $user): bool => $user->status === UserStatusEnum::BLOCKED)
+        ) {
             return new LoginResponseDTO(
                 status: 'error',
                 message: 'Ваш аккаунт заблокирован. Пожалуйста, обратитесь в поддержку.',
@@ -62,7 +65,7 @@ class AuthHandler
             event(new UserFirstLogin((int) $canonicalUser->id));
         }
 
-        if ($loginUser->is_temporary_password) {
+        if ($matchingCredentials->contains(fn (User $user): bool => $user->is_temporary_password)) {
             return new LoginResponseDTO(
                 status: 'warning',
                 message: 'Вы вошли с временным паролем. Пожалуйста, смените пароль в настройках профиля.',
