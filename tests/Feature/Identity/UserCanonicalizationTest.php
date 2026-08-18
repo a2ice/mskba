@@ -323,4 +323,19 @@ final class UserCanonicalizationTest extends TestCase
         $response->assertOk();
         $this->assertSame($canonical->id, auth()->user()?->id);
     }
+
+    public function test_blocked_canonical_identity_invalidates_existing_web_session(): void
+    {
+        $blocked = User::factory()->create([
+            'status' => UserStatusEnum::BLOCKED,
+        ]);
+        $alias = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $alias->forceFill(['canonical_user_id' => $blocked->id])->save();
+
+        $this->actingAs($alias)->get('/');
+
+        $this->assertGuest();
+    }
 }
