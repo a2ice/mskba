@@ -297,6 +297,36 @@
 	text-align: center;
 }
 
+.auth-vk-login {
+	margin-top: 12px;
+	display: grid;
+	justify-items: center;
+	gap: 10px;
+}
+
+.auth-vk-login__button {
+	min-width: min(100%, 230px);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 9px;
+	border-color: #07f;
+	background: #07f;
+	color: #fff;
+}
+
+.auth-vk-login__button:hover,
+.auth-vk-login__button:focus-visible {
+	border-color: #0066d6;
+	background: #0066d6;
+	color: #fff;
+}
+
+.auth-vk-login__icon {
+	font-size: 13px;
+	font-weight: 800;
+}
+
 .auth-classic__link {
 	padding: 0;
 	border: 0;

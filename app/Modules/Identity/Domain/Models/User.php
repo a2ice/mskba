@@ -15,6 +15,7 @@ use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\Participation\PlayerProfile;
 use App\Modules\Identity\Infrastructure\Database\Factories\UserFactory;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Vk\Domain\Models\VkAccount;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -123,6 +124,11 @@ class User extends Authenticatable
     public function telegramAccount(): HasOne
     {
         return $this->hasOne(TelegramAccount::class);
+    }
+
+    public function vkAccount(): HasOne
+    {
+        return $this->hasOne(VkAccount::class);
     }
 
     public function playerProfile(): HasOne

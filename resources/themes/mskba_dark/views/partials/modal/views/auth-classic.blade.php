@@ -31,6 +31,7 @@
         </form>
 
         @include('theme::partials.auth.telegram-login')
+        @include('theme::partials.auth.vk-login')
 
         <p class="auth-classic__links">
             <button type="button" class="auth-classic__link" data-auth-classic-link data-auth-classic-target="restore">Восстановить доступ</button>

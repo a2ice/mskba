@@ -78,6 +78,22 @@ final class UserDuplicateDetector
         );
     }
 
+    public function observeVkConflict(User $currentUser, User $vkOwner, string $vkUserId): ?UserDuplicate
+    {
+        return $this->observeEvidence(
+            first: $currentUser,
+            second: $vkOwner,
+            type: UserDuplicateEvidenceTypeEnum::VK_IDENTITY,
+            normalizedValue: $vkUserId,
+            metadata: [
+                'vk_user_id' => $vkUserId,
+                'self_service_user_id' => (int) $currentUser->canonical()->id,
+                'vk_owner_user_id' => (int) $vkOwner->canonical()->id,
+                'source' => 'signed_vk_id_auth',
+            ],
+        );
+    }
+
     /**
      * Records one immutable evidence identity. A rejected candidate is reopened
      * whenever the aggregate hash of current evidence differs from the hash

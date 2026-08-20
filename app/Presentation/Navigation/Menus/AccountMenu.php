@@ -82,6 +82,13 @@ final class AccountMenu implements MenuHandler
             ];
 
             $items[] = [
+                'label' => 'VK ID',
+                'url' => $this->routeUrl('account.vk'),
+                'active' => $this->isActiveRoute('account.vk, account.vk.*'),
+                'visible' => true,
+            ];
+
+            $items[] = [
                 'label' => 'Настройки',
                 'url' => $this->routeUrl('account.settings'),
                 'active' => $this->isActiveRoute('account.settings'),

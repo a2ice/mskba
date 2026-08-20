@@ -19,6 +19,9 @@
                     </div>
                 @else
                     <div class="auth-form-wrapper" style="max-width: 400px;">
+                        @if(session('error'))
+                            <div class="alert alert-danger mb-3">{{ session('error') }}</div>
+                        @endif
                         @if ($errors->any())
                             <div class="alert alert-danger">
                                 <ul class="mb-0">
@@ -47,6 +50,7 @@
                         </form>
 
                         @include('theme::partials.auth.telegram-login')
+                        @include('theme::partials.auth.vk-login')
 
                         <hr>
 
