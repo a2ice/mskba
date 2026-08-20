@@ -60,6 +60,10 @@ final class VkIdAuthenticationTest extends TestCase
         $this->assertSame(UserRegistrationChannelEnum::VK_ID, $user->registration_channel);
         $this->assertDatabaseHas('vk_accounts', ['user_id' => $user->id, 'vk_user_id' => '777']);
         $this->assertSame('Иван', $user->profile?->first_name);
+
+        $this->get(route('account'))
+            ->assertOk()
+            ->assertSee('title="Иван Петров"', false);
     }
 
     public function test_callback_reuses_existing_vk_identity_and_rejects_replayed_state(): void

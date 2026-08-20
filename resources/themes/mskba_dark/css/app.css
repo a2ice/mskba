@@ -781,10 +781,18 @@ body.telegram-mini-app {
 
 .site-auth__button {
     position: relative;
+    max-width: 190px;
     min-width: 94px;
     border-color: rgba(246, 95, 42, 0.82);
     background: rgba(10, 10, 10, 0.28);
     backdrop-filter: blur(10px);
+}
+
+.site-auth__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .site-auth__notification-badge,

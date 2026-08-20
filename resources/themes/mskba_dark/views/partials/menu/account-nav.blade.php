@@ -27,8 +27,8 @@
                 $headerNewNotificationsCount = app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)
                     ->handle(auth()->user());
             @endphp
-            <a href="{{ route('account') }}" @class(['btn', 'btn--secondary', 'btn--sm', 'site-auth__button', 'is-active' => request()->routeIs('account')])>
-                {{ $userLoginLabel ?? 'Аккаунт' }}
+            <a href="{{ route('account') }}" title="{{ $userLoginLabel ?? 'Аккаунт' }}" @class(['btn', 'btn--secondary', 'btn--sm', 'site-auth__button', 'is-active' => request()->routeIs('account')])>
+                <span class="site-auth__label">{{ $userLoginLabel ?? 'Аккаунт' }}</span>
                 <span
                     class="site-auth__notification-badge{{ $headerNewNotificationsCount > 0 ? '' : ' d-none' }}"
                     data-notification-count

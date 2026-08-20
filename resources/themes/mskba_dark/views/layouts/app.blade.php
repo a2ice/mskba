@@ -29,7 +29,13 @@
             ->first()
         : null;
 
-    $userLoginLabel = $user ? $user->username : 'Войти';
+    $userProfileName = $user
+        ? trim(implode(' ', array_filter([
+            $user->profile?->first_name,
+            $user->profile?->last_name,
+        ], static fn ($value) => filled($value))))
+        : '';
+    $userLoginLabel = $user ? ($userProfileName ?: $user->username) : 'Войти';
 @endphp
 
 <!DOCTYPE html>

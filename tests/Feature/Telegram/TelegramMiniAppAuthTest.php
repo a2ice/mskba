@@ -76,6 +76,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('Telegram: @mskba_user')
             ->assertSee('Основной контакт подтвержден')
             ->assertSee('Подтвердить аккаунт')
+            ->assertSee('title="Dmitry Losev"', false)
             ->assertDontSee('Добавьте и подтвердите контакт');
 
         $this->assertDatabaseHas('telegram_accounts', [
