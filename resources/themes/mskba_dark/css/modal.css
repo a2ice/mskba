@@ -205,8 +205,10 @@
 .auth-classic__links {
 	margin: 14px 0 0;
 	display: flex;
+	justify-content: center;
 	gap: 14px;
 	flex-wrap: wrap;
+	text-align: center;
 }
 
 .auth-telegram-login {

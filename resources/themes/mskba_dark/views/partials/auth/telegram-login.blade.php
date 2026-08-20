@@ -14,6 +14,7 @@
             <span>или через Telegram</span>
         </div>
 
+        {{-- Временно скрыт прямой вход через Telegram Login Widget.
         <div class="auth-telegram-login__option">
             <span class="auth-telegram-login__option-label">Быстрый вход</span>
             <div class="auth-telegram-login__widget">
@@ -30,6 +31,7 @@
         </div>
 
         <span class="auth-telegram-login__alternative">или</span>
+        --}}
 
         <button
             type="button"

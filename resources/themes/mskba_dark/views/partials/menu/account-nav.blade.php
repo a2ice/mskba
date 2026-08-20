@@ -10,6 +10,7 @@
             >
                 Войти
             </button>
+            {{-- Регистрация доступна в окне входа.
             <button
                 type="button"
                 @class(['btn', 'btn--primary', 'btn--sm', 'site-auth__button', 'site-auth__button--register', 'js-handler', 'is-active' => request()->routeIs('register')])
@@ -20,6 +21,7 @@
             >
                 Регистрация
             </button>
+            --}}
         @else
             @php
                 $headerNewNotificationsCount = app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)
