@@ -40,6 +40,28 @@ jobs:
               exit 1
             fi
 
+            VK_ID_APP_ID='${{ vars.VK_ID_APP_ID }}'
+            VK_ID_REDIRECT_URI='${{ vars.VK_ID_REDIRECT_URI }}'
+
+            if [ -z "$VK_ID_APP_ID" ] || [ -z "$VK_ID_REDIRECT_URI" ]; then
+              echo "VK ID repository variables are not configured" >&2
+              exit 1
+            fi
+
+            update_env_value() {
+              KEY="$1"
+              VALUE="$2"
+
+              if grep -q "^${KEY}=" .env; then
+                sed -i "s|^${KEY}=.*|${KEY}=${VALUE}|" .env
+              else
+                printf '%s=%s\n' "$KEY" "$VALUE" >> .env
+              fi
+            }
+
+            update_env_value VK_ID_APP_ID "$VK_ID_APP_ID"
+            update_env_value VK_ID_REDIRECT_URI "$VK_ID_REDIRECT_URI"
+
             git fetch origin main
             git reset --hard origin/main
             git clean -fd
