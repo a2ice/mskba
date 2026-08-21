@@ -22,7 +22,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .github/feature105-payload/part* | base64 -d > /tmp/feature105.tgz
+          : > /tmp/feature105.tgz
+          for part in .github/feature105-payload/part*; do
+            base64 -d "$part" >> /tmp/feature105.tgz
+          done
           tar -xzf /tmp/feature105.tgz
           rm -rf .github/feature105-payload
           rm -f .github/workflows/feature-105-bootstrap.yml
