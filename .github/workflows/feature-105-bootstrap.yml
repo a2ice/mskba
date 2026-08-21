@@ -19,6 +19,7 @@ jobs:
       - name: Checkout feature branch
         uses: actions/checkout@v4
         with:
+          ref: feature/105
           fetch-depth: 0
 
       - name: Materialize real implementation files
@@ -29,6 +30,7 @@ jobs:
           from pathlib import Path
           from io import BytesIO
           import base64
+          import gzip
           import re
           import tarfile
 
@@ -44,54 +46,70 @@ jobs:
               print(f'{part}: raw={len(raw)} cleaned={len(cleaned)}')
               chunks.append(cleaned)
 
-          def decode_normalized(text: str) -> bytes:
+          def decode_text(text: str) -> bytes:
               text = text.rstrip('=')
               text += '=' * (-len(text) % 4)
               return base64.b64decode(text, validate=False)
 
-          candidates = []
-
-          try:
-              candidates.append(('single-stream', decode_normalized(''.join(chunks))))
-          except Exception as exc:
-              print(f'single-stream decode failed: {exc}')
-
-          try:
-              joined = ''.join(chunk.rstrip('=') for chunk in chunks)
-              candidates.append(('joined-without-inner-padding', decode_normalized(joined)))
-          except Exception as exc:
-              print(f'joined-without-inner-padding decode failed: {exc}')
-
-          try:
-              candidates.append((
-                  'per-part',
-                  b''.join(decode_normalized(chunk) for chunk in chunks),
-              ))
-          except Exception as exc:
-              print(f'per-part decode failed: {exc}')
-
-          selected = None
-          members = None
-          for name, data in candidates:
-              print(f'trying {name}: {len(data)} decoded bytes')
+          def valid_archive(data: bytes):
               try:
+                  unpacked = gzip.decompress(data)
                   with tarfile.open(fileobj=BytesIO(data), mode='r:gz') as archive:
-                      candidate_members = archive.getmembers()
-                      if not candidate_members:
-                          raise ValueError('archive is empty')
-                  selected = (name, data)
-                  members = candidate_members
-                  print(f'selected {name}: {len(candidate_members)} archive members')
-                  break
+                      members = archive.getmembers()
+                      if not members:
+                          return None
+                  return members
+              except Exception:
+                  return None
+
+          combined = ''.join(chunks)
+          selected_data = None
+          selected_members = None
+
+          # The payload should be 54,000 base64 chars. part00 contains one
+          # accidental extra base64 character (6,001 instead of 6,000).
+          # First try the most likely boundary cases, then locate it exactly.
+          candidate_texts = []
+          if len(chunks[0]) == 6001:
+              candidate_texts.append(('drop-last-part00-char', chunks[0][:-1] + ''.join(chunks[1:])))
+              candidate_texts.append(('drop-first-part00-char', chunks[0][1:] + ''.join(chunks[1:])))
+
+          candidate_texts.append(('as-is', combined))
+
+          for name, text in candidate_texts:
+              try:
+                  data = decode_text(text)
               except Exception as exc:
-                  print(f'{name} is not a valid tar.gz payload: {exc}')
+                  print(f'{name}: base64 decode failed: {exc}')
+                  continue
+              members = valid_archive(data)
+              if members is not None:
+                  print(f'selected {name}: {len(data)} bytes, {len(members)} members')
+                  selected_data = data
+                  selected_members = members
+                  break
+              print(f'{name}: not a valid tar.gz')
 
-          if selected is None:
-              raise SystemExit('Payload cannot be decoded into a valid tar.gz archive')
+          if selected_data is None and len(chunks[0]) == 6001:
+              suffix = ''.join(chunks[1:])
+              for index in range(len(chunks[0])):
+                  text = chunks[0][:index] + chunks[0][index + 1:] + suffix
+                  try:
+                      data = decode_text(text)
+                  except Exception:
+                      continue
+                  members = valid_archive(data)
+                  if members is not None:
+                      print(f'found extra base64 character at part00 index {index}: {chunks[0][index]!r}')
+                      selected_data = data
+                      selected_members = members
+                      break
 
-          _, data = selected
+          if selected_data is None:
+              raise SystemExit('Could not reconstruct a valid feature 105 tar.gz payload')
+
           root = Path.cwd().resolve()
-          with tarfile.open(fileobj=BytesIO(data), mode='r:gz') as archive:
+          with tarfile.open(fileobj=BytesIO(selected_data), mode='r:gz') as archive:
               for member in archive.getmembers():
                   target = (root / member.name).resolve()
                   if root != target and root not in target.parents:
@@ -99,7 +117,7 @@ jobs:
               archive.extractall(root)
 
           print('Materialized files:')
-          for member in members:
+          for member in selected_members:
               if member.isfile():
                   print(member.name)
           PY
