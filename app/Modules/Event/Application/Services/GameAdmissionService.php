@@ -3,6 +3,8 @@
 namespace App\Modules\Event\Application\Services;
 
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionCandidateTypeEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
@@ -12,13 +14,21 @@ use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
+use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
-use App\Modules\Team\Application\Services\TeamManagementAccess;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,16 +37,44 @@ final class GameAdmissionService
     public function __construct(
         private readonly EventManagementAccess $eventAccess,
         private readonly TeamManagementAccess $teamAccess,
+        private readonly CreateUserNotificationHandler $notifications,
     ) {}
 
     public function apply(Game $game, Actor $actor, Team|User $candidate): GameAdmission
     {
-        return $this->createPending($game, $actor, $candidate, GameAdmissionDirectionEnum::APPLICATION);
+        $admission = $this->createPending($game, $actor, $candidate, GameAdmissionDirectionEnum::APPLICATION);
+        $ownerUserId = $game->event()->first()?->organizerActor()->value('user_id');
+        if ($ownerUserId !== null) {
+            $this->notify(
+                (int) $ownerUserId,
+                $game,
+                'Новая заявка на игру',
+                $candidate instanceof Team
+                    ? 'Команда «'.$candidate->name.'» подала заявку на участие.'
+                    : 'Игрок подал заявку на участие в игре.',
+            );
+        }
+
+        return $admission;
     }
 
     public function invite(Game $game, Actor $actor, Team|User $candidate): GameAdmission
     {
-        return $this->createPending($game, $actor, $candidate, GameAdmissionDirectionEnum::INVITATION);
+        $admission = $this->createPending($game, $actor, $candidate, GameAdmissionDirectionEnum::INVITATION);
+        if ($candidate instanceof User) {
+            $this->notify($candidate->canonical()->id, $game, 'Приглашение на игру', 'Вас пригласили принять участие в игре.');
+        } else {
+            foreach ($this->teamRepresentativeUserIds($candidate) as $userId) {
+                $this->notify(
+                    $userId,
+                    $game,
+                    'Приглашение команды на игру',
+                    'Команду «'.$candidate->name.'» пригласили принять участие в игре.',
+                );
+            }
+        }
+
+        return $admission;
     }
 
     public function respond(
@@ -50,7 +88,7 @@ final class GameAdmissionService
             throw new InvalidArgumentException('Недопустимый ответ на заявку.');
         }
 
-        return DB::transaction(function () use ($game, $admission, $actor, $decision, $responseComment): GameAdmission {
+        $updated = DB::transaction(function () use ($game, $admission, $actor, $decision, $responseComment): GameAdmission {
             $event = Event::query()->whereKey($game->event_id)->lockForUpdate()->firstOrFail();
             $lockedGame = Game::query()->whereKey($game->id)->lockForUpdate()->firstOrFail();
             $this->assertStandaloneOpen($event, $lockedGame);
@@ -89,6 +127,33 @@ final class GameAdmissionService
 
             return $lockedAdmission->refresh();
         }, 3);
+
+        if ($updated->direction === GameAdmissionDirectionEnum::APPLICATION) {
+            $candidate = $updated->team ?? $updated->user;
+            if ($candidate instanceof User) {
+                $this->notify(
+                    $candidate->canonical()->id,
+                    $game,
+                    $decision === GameAdmissionStatusEnum::ACCEPTED ? 'Заявка на игру принята' : 'Заявка на игру отклонена',
+                    $decision === GameAdmissionStatusEnum::ACCEPTED
+                        ? 'Организатор принял вашу заявку на участие.'
+                        : 'Организатор отклонил вашу заявку на участие.',
+                );
+            } elseif ($candidate instanceof Team) {
+                foreach ($this->teamRepresentativeUserIds($candidate) as $userId) {
+                    $this->notify(
+                        $userId,
+                        $game,
+                        $decision === GameAdmissionStatusEnum::ACCEPTED ? 'Заявка команды принята' : 'Заявка команды отклонена',
+                        $decision === GameAdmissionStatusEnum::ACCEPTED
+                            ? 'Заявка команды «'.$candidate->name.'» на игру принята.'
+                            : 'Заявка команды «'.$candidate->name.'» на игру отклонена.',
+                    );
+                }
+            }
+        }
+
+        return $updated;
     }
 
     public function revoke(Game $game, GameAdmission $admission, Actor $actor): void
@@ -146,11 +211,20 @@ final class GameAdmissionService
                     $actor,
                     EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS,
                 );
+            } else {
+                if ($event->status !== EventStatusEnum::PUBLISHED
+                    || $event->visibility !== EventVisibilityEnum::PUBLIC
+                    || $event->ends_at?->isPast()) {
+                    throw new InvalidArgumentException('Заявки принимаются только на опубликованную публичную игру до её окончания.');
+                }
+                if (! $lockedGame->acceptsAdmissions()) {
+                    throw new InvalidArgumentException('Приём новых заявок на эту игру выключен.');
+                }
             }
 
             $candidate = $this->lockCandidate($candidate);
             if ($direction === GameAdmissionDirectionEnum::APPLICATION) {
-                // Authorization is checked again after locking the candidate so a concurrent
+                // Authorization is checked after locking the candidate so a concurrent
                 // membership/permission change cannot turn a stale pre-check into an admission.
                 $this->assertCandidateMayAct($candidate, $actor);
             }
@@ -285,6 +359,48 @@ final class GameAdmissionService
         if ((int) $admission->game_id !== (int) $game->id) {
             throw new InvalidArgumentException('Заявка не относится к этой игре.');
         }
+    }
+
+    /** @return Collection<int, int> */
+    private function teamRepresentativeUserIds(Team $team): Collection
+    {
+        $creatorUserId = $team->createdByActor()->value('user_id');
+        $delegates = ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::TEAM->value)
+            ->where('scope_id', $team->id)
+            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+            ->whereHas('contract', fn ($query) => $query
+                ->where('status', ContractStatusEnum::ACTIVE->value)
+                ->whereHas('permissions', fn ($permissions) => $permissions
+                    ->where('permission', TeamPermissionEnum::MANAGE_GAME_PARTICIPATION->value)))
+            ->pluck('user_id');
+
+        return $delegates
+            ->when($creatorUserId !== null, fn (Collection $ids) => $ids->push((int) $creatorUserId))
+            ->map(function ($id): int {
+                $user = User::query()->find((int) $id);
+
+                return $user === null ? (int) $id : (int) $user->canonical()->id;
+            })
+            ->unique()
+            ->values();
+    }
+
+    private function notify(int $userId, Game $game, string $title, string $body): void
+    {
+        $event = $game->event()->first();
+        if ($event === null) {
+            return;
+        }
+        $this->notifications->handle(new CreateUserNotificationDTO(
+            userId: $userId,
+            type: UserNotificationTypeEnum::SYSTEM,
+            title: $title,
+            body: $body,
+            actionUrl: route('events.show', $event->routeIdentifier()),
+            actionText: 'Открыть игру',
+            payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment'],
+        ));
     }
 
     private function normalizeComment(?string $comment): ?string

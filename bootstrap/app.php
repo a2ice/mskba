@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         web: [
             __DIR__.'/../routes/web.php',
             __DIR__.'/../routes/game-live.php',
+            __DIR__.'/../routes/game-recruitment.php',
             __DIR__.'/../routes/feed.php',
             __DIR__.'/../routes/reactions.php',
         ],

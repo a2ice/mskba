@@ -18,7 +18,12 @@ final class CreateEventRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        $prepared = ['publish_to_telegram' => $this->boolean('publish_to_telegram')];
+        $prepared = [
+            'publish_to_telegram' => $this->boolean('publish_to_telegram'),
+            'game_accepts_applications' => $this->input('type') === EventTypeEnum::GAME->value
+                ? ($this->has('game_accepts_applications') ? $this->boolean('game_accepts_applications') : true)
+                : false,
+        ];
         if ($this->input('type') === EventTypeEnum::GAME->value && ! $this->filled('game_recruitment_mode')) {
             $prepared['game_recruitment_mode'] = GameRecruitmentModeEnum::PREFORMED_TEAMS->value;
         }
@@ -65,6 +70,10 @@ final class CreateEventRequest extends FormRequest
                 'nullable',
                 Rule::enum(GameRecruitmentModeEnum::class),
             ],
+            'game_accepts_applications' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'boolean',
+            ],
             'team_a_id' => [
                 'nullable',
                 'integer',
@@ -97,10 +106,7 @@ final class CreateEventRequest extends FormRequest
                 'min:1',
                 'max:7',
             ],
-            'scoring_type' => [
-                'nullable',
-                Rule::enum(GameScoringTypeEnum::class),
-            ],
+            'scoring_type' => ['nullable', Rule::enum(GameScoringTypeEnum::class)],
             'game_format' => [
                 Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
                 'nullable',
@@ -160,6 +166,13 @@ final class CreateEventRequest extends FormRequest
                     $validator->errors()->add(
                         'game_recruitment_mode',
                         'В режиме набора отдельных игроков готовые команды при создании не указываются.',
+                    );
+                }
+                if ($recruitmentMode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT
+                    && (int) $this->input('side_a_size') !== (int) $this->input('side_b_size')) {
+                    $validator->errors()->add(
+                        'side_b_size',
+                        'Для balanced-набора размер обеих сторон должен совпадать.',
                     );
                 }
             }

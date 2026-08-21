@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'description',
     'status',
     'recruitment_mode',
+    'accepts_applications',
     'sides_confirmed_at',
     'sides_confirmed_by_actor_id',
     'format',
@@ -147,9 +148,13 @@ class Game extends Model
         return $this->side_a_size.'×'.$this->side_b_size;
     }
 
-    public function sidesAreConfirmed(): bool
+    public function acceptsAdmissions(): bool
     {
-        return $this->sides_confirmed_at !== null;
+        return $this->recruitment_mode !== null
+            && $this->status === GameStatusEnum::SCHEDULED
+            && $this->actual_started_at === null
+            && $this->sides_confirmed_at === null
+            && $this->accepts_applications;
     }
 
     protected function casts(): array
@@ -157,6 +162,7 @@ class Game extends Model
         return [
             'status' => GameStatusEnum::class,
             'recruitment_mode' => GameRecruitmentModeEnum::class,
+            'accepts_applications' => 'boolean',
             'sides_confirmed_at' => 'immutable_datetime',
             'format' => GameFormatEnum::class,
             'timing_mode' => GameTimingModeEnum::class,

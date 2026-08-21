@@ -111,6 +111,7 @@ final class CreateEventHandler
                     GameRecruitmentModeEnum::from(
                         $data['game_recruitment_mode'] ?? GameRecruitmentModeEnum::PREFORMED_TEAMS->value,
                     ),
+                    (bool) ($data['game_accepts_applications'] ?? true),
                 );
             }
 
