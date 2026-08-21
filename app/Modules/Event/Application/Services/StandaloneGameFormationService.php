@@ -454,8 +454,8 @@ final class StandaloneGameFormationService
     }
 
     /**
-     * @param list<int> $sideAUserIds
-     * @param list<int> $sideBUserIds
+     * @param  list<int>  $sideAUserIds
+     * @param  list<int>  $sideBUserIds
      */
     private function materializeIndividuals(
         Event $event,

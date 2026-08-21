@@ -2,10 +2,13 @@
 
 namespace App\Modules\Event\Application\Services;
 
+use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
-use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionCandidateTypeEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
@@ -14,9 +17,6 @@ use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
-use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
-use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
-use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;

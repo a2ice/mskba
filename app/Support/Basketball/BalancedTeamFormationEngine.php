@@ -25,7 +25,7 @@ final class BalancedTeamFormationEngine
     ];
 
     /**
-     * @param Collection<int, User> $users
+     * @param  Collection<int, User>  $users
      * @return array{formula_version:int, assessment_source:string, seed:int, teams:list<array<string,mixed>>}
      */
     public function build(Collection $users, string $assessmentSource, int $teamCount, int $seed): array
