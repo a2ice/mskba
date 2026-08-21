@@ -47,6 +47,10 @@
 }
 
 @media (max-width: 760px) {
+    .account-identity-grid {
+        grid-template-columns: 1fr;
+    }
+
     .account-contact-verification__field {
         min-width: 0;
     }
@@ -946,4 +950,38 @@
     .account-role-card {
         min-height: 0;
     }
+}
+.account-identity-section {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 36px;
+}
+
+.account-identity-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.account-identity-card {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.account-identity-card__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 16px;
+}
+
+.account-identity-card__meta {
+    overflow-wrap: anywhere;
+    font-weight: 800;
 }

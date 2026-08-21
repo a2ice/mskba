@@ -4,7 +4,6 @@ namespace App\Modules\Vk\Infrastructure\Providers;
 
 use App\Modules\Vk\Presentation\Http\Controllers\StartVkAuthenticationController;
 use App\Modules\Vk\Presentation\Http\Controllers\VkCallbackController;
-use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,7 +17,7 @@ final class VkServiceProvider extends ServiceProvider
         });
 
         Route::middleware(['web', 'auth'])->prefix('account')->group(function (): void {
-            Route::get('/vk', fn () => ThemeResolver::page('account.vk'))
+            Route::get('/vk', fn () => redirect()->route('account.contacts'))
                 ->name('account.vk')
                 ->defaults('breadcrumb', 'VK ID');
             Route::get('/vk/link', StartVkAuthenticationController::class)

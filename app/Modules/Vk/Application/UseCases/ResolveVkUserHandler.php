@@ -2,25 +2,39 @@
 
 namespace App\Modules\Vk\Application\UseCases;
 
+use App\Modules\Contact\Application\UseCases\SyncVerifiedVkContactHandler;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Vk\Application\DTO\VkUserIdentityDTO;
 use App\Modules\Vk\Domain\Models\VkAccount;
+use App\Modules\Vk\Infrastructure\Jobs\SyncVkProfileAvatarJob;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class ResolveVkUserHandler
 {
+    public function __construct(
+        private readonly SyncVerifiedVkContactHandler $syncVerifiedVkContact,
+        private readonly SyncVkProfileDataHandler $syncProfileData,
+    ) {}
+
     /** @return array{user: User, vk_account: VkAccount, created: bool} */
     public function handle(VkUserIdentityDTO $identity): array
     {
-        return Cache::lock("vk:user:{$identity->id}", 15)->block(
-            5,
-            fn (): array => DB::transaction(fn (): array => $this->resolve($identity)),
-        );
+        return Cache::lock("vk:user:{$identity->id}", 15)->block(5, function () use ($identity): array {
+            $result = DB::transaction(fn (): array => $this->resolve($identity));
+            $canonicalUser = $result['user']->canonical();
+
+            if (! $canonicalUser->isBlocked()) {
+                $this->syncVerifiedVkContact->handle($canonicalUser, $identity, 'vk_id_auth');
+                SyncVkProfileAvatarJob::dispatch($result['vk_account']->id)->afterResponse();
+            }
+
+            return $result;
+        });
     }
 
     /** @return array{user: User, vk_account: VkAccount, created: bool} */
@@ -39,10 +53,7 @@ final class ResolveVkUserHandler
                 'system_role' => UserSystemRoleEnum::USER,
                 'status' => UserStatusEnum::UNCONFIRMED,
             ]);
-            $user->createProfile([
-                'first_name' => $identity->firstName,
-                'last_name' => $identity->lastName,
-            ]);
+            $user->createProfile([]);
             $account = new VkAccount(['vk_user_id' => $identity->id]);
             $account->user()->associate($user);
             $created = true;
@@ -57,6 +68,10 @@ final class ResolveVkUserHandler
             'last_auth_at' => now(),
             'raw_data' => $identity->rawData,
         ])->save();
+
+        if (! $user->canonical()->isBlocked()) {
+            $this->syncProfileData->handle($user, $identity);
+        }
 
         return [
             'user' => $user->loadMissing('profile'),

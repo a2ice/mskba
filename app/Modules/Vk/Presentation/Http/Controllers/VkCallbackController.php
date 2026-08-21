@@ -38,7 +38,7 @@ final class VkCallbackController extends Controller
                 'device_id' => ['required', 'string', 'max:255'],
             ]);
             $flow = $flows->consume($request, $validated['state']);
-            $failureRoute = $flow['mode'] === 'link' ? 'account.vk' : 'login';
+            $failureRoute = $flow['mode'] === 'link' ? 'account.contacts' : 'login';
             $tokens = $client->exchangeCode(
                 $validated['code'],
                 $validated['device_id'],
@@ -61,7 +61,7 @@ final class VkCallbackController extends Controller
                 $result = $link->handle($currentUser, $identity);
 
                 if ($result['status'] === 'duplicate') {
-                    return redirect()->route('account.vk')->with(
+                    return redirect()->route('account.contacts')->with(
                         'warning',
                         'Этот VK ID уже связан с другим аккаунтом MSKBA. Запрос на проверку дубля создан для администратора.',
                     );
