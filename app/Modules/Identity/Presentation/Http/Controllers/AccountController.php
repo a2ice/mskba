@@ -70,7 +70,8 @@ class AccountController extends Controller
             ]]);
         }
 
-        $user->load('contacts', 'profile', 'participationRoles');
+        $user->load('profile', 'participationRoles');
+        $this->loadIdentityContacts($user);
 
         $data = [
             'user' => $user,
@@ -92,17 +93,8 @@ class AccountController extends Controller
             ]]);
         }
 
-        $user->loadMissing([
-            'contacts' => fn ($query) => $query
-                ->with(['verifications' => fn ($verificationQuery) => $verificationQuery
-                    ->where('status', ContactVerificationStatusEnum::PENDING->value)
-                    ->latest()])
-                ->orderByDesc('is_primary')
-                ->orderBy('type')
-                ->orderBy('created_at'),
-            'profile',
-            'participationRoles',
-        ]);
+        $user->loadMissing(['profile', 'participationRoles']);
+        $this->loadIdentityContacts($user);
         $primaryContact = $wizard->primaryContact($user);
 
         return ThemeResolver::page('account.confirmation', [
@@ -177,7 +169,7 @@ class AccountController extends Controller
         $user = $this->accountCheckForPresentationService->handle(request()->user());
 
         abort_unless(
-            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            $user->ownsIdentityContact($contact),
             404,
         );
 
@@ -207,7 +199,7 @@ class AccountController extends Controller
         $user = $this->accountCheckForPresentationService->handle($request->user());
 
         abort_unless(
-            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            $user->ownsIdentityContact($contact),
             404,
         );
 
@@ -377,13 +369,7 @@ class AccountController extends Controller
             ]]);
         }
 
-        $user->load(['contacts' => fn ($query) => $query
-            ->with(['verifications' => fn ($verificationQuery) => $verificationQuery
-                ->where('status', ContactVerificationStatusEnum::PENDING->value)
-                ->latest()])
-            ->orderByDesc('is_primary')
-            ->orderBy('type')
-            ->orderBy('created_at')]);
+        $this->loadIdentityContacts($user);
 
         $identityIds = $user->identityIds();
         $linkedTelegramAccount = TelegramAccount::query()
@@ -440,7 +426,7 @@ class AccountController extends Controller
         $user = $this->accountCheckForPresentationService->handle(request()->user());
 
         abort_unless(
-            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            $user->ownsIdentityContact($contact),
             404,
         );
 
@@ -458,7 +444,7 @@ class AccountController extends Controller
         $user = $this->accountCheckForPresentationService->handle(request()->user());
 
         abort_unless(
-            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            $user->ownsIdentityContact($contact),
             404,
         );
 
@@ -488,7 +474,7 @@ class AccountController extends Controller
         $user = $this->accountCheckForPresentationService->handle($request->user());
 
         abort_unless(
-            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            $user->ownsIdentityContact($contact),
             404,
         );
 
@@ -511,7 +497,7 @@ class AccountController extends Controller
         $user = $this->accountCheckForPresentationService->handle(request()->user());
 
         abort_unless(
-            $contact->contactable_type === 'user' && (int) $contact->contactable_id === (int) $user->id,
+            $user->ownsIdentityContact($contact),
             404,
         );
 
@@ -707,6 +693,20 @@ class AccountController extends Controller
             6 => 'Суббота',
             7 => 'Воскресенье',
         ];
+    }
+
+    private function loadIdentityContacts(User $user): void
+    {
+        $contacts = $user->identityContactsQuery()
+            ->with(['verifications' => fn ($query) => $query
+                ->where('status', ContactVerificationStatusEnum::PENDING->value)
+                ->latest()])
+            ->orderByDesc('is_primary')
+            ->orderBy('type')
+            ->orderBy('created_at')
+            ->get();
+
+        $user->setRelation('contacts', $contacts);
     }
 
     /**

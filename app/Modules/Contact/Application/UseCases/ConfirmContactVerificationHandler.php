@@ -8,6 +8,7 @@ use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\Events\UserContactConfirmed;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contact\Domain\Models\ContactVerification;
+use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use LogicException;
@@ -89,8 +90,13 @@ class ConfirmContactVerificationHandler
         $contact->refresh();
 
         if ($contact->contactable_type === 'user') {
+            $canonicalUserId = User::query()
+                ->find((int) $contact->contactable_id)
+                ?->canonical()
+                ->getKey() ?? (int) $contact->contactable_id;
+
             event(new UserContactConfirmed(
-                userId: (int) $contact->contactable_id,
+                userId: (int) $canonicalUserId,
                 contactId: (int) $contact->id,
             ));
         }

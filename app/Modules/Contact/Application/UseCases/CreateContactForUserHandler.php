@@ -17,10 +17,14 @@ class CreateContactForUserHandler
     {
         try {
             return DB::transaction(function () use ($user, $contactData): Contact {
-                $lockedUser = User::query()
-                    ->whereKey($user->getKey())
+                $canonicalUser = $user->canonical();
+                $identityIds = $canonicalUser->identityIds();
+                User::query()
+                    ->whereKey($identityIds)
+                    ->orderBy('id')
                     ->lockForUpdate()
-                    ->firstOrFail();
+                    ->get();
+                $lockedUser = User::query()->findOrFail($canonicalUser->getKey());
 
                 $value = new ContactValue($contactData->type, $contactData->value);
 
@@ -28,9 +32,9 @@ class CreateContactForUserHandler
                     $emailAlreadyOwned = Contact::query()
                         ->withTrashed()
                         ->where('user_email_key', $value->value())
-                        ->whereNot(function ($query) use ($lockedUser): void {
+                        ->whereNot(function ($query) use ($identityIds): void {
                             $query->where('contactable_type', 'user')
-                                ->where('contactable_id', $lockedUser->getKey());
+                                ->whereIn('contactable_id', $identityIds);
                         })
                         ->exists();
 
@@ -38,8 +42,8 @@ class CreateContactForUserHandler
                         throw new InvalidArgumentException('Этот email уже используется другим пользователем.');
                     }
                 }
-                $hasActiveContacts = $lockedUser->contacts()->exists();
-                $existingContact = $lockedUser->contacts()
+                $hasActiveContacts = $lockedUser->identityContactsQuery()->exists();
+                $existingContact = $lockedUser->identityContactsQuery()
                     ->withTrashed()
                     ->where('type', $contactData->type)
                     ->where('value', $value->value())
@@ -71,12 +75,13 @@ class CreateContactForUserHandler
         } catch (QueryException $exception) {
             if ($contactData->type === ContactTypeEnum::EMAIL) {
                 $email = (new ContactValue(ContactTypeEnum::EMAIL, $contactData->value))->value();
+                $identityIds = $user->canonical()->identityIds();
                 $emailAlreadyOwned = Contact::query()
                     ->withTrashed()
                     ->where('user_email_key', $email)
-                    ->whereNot(function ($query) use ($user): void {
+                    ->whereNot(function ($query) use ($identityIds): void {
                         $query->where('contactable_type', 'user')
-                            ->where('contactable_id', $user->getKey());
+                            ->whereIn('contactable_id', $identityIds);
                     })
                     ->exists();
 

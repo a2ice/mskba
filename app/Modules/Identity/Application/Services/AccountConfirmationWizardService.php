@@ -87,7 +87,9 @@ final class AccountConfirmationWizardService
 
     public function primaryContact(User $user): ?Contact
     {
-        $user->loadMissing('contacts');
+        if (! $user->relationLoaded('contacts')) {
+            $user->setRelation('contacts', $user->identityContactsQuery()->get());
+        }
 
         return $user->contacts
             ->first(fn (Contact $contact): bool => $contact->is_primary);

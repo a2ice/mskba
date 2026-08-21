@@ -11,21 +11,20 @@ class SetPrimaryContactForUserHandler
     public function handle(User $user, Contact $contact): Contact
     {
         return DB::transaction(function () use ($user, $contact): Contact {
-            $lockedUser = User::query()
-                ->whereKey($user->getKey())
+            $canonicalUser = $user->canonical();
+            $identityIds = $canonicalUser->identityIds();
+            User::query()
+                ->whereKey($identityIds)
+                ->orderBy('id')
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->get();
 
-            $ownedContact = $lockedUser->contacts()
+            $ownedContact = $canonicalUser->identityContactsQuery()
                 ->whereKey($contact->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($ownedContact->is_primary) {
-                return $ownedContact;
-            }
-
-            $lockedUser->contacts()
+            $canonicalUser->identityContactsQuery()
                 ->where('is_primary', true)
                 ->update(['is_primary' => false]);
 

@@ -18,6 +18,8 @@ final class SyncVerifiedTelegramContactHandler
         ?string $lastName,
         string $source = 'telegram_mini_app',
     ): Contact {
+        $user = $user->canonical();
+
         [$contact, $becameVerified] = DB::transaction(function () use ($user, $telegramUserId, $username, $firstName, $lastName, $source): array {
             $lockedUser = User::query()
                 ->whereKey($user->getKey())

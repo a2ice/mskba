@@ -18,6 +18,7 @@ use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Vk\Domain\Models\VkAccount;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -182,6 +183,19 @@ class User extends Authenticatable
         return $this->morphMany(Contact::class, 'contactable');
     }
 
+    public function identityContactsQuery(): Builder
+    {
+        return Contact::query()
+            ->where('contactable_type', 'user')
+            ->whereIn('contactable_id', $this->identityIds());
+    }
+
+    public function ownsIdentityContact(Contact $contact): bool
+    {
+        return $contact->contactable_type === 'user'
+            && in_array((int) $contact->contactable_id, $this->identityIds(), true);
+    }
+
     public function fingerprints(): BelongsToMany
     {
         return $this
@@ -196,17 +210,17 @@ class User extends Authenticatable
 
     public function primaryEmail(): ?Contact
     {
-        $contact = $this->contacts()
+        $contact = $this->identityContactsQuery()
             ->where('type', 'email')
             ->where('is_primary', true)
-            ->first(); // dd($contact);
+            ->first();
 
         return $contact;
     }
 
     public function hasVerifiedPrimaryContact(): bool
     {
-        return $this->contacts()
+        return $this->identityContactsQuery()
             ->where('is_primary', true)
             ->whereNotNull('verified_at')
             ->exists();

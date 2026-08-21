@@ -128,6 +128,49 @@ class ContactRelationsTest extends TestCase
         ]);
     }
 
+    public function test_canonical_user_sees_verified_contact_owned_by_merged_alias(): void
+    {
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create([
+            'canonical_user_id' => $canonical->id,
+        ]);
+        $alias->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'merged-alias@example.test',
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+
+        $this->actingAs($canonical)
+            ->get(route('account.contacts'))
+            ->assertOk()
+            ->assertSee('merged-alias@example.test')
+            ->assertSee('Подтверждён');
+    }
+
+    public function test_canonical_user_cannot_add_same_contact_owned_by_merged_alias_again(): void
+    {
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create([
+            'canonical_user_id' => $canonical->id,
+        ]);
+        $alias->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'merged-alias@example.test',
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($canonical)->post(route('account.contacts.store'), [
+            'type' => ContactTypeEnum::EMAIL->value,
+            'value' => 'merged-alias@example.test',
+        ]);
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('error', 'Контакт merged-alias@example.test уже добавлен.');
+        $this->assertDatabaseCount('contacts', 1);
+    }
+
     public function test_second_account_contact_is_not_primary(): void
     {
         $user = User::factory()->create([
@@ -194,6 +237,35 @@ class ContactRelationsTest extends TestCase
         $this->assertFalse($oldPrimary->fresh()->is_primary);
         $this->assertTrue($newPrimary->fresh()->is_primary);
         $this->assertSame(1, $user->contacts()->where('is_primary', true)->count());
+    }
+
+    public function test_canonical_user_can_make_merged_alias_contact_primary(): void
+    {
+        $canonical = User::factory()->create();
+        $alias = User::factory()->create([
+            'canonical_user_id' => $canonical->id,
+        ]);
+        $oldPrimary = $canonical->contacts()->create([
+            'type' => ContactTypeEnum::PHONE,
+            'value' => '+79990000001',
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+        $newPrimary = $alias->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'alias-primary@example.test',
+            'is_primary' => false,
+            'verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($canonical)
+            ->patch(route('account.contacts.primary', $newPrimary));
+
+        $response->assertRedirect(route('account.contacts'));
+        $response->assertSessionHas('status', 'Основной контакт обновлен.');
+        $this->assertFalse($oldPrimary->fresh()->is_primary);
+        $this->assertTrue($newPrimary->fresh()->is_primary);
+        $this->assertSame(1, $canonical->identityContactsQuery()->where('is_primary', true)->count());
     }
 
     public function test_user_cannot_switch_primary_to_another_users_contact(): void

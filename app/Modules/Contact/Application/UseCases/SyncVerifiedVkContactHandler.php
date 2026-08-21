@@ -16,6 +16,8 @@ final class SyncVerifiedVkContactHandler
         VkUserIdentityDTO $identity,
         string $source = 'vk_id',
     ): Contact {
+        $user = $user->canonical();
+
         [$contact, $becameVerified] = DB::transaction(function () use ($user, $identity, $source): array {
             $lockedUser = User::query()
                 ->whereKey($user->getKey())
