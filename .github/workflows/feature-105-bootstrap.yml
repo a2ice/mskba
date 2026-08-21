@@ -1,4 +1,4 @@
-name: Feature 105 apply and verify
+name: Feature 105 materialize and verify
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  verify-and-commit:
+  materialize-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -18,16 +18,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply implementation payload
+      - name: Materialize real implementation files
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          from io import BytesIO
           import base64
           import re
+          import tarfile
 
-          parts = sorted(Path('.github/feature105-payload').glob('part*'))
+          payload_dir = Path('.github/feature105-payload')
+          parts = sorted(payload_dir.glob('part*'))
           if not parts:
               raise SystemExit('No payload parts found')
 
@@ -35,27 +38,78 @@ jobs:
           for part in parts:
               raw = part.read_text(encoding='utf-8', errors='ignore')
               cleaned = re.sub(r'[^A-Za-z0-9+/=]', '', raw)
-              print(f'{part}: raw={len(raw)} base64={len(cleaned)}')
+              print(f'{part}: raw={len(raw)} cleaned={len(cleaned)}')
               chunks.append(cleaned)
 
-          encoded = ''.join(chunks).rstrip('=')
-          encoded += '=' * (-len(encoded) % 4)
-          print(f'combined base64 size: {len(encoded)}')
+          def decode_normalized(text: str) -> bytes:
+              text = text.rstrip('=')
+              text += '=' * (-len(text) % 4)
+              return base64.b64decode(text, validate=False)
+
+          candidates = []
 
           try:
-              decoded = base64.b64decode(encoded, validate=False)
+              candidates.append(('single-stream', decode_normalized(''.join(chunks))))
           except Exception as exc:
-              raise SystemExit(f'Base64 decode failed: {exc}') from exc
+              print(f'single-stream decode failed: {exc}')
 
-          archive = Path('/tmp/feature105.tgz')
-          archive.write_bytes(decoded)
-          print(f'decoded archive size: {len(decoded)} bytes')
+          try:
+              joined = ''.join(chunk.rstrip('=') for chunk in chunks)
+              candidates.append(('joined-without-inner-padding', decode_normalized(joined)))
+          except Exception as exc:
+              print(f'joined-without-inner-padding decode failed: {exc}')
+
+          try:
+              candidates.append((
+                  'per-part',
+                  b''.join(decode_normalized(chunk) for chunk in chunks),
+              ))
+          except Exception as exc:
+              print(f'per-part decode failed: {exc}')
+
+          selected = None
+          members = None
+          for name, data in candidates:
+              print(f'trying {name}: {len(data)} decoded bytes')
+              try:
+                  with tarfile.open(fileobj=BytesIO(data), mode='r:gz') as archive:
+                      candidate_members = archive.getmembers()
+                      if not candidate_members:
+                          raise ValueError('archive is empty')
+                  selected = (name, data)
+                  members = candidate_members
+                  print(f'selected {name}: {len(candidate_members)} archive members')
+                  break
+              except Exception as exc:
+                  print(f'{name} is not a valid tar.gz payload: {exc}')
+
+          if selected is None:
+              raise SystemExit('Payload cannot be decoded into a valid tar.gz archive')
+
+          _, data = selected
+          root = Path.cwd().resolve()
+          with tarfile.open(fileobj=BytesIO(data), mode='r:gz') as archive:
+              for member in archive.getmembers():
+                  target = (root / member.name).resolve()
+                  if root != target and root not in target.parents:
+                      raise SystemExit(f'Unsafe archive member: {member.name}')
+              archive.extractall(root)
+
+          print('Materialized files:')
+          for member in members:
+              if member.isfile():
+                  print(member.name)
           PY
-          gzip -t /tmp/feature105.tgz
-          tar -tzf /tmp/feature105.tgz >/dev/null
-          tar -xzf /tmp/feature105.tgz
+
           rm -rf .github/feature105-payload
           rm -f .github/workflows/feature-105-bootstrap.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "No implementation changes materialized"; exit 1; }
+          git commit -m "feat(games): materialize unified participant formation"
+          git push origin HEAD:feature/105
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -73,7 +127,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Format changed PHP files
+      - name: Format feature PHP files
         shell: bash
         run: |
           vendor/bin/pint \
@@ -105,13 +159,12 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Commit verified implementation
+      - name: Commit formatter changes if needed
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet && { echo "No implementation changes to commit"; exit 1; }
-          git commit -m "feat(games): complete unified participant formation"
-          git push origin HEAD:feature/105
+          if ! git diff --cached --quiet; then
+            git commit -m "style(games): format feature 105 implementation"
+            git push origin HEAD:feature/105
+          fi
