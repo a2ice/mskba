@@ -2,7 +2,7 @@
 
 namespace App\Modules\Event\Application\UseCases;
 
-use App\Modules\Event\Application\Services\GameManagementService;
+use App\Modules\Event\Application\Services\StandaloneGameFormationService;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
@@ -29,7 +30,7 @@ final class CreateEventHandler
     public function __construct(
         private readonly VenueEventAvailability $availability,
         private readonly CyrillicTransliterator $transliterator,
-        private readonly GameManagementService $games,
+        private readonly StandaloneGameFormationService $standaloneGames,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -96,16 +97,20 @@ final class CreateEventHandler
             ]);
 
             if ($event->type === EventTypeEnum::GAME) {
-                $this->games->initializeStandalone(
+                $this->standaloneGames->initialize(
                     $event,
-                    (int) $data['team_a_id'],
-                    (int) $data['team_b_id'],
+                    $actor,
+                    isset($data['team_a_id']) ? (int) $data['team_a_id'] : null,
+                    isset($data['team_b_id']) ? (int) $data['team_b_id'] : null,
                     (int) ($data['side_a_size'] ?? 5),
                     (int) ($data['side_b_size'] ?? 5),
                     GameScoringTypeEnum::from($data['scoring_type'] ?? GameScoringTypeEnum::STREETBALL->value),
                     GameFormatEnum::from($data['game_format'] ?? GameFormatEnum::STREETBALL_3X3->value),
                     GameTimingModeEnum::from($data['timing_mode'] ?? GameTimingModeEnum::WHOLE_GAME->value),
                     isset($data['periods_count']) ? (int) $data['periods_count'] : null,
+                    GameRecruitmentModeEnum::from(
+                        $data['game_recruitment_mode'] ?? GameRecruitmentModeEnum::PREFORMED_TEAMS->value,
+                    ),
                 );
             }
 
