@@ -52,8 +52,16 @@ final class TournamentMatchSchedulingTest extends TestCase
         });
         $tournament->forceFill(['participant_pool_locked_at' => now()])->save();
         $match = $tournament->matches()->create(['entry_a_id' => $entries[0]->id, 'entry_b_id' => $entries[1]->id, 'round' => 1, 'sequence' => 1]);
+        $defaultVenue = Venue::factory()->create(['name' => 'Площадка турнира', 'status' => VenueStatusEnum::CONFIRMED]);
         $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED, 'requires_payment' => false, 'requires_booking_approval' => false]);
+        $tournament->forceFill(['default_venue_id' => $defaultVenue->id])->save();
         $startsAt = CarbonImmutable::now('Europe/Moscow')->addDays(8)->startOfDay()->addHours(12);
+
+        $this->actingAs($owner)
+            ->get(route('tournaments.manage', $tournament->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Площадка турнира')
+            ->assertSee('value="'.$defaultVenue->id.'"', false);
 
         $response = $this->actingAs($owner)->post(route('tournaments.matches.schedule', [$tournament->routeIdentifier(), $match]), [
             'venue_id' => $venue->id,
@@ -80,6 +88,7 @@ final class TournamentMatchSchedulingTest extends TestCase
             'ends_on' => $tournament->ends_on->format('Y-m-d'),
             'format' => $tournament->format->value,
             'recruitment_mode' => $tournament->recruitment_mode->value,
+            'default_venue_id' => $defaultVenue->id,
         ];
         $this->actingAs($owner)->put(route('tournaments.update', $tournament->routeIdentifier()), [
             ...$updatePayload,

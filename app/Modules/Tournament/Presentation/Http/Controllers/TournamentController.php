@@ -30,6 +30,7 @@ use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -176,7 +177,10 @@ final class TournamentController extends Controller
         TournamentEntryRosterResolver $entryRosters,
         TournamentPlayerCharacteristics $characteristics,
     ): Response {
-        $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
+        $item = Tournament::query()
+            ->with(['defaultVenue.location.address', 'defaultVenue.characteristics'])
+            ->whereRouteIdentifier($tournament)
+            ->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         $identityIds = $request->user()?->canonical()->identityIds() ?? [];
@@ -441,6 +445,13 @@ final class TournamentController extends Controller
             'alias' => ['nullable', 'string', 'max:180'],
             'starts_on' => ['required', 'date_format:Y-m-d'],
             'ends_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:starts_on'],
+            'default_venue_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('venues', 'id')->where(fn ($query) => $query
+                    ->where('status', VenueStatusEnum::CONFIRMED->value)
+                    ->whereNull('deleted_at')),
+            ],
             'short_description' => ['nullable', 'string', 'max:1000'],
             'full_description' => ['nullable', 'string', 'max:20000'],
             'format' => ['nullable', Rule::in($this->formats()->pluck('value')->all())],

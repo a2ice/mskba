@@ -74,6 +74,7 @@ final class UpdateTournamentHandler
                 }
                 $attributes += [
                     'title' => $data['title'],
+                    'default_venue_id' => $data['default_venue_id'] ?? null,
                     'starts_on' => $startsOn,
                     'ends_on' => $endsOn,
                     'format' => $format,

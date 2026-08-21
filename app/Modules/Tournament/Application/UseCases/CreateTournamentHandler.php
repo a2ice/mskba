@@ -34,6 +34,7 @@ final class CreateTournamentHandler
 
         return DB::transaction(fn (): Tournament => Tournament::query()->create([
             'created_by_actor_id' => $actor->id,
+            'default_venue_id' => $data['default_venue_id'] ?? null,
             'title' => $data['title'],
             'alias' => $this->alias($data['alias'] ?? $data['title']),
             'status' => TournamentStatusEnum::CONFIRMED,

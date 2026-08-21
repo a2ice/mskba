@@ -13,6 +13,7 @@ use App\Modules\Tournament\Domain\Enums\TournamentPhaseEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Infrastructure\Database\Factories\TournamentFactory;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'created_by_actor_id',
+    'default_venue_id',
     'title',
     'alias',
     'status',
@@ -70,6 +72,11 @@ class Tournament extends Model
     public function createdByActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'created_by_actor_id');
+    }
+
+    public function defaultVenue(): BelongsTo
+    {
+        return $this->belongsTo(Venue::class, 'default_venue_id');
     }
 
     public function staffMemberships(): HasMany

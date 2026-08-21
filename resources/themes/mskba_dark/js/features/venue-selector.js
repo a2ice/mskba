@@ -33,7 +33,15 @@ function initVenueSelector(container) {
         return;
     }
 
-    input.setCustomValidity(valueInput.value ? '' : 'Выберите площадку из списка.');
+    const required = container.dataset.required !== '0';
+    const updateSelectionValidity = () => {
+        const hasTypedValue = input.value.trim() !== '';
+        input.setCustomValidity(valueInput.value || (!required && !hasTypedValue)
+            ? ''
+            : 'Выберите площадку из списка.');
+    };
+
+    updateSelectionValidity();
 
     input.addEventListener('input', () => {
         availabilityController?.abort();
@@ -49,11 +57,11 @@ function initVenueSelector(container) {
 
         const query = input.value.trim();
         if (!query) {
-            input.setCustomValidity('Выберите площадку из списка.');
+            updateSelectionValidity();
             return;
         }
 
-        input.setCustomValidity('Выберите площадку из списка.');
+        updateSelectionValidity();
         setControlState('loading');
         searchTimer = window.setTimeout(() => search(query), 300);
     });
@@ -83,7 +91,7 @@ function initVenueSelector(container) {
         hideList();
         hideMessage();
         updateControl();
-        input.setCustomValidity('Выберите площадку из списка.');
+        updateSelectionValidity();
         input.focus();
     });
 
@@ -201,7 +209,7 @@ function initVenueSelector(container) {
 
         const venueId = Number(valueInput.value);
         if (!venueId) {
-            input.setCustomValidity('Выберите площадку из списка.');
+            updateSelectionValidity();
             hideMessage();
             updateControl();
             return;
