@@ -1,0 +1,64 @@
+name: Feature 105 verify
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: gd, sqlite3, mbstring, intl
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Prepare Laravel test environment
+        shell: bash
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Check PHP formatting
+        run: |
+          vendor/bin/pint --test \
+            app/Support/Basketball/BalancedTeamFormationEngine.php \
+            app/Modules/Event/Application/Services/GameAdmissionService.php \
+            app/Modules/Event/Application/Services/StandaloneGameFormationService.php \
+            app/Modules/Event/Application/UseCases/CreateEventHandler.php \
+            app/Modules/Event/Domain/Models/Game.php \
+            app/Modules/Event/Presentation/Http/Controllers/StandaloneGameAdmissionController.php \
+            app/Modules/Event/Presentation/Http/Controllers/StandaloneGameCandidateSearchController.php \
+            app/Modules/Event/Presentation/Http/Controllers/StandaloneGameFormationController.php \
+            app/Modules/Event/Presentation/Http/Requests/CreateEventRequest.php \
+            app/Modules/Tournament/Application/Services/TournamentFormationService.php \
+            database/migrations/2026_08_22_010000_add_game_application_setting.php \
+            tests/Feature/Event/StandaloneGameRecruitmentWorkflowTest.php
+
+      - name: Run PHP test suite
+        run: php artisan test --compact
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build frontend
+        run: npm run build
