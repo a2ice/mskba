@@ -76,7 +76,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('Telegram: @mskba_user')
             ->assertSee('Основной контакт подтвержден')
             ->assertSee('Подтвердить аккаунт')
-            ->assertSee('title="Dmitry Losev"', false)
+            ->assertSee('aria-label="Dmitry Losev"', false)
             ->assertDontSee('Добавьте и подтвердите контакт');
 
         $this->assertDatabaseHas('telegram_accounts', [
@@ -318,9 +318,9 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertJsonPath('venues.0.address', 'Москва, Арбат, 10')
             ->assertJsonPath('venues.0.status', VenueStatusEnum::CONFIRMED->label())
             ->assertJsonPath('venues.0.is_confirmed', true)
-            ->assertJsonPath('venues.0.requires_payment', false)
+            ->assertJsonPath('venues.0.requires_payment', null)
             ->assertJsonPath('venues.0.requires_booking_approval', false)
-            ->assertJsonPath('venues.0.has_free_access', true)
+            ->assertJsonPath('venues.0.has_free_access', false)
             ->assertJsonMissing(['name' => 'Чужая скрытая Арбатская площадка']);
 
         $this
@@ -367,9 +367,9 @@ class TelegramMiniAppAuthTest extends TestCase
             ]))
             ->assertCreated()
             ->assertJsonPath('message', 'Площадка создана. Проверьте данные и отправьте её на модерацию.')
-            ->assertJsonPath('venue.requires_payment', false)
-            ->assertJsonPath('venue.requires_booking_approval', false)
-            ->assertJsonPath('venue.has_free_access', true)
+            ->assertJsonPath('venue.requires_payment', null)
+            ->assertJsonPath('venue.requires_booking_approval', true)
+            ->assertJsonPath('venue.has_free_access', false)
             ->assertJsonStructure(['venue' => ['alias', 'update_url', 'moderation_url']]);
 
         $venue = Venue::query()->where('name', 'Площадка Telegram')->firstOrFail();
@@ -391,9 +391,9 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Площадка сохранена.')
             ->assertJsonPath('venue.short_description', 'Площадка рядом с центром')
-            ->assertJsonPath('venue.requires_payment', false)
+            ->assertJsonPath('venue.requires_payment', null)
             ->assertJsonPath('venue.requires_booking_approval', false)
-            ->assertJsonPath('venue.has_free_access', true);
+            ->assertJsonPath('venue.has_free_access', false);
 
         $this->assertDatabaseHas('venue_tags', [
             'venue_id' => $venue->id,

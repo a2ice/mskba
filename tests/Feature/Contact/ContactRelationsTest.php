@@ -10,6 +10,8 @@ use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Vk\Domain\Models\VkAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -18,6 +20,50 @@ use Tests\TestCase;
 class ContactRelationsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_contacts_page_consolidates_linked_provider_identities(): void
+    {
+        config([
+            'telegram.bot_username' => 'mskba_test_bot',
+            'vk.app_id' => '12345',
+            'vk.redirect_uri' => 'https://mskba.test/auth/vk/callback',
+        ]);
+
+        $user = User::factory()->create();
+        TelegramAccount::query()->create([
+            'user_id' => $user->id,
+            'telegram_user_id' => 123456,
+            'username' => 'linked_telegram',
+        ]);
+        VkAccount::query()->create([
+            'user_id' => $user->id,
+            'vk_user_id' => '654321',
+            'first_name' => 'Иван',
+            'last_name' => 'Петров',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('account.contacts'))
+            ->assertOk()
+            ->assertSee('Подтверждённые способы связи и входа')
+            ->assertSee('@linked_telegram')
+            ->assertSee('Иван Петров')
+            ->assertDontSee('option value="telegram"', false)
+            ->assertDontSee('option value="vk"', false);
+    }
+
+    public function test_legacy_provider_account_pages_redirect_to_contacts(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('account.telegram'))
+            ->assertRedirect(route('account.contacts'));
+
+        $this->actingAs($user)
+            ->get(route('account.vk'))
+            ->assertRedirect(route('account.contacts'));
+    }
 
     public function test_user_can_have_contact_with_verification(): void
     {

@@ -33,17 +33,19 @@ use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
-use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\ListNewUserNotificationsHandler;
+use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsReadHandler;
 use App\Modules\Notification\Application\UseCases\MarkUserNotificationAsReadHandler;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
+use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowAccountVenueScheduleHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueScheduleHandler;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueScheduleRequest;
+use App\Modules\Vk\Domain\Models\VkAccount;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -383,9 +385,33 @@ class AccountController extends Controller
             ->orderBy('type')
             ->orderBy('created_at')]);
 
+        $identityIds = $user->identityIds();
+        $linkedTelegramAccount = TelegramAccount::query()
+            ->whereIn('user_id', $identityIds)
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('last_auth_at')
+            ->orderByDesc('updated_at')
+            ->first();
+        $linkedVkAccount = VkAccount::query()
+            ->whereIn('user_id', $identityIds)
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->orderByDesc('last_auth_at')
+            ->orderByDesc('updated_at')
+            ->first();
+
         return ThemeResolver::page('account.contacts', [
             'user' => $user,
-            'contactTypes' => ContactTypeEnum::cases(),
+            'contactTypes' => array_values(array_filter(
+                ContactTypeEnum::cases(),
+                static fn (ContactTypeEnum $type): bool => ! in_array($type, [
+                    ContactTypeEnum::TELEGRAM,
+                    ContactTypeEnum::VK,
+                ], true),
+            )),
+            'linkedTelegramAccount' => $linkedTelegramAccount,
+            'linkedVkAccount' => $linkedVkAccount,
+            'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
+            'vkEnabled' => trim((string) config('vk.app_id')) !== '',
         ]);
     }
 

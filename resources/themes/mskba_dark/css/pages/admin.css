@@ -146,6 +146,29 @@
     min-width: 1320px;
 }
 
+.admin-table--user-duplicates {
+    min-width: 900px;
+}
+
+.admin-table--user-duplicates th:nth-child(1) { width: 42%; }
+.admin-table--user-duplicates th:nth-child(2) { width: 30%; }
+.admin-table--user-duplicates th:nth-child(3) { width: 10%; }
+.admin-table--user-duplicates th:nth-child(4) { width: 18%; }
+
+.admin-user-duplicate-pair__separator {
+    margin: 8px 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.admin-status-button {
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
 .admin-table .admin-table__check-cell {
     width: 48px;
     min-width: 48px;
@@ -401,6 +424,61 @@
     padding: 26px;
     background: linear-gradient(180deg, #111510, #0d100d);
     box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+}
+
+.admin-action-modal__dialog--wide {
+    width: min(1040px, 100%);
+}
+
+.admin-user-duplicate-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 18px 0;
+}
+
+.admin-user-duplicate-card,
+.admin-user-duplicate-evidence,
+.admin-user-duplicate-form {
+    display: grid;
+    gap: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 16px;
+}
+
+.admin-user-duplicate-card h3,
+.admin-user-duplicate-card p,
+.admin-user-duplicate-evidence h3,
+.admin-user-duplicate-form h3 {
+    margin: 0;
+}
+
+.admin-user-duplicate-card p {
+    color: var(--muted);
+}
+
+.admin-user-duplicate-evidence,
+.admin-user-duplicate-form {
+    margin-top: 14px;
+}
+
+.admin-user-duplicate-evidence > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-user-duplicate-form textarea {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.admin-user-duplicate-confirm {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
 }
 
 .admin-action-modal__close {
@@ -759,6 +837,10 @@
     .admin-pagination {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .admin-user-duplicate-grid {
+        grid-template-columns: 1fr;
     }
 }
 .admin-moderation-revision {

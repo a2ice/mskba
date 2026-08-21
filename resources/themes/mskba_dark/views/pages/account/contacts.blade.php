@@ -43,6 +43,12 @@
             </div>
         @endif
 
+        @if(session('warning'))
+            <div class="alert alert-warning">
+                {{ session('warning') }}
+            </div>
+        @endif
+
         @if(session('error'))
             <div class="alert alert-danger">
                 {{ session('error') }}
@@ -50,7 +56,83 @@
         @endif
 
         <div class="account-contacts">
+            <section class="account-identity-section" aria-labelledby="linkedIdentitiesTitle">
+                <div>
+                    <h2 id="linkedIdentitiesTitle" class="h5 mb-2">Подтверждённые способы связи и входа</h2>
+                    <p class="text-muted mb-0">
+                        Telegram и VK подтверждаются через официальную авторизацию. Это привязывает к аккаунту
+                        неизменяемый ID, а не просто username.
+                    </p>
+                </div>
+
+                <div class="account-identity-grid">
+                    <article class="account-identity-card">
+                        <div class="account-identity-card__heading">
+                            <h3 class="h6 mb-0">Telegram</h3>
+                            <span class="{{ $linkedTelegramAccount ? 'text-success' : 'text-muted' }}">
+                                {{ $linkedTelegramAccount ? 'Подтверждён' : 'Не привязан' }}
+                            </span>
+                        </div>
+                        @if($linkedTelegramAccount)
+                            <p class="account-identity-card__meta mb-0">
+                                {{ $linkedTelegramAccount->username ? '@'.$linkedTelegramAccount->username : 'ID '.$linkedTelegramAccount->telegram_user_id }}
+                            </p>
+                            <p class="text-muted mb-0">Повторное подтверждение обновит данные связи.</p>
+                        @else
+                            <p class="text-muted mb-0">Привяжите Telegram для входа и подтверждённой связи.</p>
+                        @endif
+
+                        @if($telegramBotUsername === '')
+                            <div class="alert alert-warning mb-0">Подключение Telegram сейчас недоступно.</div>
+                        @else
+                            <div data-account-telegram-link data-account-telegram-link-url="{{ route('account.telegram.link', [], false) }}">
+                                <script
+                                    async
+                                    src="https://telegram.org/js/telegram-widget.js?22"
+                                    data-telegram-login="{{ $telegramBotUsername }}"
+                                    data-size="large"
+                                    data-radius="10"
+                                    data-userpic="false"
+                                    data-onauth="mskbaTelegramLink(user)"
+                                ></script>
+                                <p class="form-message mt-2 mb-0" data-account-telegram-link-message aria-live="polite"></p>
+                            </div>
+                        @endif
+                    </article>
+
+                    <article class="account-identity-card">
+                        <div class="account-identity-card__heading">
+                            <h3 class="h6 mb-0">VK ID</h3>
+                            <span class="{{ $linkedVkAccount ? 'text-success' : 'text-muted' }}">
+                                {{ $linkedVkAccount ? 'Подтверждён' : 'Не привязан' }}
+                            </span>
+                        </div>
+                        @if($linkedVkAccount)
+                            <p class="account-identity-card__meta mb-0">
+                                {{ trim($linkedVkAccount->first_name.' '.$linkedVkAccount->last_name) ?: 'VK ID '.$linkedVkAccount->vk_user_id }}
+                            </p>
+                            <p class="text-muted mb-0">VK ID {{ $linkedVkAccount->vk_user_id }}. Повторная привязка обновит данные.</p>
+                        @else
+                            <p class="text-muted mb-0">Привяжите VK ID для входа и подтверждённой связи.</p>
+                        @endif
+
+                        @if($vkEnabled)
+                            <div>
+                                <a class="btn btn--primary btn--sm" href="{{ route('account.vk.link') }}">
+                                    {{ $linkedVkAccount ? 'Обновить VK ID' : 'Привязать VK ID' }}
+                                </a>
+                            </div>
+                        @else
+                            <div class="alert alert-warning mb-0">Подключение VK ID сейчас недоступно.</div>
+                        @endif
+                    </article>
+                </div>
+            </section>
+
             <div class="account-contacts__list mb-5">
+
+                <h2 class="h5 mb-2">Обычные контакты</h2>
+                <p class="text-muted mb-3">Email можно подтвердить кодом из письма. Телефон и другие контакты пока используются без автоподтверждения.</p>
 
                 @if($user->contacts->isNotEmpty())
                     <ul class="list-unstyled mb-0">
@@ -154,7 +236,7 @@
                 
                 <hr>
 
-                <h2 class="h5 mb-3">Добавить контакт</h4>
+                <h2 class="h5 mb-3">Добавить контакт</h2>
 
                 <form method="POST" action="{{ route('account.contacts.store') }}">
                     @csrf

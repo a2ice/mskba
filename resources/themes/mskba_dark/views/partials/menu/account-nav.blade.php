@@ -27,7 +27,7 @@
                 $headerNewNotificationsCount = app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)
                     ->handle(auth()->user());
             @endphp
-            <a href="{{ route('account') }}" title="{{ $userLoginLabel ?? 'Аккаунт' }}" @class(['btn', 'btn--secondary', 'btn--sm', 'site-auth__button', 'is-active' => request()->routeIs('account')])>
+            <a href="{{ route('account') }}" aria-label="{{ $userLoginLabel ?? 'Аккаунт' }}" @class(['btn', 'btn--secondary', 'btn--sm', 'site-auth__button', 'is-active' => request()->routeIs('account')])>
                 <span class="site-auth__label">{{ $userLoginLabel ?? 'Аккаунт' }}</span>
                 <span
                     class="site-auth__notification-badge{{ $headerNewNotificationsCount > 0 ? '' : ' d-none' }}"

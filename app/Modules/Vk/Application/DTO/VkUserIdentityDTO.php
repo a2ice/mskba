@@ -11,5 +11,7 @@ final readonly class VkUserIdentityDTO
         public ?string $lastName,
         public ?string $avatarUrl,
         public array $rawData,
+        public ?string $gender = null,
+        public ?string $birthDate = null,
     ) {}
 }

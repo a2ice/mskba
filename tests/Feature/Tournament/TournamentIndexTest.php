@@ -12,17 +12,20 @@ final class TournamentIndexTest extends TestCase
 
     public function test_tournament_catalog_exposes_periods_filters_and_real_records(): void
     {
+        $startsOn = now()->addDays(10)->toDateString();
+        $endsOn = now()->addDays(15)->toDateString();
+
         Tournament::factory()->create([
             'title' => 'Летний кубок',
-            'starts_on' => '2026-08-15',
-            'ends_on' => '2026-08-20',
+            'starts_on' => $startsOn,
+            'ends_on' => $endsOn,
         ]);
 
         $this->get(route('tournaments.index', [
             'period' => 'upcoming',
             'query' => 'Летний кубок',
-            'date_from' => '2026-08-01',
-            'date_to' => '2026-08-31',
+            'date_from' => now()->addDay()->toDateString(),
+            'date_to' => now()->addMonth()->toDateString(),
         ]))
             ->assertOk()
             ->assertSee('Предстоящие турниры')

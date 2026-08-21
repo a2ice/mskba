@@ -22,7 +22,7 @@ final class StartVkAuthenticationController extends Controller
         }
 
         $mode = $request->user() === null ? 'login' : 'link';
-        $fallback = $mode === 'link' ? route('account.vk') : url('/');
+        $fallback = $mode === 'link' ? route('account.contacts') : url('/');
         $redirectUrl = $redirects->resolve($request, $request->query('redirect_to'), $fallback);
         $flow = $flows->issue($request, $mode, $redirectUrl, $request->user()?->canonical()->id);
         $callbackUrl = trim((string) config('vk.redirect_uri')) ?: route('auth.vk.callback');

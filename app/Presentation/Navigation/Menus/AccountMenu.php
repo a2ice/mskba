@@ -70,21 +70,7 @@ final class AccountMenu implements MenuHandler
             $items[] = [
                 'label' => 'Контакты',
                 'url' => $this->routeUrl('account.contacts'),
-                'active' => $this->isActiveRoute('account.contacts'),
-                'visible' => true,
-            ];
-
-            $items[] = [
-                'label' => 'Telegram',
-                'url' => $this->routeUrl('account.telegram'),
-                'active' => $this->isActiveRoute('account.telegram, account.telegram.*'),
-                'visible' => true,
-            ];
-
-            $items[] = [
-                'label' => 'VK ID',
-                'url' => $this->routeUrl('account.vk'),
-                'active' => $this->isActiveRoute('account.vk, account.vk.*'),
+                'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
                 'visible' => true,
             ];
 

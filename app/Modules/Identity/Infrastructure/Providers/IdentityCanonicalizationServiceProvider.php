@@ -9,7 +9,6 @@ use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Presentation\Http\Controllers\UserDuplicateController;
 use App\Modules\Telegram\Presentation\Http\Controllers\LinkTelegramIdentityController;
-use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -31,7 +30,7 @@ final class IdentityCanonicalizationServiceProvider extends ServiceProvider
         Route::middleware(['web', 'auth'])
             ->prefix('account')
             ->group(function (): void {
-                Route::get('/telegram', fn () => ThemeResolver::page('account.telegram'))
+                Route::get('/telegram', fn () => redirect()->route('account.contacts'))
                     ->name('account.telegram')
                     ->defaults('breadcrumb', 'Telegram');
                 Route::post('/telegram/link', LinkTelegramIdentityController::class)

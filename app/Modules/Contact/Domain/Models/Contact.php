@@ -54,11 +54,11 @@ class Contact extends Model
 
     public function displayValue(): string
     {
-        if ($this->type !== ContactTypeEnum::TELEGRAM) {
+        if (! in_array($this->type, [ContactTypeEnum::TELEGRAM, ContactTypeEnum::VK], true)) {
             return $this->value;
         }
 
-        if (filled($this->meta['username'] ?? null)) {
+        if ($this->type === ContactTypeEnum::TELEGRAM && filled($this->meta['username'] ?? null)) {
             return '@'.ltrim((string) $this->meta['username'], '@');
         }
 
@@ -67,7 +67,11 @@ class Contact extends Model
             $this->meta['last_name'] ?? null,
         ])));
 
-        return $name !== '' ? $name : 'Telegram ID '.$this->value;
+        if ($name !== '') {
+            return $name;
+        }
+
+        return ($this->type === ContactTypeEnum::TELEGRAM ? 'Telegram ID ' : 'VK ID ').$this->value;
     }
 
     protected function isVerified(): Attribute

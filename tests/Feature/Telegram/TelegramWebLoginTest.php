@@ -138,7 +138,7 @@ final class TelegramWebLoginTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_login_widget_ignores_external_redirect_and_is_rendered_for_guests(): void
+    public function test_hidden_login_widget_ignores_external_redirect_and_bot_login_is_rendered_for_guests(): void
     {
         $this
             ->get(route('welcome'))
@@ -146,12 +146,10 @@ final class TelegramWebLoginTest extends TestCase
             ->assertSee('data-telegram-bot-login', false)
             ->assertSee(route('auth.telegram.bot.start', [], false), false)
             ->assertSee(route('auth.telegram.bot.status', [], false), false)
-            ->assertSee('data-telegram-login="MSKBABot"', false)
-            ->assertSee('auth-telegram-login__widget', false)
-            ->assertDontSee('auth-telegram-login__widget" hidden', false)
-            ->assertSee('Быстрый вход')
-            ->assertSee('Войти через Telegram-бота')
-            ->assertSee(route('auth.telegram', [], false), false);
+            ->assertDontSee('data-telegram-login="MSKBABot"', false)
+            ->assertDontSee('auth-telegram-login__widget', false)
+            ->assertDontSee('Быстрый вход')
+            ->assertSee('Войти через Telegram-бота');
 
         $this
             ->postJson(route('auth.telegram'), [

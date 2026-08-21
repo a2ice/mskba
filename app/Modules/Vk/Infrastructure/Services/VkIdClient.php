@@ -71,7 +71,13 @@ final class VkIdClient
                 'first_name' => $this->nullableString($user['first_name'] ?? null),
                 'last_name' => $this->nullableString($user['last_name'] ?? null),
                 'avatar' => $this->nullableString($user['avatar'] ?? null),
+                'sex' => $user['sex'] ?? $user['gender'] ?? null,
+                'birthday' => $user['birthday'] ?? $user['birth_date'] ?? $user['bdate'] ?? null,
             ], static fn (mixed $value): bool => $value !== null),
+            gender: $this->normalizeGender($user['sex'] ?? $user['gender'] ?? null),
+            birthDate: $this->normalizeBirthDate(
+                $user['birthday'] ?? $user['birth_date'] ?? $user['bdate'] ?? null,
+            ),
         );
     }
 
@@ -99,5 +105,45 @@ final class VkIdClient
     private function nullableString(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' ? trim($value) : null;
+    }
+
+    private function normalizeGender(mixed $value): ?string
+    {
+        if (is_int($value) || (is_string($value) && ctype_digit($value))) {
+            return match ((int) $value) {
+                1 => 'female',
+                2 => 'male',
+                default => null,
+            };
+        }
+
+        return match (is_string($value) ? strtolower(trim($value)) : null) {
+            'female', 'f' => 'female',
+            'male', 'm' => 'male',
+            default => null,
+        };
+    }
+
+    private function normalizeBirthDate(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+        foreach (['!Y-m-d', '!d.m.Y', '!Y.m.d'] as $format) {
+            $date = \DateTimeImmutable::createFromFormat($format, $value);
+            $errors = \DateTimeImmutable::getLastErrors();
+
+            if (
+                $date !== false
+                && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))
+                && $date <= new \DateTimeImmutable('today')
+            ) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        return null;
     }
 }
