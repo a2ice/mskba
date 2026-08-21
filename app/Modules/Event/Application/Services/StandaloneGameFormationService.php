@@ -21,7 +21,6 @@ use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\EventParticipant;
 use App\Modules\Event\Domain\Models\Game;
-use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -53,7 +52,7 @@ final class StandaloneGameFormationService
             throw new InvalidArgumentException('Формирование сторон доступно только для самостоятельной игры.');
         }
 
-        $this->assertSideSizeLimits($sideASize, $sideBSize);
+        $this->assertSideSizes($sideASize, $sideBSize);
         [$format, $periodsCount] = $this->normalizeFormat(
             $format,
             $sideASize,
@@ -61,22 +60,20 @@ final class StandaloneGameFormationService
             $scoringType,
             $periodsCount,
         );
-        $periodsCount = $this->normalizePeriodConfiguration($timingMode, $periodsCount);
+        $periodsCount = $this->normalizePeriods($timingMode, $periodsCount);
 
-        $selectedTeamIds = collect([$teamAId, $teamBId])
+        $selectedIds = collect([$teamAId, $teamBId])
             ->filter(fn ($id) => $id !== null)
             ->map(fn ($id): int => (int) $id)
             ->values();
-
-        if ($recruitmentMode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT && $selectedTeamIds->isNotEmpty()) {
+        if ($recruitmentMode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT && $selectedIds->isNotEmpty()) {
             throw new InvalidArgumentException('В режиме набора отдельных игроков готовые команды при создании не указываются.');
         }
-        if ($selectedTeamIds->duplicates()->isNotEmpty()) {
+        if ($selectedIds->duplicates()->isNotEmpty()) {
             throw new InvalidArgumentException('Одна команда не может занимать обе стороны игры.');
         }
 
-        $teams = $this->lockActivePermanentTeams($selectedTeamIds);
-
+        $teams = $this->lockTeams($selectedIds);
         $game = Game::query()->create([
             'event_id' => $event->id,
             'created_by_actor_id' => $actor->id,
@@ -90,7 +87,7 @@ final class StandaloneGameFormationService
             'periods_count' => $periodsCount,
         ]);
 
-        foreach ($selectedTeamIds as $teamId) {
+        foreach ($selectedIds as $teamId) {
             $game->admissions()->create([
                 'candidate_type' => GameAdmissionCandidateTypeEnum::TEAM,
                 'team_id' => $teamId,
@@ -103,15 +100,8 @@ final class StandaloneGameFormationService
         }
 
         if ($teamAId !== null && $teamBId !== null) {
-            $this->materializePermanentTeams(
-                $event,
-                $game,
-                $teams[(int) $teamAId],
-                $teams[(int) $teamBId],
-                $actor,
-            );
+            $this->materializeTeams($event, $game, $teams[(int) $teamAId], $teams[(int) $teamBId], $actor);
         }
-
         $this->createPeriods($game, $periodsCount);
         $event->forceFill(['primary_game_id' => $game->id])->save();
 
@@ -121,11 +111,7 @@ final class StandaloneGameFormationService
     public function confirmTeams(Game $game, Actor $actor, int $teamAId, int $teamBId): Game
     {
         $updated = DB::transaction(function () use ($game, $actor, $teamAId, $teamBId): Game {
-            $event = Event::query()->lockForUpdate()->findOrFail($game->event_id);
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
-            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
-            $this->assertStandaloneEditable($event, $lockedGame);
-
+            [$event, $lockedGame] = $this->lockEditable($game, $actor);
             if ($lockedGame->recruitment_mode !== GameRecruitmentModeEnum::PREFORMED_TEAMS) {
                 throw new InvalidArgumentException('Готовые команды нельзя утвердить в режиме набора отдельных игроков.');
             }
@@ -133,27 +119,20 @@ final class StandaloneGameFormationService
                 throw new InvalidArgumentException('Одна команда не может занимать обе стороны игры.');
             }
 
-            $acceptedTeamIds = $lockedGame->admissions()
+            $accepted = $lockedGame->admissions()
                 ->where('candidate_type', GameAdmissionCandidateTypeEnum::TEAM->value)
                 ->where('status', GameAdmissionStatusEnum::ACCEPTED->value)
                 ->whereIn('team_id', [$teamAId, $teamBId])
                 ->pluck('team_id')
                 ->map(fn ($id): int => (int) $id)
                 ->unique();
-
-            if ($acceptedTeamIds->count() !== 2) {
+            if ($accepted->count() !== 2) {
                 throw new InvalidArgumentException('Сначала обе команды должны принять участие или быть подтверждены организатором.');
             }
 
-            $teams = $this->lockActivePermanentTeams(collect([$teamAId, $teamBId]));
-            $this->clearMaterializedSides($lockedGame);
-            $this->materializePermanentTeams(
-                $event,
-                $lockedGame,
-                $teams[$teamAId],
-                $teams[$teamBId],
-                $actor,
-            );
+            $teams = $this->lockTeams(collect([$teamAId, $teamBId]));
+            $this->clearSides($lockedGame);
+            $this->materializeTeams($event, $lockedGame, $teams[$teamAId], $teams[$teamBId], $actor);
 
             return $lockedGame->fresh(['sides', 'rosterEntries', 'admissions']);
         }, 3);
@@ -163,10 +142,7 @@ final class StandaloneGameFormationService
         return $updated;
     }
 
-    /**
-     * @param list<int> $sideAUserIds
-     * @param list<int> $sideBUserIds
-     */
+    /** @param list<int> $sideAUserIds @param list<int> $sideBUserIds */
     public function confirmIndividuals(
         Game $game,
         Actor $actor,
@@ -183,11 +159,7 @@ final class StandaloneGameFormationService
             $sideAName,
             $sideBName,
         ): Game {
-            $event = Event::query()->lockForUpdate()->findOrFail($game->event_id);
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
-            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
-            $this->assertStandaloneEditable($event, $lockedGame);
-
+            [$event, $lockedGame] = $this->lockEditable($game, $actor);
             if ($lockedGame->recruitment_mode !== GameRecruitmentModeEnum::INDIVIDUAL_DRAFT) {
                 throw new InvalidArgumentException('Состав из отдельных игроков доступен только в соответствующем режиме набора.');
             }
@@ -203,34 +175,23 @@ final class StandaloneGameFormationService
                 throw new InvalidArgumentException('В каждой стороне должно хватать игроков для стартового состава.');
             }
 
-            $acceptedIds = $lockedGame->admissions()
-                ->where('candidate_type', GameAdmissionCandidateTypeEnum::USER->value)
-                ->where('status', GameAdmissionStatusEnum::ACCEPTED->value)
-                ->whereNotNull('user_id')
-                ->with('user')
-                ->get()
-                ->map(fn ($admission): int => (int) $admission->user->canonical()->id)
-                ->unique()
-                ->sort()
-                ->values();
-
+            $acceptedIds = $this->acceptedIndividualIds($lockedGame);
             if ($all->unique()->sort()->values()->all() !== $acceptedIds->all()) {
                 throw new InvalidArgumentException('Каждый принятый игрок должен входить ровно в одну утверждаемую команду.');
             }
 
-            $this->clearMaterializedSides($lockedGame);
+            $this->clearSides($lockedGame);
             $participants = $this->syncEventParticipants($event, $acceptedIds);
-
             $sideA = $lockedGame->sides()->create([
                 'slot' => 'A',
-                'display_name' => $this->normalizedSideName($sideAName, 'Команда 1'),
+                'display_name' => $this->sideName($sideAName, 'Команда 1'),
             ]);
             $sideB = $lockedGame->sides()->create([
                 'slot' => 'B',
-                'display_name' => $this->normalizedSideName($sideBName, 'Команда 2'),
+                'display_name' => $this->sideName($sideBName, 'Команда 2'),
             ]);
 
-            foreach (['A' => [$sideA, $sideAUserIds], 'B' => [$sideB, $sideBUserIds]] as [$side, $ids]) {
+            foreach ([[$sideA, $sideAUserIds], [$sideB, $sideBUserIds]] as [$side, $ids]) {
                 foreach ($ids as $userId) {
                     $lockedGame->rosterEntries()->create([
                         'game_side_id' => $side->id,
@@ -240,11 +201,7 @@ final class StandaloneGameFormationService
                     ]);
                 }
             }
-
-            $lockedGame->forceFill([
-                'sides_confirmed_at' => now(),
-                'sides_confirmed_by_actor_id' => $actor->id,
-            ])->save();
+            $this->markConfirmed($lockedGame, $actor);
 
             return $lockedGame->fresh(['sides', 'rosterEntries.user.profile', 'admissions']);
         }, 3);
@@ -257,16 +214,8 @@ final class StandaloneGameFormationService
     public function unconfirm(Game $game, Actor $actor): Game
     {
         $updated = DB::transaction(function () use ($game, $actor): Game {
-            $event = Event::query()->lockForUpdate()->findOrFail($game->event_id);
-            $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
-            $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
-            $this->assertStandaloneEditable($event, $lockedGame);
-
-            $this->clearMaterializedSides($lockedGame);
-            $lockedGame->forceFill([
-                'sides_confirmed_at' => null,
-                'sides_confirmed_by_actor_id' => null,
-            ])->save();
+            [, $lockedGame] = $this->lockEditable($game, $actor);
+            $this->clearSides($lockedGame);
 
             return $lockedGame->fresh(['sides', 'rosterEntries', 'admissions']);
         }, 3);
@@ -276,16 +225,28 @@ final class StandaloneGameFormationService
         return $updated;
     }
 
-    /**
-     * @param Collection<int, int> $teamIds
-     * @return Collection<int, Team>
-     */
-    private function lockActivePermanentTeams(Collection $teamIds): Collection
+    /** @return array{Event, Game} */
+    private function lockEditable(Game $game, Actor $actor): array
+    {
+        $event = Event::query()->lockForUpdate()->findOrFail($game->event_id);
+        $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
+        $lockedGame = Game::query()->lockForUpdate()->findOrFail($game->id);
+        if ($event->type !== EventTypeEnum::GAME || (int) $event->primary_game_id !== (int) $lockedGame->id) {
+            throw new InvalidArgumentException('Управление формированием доступно только основной самостоятельной игре.');
+        }
+        if ($lockedGame->status !== GameStatusEnum::SCHEDULED || $lockedGame->actual_started_at !== null) {
+            throw new InvalidArgumentException('После фактического начала игры стороны изменять нельзя.');
+        }
+
+        return [$event, $lockedGame];
+    }
+
+    /** @param Collection<int, int> $teamIds @return Collection<int, Team> */
+    private function lockTeams(Collection $teamIds): Collection
     {
         if ($teamIds->isEmpty()) {
             return collect();
         }
-
         $teams = Team::query()
             ->whereIn('id', $teamIds)
             ->whereNull('temporary_for_event_id')
@@ -294,7 +255,6 @@ final class StandaloneGameFormationService
             ->lockForUpdate()
             ->get()
             ->keyBy('id');
-
         if ($teams->count() !== $teamIds->unique()->count()) {
             throw new InvalidArgumentException('Выбранная команда недоступна или больше не активна.');
         }
@@ -302,42 +262,20 @@ final class StandaloneGameFormationService
         return $teams;
     }
 
-    private function materializePermanentTeams(
-        Event $event,
-        Game $game,
-        Team $teamA,
-        Team $teamB,
-        Actor $actor,
-    ): void {
+    private function materializeTeams(Event $event, Game $game, Team $teamA, Team $teamB, Actor $actor): void
+    {
         if ($teamA->is($teamB)) {
             throw new InvalidArgumentException('Одна команда не может занимать обе стороны игры.');
         }
-
-        $sideA = $game->sides()->create([
-            'team_id' => $teamA->id,
-            'slot' => 'A',
-            'display_name' => $teamA->name,
-        ]);
-        $sideB = $game->sides()->create([
-            'team_id' => $teamB->id,
-            'slot' => 'B',
-            'display_name' => $teamB->name,
-        ]);
-
-        $sideARoster = $this->teamRoster($teamA);
-        $sideBRoster = $this->teamRoster($teamB)
-            ->reject(fn (array $member): bool => $sideARoster->has($member['user_id']))
+        $sideA = $game->sides()->create(['team_id' => $teamA->id, 'slot' => 'A', 'display_name' => $teamA->name]);
+        $sideB = $game->sides()->create(['team_id' => $teamB->id, 'slot' => 'B', 'display_name' => $teamB->name]);
+        $rosterA = $this->teamRoster($teamA);
+        $rosterB = $this->teamRoster($teamB)
+            ->reject(fn (array $member): bool => $rosterA->has($member['user_id']))
             ->keyBy('user_id');
+        $participants = $this->syncEventParticipants($event, $rosterA->keys()->merge($rosterB->keys())->values());
 
-        if ($sideARoster->count() < (int) $game->side_a_size
-            || $sideBRoster->count() < (int) $game->side_b_size) {
-            throw new InvalidArgumentException('В составе обеих команд должно хватать игроков для выбранного формата.');
-        }
-
-        $allUserIds = $sideARoster->keys()->merge($sideBRoster->keys())->values();
-        $participants = $this->syncEventParticipants($event, $allUserIds);
-
-        foreach ([[$sideA, $sideARoster], [$sideB, $sideBRoster]] as [$side, $roster]) {
+        foreach ([[$sideA, $rosterA], [$sideB, $rosterB]] as [$side, $roster]) {
             foreach ($roster as $member) {
                 $game->rosterEntries()->create([
                     'game_side_id' => $side->id,
@@ -348,65 +286,55 @@ final class StandaloneGameFormationService
                 ]);
             }
         }
-
-        $game->forceFill([
-            'sides_confirmed_at' => now(),
-            'sides_confirmed_by_actor_id' => $actor->id,
-        ])->save();
+        $this->markConfirmed($game, $actor);
     }
 
     /** @return Collection<int, array{user_id:int, membership_id:int}> */
     private function teamRoster(Team $team): Collection
     {
-        $memberships = $team->memberships()
-            ->with(['user'])
+        return $team->memberships()
+            ->with('user')
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->withSportRole(TeamMemberTypeEnum::PLAYER)
             ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
             ->orderBy('id')
             ->lockForUpdate()
-            ->get();
-
-        return $memberships
-            ->map(function ($membership): array {
-                $canonical = $membership->user->canonical();
-
-                return [
-                    'user_id' => (int) $canonical->id,
-                    'membership_id' => (int) $membership->id,
-                ];
-            })
+            ->get()
+            ->map(fn ($membership): array => [
+                'user_id' => (int) $membership->user->canonical()->id,
+                'membership_id' => (int) $membership->id,
+            ])
             ->unique('user_id')
             ->keyBy('user_id');
     }
 
-    /**
-     * EventParticipant remains the attendance/organisation layer; confirmation guarantees that
-     * every roster player is represented there, but removing a GameSide does not delete an
-     * EventParticipant because the user may still attend the event outside the playing roster.
-     *
-     * @param Collection<int, int> $userIds
-     * @return Collection<int, EventParticipant>
-     */
+    /** @return Collection<int, int> */
+    private function acceptedIndividualIds(Game $game): Collection
+    {
+        return $game->admissions()
+            ->where('candidate_type', GameAdmissionCandidateTypeEnum::USER->value)
+            ->where('status', GameAdmissionStatusEnum::ACCEPTED->value)
+            ->whereNotNull('user_id')
+            ->with('user')
+            ->get()
+            ->map(fn ($admission): int => (int) $admission->user->canonical()->id)
+            ->unique()
+            ->sort()
+            ->values();
+    }
+
+    /** @param Collection<int, int> $userIds @return Collection<int, EventParticipant> */
     private function syncEventParticipants(Event $event, Collection $userIds): Collection
     {
-        $canonicalIds = User::query()
-            ->whereKey($userIds->all())
-            ->get()
+        $canonicalIds = User::query()->whereKey($userIds->all())->get()
             ->map(fn (User $user): int => (int) $user->canonical()->id)
             ->unique()
             ->values();
-
-        $organizerUserId = $event->organizerActor()
-            ->with('user')
-            ->first()?->user?->canonical()?->id;
+        $organizerUserId = $event->organizerActor()->with('user')->first()?->user?->canonical()?->id;
         $participants = collect();
-        foreach ($canonicalIds->sort() as $userId) {
-            $participant = $event->participants()
-                ->where('user_id', $userId)
-                ->lockForUpdate()
-                ->first();
 
+        foreach ($canonicalIds->sort() as $userId) {
+            $participant = $event->participants()->where('user_id', $userId)->lockForUpdate()->first();
             if ($participant === null) {
                 $participant = $event->participants()->create([
                     'user_id' => $userId,
@@ -424,14 +352,13 @@ final class StandaloneGameFormationService
                     'confirmation_version' => $event->participation_confirmation_version,
                 ])->save();
             }
-
             $participants->put($userId, $participant);
         }
 
         return $participants;
     }
 
-    private function clearMaterializedSides(Game $game): void
+    private function clearSides(Game $game): void
     {
         if ($game->actual_started_at !== null) {
             throw new InvalidArgumentException('После начала игры стороны и состав изменять нельзя.');
@@ -441,84 +368,65 @@ final class StandaloneGameFormationService
             || $game->actions()->exists()) {
             throw new InvalidArgumentException('Стороны нельзя переутвердить после появления игровых данных.');
         }
-
         $game->rosterEntries()->delete();
         $game->sides()->delete();
-        $game->forceFill([
-            'sides_confirmed_at' => null,
-            'sides_confirmed_by_actor_id' => null,
-        ])->save();
+        $game->forceFill(['sides_confirmed_at' => null, 'sides_confirmed_by_actor_id' => null])->save();
     }
 
-    private function assertStandaloneEditable(Event $event, Game $game): void
+    private function markConfirmed(Game $game, Actor $actor): void
     {
-        if ($event->type !== EventTypeEnum::GAME || (int) $event->primary_game_id !== (int) $game->id) {
-            throw new InvalidArgumentException('Управление формированием доступно только основной самостоятельной игре.');
-        }
-        if ($game->status !== GameStatusEnum::SCHEDULED || $game->actual_started_at !== null) {
-            throw new InvalidArgumentException('После фактического начала игры стороны изменять нельзя.');
-        }
+        $game->forceFill(['sides_confirmed_at' => now(), 'sides_confirmed_by_actor_id' => $actor->id])->save();
     }
 
-    private function assertSideSizeLimits(int $sideASize, int $sideBSize): void
+    private function assertSideSizes(int $a, int $b): void
     {
-        if ($sideASize < 1 || $sideASize > 7 || $sideBSize < 1 || $sideBSize > 7) {
+        if ($a < 1 || $a > 7 || $b < 1 || $b > 7) {
             throw new InvalidArgumentException('Количество игроков на каждой стороне должно быть от 1 до 7.');
         }
     }
 
     /** @return array{GameFormatEnum, int|null} */
-    private function normalizeFormat(
-        ?GameFormatEnum $format,
-        int $sideASize,
-        int $sideBSize,
-        GameScoringTypeEnum $scoringType,
-        ?int $periodsCount,
-    ): array {
-        if ($scoringType !== GameScoringTypeEnum::BASKETBALL) {
-            $periodsCount = null;
+    private function normalizeFormat(?GameFormatEnum $format, int $a, int $b, GameScoringTypeEnum $scoring, ?int $periods): array
+    {
+        if ($scoring !== GameScoringTypeEnum::BASKETBALL) {
+            $periods = null;
         } else {
-            $periodsCount ??= 4;
-            if ($periodsCount < 1 || $periodsCount > 20) {
+            $periods ??= 4;
+            if ($periods < 1 || $periods > 20) {
                 throw new InvalidArgumentException('Количество периодов должно быть от 1 до 20.');
             }
         }
-
-        if ($format === null
-            || $format === GameFormatEnum::CUSTOM
-            || $format->sideSize() !== $sideASize
-            || $format->sideSize() !== $sideBSize
-            || $format->scoringType() !== $scoringType) {
+        if ($format === null || $format === GameFormatEnum::CUSTOM
+            || $format->sideSize() !== $a || $format->sideSize() !== $b || $format->scoringType() !== $scoring) {
             $format = GameFormatEnum::CUSTOM;
         }
 
-        return [$format, $periodsCount];
+        return [$format, $periods];
     }
 
-    private function normalizePeriodConfiguration(GameTimingModeEnum $mode, ?int $periodsCount): ?int
+    private function normalizePeriods(GameTimingModeEnum $mode, ?int $periods): ?int
     {
         if ($mode === GameTimingModeEnum::WHOLE_GAME) {
             return null;
         }
-        if (! in_array($periodsCount, [2, 4], true)) {
+        if (! in_array($periods, [2, 4], true)) {
             throw new InvalidArgumentException('Для периодной игры выберите 2 или 4 периода.');
         }
 
-        return $periodsCount;
+        return $periods;
     }
 
-    private function createPeriods(Game $game, ?int $periodsCount): void
+    private function createPeriods(Game $game, ?int $periods): void
     {
-        if ($periodsCount === null) {
+        if ($periods === null) {
             return;
         }
-
-        foreach (range(1, $periodsCount) as $number) {
+        foreach (range(1, $periods) as $number) {
             $game->periods()->create(['number' => $number]);
         }
     }
 
-    private function normalizedSideName(string $name, string $fallback): string
+    private function sideName(string $name, string $fallback): string
     {
         $name = trim(preg_replace('/\s+/u', ' ', $name) ?? $name);
 
