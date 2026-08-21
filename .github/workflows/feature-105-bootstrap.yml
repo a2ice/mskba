@@ -22,14 +22,35 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          : > /tmp/feature105.tgz
-          for part in .github/feature105-payload/part*; do
-            bytes=$(wc -c < "$part")
-            echo "Decoding ${part} (${bytes} bytes)"
-            tr -cd 'A-Za-z0-9+/=' < "$part" | base64 --decode --ignore-garbage >> /tmp/feature105.tgz
-          done
-          archive_bytes=$(wc -c < /tmp/feature105.tgz)
-          echo "Decoded archive size: ${archive_bytes} bytes"
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+          import re
+
+          parts = sorted(Path('.github/feature105-payload').glob('part*'))
+          if not parts:
+              raise SystemExit('No payload parts found')
+
+          chunks = []
+          for part in parts:
+              raw = part.read_text(encoding='utf-8', errors='ignore')
+              cleaned = re.sub(r'[^A-Za-z0-9+/=]', '', raw)
+              print(f'{part}: raw={len(raw)} base64={len(cleaned)}')
+              chunks.append(cleaned)
+
+          encoded = ''.join(chunks).rstrip('=')
+          encoded += '=' * (-len(encoded) % 4)
+          print(f'combined base64 size: {len(encoded)}')
+
+          try:
+              decoded = base64.b64decode(encoded, validate=False)
+          except Exception as exc:
+              raise SystemExit(f'Base64 decode failed: {exc}') from exc
+
+          archive = Path('/tmp/feature105.tgz')
+          archive.write_bytes(decoded)
+          print(f'decoded archive size: {len(decoded)} bytes')
+          PY
           gzip -t /tmp/feature105.tgz
           tar -tzf /tmp/feature105.tgz >/dev/null
           tar -xzf /tmp/feature105.tgz
