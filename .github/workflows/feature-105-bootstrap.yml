@@ -24,8 +24,12 @@ jobs:
           set -euo pipefail
           : > /tmp/feature105.tgz
           for part in .github/feature105-payload/part*; do
-            base64 -d "$part" >> /tmp/feature105.tgz
+            echo "Decoding ${part} ($(wc -c < \"$part\") bytes)"
+            tr -cd 'A-Za-z0-9+/=' < "$part" | base64 --decode --ignore-garbage >> /tmp/feature105.tgz
           done
+          echo "Decoded archive size: $(wc -c < /tmp/feature105.tgz) bytes"
+          gzip -t /tmp/feature105.tgz
+          tar -tzf /tmp/feature105.tgz >/dev/null
           tar -xzf /tmp/feature105.tgz
           rm -rf .github/feature105-payload
           rm -f .github/workflows/feature-105-bootstrap.yml
