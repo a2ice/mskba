@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
 use App\Modules\Event\Application\Services\GameLifecycleService;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
@@ -38,6 +39,10 @@ final class GameLifecycleController extends Controller
             || $game->statistics_status === GameStatisticsStatusEnum::CONFIRMED;
         $started = $game->actual_started_at !== null;
         $ended = $game->actual_ended_at !== null;
+        $requiresSideConfirmation = $game->event->type === EventTypeEnum::GAME
+            && (int) $game->event->primary_game_id === (int) $game->id
+            && $game->recruitment_mode !== null;
+        $sidesReady = ! $requiresSideConfirmation || $game->sides_confirmed_at !== null;
 
         $roster = $game->sides->mapWithKeys(function ($side) use ($game): array {
             $entries = $game->rosterEntries
@@ -84,9 +89,10 @@ final class GameLifecycleController extends Controller
             'ended' => $ended,
             'cancelled' => $cancelled,
             'completed' => $completed,
+            'sides_confirmed' => $game->sides_confirmed_at !== null,
             'actual_started_at' => $game->actual_started_at?->toIso8601String(),
             'actual_ended_at' => $game->actual_ended_at?->toIso8601String(),
-            'can_start' => $canComplete && ! $started && ! $cancelled && ! $completed,
+            'can_start' => $canComplete && $sidesReady && ! $started && ! $cancelled && ! $completed,
             'can_end' => $canComplete && $started && ! $ended && ! $cancelled && ! $completed
                 && (! $usesPeriods || $activePeriod?->number === (int) $game->periods_count),
             'can_end_period' => $canComplete && $usesPeriods && $activePeriod !== null

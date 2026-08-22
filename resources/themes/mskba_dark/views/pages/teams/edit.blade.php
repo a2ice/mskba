@@ -50,6 +50,14 @@
             'wrapperClass' => 'mb-3',
         ])
         <p class="form-hint mb-3">Когда настройка включена, пользователи могут подать заявку с публичной страницы команды.</p>
+        @include('theme::partials.forms.toggle', [
+            'id' => 'team-accepts-competition-invitations',
+            'name' => 'accepts_competition_invitations',
+            'title' => 'Разрешать приглашения команды в игры и турниры',
+            'checked' => old('accepts_competition_invitations', $team->accepts_competition_invitations),
+            'wrapperClass' => 'mb-3',
+        ])
+        <p class="form-hint mb-3">Если выключить настройку, команда не будет показываться организаторам в списках и поиске для приглашения. Представитель команды по-прежнему сможет сам подать заявку на подходящую игру или турнир.</p>
         <button class="btn btn--primary" type="submit">Сохранить настройки</button>
     </form>
 </section>

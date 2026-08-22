@@ -36,8 +36,14 @@ final class TournamentAdmissionController extends Controller
         $candidate = $item->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
             ? Team::query()->findOrFail($data['team_id'])
             : User::query()->whereKey($data['user_id'])->firstOrFail();
+        $actor = $actors->resolveForRequest($request) ?? abort(403);
 
-        return $this->run(fn () => $service->invite($item, $actors->resolveForRequest($request) ?? abort(403), $candidate), 'Приглашение отправлено.');
+        return $this->run(function () use ($service, $item, $actor, $candidate): void {
+            if ($candidate instanceof Team && ! $candidate->acceptsCompetitionInvitations()) {
+                throw new InvalidArgumentException('Команда запретила приглашения в игры и турниры.');
+            }
+            $service->invite($item, $actor, $candidate);
+        }, 'Приглашение отправлено.');
     }
 
     public function apply(Request $request, string $tournament, TournamentAdmissionService $service, CurrentActorResolver $actors): RedirectResponse

@@ -41,6 +41,7 @@ import './features/team-member-card-details.js';
 import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
+import './features/standalone-game-create.js';
 import './features/tournament-form.js';
 import './features/tournament-application.js';
 import './features/tournament-management.js';
@@ -50,6 +51,7 @@ import './features/game-shot-quick-action.js';
 import './features/game-control.js';
 import './features/game-lifecycle.js';
 import './features/game-live.js';
+import './features/standalone-game-recruitment.js';
 import './features/notification-toasts.js';
 import './features/coordination-form.js';
 import './features/venue-selector.js';
@@ -109,7 +111,6 @@ var header,
     headerHeight = 0;
 const HEADER_BACKGROUND_SCROLL_DISTANCE = 360;
 
-// Adjust first screen padding on load and resize to prevent content from being hidden behind the fixed header
 function paddingFirstScreen() {
     header = $('.site-header');
     headerHeight = header.outerHeight();

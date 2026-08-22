@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\Services;
 
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
@@ -40,6 +41,13 @@ final class GameLifecycleService
             }
             if ($lockedGame->statistics_status === GameStatisticsStatusEnum::CONFIRMED) {
                 throw new InvalidArgumentException('Игра с подтверждённым результатом уже закрыта.');
+            }
+
+            $isStandalone = $event->type === EventTypeEnum::GAME
+                && (int) $event->primary_game_id === (int) $lockedGame->id
+                && $lockedGame->recruitment_mode !== null;
+            if ($isStandalone && $lockedGame->sides_confirmed_at === null) {
+                throw new InvalidArgumentException('Перед началом игры утвердите обе стороны.');
             }
             if ($lockedGame->sides()->count() !== 2 || $lockedGame->rosterEntries()->count() === 0) {
                 throw new InvalidArgumentException('Перед началом игры необходимо сформировать команды и составы.');

@@ -5,6 +5,7 @@ namespace App\Modules\Event\Presentation\Http\Requests;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
@@ -17,7 +18,15 @@ final class CreateEventRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        $prepared = ['publish_to_telegram' => $this->boolean('publish_to_telegram')];
+        $prepared = [
+            'publish_to_telegram' => $this->boolean('publish_to_telegram'),
+            'game_accepts_applications' => $this->input('type') === EventTypeEnum::GAME->value
+                ? ($this->has('game_accepts_applications') ? $this->boolean('game_accepts_applications') : true)
+                : false,
+        ];
+        if ($this->input('type') === EventTypeEnum::GAME->value && ! $this->filled('game_recruitment_mode')) {
+            $prepared['game_recruitment_mode'] = GameRecruitmentModeEnum::PREFORMED_TEAMS->value;
+        }
         if ($this->input('type') === EventTypeEnum::GAME->value && ! $this->filled('game_format')) {
             $sizeA = (int) $this->input('side_a_size', 3);
             $sizeB = (int) $this->input('side_b_size', 3);
@@ -56,8 +65,16 @@ final class CreateEventRequest extends FormRequest
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
-            'team_a_id' => [
+            'game_recruitment_mode' => [
                 Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'nullable',
+                Rule::enum(GameRecruitmentModeEnum::class),
+            ],
+            'game_accepts_applications' => [
+                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
+                'boolean',
+            ],
+            'team_a_id' => [
                 'nullable',
                 'integer',
                 Rule::exists('teams', 'id')->where(fn ($query) => $query
@@ -67,7 +84,6 @@ final class CreateEventRequest extends FormRequest
                 'different:team_b_id',
             ],
             'team_b_id' => [
-                Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
                 'nullable',
                 'integer',
                 Rule::exists('teams', 'id')->where(fn ($query) => $query
@@ -90,10 +106,7 @@ final class CreateEventRequest extends FormRequest
                 'min:1',
                 'max:7',
             ],
-            'scoring_type' => [
-                'nullable',
-                Rule::enum(GameScoringTypeEnum::class),
-            ],
+            'scoring_type' => ['nullable', Rule::enum(GameScoringTypeEnum::class)],
             'game_format' => [
                 Rule::requiredIf($this->input('type') === EventTypeEnum::GAME->value),
                 'nullable',
@@ -138,15 +151,32 @@ final class CreateEventRequest extends FormRequest
             'duration_minutes.min' => 'Длительность должна быть больше нуля.',
             'duration_minutes.max' => 'Мероприятие должно завершиться в течение суток.',
             'max_participants.min' => 'Вместимость должна учитывать организатора и хотя бы одного участника.',
-            'team_a_id.required' => 'Выберите первую команду.',
-            'team_b_id.required' => 'Выберите вторую команду.',
-            'team_a_id.different' => 'Для игры нужны две разные команды.',
+            'team_a_id.different' => 'Одна команда не может занимать обе стороны игры.',
+            'team_b_id.different' => 'Одна команда не может занимать обе стороны игры.',
         ];
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
+            if ($this->input('type') === EventTypeEnum::GAME->value) {
+                $recruitmentMode = GameRecruitmentModeEnum::tryFrom((string) $this->input('game_recruitment_mode'));
+                if ($recruitmentMode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT
+                    && ($this->filled('team_a_id') || $this->filled('team_b_id'))) {
+                    $validator->errors()->add(
+                        'game_recruitment_mode',
+                        'В режиме набора отдельных игроков готовые команды при создании не указываются.',
+                    );
+                }
+                if ($recruitmentMode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT
+                    && (int) $this->input('side_a_size') !== (int) $this->input('side_b_size')) {
+                    $validator->errors()->add(
+                        'side_b_size',
+                        'Для balanced-набора размер обеих сторон должен совпадать.',
+                    );
+                }
+            }
+
             if ($validator->errors()->has('starts_at')) {
                 return;
             }
@@ -161,7 +191,6 @@ final class CreateEventRequest extends FormRequest
             if ($startsAt->lessThan($this->minimumStartsAt())) {
                 $validator->errors()->add('starts_at', 'Начало не может быть раньше текущего времени.');
             }
-
         });
     }
 

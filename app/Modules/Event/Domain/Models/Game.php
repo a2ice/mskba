@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Domain\Models;
 
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameScoringTypeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsModeEnum;
 use App\Modules\Event\Domain\Enums\GameStatisticsStatusEnum;
@@ -25,6 +26,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'title',
     'description',
     'status',
+    'recruitment_mode',
+    'accepts_applications',
+    'sides_confirmed_at',
+    'sides_confirmed_by_actor_id',
     'format',
     'timing_mode',
     'side_a_size',
@@ -65,9 +70,19 @@ class Game extends Model
         return $this->belongsTo(Actor::class, 'created_by_actor_id');
     }
 
+    public function sidesConfirmedByActor(): BelongsTo
+    {
+        return $this->belongsTo(Actor::class, 'sides_confirmed_by_actor_id');
+    }
+
     public function sides(): HasMany
     {
         return $this->hasMany(GameSide::class);
+    }
+
+    public function admissions(): HasMany
+    {
+        return $this->hasMany(GameAdmission::class);
     }
 
     public function rosterEntries(): HasMany
@@ -133,10 +148,22 @@ class Game extends Model
         return $this->side_a_size.'×'.$this->side_b_size;
     }
 
+    public function acceptsAdmissions(): bool
+    {
+        return $this->recruitment_mode !== null
+            && $this->status === GameStatusEnum::SCHEDULED
+            && $this->actual_started_at === null
+            && $this->sides_confirmed_at === null
+            && $this->accepts_applications;
+    }
+
     protected function casts(): array
     {
         return [
             'status' => GameStatusEnum::class,
+            'recruitment_mode' => GameRecruitmentModeEnum::class,
+            'accepts_applications' => 'boolean',
+            'sides_confirmed_at' => 'immutable_datetime',
             'format' => GameFormatEnum::class,
             'timing_mode' => GameTimingModeEnum::class,
             'scoring_type' => GameScoringTypeEnum::class,
