@@ -24,9 +24,14 @@ final class TeamSettingsController extends Controller
 
         $data = $request->validate([
             'accepts_join_requests' => ['required', 'boolean'],
+            'accepts_competition_invitations' => ['sometimes', 'boolean'],
         ]);
-        $item->update(['accepts_join_requests' => (bool) $data['accepts_join_requests']]);
+        $updates = ['accepts_join_requests' => (bool) $data['accepts_join_requests']];
+        if (array_key_exists('accepts_competition_invitations', $data)) {
+            $updates['accepts_competition_invitations'] = (bool) $data['accepts_competition_invitations'];
+        }
+        $item->update($updates);
 
-        return back()->with('status', 'Настройки приёма заявок обновлены.');
+        return back()->with('status', 'Настройки команды обновлены.');
     }
 }
