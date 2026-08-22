@@ -63,12 +63,12 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
             ->assertJsonPath('can_start', false);
     }
 
-    public function test_two_selected_teams_keep_existing_direct_creation_flow_and_mark_sides_confirmed(): void
+    public function test_external_preselected_team_requires_acceptance_before_sides_can_be_confirmed(): void
     {
         $ownerA = User::factory()->create();
         $ownerB = User::factory()->create();
         $teamA = $this->createTeam($ownerA, 'Direct A');
-        $teamB = $this->createTeam($ownerB, 'Direct B');
+        $teamB = $this->createTeam($ownerB, 'Invited B');
         [$venue, $start, $end] = $this->availableVenue();
 
         $this->actingAs($ownerA)->post(route('events.store'), [
@@ -79,16 +79,74 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
             'side_b_size' => 1,
         ])->assertRedirect();
 
-        $game = Event::query()
-            ->where('type', EventTypeEnum::GAME->value)
-            ->firstOrFail()
-            ->primaryGame()
-            ->firstOrFail();
+        $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $game = $event->primaryGame()->firstOrFail();
 
+        $this->assertNull($game->sides_confirmed_at);
+        $this->assertSame(0, $game->sides()->count());
+        $this->assertDatabaseHas('game_admissions', [
+            'game_id' => $game->id,
+            'team_id' => $teamA->id,
+            'direction' => GameAdmissionDirectionEnum::SELECTION->value,
+            'status' => GameAdmissionStatusEnum::ACCEPTED->value,
+        ]);
+        $invitation = $game->admissions()->where('team_id', $teamB->id)->firstOrFail();
+        $this->assertSame(GameAdmissionDirectionEnum::INVITATION, $invitation->direction);
+        $this->assertSame(GameAdmissionStatusEnum::PENDING, $invitation->status);
+
+        $route = [$event->routeIdentifier(), $game->id];
+        $this->actingAs($ownerB)->postJson(route('events.games.recruitment.respond', [...$route, $invitation->id]), [
+            'decision' => GameAdmissionStatusEnum::ACCEPTED->value,
+        ])->assertOk();
+
+        $this->actingAs($ownerA)->postJson(route('events.games.recruitment.teams.confirm', $route), [
+            'team_a_id' => $teamA->id,
+            'team_b_id' => $teamB->id,
+        ])->assertOk();
+
+        $game->refresh();
         $this->assertNotNull($game->sides_confirmed_at);
         $this->assertSame(2, $game->sides()->count());
-        $this->assertSame(2, $game->admissions()->where('status', GameAdmissionStatusEnum::ACCEPTED->value)->count());
         $this->assertSame(2, $game->rosterEntries()->count());
+    }
+
+    public function test_team_invitation_opt_out_hides_team_and_blocks_invite_but_not_team_application(): void
+    {
+        $organizer = User::factory()->create();
+        $teamOwner = User::factory()->create();
+        $team = $this->createTeam($teamOwner, 'Private Invitations Team');
+        $team->update(['accepts_competition_invitations' => false]);
+        [$venue, $start, $end] = $this->availableVenue();
+
+        $this->actingAs($organizer)->post(route('events.store'), [
+            ...$this->eventPayload($venue, $start, $end),
+            'side_a_size' => 1,
+            'side_b_size' => 1,
+        ])->assertRedirect();
+
+        $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
+        $game = $event->primaryGame()->firstOrFail();
+        $route = [$event->routeIdentifier(), $game->id];
+
+        $this->actingAs($organizer)
+            ->getJson(route('events.games.recruitment.candidates', [...$route, 'q' => 'Private']))
+            ->assertOk()
+            ->assertJsonCount(0, 'candidates');
+
+        $this->actingAs($organizer)->postJson(route('events.games.recruitment.invite', $route), [
+            'team_id' => $team->id,
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Команда запретила приглашения в игры и турниры.');
+
+        $this->actingAs($teamOwner)->postJson(route('events.games.recruitment.apply', $route), [
+            'team_id' => $team->id,
+        ])->assertOk();
+        $this->assertDatabaseHas('game_admissions', [
+            'game_id' => $game->id,
+            'team_id' => $team->id,
+            'direction' => GameAdmissionDirectionEnum::APPLICATION->value,
+            'status' => GameAdmissionStatusEnum::PENDING->value,
+        ]);
     }
 
     public function test_individual_draft_starts_without_sides_and_rejects_preselected_team(): void
@@ -129,13 +187,12 @@ final class StandaloneGameRecruitmentFoundationTest extends TestCase
 
     public function test_confirmed_sides_can_be_unconfirmed_before_start(): void
     {
-        $ownerA = User::factory()->create();
-        $ownerB = User::factory()->create();
-        $teamA = $this->createTeam($ownerA, 'Unlock A');
-        $teamB = $this->createTeam($ownerB, 'Unlock B');
+        $owner = User::factory()->create();
+        $teamA = $this->createTeam($owner, 'Unlock A');
+        $teamB = $this->createTeam($owner, 'Unlock B');
         [$venue, $start, $end] = $this->availableVenue();
 
-        $this->actingAs($ownerA)->post(route('events.store'), [
+        $this->actingAs($owner)->post(route('events.store'), [
             ...$this->eventPayload($venue, $start, $end),
             'team_a_id' => $teamA->id,
             'team_b_id' => $teamB->id,
