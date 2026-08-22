@@ -3,6 +3,7 @@
 namespace App\Modules\Event\Application\UseCases;
 
 use App\Modules\Event\Application\Services\StandaloneGameFormationService;
+use App\Modules\Event\Application\Services\StandaloneGameInitialSelectionService;
 use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventParticipantRoleEnum;
 use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
@@ -31,6 +32,7 @@ final class CreateEventHandler
         private readonly VenueEventAvailability $availability,
         private readonly CyrillicTransliterator $transliterator,
         private readonly StandaloneGameFormationService $standaloneGames,
+        private readonly StandaloneGameInitialSelectionService $initialSelections,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -97,11 +99,11 @@ final class CreateEventHandler
             ]);
 
             if ($event->type === EventTypeEnum::GAME) {
-                $this->standaloneGames->initialize(
+                $game = $this->standaloneGames->initialize(
                     $event,
                     $actor,
-                    isset($data['team_a_id']) ? (int) $data['team_a_id'] : null,
-                    isset($data['team_b_id']) ? (int) $data['team_b_id'] : null,
+                    null,
+                    null,
                     (int) ($data['side_a_size'] ?? 5),
                     (int) ($data['side_b_size'] ?? 5),
                     GameScoringTypeEnum::from($data['scoring_type'] ?? GameScoringTypeEnum::STREETBALL->value),
@@ -112,6 +114,13 @@ final class CreateEventHandler
                         $data['game_recruitment_mode'] ?? GameRecruitmentModeEnum::PREFORMED_TEAMS->value,
                     ),
                     (bool) ($data['game_accepts_applications'] ?? true),
+                );
+
+                $this->initialSelections->apply(
+                    $game,
+                    $actor,
+                    isset($data['team_a_id']) ? (int) $data['team_a_id'] : null,
+                    isset($data['team_b_id']) ? (int) $data['team_b_id'] : null,
                 );
             }
 
