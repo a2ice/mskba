@@ -12,6 +12,8 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      TELEGRAM_BOT_USERNAME: mskba_test_bot
     steps:
       - name: Checkout pull request
         uses: actions/checkout@v4
@@ -52,6 +54,7 @@ jobs:
             app/Modules/Tournament/Presentation/Http/Controllers/TournamentCandidateSearchController.php \
             database/migrations/2026_08_22_010000_add_game_application_setting.php \
             database/migrations/2026_08_22_020000_add_team_competition_invitation_setting.php \
+            tests/Feature/Event/GameLifecycleWorkflowTest.php \
             tests/Feature/Event/StandaloneGameRecruitmentFoundationTest.php \
             tests/Feature/Event/StandaloneGameRecruitmentWorkflowTest.php
 
