@@ -189,10 +189,8 @@ final class StandaloneGameRecruitmentWorkflowTest extends TestCase
     public function test_main_game_configuration_is_editable_before_start_but_size_change_requires_unconfirm(): void
     {
         $organizer = $this->confirmedUser('config-organizer');
-        $ownerA = $this->confirmedUser('config-owner-a');
-        $ownerB = $this->confirmedUser('config-owner-b');
-        $teamA = $this->createTeam($ownerA, 'Config A');
-        $teamB = $this->createTeam($ownerB, 'Config B');
+        $teamA = $this->createTeam($organizer, 'Config A');
+        $teamB = $this->createTeam($organizer, 'Config B');
         $game = $this->createStandaloneGame(
             $organizer,
             GameRecruitmentModeEnum::PREFORMED_TEAMS,
@@ -259,7 +257,7 @@ final class StandaloneGameRecruitmentWorkflowTest extends TestCase
             'type' => EventTypeEnum::GAME->value,
             'visibility' => 'public',
             'description' => null,
-            'starts_at' => $start->format('Y-m-d\\TH:i'),
+            'starts_at' => $start->format('Y-m-d\TH:i'),
             'duration_minutes' => 90,
             'max_participants' => 20,
             'game_recruitment_mode' => $mode->value,
