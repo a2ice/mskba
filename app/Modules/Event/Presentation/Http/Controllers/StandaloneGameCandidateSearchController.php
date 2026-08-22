@@ -14,7 +14,6 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
-use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,8 +45,7 @@ final class StandaloneGameCandidateSearchController extends Controller
                 GameAdmissionStatusEnum::ACCEPTED->value,
             ])->whereNotNull('team_id')->pluck('team_id');
             $candidates = Team::query()
-                ->whereNull('temporary_for_event_id')
-                ->where('status', TeamStatusEnum::ACTIVE->value)
+                ->competitionInvitable()
                 ->whereNotIn('id', $excluded)
                 ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($data['q']).'%'])
                 ->orderBy('name')
