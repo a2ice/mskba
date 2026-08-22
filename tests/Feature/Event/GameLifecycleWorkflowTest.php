@@ -47,6 +47,8 @@ final class GameLifecycleWorkflowTest extends TestCase
 
         $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
         $game = $event->games()->firstOrFail();
+        $this->acceptExternalTeamAndConfirm($event, $teamA, $teamB, $ownerB, $ownerA);
+        $game->refresh();
         $this->assertSame($game->id, $event->primary_game_id);
         $this->assertTrue($event->primaryGame->is($game));
         $this->assertNull($game->scheduled_starts_at);
@@ -353,6 +355,8 @@ final class GameLifecycleWorkflowTest extends TestCase
         ])->assertRedirect();
         $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
         $game = $event->primaryGame()->firstOrFail();
+        $this->acceptExternalTeamAndConfirm($event, $teamA, $teamB, $ownerB, $ownerA);
+        $game->refresh();
         $route = [$event->routeIdentifier(), $game->id];
 
         $this->actingAs($ownerA)->postJson(route('events.games.start', $route))->assertOk();
@@ -396,6 +400,8 @@ final class GameLifecycleWorkflowTest extends TestCase
         ])->assertRedirect();
         $event = Event::query()->where('type', EventTypeEnum::GAME->value)->firstOrFail();
         $game = $event->primaryGame()->firstOrFail();
+        $this->acceptExternalTeamAndConfirm($event, $teamA, $teamB, $ownerB, $ownerA);
+        $game->refresh();
         $route = [$event->routeIdentifier(), $game->id];
 
         $this->actingAs($ownerA)->postJson(route('events.games.start', $route))->assertOk();
@@ -418,6 +424,27 @@ final class GameLifecycleWorkflowTest extends TestCase
         $this->assertNotNull($game->actual_ended_at);
         $this->assertSame(GamePeriodStatusEnum::COMPLETED, $game->periods()->where('number', 1)->firstOrFail()->status);
         $this->assertSame(GamePeriodStatusEnum::SCHEDULED, $game->periods()->where('number', 2)->firstOrFail()->status);
+    }
+
+    private function acceptExternalTeamAndConfirm(
+        Event $event,
+        Team $teamA,
+        Team $teamB,
+        User $teamBOwner,
+        User $organizer,
+    ): void {
+        $game = $event->primaryGame()->firstOrFail();
+        $route = [$event->routeIdentifier(), $game->id];
+        $invitation = $game->admissions()->where('team_id', $teamB->id)->firstOrFail();
+
+        $this->actingAs($teamBOwner)->postJson(route('events.games.recruitment.respond', [...$route, $invitation->id]), [
+            'decision' => 'accepted',
+        ])->assertOk();
+
+        $this->actingAs($organizer)->postJson(route('events.games.recruitment.teams.confirm', $route), [
+            'team_a_id' => $teamA->id,
+            'team_b_id' => $teamB->id,
+        ])->assertOk();
     }
 
     private function createTeam(User $owner, string $name): Team
