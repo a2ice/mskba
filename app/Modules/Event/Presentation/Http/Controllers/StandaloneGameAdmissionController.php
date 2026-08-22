@@ -134,6 +134,9 @@ final class StandaloneGameAdmissionController extends Controller
             if ($item->recruitment_mode === GameRecruitmentModeEnum::PREFORMED_TEAMS) {
                 $data = $request->validate(['team_id' => ['required', 'integer', 'exists:teams,id']]);
                 $candidate = Team::query()->findOrFail((int) $data['team_id']);
+                if (! $candidate->acceptsCompetitionInvitations()) {
+                    throw new InvalidArgumentException('Команда запретила приглашения в игры и турниры.');
+                }
             } else {
                 $data = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
                 $candidate = User::query()->findOrFail((int) $data['user_id'])->canonical();
