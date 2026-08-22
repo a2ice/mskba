@@ -29,6 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'description',
     'status',
     'accepts_join_requests',
+    'accepts_competition_invitations',
 ])]
 class Team extends Model
 {
@@ -47,6 +48,15 @@ class Team extends Model
         }
 
         return $query->where('alias', $identifier);
+    }
+
+    /** @param Builder<Team> $query */
+    public function scopeCompetitionInvitable(Builder $query): Builder
+    {
+        return $query
+            ->whereNull('temporary_for_event_id')
+            ->where('status', TeamStatusEnum::ACTIVE->value)
+            ->where('accepts_competition_invitations', true);
     }
 
     public function temporaryForEvent(): BelongsTo
@@ -92,12 +102,20 @@ class Team extends Model
         return $this->temporary_for_event_id !== null;
     }
 
+    public function acceptsCompetitionInvitations(): bool
+    {
+        return ! $this->isTemporary()
+            && $this->status === TeamStatusEnum::ACTIVE
+            && (bool) $this->accepts_competition_invitations;
+    }
+
     protected function casts(): array
     {
         return [
             'status' => TeamStatusEnum::class,
             'name_sequence' => 'integer',
             'accepts_join_requests' => 'boolean',
+            'accepts_competition_invitations' => 'boolean',
         ];
     }
 }
