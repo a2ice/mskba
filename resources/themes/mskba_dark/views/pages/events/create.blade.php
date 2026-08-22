@@ -1,6 +1,9 @@
 @php
     $title = $selectedType?->newLabel() ?? 'Новое мероприятие';
     $createLabel = $selectedType?->createLabel() ?? 'Создать мероприятие';
+    $invitableTeams = isset($teams)
+        ? $teams->filter(fn ($team) => $team->acceptsCompetitionInvitations())->values()
+        : collect();
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -30,6 +33,7 @@
         @include('theme::pages.events.partials.create-form', [
             'formAction' => route('events.store'),
             'submitLabel' => $createLabel,
+            'teams' => $invitableTeams,
         ])
     @endif
 @endsection
