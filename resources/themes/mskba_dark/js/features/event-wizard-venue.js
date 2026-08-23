@@ -29,6 +29,7 @@ function initWizardVenueAvailability(form) {
         ? document.querySelector(selector.dataset.durationInput)
         : null;
     let flexible = false;
+    let currentVenue = null;
     let scopeController = null;
     let hydrationController = null;
 
@@ -43,20 +44,6 @@ function initWizardVenueAvailability(form) {
             && Math.max(Number(sideAInput?.value || 0), Number(sideBInput?.value || 0)) <= 3;
     };
 
-    const applySearchMode = (revalidate = true) => {
-        const nextFlexible = isHalfCourtCompatible();
-        selector.dataset.searchUrl = nextFlexible ? flexibleSearchUrl : standardSearchUrl;
-
-        if (!nextFlexible && scopeInput.value !== 'whole') {
-            scopeInput.value = 'whole';
-        }
-
-        if (revalidate && flexible !== nextFlexible && valueInput.value) {
-            scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        flexible = nextFlexible;
-    };
-
     const parsedListVenues = () => {
         if (!list?.dataset.venues) return [];
         try {
@@ -67,11 +54,49 @@ function initWizardVenueAvailability(form) {
         }
     };
 
+    const selectedVenueFromList = () => parsedListVenues()
+        .find((item) => Number(item.id) === Number(valueInput.value));
+
+    const knownSelectedVenue = () => {
+        if (!valueInput.value) return null;
+        const listed = selectedVenueFromList();
+        if (listed) currentVenue = listed;
+        if (currentVenue && Number(currentVenue.id) === Number(valueInput.value)) return currentVenue;
+        return null;
+    };
+
+    const validateExactScope = () => {
+        if (!valueInput.value) return;
+        scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const applySearchMode = (revalidate = true) => {
+        const nextFlexible = isHalfCourtCompatible();
+        const changed = flexible !== nextFlexible;
+        flexible = nextFlexible;
+        selector.dataset.searchUrl = flexible ? flexibleSearchUrl : standardSearchUrl;
+
+        if (!flexible && scopeInput.value !== 'whole') {
+            scopeInput.value = 'whole';
+        }
+
+        if (!revalidate || !changed || !valueInput.value) return;
+        const venue = knownSelectedVenue();
+        if (flexible && venue) {
+            resolveAvailableScopes(venue).then((resolved) => {
+                if (!resolved) validateExactScope();
+            });
+        } else {
+            validateExactScope();
+        }
+    };
+
     const applyAvailableScopes = (venue, notify = false) => {
         if (!flexible || !venue || Number(venue.id) !== Number(valueInput.value)) return false;
         const scopes = Array.isArray(venue.available_scopes) ? venue.available_scopes : [];
         if (!scopes.length) return false;
 
+        currentVenue = { ...venue, available_scopes: scopes };
         const preferred = scopes.includes(scopeInput.value)
             ? scopeInput.value
             : ['whole', 'half_a', 'half_b'].find((scope) => scopes.includes(scope));
@@ -85,26 +110,31 @@ function initWizardVenueAvailability(form) {
         });
 
         if (notify && changed) {
-            scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
+            validateExactScope();
         }
         return true;
     };
 
-    const selectedVenueFromList = () => parsedListVenues()
-        .find((item) => Number(item.id) === Number(valueInput.value));
-
     const chooseAvailableScopeFromSearchResult = () => {
-        if (!flexible || !valueInput.value) return;
+        if (!valueInput.value) {
+            currentVenue = null;
+            return;
+        }
+
         const venue = selectedVenueFromList();
         if (!venue) return;
+        currentVenue = venue;
+        if (!flexible) return;
 
         if (!applyAvailableScopes(venue, false)) {
-            resolveAvailableScopes(venue);
+            resolveAvailableScopes(venue).then((resolved) => {
+                if (!resolved) validateExactScope();
+            });
         }
     };
 
     async function resolveAvailableScopes(venue) {
-        if (!flexible || !venue?.id || !startInput?.value || !durationInput?.value) return;
+        if (!flexible || !venue?.id || !startInput?.value || !durationInput?.value) return false;
         scopeController?.abort();
         const controller = new AbortController();
         scopeController = controller;
@@ -130,17 +160,18 @@ function initWizardVenueAvailability(form) {
                 signal: controller.signal,
             });
             const payload = await response.json().catch(() => ({}));
-            if (!response.ok) return;
+            if (!response.ok) return false;
             const resolved = Array.isArray(payload.venues)
                 ? payload.venues.find((item) => Number(item.id) === Number(venue.id))
                 : null;
-            if (resolved) {
-                applyAvailableScopes(resolved, true);
-            }
+            if (!resolved) return false;
+
+            return applyAvailableScopes(resolved, true);
         } catch (error) {
             if (error.name !== 'AbortError') {
                 // Exact server-side validation still runs before creation.
             }
+            return false;
         } finally {
             if (scopeController === controller) scopeController = null;
         }
@@ -177,10 +208,12 @@ function initWizardVenueAvailability(form) {
             if (!venue) {
                 valueInput.value = '';
                 textInput.value = '';
+                currentVenue = null;
                 textInput.dispatchEvent(new Event('input', { bubbles: true }));
                 return;
             }
 
+            currentVenue = venue;
             const address = displayAddress(venue.address);
             textInput.value = `${venue.name}${address ? ` — ${address}` : ''}`;
             selector.dataset.selectedHoopsCount = String(venue.hoops_count || 1);
@@ -191,9 +224,10 @@ function initWizardVenueAvailability(form) {
             }
 
             if (flexible) {
-                await resolveAvailableScopes(venue);
+                const resolved = await resolveAvailableScopes(venue);
+                if (!resolved) validateExactScope();
             } else {
-                scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
+                validateExactScope();
             }
         } catch (error) {
             if (error.name !== 'AbortError') {
@@ -209,8 +243,15 @@ function initWizardVenueAvailability(form) {
     customInputs.forEach((input) => input.addEventListener('change', () => applySearchMode()));
     valueInput.addEventListener('change', chooseAvailableScopeFromSearchResult);
     [startInput, durationInput].filter(Boolean).forEach((input) => input.addEventListener('change', () => {
-        const venue = selectedVenueFromList();
-        if (flexible && venue) resolveAvailableScopes(venue);
+        const venue = knownSelectedVenue();
+        if (!valueInput.value) return;
+        if (flexible && venue) {
+            resolveAvailableScopes(venue).then((resolved) => {
+                if (!resolved) validateExactScope();
+            });
+        } else {
+            validateExactScope();
+        }
     }));
 
     applySearchMode(false);
