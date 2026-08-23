@@ -37,21 +37,11 @@ final class EventWizardController extends Controller
         $selectedType = isset($validated['type']) ? EventTypeEnum::from($validated['type']) : EventTypeEnum::GAME;
         $now = CarbonImmutable::now((string) config('app.timezone', 'Europe/Moscow'));
         $defaultStartsAt = $now->ceilMinute();
-        $oldVenueId = filter_var($request->old('venue_id'), FILTER_VALIDATE_INT);
-        $selectedVenue = $oldVenueId === false
-            ? null
-            : Venue::query()
-                ->with(['location.address', 'characteristics'])
-                ->whereKey($oldVenueId)
-                ->where('status', VenueStatusEnum::CONFIRMED->value)
-                ->where('operational_status', VenueOperationalStatusEnum::ACTIVE->value)
-                ->first();
 
         return ThemeResolver::page('events.wizard', [
             'types' => EventTypeEnum::cases(),
             'visibilities' => EventVisibilityEnum::cases(),
             'selectedType' => $selectedType,
-            'selectedVenue' => $selectedVenue,
             'defaultStartsAt' => $defaultStartsAt->format('Y-m-d\TH:i'),
             'minimumStartsAt' => $now->subMinute()->startOfMinute()->format('Y-m-d\TH:i'),
             'defaultTitle' => $selectedType->label().' - '.$now->format('Ymd'),
