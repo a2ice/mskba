@@ -32,6 +32,39 @@
 }
 
 @media (max-width: 720px) {
+    .event-wizard-team-slot {
+        min-width: 0;
+        padding-top: 16px;
+    }
+
+    .event-wizard-team-slot > span:last-child {
+        width: 100%;
+        min-width: 0;
+        padding-top: 6px;
+    }
+
+    .event-wizard-team-slot strong {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        margin: 4px 0 5px;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .event-wizard-team-slot small,
+    .event-wizard-team-slot em {
+        display: block;
+        width: 100%;
+        line-height: 1.35;
+        white-space: normal;
+    }
+
+    .event-wizard-team-slot.has-team .event-wizard-team-slot__logo {
+        margin-right: 44px;
+    }
+
     .event-wizard-team-slot__clear {
         top: 9px;
         right: 9px;
