@@ -29,7 +29,6 @@ jobs:
       - name: Prepare Laravel test environment
         run: |
           cp .env.example .env
-          printf '\nTELEGRAM_BOT_USERNAME=mskba_test_bot\n' >> .env
           php artisan key:generate
 
       - name: Check PHP formatting
@@ -42,8 +41,17 @@ jobs:
       - name: Run wizard tests
         run: php artisan test --compact tests/Feature/Event/EventCreationWizardTest.php
 
-      - name: Run full PHP test suite
-        run: php artisan test --compact
+      - name: Run regression suite
+        # The legacy Mini App rendering assertion requires a bot username, while
+        # other Telegram tests deliberately manage their own config. Run the
+        # suite without that one env-sensitive assertion, then execute it below
+        # with the expected bot configuration. No test is omitted overall.
+        run: php artisan test --compact --filter '/^(?!.*test_legacy_telegram_integration_page_remains_available).*$/'
+
+      - name: Run legacy Telegram rendering assertion
+        env:
+          TELEGRAM_BOT_USERNAME: MSKBABot
+        run: php artisan test --compact tests/Feature/Telegram/TelegramMiniAppAuthTest.php --filter test_legacy_telegram_integration_page_remains_available
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
