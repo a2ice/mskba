@@ -12,4 +12,7 @@ Route::prefix('events/create/wizard')
         Route::get('/teams', [EventWizardController::class, 'teams'])
             ->middleware('throttle:60,1')
             ->name('events.wizard.teams');
+        Route::get('/venues', [EventWizardController::class, 'venues'])
+            ->middleware('throttle:120,1')
+            ->name('events.wizard.venues');
     });
