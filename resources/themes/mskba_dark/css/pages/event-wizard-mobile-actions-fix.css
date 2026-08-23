@@ -1,0 +1,27 @@
+@media (max-width: 720px) {
+    .event-wizard-page {
+        padding-bottom: calc(
+            var(--mobile-primary-actions-height, 72px)
+            + var(--mobile-primary-stats-height, 43px)
+            + 92px
+            + env(safe-area-inset-bottom)
+        );
+    }
+
+    .event-wizard__actions {
+        z-index: 210;
+        right: 8px;
+        bottom: calc(
+            var(--mobile-primary-actions-height, 72px)
+            + var(--mobile-primary-stats-height, 43px)
+            + env(safe-area-inset-bottom)
+            + 8px
+        );
+        left: 8px;
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, .12);
+        border-radius: 18px;
+        background: rgba(12, 14, 12, .98);
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, .3);
+    }
+}
