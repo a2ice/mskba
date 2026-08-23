@@ -156,6 +156,18 @@ final class EventCreationWizardTest extends TestCase
                 ...$parameters,
                 'query' => '',
                 'venue_id' => $venue->id,
+                'discover_scopes' => '1',
+            ]))
+            ->assertOk()
+            ->assertJsonCount(1, 'venues')
+            ->assertJsonPath('venues.0.id', $venue->id)
+            ->assertJsonPath('venues.0.available_scopes', [VenueBookingScopeEnum::HALF_B->value]);
+
+        $this->actingAs($user)
+            ->getJson(route('events.wizard.venues', [
+                ...$parameters,
+                'query' => '',
+                'venue_id' => $venue->id,
                 'booking_scope' => VenueBookingScopeEnum::HALF_A->value,
             ]))
             ->assertOk()
