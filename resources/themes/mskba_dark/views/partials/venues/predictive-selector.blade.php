@@ -14,7 +14,6 @@
     'selectedScope' => 'whole',
     'required' => true,
     'showBookingScope' => true,
-    'allowHalfCourt' => false,
 ])
 
 @php
@@ -44,7 +43,6 @@
     data-venue-selector
     data-search-url="{{ $searchUrl }}"
     data-confirmed-only="{{ $confirmedOnly ? '1' : '0' }}"
-    data-allow-half-court="{{ $allowHalfCourt ? '1' : '0' }}"
     @if($operationalStatus) data-operational-status="{{ $operationalStatus }}" @endif
     @if($startInput) data-start-input="{{ $startInput }}" @endif
     @if($durationInput) data-duration-input="{{ $durationInput }}" @endif
@@ -68,7 +66,7 @@
         <input
             type="hidden"
             name="{{ $name }}"
-            value="{{ $selectedId }}"
+            value="{{ old($name, $selectedId) }}"
             data-venue-selector-value
         >
         <button
