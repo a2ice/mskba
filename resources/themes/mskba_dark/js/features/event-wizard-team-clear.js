@@ -33,6 +33,11 @@ function initTeamClearControls(form) {
                     const selectedLogo = slot.querySelector('.event-wizard-team-slot__logo img')?.src;
                     if (!selectedLogo) return;
 
+                    // The main wizard keeps the active side internally. Activate this exact
+                    // slot first, then reuse the existing selected-card toggle. Without this,
+                    // clearing side A while side B is active is rejected as a duplicate team.
+                    slot.click();
+
                     const matchingCard = Array.from(form.querySelectorAll('.event-wizard-team-card'))
                         .find((card) => card.querySelector('.event-wizard-team-card__logo img')?.src === selectedLogo);
 
