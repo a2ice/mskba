@@ -6,6 +6,7 @@ import '../css/pages/game-live.css';
 import '../css/pages/notification-toasts.css';
 import '../css/pages/event-wizard.css';
 import '../css/pages/event-wizard-mobile-actions-fix.css';
+import '../css/pages/event-wizard-team-clear.css';
 
 window.$ = $;
 window.jQuery = $;
