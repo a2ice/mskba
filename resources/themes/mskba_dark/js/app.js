@@ -45,6 +45,7 @@ import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
 import './features/event-wizard-state-restore.js';
+import './features/event-wizard-split-game-step.js';
 import './features/event-wizard.js';
 import './features/event-wizard-team-clear.js';
 import './features/event-wizard-venue.js';
