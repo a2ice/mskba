@@ -159,6 +159,7 @@ final class EventWizardController extends Controller
         $validated = $request->validate([
             'query' => ['nullable', 'string', 'max:100'],
             'venue_id' => ['nullable', 'integer', 'min:1'],
+            'discover_scopes' => ['nullable', 'boolean'],
             'confirmed_only' => ['nullable', 'boolean'],
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
             'starts_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
@@ -181,13 +182,13 @@ final class EventWizardController extends Controller
             $validated['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value,
         );
         $venueId = isset($validated['venue_id']) ? (int) $validated['venue_id'] : null;
+        $discoverScopes = $request->boolean('discover_scopes');
         $limit = (int) ($validated['limit'] ?? 20);
         $hasAvailabilityWindow = $startsAt !== null && $durationMinutes !== null;
 
-        // General streetball discovery is flexible: keep a venue if at least one
-        // bookable zone is available. Exact revalidation (venue_id is present)
-        // always checks only the scope the user actually selected.
-        $scopes = $hasAvailabilityWindow && $venueId === null
+        // Discovery keeps a streetball venue when at least one bookable zone is
+        // free. Exact revalidation still checks only the user's selected scope.
+        $scopes = $hasAvailabilityWindow && ($venueId === null || $discoverScopes)
             ? VenueBookingScopeEnum::cases()
             : [$requestedScope];
 
