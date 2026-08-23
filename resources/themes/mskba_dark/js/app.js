@@ -5,6 +5,7 @@ import '../css/pages/team-member-panels.css';
 import '../css/pages/game-live.css';
 import '../css/pages/notification-toasts.css';
 import '../css/pages/event-wizard.css';
+import '../css/pages/event-wizard-mobile-actions-fix.css';
 
 window.$ = $;
 window.jQuery = $;
