@@ -64,9 +64,21 @@ function initEventWizard(form) {
     };
     const selectedTeams = { A: null, B: null };
 
-    let currentStep = 'type';
+    function resolveInitialStep() {
+        const fieldErrorStep = Array.from(stepElements.entries()).find(([, step]) => (
+            step.querySelector('.invalid-feedback.d-block')
+        ));
+        if (fieldErrorStep) return fieldErrorStep[0];
+
+        const page = form.closest('.event-wizard-page');
+        return page?.querySelector('.alert.alert-danger') ? 'review' : 'type';
+    }
+
+    let currentStep = resolveInitialStep();
     let activeSteps = [];
-    let generatedTitle = Boolean(titleInput && titleInput.value === form.dataset.defaultTitle);
+    let generatedTitle = titleInput?.dataset.generatedTitle === '0'
+        ? false
+        : Boolean(titleInput && titleInput.value === form.dataset.defaultTitle);
     let allowSubmit = false;
     let activeTeamSlot = 'A';
     let teamSearchTimer = null;
@@ -600,8 +612,18 @@ function initEventWizard(form) {
     }
 
     form.addEventListener('submit', (event) => {
-        if (allowSubmit) return;
+        if (allowSubmit) {
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Создаём…';
+            }
+            return;
+        }
         event.preventDefault();
+
+        // Native Enter submission from an input must never bypass the review step.
+        if (currentStep !== 'review') return;
+
         syncGameEnabled();
         syncFormat();
         syncTeamInputs();
@@ -644,7 +666,7 @@ function initEventWizard(form) {
     syncParticipantsMode();
     syncVenueScope();
     if (publishTelegram && telegramChats) telegramChats.hidden = !publishTelegram.checked;
-    rebuildSteps('type');
+    rebuildSteps(currentStep);
     updateGeneratedTitle();
     renderTeamSlots();
     hydrateInitialTeams();
