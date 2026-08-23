@@ -42,13 +42,15 @@ jobs:
         run: php artisan test --compact tests/Feature/Event/EventCreationWizardTest.php
 
       - name: Run regression suite
-        # The legacy Mini App rendering assertion requires a bot username, while
-        # other Telegram tests deliberately manage their own config. Run the
-        # suite without that one env-sensitive assertion, then execute it below
-        # with the expected bot configuration. No test is omitted overall.
-        run: php artisan test --compact --filter '/^(?!.*test_legacy_telegram_integration_page_remains_available).*$/'
+        # Two pre-existing Telegram groups are sensitive to shared test-process
+        # configuration/state. Exclude them from the broad pass and run both
+        # independently below. No test is omitted overall.
+        run: php artisan test --compact --filter '/^(?!.*TelegramEventIntegrationTest)(?!.*test_legacy_telegram_integration_page_remains_available).*$/'
 
-      - name: Run legacy Telegram rendering assertion
+      - name: Run Telegram event integration tests in isolation
+        run: php artisan test --compact tests/Feature/Telegram/TelegramEventIntegrationTest.php
+
+      - name: Run legacy Telegram rendering assertion in isolation
         env:
           TELEGRAM_BOT_USERNAME: MSKBABot
         run: php artisan test --compact tests/Feature/Telegram/TelegramMiniAppAuthTest.php --filter test_legacy_telegram_integration_page_remains_available
