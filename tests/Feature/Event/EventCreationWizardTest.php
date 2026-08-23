@@ -3,12 +3,20 @@
 namespace Tests\Feature\Event;
 
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Enums\ActorTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Models\Venue;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -91,5 +99,98 @@ final class EventCreationWizardTest extends TestCase
         $ownPayload = collect($response->json('teams'))->firstWhere('id', $ownTeam->id);
         $this->assertTrue($ownPayload['manageable']);
         $this->assertFalse($ownPayload['accepts_invitations']);
+    }
+
+    public function test_half_court_discovery_keeps_two_hoop_venue_when_only_opposite_half_is_free(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        Actor::factory()->create([
+            'type' => ActorTypeEnum::USER->value,
+            'user_id' => $user->id,
+        ]);
+        $otherUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $otherActor = Actor::factory()->create([
+            'type' => ActorTypeEnum::USER->value,
+            'user_id' => $otherUser->id,
+        ]);
+        $venue = Venue::factory()->create([
+            'name' => 'Две половины для wizard',
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+        ]);
+        $venue->characteristics()->create(['hoops_count' => 2]);
+
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->startOfHour();
+        $occupiedEvent = Event::factory()->create([
+            'venue_id' => $venue->id,
+            'organizer_actor_id' => $otherActor->id,
+        ]);
+        VenueBooking::query()->create([
+            'venue_id' => $venue->id,
+            'event_id' => $occupiedEvent->id,
+            'created_by_actor_id' => $otherActor->id,
+            'status' => VenueBookingStatusEnum::CONFIRMED->value,
+            'scope' => VenueBookingScopeEnum::HALF_A->value,
+            'starts_at' => $start->utc(),
+            'ends_at' => $start->addHour()->utc(),
+        ]);
+
+        $parameters = [
+            'query' => 'Две половины',
+            'confirmed_only' => '1',
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+            'starts_at' => $start->format('Y-m-d\TH:i'),
+            'duration_minutes' => 60,
+            'booking_scope' => VenueBookingScopeEnum::WHOLE->value,
+        ];
+
+        $this->actingAs($user)
+            ->getJson(route('events.wizard.venues', $parameters))
+            ->assertOk()
+            ->assertJsonCount(1, 'venues')
+            ->assertJsonPath('venues.0.id', $venue->id)
+            ->assertJsonPath('venues.0.available_scopes', [VenueBookingScopeEnum::HALF_B->value]);
+
+        $this->actingAs($user)
+            ->getJson(route('events.wizard.venues', [
+                ...$parameters,
+                'query' => '',
+                'venue_id' => $venue->id,
+                'booking_scope' => VenueBookingScopeEnum::HALF_A->value,
+            ]))
+            ->assertOk()
+            ->assertJsonCount(0, 'venues');
+
+        $this->actingAs($user)
+            ->getJson(route('events.wizard.venues', [
+                ...$parameters,
+                'query' => '',
+                'venue_id' => $venue->id,
+                'booking_scope' => VenueBookingScopeEnum::HALF_B->value,
+            ]))
+            ->assertOk()
+            ->assertJsonCount(1, 'venues')
+            ->assertJsonPath('venues.0.id', $venue->id)
+            ->assertJsonPath('venues.0.available_scopes', [VenueBookingScopeEnum::HALF_B->value]);
+    }
+
+    public function test_wizard_preserves_selected_venue_id_after_server_validation_redirect(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        Actor::factory()->create([
+            'type' => ActorTypeEnum::USER->value,
+            'user_id' => $user->id,
+        ]);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['_old_input' => ['venue_id' => $venue->id]])
+            ->get(route('events.wizard'))
+            ->assertOk()
+            ->assertSee('name="venue_id"', false)
+            ->assertSee('value="'.$venue->id.'"', false);
     }
 }
