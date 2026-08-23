@@ -1,0 +1,41 @@
+.event-wizard-team-slot {
+    position: relative;
+}
+
+.event-wizard-team-slot__clear {
+    position: absolute;
+    z-index: 3;
+    top: 10px;
+    right: 10px;
+    display: grid;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 50%;
+    background: rgba(7, 8, 8, .78);
+    color: rgba(255, 255, 255, .72);
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+}
+
+.event-wizard-team-slot__clear:hover,
+.event-wizard-team-slot__clear:focus-visible {
+    border-color: rgba(255, 106, 26, .65);
+    color: #ff7b33;
+}
+
+.event-wizard-team-slot__clear i {
+    font-size: 18px;
+    line-height: 1;
+}
+
+@media (max-width: 720px) {
+    .event-wizard-team-slot__clear {
+        top: 9px;
+        right: 9px;
+        width: 34px;
+        height: 34px;
+    }
+}
