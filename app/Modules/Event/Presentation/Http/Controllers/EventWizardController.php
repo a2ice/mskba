@@ -3,10 +3,12 @@
 namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -16,6 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 final class EventWizardController extends Controller
@@ -49,41 +52,59 @@ final class EventWizardController extends Controller
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:80'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:40'],
+            'ids' => ['nullable', 'array', 'max:2'],
+            'ids.*' => ['integer', 'distinct'],
         ]);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 401);
 
         $query = trim((string) ($validated['q'] ?? ''));
         $limit = (int) ($validated['limit'] ?? 32);
-        $applySearch = static function ($builder) use ($query): void {
-            if ($query !== '') {
-                $builder->where('name', 'like', '%'.$query.'%');
-            }
-        };
+        $requestedIds = collect($validated['ids'] ?? [])->map(fn ($id): int => (int) $id)->unique()->values();
+        $managedIds = $this->manageableTeamIds($actor);
 
         $publicTeams = Team::query()
             ->with('logo')
             ->competitionInvitable()
-            ->when($query !== '', $applySearch)
+            ->when($query !== '', fn ($builder) => $builder->whereRaw(
+                'LOWER(name) LIKE ?',
+                ['%'.mb_strtolower($query).'%'],
+            ))
             ->orderBy('name')
             ->limit($limit)
             ->get();
 
-        $managedTeams = Team::query()
-            ->with('logo')
-            ->whereNull('temporary_for_event_id')
-            ->where('status', TeamStatusEnum::ACTIVE->value)
-            ->when($query !== '', $applySearch)
-            ->orderBy('name')
-            ->limit(120)
-            ->get()
-            ->filter(fn (Team $team): bool => $teamAccess->allows(
-                $team,
-                $actor,
-                TeamPermissionEnum::MANAGE_GAME_PARTICIPATION,
-            ));
+        $managedTeams = $managedIds->isEmpty()
+            ? collect()
+            : Team::query()
+                ->with('logo')
+                ->whereIn('id', $managedIds)
+                ->whereNull('temporary_for_event_id')
+                ->where('status', TeamStatusEnum::ACTIVE->value)
+                ->when($query !== '', fn ($builder) => $builder->whereRaw(
+                    'LOWER(name) LIKE ?',
+                    ['%'.mb_strtolower($query).'%'],
+                ))
+                ->orderBy('name')
+                ->get();
 
-        $teams = $managedTeams
+        $selectedTeams = $requestedIds->isEmpty()
+            ? collect()
+            : Team::query()
+                ->with('logo')
+                ->whereIn('id', $requestedIds)
+                ->whereNull('temporary_for_event_id')
+                ->where('status', TeamStatusEnum::ACTIVE->value)
+                ->where(function ($builder) use ($managedIds): void {
+                    $builder->where('accepts_competition_invitations', true);
+                    if ($managedIds->isNotEmpty()) {
+                        $builder->orWhereIn('id', $managedIds);
+                    }
+                })
+                ->get();
+
+        $teams = $selectedTeams
+            ->concat($managedTeams)
             ->concat($publicTeams)
             ->unique('id')
             ->map(function (Team $team) use ($actor, $teamAccess): array {
@@ -112,5 +133,31 @@ final class EventWizardController extends Controller
             ->values();
 
         return response()->json(['teams' => $teams]);
+    }
+
+    /** @return Collection<int, int> */
+    private function manageableTeamIds($actor): Collection
+    {
+        $user = $actor->user?->canonical();
+        if ($user === null || $user->isBlocked() || $user->trashed()) {
+            return collect();
+        }
+
+        $identityIds = $user->identityIds();
+        $createdIds = Team::query()
+            ->whereHas('createdByActor', fn ($builder) => $builder->whereIn('user_id', $identityIds))
+            ->pluck('id');
+
+        $delegatedIds = Team::query()
+            ->whereHas('memberships', fn ($builder) => $builder
+                ->whereIn('user_id', $identityIds)
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($contract) => $contract
+                    ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->whereHas('permissions', fn ($permissions) => $permissions
+                        ->where('permission', TeamPermissionEnum::MANAGE_GAME_PARTICIPATION->value))))
+            ->pluck('id');
+
+        return $createdIds->concat($delegatedIds)->map(fn ($id): int => (int) $id)->unique()->values();
     }
 }
