@@ -131,8 +131,8 @@ final class EventCreationWizardTest extends TestCase
             'created_by_actor_id' => $otherActor->id,
             'status' => VenueBookingStatusEnum::CONFIRMED->value,
             'scope' => VenueBookingScopeEnum::HALF_A->value,
-            'starts_at' => $start->utc(),
-            'ends_at' => $start->addHour()->utc(),
+            'starts_at' => $start,
+            'ends_at' => $start->addHour(),
         ]);
 
         $parameters = [
