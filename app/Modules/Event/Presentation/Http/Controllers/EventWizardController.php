@@ -6,13 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
+use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -135,8 +141,113 @@ final class EventWizardController extends Controller
         return response()->json(['teams' => $teams]);
     }
 
+    public function venues(
+        Request $request,
+        SearchVenuesHandler $searchVenues,
+        CurrentActorResolver $actors,
+    ): JsonResponse {
+        $validated = $request->validate([
+            'query' => ['nullable', 'string', 'max:100'],
+            'venue_id' => ['nullable', 'integer', 'min:1'],
+            'confirmed_only' => ['nullable', 'boolean'],
+            'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
+            'starts_at' => ['nullable', 'date_format:Y-m-d\TH:i'],
+            'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:480', 'required_with:starts_at'],
+            'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null, 401);
+
+        $startsAt = isset($validated['starts_at'])
+            ? CarbonImmutable::createFromFormat(
+                'Y-m-d\TH:i',
+                $validated['starts_at'],
+                (string) config('app.timezone', 'Europe/Moscow'),
+            )
+            : null;
+        $durationMinutes = isset($validated['duration_minutes']) ? (int) $validated['duration_minutes'] : null;
+        $requestedScope = VenueBookingScopeEnum::from(
+            $validated['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value,
+        );
+        $venueId = isset($validated['venue_id']) ? (int) $validated['venue_id'] : null;
+        $limit = (int) ($validated['limit'] ?? 20);
+        $hasAvailabilityWindow = $startsAt !== null && $durationMinutes !== null;
+
+        // General streetball discovery is flexible: keep a venue if at least one
+        // bookable zone is available. Exact revalidation (venue_id is present)
+        // always checks only the scope the user actually selected.
+        $scopes = $hasAvailabilityWindow && $venueId === null
+            ? VenueBookingScopeEnum::cases()
+            : [$requestedScope];
+
+        $venuesById = collect();
+        $availableScopes = [];
+        foreach ($scopes as $scope) {
+            $results = $searchVenues->handle(
+                user: $request->user(),
+                actor: $actor,
+                query: $validated['query'] ?? null,
+                venueId: $venueId,
+                confirmedOnly: $request->boolean('confirmed_only'),
+                operationalStatus: isset($validated['operational_status'])
+                    ? VenueOperationalStatusEnum::from($validated['operational_status'])
+                    : null,
+                startsAt: $startsAt,
+                durationMinutes: $durationMinutes,
+                bookingScope: $scope,
+                limit: $limit,
+            );
+
+            foreach ($results as $venue) {
+                $venuesById->put($venue->id, $venue);
+                if ($hasAvailabilityWindow) {
+                    $availableScopes[$venue->id] ??= [];
+                    $availableScopes[$venue->id][] = $scope->value;
+                }
+            }
+        }
+
+        $venues = $venuesById
+            ->sortBy(fn ($venue) => mb_strtolower($venue->name), SORT_NATURAL)
+            ->take($limit)
+            ->values();
+        $hoopsByVenue = Venue::query()
+            ->with('characteristics')
+            ->whereKey($venues->pluck('id'))
+            ->get()
+            ->mapWithKeys(fn (Venue $venue): array => [
+                $venue->id => (int) ($venue->characteristics?->hoops_count ?? 1),
+            ]);
+
+        return response()->json([
+            'venues' => $venues->map(fn ($venue): array => [
+                'id' => $venue->id,
+                'name' => $venue->name,
+                'type' => $venue->type,
+                'status' => $venue->status,
+                'is_confirmed' => $venue->status === VenueStatusEnum::CONFIRMED->label(),
+                'description' => $venue->shortDescription,
+                'address' => $venue->displayAddress,
+                'raw_address' => $venue->rawAddress,
+                'requires_payment' => $venue->requiresPayment,
+                'requires_booking_approval' => $venue->requiresBookingApproval,
+                'has_free_access' => $venue->hasFreeAccess(),
+                'operational_status' => $venue->operationalStatus,
+                'metro_stations' => $venue->metroStations,
+                'tags' => $venue->tags,
+                'latitude' => $venue->latitude,
+                'longitude' => $venue->longitude,
+                'url' => route('venues.show', $venue->routeIdentifier()),
+                'preview_url' => route('venues.preview', $venue->routeIdentifier()),
+                'hoops_count' => $hoopsByVenue->get($venue->id, 1),
+                'available_scopes' => array_values(array_unique($availableScopes[$venue->id] ?? [])),
+            ])->all(),
+        ]);
+    }
+
     /** @return Collection<int, int> */
-    private function manageableTeamIds($actor): Collection
+    private function manageableTeamIds(Actor $actor): Collection
     {
         $user = $actor->user?->canonical();
         if ($user === null || $user->isBlocked() || $user->trashed()) {
