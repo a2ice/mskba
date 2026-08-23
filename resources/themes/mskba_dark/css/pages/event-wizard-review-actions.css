@@ -1,0 +1,13 @@
+.event-wizard__actions .event-wizard-submit--in-actions {
+    min-width: 180px;
+    width: auto;
+    margin: 0 0 0 auto;
+}
+
+@media (max-width: 720px) {
+    .event-wizard__actions .event-wizard-submit--in-actions {
+        min-width: 0;
+        flex: 1;
+        margin-left: 0;
+    }
+}
