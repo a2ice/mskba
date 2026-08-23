@@ -66,7 +66,7 @@
         <input
             type="hidden"
             name="{{ $name }}"
-            value="{{ $selectedId }}"
+            value="{{ request()->routeIs('events.wizard') ? old($name, $selectedId) : $selectedId }}"
             data-venue-selector-value
         >
         <button

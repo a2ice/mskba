@@ -4,6 +4,7 @@ import '../css/pages/team-pending-invitations.css';
 import '../css/pages/team-member-panels.css';
 import '../css/pages/game-live.css';
 import '../css/pages/notification-toasts.css';
+import '../css/pages/event-wizard.css';
 
 window.$ = $;
 window.jQuery = $;
@@ -41,6 +42,9 @@ import './features/team-member-card-details.js';
 import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
+import './features/event-wizard-state-restore.js';
+import './features/event-wizard.js';
+import './features/event-wizard-venue.js';
 import './features/standalone-game-create.js';
 import './features/tournament-form.js';
 import './features/tournament-application.js';
