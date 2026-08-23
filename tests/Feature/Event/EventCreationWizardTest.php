@@ -186,6 +186,71 @@ final class EventCreationWizardTest extends TestCase
             ->assertJsonPath('venues.0.available_scopes', [VenueBookingScopeEnum::HALF_B->value]);
     }
 
+    public function test_wizard_style_3x3_submission_books_the_free_half(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        Actor::factory()->create([
+            'type' => ActorTypeEnum::USER->value,
+            'user_id' => $user->id,
+        ]);
+        $otherUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $otherActor = Actor::factory()->create([
+            'type' => ActorTypeEnum::USER->value,
+            'user_id' => $otherUser->id,
+        ]);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $venue->characteristics()->create(['hoops_count' => 2]);
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->startOfHour();
+        $occupiedEvent = Event::factory()->create([
+            'venue_id' => $venue->id,
+            'organizer_actor_id' => $otherActor->id,
+        ]);
+        VenueBooking::query()->create([
+            'venue_id' => $venue->id,
+            'event_id' => $occupiedEvent->id,
+            'created_by_actor_id' => $otherActor->id,
+            'status' => VenueBookingStatusEnum::CONFIRMED->value,
+            'scope' => VenueBookingScopeEnum::HALF_A->value,
+            'starts_at' => $start,
+            'ends_at' => $start->addHour(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('events.wizard'))
+            ->post(route('events.store'), [
+                'venue_id' => $venue->id,
+                'title' => 'Wizard 3x3',
+                'type' => EventTypeEnum::GAME->value,
+                'visibility' => 'public',
+                'starts_at' => $start->format('Y-m-d\TH:i'),
+                'duration_minutes' => 60,
+                'booking_scope' => VenueBookingScopeEnum::HALF_B->value,
+                'game_format' => 'streetball_3x3',
+                'game_recruitment_mode' => 'preformed_teams',
+                'game_accepts_applications' => true,
+                'side_a_size' => 3,
+                'side_b_size' => 3,
+                'scoring_type' => 'streetball',
+                'timing_mode' => 'whole_game',
+            ]);
+
+        $event = Event::query()->where('title', 'Wizard 3x3')->firstOrFail();
+        $response->assertRedirect(route('events.show', $event->routeIdentifier()));
+        $this->assertSame(VenueBookingScopeEnum::HALF_B, $event->booking->scope);
+        $this->assertSame(EventTypeEnum::GAME, $event->type);
+
+        $game = $event->primaryGame()->firstOrFail();
+        $this->assertSame('streetball_3x3', $game->format->value);
+        $this->assertSame(3, $game->side_a_size);
+        $this->assertSame(3, $game->side_b_size);
+        $this->assertSame('preformed_teams', $game->recruitment_mode->value);
+    }
+
     public function test_wizard_preserves_selected_venue_id_after_server_validation_redirect(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
