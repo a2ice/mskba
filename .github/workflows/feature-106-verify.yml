@@ -29,6 +29,7 @@ jobs:
       - name: Prepare Laravel test environment
         run: |
           cp .env.example .env
+          printf '\nTELEGRAM_BOT_USERNAME=mskba_test_bot\n' >> .env
           php artisan key:generate
 
       - name: Check PHP formatting
@@ -41,11 +42,8 @@ jobs:
       - name: Run wizard tests
         run: php artisan test --compact tests/Feature/Event/EventCreationWizardTest.php
 
-      - name: Run regression suite
-        # Main currently has one configuration-sensitive legacy Telegram assertion:
-        # it expects the optional "Открыть бота" link even when TELEGRAM_BOT_USERNAME is absent.
-        # Keep feature verification broad without masking any other test.
-        run: php artisan test --compact --filter '/^(?!.*test_legacy_telegram_integration_page_remains_available).*$/'
+      - name: Run full PHP test suite
+        run: php artisan test --compact
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
