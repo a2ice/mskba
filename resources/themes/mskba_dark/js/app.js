@@ -7,6 +7,7 @@ import '../css/pages/notification-toasts.css';
 import '../css/pages/event-wizard.css';
 import '../css/pages/event-wizard-mobile-actions-fix.css';
 import '../css/pages/event-wizard-team-clear.css';
+import '../css/pages/event-wizard-review-actions.css';
 
 window.$ = $;
 window.jQuery = $;
@@ -47,6 +48,7 @@ import './features/event-create-form.js';
 import './features/event-wizard-state-restore.js';
 import './features/event-wizard-split-game-step.js';
 import './features/event-wizard.js';
+import './features/event-wizard-review-actions.js';
 import './features/event-wizard-team-clear.js';
 import './features/event-wizard-venue.js';
 import './features/standalone-game-create.js';
