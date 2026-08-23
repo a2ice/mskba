@@ -48,13 +48,36 @@ function initEventWizard(form) {
     const telegramChats = form.querySelector('[data-telegram-chats]');
     const telegramError = form.querySelector('[data-telegram-error]');
     const submitButton = form.querySelector('[data-wizard-submit]');
+    const scheduleSummary = form.querySelector('[data-schedule-summary]');
+
+    const teamAId = form.querySelector('[data-team-a-id]');
+    const teamBId = form.querySelector('[data-team-b-id]');
+    const teamSlots = Array.from(form.querySelectorAll('[data-team-slot]'));
+    const teamSearch = form.querySelector('[data-team-search]');
+    const teamSearchStatus = form.querySelector('[data-team-search-status]');
+    const teamGrid = form.querySelector('[data-team-grid]');
+    const teamEmpty = form.querySelector('[data-team-empty]');
+
+    const initialTeamIds = {
+        A: Number(teamAId?.value || 0) || null,
+        B: Number(teamBId?.value || 0) || null,
+    };
+    const selectedTeams = { A: null, B: null };
 
     let currentStep = 'type';
     let activeSteps = [];
-    let generatedTitle = titleInput?.dataset.generatedTitle !== '0';
+    let generatedTitle = Boolean(titleInput && titleInput.value === form.dataset.defaultTitle);
     let allowSubmit = false;
+    let activeTeamSlot = 'A';
+    let teamSearchTimer = null;
+    let teamSearchController = null;
+    let teamStateHydrated = initialTeamIds.A === null && initialTeamIds.B === null;
 
-    const typeLabels = { game: 'Игра', game_training: 'Игровая тренировка', training: 'Тренировка' };
+    const typeLabels = {
+        game: 'Игра',
+        game_training: 'Игровая тренировка',
+        training: 'Тренировка',
+    };
     const formatLabels = {
         basketball_5x5: 'Баскетбол 5×5',
         streetball_3x3: 'Стритбол 3×3',
@@ -66,17 +89,13 @@ function initEventWizard(form) {
     const currentType = () => selectedValue(typeRadios);
     const currentFormat = () => selectedValue(formatRadios);
     const currentRecruitment = () => selectedValue(recruitmentRadios);
-
     const computeSteps = () => currentType() === 'game'
         ? ['type', 'game', 'schedule', 'venue', 'participants', 'details', 'publication', 'review']
         : ['type', 'schedule', 'venue', 'participants', 'details', 'publication', 'review'];
 
     function rebuildSteps(preferredStep = currentStep) {
         activeSteps = computeSteps();
-        if (!activeSteps.includes(preferredStep)) {
-            const previousIndex = Math.max(0, activeSteps.indexOf(currentStep));
-            preferredStep = activeSteps[previousIndex] || activeSteps[0];
-        }
+        if (!activeSteps.includes(preferredStep)) preferredStep = activeSteps[0];
         currentStep = preferredStep;
         refreshStepNumbers();
         showCurrentStep();
@@ -105,7 +124,10 @@ function initEventWizard(form) {
         if (skipButton) skipButton.hidden = !['participants', 'details', 'publication'].includes(currentStep);
 
         updateSummary();
-        window.scrollTo({ top: Math.max(0, form.getBoundingClientRect().top + window.scrollY - 110), behavior: 'smooth' });
+        window.scrollTo({
+            top: Math.max(0, form.getBoundingClientRect().top + window.scrollY - 110),
+            behavior: 'smooth',
+        });
     }
 
     function go(direction) {
@@ -118,12 +140,11 @@ function initEventWizard(form) {
 
     function validateCurrentStep() {
         if (currentStep === 'publication' && !validateTelegram()) return false;
-
         const step = stepElements.get(currentStep);
         if (!step) return true;
+
         const controls = Array.from(step.querySelectorAll('input, select, textarea'))
             .filter((control) => !control.disabled && control.type !== 'hidden');
-
         for (const control of controls) {
             if (!control.checkValidity()) {
                 control.reportValidity();
@@ -173,7 +194,11 @@ function initEventWizard(form) {
     }));
 
     recruitmentRadios.forEach((radio) => radio.addEventListener('change', () => {
-        if (currentRecruitment() === 'individual_draft') clearTeams();
+        if (currentRecruitment() === 'individual_draft') {
+            clearTeams();
+        } else if (currentType() === 'game') {
+            loadTeams(teamSearch?.value.trim() || '');
+        }
         syncFormat();
         syncParticipantsMode();
         updateSummary();
@@ -208,9 +233,13 @@ function initEventWizard(form) {
         let timing = 'whole_game';
 
         if (format === 'basketball_5x5') {
-            sideA = 5; sideB = 5; scoring = 'basketball'; timing = 'periods';
+            sideA = 5;
+            sideB = 5;
+            scoring = 'basketball';
+            timing = 'periods';
         } else if (format === 'streetball_1x1') {
-            sideA = 1; sideB = 1;
+            sideA = 1;
+            sideB = 1;
         } else if (format === 'custom') {
             sideA = Number(customSideA?.value || 3);
             sideB = Number(customSideB?.value || 3);
@@ -243,7 +272,9 @@ function initEventWizard(form) {
         if (trainingParticipants) trainingParticipants.hidden = isGame;
         if (participantsCopy) {
             participantsCopy.textContent = isGame
-                ? (individual ? 'Игроков можно пригласить позже — этот шаг не блокирует создание.' : 'Команды выбирать необязательно. Можно создать игру и набрать стороны позже.')
+                ? (individual
+                    ? 'Игроков можно пригласить позже — этот шаг не блокирует создание.'
+                    : 'Команды выбирать необязательно. Можно создать игру и набрать стороны позже.')
                 : 'Участников можно добавить после создания. Сейчас достаточно определить лимит, если он нужен.';
         }
     }
@@ -260,9 +291,10 @@ function initEventWizard(form) {
     function syncVenueScope() {
         if (!scopeWrap || !scopeInput || !venueSelector) return;
         if (!halfCourtEligible()) {
+            const changed = scopeInput.value !== 'whole';
             scopeInput.value = 'whole';
             scopeWrap.hidden = true;
-            scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
+            if (changed) scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
             return;
         }
         const hoops = Number(venueSelector.dataset.selectedHoopsCount || 0);
@@ -287,7 +319,6 @@ function initEventWizard(form) {
 
     titleInput?.addEventListener('input', () => {
         generatedTitle = false;
-        titleInput.dataset.generatedTitle = '0';
         updateSummary();
     });
     visibilityInput?.addEventListener('change', updateSummary);
@@ -298,13 +329,12 @@ function initEventWizard(form) {
         const typeLabel = typeLabels[type] || 'Мероприятие';
         let formatPart = '';
         if (type === 'game') {
-            const format = currentFormat();
             formatPart = {
                 basketball_5x5: ' 5×5',
                 streetball_3x3: ' 3×3',
                 streetball_1x1: ' 1×1',
                 custom: '',
-            }[format] || '';
+            }[currentFormat()] || '';
         }
         const date = parseLocalDate(startsAt?.value);
         const datePart = date ? ` — ${two(date.getDate())}.${two(date.getMonth() + 1)}` : '';
@@ -325,9 +355,10 @@ function initEventWizard(form) {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? null : date;
     }
-    function two(value) { return String(value).padStart(2, '0'); }
 
-    const scheduleSummary = form.querySelector('[data-schedule-summary]');
+    function two(value) {
+        return String(value).padStart(2, '0');
+    }
 
     function updateSummary() {
         const type = currentType();
@@ -358,31 +389,22 @@ function initEventWizard(form) {
         form.querySelectorAll('[data-summary-game-row], [data-review-game-row]').forEach((row) => {
             row.hidden = type !== 'game';
         });
-        if (submitButton) submitButton.textContent = type === 'game'
-            ? 'Создать игру'
-            : (type === 'game_training' ? 'Создать игровую тренировку' : 'Создать тренировку');
+        if (submitButton) {
+            submitButton.textContent = type === 'game'
+                ? 'Создать игру'
+                : (type === 'game_training' ? 'Создать игровую тренировку' : 'Создать тренировку');
+        }
         updateReviewWarning();
     }
 
     function setText(selector, value) {
-        form.querySelectorAll(selector).forEach((element) => { element.textContent = value; });
+        form.querySelectorAll(selector).forEach((element) => {
+            element.textContent = value;
+        });
     }
 
-    const teamAId = form.querySelector('[data-team-a-id]');
-    const teamBId = form.querySelector('[data-team-b-id]');
-    const teamSlots = Array.from(form.querySelectorAll('[data-team-slot]'));
-    const teamSearch = form.querySelector('[data-team-search]');
-    const teamSearchStatus = form.querySelector('[data-team-search-status]');
-    const teamGrid = form.querySelector('[data-team-grid]');
-    const teamEmpty = form.querySelector('[data-team-empty]');
-    const selectedTeams = { A: null, B: null };
-    let activeTeamSlot = 'A';
-    let teamSearchTimer = null;
-    let teamSearchController = null;
-
     teamSlots.forEach((slot) => slot.addEventListener('click', () => {
-        activeTeamSlot = slot.dataset.teamSlot;
-        teamSlots.forEach((item) => item.classList.toggle('is-active', item === slot));
+        activateTeamSlot(slot.dataset.teamSlot);
         teamSearch?.focus();
     }));
 
@@ -391,8 +413,8 @@ function initEventWizard(form) {
         teamSearchTimer = window.setTimeout(() => loadTeams(teamSearch.value.trim()), 250);
     });
 
-    async function loadTeams(query = '') {
-        if (!form.dataset.teamSearchUrl || !teamGrid) return;
+    async function loadTeams(query = '', ids = []) {
+        if (!form.dataset.teamSearchUrl || !teamGrid) return [];
         teamSearchController?.abort();
         const controller = new AbortController();
         teamSearchController = controller;
@@ -400,17 +422,21 @@ function initEventWizard(form) {
 
         try {
             const params = new URLSearchParams({ q: query, limit: '32' });
-            const response = await fetch(`${form.dataset.teamSearchUrl}?${params}`, {
+            ids.filter(Boolean).forEach((id) => params.append('ids[]', String(id)));
+            const response = await fetch(`${form.dataset.teamSearchUrl}?${params.toString()}`, {
                 headers: { Accept: 'application/json' },
                 credentials: 'same-origin',
                 signal: controller.signal,
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.message || 'Не удалось загрузить команды.');
-            renderTeams(Array.isArray(payload.teams) ? payload.teams : []);
+            const teams = Array.isArray(payload.teams) ? payload.teams : [];
+            renderTeams(teams);
             if (teamSearchStatus) teamSearchStatus.textContent = '';
+            return teams;
         } catch (error) {
             if (error.name !== 'AbortError' && teamSearchStatus) teamSearchStatus.textContent = error.message;
+            return [];
         } finally {
             if (teamSearchController === controller) teamSearchController = null;
         }
@@ -427,6 +453,7 @@ function initEventWizard(form) {
             const image = document.createElement('img');
             const name = document.createElement('strong');
             const hint = document.createElement('small');
+
             button.type = 'button';
             button.className = 'event-wizard-team-card';
             button.classList.toggle('is-selected', selectedTeams.A?.id === team.id || selectedTeams.B?.id === team.id);
@@ -444,16 +471,14 @@ function initEventWizard(form) {
     }
 
     function selectTeam(team) {
+        teamStateHydrated = true;
         const otherSide = activeTeamSlot === 'A' ? 'B' : 'A';
         if (selectedTeams[otherSide]?.id === team.id) {
             if (teamSearchStatus) teamSearchStatus.textContent = 'Одна команда не может играть за обе стороны.';
             return;
         }
-        if (selectedTeams[activeTeamSlot]?.id === team.id) {
-            selectedTeams[activeTeamSlot] = null;
-        } else {
-            selectedTeams[activeTeamSlot] = team;
-        }
+
+        selectedTeams[activeTeamSlot] = selectedTeams[activeTeamSlot]?.id === team.id ? null : team;
         syncTeamInputs();
         renderTeamSlots();
         loadTeams(teamSearch?.value.trim() || '');
@@ -462,13 +487,21 @@ function initEventWizard(form) {
     }
 
     function activateTeamSlot(side) {
-        activeTeamSlot = side;
-        teamSlots.forEach((slot) => slot.classList.toggle('is-active', slot.dataset.teamSlot === side));
+        activeTeamSlot = side === 'B' ? 'B' : 'A';
+        teamSlots.forEach((slot) => {
+            slot.classList.toggle('is-active', slot.dataset.teamSlot === activeTeamSlot);
+        });
     }
 
     function syncTeamInputs() {
-        if (teamAId) teamAId.value = selectedTeams.A?.id || '';
-        if (teamBId) teamBId.value = selectedTeams.B?.id || '';
+        if (teamAId) {
+            teamAId.value = selectedTeams.A?.id
+                || (!teamStateHydrated && initialTeamIds.A ? String(initialTeamIds.A) : '');
+        }
+        if (teamBId) {
+            teamBId.value = selectedTeams.B?.id
+                || (!teamStateHydrated && initialTeamIds.B ? String(initialTeamIds.B) : '');
+        }
     }
 
     function renderTeamSlots() {
@@ -478,6 +511,7 @@ function initEventWizard(form) {
             const name = slot.querySelector('[data-team-slot-name]');
             const hint = slot.querySelector('[data-team-slot-hint]');
             const logo = slot.querySelector('.event-wizard-team-slot__logo');
+
             if (name) name.textContent = team?.name || 'Выбрать команду';
             if (hint) hint.textContent = team?.selection_hint || 'Можно сделать позже';
             if (logo) {
@@ -498,28 +532,55 @@ function initEventWizard(form) {
     }
 
     function clearTeams() {
+        teamStateHydrated = true;
         selectedTeams.A = null;
         selectedTeams.B = null;
         syncTeamInputs();
         renderTeamSlots();
+        updateSummary();
+    }
+
+    async function hydrateInitialTeams() {
+        const ids = [initialTeamIds.A, initialTeamIds.B].filter(Boolean);
+        if (!ids.length || currentType() !== 'game' || currentRecruitment() !== 'preformed_teams') {
+            teamStateHydrated = true;
+            syncTeamInputs();
+            if (currentType() === 'game' && currentRecruitment() === 'preformed_teams') await loadTeams();
+            return;
+        }
+
+        const teams = await loadTeams('', ids);
+        selectedTeams.A = teams.find((team) => Number(team.id) === initialTeamIds.A) || null;
+        selectedTeams.B = teams.find((team) => Number(team.id) === initialTeamIds.B) || null;
+        teamStateHydrated = true;
+        syncTeamInputs();
+        renderTeamSlots();
+        updateSummary();
     }
 
     function participantLabel() {
         if (currentType() !== 'game') return 'Добавим позже';
         if (currentRecruitment() === 'individual_draft') return 'Отдельные игроки · набор позже';
         const names = [selectedTeams.A?.name, selectedTeams.B?.name].filter(Boolean);
-        return names.length ? names.join(' vs ') : 'Команды определим позже';
+        if (names.length) return names.join(' vs ');
+        if (!teamStateHydrated && (initialTeamIds.A || initialTeamIds.B)) return 'Восстанавливаем команды…';
+        return 'Команды определим позже';
     }
 
     function updateReviewWarning() {
         const warning = form.querySelector('[data-review-warning]');
         const text = warning?.querySelector('span');
         if (!warning || !text) return;
+
         const messages = [];
         if (currentType() === 'game' && currentRecruitment() === 'preformed_teams') {
-            if (!selectedTeams.A || !selectedTeams.B) messages.push('Одну или обе команды можно выбрать позже. До старта игры должны быть утверждены обе стороны.');
+            if (!selectedTeams.A || !selectedTeams.B) {
+                messages.push('Одну или обе команды можно выбрать позже. До старта игры должны быть утверждены обе стороны.');
+            }
             const external = [selectedTeams.A, selectedTeams.B].filter((team) => team && !team.manageable);
-            if (external.length) messages.push('Выбранным чужим командам будут отправлены приглашения; их участие не считается подтверждённым до ответа представителя.');
+            if (external.length) {
+                messages.push('Выбранным чужим командам будут отправлены приглашения; участие подтверждается только после ответа представителя.');
+            }
         }
         warning.hidden = messages.length === 0;
         text.textContent = messages.join(' ');
@@ -582,9 +643,9 @@ function initEventWizard(form) {
     syncGameEnabled();
     syncParticipantsMode();
     syncVenueScope();
-    publishTelegram?.dispatchEvent(new Event('change'));
+    if (publishTelegram && telegramChats) telegramChats.hidden = !publishTelegram.checked;
     rebuildSteps('type');
     updateGeneratedTitle();
     renderTeamSlots();
-    if (currentType() === 'game' && currentRecruitment() === 'preformed_teams') loadTeams();
+    hydrateInitialTeams();
 }
