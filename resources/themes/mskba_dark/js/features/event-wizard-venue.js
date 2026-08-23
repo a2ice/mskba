@@ -110,12 +110,14 @@ function initWizardVenueAvailability(form) {
         scopeController = controller;
 
         const parameters = new URLSearchParams({
-            query: venue.name || '',
+            query: '',
+            venue_id: String(venue.id),
+            discover_scopes: '1',
             confirmed_only: selector.dataset.confirmedOnly || '0',
             starts_at: startInput.value,
             duration_minutes: durationInput.value,
             booking_scope: scopeInput.value || 'whole',
-            limit: '200',
+            limit: '1',
         });
         if (selector.dataset.operationalStatus) {
             parameters.set('operational_status', selector.dataset.operationalStatus);
