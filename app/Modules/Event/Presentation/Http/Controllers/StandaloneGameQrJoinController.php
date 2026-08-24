@@ -4,6 +4,7 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\GameAdmissionNotificationStateService;
 use App\Modules\Event\Application\Services\StandaloneGameQrJoinService;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
@@ -85,15 +86,18 @@ final class StandaloneGameQrJoinController extends Controller
         int $admission,
         CurrentActorResolver $actors,
         StandaloneGameQrJoinService $service,
+        GameAdmissionNotificationStateService $notificationState,
     ): RedirectResponse|JsonResponse {
         [, $gameModel] = $this->models($event, $game);
+        $admissionModel = GameAdmission::query()->findOrFail($admission);
 
         try {
             $service->revoke(
                 $gameModel,
-                GameAdmission::query()->findOrFail($admission),
+                $admissionModel,
                 $actors->resolveForRequest($request) ?? abort(403),
             );
+            $notificationState->resolve($admissionModel);
         } catch (InvalidArgumentException $exception) {
             return $this->error($request, $exception);
         }
@@ -136,17 +140,19 @@ final class StandaloneGameQrJoinController extends Controller
         int $admission,
         CurrentActorResolver $actors,
         StandaloneGameQrJoinService $service,
+        GameAdmissionNotificationStateService $notificationState,
     ): RedirectResponse|JsonResponse {
         $data = $request->validate(['side' => ['required', Rule::in(['A', 'B'])]]);
         [, $gameModel] = $this->models($event, $game);
 
         try {
-            $service->acceptToSide(
+            $updated = $service->acceptToSide(
                 $gameModel,
                 GameAdmission::query()->findOrFail($admission),
                 $actors->resolveForRequest($request) ?? abort(403),
                 $data['side'],
             );
+            $notificationState->resolve($updated);
         } catch (InvalidArgumentException $exception) {
             return $this->error($request, $exception);
         }
@@ -161,17 +167,19 @@ final class StandaloneGameQrJoinController extends Controller
         int $admission,
         CurrentActorResolver $actors,
         StandaloneGameQrJoinService $service,
+        GameAdmissionNotificationStateService $notificationState,
     ): RedirectResponse|JsonResponse {
         $data = $request->validate(['response_comment' => ['nullable', 'string', 'max:2000']]);
         [, $gameModel] = $this->models($event, $game);
 
         try {
-            $service->decline(
+            $updated = $service->decline(
                 $gameModel,
                 GameAdmission::query()->findOrFail($admission),
                 $actors->resolveForRequest($request) ?? abort(403),
                 $data['response_comment'] ?? null,
             );
+            $notificationState->resolve($updated);
         } catch (InvalidArgumentException $exception) {
             return $this->error($request, $exception);
         }
