@@ -1,4 +1,5 @@
 import { setupBalancedFormation } from './balanced-formation.js';
+import { enhanceAcceptedTeamPreview } from './standalone-game-accepted-teams-preview.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const gameRoot = document.querySelector('[data-game-control]');
@@ -32,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             panel = next;
             bindPanel(panel);
+            enhanceAcceptedTeamPreview(panel);
         } catch (_) {
             // Recruitment is supplemental to the public game page; a transient
             // panel request error must not break score/lifecycle controls.
