@@ -84,6 +84,9 @@ if (region) {
         const toast = document.createElement('article');
         toast.className = 'notification-toast';
         toast.dataset.notificationId = notification.id;
+        if (notification.context?.game_admission_id) {
+            toast.dataset.gameAdmissionId = String(notification.context.game_admission_id);
+        }
 
         const link = document.createElement('a');
         link.className = 'notification-toast__link';
@@ -153,6 +156,26 @@ if (region) {
         .catch(() => {
             // Realtime delivery remains available if synchronization fails.
         });
+
+    const removeResolvedGameAdmission = (admissionId) => {
+        const target = String(admissionId ?? '');
+        if (!target) return;
+
+        for (let index = pending.length - 1; index >= 0; index -= 1) {
+            const notification = pending[index];
+            if (String(notification?.context?.game_admission_id ?? '') !== target) continue;
+            knownIds.delete(String(notification.id));
+            pending.splice(index, 1);
+        }
+
+        region.querySelectorAll('[data-game-admission-id]').forEach((toast) => {
+            if (toast.dataset.gameAdmissionId === target) removeToast(toast);
+        });
+    };
+
+    document.addEventListener('game-admission:resolved', (event) => {
+        removeResolvedGameAdmission(event.detail?.admissionId);
+    });
 
     subscribePrivate(`users.${region.dataset.notificationUserId}`, '.notification.created', (payload) => {
         updateCount(Number(payload.unread_count || 0));

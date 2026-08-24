@@ -44,6 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ?? Object.values(data?.errors ?? {})?.flat()?.[0]
         ?? 'Не удалось выполнить действие.';
 
+    const resolvedAdmissionId = (form) => {
+        const path = new URL(form.action, window.location.origin).pathname;
+        const match = path.match(/\/recruitment\/admissions\/(\d+)(?:\/respond)?\/?$/);
+        return match?.[1] ?? null;
+    };
+
     const submitAjaxForm = async (form) => {
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
         const submitters = [...form.querySelectorAll('button, input[type="submit"]')];
@@ -56,6 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(errorMessage(data));
+
+            const admissionId = resolvedAdmissionId(form);
+            if (admissionId) {
+                document.dispatchEvent(new CustomEvent('game-admission:resolved', {
+                    detail: { admissionId },
+                }));
+            }
+
             if (form.dataset.reloadPage === '1') {
                 window.location.reload();
                 return;

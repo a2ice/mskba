@@ -4,6 +4,7 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Event\Application\Services\EventManagementAccess;
+use App\Modules\Event\Application\Services\GameAdmissionNotificationStateService;
 use App\Modules\Event\Application\Services\GameAdmissionService;
 use App\Modules\Event\Domain\Enums\EventResponsibilityPermissionEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
@@ -12,6 +13,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionCandidateTypeEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
@@ -101,6 +103,7 @@ final class StandaloneGameAdmissionController extends Controller
         int $game,
         CurrentActorResolver $actors,
         GameAdmissionService $admissions,
+        GameAdmissionNotificationStateService $notificationState,
     ): RedirectResponse|JsonResponse {
         $item = $this->game($event, $game);
         $actor = $actors->resolveForRequest($request) ?? abort(403);
@@ -113,7 +116,9 @@ final class StandaloneGameAdmissionController extends Controller
                 $candidate = $actor->user?->canonical()
                     ?? throw new InvalidArgumentException('Для заявки нужен аккаунт пользователя.');
             }
-            $admissions->apply($item, $actor, $candidate);
+            $admission = $admissions->apply($item, $actor, $candidate);
+            $notificationState->attachApplicationNotification($admission);
+            event(new EventChanged($item->event_id));
         } catch (InvalidArgumentException $exception) {
             return $this->error($request, $exception);
         }
@@ -142,6 +147,7 @@ final class StandaloneGameAdmissionController extends Controller
                 $candidate = User::query()->findOrFail((int) $data['user_id'])->canonical();
             }
             $admissions->invite($item, $actor, $candidate);
+            event(new EventChanged($item->event_id));
         } catch (InvalidArgumentException $exception) {
             return $this->error($request, $exception);
         }
@@ -156,6 +162,7 @@ final class StandaloneGameAdmissionController extends Controller
         int $admission,
         CurrentActorResolver $actors,
         GameAdmissionService $admissions,
+        GameAdmissionNotificationStateService $notificationState,
     ): RedirectResponse|JsonResponse {
         $item = $this->game($event, $game);
         $actor = $actors->resolveForRequest($request) ?? abort(403);
@@ -168,13 +175,15 @@ final class StandaloneGameAdmissionController extends Controller
         ]);
 
         try {
-            $admissions->respond(
+            $updated = $admissions->respond(
                 $item,
                 GameAdmission::query()->findOrFail($admission),
                 $actor,
                 GameAdmissionStatusEnum::from($data['decision']),
                 $data['response_comment'] ?? null,
             );
+            $notificationState->resolve($updated);
+            event(new EventChanged($item->event_id));
         } catch (InvalidArgumentException $exception) {
             return $this->error($request, $exception);
         }
@@ -189,15 +198,19 @@ final class StandaloneGameAdmissionController extends Controller
         int $admission,
         CurrentActorResolver $actors,
         GameAdmissionService $admissions,
+        GameAdmissionNotificationStateService $notificationState,
     ): RedirectResponse|JsonResponse {
         $item = $this->game($event, $game);
         $actor = $actors->resolveForRequest($request) ?? abort(403);
+        $admissionModel = GameAdmission::query()->findOrFail($admission);
         try {
             $admissions->revoke(
                 $item,
-                GameAdmission::query()->findOrFail($admission),
+                $admissionModel,
                 $actor,
             );
+            $notificationState->resolve($admissionModel);
+            event(new EventChanged($item->event_id));
         } catch (InvalidArgumentException $exception) {
             return $this->error($request, $exception);
         }
