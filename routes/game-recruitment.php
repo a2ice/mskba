@@ -14,6 +14,17 @@ Route::prefix('events/{event}/games/{game}/recruitment')
         Route::get('/join', StandaloneGameQrJoinController::class)->name('join');
 
         Route::middleware('auth')->group(function (): void {
+            Route::post('/join/apply', [StandaloneGameQrJoinController::class, 'apply'])->name('join.apply');
+            Route::delete('/join/admissions/{admission}', [StandaloneGameQrJoinController::class, 'revoke'])
+                ->whereNumber('admission')->name('join.revoke');
+            Route::get('/late-panel', [StandaloneGameQrJoinController::class, 'panel'])->name('late.panel');
+            Route::post('/admissions/{admission}/late-accept', [StandaloneGameQrJoinController::class, 'accept'])
+                ->whereNumber('admission')->name('late.accept');
+            Route::post('/admissions/{admission}/late-decline', [StandaloneGameQrJoinController::class, 'decline'])
+                ->whereNumber('admission')->name('late.decline');
+            Route::patch('/late-applications', [StandaloneGameQrJoinController::class, 'applications'])
+                ->name('late.applications');
+
             Route::get('/candidates', StandaloneGameCandidateSearchController::class)->name('candidates');
             Route::post('/apply', [StandaloneGameAdmissionController::class, 'apply'])->name('apply');
             Route::post('/invite', [StandaloneGameAdmissionController::class, 'invite'])->name('invite');
