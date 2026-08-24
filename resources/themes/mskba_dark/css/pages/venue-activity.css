@@ -1,0 +1,238 @@
+.venue-activities {
+    display: grid;
+    gap: 18px;
+}
+
+.venue-activities__heading > div {
+    display: grid;
+    gap: 4px;
+}
+
+.venue-activities__eyebrow {
+    color: var(--accent-text);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.venue-activities__body {
+    display: grid;
+    gap: 20px;
+}
+
+.venue-activities__group {
+    display: grid;
+    gap: 12px;
+}
+
+.venue-activities__group-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.venue-activities__group-heading h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.venue-activities__live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #7bd89d;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.venue-activities__live-indicator i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 5px rgba(123, 216, 157, .1);
+}
+
+.venue-activities__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.venue-activities__group--current .venue-activities__list {
+    grid-template-columns: 1fr;
+}
+
+.venue-activity-card,
+.venue-activities__empty,
+.venue-activities__loading {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, .035);
+}
+
+.venue-activity-card {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: 18px;
+}
+
+.venue-activity-card--live {
+    border-color: rgba(75, 203, 124, .48);
+    background:
+        linear-gradient(135deg, rgba(75, 203, 124, .08), transparent 55%),
+        rgba(255, 255, 255, .035);
+}
+
+.venue-activity-card__top,
+.venue-activity-card__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.venue-activity-card__badge,
+.venue-activity-card__status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.venue-activity-card__badge {
+    border: 1px solid rgba(236, 127, 18, .38);
+    color: var(--accent-text);
+    background: rgba(236, 127, 18, .09);
+}
+
+.venue-activity-card__status {
+    color: rgba(247, 243, 234, .65);
+    background: rgba(255, 255, 255, .05);
+}
+
+.venue-activity-card__status.is-live {
+    color: #82dda4;
+    background: rgba(75, 203, 124, .1);
+}
+
+.venue-activity-card h4 {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(18px, 2.4vw, 24px);
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.venue-activity-card__meta {
+    color: rgba(247, 243, 234, .62);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.venue-activity-card__actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.venue-activity-score {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: var(--radius-control);
+    padding: 14px;
+    background: rgba(0, 0, 0, .18);
+}
+
+.venue-activity-score__team {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.venue-activity-score__team:last-child {
+    text-align: right;
+}
+
+.venue-activity-score__name {
+    overflow: hidden;
+    color: rgba(247, 243, 234, .72);
+    font-size: 12px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.venue-activity-score__team strong {
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.venue-activity-score__divider {
+    color: rgba(247, 243, 234, .4);
+    font-family: var(--font-display);
+    font-size: 30px;
+}
+
+.venue-activities__empty,
+.venue-activities__loading {
+    padding: 16px;
+    color: rgba(247, 243, 234, .6);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .venue-booking-action {
+        width: auto !important;
+        min-width: 0 !important;
+        height: 40px;
+        border-radius: var(--radius-control) !important;
+        padding: 0 14px !important;
+    }
+
+    .venue-booking-action__icon {
+        display: none !important;
+    }
+
+    .venue-booking-action__label {
+        display: inline !important;
+        white-space: nowrap;
+    }
+
+    .venue-activities__list,
+    .venue-activities__group--current .venue-activities__list {
+        grid-template-columns: 1fr;
+    }
+
+    .venue-activity-card {
+        padding: 15px;
+    }
+
+    .venue-activity-card__top {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .venue-activity-score {
+        gap: 9px;
+        padding: 12px;
+    }
+
+    .venue-activity-score__team strong {
+        font-size: 32px;
+    }
+}
