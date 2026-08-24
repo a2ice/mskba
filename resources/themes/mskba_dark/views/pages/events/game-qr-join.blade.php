@@ -1,6 +1,7 @@
 @php
     use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
     use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
+    use App\Modules\Event\Domain\Enums\GameStatusEnum;
 
     $routeParameters = [$event->routeIdentifier(), $game->id];
     $joinUrl = route('events.games.recruitment.join', $routeParameters, false);
@@ -10,6 +11,8 @@
         $organizer?->profile?->last_name,
     ]))) ?: $organizer?->username ?: 'организатор';
     $pendingAdmission = $latestAdmission?->status === GameAdmissionStatusEnum::PENDING;
+    $sidesConfirmed = $game->sides_confirmed_at !== null;
+    $inProgress = $game->status === GameStatusEnum::IN_PROGRESS;
 @endphp
 
 @extends('theme::layouts.app', ['title' => 'Присоединиться к игре · '.$event->title])
@@ -34,6 +37,7 @@
                 <span><i class="ti ti-calendar-event" aria-hidden="true"></i>{{ $event->starts_at->format('d.m.Y') }}</span>
                 <span><i class="ti ti-clock" aria-hidden="true"></i>{{ $event->starts_at->format('H:i') }}</span>
                 <span><i class="ti ti-users-group" aria-hidden="true"></i>{{ $game->format?->label() ?? $game->formatLabel() }} · balanced</span>
+                @if($inProgress)<span class="is-live"><i class="ti ti-point-filled" aria-hidden="true"></i>Игра уже идёт</span>@endif
             </div>
         </header>
 
@@ -66,7 +70,7 @@
                 @else
                     <div class="alert alert-info mb-0">
                         <strong>Набор на эту игру закрыт.</strong>
-                        <p class="mt-2 mb-0">Игра могла уже начаться, стороны могли быть утверждены или организатор выключил новые заявки.</p>
+                        <p class="mt-2 mb-0">Организатор выключил новые заявки либо игра уже завершена.</p>
                     </div>
                 @endif
             @else
@@ -80,7 +84,11 @@
                         <i class="ti ti-circle-check" aria-hidden="true"></i>
                         <div>
                             <strong>Заявка принята</strong>
-                            <p>Вы допущены к игре. Организатор включит вас в пул и сформирует сбалансированные стороны.</p>
+                            @if($assignedSide)
+                                <p>Вы добавлены в <strong>{{ $assignedSide->display_name ?: 'сторону '.$assignedSide->slot }}</strong>. {{ $inProgress ? 'Игра уже идёт — можно подключаться.' : 'Следите за страницей игры до начала.' }}</p>
+                            @else
+                                <p>Вы допущены к игре. Организатор включит вас в balanced-формирование сторон.</p>
+                            @endif
                         </div>
                     </div>
                     <a class="btn btn--primary" href="{{ route('events.show', $event->routeIdentifier()) }}">Открыть игру</a>
@@ -93,27 +101,31 @@
                                 <p>Подтвердите участие — отдельную заявку создавать не нужно.</p>
                             </div>
                         </div>
-                        <div class="game-qr-join__decision-actions">
-                            <form method="POST" action="{{ route('events.games.recruitment.respond', [...$routeParameters, $latestAdmission->id]) }}">
-                                @csrf
-                                <input type="hidden" name="decision" value="accepted">
-                                <button class="btn btn--primary" type="submit">Принять приглашение</button>
-                            </form>
-                            <form method="POST" action="{{ route('events.games.recruitment.respond', [...$routeParameters, $latestAdmission->id]) }}">
-                                @csrf
-                                <input type="hidden" name="decision" value="declined">
-                                <button class="btn btn--secondary" type="submit">Отклонить</button>
-                            </form>
-                        </div>
+                        @if(!$sidesConfirmed)
+                            <div class="game-qr-join__decision-actions">
+                                <form method="POST" action="{{ route('events.games.recruitment.respond', [...$routeParameters, $latestAdmission->id]) }}">
+                                    @csrf
+                                    <input type="hidden" name="decision" value="accepted">
+                                    <button class="btn btn--primary" type="submit">Принять приглашение</button>
+                                </form>
+                                <form method="POST" action="{{ route('events.games.recruitment.respond', [...$routeParameters, $latestAdmission->id]) }}">
+                                    @csrf
+                                    <input type="hidden" name="decision" value="declined">
+                                    <button class="btn btn--secondary" type="submit">Отклонить</button>
+                                </form>
+                            </div>
+                        @else
+                            <p class="form-hint">Стороны уже сформированы. Попросите организатора добавить вас в одну из команд.</p>
+                        @endif
                     @else
                         <div class="game-qr-join__status is-pending">
                             <span class="game-qr-join__pulse" aria-hidden="true"></span>
                             <div>
                                 <strong>Заявка отправлена</strong>
-                                <p>Ожидаем решения организатора. Оставаться на странице необязательно — при открытой странице статус обновится автоматически в realtime.</p>
+                                <p>{{ $inProgress ? 'Игра уже идёт. Организатор выберет сторону A или B и добавит вас в текущий состав.' : 'Ожидаем решения организатора.' }} При открытой странице статус обновится автоматически в realtime.</p>
                             </div>
                         </div>
-                        <form method="POST" action="{{ route('events.games.recruitment.revoke', [...$routeParameters, $latestAdmission->id]) }}">
+                        <form method="POST" action="{{ route('events.games.recruitment.join.revoke', [...$routeParameters, $latestAdmission->id]) }}">
                             @csrf @method('DELETE')
                             <button class="btn btn--secondary btn--sm" type="submit">Отозвать заявку</button>
                         </form>
@@ -127,7 +139,7 @@
                         </div>
                     </div>
                     @if($available)
-                        <form method="POST" action="{{ route('events.games.recruitment.apply', $routeParameters) }}">
+                        <form method="POST" action="{{ route('events.games.recruitment.join.apply', $routeParameters) }}">
                             @csrf
                             <button class="btn btn--primary" type="submit">Подать заявку повторно</button>
                         </form>
@@ -136,18 +148,18 @@
                     <div class="game-qr-join__ready">
                         <i class="ti ti-basketball" aria-hidden="true"></i>
                         <div>
-                            <strong>Готовы играть?</strong>
-                            <p>Отправьте заявку организатору. После подтверждения вы попадёте в пул balanced-формирования команд.</p>
+                            <strong>{{ $inProgress ? 'Хотите подключиться к игре?' : 'Готовы играть?' }}</strong>
+                            <p>{{ $sidesConfirmed ? 'Отправьте заявку. После подтверждения организатор сразу добавит вас в одну из текущих сторон.' : 'Отправьте заявку организатору. После подтверждения вы попадёте в пул balanced-формирования команд.' }}</p>
                         </div>
                     </div>
-                    <form method="POST" action="{{ route('events.games.recruitment.apply', $routeParameters) }}">
+                    <form method="POST" action="{{ route('events.games.recruitment.join.apply', $routeParameters) }}">
                         @csrf
                         <button class="btn btn--primary game-qr-join__apply" type="submit">Подать заявку на игру</button>
                     </form>
                 @else
                     <div class="alert alert-info mb-0">
                         <strong>Набор на эту игру закрыт.</strong>
-                        <p class="mt-2 mb-0">Игра могла уже начаться, стороны могли быть утверждены или организатор выключил новые заявки.</p>
+                        <p class="mt-2 mb-0">Организатор выключил новые заявки либо игра уже завершена.</p>
                     </div>
                 @endif
             @endguest
