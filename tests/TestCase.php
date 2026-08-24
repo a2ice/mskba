@@ -12,12 +12,12 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 abstract class TestCase extends BaseTestCase
 {
     /**
-     * Existing feature tests historically used a confirmed user as an organizer
-     * fixture before creation operational permissions existed. Keep those tests
+     * Existing feature tests predate creation operational permissions and use
+     * arbitrary authenticated users as organizer fixtures. Keep those tests
      * focused on their own behavior by explicitly granting the new permissions.
      * Permission-specific tests opt out and exercise the real defaults.
      */
-    protected bool $grantCreationPermissionsToConfirmedTestActors = true;
+    protected bool $grantCreationPermissionsToTestActors = true;
 
     protected function setUp(): void
     {
@@ -31,9 +31,8 @@ abstract class TestCase extends BaseTestCase
     public function actingAs(Authenticatable $user, $guard = null)
     {
         if (
-            $this->grantCreationPermissionsToConfirmedTestActors
+            $this->grantCreationPermissionsToTestActors
             && $user instanceof User
-            && $user->isConfirmed()
             && ! $user->isBlocked()
             && ! $user->trashed()
         ) {
