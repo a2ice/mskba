@@ -18,9 +18,11 @@ use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
+use App\Modules\Event\Domain\Models\GamePlayerStatistic;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Telegram\Application\Services\TelegramEventMessageBuilder;
+use App\Modules\Telegram\Application\Services\TelegramMiniAppStartDestinationResolver;
 use App\Modules\Telegram\Application\UseCases\HandleEventParticipationCallback;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
@@ -110,7 +112,7 @@ final class TelegramEventParticipationModeTest extends TestCase
         Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Заявка отправлена организатору'));
     }
 
-    public function test_telegram_leave_after_acceptance_removes_player_from_pool_event_and_active_roster(): void
+    public function test_telegram_leave_after_acceptance_removes_player_but_preserves_game_statistics(): void
     {
         Queue::fake();
         Http::fake([
@@ -143,6 +145,14 @@ final class TelegramEventParticipationModeTest extends TestCase
             'source_event_participant_id' => $participant->id,
             'status' => GameRosterStatusEnum::SELECTED,
         ]);
+        $statistic = GamePlayerStatistic::query()->create([
+            'event_id' => $event->id,
+            'game_id' => $game->id,
+            'game_side_id' => $sideA->id,
+            'user_id' => $user->id,
+            'close_made' => 2,
+            'close_attempted' => 3,
+        ]);
         $game->forceFill([
             'status' => GameStatusEnum::IN_PROGRESS,
             'sides_confirmed_at' => now(),
@@ -155,21 +165,43 @@ final class TelegramEventParticipationModeTest extends TestCase
         $this->assertSame(GameAdmissionStatusEnum::REVOKED, $admission->refresh()->status);
         $this->assertSame(EventParticipantStatusEnum::LEFT, $participant->refresh()->status);
         $this->assertSame(GameRosterStatusEnum::EXCLUDED, $roster->refresh()->status);
+        $this->assertDatabaseHas('game_player_statistics', [
+            'id' => $statistic->id,
+            'user_id' => $user->id,
+            'close_made' => 2,
+            'close_attempted' => 3,
+        ]);
         Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Участие в игре отменено'));
     }
 
-    public function test_cancelled_public_event_remains_viewable_from_telegram_destination(): void
+    public function test_cancelled_public_game_remains_viewable_from_telegram_destination(): void
     {
-        $event = Event::factory()->create([
-            'type' => EventTypeEnum::TRAINING,
+        [$event, $game] = $this->individualGame();
+        $event->forceFill([
             'status' => EventStatusEnum::CANCELLED,
-            'visibility' => EventVisibilityEnum::PUBLIC,
             'cancelled_at' => now(),
             'cancellation_reason' => 'Дождь',
-        ]);
+        ])->save();
+        $game->forceFill([
+            'status' => GameStatusEnum::CANCELLED,
+            'cancelled_at' => now(),
+            'cancellation_reason' => 'Родительское мероприятие отменено.',
+        ])->save();
 
-        $this->get(route('events.show', $event->routeIdentifier()))
-            ->assertOk();
+        $destination = app(TelegramMiniAppStartDestinationResolver::class)
+            ->resolve("event_{$event->id}");
+
+        $this->assertSame(route('events.show', $event->routeIdentifier(), false), $destination);
+        $this->get($destination)
+            ->assertOk()
+            ->assertSee('отмен', false);
+
+        $markup = app(TelegramEventMessageBuilder::class)
+            ->replyMarkup($event->fresh(['venue.schedule', 'primaryGame.sides', 'primaryGame.admissions.user', 'games.sides']));
+        $encoded = json_encode($markup, JSON_THROW_ON_ERROR);
+        $this->assertStringNotContainsString("event:{$event->id}:join", $encoded);
+        $this->assertStringNotContainsString("event:{$event->id}:leave", $encoded);
+        $this->assertStringContainsString('startapp=event_', $encoded);
     }
 
     /** @return array{Event, Game} */
