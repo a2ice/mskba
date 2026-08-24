@@ -53,13 +53,15 @@ if (region) {
         return payload;
     };
 
-    const removeToast = (toast) => {
+    const removeToast = (toast, synchronizeAfter = true) => {
+        if (toast.classList.contains('is-leaving')) return;
+
         toast.classList.add('is-leaving');
         window.setTimeout(() => {
             knownIds.delete(String(toast.dataset.notificationId));
             toast.remove();
             pump();
-            synchronize();
+            if (synchronizeAfter) synchronize();
         }, 190);
     };
 
@@ -145,10 +147,33 @@ if (region) {
         document.dispatchEvent(new CustomEvent('notification:created', { detail: notification }));
     };
 
+    const reconcile = (notifications) => {
+        const unreadIds = new Set(notifications.map((notification) => String(notification.id)));
+
+        region.querySelectorAll('[data-notification-id]').forEach((toast) => {
+            const id = String(toast.dataset.notificationId || '');
+            if (!unreadIds.has(id)) {
+                updateNotificationCard(id);
+                removeToast(toast, false);
+            }
+        });
+
+        for (let index = pending.length - 1; index >= 0; index -= 1) {
+            const id = String(pending[index]?.id || '');
+            if (unreadIds.has(id)) continue;
+
+            pending.splice(index, 1);
+            knownIds.delete(id);
+            updateNotificationCard(id);
+        }
+    };
+
     const synchronize = () => request(region.dataset.notificationSyncUrl, 'GET')
         .then((payload) => {
+            const notifications = payload.notifications || [];
             updateCount(Number(payload.unread_count || 0));
-            (payload.notifications || []).forEach(enqueue);
+            reconcile(notifications);
+            notifications.forEach(enqueue);
         })
         .catch(() => {
             // Realtime delivery remains available if synchronization fails.
@@ -159,5 +184,6 @@ if (region) {
         enqueue(payload.notification);
     });
 
+    document.addEventListener('notifications:refresh', synchronize);
     synchronize();
 }
