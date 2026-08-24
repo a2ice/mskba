@@ -12,6 +12,7 @@ use App\Modules\Event\Domain\Enums\GameAdmissionCandidateTypeEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
@@ -162,6 +163,7 @@ final class HandleEventParticipationCallback
                     $actor,
                     GameAdmissionStatusEnum::ACCEPTED,
                 );
+                event(new EventChanged($game->event_id));
 
                 return 'Приглашение на игру принято.';
             } catch (InvalidArgumentException) {
