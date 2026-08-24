@@ -6,7 +6,6 @@ use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use Closure;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -53,14 +52,19 @@ final class EnsureOperationalPermission
                 ->with('error', $this->explicitDenialMessage($permission));
         }
 
+        $title = $this->verificationTitle($permission);
+        $message = 'Подтвержденный контакт нужен, чтобы другие участники могли доверять организатору и при необходимости связаться с ним.';
+
         $request->session()->put('operational_permission_intent', [
             'permission' => $permission->value,
             'return_url' => $this->returnUrl($request, $permission),
-            'title' => $this->verificationTitle($permission),
-            'message' => 'Подтвержденный контакт нужен, чтобы другие участники могли доверять организатору и при необходимости связаться с ним.',
+            'title' => $title,
+            'message' => $message,
         ]);
 
-        return redirect()->route('account.confirmation');
+        return redirect()
+            ->route('account.confirmation')
+            ->with('info', $title.'. '.$message.' После подтверждения мы автоматически вернем вас к созданию.');
     }
 
     private function returnUrl(Request $request, UserOperationalPermissionEnum $permission): string
