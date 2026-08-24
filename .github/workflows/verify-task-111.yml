@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/111-telegram-event-participation
+  pull_request:
+    branches:
+      - main
 
 jobs:
   verify:
