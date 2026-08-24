@@ -49,6 +49,8 @@ final class TelegramEventParticipationModeTest extends TestCase
 
     public function test_individual_game_card_shows_context_and_personal_participation_buttons(): void
     {
+        $this->travelTo(now()->setTimezone('Europe/Moscow')->startOfDay()->addHours(12));
+
         [$event, $game] = $this->standaloneGame();
         $player = User::factory()->create();
         $actor = app(CurrentActorResolver::class)->resolve($player, null);
@@ -73,7 +75,11 @@ final class TelegramEventParticipationModeTest extends TestCase
 
         $this->assertStringContainsString('Формат: Стритбол 3×3', $text);
         $this->assertStringContainsString('Набор: Отдельные игроки', $text);
-        $this->assertStringContainsString('Пул игроков: 0 принято · 1 ожидают', $text);
+        $this->assertStringContainsString('Набор игроков: принято 0 · на рассмотрении 1', $text);
+        $this->assertStringContainsString('📝 Описание:', $text);
+        $this->assertStringContainsString('🗓 Сегодня,', $text);
+        $this->assertStringNotContainsString('(МСК)', $text);
+        $this->assertStringNotContainsString('👥 Участники:', $text);
         $this->assertSame("event:{$event->id}:join", $buttons[0][0]['callback_data']);
         $this->assertSame("event:{$event->id}:leave", $buttons[0][1]['callback_data']);
     }
