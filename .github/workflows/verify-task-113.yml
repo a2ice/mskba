@@ -38,6 +38,15 @@ jobs:
       - name: Run identity regression tests
         run: php artisan test tests/Feature/Identity/AdminUserDuplicateMergeTest.php tests/Feature/Identity/UserCanonicalizationTest.php tests/Feature/Identity/UserDuplicateAuditTest.php
 
+      - name: Show failed compiled duplicate view
+        if: failure()
+        run: |
+          for view in storage/framework/views/*.php; do
+            if grep -q 'Дубли пользователей' "$view"; then
+              nl -ba "$view"
+            fi
+          done
+
       - name: Cache Blade views
         run: php artisan view:cache
 
