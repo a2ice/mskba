@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
+use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -57,10 +58,22 @@ final class VenueActivityFeedTest extends TestCase
         $response = $this->getJson(route('venues.activities', $venue->routeIdentifier()));
 
         $response->assertOk()
+            ->assertJsonPath('operational_status', VenueOperationalStatusEnum::ACTIVE->value)
             ->assertJsonPath('current.0.title', 'Игра прямо сейчас')
             ->assertJsonPath('current.0.is_current', true)
             ->assertJsonFragment(['title' => 'Завтрашняя тренировка'])
             ->assertJsonFragment(['title' => 'Турнир выходного дня'])
             ->assertJsonMissing(['title' => 'Приватная тренировка']);
+    }
+
+    public function test_feed_exposes_temporarily_closed_operational_status(): void
+    {
+        $venue = Venue::factory()->create([
+            'operational_status' => VenueOperationalStatusEnum::TEMPORARILY_CLOSED,
+        ]);
+
+        $this->getJson(route('venues.activities', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertJsonPath('operational_status', VenueOperationalStatusEnum::TEMPORARILY_CLOSED->value);
     }
 }
