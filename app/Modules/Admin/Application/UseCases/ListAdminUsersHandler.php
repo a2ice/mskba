@@ -2,9 +2,11 @@
 
 namespace App\Modules\Admin\Application\UseCases;
 
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class ListAdminUsersHandler
@@ -39,9 +41,27 @@ final class ListAdminUsersHandler
             $query->where('system_role', $role->value);
         }
 
-        return $query
+        $paginator = $query
             ->paginate($this->perPage($filters))
             ->withQueryString();
+
+        foreach ($paginator->items() as $user) {
+            $snapshot = $user->operationalPermissions
+                ->keyBy(fn (UserOperationalPermission $entry): string => $entry->permission->value);
+
+            $effective = collect(UserOperationalPermissionEnum::cases())
+                ->map(function (UserOperationalPermissionEnum $permission) use ($snapshot): UserOperationalPermission {
+                    return $snapshot->get($permission->value)
+                        ?? new UserOperationalPermission([
+                            'permission' => $permission,
+                            'is_allowed' => $permission->defaultAllowed(),
+                        ]);
+                });
+
+            $user->setRelation('operationalPermissions', $effective);
+        }
+
+        return $paginator;
     }
 
     /**

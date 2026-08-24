@@ -1,4 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-admin-action-modal^="user-permissions-"] .admin-action-modal__description').forEach((description) => {
+        description.textContent = 'Права могут иметь разные значения по умолчанию. Здесь можно изменить персональный набор пользователя.';
+    });
+
     document.querySelectorAll('[data-admin-action-modal-open]').forEach((button) => {
         button.addEventListener('click', () => {
             const modal = document.querySelector(`[data-admin-action-modal="${button.dataset.adminActionModalOpen}"]`);

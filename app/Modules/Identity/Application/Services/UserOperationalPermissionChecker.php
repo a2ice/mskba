@@ -19,6 +19,6 @@ final class UserOperationalPermissionChecker
             ->where('permission', $permission->value)
             ->first();
 
-        return $snapshot?->is_allowed ?? true;
+        return $snapshot?->is_allowed ?? $permission->defaultAllowed();
     }
 }
