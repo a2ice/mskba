@@ -12,7 +12,6 @@ use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
-use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
@@ -68,7 +67,7 @@ final class TelegramEventMessageBuilder
         $lines[] = '';
         $lines[] = '📍 '.$this->escape($event->venue->name);
         $lines[] = '🗓 '.$startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i').' (МСК)';
-        $lines[] = '👥 Участники мероприятия: '.$capacity;
+        $lines[] = '👥 Участники: '.$capacity;
 
         $responsibles = $event->participants
             ->filter(fn ($participant) => $participant->status === EventParticipantStatusEnum::CONFIRMED
@@ -87,7 +86,12 @@ final class TelegramEventMessageBuilder
                 $sides = $game->sides->keyBy('slot');
                 $sideA = $sides->get('A');
                 $sideB = $sides->get('B');
-                $score = $sideA?->score !== null && $sideB?->score !== null
+                $showScore = in_array($game->status, [
+                    GameStatusEnum::IN_PROGRESS,
+                    GameStatusEnum::AWAITING_RESULT,
+                    GameStatusEnum::COMPLETED,
+                ], true);
+                $score = $showScore && $sideA?->score !== null && $sideB?->score !== null
                     ? "{$sideA->score}:{$sideB->score}"
                     : '—:—';
                 $lines[] = '• <b>'.$this->escape($game->title ?: 'Игра #'.$game->id).'</b>';
