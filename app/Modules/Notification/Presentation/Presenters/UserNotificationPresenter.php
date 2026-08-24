@@ -22,6 +22,8 @@ final class UserNotificationPresenter
                 'source' => $notification->payload['source'] ?? null,
                 'event_id' => $notification->payload['event_id'] ?? null,
                 'game_id' => $notification->payload['game_id'] ?? null,
+                'game_admission_id' => $notification->payload['game_admission_id'] ?? null,
+                'game_admission_status' => $notification->payload['game_admission_status'] ?? null,
                 'tournament_id' => $notification->payload['tournament_id'] ?? null,
                 'tournament_admission_id' => $notification->payload['tournament_admission_id'] ?? null,
                 'tournament_admission_status' => $notification->payload['tournament_admission_status'] ?? null,
