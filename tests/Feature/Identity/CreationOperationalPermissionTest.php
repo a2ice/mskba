@@ -37,13 +37,27 @@ final class CreationOperationalPermissionTest extends TestCase
             ->get(route('events.wizard', ['type' => 'game']))
             ->assertRedirect(route('account.confirmation'))
             ->assertSessionHas('operational_permission_intent.permission', UserOperationalPermissionEnum::CREATE_EVENT->value)
-            ->assertSessionHas('operational_permission_intent.return_url', route('events.wizard', ['type' => 'game'], false));
+            ->assertSessionHas('operational_permission_intent.return_url', route('events.wizard', ['type' => 'game'], false))
+            ->assertSessionHas('info');
 
         $this->actingAs($user)
             ->get(route('tournaments.create'))
             ->assertRedirect(route('account.confirmation'))
             ->assertSessionHas('operational_permission_intent.permission', UserOperationalPermissionEnum::CREATE_TOURNAMENT->value)
-            ->assertSessionHas('operational_permission_intent.return_url', route('tournaments.create', absolute: false));
+            ->assertSessionHas('operational_permission_intent.return_url', route('tournaments.create', absolute: false))
+            ->assertSessionHas('info');
+    }
+
+    public function test_confirmed_user_without_verified_contact_is_sent_directly_to_contacts(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        $this->actingAs($user)
+            ->get(route('events.wizard', ['type' => 'training']))
+            ->assertRedirect(route('account.contacts'))
+            ->assertSessionHas('operational_permission_intent.permission', UserOperationalPermissionEnum::CREATE_EVENT->value)
+            ->assertSessionHas('operational_permission_intent.return_url', route('events.wizard', ['type' => 'training'], false))
+            ->assertSessionHas('info');
     }
 
     public function test_store_endpoints_are_also_protected_server_side(): void
@@ -114,9 +128,39 @@ final class CreationOperationalPermissionTest extends TestCase
         ]);
     }
 
+    public function test_verified_user_with_explicit_denial_is_not_asked_to_verify_again(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'denied-but-verified@example.test',
+            'is_primary' => true,
+            'is_public' => false,
+            'verified_at' => now(),
+        ]);
+        UserOperationalPermission::query()->create([
+            'user_id' => $user->id,
+            'permission' => UserOperationalPermissionEnum::CREATE_EVENT,
+            'is_allowed' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('events.wizard', ['type' => 'game']))
+            ->assertRedirect(route('account.contacts'))
+            ->assertSessionHas('error')
+            ->assertSessionMissing('operational_permission_intent');
+
+        $this->assertDatabaseHas('user_operational_permissions', [
+            'user_id' => $user->id,
+            'permission' => UserOperationalPermissionEnum::CREATE_EVENT->value,
+            'is_allowed' => false,
+        ]);
+    }
+
     public function test_contact_confirmation_grants_permissions_and_returns_to_intended_creation_flow(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        $user->createProfile([]);
 
         $this->actingAs($user)
             ->get(route('events.wizard', ['type' => 'game']))
