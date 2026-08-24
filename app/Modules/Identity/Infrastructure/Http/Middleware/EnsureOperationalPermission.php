@@ -46,6 +46,15 @@ final class EnsureOperationalPermission
                 ->with('error', $this->explicitDenialMessage($permission));
         }
 
+        // Role-aware defaults must be evaluated before contact verification.
+        // ADMIN/SUPERADMIN have every operational permission enabled by default,
+        // while an explicit snapshot above can still override that default.
+        if ($this->permissions->allows($user, $permission)) {
+            $request->session()->forget('operational_permission_intent');
+
+            return $next($request);
+        }
+
         $hasVerifiedContact = $this->verifiedContactGranter->hasVerifiedContact($user);
         if ($hasVerifiedContact) {
             // Eventual-consistency safety net: old verified identities or canonical merges
@@ -92,12 +101,13 @@ final class EnsureOperationalPermission
 
         $type = (string) ($request->input('type') ?? $request->query('type', ''));
         $allowedTypes = ['game', 'training', 'game_training'];
+        $parameters = in_array($type, $allowedTypes, true) ? ['type' => $type] : [];
+        $venueId = (int) ($request->input('venue_id') ?? $request->query('venue_id', 0));
+        if ($venueId > 0) {
+            $parameters['venue_id'] = $venueId;
+        }
 
-        return route(
-            'events.wizard',
-            in_array($type, $allowedTypes, true) ? ['type' => $type] : [],
-            false,
-        );
+        return route('events.wizard', $parameters, false);
     }
 
     private function verificationTitle(UserOperationalPermissionEnum $permission): string
