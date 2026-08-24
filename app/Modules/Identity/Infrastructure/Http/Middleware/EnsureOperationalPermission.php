@@ -48,7 +48,7 @@ final class EnsureOperationalPermission
             $request->session()->forget('operational_permission_intent');
 
             return redirect()
-                ->route('account.confirmation')
+                ->route($user->isConfirmed() ? 'account.contacts' : 'account.confirmation')
                 ->with('error', $this->explicitDenialMessage($permission));
         }
 
@@ -63,7 +63,7 @@ final class EnsureOperationalPermission
         ]);
 
         return redirect()
-            ->route('account.confirmation')
+            ->route($user->isConfirmed() ? 'account.contacts' : 'account.confirmation')
             ->with('info', $title.'. '.$message.' После подтверждения мы автоматически вернем вас к созданию.');
     }
 
