@@ -8,6 +8,7 @@
 @section('section-content')
     @php
         $openDuplicateId = (int) session('open_user_duplicate_id', 0);
+        $mergeErrorMessages = (array) session('merge_error_messages', []);
     @endphp
 
     @if(session('success'))
@@ -18,11 +19,11 @@
         <div class="admin-empty" role="alert">{{ session('error') }}</div>
     @endif
 
-    @if($errors->any())
+    @if($mergeErrorMessages !== [])
         <div class="admin-empty" role="alert" tabindex="-1">
             <strong>Не удалось выполнить действие.</strong>
             <ul>
-                @foreach($errors->all() as $error)
+                @foreach($mergeErrorMessages as $error)
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
@@ -161,9 +162,9 @@
                             <form method="POST" action="{{ route('admin.users.duplicates.merge', $duplicate) }}" class="admin-user-duplicate-form">
                                 @csrf
                                 <h3>Объединить аккаунты</h3>
-                                @if($isOpenDuplicate && $errors->any())
+                                @if($isOpenDuplicate && $mergeErrorMessages !== [])
                                     <div class="admin-empty" role="alert" tabindex="-1">
-                                        @foreach($errors->all() as $error)
+                                        @foreach($mergeErrorMessages as $error)
                                             <div>{{ $error }}</div>
                                         @endforeach
                                     </div>
