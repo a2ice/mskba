@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameRosterContainsPlayers;
+use App\Modules\Identity\Infrastructure\Http\Middleware\EnforceCreationOperationalPermissions;
 use App\Modules\Identity\Infrastructure\Http\Middleware\RecordBrowserFingerprint;
 use App\Modules\Identity\Infrastructure\Http\Middleware\ResolveCanonicalUserSession;
 use App\Modules\Portal\Infrastructure\Http\Middleware\RecordOnlineUserPresence;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->appendToGroup('web', [
             ResolveCanonicalUserSession::class,
+            EnforceCreationOperationalPermissions::class,
             RecordBrowserFingerprint::class,
             RecordOnlineUserPresence::class,
             EnsureGameRosterContainsPlayers::class,
