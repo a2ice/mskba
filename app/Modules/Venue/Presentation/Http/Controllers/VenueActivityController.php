@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -44,6 +45,10 @@ final class VenueActivityController extends Controller
             ->where('default_venue_id', $venueModel->id)
             ->where('status', TournamentStatusEnum::CONFIRMED->value)
             ->whereDate('ends_on', '>=', $now->toDateString())
+            ->with([
+                'matches.game.event',
+                'matches.game.sides.team.logo',
+            ])
             ->orderBy('starts_on')
             ->limit(12)
             ->get()
@@ -68,7 +73,6 @@ final class VenueActivityController extends Controller
         $game = $event->primaryGame;
         $isLive = $game?->actual_started_at !== null && $game?->actual_ended_at === null;
         $isCurrent = $isLive || ($event->starts_at?->lessThanOrEqualTo($now) && $event->ends_at?->greaterThan($now));
-        $sides = $game?->sides?->keyBy('slot');
         $typeLabel = match ($event->type) {
             EventTypeEnum::GAME => 'Игра',
             EventTypeEnum::GAME_TRAINING => 'Игровая тренировка',
@@ -90,21 +94,7 @@ final class VenueActivityController extends Controller
             'ends_at' => $event->ends_at?->setTimezone($now->timezone)->toISOString(),
             'sort_at' => ($event->starts_at ?? $now)->toISOString(),
             'url' => route('events.show', $event->routeIdentifier()),
-            'game_id' => $game?->id,
-            'live_url' => $game ? route('events.games.live', [$event->routeIdentifier(), $game->id]) : null,
-            'snapshot_url' => $game ? route('events.games.live.snapshot', [$event->routeIdentifier(), $game->id]) : null,
-            'teams' => $game ? [
-                'A' => [
-                    'name' => $sides?->get('A')?->display_name ?: 'Команда A',
-                    'score' => (int) ($sides?->get('A')?->score ?? 0),
-                    'logo' => $sides?->get('A')?->logoUrl(),
-                ],
-                'B' => [
-                    'name' => $sides?->get('B')?->display_name ?: 'Команда B',
-                    'score' => (int) ($sides?->get('B')?->score ?? 0),
-                    'logo' => $sides?->get('B')?->logoUrl(),
-                ],
-            ] : null,
+            ...$this->gamePayload($game, $event),
         ];
     }
 
@@ -113,25 +103,64 @@ final class VenueActivityController extends Controller
     {
         $starts = $tournament->starts_on?->startOfDay();
         $ends = $tournament->ends_on?->endOfDay();
-        $isCurrent = $starts?->lessThanOrEqualTo($now) && $ends?->greaterThanOrEqualTo($now);
+        $liveMatch = $tournament->matches
+            ->first(fn ($match): bool => $match->game?->actual_started_at !== null && $match->game?->actual_ended_at === null);
+        $liveGame = $liveMatch?->game;
+        $isLive = $liveGame !== null;
+        $isCurrent = $isLive || ($starts?->lessThanOrEqualTo($now) && $ends?->greaterThanOrEqualTo($now));
 
         return [
             'kind' => 'tournament',
             'id' => (int) $tournament->id,
             'type' => 'tournament',
-            'type_label' => 'Турнир',
+            'type_label' => $isLive ? 'Турнир · матч' : 'Турнир',
             'title' => $tournament->title,
             'is_current' => $isCurrent,
-            'is_live' => false,
-            'status_label' => $isCurrent ? 'Турнир идёт' : 'Предстоящий турнир',
-            'starts_at' => $starts?->toISOString(),
+            'is_live' => $isLive,
+            'status_label' => $isLive
+                ? 'Идёт матч турнира'
+                : ($isCurrent ? 'Турнир идёт' : 'Предстоящий турнир'),
+            'starts_at' => $isLive
+                ? $liveGame->actual_started_at?->setTimezone($now->timezone)->toISOString()
+                : $starts?->toISOString(),
             'ends_at' => $ends?->toISOString(),
-            'sort_at' => ($starts ?? $now)->toISOString(),
+            'sort_at' => ($isLive ? $liveGame->actual_started_at : $starts)?->toISOString() ?? $now->toISOString(),
             'url' => route('tournaments.show', $tournament->routeIdentifier()),
-            'game_id' => null,
-            'live_url' => null,
-            'snapshot_url' => null,
-            'teams' => null,
+            ...$this->gamePayload($liveGame, $liveGame?->event),
+        ];
+    }
+
+    /** @return array{game_id: ?int, live_url: ?string, snapshot_url: ?string, teams: ?array<string, array{name: string, score: int, logo: ?string}>} */
+    private function gamePayload(?Game $game, ?Event $event): array
+    {
+        if ($game === null) {
+            return [
+                'game_id' => null,
+                'live_url' => null,
+                'snapshot_url' => null,
+                'teams' => null,
+            ];
+        }
+
+        $sides = $game->sides->keyBy('slot');
+        $routeEvent = $event?->routeIdentifier();
+
+        return [
+            'game_id' => (int) $game->id,
+            'live_url' => $routeEvent ? route('events.games.live', [$routeEvent, $game->id]) : null,
+            'snapshot_url' => $routeEvent ? route('events.games.live.snapshot', [$routeEvent, $game->id]) : null,
+            'teams' => [
+                'A' => [
+                    'name' => $sides->get('A')?->display_name ?: 'Команда A',
+                    'score' => (int) ($sides->get('A')?->score ?? 0),
+                    'logo' => $sides->get('A')?->logoUrl(),
+                ],
+                'B' => [
+                    'name' => $sides->get('B')?->display_name ?: 'Команда B',
+                    'score' => (int) ($sides->get('B')?->score ?? 0),
+                    'logo' => $sides->get('B')?->logoUrl(),
+                ],
+            ],
         ];
     }
 }
