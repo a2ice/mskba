@@ -37,7 +37,10 @@ final class EnforceCreationOperationalPermissions
 
         $response = $next($request);
 
-        if ($routeName !== 'account.confirmation.contacts.verification.confirm') {
+        if (! in_array($routeName, [
+            'account.confirmation.contacts.verification.confirm',
+            'account.contacts.verification.confirm',
+        ], true)) {
             return $response;
         }
 
@@ -64,7 +67,7 @@ final class EnforceCreationOperationalPermissions
             $request->session()->forget('operational_permission_intent');
 
             return redirect()
-                ->route('account.confirmation')
+                ->route($user->isConfirmed() ? 'account.contacts' : 'account.confirmation')
                 ->with('error', 'Контакт подтвержден, но создание по-прежнему отключено операционным правом. Обратитесь к администратору.');
         }
 
