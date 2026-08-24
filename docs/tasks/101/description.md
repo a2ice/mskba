@@ -69,6 +69,7 @@ Canonical merge является security-sensitive операцией: посл
 - Telegram notification delivery ищет verified доступный private chat по всей identity group, но отправляет сообщение только в один детерминированно выбранный аккаунт;
 - права и системные роли берутся только у canonical пользователя;
 - merge/reject `UserDuplicate` входят в общий audit trail: сохраняются изменения candidate вместе с actor/context аудита;
+- неуспешный admin merge возвращает понятную validation/domain-ошибку в повторно открытое модальное окно и фиксирует безопасное событие `merge_failed` в Audit и runtime log; значения формы и raw IP в запись не попадают;
 - `identityIds()` нельзя механически применять ко всем `user_id` запросам: identity-wide lookup допускается только там, где нужно читать физически сохранённую внешнюю identity/историю alias.
 
 ## Безопасность и обратимость данных

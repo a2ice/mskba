@@ -1,4 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const initiallyOpenedModal = document.querySelector('[data-admin-action-modal]:not([hidden])');
+
+    if (initiallyOpenedModal) {
+        document.body.classList.add('modal-open');
+        initiallyOpenedModal.querySelector('[role="alert"]')?.focus();
+    }
+
     document.querySelectorAll('[data-admin-action-modal^="user-permissions-"] .admin-action-modal__description').forEach((description) => {
         description.textContent = 'Права могут иметь разные значения по умолчанию. Здесь можно изменить персональный набор пользователя.';
     });

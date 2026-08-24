@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Admin\Application\UseCases\ListAdminUserDuplicatesHandler;
+use App\Modules\Identity\Application\Services\UserDuplicateResolutionAttemptLogger;
 use App\Modules\Identity\Application\UseCases\ResolveUserDuplicateHandler;
 use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -12,6 +13,8 @@ use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
 final class AdminUserDuplicatesController extends Controller
@@ -29,23 +32,49 @@ final class AdminUserDuplicatesController extends Controller
         Request $request,
         UserDuplicate $userDuplicate,
         ResolveUserDuplicateHandler $resolve,
+        UserDuplicateResolutionAttemptLogger $attemptLogger,
     ): RedirectResponse {
-        $validated = $request->validate([
-            'canonical_user_id' => ['required', 'integer'],
-            'confirm_merge' => ['accepted'],
-            'confirm_privileged' => ['nullable', 'accepted'],
-        ]);
-
         $userDuplicate->loadMissing(['user', 'duplicateUser']);
         $hasElevatedRole = collect([$userDuplicate->user, $userDuplicate->duplicateUser])
             ->filter()
             ->contains(fn ($user): bool => $user->canonical()->system_role !== UserSystemRoleEnum::USER);
 
-        if ($hasElevatedRole && ! $request->boolean('confirm_privileged')) {
+        $validator = Validator::make($request->all(), [
+            'canonical_user_id' => [
+                'required',
+                'integer',
+                Rule::in([(int) $userDuplicate->user_id, (int) $userDuplicate->duplicate_user_id]),
+            ],
+            'confirm_merge' => ['required', 'accepted'],
+            'confirm_privileged' => $hasElevatedRole ? ['required', 'accepted'] : ['nullable'],
+        ], [
+            'canonical_user_id.required' => 'Выберите основной аккаунт.',
+            'canonical_user_id.integer' => 'Выбран некорректный основной аккаунт.',
+            'canonical_user_id.in' => 'Основной аккаунт должен входить в проверяемую пару.',
+            'confirm_merge.required' => 'Подтвердите, что вы проверили оба аккаунта.',
+            'confirm_merge.accepted' => 'Подтвердите, что вы проверили оба аккаунта.',
+            'confirm_privileged.required' => 'Отдельно подтвердите объединение аккаунта с расширенными правами.',
+            'confirm_privileged.accepted' => 'Отдельно подтвердите объединение аккаунта с расширенными правами.',
+        ]);
+
+        if ($validator->fails()) {
+            $attemptLogger->mergeFailed(
+                candidate: $userDuplicate,
+                request: $request,
+                reasonType: 'validation',
+                message: 'Запрос на объединение не прошёл проверку.',
+                validationFields: $validator->errors()->keys(),
+            );
+
             return redirect()
                 ->route('admin.users.duplicates')
-                ->with('error', 'Для пары с расширенными системными правами нужно отдельное подтверждение.');
+                ->withErrors($validator)
+                ->withInput()
+                ->with('merge_error_messages', $validator->errors()->all())
+                ->with('open_user_duplicate_id', $userDuplicate->id);
         }
+
+        $validated = $validator->validated();
 
         try {
             $resolve->merge(
@@ -54,7 +83,19 @@ final class AdminUserDuplicatesController extends Controller
                 resolvedBy: $request->user(),
             );
         } catch (InvalidArgumentException $exception) {
-            return redirect()->route('admin.users.duplicates')->with('error', $exception->getMessage());
+            $attemptLogger->mergeFailed(
+                candidate: $userDuplicate,
+                request: $request,
+                reasonType: 'domain',
+                message: $exception->getMessage(),
+            );
+
+            return redirect()
+                ->route('admin.users.duplicates')
+                ->withErrors(['merge' => $exception->getMessage()])
+                ->withInput()
+                ->with('merge_error_messages', [$exception->getMessage()])
+                ->with('open_user_duplicate_id', $userDuplicate->id);
         }
 
         return redirect()->route('admin.users.duplicates')->with('success', 'Аккаунты объединены.');
