@@ -10,6 +10,7 @@ import '../css/pages/event-wizard-mobile-actions-fix.css';
 import '../css/pages/event-wizard-team-clear.css';
 import '../css/pages/event-wizard-review-actions.css';
 import '../css/pages/venue-activity.css';
+import '../css/pages/venue-booking-status.css';
 
 window.$ = $;
 window.jQuery = $;
@@ -46,6 +47,7 @@ import './features/team-management.js';
 import './features/team-member-card-details.js';
 import './features/venue-show.js';
 import './features/venue-activity.js';
+import './features/venue-booking-status.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
 import './features/event-create-entrypoints.js';
