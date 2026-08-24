@@ -68,10 +68,10 @@ final class StandaloneGamePlayerWithdrawalService
                 ->lockForUpdate()
                 ->get();
             foreach ($rosterEntries as $entry) {
+                // Roster is a historical snapshot. Keep the player's former lineup role,
+                // captain flag and lock timestamp; only mark them no longer active.
                 $entry->forceFill([
                     'status' => GameRosterStatusEnum::EXCLUDED,
-                    'lineup_role' => null,
-                    'is_captain' => false,
                 ])->save();
                 $changed = true;
             }
@@ -89,7 +89,7 @@ final class StandaloneGamePlayerWithdrawalService
                     $participant->forceFill([
                         'user_id' => $user->id,
                         'status' => EventParticipantStatusEnum::LEFT,
-                        'joined_at' => null,
+                        // Preserve joined_at as participation history; left_at marks withdrawal.
                         'left_at' => now(),
                         'confirmation_version' => $event->participation_confirmation_version,
                         'responsibility_status' => null,
