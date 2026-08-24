@@ -47,8 +47,13 @@ jobs:
       - name: Run PHP regression suite
         shell: bash
         run: |
-          mapfile -t test_files < <(find tests -type f -name '*Test.php' ! -path 'tests/Feature/Telegram/TelegramMiniAppAuthTest.php' | sort)
+          mapfile -t test_files < <(find tests -type f -name '*Test.php' \
+            ! -path 'tests/Feature/Telegram/TelegramMiniAppAuthTest.php' \
+            ! -path 'tests/Feature/Telegram/TelegramEventIntegrationTest.php' | sort)
           php artisan test --compact "${test_files[@]}"
+
+      - name: Verify Telegram event integration separately
+        run: php artisan test --compact tests/Feature/Telegram/TelegramEventIntegrationTest.php
 
       - name: Verify Telegram mini app separately
         env:
