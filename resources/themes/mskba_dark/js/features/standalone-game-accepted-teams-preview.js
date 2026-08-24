@@ -1,10 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-standalone-recruitment-panel]').forEach((panel) => {
-        enhanceAcceptedTeamPreview(panel);
-    });
-});
-
-function enhanceAcceptedTeamPreview(panel) {
+export function enhanceAcceptedTeamPreview(panel) {
     const statusText = (panel.textContent || '').replace(/\s+/g, ' ').trim();
     const confirmed = statusText.includes('Стороны утверждены');
 
