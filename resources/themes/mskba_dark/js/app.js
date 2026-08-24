@@ -60,6 +60,7 @@ import './features/event-wizard-team-clear.js';
 import './features/event-wizard-venue.js';
 import './features/event-wizard-venue-first-order.js';
 import './features/event-wizard-preset-entry.js';
+import './features/event-wizard-copy.js';
 import './features/standalone-game-create.js';
 import './features/tournament-form.js';
 import './features/tournament-application.js';
