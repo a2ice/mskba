@@ -49,6 +49,16 @@ class AccessServiceProvider extends ServiceProvider
                     ->allows($user, UserOperationalPermissionEnum::CREATE_TEAM),
         );
         Gate::define(
+            'event-create',
+            fn (User $user): bool => app(UserOperationalPermissionChecker::class)
+                ->allows($user, UserOperationalPermissionEnum::CREATE_EVENT),
+        );
+        Gate::define(
+            'tournament-create',
+            fn (User $user): bool => app(UserOperationalPermissionChecker::class)
+                ->allows($user, UserOperationalPermissionEnum::CREATE_TOURNAMENT),
+        );
+        Gate::define(
             'edit-venues-as-superadmin',
             fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),
         );
