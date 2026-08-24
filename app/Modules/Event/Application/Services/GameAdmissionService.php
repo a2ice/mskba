@@ -14,6 +14,7 @@ use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
@@ -52,8 +53,11 @@ final class GameAdmissionService
                 $candidate instanceof Team
                     ? 'Команда «'.$candidate->name.'» подала заявку на участие.'
                     : 'Игрок подал заявку на участие в игре.',
+                $admission,
             );
         }
+
+        event(new EventChanged($game->event_id));
 
         return $admission;
     }
@@ -62,7 +66,13 @@ final class GameAdmissionService
     {
         $admission = $this->createPending($game, $actor, $candidate, GameAdmissionDirectionEnum::INVITATION);
         if ($candidate instanceof User) {
-            $this->notify($candidate->canonical()->id, $game, 'Приглашение на игру', 'Вас пригласили принять участие в игре.');
+            $this->notify(
+                $candidate->canonical()->id,
+                $game,
+                'Приглашение на игру',
+                'Вас пригласили принять участие в игре.',
+                $admission,
+            );
         } else {
             foreach ($this->teamRepresentativeUserIds($candidate) as $userId) {
                 $this->notify(
@@ -70,9 +80,12 @@ final class GameAdmissionService
                     $game,
                     'Приглашение команды на игру',
                     'Команду «'.$candidate->name.'» пригласили принять участие в игре.',
+                    $admission,
                 );
             }
         }
+
+        event(new EventChanged($game->event_id));
 
         return $admission;
     }
@@ -138,6 +151,7 @@ final class GameAdmissionService
                     $decision === GameAdmissionStatusEnum::ACCEPTED
                         ? 'Организатор принял вашу заявку на участие.'
                         : 'Организатор отклонил вашу заявку на участие.',
+                    $updated,
                 );
             } elseif ($candidate instanceof Team) {
                 foreach ($this->teamRepresentativeUserIds($candidate) as $userId) {
@@ -148,10 +162,13 @@ final class GameAdmissionService
                         $decision === GameAdmissionStatusEnum::ACCEPTED
                             ? 'Заявка команды «'.$candidate->name.'» на игру принята.'
                             : 'Заявка команды «'.$candidate->name.'» на игру отклонена.',
+                        $updated,
                     );
                 }
             }
         }
+
+        event(new EventChanged($game->event_id));
 
         return $updated;
     }
@@ -192,6 +209,8 @@ final class GameAdmissionService
                 'responded_at' => now(),
             ])->save();
         }, 3);
+
+        event(new EventChanged($game->event_id));
     }
 
     private function createPending(
@@ -386,12 +405,28 @@ final class GameAdmissionService
             ->values();
     }
 
-    private function notify(int $userId, Game $game, string $title, string $body): void
-    {
+    private function notify(
+        int $userId,
+        Game $game,
+        string $title,
+        string $body,
+        ?GameAdmission $admission = null,
+    ): void {
         $event = $game->event()->first();
         if ($event === null) {
             return;
         }
+
+        $payload = [
+            'game_id' => $game->id,
+            'event_id' => $event->id,
+            'source' => 'game.recruitment',
+        ];
+        if ($admission !== null) {
+            $payload['game_admission_id'] = $admission->id;
+            $payload['game_admission_status'] = $admission->status->value;
+        }
+
         $this->notifications->handle(new CreateUserNotificationDTO(
             userId: $userId,
             type: UserNotificationTypeEnum::SYSTEM,
@@ -399,7 +434,7 @@ final class GameAdmissionService
             body: $body,
             actionUrl: route('events.show', $event->routeIdentifier()),
             actionText: 'Открыть игру',
-            payload: ['game_id' => $game->id, 'event_id' => $event->id, 'source' => 'game.recruitment'],
+            payload: $payload,
         ));
     }
 
