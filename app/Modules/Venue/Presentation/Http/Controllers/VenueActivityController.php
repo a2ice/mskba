@@ -61,6 +61,7 @@ final class VenueActivityController extends Controller
 
         return response()->json([
             'venue_id' => (int) $venueModel->id,
+            'operational_status' => $venueModel->operational_status->value,
             'current' => $activities->where('is_current', true)->values()->all(),
             'upcoming' => $activities->where('is_current', false)->take(8)->values()->all(),
             'generated_at' => $now->toISOString(),
@@ -130,7 +131,7 @@ final class VenueActivityController extends Controller
         ];
     }
 
-    /** @return array{game_id: ?int, live_url: ?string, snapshot_url: ?string, teams: ?array<string, array{name: string, score: int, logo: ?string}>} */
+    /** @return array<string, mixed> */
     private function gamePayload(?Game $game, ?Event $event): array
     {
         if ($game === null) {
