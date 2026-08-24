@@ -52,6 +52,7 @@ function initSplitGameStep(form) {
     const currentType = () => typeRadios.find((radio) => radio.checked)?.value || '';
     const isGame = () => currentType() === 'game';
     const visibleNativeStep = () => form.querySelector('[data-wizard-step]:not([hidden])');
+    const venueBridgeActive = () => form.dataset.venueFirstBridge === '1';
 
     function setVirtualVisible(visible) {
         virtualVisible = visible;
@@ -86,8 +87,8 @@ function initSplitGameStep(form) {
         const numbers = {
             type: '01',
             game: '02',
-            schedule: '04',
-            venue: '05',
+            venue: '04',
+            schedule: '05',
             participants: '06',
             details: '07',
             publication: '08',
@@ -121,8 +122,8 @@ function initSplitGameStep(form) {
             const indexByKey = {
                 type: 1,
                 game: 2,
-                schedule: 4,
-                venue: 5,
+                venue: 4,
+                schedule: 5,
                 participants: 6,
                 details: 7,
                 publication: 8,
@@ -137,7 +138,7 @@ function initSplitGameStep(form) {
     }
 
     nextButton.addEventListener('click', (event) => {
-        if (!isGame() || allowNativeNavigation) return;
+        if (!isGame() || allowNativeNavigation || venueBridgeActive()) return;
 
         if (virtualVisible) {
             event.preventDefault();
@@ -169,7 +170,7 @@ function initSplitGameStep(form) {
     }, true);
 
     backButton.addEventListener('click', (event) => {
-        if (!isGame() || allowNativeNavigation) return;
+        if (!isGame() || allowNativeNavigation || venueBridgeActive()) return;
 
         if (virtualVisible) {
             event.preventDefault();
@@ -177,20 +178,12 @@ function initSplitGameStep(form) {
             setVirtualVisible(false);
             gameStep.hidden = false;
             refreshProgress();
-            return;
-        }
-
-        const native = visibleNativeStep();
-        if (native?.dataset.wizardStep === 'schedule') {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-
-            allowNativeNavigation = true;
-            backButton.click();
-            allowNativeNavigation = false;
-            setVirtualVisible(true);
         }
     }, true);
+
+    form.addEventListener('mskba:wizard-show-recruitment', () => {
+        if (isGame()) setVirtualVisible(true);
+    });
 
     typeRadios.forEach((radio) => radio.addEventListener('change', () => {
         if (!isGame()) setVirtualVisible(false);
