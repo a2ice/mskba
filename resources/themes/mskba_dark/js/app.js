@@ -45,6 +45,7 @@ import './features/team-member-card-details.js';
 import './features/venue-show.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
+import './features/event-create-entrypoints.js';
 import './features/event-wizard-state-restore.js';
 import './features/event-wizard-split-game-step.js';
 import './features/event-wizard.js';
