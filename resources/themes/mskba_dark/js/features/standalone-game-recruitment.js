@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             await loadPanel();
+            document.dispatchEvent(new CustomEvent('notifications:refresh'));
         } catch (error) {
             window.alert(error.message);
             submitters.forEach((button) => { button.disabled = false; });
