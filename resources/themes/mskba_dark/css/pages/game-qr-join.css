@@ -10,6 +10,10 @@
     background: rgba(255, 255, 255, .045);
 }
 
+.game-qr-share--embedded {
+    margin-bottom: 0;
+}
+
 .game-qr-share__copy h3 {
     margin: 5px 0 8px;
 }
@@ -51,6 +55,75 @@
     height: 220px !important;
 }
 
+.game-late-admissions__count {
+    display: grid;
+    min-width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .08);
+    font-weight: 700;
+}
+
+.game-late-admission {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.game-late-admission__identity {
+    display: flex;
+    min-width: 0;
+    gap: 11px;
+    align-items: center;
+}
+
+.game-late-admission__identity > img,
+.game-late-admission__identity > span {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 50%;
+}
+
+.game-late-admission__identity > img {
+    object-fit: cover;
+}
+
+.game-late-admission__identity > span {
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, .09);
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.game-late-admission__identity div {
+    display: grid;
+    min-width: 0;
+}
+
+.game-late-admission__identity strong,
+.game-late-admission__identity small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.game-late-admission__identity small {
+    opacity: .65;
+}
+
+.game-late-admission__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
 .game-qr-join__inner {
     width: min(760px, 100%);
     margin-inline: auto;
@@ -87,6 +160,10 @@
     border-radius: 999px;
     background: rgba(255, 255, 255, .04);
     font-size: .88rem;
+}
+
+.game-qr-join__meta span.is-live {
+    background: rgba(51, 185, 112, .1);
 }
 
 .game-qr-join__card {
@@ -201,6 +278,21 @@
 
     .game-qr-share__actions > * {
         flex: 1 1 100%;
+        justify-content: center;
+    }
+
+    .game-late-admission {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .game-late-admission__actions,
+    .game-late-admission__actions form,
+    .game-late-admission__actions .btn {
+        width: 100%;
+    }
+
+    .game-late-admission__actions .btn {
         justify-content: center;
     }
 
