@@ -46,3 +46,12 @@ jobs:
             else
               echo "storage/logs/laravel.log not found"
             fi
+
+            echo "== web requests around the reported merge attempt =="
+            $COMPOSE logs --no-color \
+              --since '2026-08-24T19:40:00Z' \
+              --until '2026-08-24T20:00:00Z' \
+              nginx phpfpm \
+              | grep -E -B 2 -A 4 'admin/users/duplicates|POST|419|422|500' \
+              | tail -n 500 \
+              || true
