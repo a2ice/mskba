@@ -46,7 +46,7 @@ final class TelegramEventMessageBuilder
 
             if ($primaryGame->recruitment_mode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT) {
                 [$accepted, $pending] = $this->individualPoolCounts($primaryGame);
-                $lines[] = '👥 Пул игроков: '.$accepted.' принято'.($pending > 0 ? ' · '.$pending.' ожидают' : '');
+                $lines[] = '👥 Набор игроков: принято '.$accepted.($pending > 0 ? ' · на рассмотрении '.$pending : '');
                 $lines[] = '📝 Заявки: '.($this->canJoinIndividualGame($event, $primaryGame) ? 'принимаются' : 'закрыты');
             } elseif ($primaryGame->recruitment_mode === GameRecruitmentModeEnum::PREFORMED_TEAMS) {
                 $teamNames = $this->preformedTeamNames($primaryGame);
@@ -61,13 +61,15 @@ final class TelegramEventMessageBuilder
             }
         }
 
-        $lines[] = 'Описание: '.$this->escape(
+        $lines[] = '📝 Описание: '.$this->escape(
             $description === '' ? '—' : Str::limit($description, 1000),
         );
         $lines[] = '';
         $lines[] = '📍 '.$this->escape($event->venue->name);
-        $lines[] = '🗓 '.$startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i').' (МСК)';
-        $lines[] = '👥 Участники: '.$capacity;
+        $lines[] = '🗓 '.$this->dateTimeLabel($startsAt, $endsAt, $timezone);
+        if ($event->type !== EventTypeEnum::GAME) {
+            $lines[] = '👥 Участники: '.$capacity;
+        }
 
         $responsibles = $event->participants
             ->filter(fn ($participant) => $participant->status === EventParticipantStatusEnum::CONFIRMED
@@ -291,6 +293,18 @@ final class TelegramEventMessageBuilder
         return '🏀 '.$this->escape($sideA->display_name ?: 'Команда A')
             .' <b>'.((int) ($sideA->score ?? 0)).':'.((int) ($sideB->score ?? 0)).'</b> '
             .$this->escape($sideB->display_name ?: 'Команда B');
+    }
+
+    private function dateTimeLabel($startsAt, $endsAt, string $timezone): string
+    {
+        $date = $startsAt->isSameDay(now($timezone))
+            ? 'Сегодня'
+            : $startsAt->format('d.m.Y');
+        $end = $endsAt->isSameDay($startsAt)
+            ? $endsAt->format('H:i')
+            : $endsAt->format('d.m H:i');
+
+        return $date.', '.$startsAt->format('H:i').'–'.$end;
     }
 
     private function title(Event $event): string
