@@ -18,7 +18,7 @@ final class CreationOperationalPermissionTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected bool $grantCreationPermissionsToConfirmedTestActors = false;
+    protected bool $grantCreationPermissionsToTestActors = false;
 
     public function test_event_and_tournament_creation_permissions_are_denied_by_default(): void
     {
