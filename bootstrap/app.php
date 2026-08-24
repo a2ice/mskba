@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             __DIR__.'/../routes/event-wizard.php',
             __DIR__.'/../routes/game-live.php',
             __DIR__.'/../routes/game-recruitment.php',
+            __DIR__.'/../routes/venue-activities.php',
             __DIR__.'/../routes/feed.php',
             __DIR__.'/../routes/reactions.php',
         ],
