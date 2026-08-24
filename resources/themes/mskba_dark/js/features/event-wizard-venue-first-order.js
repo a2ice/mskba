@@ -20,7 +20,7 @@ function initVenueFirstOrder(form) {
 
     if (!nextButton || !backButton || !venueStep || !scheduleStep || !participantsStep) return;
 
-    let bypass = false;
+    let bridging = false;
     let venueVisited = !venueStep.hidden;
 
     const currentType = () => typeRadios.find((radio) => radio.checked)?.value || '';
@@ -48,6 +48,17 @@ function initVenueFirstOrder(form) {
         return true;
     };
 
+    const withBridge = (callback) => {
+        bridging = true;
+        form.dataset.venueFirstBridge = '1';
+        try {
+            callback();
+        } finally {
+            delete form.dataset.venueFirstBridge;
+            bridging = false;
+        }
+    };
+
     const clickWithDisabledControls = (step, button) => {
         const controls = Array.from(step.querySelectorAll('input, select, textarea'));
         const states = controls.map((control) => control.disabled);
@@ -57,16 +68,14 @@ function initVenueFirstOrder(form) {
     };
 
     const advanceUnvisitedScheduleToVenue = () => {
-        if (venueVisited || scheduleStep.hidden || bypass) return;
-        bypass = true;
-        clickWithDisabledControls(scheduleStep, nextButton);
-        bypass = false;
+        if (venueVisited || scheduleStep.hidden || bridging) return;
+        withBridge(() => clickWithDisabledControls(scheduleStep, nextButton));
         if (!venueStep.hidden) venueVisited = true;
         refreshProgress();
     };
 
     nextButton.addEventListener('click', (event) => {
-        if (bypass || virtualVisible()) return;
+        if (bridging || virtualVisible()) return;
         const current = visibleNativeStep();
         const key = current?.dataset.wizardStep;
 
@@ -75,9 +84,7 @@ function initVenueFirstOrder(form) {
             event.stopImmediatePropagation();
             if (!validateStep(venueStep)) return;
 
-            bypass = true;
-            backButton.click();
-            bypass = false;
+            withBridge(() => backButton.click());
             restoreScheduleDefault();
             refreshProgress();
             return;
@@ -88,26 +95,31 @@ function initVenueFirstOrder(form) {
             event.stopImmediatePropagation();
             if (!validateStep(scheduleStep)) return;
 
-            bypass = true;
-            nextButton.click();
-            nextButton.click();
-            bypass = false;
+            withBridge(() => {
+                nextButton.click();
+                nextButton.click();
+            });
             refreshProgress();
         }
     }, true);
 
     backButton.addEventListener('click', (event) => {
-        if (bypass || virtualVisible()) return;
+        if (bridging || virtualVisible()) return;
         const current = visibleNativeStep();
         const key = current?.dataset.wizardStep;
 
         if (key === 'venue') {
             event.preventDefault();
             event.stopImmediatePropagation();
-            bypass = true;
-            backButton.click();
-            backButton.click();
-            bypass = false;
+
+            withBridge(() => {
+                backButton.click();
+                backButton.click();
+            });
+
+            if (isGame()) {
+                form.dispatchEvent(new CustomEvent('mskba:wizard-show-recruitment'));
+            }
             refreshProgress();
             return;
         }
@@ -115,21 +127,7 @@ function initVenueFirstOrder(form) {
         if (key === 'schedule' && venueVisited) {
             event.preventDefault();
             event.stopImmediatePropagation();
-            bypass = true;
-            clickWithDisabledControls(scheduleStep, nextButton);
-            bypass = false;
-            refreshProgress();
-            return;
-        }
-
-        if (key === 'participants' && venueVisited) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            bypass = true;
-            backButton.click();
-            backButton.click();
-            bypass = false;
-            restoreScheduleDefault();
+            withBridge(() => clickWithDisabledControls(scheduleStep, nextButton));
             refreshProgress();
         }
     }, true);
@@ -175,7 +173,7 @@ function initVenueFirstOrder(form) {
 
     const venueCopy = venueStep.querySelector('.event-wizard-step__heading p');
     if (venueCopy) {
-        venueCopy.textContent = 'Сначала выберите площадку. Свободный интервал проверим после выбора даты, времени и длительности.';
+        venueCopy.textContent = 'Сначала выберите площадку и нужную зону. Свободный интервал проверим после выбора даты, времени и длительности.';
     }
 
     const observer = new MutationObserver(() => {
