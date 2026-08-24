@@ -3,6 +3,7 @@
 use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameAdmissionController;
 use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameCandidateSearchController;
 use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameFormationController;
+use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameQrJoinController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('events/{event}/games/{game}/recruitment')
@@ -10,8 +11,20 @@ Route::prefix('events/{event}/games/{game}/recruitment')
     ->name('events.games.recruitment.')
     ->group(function (): void {
         Route::get('/panel', [StandaloneGameAdmissionController::class, 'panel'])->name('panel');
+        Route::get('/join', StandaloneGameQrJoinController::class)->name('join');
 
         Route::middleware('auth')->group(function (): void {
+            Route::post('/join/apply', [StandaloneGameQrJoinController::class, 'apply'])->name('join.apply');
+            Route::delete('/join/admissions/{admission}', [StandaloneGameQrJoinController::class, 'revoke'])
+                ->whereNumber('admission')->name('join.revoke');
+            Route::get('/late-panel', [StandaloneGameQrJoinController::class, 'panel'])->name('late.panel');
+            Route::post('/admissions/{admission}/late-accept', [StandaloneGameQrJoinController::class, 'accept'])
+                ->whereNumber('admission')->name('late.accept');
+            Route::post('/admissions/{admission}/late-decline', [StandaloneGameQrJoinController::class, 'decline'])
+                ->whereNumber('admission')->name('late.decline');
+            Route::patch('/late-applications', [StandaloneGameQrJoinController::class, 'applications'])
+                ->name('late.applications');
+
             Route::get('/candidates', StandaloneGameCandidateSearchController::class)->name('candidates');
             Route::post('/apply', [StandaloneGameAdmissionController::class, 'apply'])->name('apply');
             Route::post('/invite', [StandaloneGameAdmissionController::class, 'invite'])->name('invite');

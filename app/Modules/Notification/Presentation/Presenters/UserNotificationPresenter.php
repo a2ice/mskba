@@ -20,6 +20,8 @@ final class UserNotificationPresenter
             'created_at' => $notification->created_at?->toIso8601String(),
             'context' => array_filter([
                 'source' => $notification->payload['source'] ?? null,
+                'event_id' => $notification->payload['event_id'] ?? null,
+                'game_id' => $notification->payload['game_id'] ?? null,
                 'tournament_id' => $notification->payload['tournament_id'] ?? null,
                 'tournament_admission_id' => $notification->payload['tournament_admission_id'] ?? null,
                 'tournament_admission_status' => $notification->payload['tournament_admission_status'] ?? null,
