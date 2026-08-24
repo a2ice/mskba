@@ -6,12 +6,25 @@
 ])
 
 @section('section-content')
+    @php($openDuplicateId = (int) session('open_user_duplicate_id', 0))
+
     @if(session('success'))
-        <div class="admin-empty">{{ session('success') }}</div>
+        <div class="admin-empty" role="status">{{ session('success') }}</div>
     @endif
 
     @if(session('error'))
-        <div class="admin-empty">{{ session('error') }}</div>
+        <div class="admin-empty" role="alert">{{ session('error') }}</div>
+    @endif
+
+    @if($errors->any())
+        <div class="admin-empty" role="alert" tabindex="-1">
+            <strong>Не удалось выполнить действие.</strong>
+            <ul>
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
     @endif
 
     <form method="GET" action="{{ route('admin.users.duplicates') }}" class="admin-filter">
@@ -104,7 +117,7 @@
                 ], true));
                 $activeEvidence = $duplicate->evidence->where('is_active', true);
             @endphp
-            <div class="admin-action-modal" data-admin-action-modal="user-duplicate-{{ $duplicate->id }}" hidden>
+            <div class="admin-action-modal" data-admin-action-modal="user-duplicate-{{ $duplicate->id }}" @if($openDuplicateId !== (int) $duplicate->id) hidden @endif>
                 <div class="admin-action-modal__backdrop" data-admin-action-modal-close></div>
                 <section class="admin-action-modal__dialog admin-action-modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="userDuplicateTitle{{ $duplicate->id }}">
                     <button type="button" class="admin-action-modal__close" data-admin-action-modal-close aria-label="Закрыть"></button>
@@ -144,11 +157,18 @@
                             <form method="POST" action="{{ route('admin.users.duplicates.merge', $duplicate) }}" class="admin-user-duplicate-form">
                                 @csrf
                                 <h3>Объединить аккаунты</h3>
-                                <label><input type="radio" name="canonical_user_id" value="{{ $first->id }}" required> Основной #{{ $first->id }} · {{ $label($first) }}</label>
-                                <label><input type="radio" name="canonical_user_id" value="{{ $second->id }}" required> Основной #{{ $second->id }} · {{ $label($second) }}</label>
-                                <label class="admin-user-duplicate-confirm"><input type="checkbox" name="confirm_merge" value="1" required><span>Я проверил оба аккаунта и понимаю, что способы входа alias будут давать доступ к основному аккаунту.</span></label>
+                                @if($openDuplicateId === (int) $duplicate->id && $errors->any())
+                                    <div class="admin-empty" role="alert" tabindex="-1">
+                                        @foreach($errors->all() as $error)
+                                            <div>{{ $error }}</div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                <label><input type="radio" name="canonical_user_id" value="{{ $first->id }}" @checked($openDuplicateId === (int) $duplicate->id && (int) old('canonical_user_id') === (int) $first->id) required> Основной #{{ $first->id }} · {{ $label($first) }}</label>
+                                <label><input type="radio" name="canonical_user_id" value="{{ $second->id }}" @checked($openDuplicateId === (int) $duplicate->id && (int) old('canonical_user_id') === (int) $second->id) required> Основной #{{ $second->id }} · {{ $label($second) }}</label>
+                                <label class="admin-user-duplicate-confirm"><input type="checkbox" name="confirm_merge" value="1" @checked($openDuplicateId === (int) $duplicate->id && old('confirm_merge')) required><span>Я проверил оба аккаунта и понимаю, что способы входа alias будут давать доступ к основному аккаунту.</span></label>
                                 @if($hasElevatedRole)
-                                    <label class="admin-user-duplicate-confirm"><input type="checkbox" name="confirm_privileged" value="1" required><span>Я отдельно проверил системные роли и подтверждаю объединение аккаунта с расширенными правами.</span></label>
+                                    <label class="admin-user-duplicate-confirm"><input type="checkbox" name="confirm_privileged" value="1" @checked($openDuplicateId === (int) $duplicate->id && old('confirm_privileged')) required><span>Я отдельно проверил системные роли и подтверждаю объединение аккаунта с расширенными правами.</span></label>
                                 @endif
                                 <button class="btn btn--primary btn--sm" type="submit">Объединить аккаунты</button>
                             </form>
