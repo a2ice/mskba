@@ -1,0 +1,62 @@
+name: Verify admission sync and toasts
+
+on:
+  push:
+    branches:
+      - fix/111-admission-sync-toast
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, sqlite3, pdo_sqlite, gd
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Pint
+        run: vendor/bin/pint --test app/Modules/Event/Application/Services/GameAdmissionService.php app/Modules/Event/Application/Services/GameRecruitmentNotificationResolver.php app/Modules/Event/Infrastructure/Observers/GameAdmissionNotificationObserver.php app/Modules/Event/Infrastructure/Providers/EventLifecycleServiceProvider.php app/Modules/Notification/Presentation/Presenters/UserNotificationPresenter.php tests/Feature/Event/GameAdmissionSynchronizationTest.php
+
+      - name: New synchronization test
+        run: php artisan test tests/Feature/Event/GameAdmissionSynchronizationTest.php
+
+      - name: Recruitment regression
+        run: php artisan test tests/Feature/Event/StandaloneGameRecruitmentWorkflowTest.php tests/Feature/Event/StandaloneGameQrJoinTest.php
+
+      - name: Telegram and notification regression
+        env:
+          TELEGRAM_BOT_USERNAME: MSKBABot
+        run: php artisan test tests/Feature/Telegram/TelegramEventParticipationModeTest.php tests/Feature/Notification/UserNotificationTest.php
+
+      - name: JavaScript syntax
+        run: |
+          node --check resources/themes/mskba_dark/js/features/notification-toasts.js
+          node --check resources/themes/mskba_dark/js/features/standalone-game-recruitment.js
+
+      - name: Frontend build
+        run: |
+          npm ci
+          npm run build
