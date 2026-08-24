@@ -5,6 +5,7 @@ namespace Tests\Feature\Event;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
+use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -55,7 +56,7 @@ final class StandaloneGameQrJoinTest extends TestCase
 
         $this->actingAs($player)
             ->from($joinUrl)
-            ->post(route('events.games.recruitment.apply', $route))
+            ->post(route('events.games.recruitment.join.apply', $route))
             ->assertRedirect($joinUrl);
 
         $admission = $game->admissions()->whereIn('user_id', $player->canonical()->identityIds())->latest('id')->firstOrFail();
@@ -69,7 +70,7 @@ final class StandaloneGameQrJoinTest extends TestCase
             ->assertSee('статус обновится автоматически в realtime');
     }
 
-    public function test_organizer_decision_is_delivered_through_existing_realtime_notification_and_join_page_updates_state(): void
+    public function test_organizer_decision_before_formation_uses_existing_admission_flow_and_join_page_updates_state(): void
     {
         $organizer = $this->confirmedUser('qr-decision-organizer');
         $player = $this->confirmedUser('qr-decision-player');
@@ -77,7 +78,7 @@ final class StandaloneGameQrJoinTest extends TestCase
         $route = [$game->event->routeIdentifier(), $game->id];
 
         $this->actingAs($player)
-            ->postJson(route('events.games.recruitment.apply', $route))
+            ->postJson(route('events.games.recruitment.join.apply', $route))
             ->assertOk();
         $admission = $game->admissions()->whereIn('user_id', $player->canonical()->identityIds())->latest('id')->firstOrFail();
 
@@ -100,7 +101,96 @@ final class StandaloneGameQrJoinTest extends TestCase
             ->get(route('events.games.recruitment.join', $route))
             ->assertOk()
             ->assertSee('Заявка принята')
-            ->assertSee('пул и сформирует сбалансированные стороны');
+            ->assertSee('balanced-формирование');
+    }
+
+    public function test_player_can_apply_after_start_and_organizer_assigns_them_directly_to_existing_side(): void
+    {
+        $organizer = $this->confirmedUser('qr-late-organizer');
+        $first = $this->confirmedUser('qr-late-first');
+        $second = $this->confirmedUser('qr-late-second');
+        $late = $this->confirmedUser('qr-late-player');
+        $game = $this->createStandaloneGame($organizer, GameRecruitmentModeEnum::INDIVIDUAL_DRAFT);
+        $route = [$game->event->routeIdentifier(), $game->id];
+
+        $this->acceptInitialApplication($game, $organizer, $first);
+        $this->acceptInitialApplication($game, $organizer, $second);
+        $this->confirmBalancedSides($game, $organizer);
+
+        $this->actingAs($organizer)
+            ->postJson(route('events.games.start', $route))
+            ->assertOk();
+        $this->assertSame(GameStatusEnum::IN_PROGRESS, $game->fresh()->status);
+
+        $joinUrl = route('events.games.recruitment.join', $route);
+        $this->actingAs($late)
+            ->get($joinUrl)
+            ->assertOk()
+            ->assertSee('Игра уже идёт')
+            ->assertSee('Подать заявку на игру');
+
+        $this->actingAs($late)
+            ->postJson(route('events.games.recruitment.join.apply', $route))
+            ->assertOk();
+        $admission = $game->admissions()->whereIn('user_id', $late->canonical()->identityIds())->latest('id')->firstOrFail();
+        $this->assertSame(GameAdmissionStatusEnum::PENDING, $admission->status);
+
+        $side = $game->sides()->orderBy('slot')->firstOrFail();
+        $this->actingAs($organizer)
+            ->postJson(route('events.games.recruitment.late.accept', [...$route, $admission->id]), [
+                'side' => $side->slot,
+            ])
+            ->assertOk();
+
+        $this->assertSame(GameAdmissionStatusEnum::ACCEPTED, $admission->fresh()->status);
+        $this->assertDatabaseHas('game_roster_entries', [
+            'game_id' => $game->id,
+            'game_side_id' => $side->id,
+            'user_id' => $late->canonical()->id,
+            'status' => 'selected',
+        ]);
+        $this->assertDatabaseHas('event_participants', [
+            'event_id' => $game->event_id,
+            'user_id' => $late->canonical()->id,
+            'status' => 'confirmed',
+        ]);
+
+        $this->actingAs($late)
+            ->get($joinUrl)
+            ->assertOk()
+            ->assertSee('Заявка принята')
+            ->assertSee($side->display_name)
+            ->assertSee('Игра уже идёт — можно подключаться.');
+    }
+
+    public function test_organizer_can_stop_late_applications_without_ending_active_game(): void
+    {
+        $organizer = $this->confirmedUser('qr-stop-organizer');
+        $first = $this->confirmedUser('qr-stop-first');
+        $second = $this->confirmedUser('qr-stop-second');
+        $game = $this->createStandaloneGame($organizer, GameRecruitmentModeEnum::INDIVIDUAL_DRAFT);
+        $route = [$game->event->routeIdentifier(), $game->id];
+
+        $this->acceptInitialApplication($game, $organizer, $first);
+        $this->acceptInitialApplication($game, $organizer, $second);
+        $this->confirmBalancedSides($game, $organizer);
+        $this->actingAs($organizer)->postJson(route('events.games.start', $route))->assertOk();
+
+        $this->actingAs($organizer)
+            ->patchJson(route('events.games.recruitment.late.applications', $route), ['enabled' => false])
+            ->assertOk();
+
+        $player = $this->confirmedUser('qr-stop-player');
+        $this->actingAs($player)
+            ->get(route('events.games.recruitment.join', $route))
+            ->assertOk()
+            ->assertSee('Набор на эту игру закрыт.')
+            ->assertDontSee('Подать заявку на игру');
+
+        $this->actingAs($player)
+            ->postJson(route('events.games.recruitment.join.apply', $route))
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Сейчас новые заявки на эту игру не принимаются.');
     }
 
     public function test_qr_join_is_only_available_for_individual_draft_standalone_games(): void
@@ -130,6 +220,48 @@ final class StandaloneGameQrJoinTest extends TestCase
             ->assertDontSee('Подать заявку на игру');
     }
 
+    private function acceptInitialApplication($game, User $organizer, User $player): void
+    {
+        $route = [$game->event->routeIdentifier(), $game->id];
+        $this->actingAs($player)
+            ->postJson(route('events.games.recruitment.join.apply', $route))
+            ->assertOk();
+        $admission = $game->admissions()->whereIn('user_id', $player->canonical()->identityIds())->latest('id')->firstOrFail();
+        $this->actingAs($organizer)
+            ->postJson(route('events.games.recruitment.respond', [...$route, $admission->id]), [
+                'decision' => GameAdmissionStatusEnum::ACCEPTED->value,
+            ])
+            ->assertOk();
+    }
+
+    private function confirmBalancedSides($game, User $organizer): void
+    {
+        $route = [$game->event->routeIdentifier(), $game->id];
+        $preview = $this->actingAs($organizer)
+            ->postJson(route('events.games.recruitment.formation.preview', $route), [
+                'assessment_source' => 'self_assessment',
+                'seed' => 108,
+            ])
+            ->assertOk()
+            ->json();
+
+        $payload = [
+            'pool_fingerprint' => $preview['pool_fingerprint'],
+            'teams' => collect($preview['teams'])->map(fn (array $team): array => [
+                'number' => $team['number'],
+                'name' => $team['name'],
+                'logo_preset' => $team['logo_preset'],
+                'user_ids' => collect($team['players'])->pluck('id')->all(),
+            ])->all(),
+        ];
+
+        $this->actingAs($organizer)
+            ->postJson(route('events.games.recruitment.formation.apply', $route), $payload)
+            ->assertOk();
+        $game->refresh();
+        $this->assertNotNull($game->sides_confirmed_at);
+    }
+
     private function createStandaloneGame(User $organizer, GameRecruitmentModeEnum $mode)
     {
         [$venue, $start] = $this->availableVenue();
@@ -139,7 +271,7 @@ final class StandaloneGameQrJoinTest extends TestCase
             'type' => EventTypeEnum::GAME->value,
             'visibility' => 'public',
             'description' => null,
-            'starts_at' => $start->format('Y-m-d\TH:i'),
+            'starts_at' => $start->format('Y-m-d\\TH:i'),
             'duration_minutes' => 90,
             'max_participants' => 20,
             'game_recruitment_mode' => $mode->value,
