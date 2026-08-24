@@ -14,6 +14,7 @@ use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
 use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameRosterStatusEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
+use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Event\Domain\Models\GameAdmission;
@@ -85,6 +86,7 @@ final class StandaloneGameQrJoinService
         }, 3);
 
         $this->notifyOrganizer($game, $admission);
+        event(new EventChanged($game->event_id));
 
         return $admission;
     }
@@ -112,6 +114,8 @@ final class StandaloneGameQrJoinService
                 'responded_at' => now(),
             ])->save();
         }, 3);
+
+        event(new EventChanged($game->event_id));
     }
 
     public function acceptToSide(Game $game, GameAdmission $admission, Actor $actor, string $slot): GameAdmission
@@ -187,6 +191,7 @@ final class StandaloneGameQrJoinService
         }, 3);
 
         $this->notifyApplicant($game, $updated, true, $slot);
+        event(new EventChanged($game->event_id));
 
         return $updated;
     }
@@ -217,13 +222,14 @@ final class StandaloneGameQrJoinService
         }, 3);
 
         $this->notifyApplicant($game, $updated, false);
+        event(new EventChanged($game->event_id));
 
         return $updated;
     }
 
     public function setApplicationsEnabled(Game $game, Actor $actor, bool $enabled): Game
     {
-        return DB::transaction(function () use ($game, $actor, $enabled): Game {
+        $updated = DB::transaction(function () use ($game, $actor, $enabled): Game {
             $event = Event::query()->whereKey($game->event_id)->lockForUpdate()->firstOrFail();
             $this->eventAccess->assertAllows($event, $actor, EventResponsibilityPermissionEnum::MANAGE_PARTICIPANTS);
             $lockedGame = Game::query()->whereKey($game->id)->lockForUpdate()->firstOrFail();
@@ -236,6 +242,10 @@ final class StandaloneGameQrJoinService
 
             return $lockedGame->fresh();
         }, 3);
+
+        event(new EventChanged($updated->event_id));
+
+        return $updated;
     }
 
     private function assertAvailable(Event $event, Game $game): void

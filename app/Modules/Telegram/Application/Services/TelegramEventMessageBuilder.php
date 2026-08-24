@@ -6,8 +6,15 @@ use App\Modules\Event\Domain\Enums\EventParticipantStatusEnum;
 use App\Modules\Event\Domain\Enums\EventResponsibilityStatusEnum;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
+use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
+use App\Modules\Event\Domain\Enums\GameAdmissionCandidateTypeEnum;
+use App\Modules\Event\Domain\Enums\GameAdmissionDirectionEnum;
+use App\Modules\Event\Domain\Enums\GameAdmissionStatusEnum;
+use App\Modules\Event\Domain\Enums\GameFormatEnum;
+use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\Game;
 use Illuminate\Support\Str;
 
 final class TelegramEventMessageBuilder
@@ -24,18 +31,43 @@ final class TelegramEventMessageBuilder
             ? (string) $participants
             : "{$participants}/{$event->max_participants}";
         $description = trim((string) $event->description);
+        $primaryGame = $this->primaryGame($event);
 
         $lines = [
             '🏀 <b>'.$this->escape($this->title($event)).'</b>',
             'Тип активности: '.$this->escape($event->type->label()),
-            'Описание: '.$this->escape(
-                $description === '' ? '—' : Str::limit($description, 1000),
-            ),
-            '',
-            '📍 '.$this->escape($event->venue->name),
-            '🗓 '.$startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i').' (МСК)',
-            '👥 Участники: '.$capacity,
         ];
+
+        if ($event->type === EventTypeEnum::GAME && $primaryGame !== null) {
+            $lines[] = 'Формат: '.$this->escape($this->gameFormat($primaryGame));
+            if ($primaryGame->recruitment_mode !== null) {
+                $lines[] = 'Набор: '.$this->escape($primaryGame->recruitment_mode->label());
+            }
+
+            if ($primaryGame->recruitment_mode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT) {
+                [$accepted, $pending] = $this->individualPoolCounts($primaryGame);
+                $lines[] = '👥 Пул игроков: '.$accepted.' принято'.($pending > 0 ? ' · '.$pending.' ожидают' : '');
+                $lines[] = '📝 Заявки: '.($this->canJoinIndividualGame($event, $primaryGame) ? 'принимаются' : 'закрыты');
+            } elseif ($primaryGame->recruitment_mode === GameRecruitmentModeEnum::PREFORMED_TEAMS) {
+                $teamNames = $this->preformedTeamNames($primaryGame);
+                $lines[] = $teamNames === []
+                    ? '🤝 Команды: формируются'
+                    : '🤝 Команды: '.$this->escape(implode(' — ', $teamNames));
+            }
+
+            $scoreLine = $this->scoreLine($primaryGame);
+            if ($scoreLine !== null) {
+                $lines[] = $scoreLine;
+            }
+        }
+
+        $lines[] = 'Описание: '.$this->escape(
+            $description === '' ? '—' : Str::limit($description, 1000),
+        );
+        $lines[] = '';
+        $lines[] = '📍 '.$this->escape($event->venue->name);
+        $lines[] = '🗓 '.$startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i').' (МСК)';
+        $lines[] = '👥 Участники: '.$capacity;
 
         $responsibles = $event->participants
             ->filter(fn ($participant) => $participant->status === EventParticipantStatusEnum::CONFIRMED
@@ -49,13 +81,17 @@ final class TelegramEventMessageBuilder
 
         if ($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty()) {
             $lines[] = '';
-            $lines[] = '🎮 <b>Мини-игры</b>';
+            $lines[] = '🎮 <b>Мини-игры: '.$event->games->count().'</b>';
             foreach ($event->games as $game) {
                 $sides = $game->sides->keyBy('slot');
                 $sideA = $sides->get('A');
                 $sideB = $sides->get('B');
-                $score = $game->status === GameStatusEnum::COMPLETED
-                    && $sideA?->score !== null && $sideB?->score !== null
+                $showScore = in_array($game->status, [
+                    GameStatusEnum::IN_PROGRESS,
+                    GameStatusEnum::AWAITING_RESULT,
+                    GameStatusEnum::COMPLETED,
+                ], true);
+                $score = $showScore && $sideA?->score !== null && $sideB?->score !== null
                     ? "{$sideA->score}:{$sideB->score}"
                     : '—:—';
                 $lines[] = '• <b>'.$this->escape($game->title ?: 'Игра #'.$game->id).'</b>';
@@ -71,9 +107,15 @@ final class TelegramEventMessageBuilder
         } elseif ($event->status === EventStatusEnum::COMPLETED) {
             $lines[] = '';
             $lines[] = '✅ <b>Мероприятие состоялось</b>';
+        } elseif ($primaryGame?->status === GameStatusEnum::IN_PROGRESS) {
+            $lines[] = '';
+            $lines[] = '🟢 <b>Игра идёт сейчас</b>';
+        } elseif ($event->ends_at->lessThanOrEqualTo(now())) {
+            $lines[] = '';
+            $lines[] = '⏱ <b>Время мероприятия завершилось</b>';
         } elseif ($event->starts_at->lessThanOrEqualTo(now())) {
             $lines[] = '';
-            $lines[] = '⏱ <b>Запись завершена</b>';
+            $lines[] = '🟢 <b>Мероприятие уже началось</b>';
         }
 
         return implode("\n", $lines);
@@ -83,18 +125,9 @@ final class TelegramEventMessageBuilder
     public function replyMarkup(Event $event): array
     {
         $rows = [];
-
-        if ($event->status === EventStatusEnum::PUBLISHED && $event->starts_at->isFuture()) {
-            $rows[] = [
-                [
-                    'text' => '✅ Пойду',
-                    'callback_data' => "event:{$event->id}:join",
-                ],
-                [
-                    'text' => '❌ Не пойду',
-                    'callback_data' => "event:{$event->id}:leave",
-                ],
-            ];
+        $participationButtons = $this->participationButtons($event);
+        if ($participationButtons !== []) {
+            $rows[] = $participationButtons;
         }
 
         $rows[] = [[
@@ -103,6 +136,161 @@ final class TelegramEventMessageBuilder
         ]];
 
         return ['inline_keyboard' => $rows];
+    }
+
+    /** @return list<array{text:string,callback_data:string}> */
+    private function participationButtons(Event $event): array
+    {
+        if ($event->status !== EventStatusEnum::PUBLISHED
+            || $event->visibility !== EventVisibilityEnum::PUBLIC) {
+            return [];
+        }
+
+        $primaryGame = $this->primaryGame($event);
+        if ($event->type === EventTypeEnum::GAME && $primaryGame?->recruitment_mode !== null) {
+            if ($primaryGame->recruitment_mode === GameRecruitmentModeEnum::PREFORMED_TEAMS
+                || ! $this->individualGameParticipationOpen($event, $primaryGame)) {
+                return [];
+            }
+
+            $buttons = [];
+            if ($primaryGame->accepts_applications) {
+                $buttons[] = [
+                    'text' => '✅ Пойду',
+                    'callback_data' => "event:{$event->id}:join",
+                ];
+            }
+            $buttons[] = [
+                'text' => '❌ Не пойду',
+                'callback_data' => "event:{$event->id}:leave",
+            ];
+
+            return $buttons;
+        }
+
+        if ($event->ends_at->lessThanOrEqualTo(now())) {
+            return [];
+        }
+
+        return [
+            [
+                'text' => '✅ Пойду',
+                'callback_data' => "event:{$event->id}:join",
+            ],
+            [
+                'text' => '❌ Не пойду',
+                'callback_data' => "event:{$event->id}:leave",
+            ],
+        ];
+    }
+
+    private function individualGameParticipationOpen(Event $event, Game $game): bool
+    {
+        if ($game->actual_ended_at !== null) {
+            return false;
+        }
+        if ($game->status === GameStatusEnum::IN_PROGRESS) {
+            return true;
+        }
+
+        return $game->status === GameStatusEnum::SCHEDULED
+            && $event->ends_at->isFuture();
+    }
+
+    private function canJoinIndividualGame(Event $event, Game $game): bool
+    {
+        return $game->recruitment_mode === GameRecruitmentModeEnum::INDIVIDUAL_DRAFT
+            && $game->accepts_applications
+            && $this->individualGameParticipationOpen($event, $game)
+            && $event->status === EventStatusEnum::PUBLISHED
+            && $event->visibility === EventVisibilityEnum::PUBLIC;
+    }
+
+    private function primaryGame(Event $event): ?Game
+    {
+        if ($event->primary_game_id === null) {
+            return null;
+        }
+        if ($event->relationLoaded('primaryGame')) {
+            return $event->primaryGame;
+        }
+        if ($event->relationLoaded('games')) {
+            return $event->games->firstWhere('id', (int) $event->primary_game_id);
+        }
+
+        return $event->primaryGame()
+            ->with(['sides', 'admissions.user', 'admissions.team', 'rosterEntries'])
+            ->first();
+    }
+
+    private function gameFormat(Game $game): string
+    {
+        if ($game->format === GameFormatEnum::CUSTOM) {
+            return 'Свой формат · '.$game->formatLabel();
+        }
+
+        return $game->format?->label() ?? $game->formatLabel();
+    }
+
+    /** @return array{int,int} */
+    private function individualPoolCounts(Game $game): array
+    {
+        $game->loadMissing('admissions.user');
+        $individual = $game->admissions
+            ->where('candidate_type', GameAdmissionCandidateTypeEnum::USER);
+        $accepted = $individual
+            ->where('status', GameAdmissionStatusEnum::ACCEPTED)
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->count();
+        $pending = $individual
+            ->where('status', GameAdmissionStatusEnum::PENDING)
+            ->where('direction', GameAdmissionDirectionEnum::APPLICATION)
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->count();
+
+        return [$accepted, $pending];
+    }
+
+    /** @return list<string> */
+    private function preformedTeamNames(Game $game): array
+    {
+        $game->loadMissing(['sides', 'admissions.team']);
+        if ($game->sides->isNotEmpty()) {
+            return $game->sides
+                ->sortBy('slot')
+                ->map(fn ($side): string => $side->display_name ?: $side->team?->name ?: 'Команда '.$side->slot)
+                ->values()
+                ->all();
+        }
+
+        return $game->admissions
+            ->where('candidate_type', GameAdmissionCandidateTypeEnum::TEAM)
+            ->where('status', GameAdmissionStatusEnum::ACCEPTED)
+            ->map(fn ($admission): ?string => $admission->team?->name)
+            ->filter()
+            ->unique()
+            ->take(2)
+            ->values()
+            ->all();
+    }
+
+    private function scoreLine(Game $game): ?string
+    {
+        $game->loadMissing('sides');
+        $sides = $game->sides->keyBy('slot');
+        $sideA = $sides->get('A');
+        $sideB = $sides->get('B');
+        if ($sideA === null || $sideB === null) {
+            return null;
+        }
+
+        return '🏀 '.$this->escape($sideA->display_name ?: 'Команда A')
+            .' <b>'.((int) ($sideA->score ?? 0)).':'.((int) ($sideB->score ?? 0)).'</b> '
+            .$this->escape($sideB->display_name ?: 'Команда B');
     }
 
     private function title(Event $event): string

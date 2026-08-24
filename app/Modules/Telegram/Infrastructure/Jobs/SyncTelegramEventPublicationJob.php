@@ -45,6 +45,12 @@ final class SyncTelegramEventPublicationJob implements ShouldQueue
             ->with([
                 'venue.schedule',
                 'participants.user.profile',
+                'primaryGame' => fn ($query) => $query->with([
+                    'sides.team',
+                    'admissions.user',
+                    'admissions.team',
+                    'rosterEntries',
+                ]),
                 'games' => fn ($query) => $query
                     ->with('sides')
                     ->orderByRaw('scheduled_starts_at nulls last')
