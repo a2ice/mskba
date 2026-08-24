@@ -159,6 +159,23 @@ final class CreationOperationalPermissionTest extends TestCase
         ]);
     }
 
+    public function test_unverified_user_with_explicit_denial_is_not_sent_into_verification_flow(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
+        UserOperationalPermission::query()->create([
+            'user_id' => $user->id,
+            'permission' => UserOperationalPermissionEnum::CREATE_TOURNAMENT,
+            'is_allowed' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('tournaments.create'))
+            ->assertRedirect(route('account.confirmation'))
+            ->assertSessionHas('error')
+            ->assertSessionMissing('info')
+            ->assertSessionMissing('operational_permission_intent');
+    }
+
     public function test_contact_confirmation_grants_permissions_and_returns_to_intended_creation_flow(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);

@@ -26,25 +26,42 @@ final class EnsureOperationalPermission
             return redirect()->route('login');
         }
 
-        $hasVerifiedContact = $this->verifiedContactGranter->hasVerifiedContact($user);
-        if ($hasVerifiedContact) {
-            // Eventual-consistency safety net: old verified identities or canonical merges
-            // may not have received the initial snapshot yet. Existing false snapshots
-            // are deliberately preserved by grantMissing().
-            $this->verifiedContactGranter->grantMissing($user);
-        }
-
-        if ($this->permissions->allows($user, $permission)) {
-            $request->session()->forget('operational_permission_intent');
-
-            return $next($request);
-        }
-
         if ($user->isBlocked() || $user->trashed()) {
             abort(403, 'Действие недоступно для заблокированного или удаленного аккаунта.');
         }
 
+        $snapshot = $user->operationalPermissions()
+            ->where('permission', $permission->value)
+            ->first();
+
+        if ($snapshot !== null) {
+            $request->session()->forget('operational_permission_intent');
+
+            if ($snapshot->is_allowed) {
+                return $next($request);
+            }
+
+            return redirect()
+                ->route($user->isConfirmed() ? 'account.contacts' : 'account.confirmation')
+                ->with('error', $this->explicitDenialMessage($permission));
+        }
+
+        $hasVerifiedContact = $this->verifiedContactGranter->hasVerifiedContact($user);
         if ($hasVerifiedContact) {
+            // Eventual-consistency safety net: old verified identities or canonical merges
+            // may not have received the initial snapshot yet. Explicit false snapshots
+            // were handled above and are never overwritten by grantMissing().
+            $this->verifiedContactGranter->grantMissing($user);
+
+            if ($this->permissions->allows($user, $permission)) {
+                $request->session()->forget('operational_permission_intent');
+
+                return $next($request);
+            }
+
+            // An administrator may have written an explicit denial concurrently
+            // while the missing grant was being resolved. Never convert that denial
+            // into another verification prompt.
             $request->session()->forget('operational_permission_intent');
 
             return redirect()
