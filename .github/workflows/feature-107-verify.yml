@@ -45,7 +45,15 @@ jobs:
         run: php artisan test --compact tests/Feature/Identity/CreationOperationalPermissionTest.php
 
       - name: Run PHP regression suite
-        run: php artisan test --compact
+        shell: bash
+        run: |
+          mapfile -t test_files < <(find tests -type f -name '*Test.php' ! -path 'tests/Feature/Telegram/TelegramMiniAppAuthTest.php' | sort)
+          php artisan test --compact "${test_files[@]}"
+
+      - name: Verify Telegram mini app separately
+        env:
+          TELEGRAM_BOT_USERNAME: mskba_test_bot
+        run: php artisan test --compact tests/Feature/Telegram/TelegramMiniAppAuthTest.php
 
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts
