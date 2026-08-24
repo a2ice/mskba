@@ -1,0 +1,43 @@
+name: Verify Telegram card copy
+
+on:
+  push:
+    branches:
+      - fix/111-telegram-card-copy
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, sqlite3, pdo_sqlite, gd
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Pint
+        run: vendor/bin/pint --test app/Modules/Telegram/Application/Services/TelegramEventMessageBuilder.php tests/Feature/Telegram/TelegramEventParticipationModeTest.php
+
+      - name: Telegram participation card tests
+        run: php artisan test tests/Feature/Telegram/TelegramEventParticipationModeTest.php
+
+      - name: Existing Telegram integration isolated
+        env:
+          TELEGRAM_BOT_USERNAME: MSKBABot
+        run: php artisan test tests/Feature/Telegram/TelegramEventIntegrationTest.php
