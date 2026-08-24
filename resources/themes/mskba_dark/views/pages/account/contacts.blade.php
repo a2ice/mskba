@@ -10,6 +10,46 @@
     'sidebarPartial' => 'theme::partials.account.sidebar',
 ])
 
+@section('styles')
+    <style>
+        @media (max-width: 760px) {
+            .account-identity-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .account-identity-card {
+                min-width: 0;
+                padding: 16px;
+            }
+
+            .account-identity-card__heading {
+                align-items: flex-start;
+            }
+
+            .account-identity-card [data-account-telegram-link] {
+                min-width: 0;
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .account-identity-card [data-account-telegram-link] iframe {
+                max-width: 100% !important;
+            }
+
+            .account-identity-card .btn {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 460px) {
+            .account-identity-card .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+@endsection
+
 @section('section-content')
 
     @if(isset($error))
