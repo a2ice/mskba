@@ -1,0 +1,12 @@
+.venue-booking-action:disabled {
+    cursor: not-allowed;
+    opacity: .48;
+    box-shadow: none;
+    filter: saturate(.35);
+}
+
+.venue-booking-action:disabled:hover,
+.venue-booking-action:disabled:focus-visible {
+    transform: none;
+    box-shadow: none;
+}
