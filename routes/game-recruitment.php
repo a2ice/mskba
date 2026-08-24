@@ -3,6 +3,7 @@
 use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameAdmissionController;
 use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameCandidateSearchController;
 use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameFormationController;
+use App\Modules\Event\Presentation\Http\Controllers\StandaloneGameQrJoinController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('events/{event}/games/{game}/recruitment')
@@ -10,6 +11,7 @@ Route::prefix('events/{event}/games/{game}/recruitment')
     ->name('events.games.recruitment.')
     ->group(function (): void {
         Route::get('/panel', [StandaloneGameAdmissionController::class, 'panel'])->name('panel');
+        Route::get('/join', StandaloneGameQrJoinController::class)->name('join');
 
         Route::middleware('auth')->group(function (): void {
             Route::get('/candidates', StandaloneGameCandidateSearchController::class)->name('candidates');
