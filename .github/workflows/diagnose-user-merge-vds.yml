@@ -1,0 +1,48 @@
+name: Diagnose user merge on VDS
+
+on:
+  push:
+    branches:
+      - diagnostic/user-merge-vds
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Inspect production state read-only
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba
+
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+
+            echo "== deployed revision =="
+            git rev-parse HEAD
+
+            echo "== users 2 and 33 =="
+            $COMPOSE exec -T phpfpm php artisan tinker --execute='echo json_encode(DB::table("users")->select(["id", "username", "canonical_user_id", "status", "system_role", "updated_at"])->whereIn("id", [2, 33])->orderBy("id")->get(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;'
+
+            echo "== duplicate candidates for users 2 and 33 =="
+            $COMPOSE exec -T phpfpm php artisan tinker --execute='echo json_encode(DB::table("user_duplicates")->select(["id", "user_id", "duplicate_user_id", "status", "score", "resolved_by", "resolved_at", "metadata", "updated_at"])->where(function ($query) { $query->where(["user_id" => 2, "duplicate_user_id" => 33])->orWhere(function ($query) { $query->where(["user_id" => 33, "duplicate_user_id" => 2]); }); })->orderByDesc("id")->get(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;'
+
+            echo "== active evidence for the pair =="
+            $COMPOSE exec -T phpfpm php artisan tinker --execute='echo json_encode(DB::table("user_duplicate_evidence")->select(["id", "user_duplicate_id", "type", "is_active", "first_seen_at", "last_seen_at", "metadata", "updated_at"])->whereIn("user_duplicate_id", DB::table("user_duplicates")->select("id")->where(function ($query) { $query->where(["user_id" => 2, "duplicate_user_id" => 33])->orWhere(function ($query) { $query->where(["user_id" => 33, "duplicate_user_id" => 2]); }); }))->orderByDesc("id")->get(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE).PHP_EOL;'
+
+            echo "== recent related Laravel errors =="
+            if [ -f storage/logs/laravel.log ]; then
+              tail -n 4000 storage/logs/laravel.log \
+                | grep -E -B 4 -A 30 'production.ERROR|UserDuplicate|ResolveUserDuplicate|CanonicalReactionConsolidator|SQLSTATE' \
+                | tail -n 700 \
+                | sed -E 's/((password|token|secret|authorization)["=: ]+)[^ ,"]+/\1[REDACTED]/Ig' \
+                || true
+            else
+              echo "storage/logs/laravel.log not found"
+            fi
