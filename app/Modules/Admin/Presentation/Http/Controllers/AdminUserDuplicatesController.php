@@ -70,6 +70,7 @@ final class AdminUserDuplicatesController extends Controller
                 ->route('admin.users.duplicates')
                 ->withErrors($validator)
                 ->withInput()
+                ->with('merge_error_messages', $validator->errors()->all())
                 ->with('open_user_duplicate_id', $userDuplicate->id);
         }
 
@@ -93,6 +94,7 @@ final class AdminUserDuplicatesController extends Controller
                 ->route('admin.users.duplicates')
                 ->withErrors(['merge' => $exception->getMessage()])
                 ->withInput()
+                ->with('merge_error_messages', [$exception->getMessage()])
                 ->with('open_user_duplicate_id', $userDuplicate->id);
         }
 
