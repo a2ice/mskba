@@ -4,9 +4,11 @@ namespace App\Modules\Event\Infrastructure\Providers;
 
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Event\Domain\Events\EventChanged;
+use App\Modules\Event\Domain\Models\GameAdmission;
 use App\Modules\Event\Domain\Models\GameRosterEntry;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameLifecycleState;
 use App\Modules\Event\Infrastructure\Listeners\BroadcastChangedGames;
+use App\Modules\Event\Infrastructure\Observers\GameAdmissionNotificationObserver;
 use App\Modules\Event\Infrastructure\Observers\GameRosterEntryObserver;
 use App\Modules\Event\Presentation\Http\Controllers\EventManagementController;
 use Illuminate\Support\Facades\Event;
@@ -18,6 +20,7 @@ final class EventLifecycleServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        GameAdmission::observe(GameAdmissionNotificationObserver::class);
         GameRosterEntry::observe(GameRosterEntryObserver::class);
         Event::listen(EventChanged::class, BroadcastChangedGames::class);
         $this->app['router']->pushMiddlewareToGroup('web', EnsureGameLifecycleState::class);
