@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Infrastructure\Providers;
 
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUserDuplicatesController;
 use App\Modules\Contact\Domain\Events\UserContactConfirmed;
+use App\Modules\Identity\Application\Listeners\GrantOperationalPermissionsAfterContactConfirmed;
 use App\Modules\Identity\Application\Listeners\ScanUserDuplicatesAfterContactConfirmed;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\Profile;
@@ -17,6 +18,7 @@ final class IdentityCanonicalizationServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        Event::listen(UserContactConfirmed::class, GrantOperationalPermissionsAfterContactConfirmed::class);
         Event::listen(UserContactConfirmed::class, ScanUserDuplicatesAfterContactConfirmed::class);
 
         Profile::saved(function (Profile $profile): void {
