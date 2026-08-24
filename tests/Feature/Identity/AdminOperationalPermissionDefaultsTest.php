@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Identity;
 
+use App\Modules\Admin\Application\UseCases\ListAdminUsersHandler;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -79,5 +80,34 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
                 app(UserOperationalPermissionChecker::class)->allows($admin, $permission),
             );
         }
+    }
+
+    public function test_admin_user_list_materializes_role_aware_default_values(): void
+    {
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $regular = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::USER,
+        ]);
+
+        $users = collect(app(ListAdminUsersHandler::class)->handle(['per_page' => 50])->items())
+            ->keyBy(fn (User $user): int => (int) $user->id);
+
+        $adminPermissions = $users->get($admin->id)->operationalPermissions
+            ->keyBy(fn (UserOperationalPermission $permission): string => $permission->permission->value);
+        $regularPermissions = $users->get($regular->id)->operationalPermissions
+            ->keyBy(fn (UserOperationalPermission $permission): string => $permission->permission->value);
+
+        foreach (UserOperationalPermissionEnum::cases() as $permission) {
+            $this->assertTrue((bool) $adminPermissions->get($permission->value)->is_allowed);
+        }
+
+        $this->assertTrue((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_COORDINATION->value)->is_allowed);
+        $this->assertTrue((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_TEAM->value)->is_allowed);
+        $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_EVENT->value)->is_allowed);
+        $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_TOURNAMENT->value)->is_allowed);
     }
 }
