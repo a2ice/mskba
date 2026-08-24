@@ -1,27 +1,5 @@
 import QRCode from 'qrcode';
 
-const createShareCard = (joinUrl) => {
-    const card = document.createElement('section');
-    card.className = 'game-qr-share';
-    card.dataset.gameQrShare = '';
-
-    card.innerHTML = `
-        <div class="game-qr-share__copy">
-            <span class="eyebrow">Быстрый сбор игроков</span>
-            <h3>QR для подключения к игре</h3>
-            <p>Покажите код игрокам на площадке. После сканирования они смогут войти в свой аккаунт и подать заявку в balanced-пул.</p>
-            <div class="game-qr-share__actions">
-                <button class="btn btn--secondary btn--sm" type="button" data-game-qr-copy>Скопировать ссылку</button>
-                <a class="btn btn--primary btn--sm" href="${joinUrl}">Открыть страницу игрока</a>
-            </div>
-            <small class="game-qr-share__status" data-game-qr-copy-status aria-live="polite"></small>
-        </div>
-        <div class="game-qr-share__code" data-game-qr-code aria-label="QR-код для подключения к игре"></div>
-    `;
-
-    return card;
-};
-
 const renderQr = async (container, joinUrl) => {
     const canvas = document.createElement('canvas');
     canvas.setAttribute('aria-hidden', 'true');
@@ -34,7 +12,57 @@ const renderQr = async (container, joinUrl) => {
     });
 };
 
-const initGameQrShare = () => {
+const bindShare = (root) => {
+    const joinUrl = root.dataset.gameQrJoinUrl;
+    if (!joinUrl) return;
+
+    const qrContainer = root.querySelector('[data-game-qr-code]');
+    if (qrContainer instanceof HTMLElement) {
+        renderQr(qrContainer, joinUrl).catch(() => {
+            qrContainer.textContent = 'Не удалось построить QR-код.';
+        });
+    }
+
+    root.querySelector('[data-game-qr-copy]')?.addEventListener('click', async () => {
+        const status = root.querySelector('[data-game-qr-copy-status]');
+        try {
+            await navigator.clipboard.writeText(joinUrl);
+            if (status) status.textContent = 'Ссылка скопирована.';
+        } catch {
+            if (status) status.textContent = joinUrl;
+        }
+    });
+};
+
+const bindLateActions = (root) => {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    root.querySelectorAll('[data-game-late-join-ajax]').forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) return;
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const buttons = [...form.querySelectorAll('button, input[type="submit"]')];
+            buttons.forEach((button) => { button.disabled = true; });
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: new FormData(form),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(payload.message || 'Не удалось выполнить действие.');
+                window.location.reload();
+            } catch (error) {
+                window.alert(error.message || 'Не удалось выполнить действие.');
+                buttons.forEach((button) => { button.disabled = false; });
+            }
+        });
+    });
+};
+
+const initOrganizerLateJoinPanel = () => {
     const gameRoot = document.querySelector('[data-game-control]');
     if (!(gameRoot instanceof HTMLElement)) return;
 
@@ -47,49 +75,27 @@ const initGameQrShare = () => {
 
     const gameUrl = new URL(liveUrl, window.location.origin);
     gameUrl.pathname = gameUrl.pathname.replace(/\/live\/?$/, '');
-    const recruitmentBase = `${gameUrl.pathname}/recruitment`;
-    const joinUrl = `${window.location.origin}${recruitmentBase}/join`;
+    const latePanelUrl = `${gameUrl.pathname}/recruitment/late-panel`;
 
-    const enhancePanel = () => {
-        const panel = gameRoot.querySelector('[data-standalone-recruitment-panel]');
-        if (!(panel instanceof HTMLElement) || panel.querySelector('[data-game-qr-share]')) return;
+    fetch(latePanelUrl, { headers: { Accept: 'text/html' } })
+        .then((response) => response.ok ? response.text() : '')
+        .then((html) => {
+            if (!html.trim()) return;
+            const template = document.createElement('template');
+            template.innerHTML = html.trim();
+            const panel = template.content.firstElementChild;
+            if (!(panel instanceof HTMLElement)) return;
 
-        const balancedFormation = panel.querySelector('[data-balanced-formation]');
-        const publicApplyForm = panel.querySelector('form[action$="/apply"]');
-        const individualPublicApplication = publicApplyForm instanceof HTMLFormElement
-            && publicApplyForm.querySelector('[name="team_id"]') === null;
+            const scoreboard = gameRoot.querySelector('[data-game-scoreboard]');
+            if (scoreboard) scoreboard.before(panel);
+            else gameRoot.querySelector('.game-control__header')?.after(panel);
 
-        if (!balancedFormation && !individualPublicApplication) return;
-
-        const applicationsToggle = panel.querySelector('form[action$="/applications"] input[name="enabled"][value="1"]');
-        if (applicationsToggle instanceof HTMLInputElement && !applicationsToggle.checked) return;
-
-        const card = createShareCard(joinUrl);
-        const heading = panel.firstElementChild;
-        if (heading) heading.after(card);
-        else panel.prepend(card);
-
-        const qrContainer = card.querySelector('[data-game-qr-code]');
-        if (qrContainer instanceof HTMLElement) {
-            renderQr(qrContainer, joinUrl).catch(() => {
-                qrContainer.textContent = 'Не удалось построить QR-код.';
-            });
-        }
-
-        card.querySelector('[data-game-qr-copy]')?.addEventListener('click', async () => {
-            const status = card.querySelector('[data-game-qr-copy-status]');
-            try {
-                await navigator.clipboard.writeText(joinUrl);
-                if (status) status.textContent = 'Ссылка скопирована.';
-            } catch {
-                if (status) status.textContent = joinUrl;
-            }
+            bindShare(panel);
+            bindLateActions(panel);
+        })
+        .catch(() => {
+            // QR join management is supplemental; the main game page must remain usable.
         });
-    };
-
-    enhancePanel();
-    const observer = new MutationObserver(enhancePanel);
-    observer.observe(gameRoot, { childList: true, subtree: true });
 };
 
 const initJoinDecisionRefresh = () => {
@@ -106,6 +112,6 @@ const initJoinDecisionRefresh = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    initGameQrShare();
+    initOrganizerLateJoinPanel();
     initJoinDecisionRefresh();
 });
