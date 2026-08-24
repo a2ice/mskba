@@ -3,6 +3,7 @@
 namespace App\Modules\Telegram\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\Services\OperationalPermissionIntentResolver;
 use App\Modules\Identity\Application\Services\UserDuplicateSelfServiceProofStore;
 use App\Modules\Identity\Domain\Enums\UserDuplicateStatusEnum;
 use App\Modules\Telegram\Application\UseCases\LinkTelegramIdentityHandler;
@@ -16,6 +17,7 @@ final class LinkTelegramIdentityController extends Controller
         Request $request,
         LinkTelegramIdentityHandler $link,
         UserDuplicateSelfServiceProofStore $proofs,
+        OperationalPermissionIntentResolver $creationIntent,
     ): JsonResponse {
         $validated = $request->validate([
             'telegram_user' => ['required', 'array'],
@@ -69,10 +71,14 @@ final class LinkTelegramIdentityController extends Controller
             ], 409);
         }
 
+        $resumeUrl = $creationIntent->consumeAllowedReturnUrl($request);
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Telegram подтверждён и привязан к вашему аккаунту.',
-            'redirect_url' => route('account.contacts'),
+            'message' => $resumeUrl === null
+                ? 'Telegram подтверждён и привязан к вашему аккаунту.'
+                : 'Telegram подтверждён. Право на создание включено — можно продолжить.',
+            'redirect_url' => $resumeUrl ?? route('account.contacts'),
         ]);
     }
 }

@@ -61,8 +61,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('user_operational_permissions')
-            ->whereIn('permission', ['event.create', 'tournament.create'])
-            ->delete();
+        // Intentionally do not remove permission snapshots. After deployment these
+        // rows can contain explicit administrator decisions that are impossible to
+        // distinguish safely from the original backfill.
     }
 };

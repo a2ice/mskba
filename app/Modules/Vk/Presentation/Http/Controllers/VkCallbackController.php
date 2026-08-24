@@ -3,6 +3,7 @@
 namespace App\Modules\Vk\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\Services\OperationalPermissionIntentResolver;
 use App\Modules\Vk\Application\Services\VkOAuthFlowStore;
 use App\Modules\Vk\Application\UseCases\CompleteVkAuthenticationHandler;
 use App\Modules\Vk\Application\UseCases\LinkVkIdentityHandler;
@@ -22,6 +23,7 @@ final class VkCallbackController extends Controller
         ResolveVkUserHandler $resolveUser,
         CompleteVkAuthenticationHandler $authenticate,
         LinkVkIdentityHandler $link,
+        OperationalPermissionIntentResolver $creationIntent,
     ): RedirectResponse {
         $failureRoute = 'login';
 
@@ -67,7 +69,16 @@ final class VkCallbackController extends Controller
                     );
                 }
 
-                return redirect()->to($flow['redirect_url'])->with('success', 'VK ID подтверждён и привязан к аккаунту.');
+                $resumeUrl = $creationIntent->consumeAllowedReturnUrl($request);
+
+                return redirect()
+                    ->to($resumeUrl ?? $flow['redirect_url'])
+                    ->with(
+                        'success',
+                        $resumeUrl === null
+                            ? 'VK ID подтверждён и привязан к аккаунту.'
+                            : 'VK ID подтверждён. Право на создание включено — можно продолжить.',
+                    );
             }
 
             $result = $resolveUser->handle($identity);
