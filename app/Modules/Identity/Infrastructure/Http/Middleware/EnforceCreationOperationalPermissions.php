@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Infrastructure\Http\Middleware;
 
+use App\Modules\Identity\Application\Services\OperationalPermissionIntentResolver;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
@@ -15,6 +16,7 @@ final class EnforceCreationOperationalPermissions
         private readonly EnsureOperationalPermission $guard,
         private readonly UserOperationalPermissionChecker $permissions,
         private readonly VerifiedContactOperationalPermissionGranter $verifiedContactGranter,
+        private readonly OperationalPermissionIntentResolver $intentResolver,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -71,14 +73,10 @@ final class EnforceCreationOperationalPermissions
                 ->with('error', 'Контакт подтвержден, но создание по-прежнему отключено операционным правом. Обратитесь к администратору.');
         }
 
-        $returnUrl = (string) ($intent['return_url'] ?? '');
-        if (! str_starts_with($returnUrl, '/') || str_starts_with($returnUrl, '//')) {
-            $returnUrl = $intendedPermission === UserOperationalPermissionEnum::CREATE_TOURNAMENT
-                ? route('tournaments.create', absolute: false)
-                : route('events.wizard', absolute: false);
+        $returnUrl = $this->intentResolver->consumeAllowedReturnUrl($request);
+        if ($returnUrl === null) {
+            return $response;
         }
-
-        $request->session()->forget('operational_permission_intent');
 
         return redirect($returnUrl)
             ->with('status', 'Контакт подтвержден. Право на создание включено — можно продолжить.');
