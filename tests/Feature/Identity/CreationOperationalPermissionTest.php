@@ -18,6 +18,8 @@ final class CreationOperationalPermissionTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected bool $grantCreationPermissionsToConfirmedTestActors = false;
+
     public function test_event_and_tournament_creation_permissions_are_denied_by_default(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
