@@ -1,0 +1,224 @@
+.game-qr-share {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 28px;
+    align-items: center;
+    margin: 20px 0 28px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .045);
+}
+
+.game-qr-share__copy h3 {
+    margin: 5px 0 8px;
+}
+
+.game-qr-share__copy p {
+    max-width: 680px;
+    margin: 0;
+    opacity: .78;
+}
+
+.game-qr-share__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.game-qr-share__status {
+    display: block;
+    min-height: 20px;
+    margin-top: 8px;
+    opacity: .72;
+}
+
+.game-qr-share__code {
+    display: grid;
+    width: 236px;
+    min-height: 236px;
+    place-items: center;
+    padding: 8px;
+    border-radius: 14px;
+    background: #fff;
+    color: #111;
+}
+
+.game-qr-share__code canvas {
+    display: block;
+    width: 220px !important;
+    height: 220px !important;
+}
+
+.game-qr-join__inner {
+    width: min(760px, 100%);
+    margin-inline: auto;
+    padding-bottom: 72px;
+}
+
+.game-qr-join__back {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 22px;
+}
+
+.game-qr-join__hero {
+    margin-bottom: 22px;
+}
+
+.game-qr-join__hero h1 {
+    margin: 5px 0 14px;
+}
+
+.game-qr-join__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.game-qr-join__meta span {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 7px 10px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .04);
+    font-size: .88rem;
+}
+
+.game-qr-join__card {
+    padding: clamp(20px, 4vw, 34px);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .045);
+}
+
+.game-qr-join__auth-warning,
+.game-qr-join__ready,
+.game-qr-join__status,
+.game-qr-join__identity {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.game-qr-join__auth-warning {
+    padding: 18px;
+    border-radius: 14px;
+    background: rgba(41, 169, 235, .1);
+}
+
+.game-qr-join__auth-warning > i,
+.game-qr-join__ready > i,
+.game-qr-join__status > i {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    font-size: 1.7rem;
+}
+
+.game-qr-join__auth-warning p,
+.game-qr-join__ready p,
+.game-qr-join__status p {
+    margin: 5px 0 0;
+    opacity: .8;
+}
+
+.game-qr-join__auth-actions {
+    margin: 20px 0 10px;
+}
+
+.game-qr-join__identity {
+    align-items: center;
+    margin-bottom: 18px;
+    opacity: .78;
+}
+
+.game-qr-join__status,
+.game-qr-join__ready {
+    margin-bottom: 20px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 14px;
+}
+
+.game-qr-join__status.is-accepted {
+    background: rgba(51, 185, 112, .09);
+}
+
+.game-qr-join__status.is-pending {
+    background: rgba(237, 181, 54, .08);
+}
+
+.game-qr-join__status.is-declined {
+    background: rgba(220, 74, 74, .08);
+}
+
+.game-qr-join__pulse {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 auto;
+    margin-top: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: game-qr-join-pulse 1.5s ease-in-out infinite;
+}
+
+.game-qr-join__decision-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.game-qr-join__apply {
+    min-width: 220px;
+}
+
+@keyframes game-qr-join-pulse {
+    0%, 100% { opacity: .35; transform: scale(.75); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 720px) {
+    .game-qr-share {
+        grid-template-columns: 1fr;
+        padding: 18px;
+    }
+
+    .game-qr-share__code {
+        width: min(236px, 100%);
+        min-height: auto;
+        justify-self: center;
+        aspect-ratio: 1;
+    }
+
+    .game-qr-share__code canvas {
+        width: min(220px, 100%) !important;
+        height: auto !important;
+    }
+
+    .game-qr-share__actions > * {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+
+    .game-qr-join__card {
+        border-radius: 16px;
+    }
+
+    .game-qr-join__auth-warning,
+    .game-qr-join__ready,
+    .game-qr-join__status {
+        padding: 15px;
+    }
+
+    .game-qr-join__decision-actions,
+    .game-qr-join__decision-actions form,
+    .game-qr-join__decision-actions .btn,
+    .game-qr-join__apply,
+    .game-qr-join__auth-actions .btn {
+        width: 100%;
+    }
+}
