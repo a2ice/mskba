@@ -59,8 +59,11 @@ final class ShowEventHandler
             ])
             ->firstOrFail();
 
-        $isPublic = in_array($event->status, [EventStatusEnum::PUBLISHED, EventStatusEnum::COMPLETED], true)
-            && $event->visibility === EventVisibilityEnum::PUBLIC;
+        $isPublic = in_array($event->status, [
+            EventStatusEnum::PUBLISHED,
+            EventStatusEnum::COMPLETED,
+            EventStatusEnum::CANCELLED,
+        ], true) && $event->visibility === EventVisibilityEnum::PUBLIC;
         $canManage = $actor !== null && $this->access->canManage($event, $actor);
 
         if (! $isPublic && ! $canManage) {
