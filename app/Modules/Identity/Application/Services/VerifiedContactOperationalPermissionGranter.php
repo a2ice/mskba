@@ -22,6 +22,13 @@ final class VerifiedContactOperationalPermissionGranter
         }
 
         DB::transaction(function () use ($user): void {
+            // Serialize automatic grants with admin permission updates, which also
+            // lock the canonical user. This keeps an explicit admin denial stable.
+            User::query()
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             foreach ($this->permissions() as $permission) {
                 UserOperationalPermission::query()->firstOrCreate(
                     [
