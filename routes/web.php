@@ -14,6 +14,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
+use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
@@ -310,6 +311,27 @@ Route::prefix('account/venue-bookings')
         Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
         Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
         Route::post('/{venueBooking}/confirm', [VenueBookingController::class, 'confirm'])->name('account.venue-bookings.confirm');
+    });
+
+Route::prefix('rental-interest')
+    ->middleware('venue-rental-feature:coordination')
+    ->group(function () {
+        Route::get('/{venueRentalCoordination}', [VenueRentalCoordinationController::class, 'show'])
+            ->name('venue-rental-coordinations.show')
+            ->defaults('breadcrumb', 'Сбор на аренду');
+        Route::middleware('auth')->group(function () {
+            Route::post('/', [VenueRentalCoordinationController::class, 'store'])
+                ->name('venue-rental-coordinations.store');
+            Route::post('/{venueRentalCoordination}/join', [VenueRentalCoordinationController::class, 'join'])
+                ->name('venue-rental-coordinations.join');
+            Route::post('/{venueRentalCoordination}/leave', [VenueRentalCoordinationController::class, 'leave'])
+                ->name('venue-rental-coordinations.leave');
+            Route::post('/{venueRentalCoordination}/close', [VenueRentalCoordinationController::class, 'close'])
+                ->name('venue-rental-coordinations.close');
+            Route::post('/{venueRentalCoordination}/booking', [VenueRentalCoordinationController::class, 'convert'])
+                ->middleware('venue-rental-feature:rental_flow')
+                ->name('venue-rental-coordinations.convert');
+        });
     });
 
 Route::prefix('events')->group(function () {

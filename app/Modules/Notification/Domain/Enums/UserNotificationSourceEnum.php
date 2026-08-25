@@ -19,6 +19,7 @@ enum UserNotificationSourceEnum: string
     case VENUE_OWNERSHIP_CLAIM_REJECTED = 'venue.ownership_claim.rejected';
     case VENUE_MEMBERSHIP_GRANTED = 'venue.membership.granted';
     case VENUE_MEMBERSHIP_REVOKED = 'venue.membership.revoked';
+    case VENUE_RENTAL_COORDINATION_JOINED = 'venue_rental.coordination.joined';
 
     public function label(): string
     {
@@ -38,6 +39,7 @@ enum UserNotificationSourceEnum: string
             self::VENUE_OWNERSHIP_CLAIM_REJECTED => 'Отклонение заявки на владение площадкой',
             self::VENUE_MEMBERSHIP_GRANTED => 'Выдача коммерческой роли площадки',
             self::VENUE_MEMBERSHIP_REVOKED => 'Отзыв коммерческой роли площадки',
+            self::VENUE_RENTAL_COORDINATION_JOINED => 'Вступление в сбор по аренде',
         };
     }
 }

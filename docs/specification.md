@@ -499,6 +499,31 @@ Telegram-канал спроектирован как many-to-many проекц�
 flow данные, а legacy-маршруты не помещаются под эти middleware до завершения
 rollout.
 
+`VenueRentalCoordination` — отдельный агрегат предварительного интереса, не
+связанный с legacy `CoordinationSession` и его опросами. Он фиксирует venue,
+scope, `[starts_at, ends_at)`, organizer actor/user, видимость сбора и отдельную
+видимость списка участников. Активное участие хранится в
+`venue_rental_coordination_participants`; уникальная пара coordination/user и
+блокировка корня делают повторный или конкурентный Join идемпотентным, а
+leave/rejoin сохраняет одну историческую строку.
+
+Создание сбора использует `QuoteVenueBookingHandler` для проверки текущей
+политики и доступности, но не сохраняет quote как резерв, не создаёт
+`VenueBooking`/`Event` и не входит в conflict checker. Явная команда Convert
+блокирует coordination, проверяет organizer actor, получает новый quote для
+сохранённого интервала и вызывает общий `RequestVenueBookingHandler` с UUID
+idempotency key. Результат — только `REQUESTED`, поэтому ресурс по-прежнему не
+занят до отдельной команды Hold. Если новый quote недоступен, связь с booking и
+смена статуса откатываются. События coordination публикуются after commit; Join
+создаёт уведомление организатору без ложного сообщения о бронировании.
+
+Операции состава используют порядок
+`venue_rental_coordinations → venue_rental_coordination_participants`.
+Конвертация не держит coordination при будущем захвате venue mutex: она
+завершается на `REQUESTED`, а Hold позднее использует установленный порядок
+`venues → venue_bookings`. Это исключает обратный цикл блокировок между двумя
+агрегатами.
+
 Модуль `App\Modules\Event` содержит:
 
 - `Event` — мероприятие с типом `game|training|game_training`, организатором-actor, площадкой, локализованным временем, видимостью и лимитом участников;

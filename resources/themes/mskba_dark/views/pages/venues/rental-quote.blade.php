@@ -31,12 +31,27 @@
                 <p>Hold: {{ $quote->holdDurationMinutes }} мин. Quote действует до {{ $quote->validUntil->format('d.m.Y H:i') }} UTC.</p>
                 <p class="text-muted">Идентификатор: {{ $quote->publicId }}. При отправке заявки сервер повторно проверит этот snapshot.</p>
                 @auth
-                    <form method="POST" action="{{ route('account.venue-bookings.store') }}">
-                        @csrf
-                        <input type="hidden" name="quote_id" value="{{ $quote->publicId }}">
-                        <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                        <button class="btn btn--primary btn--sm" type="submit">Отправить заявку</button>
-                    </form>
+                    <div class="venue-management-actions">
+                        <form method="POST" action="{{ route('account.venue-bookings.store') }}">
+                            @csrf
+                            <input type="hidden" name="quote_id" value="{{ $quote->publicId }}">
+                            <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                            <button class="btn btn--primary btn--sm" type="submit">Отправить заявку</button>
+                        </form>
+                        @if(config('features.venue_rental.coordination'))
+                            <form method="POST" action="{{ route('venue-rental-coordinations.store') }}">
+                                @csrf
+                                <input type="hidden" name="venue_id" value="{{ $venue->id }}">
+                                <input type="hidden" name="starts_at" value="{{ $quote->startsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('Y-m-d\TH:i') }}">
+                                <input type="hidden" name="duration_minutes" value="{{ $quote->startsAt->diffInMinutes($quote->endsAt) }}">
+                                <input type="hidden" name="scope" value="{{ $quote->scope->value }}">
+                                <input type="hidden" name="participants_visibility" value="participants">
+                                <label class="form-label" for="coordination-title">Название сбора</label>
+                                <input class="form-control mb-2" id="coordination-title" name="title" maxlength="150" required value="{{ old('title', 'Ищем участников для аренды '.$venue->name) }}">
+                                <button class="btn btn--secondary btn--sm" type="submit">Собрать участников</button>
+                            </form>
+                        @endif
+                    </div>
                 @else
                     <p><a href="{{ route('login') }}">Войдите</a>, чтобы отправить заявку.</p>
                 @endauth
