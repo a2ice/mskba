@@ -7,21 +7,30 @@
     $characterHeightCm = $currentHeight !== null && $currentHeight !== '' ? (int) $currentHeight : null;
     $characterWeightKg = $currentWeight !== null && $currentWeight !== '' ? (int) $currentWeight : null;
     $characterPreviewHeightCm = $characterHeightCm ?? 180;
-    $characterHeightPercent = round(min(250, max(0, $characterPreviewHeightCm)) / 250 * 100, 2);
+    $characterHeightPercent = round(min(250, max(0, $characterPreviewHeightCm)) / 250 * 100, 4);
 
-    $profileGender = $user->profile?->gender?->value ?? 'male';
+    $profileGender = PlayerCharacterAppearanceOptions::normalizeGender($user->profile?->gender?->value);
     $storedCharacter = is_array($profile?->extra['character'] ?? null)
         ? $profile->extra['character']
         : [];
     $characterDefaults = PlayerCharacterAppearanceOptions::defaults($profileGender);
     $character = array_merge($characterDefaults, $storedCharacter);
+    $character['gender'] = $profileGender;
 
-    $characterGender = old('character.gender', $character['gender']);
+    $characterGender = $profileGender;
     $characterSkinTone = old('character.skin_tone', $character['skin_tone']);
     $characterHairstyle = old('character.hairstyle', $character['hairstyle']);
     $characterHairColor = old('character.hair_color', $character['hair_color']);
     $characterFacialHair = old('character.facial_hair', $character['facial_hair']);
     $characterUniformKit = old('character.uniform_kit', $character['uniform_kit']);
+
+    if (! in_array($characterHairstyle, PlayerCharacterAppearanceOptions::hairstylesForGender($characterGender), true)) {
+        $characterHairstyle = $characterDefaults['hairstyle'];
+    }
+
+    if ($characterGender === 'female') {
+        $characterFacialHair = 'none';
+    }
 
     $skinTones = [
         'porcelain' => ['label' => 'Очень светлый', 'color' => '#f1c7a9'],
@@ -108,7 +117,8 @@
                 data-facial-hair="{{ $characterFacialHair }}"
                 data-uniform-kit="{{ $characterUniformKit }}"
                 data-has-height="{{ $characterHeightCm !== null ? 'true' : 'false' }}"
-                data-renderer="svg-v1"
+                data-renderer="three-pending"
+                data-three-status="idle"
                 role="img"
                 aria-label="Персонаж игрока на шкале роста"
                 style="--player-height-percent: {{ $characterHeightPercent }};"
@@ -130,25 +140,28 @@
 
                     <div class="account-player-character-stage__axis" aria-hidden="true"></div>
 
+                    <div class="account-player-character-three" data-player-character-three></div>
+
                     <div class="account-player-character-stage__height-marker" aria-hidden="true">
                         <span data-player-character-height-label>
                             {{ $characterHeightCm !== null ? $characterHeightCm.' см' : 'Рост не указан' }}
                         </span>
                     </div>
 
-                    <div class="account-player-character-stage__figure" aria-hidden="true">
+                    <div class="account-player-character-stage__figure" data-player-character-svg-fallback aria-hidden="true">
                         @include('theme::pages.account.partials.player-character-svg')
                     </div>
 
                     <div class="account-player-character-stage__floor" aria-hidden="true"></div>
                 </div>
 
-                <span class="account-player-character-stage__badge">PLAYER CHARACTER / SVG V1</span>
+                <span class="account-player-character-stage__badge">PLAYER CHARACTER / 3D POC</span>
             </div>
 
-            <p class="account-player-character-visual__caption">
-                Масштаб сцены: 200 × 250 см. Рост, вес, телосложение и внешний вид обновляются сразу.
-            </p>
+            <div class="account-player-character-visual__caption">
+                <div>Масштаб сцены: 200 × 250 см. Макушка 3D-модели привязана к той же метрической шкале, что и линия роста.</div>
+                <span class="account-player-character-three-status" data-player-character-three-status aria-live="polite">3D готовится к загрузке</span>
+            </div>
         </div>
 
         <div class="account-player-character-controls">
@@ -218,26 +231,17 @@
                     <div>
                         <span class="eyebrow">Персонаж</span>
                         <h4>Соберите свой игровой образ</h4>
+                        <span class="account-player-character-configurator__profile-gender">
+                            <i></i>
+                            Пол берётся из профиля: {{ $characterGender === 'female' ? 'женский' : 'мужской' }}
+                        </span>
                     </div>
-                    <span class="account-player-character-configurator__live"><i></i> Live</span>
+                    <span class="account-player-character-configurator__live"><i></i> 3D</span>
                 </div>
 
-                <div class="account-player-character-configurator__group">
-                    <span class="account-player-character-configurator__label">Пол</span>
-                    <div class="account-player-character-configurator__segments">
-                        @foreach(['male' => 'Мужской', 'female' => 'Женский'] as $value => $label)
-                            <button
-                                type="button"
-                                class="account-player-character-configurator__segment"
-                                data-player-character-choice="gender"
-                                data-value="{{ $value }}"
-                                aria-pressed="{{ $characterGender === $value ? 'true' : 'false' }}"
-                            >{{ $label }}</button>
-                        @endforeach
-                    </div>
-                    <input type="hidden" name="character[gender]" value="{{ $characterGender }}" data-player-character-field="gender">
-                    @error('character.gender') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
+                <p class="account-player-character-configurator__three-note">
+                    Сейчас проверяем 3D-базу, масштаб, массу тела, свет и поворот. Причёски, борода и полноценная баскетбольная форма уже сохраняются в профиле и будут подключены к отдельным 3D-mesh слоям следующим этапом.
+                </p>
 
                 <div class="account-player-character-configurator__group">
                     <span class="account-player-character-configurator__label">Тон кожи</span>
