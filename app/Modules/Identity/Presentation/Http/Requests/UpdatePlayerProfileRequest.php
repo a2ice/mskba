@@ -43,12 +43,20 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
-            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit'],
+            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,piercings,tattoos,tattoo_note,uniform_kit'],
             'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
             'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
             'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
             'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
-            'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
+            'character.piercings' => ['nullable', 'array', 'max:4'],
+            'character.piercings.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::PIERCINGS)],
+            'character.tattoos' => ['nullable', 'array', 'max:9'],
+            'character.tattoos.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::TATTOO_LOCATIONS)],
+            'character.tattoo_note' => ['nullable', 'string', 'max:500'],
+            'character.uniform_kit' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
+            'character_face_photo_data' => ['nullable', 'string', 'max:1500000'],
+            'character_render_requested' => ['nullable', 'boolean'],
+            'character_render_mode' => ['nullable', Rule::in(['success', 'error'])],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
         ];
 
@@ -76,7 +84,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
     }
 
     /**
-     * @return array<string, int|string>|null
+     * @return array<string, mixed>|null
      */
     public function characterAppearance(): ?array
     {
@@ -98,8 +106,28 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'facial_hair' => $profileGender === 'female'
                 ? 'none'
                 : (string) $character['facial_hair'],
-            'uniform_kit' => (string) $character['uniform_kit'],
+            'piercings' => array_values($character['piercings'] ?? []),
+            'tattoos' => array_values($character['tattoos'] ?? []),
+            'tattoo_note' => trim((string) ($character['tattoo_note'] ?? '')),
+            'uniform_kit' => (string) ($character['uniform_kit'] ?? 'mskba_home'),
         ];
+    }
+
+    public function characterFacePhotoData(): ?string
+    {
+        return $this->filled('character_face_photo_data')
+            ? $this->string('character_face_photo_data')->toString()
+            : null;
+    }
+
+    public function characterRenderRequested(): bool
+    {
+        return $this->boolean('character_render_requested');
+    }
+
+    public function characterRenderMode(): string
+    {
+        return $this->validated('character_render_mode') === 'error' ? 'error' : 'success';
     }
 
     /**
