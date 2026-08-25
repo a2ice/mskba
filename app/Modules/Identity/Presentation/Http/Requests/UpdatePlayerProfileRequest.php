@@ -22,9 +22,11 @@ final class UpdatePlayerProfileRequest extends FormRequest
      */
     public function rules(): array
     {
-        $characterGender = (string) $this->input('character.gender', 'male');
-        $allowedHairstyles = PlayerCharacterAppearanceOptions::hairstylesForGender($characterGender);
-        $allowedFacialHair = $characterGender === 'female'
+        $profileGender = PlayerCharacterAppearanceOptions::normalizeGender(
+            $this->user()?->profile?->gender?->value,
+        );
+        $allowedHairstyles = PlayerCharacterAppearanceOptions::hairstylesForGender($profileGender);
+        $allowedFacialHair = $profileGender === 'female'
             ? ['none']
             : PlayerCharacterAppearanceOptions::FACIAL_HAIR;
 
@@ -41,8 +43,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
-            'character' => ['nullable', 'array:gender,skin_tone,hairstyle,hair_color,facial_hair,uniform_kit'],
-            'character.gender' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::GENDERS)],
+            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit'],
             'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
             'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
             'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
@@ -84,14 +85,19 @@ final class UpdatePlayerProfileRequest extends FormRequest
         }
 
         $character = $this->validated('character');
+        $profileGender = PlayerCharacterAppearanceOptions::normalizeGender(
+            $this->user()?->profile?->gender?->value,
+        );
 
         return [
             'version' => PlayerCharacterAppearanceOptions::VERSION,
-            'gender' => (string) $character['gender'],
+            'gender' => $profileGender,
             'skin_tone' => (string) $character['skin_tone'],
             'hairstyle' => (string) $character['hairstyle'],
             'hair_color' => (string) $character['hair_color'],
-            'facial_hair' => (string) $character['facial_hair'],
+            'facial_hair' => $profileGender === 'female'
+                ? 'none'
+                : (string) $character['facial_hair'],
             'uniform_kit' => (string) $character['uniform_kit'],
         ];
     }
