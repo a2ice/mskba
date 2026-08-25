@@ -52,6 +52,21 @@ jobs:
           node --check resources/themes/mskba_dark/js/features/player-character-three-renderer.js
           node --check resources/themes/mskba_dark/js/features/player-character-svg-renderer.js
 
+      - name: Verify pinned Three.js runtime and GLB POC assets
+        run: |
+          THREE_URL='https://esm.sh/three@0.184.0?target=es2022'
+          MALE_URL='https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@3f97faf85e46d2f9a122b0a8b8d3ccc0af598f91/packages/assets/library/man.glb'
+          FEMALE_URL='https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@3f97faf85e46d2f9a122b0a8b8d3ccc0af598f91/packages/assets/library/human.glb'
+
+          curl --fail --silent --show-error --location "$THREE_URL" --output /tmp/three.mjs
+          test -s /tmp/three.mjs
+
+          for url in "$MALE_URL" "$FEMALE_URL"; do
+            curl --fail --silent --show-error --location "$url" --output /tmp/player.glb
+            test "$(head -c 4 /tmp/player.glb)" = 'glTF'
+            test "$(stat -c%s /tmp/player.glb)" -gt 100000
+          done
+
       - name: Frontend build
         run: |
           npm ci
