@@ -6,15 +6,11 @@ import {
 const THREE_VERSION = '0.184.0';
 const THREE_MODULE_URL = `https://esm.sh/three@${THREE_VERSION}?target=es2022`;
 const GLTF_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/GLTFLoader.js?target=es2022`;
-const MARCHING_CUBES_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/objects/MarchingCubes.js?target=es2022`;
 
 const MODEL_SOURCE_COMMIT = '3f97faf85e46d2f9a122b0a8b8d3ccc0af598f91';
 const MODEL_BASE_URL = `https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@${MODEL_SOURCE_COMMIT}/packages/assets/library`;
 
-// The external male model from Task 118 is intentionally no longer used as the
-// primary renderer. It remains only as historical provenance; our own male body
-// is generated locally at runtime. Female keeps the temporary POC until its own
-// MSKBA base is designed.
+// Female keeps the existing temporary source until its own procedural model is designed.
 const MODEL_URLS = {
     female: `${MODEL_BASE_URL}/human.glb`,
 };
@@ -57,11 +53,9 @@ async function loadEngine() {
         enginePromise = Promise.all([
             importRemoteModule(THREE_MODULE_URL),
             importRemoteModule(GLTF_LOADER_URL),
-            importRemoteModule(MARCHING_CUBES_URL),
-        ]).then(([THREE, loaderModule, marchingModule]) => ({
+        ]).then(([THREE, loaderModule]) => ({
             THREE,
             GLTFLoader: loaderModule.GLTFLoader,
-            MarchingCubes: marchingModule.MarchingCubes,
         }));
     }
 
@@ -74,6 +68,10 @@ function clamp(value, min, max) {
 
 function normalizeGender(gender) {
     return gender === 'female' ? 'female' : 'male';
+}
+
+function targetHeightMeters(state) {
+    return clamp((Number(state.heightCm) || 180) / 100, 1.45, 2.5);
 }
 
 function calculateBodyMassScale(state) {
@@ -116,7 +114,6 @@ function cloneModelMaterials(root) {
             const copy = material.clone();
             copy.userData.playerCharacterRole = materialRole(object, material);
             copy.userData.playerCharacterBaseColor = copy.color?.clone?.() || null;
-            copy.userData.playerCharacterBaseEmissive = copy.emissive?.clone?.() || null;
             return copy;
         });
 
@@ -145,8 +142,7 @@ function tintMaterial(THREE, material, state) {
 
     if (role === 'uniform') {
         const kit = UNIFORM_TONES[state.uniformKit] || UNIFORM_TONES.mskba_home;
-        const target = new THREE.Color(kit.primary);
-        material.color.lerp(target, material.map ? 0.44 : 0.92);
+        material.color.lerp(new THREE.Color(kit.primary), material.map ? 0.44 : 0.92);
     }
 
     if (role === 'shoe') {
@@ -172,36 +168,8 @@ function applyMaterials(runtime, state) {
     });
 }
 
-function correctProceduralEquipment(model) {
-    const uniform = model?.userData?.proceduralUniform;
-
-    if (!uniform) {
-        return;
-    }
-
-    // Procedural body coordinates are MarchingCubes coordinates (-1..1).
-    // Keep every equipment piece in that same local coordinate system.
-    uniform.position.y = 0;
-    uniform.traverse((object) => {
-        if (object.name === 'Procedural_Shoe') {
-            object.position.y = -0.875;
-        }
-
-        if (object.name === 'Procedural_Shoe_Sole') {
-            object.position.y = -0.925;
-        }
-    });
-}
-
-function measureAndNormalizeModel(runtime) {
+function visibleModelBox(runtime) {
     const { THREE, model } = runtime;
-
-    model.position.set(0, 0, 0);
-    model.rotation.set(0, runtime.isProcedural ? 0 : -Math.PI / 2, 0);
-    model.updateMatrixWorld(true);
-
-    // We intentionally measure visible geometry only. Skeleton/helper nodes must
-    // never influence the metric 0..250 cm scene.
     const box = new THREE.Box3();
     const objectBox = new THREE.Box3();
     let hasVisibleMesh = false;
@@ -224,10 +192,31 @@ function measureAndNormalizeModel(runtime) {
         }
     });
 
-    if (!hasVisibleMesh) {
-        box.setFromObject(model);
+    return hasVisibleMesh ? box : null;
+}
+
+function measureAndNormalizeModel(runtime) {
+    const { THREE, model, modelRoot } = runtime;
+
+    modelRoot.scale.set(1, 1, 1);
+    model.position.set(0, 0, 0);
+    model.rotation.set(0, runtime.isProcedural ? 0 : -Math.PI / 2, 0);
+    modelRoot.updateMatrixWorld(true);
+    model.updateMatrixWorld(true);
+
+    const metric = model.userData?.playerCharacterMetric;
+
+    if (metric && Number.isFinite(metric.floorY) && Number.isFinite(metric.crownY)) {
+        // Human height is anatomical: floor/footwear datum -> scalp crown.
+        // Hair deliberately remains outside this measurement and may rise above it.
+        runtime.modelBaseHeight = Math.max(metric.crownY - metric.floorY, 0.001);
+        model.position.y = -metric.floorY;
+        model.updateMatrixWorld(true);
+        return;
     }
 
+    // Temporary female model keeps the pre-existing visible-bbox normalization.
+    const box = visibleModelBox(runtime) || new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
@@ -241,14 +230,14 @@ function applyBodyScale(runtime, state) {
         return;
     }
 
-    const targetHeightMeters = clamp((Number(state.heightCm) || 180) / 100, 1.45, 2.5);
-    const uniformScale = targetHeightMeters / runtime.modelBaseHeight;
+    const heightMeters = targetHeightMeters(state);
+    const uniformScale = heightMeters / runtime.modelBaseHeight;
 
     if (runtime.isProcedural) {
-        // Mass and body type already changed the actual anatomical field. Do not
-        // stretch it again across X; this keeps the morphology honest.
+        // Procedural morphology changes X/Z itself. Y stays canonical, so weight,
+        // body type, uniform and hair can never silently alter the requested height.
         runtime.modelRoot.scale.setScalar(uniformScale);
-        runtime.targetHeightMeters = targetHeightMeters;
+        runtime.targetHeightMeters = heightMeters;
         runtime.massScale = 1;
         return;
     }
@@ -261,8 +250,7 @@ function applyBodyScale(runtime, state) {
         uniformScale,
         uniformScale * depthScale,
     );
-
-    runtime.targetHeightMeters = targetHeightMeters;
+    runtime.targetHeightMeters = heightMeters;
     runtime.massScale = massScale;
 }
 
@@ -308,36 +296,71 @@ function createShadow(THREE) {
     shadow.rotation.x = -Math.PI / 2;
     shadow.scale.y = 0.36;
     shadow.position.set(0, 0.004, 0.02);
-
     return shadow;
 }
 
-function updateCamera(runtime) {
-    const { container, camera } = runtime;
-    const width = Math.max(container.clientWidth, 1);
-    const height = Math.max(container.clientHeight, 1);
-    const aspect = width / height;
-    const metricHeight = 2.5;
-    const metricWidth = metricHeight * aspect;
+function setLifecycleStatus(stage, status, message = '') {
+    stage.dataset.threeStatus = status;
+    const errorNode = stage.closest('.account-player-character-visual')
+        ?.querySelector('[data-player-character-error]');
 
-    camera.left = -metricWidth / 2;
-    camera.right = metricWidth / 2;
-    camera.top = metricHeight;
-    camera.bottom = 0;
-    camera.near = 0.01;
-    camera.far = 20;
-    camera.updateProjectionMatrix();
+    if (!errorNode) {
+        return;
+    }
 
-    runtime.renderer.setSize(width, height, false);
+    const hasError = status === 'error';
+    errorNode.hidden = !hasError;
+    errorNode.textContent = hasError ? message : '';
 }
 
-function setStatus(stage, status, message) {
-    stage.dataset.threeStatus = status;
-    const statusNode = stage.querySelector('[data-player-character-three-status]');
+function updateHeightMarker(runtime) {
+    const marker = runtime.stage.querySelector('[data-player-character-height-marker]');
+    const label = marker?.querySelector('[data-player-character-height-label]');
+    const heightCm = Number(runtime.state?.heightCm);
 
-    if (statusNode) {
-        statusNode.textContent = message;
+    if (!marker || !Number.isFinite(heightCm) || heightCm <= 0) {
+        if (marker) {
+            marker.hidden = true;
+            marker.setAttribute('aria-expanded', 'false');
+        }
+        return;
     }
+
+    const heightMeters = clamp(heightCm / 100, 0, 2.5);
+    const point = new runtime.THREE.Vector3(-0.72, heightMeters, 0);
+    runtime.camera.updateMatrixWorld(true);
+    point.project(runtime.camera);
+
+    const left = (point.x + 1) * 0.5 * runtime.container.clientWidth;
+    const top = (1 - (point.y + 1) * 0.5) * runtime.container.clientHeight;
+
+    marker.style.left = `${left.toFixed(2)}px`;
+    marker.style.top = `${top.toFixed(2)}px`;
+    marker.hidden = false;
+    marker.setAttribute('aria-label', `${heightCm} см`);
+    if (label) {
+        label.textContent = `${heightCm} см`;
+    }
+}
+
+function updateCamera(runtime) {
+    const width = Math.max(runtime.container.clientWidth, 1);
+    const height = Math.max(runtime.container.clientHeight, 1);
+
+    // Literal metric scene. With the camera centered at world Y=1.25,
+    // ±1.25 maps world Y=0..2.5 and X=-1..1 maps exactly 200 cm.
+    runtime.camera.left = -1;
+    runtime.camera.right = 1;
+    runtime.camera.top = 1.25;
+    runtime.camera.bottom = -1.25;
+    runtime.camera.near = 0.01;
+    runtime.camera.far = 20;
+    runtime.camera.position.set(0, 1.25, 4.2);
+    runtime.camera.lookAt(0, 1.25, 0);
+    runtime.camera.updateProjectionMatrix();
+    runtime.camera.updateMatrixWorld(true);
+    runtime.renderer.setSize(width, height, false);
+    updateHeightMarker(runtime);
 }
 
 function attachPointerRotation(runtime) {
@@ -393,11 +416,9 @@ function renderLoop(runtime) {
         }
 
         runtime.currentYaw += (runtime.targetYaw - runtime.currentYaw) * Math.min(1, delta * 8);
-
         if (runtime.modelRoot) {
             runtime.modelRoot.rotation.y = runtime.currentYaw;
         }
-
         runtime.renderer.render(runtime.scene, runtime.camera);
     }
 
@@ -406,12 +427,11 @@ function renderLoop(runtime) {
 
 async function createRuntime(stage, state) {
     const container = stage.querySelector('[data-player-character-three]');
-
     if (!container) {
         throw new Error('Player character 3D container is missing.');
     }
 
-    setStatus(stage, 'loading', 'Готовим 3D-базу игрока…');
+    setLifecycleStatus(stage, 'loading');
 
     const engine = await loadEngine();
     const { THREE } = engine;
@@ -428,14 +448,11 @@ async function createRuntime(stage, state) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.domElement.className = 'account-player-character-three__canvas';
-    renderer.domElement.setAttribute('aria-label', 'Интерактивная 3D-модель игрока. Проведите влево или вправо, чтобы повернуть.');
-
+    renderer.domElement.setAttribute('aria-label', 'Модель игрока. Проведите влево или вправо, чтобы повернуть.');
     container.replaceChildren(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 2.5, 0, 0.01, 20);
-    camera.position.set(0.08, 1.25, 4.2);
-    camera.lookAt(0, 1.18, 0);
+    const camera = new THREE.OrthographicCamera(-1, 1, 1.25, -1.25, 0.01, 20);
 
     const hemisphere = new THREE.HemisphereLight(0xf8f2e8, 0x151815, 1.75);
     scene.add(hemisphere);
@@ -485,7 +502,6 @@ async function createRuntime(stage, state) {
     };
 
     updateCamera(runtime);
-
     runtime.resizeObserver = new ResizeObserver(() => updateCamera(runtime));
     runtime.resizeObserver.observe(container);
 
@@ -497,10 +513,8 @@ async function createRuntime(stage, state) {
     attachPointerRotation(runtime);
 
     let animations = [];
-
     if (runtime.isProcedural) {
         runtime.model = createProceduralMalePlayer(engine, state);
-        correctProceduralEquipment(runtime.model);
         runtime.modelRoot.add(runtime.model);
     } else {
         const sourceGltf = await loadExternalModel(engine, state.gender);
@@ -513,25 +527,16 @@ async function createRuntime(stage, state) {
     measureAndNormalizeModel(runtime);
     applyBodyScale(runtime, state);
     applyMaterials(runtime, state);
+    updateHeightMarker(runtime);
 
     const idleClip = selectIdleAnimation({ animations });
-
     if (idleClip) {
         runtime.mixer = new THREE.AnimationMixer(runtime.model);
-        const action = runtime.mixer.clipAction(idleClip);
-        action.reset().fadeIn(0.2).play();
+        runtime.mixer.clipAction(idleClip).reset().fadeIn(0.2).play();
     }
 
-    stage.dataset.renderer = runtime.isProcedural ? 'three-procedural-male-v1' : 'three-v1';
-    setStatus(
-        stage,
-        'ready',
-        runtime.isProcedural
-            ? '3D · собственная MSKBA-база · поверните мышью или пальцем'
-            : '3D · поверните персонажа мышью или пальцем',
-    );
+    setLifecycleStatus(stage, 'ready');
     renderLoop(runtime);
-
     return runtime;
 }
 
@@ -545,16 +550,14 @@ export async function mountPlayerCharacterThree(stage, state) {
         RUNTIME.set(stage, runtime);
         return runtime;
     } catch (error) {
-        console.error('Player Character 3D renderer failed to initialize.', error);
-        stage.dataset.renderer = 'svg-fallback';
-        setStatus(stage, 'error', '3D временно недоступно · показана резервная версия');
+        console.error('Player Character renderer failed to initialize.', error);
+        setLifecycleStatus(stage, 'error', 'Не удалось загрузить модель игрока. Попробуйте обновить страницу.');
         return null;
     }
 }
 
 export function updatePlayerCharacterThree(stage, state) {
     const runtime = RUNTIME.get(stage);
-
     if (!runtime) {
         return;
     }
@@ -563,19 +566,19 @@ export function updatePlayerCharacterThree(stage, state) {
 
     if (runtime.isProcedural) {
         updateProceduralMalePlayer(runtime, runtime.model, state);
-        correctProceduralEquipment(runtime.model);
         measureAndNormalizeModel(runtime);
         applyBodyScale(runtime, state);
+        updateHeightMarker(runtime);
         return;
     }
 
     applyBodyScale(runtime, state);
     applyMaterials(runtime, state);
+    updateHeightMarker(runtime);
 }
 
 export function destroyPlayerCharacterThree(stage) {
     const runtime = RUNTIME.get(stage);
-
     if (!runtime) {
         return;
     }

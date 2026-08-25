@@ -6,8 +6,6 @@
     $currentBodyType = old('body_type', $profile?->body_type?->value);
     $characterHeightCm = $currentHeight !== null && $currentHeight !== '' ? (int) $currentHeight : null;
     $characterWeightKg = $currentWeight !== null && $currentWeight !== '' ? (int) $currentWeight : null;
-    $characterPreviewHeightCm = $characterHeightCm ?? 180;
-    $characterHeightPercent = round(min(250, max(0, $characterPreviewHeightCm)) / 250 * 100, 4);
 
     $profileGender = PlayerCharacterAppearanceOptions::normalizeGender($user->profile?->gender?->value);
     $storedCharacter = is_array($profile?->extra['character'] ?? null)
@@ -117,11 +115,9 @@
                 data-facial-hair="{{ $characterFacialHair }}"
                 data-uniform-kit="{{ $characterUniformKit }}"
                 data-has-height="{{ $characterHeightCm !== null ? 'true' : 'false' }}"
-                data-renderer="three-pending"
                 data-three-status="idle"
-                role="img"
+                role="group"
                 aria-label="Персонаж игрока на шкале роста"
-                style="--player-height-percent: {{ $characterHeightPercent }};"
             >
                 <div class="account-player-character-stage__width" aria-hidden="true">
                     <span></span>
@@ -139,29 +135,26 @@
                     </div>
 
                     <div class="account-player-character-stage__axis" aria-hidden="true"></div>
-
                     <div class="account-player-character-three" data-player-character-three></div>
 
-                    <div class="account-player-character-stage__height-marker" aria-hidden="true">
+                    <button
+                        type="button"
+                        class="account-player-character-stage__height-marker"
+                        data-player-character-height-marker
+                        aria-expanded="false"
+                        aria-label="{{ $characterHeightCm !== null ? $characterHeightCm.' см' : 'Рост не указан' }}"
+                        hidden
+                    >
                         <span data-player-character-height-label>
                             {{ $characterHeightCm !== null ? $characterHeightCm.' см' : 'Рост не указан' }}
                         </span>
-                    </div>
-
-                    <div class="account-player-character-stage__figure" data-player-character-svg-fallback aria-hidden="true">
-                        @include('theme::pages.account.partials.player-character-svg')
-                    </div>
+                    </button>
 
                     <div class="account-player-character-stage__floor" aria-hidden="true"></div>
                 </div>
-
-                <span class="account-player-character-stage__badge">PLAYER CHARACTER / 3D POC</span>
             </div>
 
-            <div class="account-player-character-visual__caption">
-                <div>Масштаб сцены: 200 × 250 см. Макушка 3D-модели привязана к той же метрической шкале, что и линия роста.</div>
-                <span class="account-player-character-three-status" data-player-character-three-status aria-live="polite">3D готовится к загрузке</span>
-            </div>
+            <p class="account-player-character-error" data-player-character-error aria-live="polite" hidden></p>
         </div>
 
         <div class="account-player-character-controls">
@@ -236,12 +229,7 @@
                             Пол берётся из профиля: {{ $characterGender === 'female' ? 'женский' : 'мужской' }}
                         </span>
                     </div>
-                    <span class="account-player-character-configurator__live"><i></i> 3D</span>
                 </div>
-
-                <p class="account-player-character-configurator__three-note">
-                    Сейчас проверяем 3D-базу, масштаб, массу тела, свет и поворот. Причёски, борода и полноценная баскетбольная форма уже сохраняются в профиле и будут подключены к отдельным 3D-mesh слоям следующим этапом.
-                </p>
 
                 <div class="account-player-character-configurator__group">
                     <span class="account-player-character-configurator__label">Тон кожи</span>

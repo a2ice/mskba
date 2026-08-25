@@ -15,7 +15,7 @@ final class AccountPlayerCharacterStageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_player_character_stage_exposes_three_renderer_and_profile_gender_contract(): void
+    public function test_player_character_stage_exposes_metric_three_scene_without_poc_or_svg_runtime_ui(): void
     {
         $user = User::factory()->create();
         $user->profile()->create([
@@ -37,13 +37,14 @@ final class AccountPlayerCharacterStageTest extends TestCase
         $response = $this->actingAs($user)
             ->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
             ->assertOk()
-            ->assertSee('Масштаб сцены: 200 × 250 см.')
             ->assertSee('Соберите свой игровой образ')
             ->assertSee('Пол берётся из профиля: мужской')
+            ->assertSee('200 см')
             ->assertSee('data-player-character-stage', false)
             ->assertSee('data-player-character-plot', false)
             ->assertSee('data-player-character-three', false)
-            ->assertSee('data-renderer="three-pending"', false)
+            ->assertSee('data-player-character-height-marker', false)
+            ->assertSee('data-player-character-error', false)
             ->assertSee('data-gender="male"', false)
             ->assertSee('data-height="191"', false)
             ->assertSee('data-weight="88"', false)
@@ -60,13 +61,19 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertSee('data-player-character-field="hairstyle"', false)
             ->assertSee('data-player-character-field="uniform-kit"', false)
             ->assertDontSee('data-player-character-choice="gender"', false)
-            ->assertDontSee('name="character[gender]"', false);
+            ->assertDontSee('name="character[gender]"', false)
+            ->assertDontSee('PLAYER CHARACTER / 3D POC')
+            ->assertDontSee('Сейчас проверяем 3D-базу')
+            ->assertDontSee('3D готовится к загрузке')
+            ->assertDontSee('data-player-character-svg-fallback', false)
+            ->assertDontSee('data-renderer=', false);
 
         $content = $response->getContent();
 
         $this->assertSame(1, substr_count($content, 'account-player-character-layout'));
         $this->assertSame(1, substr_count($content, 'account-player-character-stage__plot'));
         $this->assertSame(1, substr_count($content, 'class="account-player-character-three" data-player-character-three'));
+        $this->assertSame(1, substr_count($content, 'data-player-character-height-marker'));
         $this->assertSame(0, preg_match('/<svg\s+class="account-player-character-svg"\s+data-player-character-svg/s', $content));
     }
 }
