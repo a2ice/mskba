@@ -14,7 +14,7 @@ final class AccountPlayerCharacterStageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_player_character_stage_exposes_renderer_agnostic_profile_contract(): void
+    public function test_player_character_stage_exposes_svg_renderer_and_configurator_contract(): void
     {
         $user = User::factory()->create();
         $user->participationRoles(false)->create([
@@ -34,18 +34,31 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
             ->assertOk()
             ->assertSee('Масштаб сцены: 200 × 250 см.')
+            ->assertSee('Соберите свой игровой образ')
             ->assertSee('data-player-character-stage', false)
             ->assertSee('data-player-character-plot', false)
+            ->assertSee('data-player-character-svg', false)
+            ->assertSee('data-renderer="svg-v1"', false)
             ->assertSee('data-height="191"', false)
             ->assertSee('data-weight="88"', false)
             ->assertSee('data-body-type="athletic"', false)
-            ->assertSee('data-skin-tone="default"', false)
-            ->assertSee('data-hairstyle="default"', false)
+            ->assertSee('data-skin-tone="warm"', false)
+            ->assertSee('data-hairstyle="male_fade"', false)
+            ->assertSee('data-hair-color="dark_brown"', false)
+            ->assertSee('data-facial-hair="none"', false)
+            ->assertSee('data-uniform-kit="mskba_home"', false)
             ->assertSee('data-player-character-input="height"', false)
             ->assertSee('data-player-character-input="weight"', false)
-            ->assertSee('data-player-character-input="body-type"', false);
+            ->assertSee('data-player-character-input="body-type"', false)
+            ->assertSee('data-player-character-field="skin-tone"', false)
+            ->assertSee('data-player-character-field="hairstyle"', false)
+            ->assertSee('data-player-character-field="uniform-kit"', false)
+            ->assertSee('account-player-character-svg__arm--front', false)
+            ->assertSee('account-player-character-svg__joint', false)
+            ->assertSee('account-player-character-svg__shoe', false);
 
         $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-layout'));
         $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-stage__plot'));
+        $this->assertSame(1, substr_count($response->getContent(), 'data-player-character-svg'));
     }
 }
