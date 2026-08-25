@@ -599,6 +599,35 @@ Telegram-карточка использует inline callbacks `event:{id}:join
 
 Кнопка просмотра Telegram-карточки использует deep link Main Mini App `https://t.me/{bot}?startapp=event_{id}`. Подписанный Telegram `start_param` проходит через `TelegramMiniAppStartDestinationResolver`: разрешён только формат `event_{id}`, мероприятие должно существовать, а клиент получает исключительно относительный внутренний маршрут. После успешной Mini App-авторизации frontend выполняет переход внутри текущего WebView. Произвольный URL из параметра запуска не принимается, поэтому этот сценарий не создаёт open redirect.
 
+Rental coordination использует отдельную проекцию
+`telegram_venue_rental_publications` с foreign keys на coordination, nullable
+booking и зарегистрированный Telegram chat. Публичный сбор публикуется в
+активные чаты с `publishes_coordination`; private сбор в чат не попадает.
+`TelegramVenueRentalMessageBuilder` выводит фиксированный интервал, participant
+count и вычисляет предупреждение о незанятом слоте из текущего booking status.
+Created/Joined/Closed/Converted и booking lifecycle events ставят
+`SyncTelegramVenueRentalPublicationJob`; job выполняет Bot API вне доменной
+транзакции, сериализуется cache lock, повторяется с backoff и пересоздаёт
+удалённое сообщение.
+
+Callback `rentalcoord:{coordination_id}:join|leave` принимается только для
+сохранённой тройки coordination/chat/message. `callback_query.from.id`
+резолвится через канонический `TelegramAccount`, после чего адаптер вызывает
+общие `JoinVenueRentalCoordinationHandler` или
+`LeaveVenueRentalCoordinationHandler`; неподтверждённый пользователь не
+проходит application invariant. Уникальные `callback_id` и nullable
+`update_id` сохраняются в `telegram_venue_rental_updates`; cache lock защищает
+одновременный replay, а повтор completed callback только отвечает актуальным
+status/participation. Webhook и polling передают update ID в общий callback job.
+
+Deep link имеет allowlisted формат
+`rental_coordination_{public_uuid}`. Resolver проверяет флаг `coordination`,
+существование сущности и для private-сбора organizer/active participant ACL,
+после чего возвращает только относительный route. Доверенная граница Mini App
+не меняется: `initData` сначала проходит HMAC и age validation, авторизует
+канонического пользователя в Laravel-сессии и только затем используется для
+перехода и обычных защищённых HTTP-команд.
+
 `ResolveTelegramUserHandler` под cache lock по Telegram ID находит существующую связь либо атомарно создаёт `User`, профиль, `TelegramAccount` и подтверждённый Telegram-контакт. Регистрация из чата получает канал `telegram_chat`; последующая Mini App-авторизация переиспользует эту связь и не создаёт второй аккаунт.
 
 Обычный web-вход предоставляет два Telegram-сценария. Официальный Telegram Login Widget показан как быстрый вариант: `TelegramLoginWidgetDataValidator` проверяет HMAC-SHA256 полного стандартного payload с ключом `SHA256(bot_token)` и ограничивает возраст `auth_date` настройкой `telegram.login_widget_max_age`. Альтернативный вход создаёт 256-битный base64url challenge с TTL `telegram.bot_login_ttl`, связывает его с секретом браузерной сессии и открывает deep link `/start login_{token}`. Бот принимает команду только в личном чате того же Telegram-пользователя и отправляет inline-кнопку `auth:login:{token}`. Подтверждение сохраняет immutable Telegram ID в challenge, а браузерный polling атомарно потребляет его под cache lock, создаёт Laravel-сессию и удаляет ключ. Это исключает повторное применение ссылки и подмену браузера. Оба варианта используют resolver с каналом `telegram_web` и общий `CompleteTelegramWebAuthenticationHandler`.

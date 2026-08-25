@@ -36,7 +36,7 @@ final class TelegramUpdatesPoller
             $callback = data_get($update, 'callback_query');
 
             if (is_array($callback)) {
-                ProcessTelegramCallbackJob::dispatch($callback);
+                ProcessTelegramCallbackJob::dispatch($callback, $updateId);
                 $processed++;
             }
 
