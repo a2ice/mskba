@@ -15,7 +15,7 @@ final class AccountPlayerCharacterStageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_player_character_stage_exposes_metric_three_scene_without_poc_or_svg_runtime_ui(): void
+    public function test_player_character_stage_uses_image_silhouette_flow_without_three_runtime_ui(): void
     {
         $user = User::factory()->create();
         $user->profile()->create([
@@ -37,43 +37,31 @@ final class AccountPlayerCharacterStageTest extends TestCase
         $response = $this->actingAs($user)
             ->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
             ->assertOk()
-            ->assertSee('Соберите свой игровой образ')
+            ->assertSee('Настроить игровой образ')
             ->assertSee('Пол берётся из профиля: мужской')
             ->assertSee('200 см')
             ->assertSee('data-player-character-stage', false)
-            ->assertSee('data-player-character-plot', false)
-            ->assertSee('data-player-character-three', false)
+            ->assertSee('data-player-character-silhouette', false)
+            ->assertSee('data-player-character-modal', false)
+            ->assertSee('data-player-character-generated', false)
+            ->assertSee('data-player-character-loading', false)
             ->assertSee('data-player-character-height-marker', false)
-            ->assertSee('data-player-character-error', false)
             ->assertSee('data-gender="male"', false)
-            ->assertSee('data-height="191"', false)
-            ->assertSee('data-weight="88"', false)
-            ->assertSee('data-body-type="athletic"', false)
-            ->assertSee('data-skin-tone="warm"', false)
-            ->assertSee('data-hairstyle="male_fade"', false)
-            ->assertSee('data-hair-color="dark_brown"', false)
-            ->assertSee('data-facial-hair="none"', false)
-            ->assertSee('data-uniform-kit="mskba_home"', false)
             ->assertSee('data-player-character-input="height"', false)
             ->assertSee('data-player-character-input="weight"', false)
             ->assertSee('data-player-character-input="body-type"', false)
             ->assertSee('data-player-character-field="skin-tone"', false)
             ->assertSee('data-player-character-field="hairstyle"', false)
-            ->assertSee('data-player-character-field="uniform-kit"', false)
-            ->assertDontSee('data-player-character-choice="gender"', false)
-            ->assertDontSee('name="character[gender]"', false)
+            ->assertDontSee('data-player-character-three', false)
             ->assertDontSee('PLAYER CHARACTER / 3D POC')
-            ->assertDontSee('Сейчас проверяем 3D-базу')
-            ->assertDontSee('3D готовится к загрузке')
             ->assertDontSee('data-player-character-svg-fallback', false)
             ->assertDontSee('data-renderer=', false);
 
         $content = $response->getContent();
 
-        $this->assertSame(1, substr_count($content, 'account-player-character-layout'));
-        $this->assertSame(1, substr_count($content, 'account-player-character-stage__plot'));
-        $this->assertSame(1, substr_count($content, 'class="account-player-character-three" data-player-character-three'));
-        $this->assertSame(1, substr_count($content, 'data-player-character-height-marker'));
-        $this->assertSame(0, preg_match('/<svg\s+class="account-player-character-svg"\s+data-player-character-svg/s', $content));
+        $this->assertSame(1, substr_count($content, 'account-player-character-stage--image'));
+        $this->assertSame(1, substr_count($content, 'data-player-character-silhouette'));
+        $this->assertSame(1, substr_count($content, 'data-player-character-modal'));
+        $this->assertSame(0, substr_count($content, 'data-player-character-three'));
     }
 }
