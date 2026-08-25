@@ -38,32 +38,35 @@
                     <span></span>
                 </div>
 
-                <div class="account-player-character-stage__scale" aria-hidden="true">
-                    @foreach([250, 200, 150, 100, 50, 0] as $scaleHeight)
-                        <span style="--player-scale-y: {{ (250 - $scaleHeight) / 2.5 }}%;">
-                            {{ $scaleHeight }}
+                <div class="account-player-character-stage__plot" data-player-character-plot>
+                    <div class="account-player-character-stage__scale" aria-hidden="true">
+                        @foreach([250, 200, 150, 100, 50, 0] as $scaleHeight)
+                            <span style="--player-scale-y: {{ (250 - $scaleHeight) / 2.5 }}%;">
+                                {{ $scaleHeight }}
+                            </span>
+                        @endforeach
+                    </div>
+
+                    <div class="account-player-character-stage__axis" aria-hidden="true"></div>
+
+                    <div class="account-player-character-stage__height-marker" aria-hidden="true">
+                        <span data-player-character-height-label>
+                            {{ $characterHeightCm !== null ? $characterHeightCm.' см' : 'Рост не указан' }}
                         </span>
-                    @endforeach
+                    </div>
+
+                    <div class="account-player-character-stage__figure" aria-hidden="true">
+                        <span class="account-player-character-stage__head"></span>
+                        <span class="account-player-character-stage__torso"></span>
+                        <span class="account-player-character-stage__arm account-player-character-stage__arm--left"></span>
+                        <span class="account-player-character-stage__arm account-player-character-stage__arm--right"></span>
+                        <span class="account-player-character-stage__leg account-player-character-stage__leg--left"></span>
+                        <span class="account-player-character-stage__leg account-player-character-stage__leg--right"></span>
+                    </div>
+
+                    <div class="account-player-character-stage__floor" aria-hidden="true"></div>
                 </div>
 
-                <div class="account-player-character-stage__axis" aria-hidden="true"></div>
-
-                <div class="account-player-character-stage__height-marker" aria-hidden="true">
-                    <span data-player-character-height-label>
-                        {{ $characterHeightCm !== null ? $characterHeightCm.' см' : 'Рост не указан' }}
-                    </span>
-                </div>
-
-                <div class="account-player-character-stage__figure" aria-hidden="true">
-                    <span class="account-player-character-stage__head"></span>
-                    <span class="account-player-character-stage__torso"></span>
-                    <span class="account-player-character-stage__arm account-player-character-stage__arm--left"></span>
-                    <span class="account-player-character-stage__arm account-player-character-stage__arm--right"></span>
-                    <span class="account-player-character-stage__leg account-player-character-stage__leg--left"></span>
-                    <span class="account-player-character-stage__leg account-player-character-stage__leg--right"></span>
-                </div>
-
-                <div class="account-player-character-stage__floor" aria-hidden="true"></div>
                 <span class="account-player-character-stage__badge">PLAYER CHARACTER</span>
             </div>
 

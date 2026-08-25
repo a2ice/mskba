@@ -14,6 +14,10 @@
 .account-player-character-stage {
     --player-height-percent: 72;
     --player-body-width: 28%;
+    --player-head-width: 34%;
+    --player-torso-width: 58%;
+    --player-arm-width: 14%;
+    --player-leg-width: 18%;
     position: relative;
     width: 100%;
     aspect-ratio: 4 / 5;
@@ -39,28 +43,48 @@
 
 .account-player-character-stage[data-body-type="slim"] {
     --player-body-width: 23%;
+    --player-head-width: 33%;
+    --player-torso-width: 53%;
+    --player-arm-width: 12%;
+    --player-leg-width: 16%;
 }
 
 .account-player-character-stage[data-body-type="athletic"] {
     --player-body-width: 27%;
+    --player-head-width: 34%;
+    --player-torso-width: 60%;
+    --player-arm-width: 14%;
+    --player-leg-width: 18%;
 }
 
 .account-player-character-stage[data-body-type="muscular"] {
     --player-body-width: 31%;
+    --player-head-width: 34%;
+    --player-torso-width: 66%;
+    --player-arm-width: 16%;
+    --player-leg-width: 20%;
 }
 
 .account-player-character-stage[data-body-type="stocky"] {
     --player-body-width: 33%;
+    --player-head-width: 35%;
+    --player-torso-width: 63%;
+    --player-arm-width: 17%;
+    --player-leg-width: 22%;
 }
 
 .account-player-character-stage[data-body-type="large"] {
     --player-body-width: 36%;
+    --player-head-width: 35%;
+    --player-torso-width: 67%;
+    --player-arm-width: 18%;
+    --player-leg-width: 23%;
 }
 
 .account-player-character-stage__width {
     position: absolute;
-    z-index: 5;
-    top: 10px;
+    z-index: 9;
+    top: 3px;
     left: 50px;
     right: 12px;
     display: grid;
@@ -83,6 +107,15 @@
     font-size: inherit;
 }
 
+.account-player-character-stage__plot {
+    position: absolute;
+    z-index: 2;
+    top: 10px;
+    right: 0;
+    bottom: 10px;
+    left: 0;
+}
+
 .account-player-character-stage__scale {
     position: absolute;
     z-index: 6;
@@ -100,14 +133,6 @@
     font-size: 10px;
     font-weight: 800;
     line-height: 1;
-}
-
-.account-player-character-stage__scale span:first-child {
-    transform: translateY(7px);
-}
-
-.account-player-character-stage__scale span:last-child {
-    transform: translateY(calc(-100% - 7px));
 }
 
 .account-player-character-stage__axis {
@@ -184,12 +209,13 @@
     border: 1px solid rgba(249, 246, 239, 0.27);
     background: linear-gradient(145deg, rgba(249, 246, 239, 0.2), rgba(249, 246, 239, 0.075));
     box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.2);
+    transition: width 180ms ease;
 }
 
 .account-player-character-stage__head {
     top: 0;
     left: 50%;
-    width: 34%;
+    width: var(--player-head-width);
     aspect-ratio: 1;
     transform: translateX(-50%);
     border-radius: 50%;
@@ -198,7 +224,7 @@
 .account-player-character-stage__torso {
     top: 13%;
     left: 50%;
-    width: 58%;
+    width: var(--player-torso-width);
     height: 36%;
     transform: translateX(-50%);
     border-radius: 42% 42% 24% 24%;
@@ -206,7 +232,7 @@
 
 .account-player-character-stage__arm {
     top: 18%;
-    width: 14%;
+    width: var(--player-arm-width);
     height: 34%;
     border-radius: 999px;
     transform-origin: top center;
@@ -224,7 +250,7 @@
 
 .account-player-character-stage__leg {
     top: 46%;
-    width: 18%;
+    width: var(--player-leg-width);
     height: 54%;
     border-radius: 35% 35% 999px 999px;
 }
@@ -255,10 +281,11 @@
     position: absolute;
     z-index: 9;
     right: 12px;
-    bottom: 10px;
+    bottom: 1px;
     color: rgba(249, 246, 239, 0.38);
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 900;
+    line-height: 1;
     letter-spacing: 0.14em;
     pointer-events: none;
 }
