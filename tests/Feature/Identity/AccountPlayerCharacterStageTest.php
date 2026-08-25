@@ -63,9 +63,11 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertDontSee('data-player-character-choice="gender"', false)
             ->assertDontSee('name="character[gender]"', false);
 
-        $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-layout'));
-        $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-stage__plot'));
-        $this->assertSame(1, substr_count($response->getContent(), 'data-player-character-three'));
-        $this->assertSame(1, substr_count($response->getContent(), 'data-player-character-svg'));
+        $content = $response->getContent();
+
+        $this->assertSame(1, substr_count($content, 'account-player-character-layout'));
+        $this->assertSame(1, substr_count($content, 'account-player-character-stage__plot'));
+        $this->assertSame(1, substr_count($content, 'class="account-player-character-three" data-player-character-three'));
+        $this->assertSame(1, substr_count($content, 'data-player-character-svg'));
     }
 }
