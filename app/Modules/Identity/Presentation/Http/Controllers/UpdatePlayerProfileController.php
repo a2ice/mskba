@@ -19,6 +19,7 @@ final class UpdatePlayerProfileController extends Controller
             $request->profileData(),
             $request->positions(),
             $request->selfAssessment(),
+            $request->characterAppearance(),
         );
 
         return redirect()

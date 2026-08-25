@@ -15,6 +15,7 @@ final class UpdatePlayerProfileHandler
      * @param  array<string, mixed>  $profileData
      * @param  array<int, PlayerPositionEnum>  $positions
      * @param  array<string, int|null>  $selfAssessment
+     * @param  array<string, int|string>|null  $characterAppearance
      *
      * @throws AuthorizationException
      */
@@ -23,8 +24,9 @@ final class UpdatePlayerProfileHandler
         array $profileData,
         array $positions,
         array $selfAssessment,
+        ?array $characterAppearance = null,
     ): PlayerProfile {
-        return DB::transaction(function () use ($user, $profileData, $positions, $selfAssessment): PlayerProfile {
+        return DB::transaction(function () use ($user, $profileData, $positions, $selfAssessment, $characterAppearance): PlayerProfile {
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
             if (! $lockedUser->hasActiveRole(UserParticipationRoleEnum::PLAYER->value)) {
@@ -32,6 +34,12 @@ final class UpdatePlayerProfileHandler
             }
 
             $profile = $lockedUser->playerProfile()->updateOrCreate([], $profileData);
+
+            if ($characterAppearance !== null) {
+                $extra = $profile->extra ?? [];
+                $extra['character'] = $characterAppearance;
+                $profile->forceFill(['extra' => $extra])->save();
+            }
 
             $profile->positions()->delete();
             $profile->positions()->createMany(
