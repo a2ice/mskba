@@ -137,6 +137,35 @@ function bindPhysicalInputs(stage, form, configurator) {
     });
 }
 
+function waitUntilNearViewport(stage) {
+    if (!('IntersectionObserver' in window)) {
+        return Promise.resolve();
+    }
+
+    const rect = stage.getBoundingClientRect();
+    const preloadDistance = 320;
+
+    if (rect.top < window.innerHeight + preloadDistance && rect.bottom > -preloadDistance) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+        const observer = new IntersectionObserver((entries) => {
+            if (!entries.some((entry) => entry.isIntersecting)) {
+                return;
+            }
+
+            observer.disconnect();
+            resolve();
+        }, {
+            rootMargin: `${preloadDistance}px 0px`,
+            threshold: 0.01,
+        });
+
+        observer.observe(stage);
+    });
+}
+
 async function bindPlayerCharacterStage(stage) {
     const form = stage.closest('form');
     const configurator = form?.querySelector('[data-player-character-configurator]');
@@ -150,6 +179,8 @@ async function bindPlayerCharacterStage(stage) {
     bindPhysicalInputs(stage, form, configurator);
 
     const initialState = updateStage(stage, form, configurator);
+
+    await waitUntilNearViewport(stage);
 
     const runtime = await mountPlayerCharacterThree(stage, initialState);
 
