@@ -4,7 +4,7 @@ namespace App\Modules\Identity\Domain\Support;
 
 final class PlayerCharacterAppearanceOptions
 {
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     public const GENDERS = ['male', 'female'];
 
@@ -58,12 +58,17 @@ final class PlayerCharacterAppearanceOptions
         'city_night',
     ];
 
+    public static function normalizeGender(?string $gender): string
+    {
+        return in_array($gender, self::GENDERS, true) ? $gender : 'male';
+    }
+
     /**
      * @return array<int, string>
      */
     public static function hairstylesForGender(string $gender): array
     {
-        return $gender === 'female'
+        return self::normalizeGender($gender) === 'female'
             ? self::FEMALE_HAIRSTYLES
             : self::MALE_HAIRSTYLES;
     }
@@ -73,7 +78,7 @@ final class PlayerCharacterAppearanceOptions
      */
     public static function defaults(string $gender = 'male'): array
     {
-        $gender = in_array($gender, self::GENDERS, true) ? $gender : 'male';
+        $gender = self::normalizeGender($gender);
 
         return [
             'version' => self::VERSION,
