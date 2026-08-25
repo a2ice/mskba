@@ -35,6 +35,7 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertOk()
             ->assertSee('Масштаб сцены: 200 × 250 см.')
             ->assertSee('data-player-character-stage', false)
+            ->assertSee('data-player-character-plot', false)
             ->assertSee('data-height="191"', false)
             ->assertSee('data-weight="88"', false)
             ->assertSee('data-body-type="athletic"', false)
@@ -45,5 +46,6 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertSee('data-player-character-input="body-type"', false);
 
         $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-layout'));
+        $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-stage__plot'));
     }
 }
