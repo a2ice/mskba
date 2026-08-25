@@ -164,9 +164,62 @@
 }
 
 .admin-status-button {
-    color: inherit;
-    font: inherit;
+    --admin-status-color: var(--muted);
+    --admin-status-border: rgba(200, 202, 194, 0.42);
+    --admin-status-background: rgba(200, 202, 194, 0.1);
+    --admin-status-glow: rgba(200, 202, 194, 0.34);
+    -webkit-appearance: none;
+    appearance: none;
+    gap: 7px;
+    border-color: var(--admin-status-border);
+    background: var(--admin-status-background);
+    color: var(--admin-status-color);
+    font-family: inherit;
     cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        filter 160ms ease;
+}
+
+.admin-status-button::before {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px var(--admin-status-glow);
+    content: '';
+}
+
+.admin-status-button--pending {
+    --admin-status-color: #ff9a4d;
+    --admin-status-border: rgba(255, 125, 34, 0.62);
+    --admin-status-background: rgba(255, 103, 16, 0.13);
+    --admin-status-glow: rgba(255, 125, 34, 0.55);
+}
+
+.admin-status-button--merged {
+    --admin-status-color: #6ee7a5;
+    --admin-status-border: rgba(58, 190, 118, 0.68);
+    --admin-status-background: rgba(58, 190, 118, 0.13);
+    --admin-status-glow: rgba(58, 190, 118, 0.55);
+}
+
+.admin-status-button--rejected {
+    --admin-status-color: #ff8e8e;
+    --admin-status-border: rgba(235, 87, 87, 0.64);
+    --admin-status-background: rgba(235, 87, 87, 0.12);
+    --admin-status-glow: rgba(235, 87, 87, 0.5);
+}
+
+.admin-status-button:hover {
+    filter: brightness(1.12);
+}
+
+.admin-status-button:focus-visible {
+    outline: 2px solid var(--admin-status-color);
+    outline-offset: 3px;
 }
 
 .admin-table .admin-table__check-cell {
