@@ -2,11 +2,13 @@
 
 namespace App\Modules\VenueBooking\Application\UseCases;
 
+use App\Modules\Identity\Domain\Enums\ActorTypeEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
 use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutbox;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingExpired;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Services\VenueBookingLifecycle;
 use App\Support\Features\FeatureFlags;
@@ -26,6 +28,9 @@ final readonly class ExpireVenueBookingHandler
     public function handle(int $bookingId, Actor $systemActor, ?int $expectedVersion = null, ?string $idempotencyKey = null, ?string $correlationId = null): VenueBooking
     {
         $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        if ($systemActor->type !== ActorTypeEnum::SYSTEM) {
+            throw new VenueBookingTransitionException('Истечение брони доступно только системной команде.', 'BOOKING_FORBIDDEN');
+        }
 
         return $this->commands->execute('venue_booking.expire', $systemActor, [
             'booking_id' => $bookingId, 'expected_version' => $expectedVersion,

@@ -13,6 +13,8 @@
             <p><strong>Статус:</strong> {{ $booking->status->label() }}</p>
             <p>{{ $booking->starts_at->format('d.m.Y H:i') }}–{{ $booking->ends_at->format('d.m.Y H:i') }}</p>
             @if($booking->hold_expires_at)<p>Удержание до {{ $booking->hold_expires_at->format('d.m.Y H:i') }}</p>@endif
+            @if($booking->effective_protection_until)<p>Текущий срок защиты слота: {{ $booking->effective_protection_until->format('d.m.Y H:i') }}</p>@endif
+            <p class="text-muted">Серверное время: {{ now()->format('d.m.Y H:i:s') }}</p>
             <p class="text-muted">Версия состояния: {{ $booking->optimistic_version }}</p>
 
             <div class="venue-management-actions">

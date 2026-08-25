@@ -4,6 +4,7 @@ use App\Modules\Coordination\Application\UseCases\CloseExpiredPollsHandler;
 use App\Modules\Coordination\Application\UseCases\CloseExpiredVenueBookingAttendanceRoundsHandler;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\VenueBooking\Application\Services\VenueBookingExpiryDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -42,6 +43,10 @@ Artisan::command('venue-booking:dispatch-outbox', function (VenueBookingOutboxDi
     $this->info('Опубликовано событий аренды: '.$dispatcher->dispatchPending());
 })->purpose('Повторно публикует ожидающие события аренды из transactional outbox');
 
+Artisan::command('venue-booking:expire-due {--batch=100}', function (VenueBookingExpiryDispatcher $dispatcher) {
+    $this->info('Поставлено задач на истечение: '.$dispatcher->dispatchDue((int) $this->option('batch')));
+})->purpose('Ставит в очередь короткие идемпотентные задачи истечения hold');
+
 Schedule::command('coordination:close-expired')
     ->everyMinute()
     ->withoutOverlapping();
@@ -56,4 +61,9 @@ Schedule::command('identity:scan-user-duplicates')
 
 Schedule::command('venue-booking:dispatch-outbox')
     ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('venue-booking:expire-due')
+    ->everyMinute()
+    ->onOneServer()
     ->withoutOverlapping();

@@ -551,6 +551,29 @@ Confirmed/Cancelled/Expired/Rejected закрывают связанный open 
 attendance и уведомления отправляются after commit; ни ответ, ни threshold не
 являются командой VenueBooking.
 
+Истечение hold обслуживает ежеминутная команда
+`venue-booking:expire-due`, запланированная с `onOneServer` и
+`withoutOverlapping`. `VenueBookingExpiryDispatcher` делает короткую выборку по
+существующему индексу `(status,effective_protection_until)`, ограничивает batch
+и не открывает транзакцию на весь набор. Для каждой строки ставится отдельная
+`ExpireVenueBookingIfDueJob` с observed optimistic version и ISO deadline.
+
+Worker до блокировки отбрасывает уже неактуальные status/version/deadline, а
+затем вызывает общий `ExpireVenueBookingHandler`, который допускает только
+system actor и повторяет проверку через `VenueBookingLifecycle` под порядком
+`venues → venue_bookings`. UUIDv5 idempotency key детерминирован из
+booking/version/deadline, поэтому duplicate delivery создаёт не более одного
+timeline/outbox effect. Гонки с Confirm, будущими Extension и payment callback
+завершаются stale noop, если они успели изменить status, version или effective
+deadline.
+
+Отдельные expiry columns не вводятся: `terminal_at` хранит момент, а
+append-only transition — reason и system actor. `effective_protection_until`
+является единственным scheduler deadline и в будущем включает активное payment
+window. Метрики `metrics:venue_booking:expiry:{scheduled|completed|stale|failed}`
+показывают работу очереди. API возвращает `server_time` и effective deadline;
+клиент не является источником истины для истечения.
+
 Модуль `App\Modules\Event` содержит:
 
 - `Event` — мероприятие с типом `game|training|game_training`, организатором-actor, площадкой, локализованным временем, видимостью и лимитом участников;

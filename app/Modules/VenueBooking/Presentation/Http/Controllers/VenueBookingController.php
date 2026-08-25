@@ -178,7 +178,9 @@ final class VenueBookingController extends Controller
             'event_id' => $booking->event_id,
             'starts_at' => $booking->starts_at->utc()->toIso8601String(),
             'ends_at' => $booking->ends_at->utc()->toIso8601String(),
+            'server_time' => now()->utc()->toIso8601String(),
             'hold_expires_at' => $booking->hold_expires_at?->utc()->toIso8601String(),
+            'effective_protection_until' => $booking->effective_protection_until?->utc()->toIso8601String(),
             'actions' => $actions,
         ];
     }
