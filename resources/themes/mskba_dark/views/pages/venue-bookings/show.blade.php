@@ -21,6 +21,7 @@
                         <form method="POST" action="{{ route('account.venue-bookings.'.$action, $booking) }}">
                             @csrf
                             <input type="hidden" name="version" value="{{ $booking->optimistic_version }}">
+                            <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                             <button class="btn btn--secondary btn--sm" type="submit">{{ $label }}</button>
                         </form>
                     @endif

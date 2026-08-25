@@ -34,6 +34,7 @@
                     <form method="POST" action="{{ route('account.venue-bookings.store') }}">
                         @csrf
                         <input type="hidden" name="quote_id" value="{{ $quote->publicId }}">
+                        <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                         <button class="btn btn--primary btn--sm" type="submit">Отправить заявку</button>
                     </form>
                 @else

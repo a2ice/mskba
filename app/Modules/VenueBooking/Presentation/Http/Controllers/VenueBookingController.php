@@ -28,9 +28,10 @@ final class VenueBookingController extends Controller
         RequestVenueBookingHandler $bookings,
     ): JsonResponse|RedirectResponse {
         $validated = $request->validate(['quote_id' => ['required', 'uuid']]);
+        [$idempotencyKey, $correlationId] = $this->commandIdentifiers($request);
 
         try {
-            $booking = $bookings->handle($actors->resolveForRequest($request), $validated['quote_id']);
+            $booking = $bookings->handle($actors->resolveForRequest($request), $validated['quote_id'], $idempotencyKey, $correlationId);
         } catch (VenueBookingTransitionException $exception) {
             return $this->error($request, $exception);
         }
@@ -71,26 +72,32 @@ final class VenueBookingController extends Controller
 
     public function accept(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, AcceptVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $this->version($request)), 'Заявка принята, слот удерживается.');
+        [$key, $correlation] = $this->commandIdentifiers($request);
+
+        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $this->version($request), $key, $correlation), 'Заявка принята, слот удерживается.');
     }
 
     public function reject(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, RejectVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:2000']]);
+        [$key, $correlation] = $this->commandIdentifiers($request);
 
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $validated['reason'] ?? null, $this->version($request)), 'Заявка отклонена.');
+        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $validated['reason'] ?? null, $this->version($request), $key, $correlation), 'Заявка отклонена.');
     }
 
     public function cancel(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, CancelVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:2000']]);
+        [$key, $correlation] = $this->commandIdentifiers($request);
 
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $validated['reason'] ?? null, $this->version($request)), 'Бронь отменена.');
+        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $validated['reason'] ?? null, $this->version($request), $key, $correlation), 'Бронь отменена.');
     }
 
     public function confirm(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, ConfirmVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $this->version($request)), 'Бронь подтверждена.');
+        [$key, $correlation] = $this->commandIdentifiers($request);
+
+        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $this->version($request), $key, $correlation), 'Бронь подтверждена.');
     }
 
     /** @param callable(): VenueBooking $callback */
@@ -135,6 +142,17 @@ final class VenueBookingController extends Controller
         $value = $request->input('version');
 
         return $value === null ? null : (int) $value;
+    }
+
+    /** @return array{string, string|null} */
+    private function commandIdentifiers(Request $request): array
+    {
+        $key = $request->header('Idempotency-Key', $request->input('idempotency_key'));
+        validator(['key' => $key], ['key' => ['required', 'uuid']])->validate();
+        $correlation = $request->header('X-Correlation-ID', $request->input('correlation_id'));
+        validator(['correlation' => $correlation], ['correlation' => ['nullable', 'uuid']])->validate();
+
+        return [(string) $key, $correlation === null ? null : (string) $correlation];
     }
 
     /** @param array<string, array{allowed: bool, reason: string|null}> $actions

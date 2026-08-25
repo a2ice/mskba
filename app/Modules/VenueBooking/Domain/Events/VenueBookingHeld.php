@@ -4,5 +4,5 @@ namespace App\Modules\VenueBooking\Domain\Events;
 
 final readonly class VenueBookingHeld
 {
-    public function __construct(public int $bookingId) {}
+    public function __construct(public int $bookingId, public ?string $messageId = null) {}
 }

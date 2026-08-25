@@ -20,6 +20,8 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Services\VenueBookingEventConsumer;
+use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\CancelVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\ConfirmVenueBookingHandler;
@@ -29,13 +31,17 @@ use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RejectVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingHeld;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingRequested;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingIdempotencyException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event as EventFacade;
 use LogicException;
+use RuntimeException;
 use Tests\TestCase;
 
 final class VenueBookingLifecycleTest extends TestCase
@@ -202,21 +208,42 @@ final class VenueBookingLifecycleTest extends TestCase
         [$applicant] = $this->userAndActor();
         $quoteId = $this->quote($venue, $owner, $applicant, false);
 
-        $response = $this->actingAs($applicant)->postJson(route('account.venue-bookings.store'), [
+        $response = $this->actingAs($applicant)
+            ->withHeader('Idempotency-Key', '10000000-0000-4000-8000-000000000001')
+            ->postJson(route('account.venue-bookings.store'), [
+                'quote_id' => $quoteId,
+                'status' => 'confirmed',
+                'event_id' => 999,
+            ])->assertCreated()->assertJsonPath('status', 'requested');
+        $this->postJson(route('account.venue-bookings.store'), [
             'quote_id' => $quoteId,
-            'status' => 'confirmed',
-            'event_id' => 999,
-        ])->assertCreated()->assertJsonPath('status', 'requested');
+        ])->assertCreated()
+            ->assertJsonPath('booking_id', $response->json('booking_id'));
         $booking = VenueBooking::query()->where('public_id', $response->json('booking_id'))->firstOrFail();
 
-        $this->actingAs($owner)->postJson(route('account.venue-bookings.accept', $booking), [
-            'version' => 1,
-            'status' => 'confirmed',
-        ])->assertOk()
+        $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', '10000000-0000-4000-8000-000000000002')
+            ->postJson(route('account.venue-bookings.accept', $booking), [
+                'version' => 1,
+                'status' => 'confirmed',
+            ])->assertOk()
             ->assertJsonPath('status', 'held')
             ->assertJsonPath('version', 2);
 
         $this->assertNull($booking->refresh()->event_id);
+        $this->assertSame(1, $booking->transitions()->where('to_status', VenueBookingStatusEnum::REQUESTED->value)->count());
+    }
+
+    public function test_mutating_http_api_requires_idempotency_key(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$applicant] = $this->userAndActor();
+        $quoteId = $this->quote($venue, $owner, $applicant, false);
+
+        $this->actingAs($applicant)->postJson(route('account.venue-bookings.store'), [
+            'quote_id' => $quoteId,
+        ])->assertUnprocessable();
+        $this->assertDatabaseCount('venue_bookings', 0);
     }
 
     public function test_status_cannot_be_updated_outside_lifecycle(): void
@@ -255,6 +282,7 @@ final class VenueBookingLifecycleTest extends TestCase
         EventFacade::fake([VenueBookingHeld::class]);
 
         $this->actingAs($owner)
+            ->withHeader('Idempotency-Key', '10000000-0000-4000-8000-000000000003')
             ->postJson(route('account.venue-bookings.accept', $whole), ['version' => 1])
             ->assertConflict()
             ->assertJsonPath('code', 'BOOKING_CONFLICT')
@@ -317,6 +345,114 @@ final class VenueBookingLifecycleTest extends TestCase
         }
 
         $this->assertSame(VenueBookingStatusEnum::REQUESTED, $booking->refresh()->status);
+    }
+
+    public function test_same_command_key_replays_result_and_different_payload_conflicts(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $booking = $this->request($venue, $owner, $applicant, $applicantActor, false);
+        $key = '20000000-0000-4000-8000-000000000001';
+        $handler = app(AcceptVenueBookingHandler::class);
+
+        $first = $handler->handle($booking->id, $ownerActor, 1, $key);
+        $replayed = $handler->handle($booking->id, $ownerActor, 1, $key);
+
+        $this->assertTrue($first->is($replayed));
+        $this->assertSame(2, $booking->transitions()->count());
+        $heldTransition = $booking->transitions()->where('to_status', VenueBookingStatusEnum::HELD->value)->firstOrFail();
+        $this->assertNotNull($heldTransition->command_receipt_id);
+        $this->assertSame($key, $heldTransition->correlation_id);
+        $this->assertSame(1, VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingHeld::class)
+            ->count());
+
+        try {
+            $handler->handle($booking->id, $ownerActor, 2, $key);
+            $this->fail('Same key with another payload must conflict.');
+        } catch (VenueBookingIdempotencyException $exception) {
+            $this->assertSame('IDEMPOTENCY_KEY_REUSED', $exception->errorCode);
+        }
+    }
+
+    public function test_outbox_retries_after_dispatch_failure_and_publishes_once_when_successful(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $booking = $this->request($venue, $owner, $applicant, $applicantActor, false);
+        app(AcceptVenueBookingHandler::class)->handle($booking->id, $ownerActor);
+        $message = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingHeld::class)
+            ->firstOrFail();
+        $message->update([
+            'status' => 'pending',
+            'attempts' => 0,
+            'available_at' => now(),
+            'published_at' => null,
+        ]);
+        $dispatcher = app(VenueBookingOutboxDispatcher::class);
+
+        EventFacade::listen(VenueBookingHeld::class, static fn () => throw new RuntimeException('listener failed'));
+        try {
+            $dispatcher->dispatch($message->id);
+            $this->fail('Listener failure must keep outbox message retryable.');
+        } catch (RuntimeException) {
+            $this->assertSame('pending', $message->refresh()->status);
+            $this->assertSame(1, $message->attempts);
+        } finally {
+            EventFacade::forget(VenueBookingHeld::class);
+        }
+
+        $message->update(['available_at' => now()]);
+        EventFacade::fake([VenueBookingHeld::class]);
+        $this->assertTrue($dispatcher->dispatch($message->id));
+        EventFacade::assertDispatched(
+            VenueBookingHeld::class,
+            fn (VenueBookingHeld $event): bool => $event->bookingId === $booking->id
+                && $event->messageId === $message->message_id,
+        );
+        $this->assertFalse($dispatcher->dispatch($message->id));
+        $this->assertSame('published', $message->refresh()->status);
+
+        $stale = VenueBookingOutboxMessage::query()
+            ->where('venue_booking_id', $booking->id)
+            ->where('event_type', VenueBookingRequested::class)
+            ->firstOrFail();
+        $stale->update([
+            'status' => 'processing',
+            'processing_started_at' => now()->subMinutes(6),
+            'published_at' => null,
+        ]);
+        EventFacade::fake([VenueBookingRequested::class]);
+        $this->assertSame(1, $dispatcher->dispatchPending());
+        $this->assertSame('published', $stale->refresh()->status);
+    }
+
+    public function test_event_consumer_deduplicates_and_rolls_back_failed_effect(): void
+    {
+        $consumer = app(VenueBookingEventConsumer::class);
+        $calls = 0;
+        $messageId = '30000000-0000-4000-8000-000000000001';
+
+        $this->assertTrue($consumer->once('test.listener', $messageId, function () use (&$calls): void {
+            $calls++;
+        }));
+        $this->assertFalse($consumer->once('test.listener', $messageId, function () use (&$calls): void {
+            $calls++;
+        }));
+        $this->assertSame(1, $calls);
+
+        try {
+            $consumer->once('test.failing-listener', $messageId, static fn () => throw new RuntimeException('effect failed'));
+            $this->fail('Failed consumer effect must roll back its receipt.');
+        } catch (RuntimeException) {
+            $this->assertDatabaseMissing('venue_booking_event_consumptions', [
+                'consumer' => 'test.failing-listener',
+                'message_id' => $messageId,
+            ]);
+        }
     }
 
     private function assertInvalidTransitionLeavesHistory(VenueBooking $booking, callable $command): void

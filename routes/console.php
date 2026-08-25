@@ -3,6 +3,7 @@
 use App\Modules\Coordination\Application\UseCases\CloseExpiredPollsHandler;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -32,10 +33,18 @@ Artisan::command('identity:scan-user-duplicates', function (UserDuplicateDetecto
     $this->info("Проверено пользователей: {$usersScanned}; найдено/обновлено кандидатов: {$candidatesSeen}.");
 })->purpose('Ищет потенциальные дубли пользователей без автоматического объединения');
 
+Artisan::command('venue-booking:dispatch-outbox', function (VenueBookingOutboxDispatcher $dispatcher) {
+    $this->info('Опубликовано событий аренды: '.$dispatcher->dispatchPending());
+})->purpose('Повторно публикует ожидающие события аренды из transactional outbox');
+
 Schedule::command('coordination:close-expired')
     ->everyMinute()
     ->withoutOverlapping();
 
 Schedule::command('identity:scan-user-duplicates')
     ->dailyAt('03:15')
+    ->withoutOverlapping();
+
+Schedule::command('venue-booking:dispatch-outbox')
+    ->everyMinute()
     ->withoutOverlapping();

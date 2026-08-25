@@ -4,6 +4,7 @@ namespace App\Modules\VenueBooking\Domain\Services;
 
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\VenueBooking\Application\Services\VenueBookingCommandContext;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
@@ -11,12 +12,16 @@ use Carbon\CarbonImmutable;
 
 final class VenueBookingLifecycle
 {
+    public function __construct(private readonly VenueBookingCommandContext $commandContext) {}
+
     public function recordRequested(VenueBooking $booking, Actor $actor): void
     {
         $booking->transitions()->create([
             'from_status' => null,
             'to_status' => VenueBookingStatusEnum::REQUESTED,
             'actor_id' => $actor->id,
+            'command_receipt_id' => $this->commandContext->receiptId(),
+            'correlation_id' => $this->commandContext->correlationId(),
             'booking_version' => $booking->optimistic_version,
             'metadata' => [],
         ]);
@@ -127,6 +132,8 @@ final class VenueBookingLifecycle
             'from_status' => $from,
             'to_status' => $to,
             'actor_id' => $actor->id,
+            'command_receipt_id' => $this->commandContext->receiptId(),
+            'correlation_id' => $this->commandContext->correlationId(),
             'reason' => $reason,
             'metadata' => [],
             'booking_version' => $nextVersion,
