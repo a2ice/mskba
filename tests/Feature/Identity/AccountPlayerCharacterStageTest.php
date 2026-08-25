@@ -68,6 +68,6 @@ final class AccountPlayerCharacterStageTest extends TestCase
         $this->assertSame(1, substr_count($content, 'account-player-character-layout'));
         $this->assertSame(1, substr_count($content, 'account-player-character-stage__plot'));
         $this->assertSame(1, substr_count($content, 'class="account-player-character-three" data-player-character-three'));
-        $this->assertSame(1, substr_count($content, 'data-player-character-svg'));
+        $this->assertSame(1, preg_match('/<svg\s+class="account-player-character-svg"\s+data-player-character-svg/s', $content));
     }
 }
