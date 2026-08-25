@@ -98,6 +98,14 @@
                     @if(isset($commercialMembershipsUrl))
                         <a href="{{ $commercialMembershipsUrl }}" class="btn btn--secondary btn--sm">Коммерческие роли</a>
                     @endif
+                    @if(isset($bookingPolicyUrl))
+                        <a href="{{ $bookingPolicyUrl }}" class="btn btn--secondary btn--sm">Условия аренды</a>
+                    @endif
+                </div>
+            @endif
+            @if(isset($rentalUrl))
+                <div class="venue-management-actions mt-3">
+                    <a href="{{ $rentalUrl }}" class="btn btn--primary btn--sm">Рассчитать аренду</a>
                 </div>
             @endif
         </div>

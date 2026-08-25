@@ -14,6 +14,7 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Infrastructure\Listeners\ConfirmVenueAfterModerationRequestApproved;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueMembershipNotification;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipClaimNotification;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
 use Illuminate\Support\Facades\Event;
@@ -53,12 +54,21 @@ class VenueAccessServiceProvider extends ServiceProvider
             $user = request()->user();
             if (
                 $venue !== null
-                && $user !== null
                 && app(FeatureFlags::class)->enabled(VenueRentalFeature::RENTAL_FLOW)
             ) {
                 $venueModel = Venue::query()->find($venue->id);
-                if ($venueModel !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
-                    $view->with('commercialMembershipsUrl', route('account.venues.commercial-memberships.index', $venueModel));
+                if ($venueModel !== null) {
+                    if (VenueBookingPolicy::query()->where('venue_id', $venueModel->id)->where('active_marker', true)->where('is_enabled', true)->exists()) {
+                        $view->with('rentalUrl', route('venues.rental.show', $venueModel));
+                    }
+
+                    if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
+                        $view->with('commercialMembershipsUrl', route('account.venues.commercial-memberships.index', $venueModel));
+                    }
+
+                    if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY)) {
+                        $view->with('bookingPolicyUrl', route('account.venues.booking-policy.edit', $venueModel));
+                    }
                 }
             }
         });

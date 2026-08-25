@@ -22,6 +22,7 @@ use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 
 return [
     'enabled' => env('AUDIT_LOG_ENABLED', true),
@@ -51,6 +52,7 @@ return [
         VenueScheduleInterval::class,
         VenueReview::class,
         VenueOwnershipClaim::class,
+        VenueBookingPolicy::class,
         Contract::class,
         ContractMembership::class,
         ContractPermission::class,

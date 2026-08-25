@@ -54,6 +54,8 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipCon
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
 
@@ -274,6 +276,14 @@ Route::prefix('venues')->group(function () {
                 ->whereNumber('venue')
                 ->name('venues.ownership-claims.store');
         });
+    });
+    Route::middleware('venue-rental-feature:rental_flow')->group(function () {
+        Route::get('/{venue}/rental', [VenueRentalQuoteController::class, 'show'])
+            ->whereNumber('venue')
+            ->name('venues.rental.show');
+        Route::post('/{venue}/rental/quote', [VenueRentalQuoteController::class, 'quote'])
+            ->whereNumber('venue')
+            ->name('venues.rental.quote');
     });
     Route::get('/{alias}/preview', [VenueController::class, 'preview'])
         ->middleware('throttle:60,1')
@@ -571,6 +581,14 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
                 Route::put('/{membership}', [VenueCommercialMembershipController::class, 'update'])->whereNumber('membership')->name('account.venues.commercial-memberships.update');
                 Route::delete('/{membership}', [VenueCommercialMembershipController::class, 'destroy'])->whereNumber('membership')->name('account.venues.commercial-memberships.destroy');
             });
+        Route::middleware('venue-rental-feature:rental_flow')->group(function () {
+            Route::get('/venues/{venue}/booking-policy', [VenueBookingPolicyController::class, 'edit'])
+                ->whereNumber('venue')
+                ->name('account.venues.booking-policy.edit');
+            Route::put('/venues/{venue}/booking-policy', [VenueBookingPolicyController::class, 'update'])
+                ->whereNumber('venue')
+                ->name('account.venues.booking-policy.update');
+        });
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');
