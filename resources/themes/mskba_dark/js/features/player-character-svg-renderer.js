@@ -123,9 +123,13 @@ function applyPalette(stage, state) {
     stage.style.setProperty('--shoe-base', uniform.shoe);
 }
 
+function setLayerHidden(layer, hidden) {
+    layer.toggleAttribute('hidden', hidden);
+}
+
 function toggleMatchingLayers(stage, selector, attribute, activeValue) {
     stage.querySelectorAll(selector).forEach((layer) => {
-        layer.hidden = layer.getAttribute(attribute) !== activeValue;
+        setLayerHidden(layer, layer.getAttribute(attribute) !== activeValue);
     });
 }
 
@@ -135,9 +139,12 @@ function applyLayers(stage, state) {
     toggleMatchingLayers(stage, '[data-character-uniform-pattern]', 'data-character-uniform-pattern', state.uniformKit);
 
     stage.querySelectorAll('[data-character-facial-hair]').forEach((layer) => {
-        layer.hidden = state.gender !== 'male'
-            || state.facialHair === 'none'
-            || layer.dataset.characterFacialHair !== state.facialHair;
+        setLayerHidden(
+            layer,
+            state.gender !== 'male'
+                || state.facialHair === 'none'
+                || layer.dataset.characterFacialHair !== state.facialHair,
+        );
     });
 }
 
