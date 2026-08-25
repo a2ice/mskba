@@ -11,6 +11,7 @@ import '../css/pages/event-wizard-team-clear.css';
 import '../css/pages/event-wizard-review-actions.css';
 import '../css/pages/venue-activity.css';
 import '../css/pages/venue-booking-status.css';
+import '../css/pages/player-character.css';
 
 window.$ = $;
 window.jQuery = $;
@@ -31,6 +32,7 @@ import './features/account-confirmation-wizard.js';
 import './features/account-privacy.js';
 import './features/account-telegram-link.js';
 import './features/score-range.js';
+import './features/player-character-stage.js';
 import './features/tooltips.js';
 import './features/catalog-filter-defaults.js';
 import './features/mobile-sidebar-navigation.js';
