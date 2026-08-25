@@ -1,0 +1,153 @@
+.account-player-character-stage__plot {
+    overflow: hidden;
+}
+
+.account-player-character-three {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: auto;
+    touch-action: pan-y;
+}
+
+.account-player-character-three__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+    outline: none;
+}
+
+.account-player-character-three__canvas:active {
+    cursor: grabbing;
+}
+
+.account-player-character-stage__figure {
+    transition: opacity 180ms ease, visibility 180ms ease;
+}
+
+.account-player-character-stage[data-renderer="three-v1"] .account-player-character-stage__figure {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.account-player-character-stage[data-renderer="svg-fallback"] .account-player-character-three,
+.account-player-character-stage[data-three-status="error"] .account-player-character-three {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.account-player-character-stage__scale,
+.account-player-character-stage__axis,
+.account-player-character-stage__height-marker,
+.account-player-character-stage__floor,
+.account-player-character-stage__width,
+.account-player-character-stage__badge {
+    pointer-events: none;
+}
+
+.account-player-character-stage__scale,
+.account-player-character-stage__axis,
+.account-player-character-stage__height-marker,
+.account-player-character-stage__floor {
+    z-index: 7;
+}
+
+.account-player-character-stage__height-marker {
+    z-index: 10;
+}
+
+.account-player-character-stage__badge {
+    z-index: 11;
+}
+
+.account-player-character-three-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 17px;
+    margin-top: 7px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.account-player-character-three-status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: rgba(249, 246, 239, 0.28);
+}
+
+.account-player-character-stage[data-three-status="loading"] + .account-player-character-visual__caption .account-player-character-three-status::before {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(237, 128, 18, 0.52);
+    animation: account-player-character-three-pulse 1.15s ease-in-out infinite;
+}
+
+.account-player-character-stage[data-three-status="ready"] + .account-player-character-visual__caption .account-player-character-three-status {
+    color: rgba(249, 246, 239, 0.72);
+}
+
+.account-player-character-stage[data-three-status="ready"] + .account-player-character-visual__caption .account-player-character-three-status::before {
+    background: #6fbf73;
+}
+
+.account-player-character-stage[data-three-status="error"] + .account-player-character-visual__caption .account-player-character-three-status {
+    color: #d9aa7c;
+}
+
+.account-player-character-stage[data-three-status="error"] + .account-player-character-visual__caption .account-player-character-three-status::before {
+    background: #d78a48;
+}
+
+.account-player-character-configurator__profile-gender {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.account-player-character-configurator__profile-gender i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(237, 128, 18, 0.75);
+}
+
+.account-player-character-configurator__three-note {
+    margin: 2px 0 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(237, 128, 18, 0.16);
+    border-radius: 10px;
+    background: rgba(237, 128, 18, 0.045);
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+@keyframes account-player-character-three-pulse {
+    0%, 100% {
+        opacity: 0.45;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .account-player-character-stage[data-three-status="loading"] + .account-player-character-visual__caption .account-player-character-three-status::before {
+        animation: none;
+    }
+}
