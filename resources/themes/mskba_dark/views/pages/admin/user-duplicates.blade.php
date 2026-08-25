@@ -93,9 +93,10 @@
                             <td>
                                 <button
                                     type="button"
-                                    class="admin-badge admin-status-button"
+                                    class="admin-badge admin-status-button admin-status-button--{{ $duplicate->status->value }}"
                                     data-admin-action-modal-open="user-duplicate-{{ $duplicate->id }}"
                                     aria-haspopup="dialog"
+                                    aria-label="Статус: {{ $duplicate->status->label() }}. Открыть детали пары"
                                 >{{ $duplicate->status->label() }}</button>
                             </td>
                         </tr>
