@@ -43,7 +43,6 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertSee('data-player-character-stage', false)
             ->assertSee('data-player-character-plot', false)
             ->assertSee('data-player-character-three', false)
-            ->assertSee('data-player-character-svg', false)
             ->assertSee('data-renderer="three-pending"', false)
             ->assertSee('data-gender="male"', false)
             ->assertSee('data-height="191"', false)
@@ -68,6 +67,6 @@ final class AccountPlayerCharacterStageTest extends TestCase
         $this->assertSame(1, substr_count($content, 'account-player-character-layout'));
         $this->assertSame(1, substr_count($content, 'account-player-character-stage__plot'));
         $this->assertSame(1, substr_count($content, 'class="account-player-character-three" data-player-character-three'));
-        $this->assertSame(1, preg_match('/<svg\s+class="account-player-character-svg"\s+data-player-character-svg/s', $content));
+        $this->assertSame(0, preg_match('/<svg\s+class="account-player-character-svg"\s+data-player-character-svg/s', $content));
     }
 }
