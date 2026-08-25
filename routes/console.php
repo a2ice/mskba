@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Coordination\Application\UseCases\CloseExpiredPollsHandler;
+use App\Modules\Coordination\Application\UseCases\CloseExpiredVenueBookingAttendanceRoundsHandler;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
@@ -15,6 +16,10 @@ Artisan::command('inspire', function () {
 Artisan::command('coordination:close-expired', function (CloseExpiredPollsHandler $handler) {
     $this->info('Закрыто опросов: '.$handler->handle());
 })->purpose('Закрывает опросы с истёкшим дедлайном');
+
+Artisan::command('venue-booking:close-expired-attendance', function (CloseExpiredVenueBookingAttendanceRoundsHandler $handler) {
+    $this->info('Закрыто сборов явки: '.$handler->handle());
+})->purpose('Закрывает сборы явки с истёкшим дедлайном');
 
 Artisan::command('identity:scan-user-duplicates', function (UserDuplicateDetector $detector) {
     $usersScanned = 0;
@@ -38,6 +43,10 @@ Artisan::command('venue-booking:dispatch-outbox', function (VenueBookingOutboxDi
 })->purpose('Повторно публикует ожидающие события аренды из transactional outbox');
 
 Schedule::command('coordination:close-expired')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('venue-booking:close-expired-attendance')
     ->everyMinute()
     ->withoutOverlapping();
 

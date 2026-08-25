@@ -3,6 +3,7 @@
 namespace App\Modules\VenueBooking\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Coordination\Domain\Models\VenueRentalCoordination;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
@@ -50,7 +51,7 @@ final class VenueBookingController extends Controller
         VenueBookingAuthorization $authorization,
         VenueBookingActionState $actions,
     ): JsonResponse|Response {
-        $venueBooking->load(['venue', 'transitions.actor.user']);
+        $venueBooking->load(['venue', 'transitions.actor.user', 'attendanceRounds.responses.user']);
         $actor = $actors->resolveForRequest($request);
 
         try {
@@ -64,9 +65,18 @@ final class VenueBookingController extends Controller
             return response()->json($this->payload($venueBooking, $actionState));
         }
 
+        $attendanceRound = $venueBooking->attendanceRounds->sortByDesc('id')->first();
+        $rentalCoordination = VenueRentalCoordination::query()
+            ->with('participants.user')
+            ->where('venue_booking_id', $venueBooking->id)
+            ->first();
+
         return ThemeResolver::page('venue-bookings.show', [
             'booking' => $venueBooking,
             'actions' => $actionState,
+            'attendanceRound' => $attendanceRound,
+            'attendanceCandidates' => $rentalCoordination?->participants->whereNull('left_at')->values() ?? collect(),
+            'isRequester' => $request->user()?->canonical()->id === $venueBooking->requester?->canonical()->id,
         ]);
     }
 

@@ -524,6 +524,33 @@ idempotency key. Результат — только `REQUESTED`, поэтому
 `venues → venue_bookings`. Это исключает обратный цикл блокировок между двумя
 агрегатами.
 
+Attendance V2 моделируется отдельно от legacy coordination poll сущностями
+`venue_booking_attendance_rounds` и
+`venue_booking_attendance_responses`. Раунд создаётся только requester actor-ом
+для booking в состоянии `HELD` с будущим `effective_protection_until`.
+Сервер вычисляет `deadline_at = min(requested_deadline,
+effective_protection_until)`; attendance никогда не изменяет booking deadline.
+Уникальный nullable active marker допускает историю закрытых раундов, но не
+более одного открытого на booking.
+
+При открытии создаётся неизменяемый список приглашённых canonical confirmed
+users. Их nullable response принимает `yes|no|maybe`; повтор того же значения
+идемпотентен, а смена ответа под блокировкой корня пересчитывает сохранённые
+YES/NO/MAYBE/PENDING counters. `threshold_reached_at` обеспечивает однократный
+ThresholdReached при первом достижении `minimum_yes_responses`. Персональные
+ответы показываются по `responses_visibility=participants|organizer`, тогда как
+агрегаты доступны каждому приглашённому.
+
+Порядок изменяющих блокировок —
+`venues → venue_bookings → venue_booking_attendance_rounds → responses`.
+Respond повторно проверяет статус и protection deadline booking, поэтому
+просроченный или уже подтверждённый hold не принимает ответ даже до фоновой
+синхронизации. Ежеминутная команда
+`venue-booking:close-expired-attendance` закрывает дедлайны, а booking events
+Confirmed/Cancelled/Expired/Rejected закрывают связанный open round. События
+attendance и уведомления отправляются after commit; ни ответ, ни threshold не
+являются командой VenueBooking.
+
 Модуль `App\Modules\Event` содержит:
 
 - `Event` — мероприятие с типом `game|training|game_training`, организатором-actor, площадкой, локализованным временем, видимостью и лимитом участников;

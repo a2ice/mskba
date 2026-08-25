@@ -3,6 +3,7 @@
 namespace App\Modules\VenueBooking\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
+use App\Modules\Coordination\Domain\Models\VenueBookingAttendanceRound;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -72,6 +73,11 @@ class VenueBooking extends Model
     public function transitions(): HasMany
     {
         return $this->hasMany(VenueBookingTransition::class)->orderBy('booking_version');
+    }
+
+    public function attendanceRounds(): HasMany
+    {
+        return $this->hasMany(VenueBookingAttendanceRound::class, 'venue_booking_id');
     }
 
     /** @param array<string, mixed> $attributes */

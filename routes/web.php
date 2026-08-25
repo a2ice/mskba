@@ -14,6 +14,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
+use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
@@ -311,6 +312,21 @@ Route::prefix('account/venue-bookings')
         Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
         Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
         Route::post('/{venueBooking}/confirm', [VenueBookingController::class, 'confirm'])->name('account.venue-bookings.confirm');
+        Route::post('/{venueBooking}/attendance-rounds', [VenueBookingAttendanceController::class, 'store'])
+            ->middleware('venue-rental-feature:attendance_v2')
+            ->name('venue-booking-attendance.store');
+    });
+
+Route::prefix('account/venue-booking-attendance')
+    ->middleware(['venue-rental-feature:attendance_v2', 'auth'])
+    ->group(function () {
+        Route::get('/{venueBookingAttendanceRound}', [VenueBookingAttendanceController::class, 'show'])
+            ->name('venue-booking-attendance.show')
+            ->defaults('breadcrumb', 'Подтверждение явки');
+        Route::post('/{venueBookingAttendanceRound}/response', [VenueBookingAttendanceController::class, 'respond'])
+            ->name('venue-booking-attendance.respond');
+        Route::post('/{venueBookingAttendanceRound}/close', [VenueBookingAttendanceController::class, 'close'])
+            ->name('venue-booking-attendance.close');
     });
 
 Route::prefix('rental-interest')
