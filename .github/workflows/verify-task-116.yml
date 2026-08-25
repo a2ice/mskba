@@ -1,0 +1,55 @@
+name: Verify Task 116
+
+on:
+  push:
+    branches:
+      - feature/116
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, sqlite3, pdo_sqlite, gd
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Pint
+        run: vendor/bin/pint --test tests/Feature/Identity/AccountPlayerCharacterStageTest.php
+
+      - name: Player character tests
+        run: php artisan test tests/Feature/Identity/AccountPlayerCharacterStageTest.php tests/Feature/Identity/AccountPlayerProfileTest.php
+
+      - name: Blade cache
+        run: php artisan view:cache
+
+      - name: JavaScript syntax
+        run: node --check resources/themes/mskba_dark/js/features/player-character-stage.js
+
+      - name: Frontend build
+        run: |
+          npm ci
+          npm run build
