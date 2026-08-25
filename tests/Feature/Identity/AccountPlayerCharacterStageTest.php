@@ -3,6 +3,7 @@
 namespace Tests\Feature\Identity;
 
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
@@ -14,9 +15,12 @@ final class AccountPlayerCharacterStageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_player_character_stage_exposes_svg_renderer_and_configurator_contract(): void
+    public function test_player_character_stage_exposes_three_renderer_and_profile_gender_contract(): void
     {
         $user = User::factory()->create();
+        $user->profile()->create([
+            'gender' => UserGenderEnum::MALE,
+        ]);
         $user->participationRoles(false)->create([
             'role' => UserParticipationRoleEnum::PLAYER,
             'status' => UserParticipationRoleStatusEnum::ACTIVE,
@@ -35,10 +39,13 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertOk()
             ->assertSee('Масштаб сцены: 200 × 250 см.')
             ->assertSee('Соберите свой игровой образ')
+            ->assertSee('Пол берётся из профиля: мужской')
             ->assertSee('data-player-character-stage', false)
             ->assertSee('data-player-character-plot', false)
+            ->assertSee('data-player-character-three', false)
             ->assertSee('data-player-character-svg', false)
-            ->assertSee('data-renderer="svg-v1"', false)
+            ->assertSee('data-renderer="three-pending"', false)
+            ->assertSee('data-gender="male"', false)
             ->assertSee('data-height="191"', false)
             ->assertSee('data-weight="88"', false)
             ->assertSee('data-body-type="athletic"', false)
@@ -53,12 +60,14 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertSee('data-player-character-field="skin-tone"', false)
             ->assertSee('data-player-character-field="hairstyle"', false)
             ->assertSee('data-player-character-field="uniform-kit"', false)
-            ->assertSee('account-player-character-svg__arm--front', false)
-            ->assertSee('account-player-character-svg__joint', false)
-            ->assertSee('account-player-character-svg__shoe', false);
+            ->assertDontSee('data-player-character-choice="gender"', false)
+            ->assertDontSee('name="character[gender]"', false);
 
-        $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-layout'));
-        $this->assertSame(1, substr_count($response->getContent(), 'account-player-character-stage__plot'));
-        $this->assertSame(1, substr_count($response->getContent(), 'data-player-character-svg'));
+        $content = $response->getContent();
+
+        $this->assertSame(1, substr_count($content, 'account-player-character-layout'));
+        $this->assertSame(1, substr_count($content, 'account-player-character-stage__plot'));
+        $this->assertSame(1, substr_count($content, 'class="account-player-character-three" data-player-character-three'));
+        $this->assertSame(1, preg_match('/<svg\s+class="account-player-character-svg"\s+data-player-character-svg/s', $content));
     }
 }
