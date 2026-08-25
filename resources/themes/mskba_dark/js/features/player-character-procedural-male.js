@@ -1,7 +1,5 @@
 const DEFAULT_HEIGHT_CM = 180;
 const DEFAULT_WEIGHT_KG = 80;
-const FIELD_ISOLATION = 72;
-const FIELD_SUBTRACT = 12;
 
 const TYPE_PROFILE = {
     unspecified: { shoulder: 0, chest: 0, waist: 0, hips: 0, arms: 0, legs: 0 },
@@ -39,337 +37,385 @@ function profileForState(state) {
     const bmi = weightKg / (heightMeters * heightMeters);
     const mass = clamp((bmi - 22.5) / 13, -0.65, 1);
     const type = TYPE_PROFILE[state.bodyType] || TYPE_PROFILE.unspecified;
-
     const softMass = Math.max(0, mass);
     const leanMass = Math.min(0, mass);
 
     return {
         mass,
-        shoulder: clamp(1 + type.shoulder + mass * 0.06, 0.82, 1.24),
-        chest: clamp(1 + type.chest + mass * 0.08, 0.80, 1.30),
-        waist: clamp(1 + type.waist + softMass * 0.20 + leanMass * 0.07, 0.76, 1.38),
-        hips: clamp(1 + type.hips + mass * 0.10, 0.82, 1.28),
-        arms: clamp(1 + type.arms + mass * 0.09, 0.76, 1.32),
-        legs: clamp(1 + type.legs + mass * 0.10, 0.78, 1.34),
-        depth: clamp(1 + mass * 0.11 + type.chest * 0.30, 0.84, 1.28),
+        shoulder: clamp(1 + type.shoulder + mass * 0.055, 0.82, 1.24),
+        chest: clamp(1 + type.chest + mass * 0.075, 0.80, 1.30),
+        waist: clamp(1 + type.waist + softMass * 0.18 + leanMass * 0.06, 0.76, 1.38),
+        hips: clamp(1 + type.hips + mass * 0.09, 0.82, 1.28),
+        arms: clamp(1 + type.arms + mass * 0.085, 0.76, 1.32),
+        legs: clamp(1 + type.legs + mass * 0.09, 0.78, 1.34),
+        depth: clamp(1 + mass * 0.10 + type.chest * 0.28, 0.84, 1.28),
     };
-}
-
-function fieldStrengthForRadius(radius) {
-    return (FIELD_ISOLATION + FIELD_SUBTRACT) * radius * radius;
-}
-
-function addBall(effect, x, y, z, radius, strengthMultiplier = 1) {
-    effect.addBall(
-        x,
-        y,
-        z,
-        fieldStrengthForRadius(radius) * strengthMultiplier,
-        FIELD_SUBTRACT,
-    );
-}
-
-function addSegment(effect, from, to, radiusFrom, radiusTo, steps = 6) {
-    for (let index = 0; index <= steps; index += 1) {
-        const t = index / steps;
-        const ease = t * t * (3 - 2 * t);
-        addBall(
-            effect,
-            from[0] + (to[0] - from[0]) * t,
-            from[1] + (to[1] - from[1]) * t,
-            from[2] + (to[2] - from[2]) * t,
-            radiusFrom + (radiusTo - radiusFrom) * ease,
-        );
-    }
-}
-
-function addMaleBodyField(effect, profile) {
-    effect.reset();
-    effect.isolation = FIELD_ISOLATION;
-
-    // Head and face volumes. The slightly forward jaw/nose keep the head from
-    // reading as a sphere while still remaining a neutral avatar base.
-    addBall(effect, 0.500, 0.910, 0.500, 0.078);
-    addBall(effect, 0.500, 0.932, 0.500, 0.065);
-    addBall(effect, 0.500, 0.878, 0.512, 0.061);
-    addBall(effect, 0.500, 0.896, 0.570, 0.021, 0.86);
-    addBall(effect, 0.448, 0.904, 0.502, 0.022, 0.74);
-    addBall(effect, 0.552, 0.904, 0.502, 0.022, 0.74);
-
-    // Neck and trapezius.
-    addSegment(effect, [0.500, 0.842, 0.495], [0.500, 0.805, 0.495], 0.037, 0.051, 4);
-    addBall(effect, 0.448, 0.797, 0.493, 0.049 * profile.shoulder);
-    addBall(effect, 0.552, 0.797, 0.493, 0.049 * profile.shoulder);
-
-    // Ribcage / pectorals / upper back. Multiple overlapping masses give a
-    // smooth thoracic shape instead of a cylinder.
-    addBall(effect, 0.500, 0.718, 0.496, 0.112 * profile.chest);
-    addBall(effect, 0.423, 0.742, 0.516, 0.077 * profile.chest);
-    addBall(effect, 0.577, 0.742, 0.516, 0.077 * profile.chest);
-    addBall(effect, 0.500, 0.688, 0.470, 0.092 * profile.depth);
-    addBall(effect, 0.500, 0.635, 0.500, 0.086 * profile.waist);
-    addBall(effect, 0.500, 0.585, 0.500, 0.076 * profile.waist);
-
-    // Pelvis / gluteal masses.
-    addBall(effect, 0.500, 0.530, 0.493, 0.083 * profile.hips);
-    addBall(effect, 0.448, 0.515, 0.478, 0.066 * profile.hips);
-    addBall(effect, 0.552, 0.515, 0.478, 0.066 * profile.hips);
-
-    // Deltoids are distinct anatomical volumes but merge into the torso and
-    // upper arm in the implicit surface, so there are no visible ball joints.
-    const shoulderX = 0.500 + 0.158 * profile.shoulder;
-    addBall(effect, shoulderX, 0.748, 0.500, 0.058 * profile.shoulder);
-    addBall(effect, 1 - shoulderX, 0.748, 0.500, 0.058 * profile.shoulder);
-
-    const armRadius = 0.040 * profile.arms;
-    const forearmRadius = 0.034 * profile.arms;
-
-    addSegment(effect, [shoulderX, 0.733, 0.500], [shoulderX + 0.035, 0.595, 0.514], armRadius * 1.16, armRadius, 7);
-    addBall(effect, shoulderX + 0.038, 0.574, 0.516, 0.035 * profile.arms);
-    addSegment(effect, [shoulderX + 0.038, 0.560, 0.516], [shoulderX + 0.026, 0.425, 0.532], forearmRadius * 1.10, forearmRadius * 0.82, 7);
-    addSegment(effect, [shoulderX + 0.025, 0.416, 0.532], [shoulderX + 0.020, 0.365, 0.542], 0.028 * profile.arms, 0.023 * profile.arms, 3);
-    addBall(effect, shoulderX + 0.005, 0.350, 0.551, 0.029 * profile.arms);
-    addBall(effect, shoulderX - 0.012, 0.343, 0.558, 0.018 * profile.arms, 0.78);
-
-    const leftShoulderX = 1 - shoulderX;
-    addSegment(effect, [leftShoulderX, 0.733, 0.500], [leftShoulderX - 0.035, 0.595, 0.514], armRadius * 1.16, armRadius, 7);
-    addBall(effect, leftShoulderX - 0.038, 0.574, 0.516, 0.035 * profile.arms);
-    addSegment(effect, [leftShoulderX - 0.038, 0.560, 0.516], [leftShoulderX - 0.026, 0.425, 0.532], forearmRadius * 1.10, forearmRadius * 0.82, 7);
-    addSegment(effect, [leftShoulderX - 0.025, 0.416, 0.532], [leftShoulderX - 0.020, 0.365, 0.542], 0.028 * profile.arms, 0.023 * profile.arms, 3);
-    addBall(effect, leftShoulderX - 0.005, 0.350, 0.551, 0.029 * profile.arms);
-    addBall(effect, leftShoulderX + 0.012, 0.343, 0.558, 0.018 * profile.arms, 0.78);
-
-    // Legs: separate thigh, knee, calf and ankle volumes blended continuously.
-    const thighX = 0.448;
-    const thighRadius = 0.055 * profile.legs;
-    const calfRadius = 0.044 * profile.legs;
-
-    addSegment(effect, [thighX, 0.500, 0.498], [thighX, 0.332, 0.510], thighRadius * 1.18, thighRadius, 8);
-    addBall(effect, thighX, 0.303, 0.520, 0.045 * profile.legs);
-    addSegment(effect, [thighX, 0.286, 0.510], [thighX - 0.005, 0.155, 0.492], calfRadius * 1.12, calfRadius * 0.78, 7);
-    addBall(effect, thighX - 0.006, 0.130, 0.494, 0.031 * profile.legs);
-    addSegment(effect, [thighX - 0.006, 0.120, 0.500], [thighX - 0.004, 0.078, 0.515], 0.027 * profile.legs, 0.022 * profile.legs, 3);
-
-    const rightThighX = 1 - thighX;
-    addSegment(effect, [rightThighX, 0.500, 0.498], [rightThighX, 0.332, 0.510], thighRadius * 1.18, thighRadius, 8);
-    addBall(effect, rightThighX, 0.303, 0.520, 0.045 * profile.legs);
-    addSegment(effect, [rightThighX, 0.286, 0.510], [rightThighX + 0.005, 0.155, 0.492], calfRadius * 1.12, calfRadius * 0.78, 7);
-    addBall(effect, rightThighX + 0.006, 0.130, 0.494, 0.031 * profile.legs);
-    addSegment(effect, [rightThighX + 0.006, 0.120, 0.500], [rightThighX + 0.004, 0.078, 0.515], 0.027 * profile.legs, 0.022 * profile.legs, 3);
-
-    // Feet project forward (+Z) and have a heel/arch/toe progression rather
-    // than one capsule. They deliberately stay inside the metric floor plane.
-    for (const x of [thighX - 0.004, rightThighX + 0.004]) {
-        addBall(effect, x, 0.062, 0.522, 0.027 * profile.legs);
-        addBall(effect, x, 0.055, 0.552, 0.031 * profile.legs);
-        addBall(effect, x, 0.050, 0.585, 0.030 * profile.legs);
-        addBall(effect, x, 0.047, 0.615, 0.026 * profile.legs);
-    }
-
-    effect.update();
 }
 
 function createMaterial(THREE, color, options = {}) {
     return new THREE.MeshPhysicalMaterial({
         color,
-        roughness: options.roughness ?? 0.68,
+        roughness: options.roughness ?? 0.70,
         metalness: options.metalness ?? 0,
-        clearcoat: options.clearcoat ?? 0.04,
-        clearcoatRoughness: options.clearcoatRoughness ?? 0.72,
-        sheen: options.sheen ?? 0.08,
-        sheenRoughness: 0.8,
+        clearcoat: options.clearcoat ?? 0.025,
+        clearcoatRoughness: options.clearcoatRoughness ?? 0.78,
+        sheen: options.sheen ?? 0.06,
+        sheenRoughness: 0.82,
         side: THREE.DoubleSide,
     });
 }
 
-function makeEllipsoid(THREE, radius, scale, material, position) {
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 28, 20), material);
-    mesh.scale.set(scale[0], scale[1], scale[2]);
-    mesh.position.set(position[0], position[1], position[2]);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
-}
+function createLoftYGeometry(THREE, rings, radialSegments = 36, capBottom = true, capTop = true) {
+    const positions = [];
+    const indices = [];
 
-function createUniform(THREE, profile, state) {
-    const group = new THREE.Group();
-    group.name = 'MSKBA_ProceduralUniform';
+    rings.forEach((ring) => {
+        for (let segment = 0; segment < radialSegments; segment += 1) {
+            const angle = segment / radialSegments * Math.PI * 2;
+            positions.push(
+                (ring.cx || 0) + ring.rx * Math.cos(angle),
+                ring.y,
+                (ring.cz || 0) + ring.rz * Math.sin(angle),
+            );
+        }
+    });
 
-    const kit = UNIFORM_TONES[state.uniformKit] || UNIFORM_TONES.mskba_home;
-    const jerseyMaterial = createMaterial(THREE, kit.primary, { roughness: 0.78, sheen: 0.18 });
-    const accentMaterial = createMaterial(THREE, kit.accent, { roughness: 0.72, sheen: 0.12 });
-    const shortsMaterial = createMaterial(THREE, kit.secondary, { roughness: 0.80, sheen: 0.14 });
-    const shoeMaterial = createMaterial(THREE, '#111412', { roughness: 0.58 });
-    const soleMaterial = createMaterial(THREE, kit.accent, { roughness: 0.60 });
-
-    jerseyMaterial.userData.playerCharacterRole = 'uniform';
-    accentMaterial.userData.playerCharacterRole = 'uniform-accent';
-    shortsMaterial.userData.playerCharacterRole = 'uniform-secondary';
-    shoeMaterial.userData.playerCharacterRole = 'shoe';
-    soleMaterial.userData.playerCharacterRole = 'shoe-accent';
-
-    // Soft jersey shell. It is intentionally simple in v1; the body underneath
-    // provides the anatomical silhouette while the shell proves the equipment layer.
-    const jersey = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.205, 0.165, 0.425, 40, 4, true),
-        jerseyMaterial,
-    );
-    jersey.name = 'Procedural_Jersey';
-    jersey.scale.set(profile.chest, 1, 0.58 * profile.depth);
-    jersey.position.set(0, 0.347, 0.018);
-    jersey.castShadow = true;
-    group.add(jersey);
-
-    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.073, 0.010, 10, 36), accentMaterial);
-    collar.name = 'Procedural_Jersey_Collar';
-    collar.scale.set(1.15 * profile.chest, 1, 0.68);
-    collar.rotation.x = Math.PI / 2;
-    collar.position.set(0, 0.550, 0.105);
-    group.add(collar);
-
-    const shortWaist = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.170, 0.182, 0.195, 36, 2, true),
-        shortsMaterial,
-    );
-    shortWaist.name = 'Procedural_Shorts_Waist';
-    shortWaist.scale.set(profile.hips, 1, 0.64 * profile.depth);
-    shortWaist.position.set(0, 0.005, 0.010);
-    shortWaist.castShadow = true;
-    group.add(shortWaist);
-
-    for (const x of [-0.092, 0.092]) {
-        const leg = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.078, 0.092, 0.205, 28, 2, true),
-            shortsMaterial,
-        );
-        leg.name = 'Procedural_Shorts_Leg';
-        leg.scale.set(profile.legs, 1, 0.72 * profile.depth);
-        leg.position.set(x, -0.085, 0.020);
-        leg.castShadow = true;
-        group.add(leg);
+    for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += 1) {
+        for (let segment = 0; segment < radialSegments; segment += 1) {
+            const next = (segment + 1) % radialSegments;
+            const a = ringIndex * radialSegments + segment;
+            const b = ringIndex * radialSegments + next;
+            const c = (ringIndex + 1) * radialSegments + next;
+            const d = (ringIndex + 1) * radialSegments + segment;
+            indices.push(a, b, c, a, c, d);
+        }
     }
 
-    // Shoes are separate equipment meshes so they can later be swapped entirely.
-    for (const x of [-0.105, 0.105]) {
-        const shoe = makeEllipsoid(THREE, 0.095, [0.72, 0.34, 1.30], shoeMaterial, [x, -0.438, 0.105]);
-        shoe.name = 'Procedural_Shoe';
-        group.add(shoe);
-
-        const sole = makeEllipsoid(THREE, 0.096, [0.73, 0.12, 1.34], soleMaterial, [x, -0.466, 0.110]);
-        sole.name = 'Procedural_Shoe_Sole';
-        group.add(sole);
+    if (capBottom) {
+        const ring = rings[0];
+        const center = positions.length / 3;
+        positions.push(ring.cx || 0, ring.y, ring.cz || 0);
+        for (let segment = 0; segment < radialSegments; segment += 1) {
+            indices.push(center, (segment + 1) % radialSegments, segment);
+        }
     }
 
-    return group;
+    if (capTop) {
+        const ring = rings[rings.length - 1];
+        const center = positions.length / 3;
+        const offset = (rings.length - 1) * radialSegments;
+        positions.push(ring.cx || 0, ring.y, ring.cz || 0);
+        for (let segment = 0; segment < radialSegments; segment += 1) {
+            const next = (segment + 1) % radialSegments;
+            indices.push(center, offset + segment, offset + next);
+        }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    return geometry;
 }
 
-function mapFieldCoordinate(value) {
-    return value * 2 - 1;
+function createPathLoftGeometry(THREE, points, radialSegments = 24) {
+    const positions = [];
+    const indices = [];
+    const centers = points.map((point) => new THREE.Vector3(point.x, point.y, point.z));
+    let previousNormal = null;
+
+    points.forEach((point, index) => {
+        let tangent;
+
+        if (index === 0) {
+            tangent = centers[1].clone().sub(centers[0]);
+        } else if (index === points.length - 1) {
+            tangent = centers[index].clone().sub(centers[index - 1]);
+        } else {
+            tangent = centers[index + 1].clone().sub(centers[index - 1]);
+        }
+
+        tangent.normalize();
+
+        let reference = new THREE.Vector3(0, 0, 1);
+        if (Math.abs(tangent.dot(reference)) > 0.9) {
+            reference = new THREE.Vector3(1, 0, 0);
+        }
+
+        let normal = new THREE.Vector3().crossVectors(tangent, reference).normalize();
+        let binormal = new THREE.Vector3().crossVectors(tangent, normal).normalize();
+
+        if (previousNormal && normal.dot(previousNormal) < 0) {
+            normal.multiplyScalar(-1);
+            binormal.multiplyScalar(-1);
+        }
+        previousNormal = normal.clone();
+
+        for (let segment = 0; segment < radialSegments; segment += 1) {
+            const angle = segment / radialSegments * Math.PI * 2;
+            const vertex = centers[index].clone()
+                .addScaledVector(normal, Math.cos(angle) * point.ra)
+                .addScaledVector(binormal, Math.sin(angle) * point.rb);
+            positions.push(vertex.x, vertex.y, vertex.z);
+        }
+    });
+
+    for (let ringIndex = 0; ringIndex < points.length - 1; ringIndex += 1) {
+        for (let segment = 0; segment < radialSegments; segment += 1) {
+            const next = (segment + 1) % radialSegments;
+            const a = ringIndex * radialSegments + segment;
+            const b = ringIndex * radialSegments + next;
+            const c = (ringIndex + 1) * radialSegments + next;
+            const d = (ringIndex + 1) * radialSegments + segment;
+            indices.push(a, b, c, a, c, d);
+        }
+    }
+
+    for (const [ringIndex, reverse] of [[0, true], [points.length - 1, false]]) {
+        const point = points[ringIndex];
+        const center = positions.length / 3;
+        const offset = ringIndex * radialSegments;
+        positions.push(point.x, point.y, point.z);
+        for (let segment = 0; segment < radialSegments; segment += 1) {
+            const next = (segment + 1) % radialSegments;
+            if (reverse) {
+                indices.push(center, offset + next, offset + segment);
+            } else {
+                indices.push(center, offset + segment, offset + next);
+            }
+        }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    return geometry;
 }
 
-function createFaceDetails(THREE, skinMaterial) {
-    const group = new THREE.Group();
-    group.name = 'MSKBA_ProceduralFaceDetails';
+function mesh(THREE, geometry, material, name) {
+    const result = new THREE.Mesh(geometry, material);
+    result.name = name;
+    result.castShadow = true;
+    result.receiveShadow = true;
+    return result;
+}
 
-    const dark = createMaterial(THREE, '#34251f', { roughness: 0.82, clearcoat: 0 });
+function ellipsoid(THREE, radius, scale, material, position, name) {
+    const result = mesh(THREE, new THREE.SphereGeometry(radius, 32, 22), material, name);
+    result.scale.set(scale[0], scale[1], scale[2]);
+    result.position.set(position[0], position[1], position[2]);
+    return result;
+}
 
-    for (const x of [0.475, 0.525]) {
-        const eye = makeEllipsoid(
-            THREE,
-            0.017,
-            [1.0, 0.58, 0.36],
-            dark,
-            [mapFieldCoordinate(x), mapFieldCoordinate(0.910), 0.154],
-        );
-        eye.name = 'Procedural_Eye';
+function torsoRings(profile, inset = 0) {
+    const chest = profile.chest;
+    const shoulder = profile.shoulder;
+    const waist = profile.waist;
+    const hips = profile.hips;
+    const depth = profile.depth;
+
+    return [
+        { y: 0.84, rx: 0.158 * hips + inset, rz: 0.090 * depth + inset * 0.55 },
+        { y: 0.91, rx: 0.174 * hips + inset, rz: 0.101 * depth + inset * 0.55 },
+        { y: 0.99, rx: 0.145 * waist + inset, rz: 0.082 * depth + inset * 0.55 },
+        { y: 1.08, rx: 0.154 * waist + inset, rz: 0.088 * depth + inset * 0.55 },
+        { y: 1.17, rx: 0.186 * chest + inset, rz: 0.100 * depth + inset * 0.55 },
+        { y: 1.27, rx: 0.205 * chest + inset, rz: 0.111 * depth + inset * 0.55 },
+        { y: 1.35, rx: 0.195 * shoulder + inset, rz: 0.104 * depth + inset * 0.55 },
+        { y: 1.42, rx: 0.120 * shoulder + inset, rz: 0.073 * depth + inset * 0.55 },
+    ];
+}
+
+function buildBody(THREE, group, profile, skinMaterial) {
+    const torso = mesh(
+        THREE,
+        createLoftYGeometry(THREE, torsoRings(profile), 40),
+        skinMaterial,
+        'MSKBA_Male_Torso',
+    );
+    group.add(torso);
+
+    const neck = mesh(THREE, createLoftYGeometry(THREE, [
+        { y: 1.39, rx: 0.061 * profile.shoulder, rz: 0.052 * profile.depth },
+        { y: 1.47, rx: 0.055 * profile.shoulder, rz: 0.048 * profile.depth },
+        { y: 1.54, rx: 0.051, rz: 0.047 },
+    ], 30), skinMaterial, 'MSKBA_Male_Neck');
+    group.add(neck);
+
+    const head = mesh(THREE, createLoftYGeometry(THREE, [
+        { y: 1.50, rx: 0.044, rz: 0.048, cz: 0.008 },
+        { y: 1.55, rx: 0.062, rz: 0.061, cz: 0.010 },
+        { y: 1.61, rx: 0.076, rz: 0.075, cz: 0.010 },
+        { y: 1.68, rx: 0.081, rz: 0.079, cz: 0.005 },
+        { y: 1.74, rx: 0.073, rz: 0.073, cz: 0 },
+        { y: 1.79, rx: 0.045, rz: 0.054, cz: -0.004 },
+    ], 40), skinMaterial, 'MSKBA_Male_Head');
+    group.add(head);
+
+    for (const sign of [-1, 1]) {
+        const shoulderX = sign * 0.190 * profile.shoulder;
+        const armGeometry = createPathLoftGeometry(THREE, [
+            { x: shoulderX, y: 1.38, z: 0, ra: 0.073 * profile.shoulder, rb: 0.068 * profile.depth },
+            { x: sign * 0.220 * profile.shoulder, y: 1.30, z: 0.004, ra: 0.060 * profile.arms, rb: 0.054 * profile.arms },
+            { x: sign * 0.238 * profile.shoulder, y: 1.19, z: 0.010, ra: 0.052 * profile.arms, rb: 0.048 * profile.arms },
+            { x: sign * 0.244 * profile.shoulder, y: 1.08, z: 0.014, ra: 0.041 * profile.arms, rb: 0.039 * profile.arms },
+            { x: sign * 0.239 * profile.shoulder, y: 0.99, z: 0.018, ra: 0.045 * profile.arms, rb: 0.041 * profile.arms },
+            { x: sign * 0.232 * profile.shoulder, y: 0.88, z: 0.024, ra: 0.036 * profile.arms, rb: 0.033 * profile.arms },
+            { x: sign * 0.226 * profile.shoulder, y: 0.80, z: 0.030, ra: 0.028 * profile.arms, rb: 0.026 * profile.arms },
+            { x: sign * 0.225 * profile.shoulder, y: 0.745, z: 0.036, ra: 0.034 * profile.arms, rb: 0.021 * profile.arms },
+            { x: sign * 0.225 * profile.shoulder, y: 0.695, z: 0.042, ra: 0.024 * profile.arms, rb: 0.015 * profile.arms },
+        ], 26);
+        group.add(mesh(THREE, armGeometry, skinMaterial, sign < 0 ? 'MSKBA_Male_LeftArm' : 'MSKBA_Male_RightArm'));
+    }
+
+    for (const sign of [-1, 1]) {
+        const legX = sign * 0.090 * profile.hips;
+        const legGeometry = createPathLoftGeometry(THREE, [
+            { x: legX, y: 0.89, z: -0.002, ra: 0.086 * profile.legs, rb: 0.081 * profile.depth },
+            { x: sign * 0.096 * profile.hips, y: 0.80, z: 0.004, ra: 0.080 * profile.legs, rb: 0.075 * profile.legs },
+            { x: sign * 0.101 * profile.hips, y: 0.68, z: 0.008, ra: 0.069 * profile.legs, rb: 0.065 * profile.legs },
+            { x: sign * 0.104 * profile.hips, y: 0.58, z: 0.012, ra: 0.056 * profile.legs, rb: 0.053 * profile.legs },
+            { x: sign * 0.105 * profile.hips, y: 0.50, z: 0.010, ra: 0.050 * profile.legs, rb: 0.048 * profile.legs },
+            { x: sign * 0.105 * profile.hips, y: 0.40, z: 0, ra: 0.059 * profile.legs, rb: 0.054 * profile.legs },
+            { x: sign * 0.104 * profile.hips, y: 0.29, z: -0.005, ra: 0.049 * profile.legs, rb: 0.046 * profile.legs },
+            { x: sign * 0.103 * profile.hips, y: 0.18, z: 0, ra: 0.035 * profile.legs, rb: 0.033 * profile.legs },
+            { x: sign * 0.103 * profile.hips, y: 0.105, z: 0.020, ra: 0.030 * profile.legs, rb: 0.030 * profile.legs },
+        ], 28);
+        group.add(mesh(THREE, legGeometry, skinMaterial, sign < 0 ? 'MSKBA_Male_LeftLeg' : 'MSKBA_Male_RightLeg'));
+    }
+
+    for (const sign of [-1, 1]) {
+        const ear = ellipsoid(THREE, 0.025, [0.65, 1.0, 0.48], skinMaterial, [sign * 0.081, 1.66, 0], 'MSKBA_Male_Ear');
+        group.add(ear);
+    }
+}
+
+function buildFace(THREE, group, skinMaterial) {
+    const detailMaterial = createMaterial(THREE, '#35251f', { roughness: 0.86, clearcoat: 0 });
+
+    for (const x of [-0.028, 0.028]) {
+        const eye = ellipsoid(THREE, 0.012, [1.0, 0.52, 0.35], detailMaterial, [x, 1.665, 0.075], 'MSKBA_Male_Eye');
         group.add(eye);
     }
 
-    const nose = makeEllipsoid(THREE, 0.026, [0.62, 1.08, 0.78], skinMaterial, [0, 0.790, 0.180]);
-    nose.name = 'Procedural_Nose';
+    const nose = ellipsoid(THREE, 0.024, [0.62, 1.15, 0.72], skinMaterial, [0, 1.625, 0.083], 'MSKBA_Male_Nose');
     group.add(nose);
 
-    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.006, 0.006), dark);
-    mouth.name = 'Procedural_Mouth';
-    mouth.position.set(0, 0.735, 0.181);
+    const mouth = mesh(THREE, new THREE.BoxGeometry(0.052, 0.005, 0.005), detailMaterial, 'MSKBA_Male_Mouth');
+    mouth.position.set(0, 1.575, 0.073);
     group.add(mouth);
-
-    return group;
 }
 
-export function createProceduralMalePlayer(engine, state) {
-    const { THREE, MarchingCubes } = engine;
-    const profile = profileForState(state);
-    const group = new THREE.Group();
-    group.name = 'MSKBA_ProceduralMale_v1';
+function buildUniform(THREE, group, profile, state) {
+    const kit = UNIFORM_TONES[state.uniformKit] || UNIFORM_TONES.mskba_home;
+    const jerseyMaterial = createMaterial(THREE, kit.primary, { roughness: 0.80, sheen: 0.20 });
+    const secondaryMaterial = createMaterial(THREE, kit.secondary, { roughness: 0.82, sheen: 0.16 });
+    const accentMaterial = createMaterial(THREE, kit.accent, { roughness: 0.74, sheen: 0.13 });
+    const shoeMaterial = createMaterial(THREE, '#111412', { roughness: 0.58 });
 
+    jerseyMaterial.userData.playerCharacterRole = 'uniform';
+    secondaryMaterial.userData.playerCharacterRole = 'uniform-secondary';
+    accentMaterial.userData.playerCharacterRole = 'uniform-accent';
+    shoeMaterial.userData.playerCharacterRole = 'shoe';
+
+    const jerseyRings = torsoRings(profile, 0.010).filter((ring) => ring.y >= 0.98);
+    const jersey = mesh(
+        THREE,
+        createLoftYGeometry(THREE, jerseyRings, 40, false, false),
+        jerseyMaterial,
+        'Procedural_Jersey',
+    );
+    group.add(jersey);
+
+    const collar = mesh(THREE, new THREE.TorusGeometry(0.067, 0.007, 10, 36), accentMaterial, 'Procedural_Jersey_Collar');
+    collar.scale.set(1.10 * profile.shoulder, 1, 0.78 * profile.depth);
+    collar.rotation.x = Math.PI / 2;
+    collar.position.set(0, 1.408, 0.062);
+    group.add(collar);
+
+    for (const sign of [-1, 1]) {
+        const sidePanel = mesh(THREE, new THREE.BoxGeometry(0.018, 0.34, 0.012), accentMaterial, 'Procedural_Jersey_SidePanel');
+        sidePanel.position.set(sign * 0.175 * profile.chest, 1.17, 0.087 * profile.depth);
+        group.add(sidePanel);
+    }
+
+    const shortsWaist = mesh(THREE, createLoftYGeometry(THREE, [
+        { y: 0.72, rx: 0.174 * profile.hips, rz: 0.096 * profile.depth },
+        { y: 0.82, rx: 0.182 * profile.hips, rz: 0.104 * profile.depth },
+        { y: 0.92, rx: 0.178 * profile.hips, rz: 0.102 * profile.depth },
+    ], 36, false, false), secondaryMaterial, 'Procedural_Shorts_Waist');
+    group.add(shortsWaist);
+
+    for (const sign of [-1, 1]) {
+        const x = sign * 0.087 * profile.hips;
+        const shortsLeg = mesh(THREE, createPathLoftGeometry(THREE, [
+            { x, y: 0.79, z: 0.006, ra: 0.092 * profile.legs, rb: 0.087 * profile.depth },
+            { x: sign * 0.092 * profile.hips, y: 0.70, z: 0.010, ra: 0.087 * profile.legs, rb: 0.080 * profile.depth },
+            { x: sign * 0.096 * profile.hips, y: 0.62, z: 0.012, ra: 0.078 * profile.legs, rb: 0.070 * profile.depth },
+        ], 28), secondaryMaterial, 'Procedural_Shorts_Leg');
+        group.add(shortsLeg);
+    }
+
+    for (const sign of [-1, 1]) {
+        const x = sign * 0.103 * profile.hips;
+        const sock = mesh(THREE, new THREE.CylinderGeometry(0.037 * profile.legs, 0.032 * profile.legs, 0.18, 24), secondaryMaterial, 'Procedural_Sock');
+        sock.scale.z = 0.92;
+        sock.position.set(x, 0.195, 0.004);
+        group.add(sock);
+
+        const shoe = ellipsoid(THREE, 0.10, [0.72, 0.38, 1.38], shoeMaterial, [x, 0.055, 0.105], 'Procedural_Shoe');
+        group.add(shoe);
+
+        const sole = ellipsoid(THREE, 0.102, [0.74, 0.13, 1.42], accentMaterial, [x, 0.027, 0.110], 'Procedural_Shoe_Sole');
+        group.add(sole);
+    }
+}
+
+function disposeGroup(group) {
+    group.traverse((object) => {
+        object.geometry?.dispose?.();
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.filter(Boolean).forEach((material) => material.dispose?.());
+    });
+    group.clear();
+}
+
+function rebuildMalePlayer(THREE, group, state) {
+    disposeGroup(group);
+
+    const profile = profileForState(state);
     const skinMaterial = createMaterial(
         THREE,
         SKIN_TONES[state.skinTone] || SKIN_TONES.warm,
-        { roughness: 0.76, clearcoat: 0.02, sheen: 0.04 },
+        { roughness: 0.76, clearcoat: 0.018, sheen: 0.04 },
     );
     skinMaterial.userData.playerCharacterRole = 'skin';
 
-    const resolution = window.matchMedia?.('(max-width: 600px)').matches ? 52 : 60;
-    const body = new MarchingCubes(resolution, skinMaterial, false, false, 160000);
-    body.name = 'MSKBA_ProceduralMale_Body';
-    body.isolation = FIELD_ISOLATION;
-    body.enableUvs = false;
-    body.enableColors = false;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    body.frustumCulled = false;
+    buildBody(THREE, group, profile, skinMaterial);
+    buildFace(THREE, group, skinMaterial);
+    buildUniform(THREE, group, profile, state);
 
-    addMaleBodyField(body, profile);
-    group.add(body);
-
-    const uniform = createUniform(THREE, profile, state);
-    uniform.position.y = 0.135;
-    group.add(uniform);
-
-    const face = createFaceDetails(THREE, skinMaterial);
-    group.add(face);
-
-    group.userData.proceduralBody = body;
-    group.userData.proceduralUniform = uniform;
     group.userData.proceduralProfile = profile;
-    group.userData.playerCharacterBase = 'procedural-male-v1';
+    group.userData.playerCharacterBase = 'procedural-male-loft-v1';
+}
 
+export function createProceduralMalePlayer(engine, state) {
+    const group = new engine.THREE.Group();
+    group.name = 'MSKBA_ProceduralMale_v2';
+    rebuildMalePlayer(engine.THREE, group, state);
     return group;
 }
 
 export function updateProceduralMalePlayer(engine, model, state) {
-    const body = model?.userData?.proceduralBody;
-
-    if (!body) {
+    if (!model?.isGroup || !model.userData?.playerCharacterBase?.startsWith('procedural-male-')) {
         return false;
     }
 
-    const profile = profileForState(state);
-    addMaleBodyField(body, profile);
-    model.userData.proceduralProfile = profile;
-
-    const skinColor = SKIN_TONES[state.skinTone] || SKIN_TONES.warm;
-    if (body.material?.color) {
-        body.material.color.set(skinColor);
-        body.material.needsUpdate = true;
-    }
-
-    // Rebuild the lightweight equipment layer when body proportions or kit change.
-    const previousUniform = model.userData.proceduralUniform;
-    if (previousUniform) {
-        model.remove(previousUniform);
-        previousUniform.traverse((object) => {
-            object.geometry?.dispose?.();
-            const materials = Array.isArray(object.material) ? object.material : [object.material];
-            materials.filter(Boolean).forEach((material) => material.dispose?.());
-        });
-    }
-
-    const uniform = createUniform(engine.THREE, profile, state);
-    uniform.position.y = 0.135;
-    model.add(uniform);
-    model.userData.proceduralUniform = uniform;
-
+    rebuildMalePlayer(engine.THREE, model, state);
     return true;
 }
