@@ -290,12 +290,12 @@ function torsoRings(profile) {
         { y: 0.84, rx: 0.158 * hips, rz: 0.090 * depth },
         { y: 0.91, rx: 0.174 * hips, rz: 0.101 * depth },
         { y: 0.99, rx: 0.145 * waist, rz: 0.082 * depth },
-        { y: 1.08, rx: 0.154 * waist, rz: 0.088 * depth },
-        { y: 1.17, rx: 0.186 * chest, rz: 0.100 * depth },
-        { y: 1.27, rx: 0.205 * chest, rz: 0.111 * depth },
-        { y: 1.34, rx: 0.218 * shoulder, rz: 0.108 * depth },
-        { y: 1.390, rx: 0.199 * shoulder, rz: 0.097 * depth },
-        { y: 1.430, rx: 0.142 * shoulder, rz: 0.079 * depth },
+        { y: 1.08, rx: 0.156 * waist, rz: 0.084 * depth },
+        { y: 1.17, rx: 0.184 * chest, rz: 0.088 * depth },
+        { y: 1.27, rx: 0.202 * chest, rz: 0.092 * depth },
+        { y: 1.34, rx: 0.218 * shoulder, rz: 0.094 * depth },
+        { y: 1.390, rx: 0.199 * shoulder, rz: 0.090 * depth },
+        { y: 1.430, rx: 0.142 * shoulder, rz: 0.075 * depth },
     ];
 }
 
@@ -524,14 +524,14 @@ function buildUniform(THREE, group, profile, state) {
     const jersey = mesh(THREE, createLoftYGeometry(THREE, [
         { y: 0.855, rx: 0.188 * profile.hips + 0.029, rz: 0.105 * profile.depth + 0.024 },
         { y: 0.940, rx: 0.185 * profile.hips + 0.030, rz: 0.103 * profile.depth + 0.024 },
-        { y: 1.055, rx: 0.178 * profile.waist + 0.034, rz: 0.098 * profile.depth + 0.025 },
-        { y: 1.165, rx: 0.198 * profile.chest + 0.032, rz: 0.110 * profile.depth + 0.025 },
-        { y: 1.235, rx: 0.214 * profile.chest + 0.028, rz: 0.118 * profile.depth + 0.024 },
-        { y: 1.290, rx: 0.208 * profile.chest + 0.024, rz: 0.116 * profile.depth + 0.022 },
+        { y: 1.055, rx: 0.178 * profile.waist + 0.034, rz: 0.094 * profile.depth + 0.025 },
+        { y: 1.165, rx: 0.198 * profile.chest + 0.032, rz: 0.098 * profile.depth + 0.025 },
+        { y: 1.235, rx: 0.214 * profile.chest + 0.028, rz: 0.102 * profile.depth + 0.024 },
+        { y: 1.290, rx: 0.208 * profile.chest + 0.024, rz: 0.100 * profile.depth + 0.022 },
     ], 44, false, false), jerseyMaterial, 'Procedural_Jersey_Body');
     group.add(jersey);
 
-    const frontDepth = 0.118 * profile.depth + 0.024;
+    const frontDepth = 0.106 * profile.depth + 0.024;
     const backDepth = 0.108 * profile.depth + 0.021;
 
     const frontPanel = mesh(THREE, createJerseyPanelGeometry(THREE, profile, true), jerseyMaterial, 'Procedural_Jersey_Front');
@@ -578,7 +578,7 @@ function buildUniform(THREE, group, profile, state) {
             accentMaterial,
             'Procedural_Jersey_SidePanel',
         );
-        sidePanel.position.set(sign * (0.201 * profile.chest + 0.024), 1.045, 0.094 * profile.depth);
+        sidePanel.position.set(sign * (0.201 * profile.chest + 0.024), 1.045, 0.090 * profile.depth);
         group.add(sidePanel);
     }
 
@@ -658,7 +658,7 @@ function rebuildMalePlayer(THREE, group, state) {
     buildUniform(THREE, group, profile, state);
 
     group.userData.proceduralProfile = profile;
-    group.userData.playerCharacterBase = 'procedural-male-loft-v2';
+    group.userData.playerCharacterBase = 'procedural-male-loft-v3';
     group.userData.playerCharacterMetric = {
         floorY: FLOOR_Y,
         crownY: BODY_CROWN_Y,
@@ -667,7 +667,7 @@ function rebuildMalePlayer(THREE, group, state) {
 
 export function createProceduralMalePlayer(engine, state) {
     const group = new engine.THREE.Group();
-    group.name = 'MSKBA_ProceduralMale_v3';
+    group.name = 'MSKBA_ProceduralMale_v4';
     rebuildMalePlayer(engine.THREE, group, state);
     return group;
 }
