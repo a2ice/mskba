@@ -1,0 +1,62 @@
+name: Verify Task 119
+
+on:
+  push:
+    branches:
+      - feature/119
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, sqlite3, pdo_sqlite, gd
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Player character tests
+        run: php artisan test tests/Feature/Identity/AccountPlayerCharacterAppearanceTest.php tests/Feature/Identity/AccountPlayerCharacterStageTest.php tests/Feature/Identity/AccountPlayerProfileTest.php
+
+      - name: Blade cache
+        run: php artisan view:cache
+
+      - name: JavaScript syntax
+        run: |
+          node --check resources/themes/mskba_dark/js/features/player-character-procedural-male.js
+          node --check resources/themes/mskba_dark/js/features/player-character-three-renderer.js
+          node --check resources/themes/mskba_dark/js/features/player-character-stage.js
+
+      - name: Verify Three and MarchingCubes runtime
+        run: |
+          curl --fail --silent --show-error --location 'https://esm.sh/three@0.184.0?target=es2022' --output /tmp/three.mjs
+          curl --fail --silent --show-error --location 'https://esm.sh/three@0.184.0/examples/jsm/objects/MarchingCubes.js?target=es2022' --output /tmp/marching.mjs
+          test -s /tmp/three.mjs
+          test -s /tmp/marching.mjs
+
+      - name: Frontend build
+        run: |
+          npm ci
+          npm run build
