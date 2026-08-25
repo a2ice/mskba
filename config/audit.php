@@ -22,6 +22,7 @@ use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking as RentalVenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 
 return [
@@ -53,6 +54,7 @@ return [
         VenueReview::class,
         VenueOwnershipClaim::class,
         VenueBookingPolicy::class,
+        RentalVenueBooking::class,
         Contract::class,
         ContractMembership::class,
         ContractPermission::class,

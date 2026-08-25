@@ -87,6 +87,7 @@ final readonly class QuoteVenueBookingHandler
         $amountMinor = $steps * (int) $pricePerStep;
         $generatedAt = CarbonImmutable::now('UTC');
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
+        $databaseTimezone = (string) config('app.timezone', 'UTC');
         $publicId = (string) Str::uuid();
         $snapshot = [
             'schema_version' => 1,
@@ -127,15 +128,17 @@ final readonly class QuoteVenueBookingHandler
             'policy_version_id' => $policy->id,
             'quoted_for_user_id' => $user?->canonical()->id,
             'scope' => $scope,
-            'starts_at' => $normalizedStart,
-            'ends_at' => $endsAt,
+            // Timestamp columns are stored in the application's database timezone;
+            // the immutable snapshot and DTO keep the canonical UTC instant.
+            'starts_at' => $normalizedStart->setTimezone($databaseTimezone),
+            'ends_at' => $endsAt->setTimezone($databaseTimezone),
             'amount_minor' => $amountMinor,
             'currency' => $policy->currency,
             'hold_duration_minutes' => $policy->hold_duration_minutes,
             'payment_window_minutes' => $policy->payment_window_minutes,
             'requires_payment' => $policy->requires_payment,
             'snapshot' => $snapshot,
-            'valid_until' => $validUntil,
+            'valid_until' => $validUntil->setTimezone($databaseTimezone),
         ]);
 
         return new VenueBookingQuoteDTO(

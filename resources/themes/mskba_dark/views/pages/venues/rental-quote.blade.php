@@ -30,6 +30,15 @@
                 <p>{{ $quote->startsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('d.m.Y H:i') }}–{{ $quote->endsAt->setTimezone($venue->schedule?->timezone ?? config('app.timezone'))->format('H:i') }}</p>
                 <p>Hold: {{ $quote->holdDurationMinutes }} мин. Quote действует до {{ $quote->validUntil->format('d.m.Y H:i') }} UTC.</p>
                 <p class="text-muted">Идентификатор: {{ $quote->publicId }}. При отправке заявки сервер повторно проверит этот snapshot.</p>
+                @auth
+                    <form method="POST" action="{{ route('account.venue-bookings.store') }}">
+                        @csrf
+                        <input type="hidden" name="quote_id" value="{{ $quote->publicId }}">
+                        <button class="btn btn--primary btn--sm" type="submit">Отправить заявку</button>
+                    </form>
+                @else
+                    <p><a href="{{ route('login') }}">Войдите</a>, чтобы отправить заявку.</p>
+                @endauth
             </div></div>
         @endif
     </div></section>

@@ -54,6 +54,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipCon
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
@@ -298,6 +299,17 @@ Route::prefix('account/venue-ownership-claims')
             ->name('account.venue-ownership-claims.show');
         Route::post('/{venueOwnershipClaim}/cancel', [VenueOwnershipClaimController::class, 'cancel'])
             ->name('account.venue-ownership-claims.cancel');
+    });
+
+Route::prefix('account/venue-bookings')
+    ->middleware(['venue-rental-feature:rental_flow', 'auth'])
+    ->group(function () {
+        Route::post('/', [VenueBookingController::class, 'store'])->name('account.venue-bookings.store');
+        Route::get('/{venueBooking}', [VenueBookingController::class, 'show'])->name('account.venue-bookings.show');
+        Route::post('/{venueBooking}/accept', [VenueBookingController::class, 'accept'])->name('account.venue-bookings.accept');
+        Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
+        Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
+        Route::post('/{venueBooking}/confirm', [VenueBookingController::class, 'confirm'])->name('account.venue-bookings.confirm');
     });
 
 Route::prefix('events')->group(function () {

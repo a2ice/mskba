@@ -98,6 +98,9 @@ final class VenueBookingPolicyQuoteTest extends TestCase
             VenueBookingScopeEnum::WHOLE,
         );
         $this->assertSame('2026-08-26 09:00:00', $valid->startsAt->format('Y-m-d H:i:s'));
+        $stored = VenueBookingQuote::query()->where('public_id', $valid->publicId)->firstOrFail();
+        $this->assertSame('2026-08-26T09:00:00+00:00', $stored->starts_at->utc()->toIso8601String());
+        $this->assertSame('2026-08-25T07:15:00+00:00', $stored->valid_until->utc()->toIso8601String());
 
         foreach ([
             ['2026-08-25 11:00:00', 60],
