@@ -11,6 +11,7 @@ use App\Modules\VenueBooking\Application\UseCases\CancelVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\ConfirmVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RejectVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingConflictException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Presentation\Theming\ThemeResolver;
@@ -117,7 +118,13 @@ final class VenueBookingController extends Controller
         $status = $exception->errorCode === 'BOOKING_FORBIDDEN' ? 403 : 409;
 
         if ($request->expectsJson()) {
-            return response()->json(['code' => $exception->errorCode, 'message' => $exception->getMessage()], $status);
+            return response()->json([
+                'code' => $exception->errorCode,
+                'message' => $exception->getMessage(),
+                'suggested_starts_at' => $exception instanceof VenueBookingConflictException
+                    ? $exception->suggestedStartsAt
+                    : [],
+            ], $status);
         }
 
         return back()->withInput()->with('error', $exception->getMessage());

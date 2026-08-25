@@ -69,10 +69,7 @@ final class VenueEventAvailability
                 $excludedBookingId !== null,
                 fn ($query) => $query->whereKeyNot($excludedBookingId),
             )
-            ->whereIn('status', [
-                VenueBookingStatusEnum::PENDING->value,
-                VenueBookingStatusEnum::CONFIRMED->value,
-            ])
+            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
             ->where('ends_at', '>', $startsAt)
             ->orderBy('starts_at')
             ->value('starts_at');
@@ -176,19 +173,11 @@ final class VenueEventAvailability
                 $excludedBookingId !== null,
                 fn ($query) => $query->whereKeyNot($excludedBookingId),
             )
-            ->whereIn('status', [
-                VenueBookingStatusEnum::PENDING->value,
-                VenueBookingStatusEnum::CONFIRMED->value,
-            ])
+            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
             ->where('starts_at', '<', $endsAt)
             ->where('ends_at', '>', $startsAt)
             ->where(function ($query) use ($scope): void {
-                $query->where('scope', VenueBookingScopeEnum::WHOLE->value);
-                if ($scope === VenueBookingScopeEnum::WHOLE) {
-                    $query->orWhereIn('scope', [VenueBookingScopeEnum::HALF_A->value, VenueBookingScopeEnum::HALF_B->value]);
-                } else {
-                    $query->orWhere('scope', $scope->value);
-                }
+                $query->whereNull('scope')->orWhereIn('scope', $scope->conflictingValues());
             })
             ->exists();
 

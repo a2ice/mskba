@@ -9,6 +9,8 @@ use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
+use App\Modules\Event\Domain\Models\VenueBooking as LegacyVenueBooking;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -26,10 +28,13 @@ use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandl
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RejectVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingHeld;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event as EventFacade;
 use LogicException;
 use Tests\TestCase;
 
@@ -41,6 +46,7 @@ final class VenueBookingLifecycleTest extends TestCase
     {
         parent::setUp();
         config()->set('features.venue_rental.rental_flow', true);
+        Cache::forget('metrics:venue_booking:conflicts');
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-25 10:00:00', 'Europe/Moscow'));
     }
 
@@ -234,6 +240,85 @@ final class VenueBookingLifecycleTest extends TestCase
             ->assertJsonPath('code', 'feature_disabled');
     }
 
+    public function test_whole_and_halves_use_half_open_conflict_geometry(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$firstApplicant, $firstActor] = $this->userAndActor();
+        [$secondApplicant, $secondActor] = $this->userAndActor();
+        [$wholeApplicant, $wholeActor] = $this->userAndActor();
+        $halfA = $this->request($venue, $owner, $firstApplicant, $firstActor, false, '2026-08-26 12:00:00', VenueBookingScopeEnum::HALF_A);
+        $halfB = $this->request($venue, $owner, $secondApplicant, $secondActor, false, '2026-08-26 12:00:00', VenueBookingScopeEnum::HALF_B);
+        $whole = $this->request($venue, $owner, $wholeApplicant, $wholeActor, false, '2026-08-26 12:00:00');
+
+        app(AcceptVenueBookingHandler::class)->handle($halfA->id, $ownerActor);
+        app(AcceptVenueBookingHandler::class)->handle($halfB->id, $ownerActor);
+        EventFacade::fake([VenueBookingHeld::class]);
+
+        $this->actingAs($owner)
+            ->postJson(route('account.venue-bookings.accept', $whole), ['version' => 1])
+            ->assertConflict()
+            ->assertJsonPath('code', 'BOOKING_CONFLICT')
+            ->assertJsonPath('suggested_starts_at.0', '2026-08-26T10:00:00+00:00');
+        $this->assertSame(VenueBookingStatusEnum::REQUESTED, $whole->refresh()->status);
+        $this->assertSame(1, $whole->transitions()->count());
+        $this->assertSame(1, Cache::get('metrics:venue_booking:conflicts'));
+        EventFacade::assertNotDispatched(VenueBookingHeld::class);
+
+        [$thirdApplicant, $thirdActor] = $this->userAndActor();
+        $adjacent = $this->request($venue, $owner, $thirdApplicant, $thirdActor, false, '2026-08-26 13:00:00', VenueBookingScopeEnum::HALF_A);
+        app(AcceptVenueBookingHandler::class)->handle($adjacent->id, $ownerActor);
+        $this->assertSame(VenueBookingStatusEnum::HELD, $adjacent->refresh()->status);
+    }
+
+    public function test_same_half_and_legacy_pending_block_hold(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$firstApplicant, $firstActor] = $this->userAndActor();
+        [$secondApplicant, $secondActor] = $this->userAndActor();
+        $first = $this->request($venue, $owner, $firstApplicant, $firstActor, false, '2026-08-26 15:00:00', VenueBookingScopeEnum::HALF_A);
+        $second = $this->request($venue, $owner, $secondApplicant, $secondActor, false, '2026-08-26 15:30:00', VenueBookingScopeEnum::HALF_A);
+        app(AcceptVenueBookingHandler::class)->handle($first->id, $ownerActor);
+
+        $this->expectConflict(fn () => app(AcceptVenueBookingHandler::class)->handle($second->id, $ownerActor));
+
+        [$thirdApplicant, $thirdActor] = $this->userAndActor();
+        $rental = $this->request($venue, $owner, $thirdApplicant, $thirdActor, false, '2026-08-26 18:00:00');
+        $event = Event::factory()->create([
+            'venue_id' => $venue->id,
+            'organizer_actor_id' => $ownerActor->id,
+            'starts_at' => CarbonImmutable::parse('2026-08-26 18:00:00', 'Europe/Moscow'),
+            'ends_at' => CarbonImmutable::parse('2026-08-26 19:00:00', 'Europe/Moscow'),
+        ]);
+        LegacyVenueBooking::query()->create([
+            'venue_id' => $venue->id,
+            'event_id' => $event->id,
+            'created_by_actor_id' => $ownerActor->id,
+            'status' => VenueBookingStatusEnum::PENDING,
+            'scope' => VenueBookingScopeEnum::WHOLE,
+            'starts_at' => $event->starts_at,
+            'ends_at' => $event->ends_at,
+        ]);
+
+        $this->expectConflict(fn () => app(AcceptVenueBookingHandler::class)->handle($rental->id, $ownerActor));
+    }
+
+    public function test_half_is_revalidated_when_hold_is_acquired(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $booking = $this->request($venue, $owner, $applicant, $applicantActor, false, '2026-08-26 12:00:00', VenueBookingScopeEnum::HALF_A);
+        $venue->characteristics()->update(['hoops_count' => 1]);
+
+        try {
+            app(AcceptVenueBookingHandler::class)->handle($booking->id, $ownerActor);
+            $this->fail('Half hold must revalidate physical venue zones.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('BOOKING_SCOPE_UNAVAILABLE', $exception->errorCode);
+        }
+
+        $this->assertSame(VenueBookingStatusEnum::REQUESTED, $booking->refresh()->status);
+    }
+
     private function assertInvalidTransitionLeavesHistory(VenueBooking $booking, callable $command): void
     {
         $before = $booking->transitions()->count();
@@ -253,21 +338,28 @@ final class VenueBookingLifecycleTest extends TestCase
         Actor $applicantActor,
         bool $requiresPayment,
         string $start = '2026-08-26 12:00:00',
+        VenueBookingScopeEnum $scope = VenueBookingScopeEnum::WHOLE,
     ): VenueBooking {
         return app(RequestVenueBookingHandler::class)->handle(
             $applicantActor,
-            $this->quote($venue, $owner, $applicant, $requiresPayment, $start),
+            $this->quote($venue, $owner, $applicant, $requiresPayment, $start, $scope),
         );
     }
 
-    private function quote(Venue $venue, User $owner, User $applicant, bool $requiresPayment, string $start = '2026-08-26 12:00:00'): string
-    {
+    private function quote(
+        Venue $venue,
+        User $owner,
+        User $applicant,
+        bool $requiresPayment,
+        string $start = '2026-08-26 12:00:00',
+        VenueBookingScopeEnum $scope = VenueBookingScopeEnum::WHOLE,
+    ): string {
         app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData($requiresPayment));
         $quote = app(QuoteVenueBookingHandler::class)->handle(
             $venue,
             CarbonImmutable::parse($start, 'Europe/Moscow'),
             60,
-            VenueBookingScopeEnum::WHOLE,
+            $scope,
             $applicant,
         );
 
@@ -319,7 +411,7 @@ final class VenueBookingLifecycleTest extends TestCase
         return [
             'is_enabled' => true,
             'allows_whole' => true,
-            'allows_halves' => false,
+            'allows_halves' => true,
             'minimum_duration_minutes' => 60,
             'maximum_duration_minutes' => 180,
             'time_step_minutes' => 30,
@@ -327,12 +419,22 @@ final class VenueBookingLifecycleTest extends TestCase
             'maximum_advance_days' => 90,
             'currency' => 'RUB',
             'whole_price_per_step_minor' => $requiresPayment ? 500 : 0,
-            'half_price_per_step_minor' => null,
+            'half_price_per_step_minor' => $requiresPayment ? 300 : 0,
             'hold_duration_minutes' => 30,
             'requires_payment' => $requiresPayment,
             'payment_window_minutes' => $requiresPayment ? 30 : null,
             'quote_validity_minutes' => 15,
             'cancellation_before_minutes' => 1440,
         ];
+    }
+
+    private function expectConflict(callable $command): void
+    {
+        try {
+            $command();
+            $this->fail('Overlapping protected booking must be rejected.');
+        } catch (VenueBookingTransitionException $exception) {
+            $this->assertSame('BOOKING_CONFLICT', $exception->errorCode);
+        }
     }
 }

@@ -47,7 +47,7 @@ final class VenueFacilitiesSynchronizer
             : null;
         if (($hoopsCount ?? 0) < 2 && $venue->bookings()
             ->whereIn('scope', [VenueBookingScopeEnum::HALF_A->value, VenueBookingScopeEnum::HALF_B->value])
-            ->whereIn('status', [VenueBookingStatusEnum::PENDING->value, VenueBookingStatusEnum::CONFIRMED->value])
+            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
             ->where('ends_at', '>', now())
             ->exists()) {
             throw new InvalidArgumentException('Нельзя уменьшить количество колец: есть будущие бронирования отдельных половин.');

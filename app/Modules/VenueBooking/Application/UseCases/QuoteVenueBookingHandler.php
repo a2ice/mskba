@@ -73,9 +73,15 @@ final readonly class QuoteVenueBookingHandler
 
         $normalizedStart = $localStart->utc();
         $endsAt = $normalizedStart->addMinutes($durationMinutes);
+        $databaseTimezone = (string) config('app.timezone', 'UTC');
 
         try {
-            $this->availability->assertAvailable($venue, $normalizedStart, $endsAt, scope: $scope);
+            $this->availability->assertAvailable(
+                $venue,
+                $normalizedStart->setTimezone($databaseTimezone),
+                $endsAt->setTimezone($databaseTimezone),
+                scope: $scope,
+            );
         } catch (InvalidArgumentException $exception) {
             throw new VenueBookingPolicyException($exception->getMessage(), previous: $exception);
         }
@@ -87,13 +93,14 @@ final readonly class QuoteVenueBookingHandler
         $amountMinor = $steps * (int) $pricePerStep;
         $generatedAt = CarbonImmutable::now('UTC');
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
-        $databaseTimezone = (string) config('app.timezone', 'UTC');
         $publicId = (string) Str::uuid();
         $snapshot = [
             'schema_version' => 1,
             'policy' => [
                 'id' => $policy->id,
                 'version' => $policy->version,
+                'allows_whole' => $policy->allows_whole,
+                'allows_halves' => $policy->allows_halves,
                 'time_step_minutes' => $policy->time_step_minutes,
                 'minimum_duration_minutes' => $policy->minimum_duration_minutes,
                 'maximum_duration_minutes' => $policy->maximum_duration_minutes,

@@ -135,19 +135,11 @@ final readonly class SearchVenuesHandler
             $bookingScope = VenueBookingScopeEnum::from($parameters['booking_scope']);
             $occupiedVenueIds = VenueBooking::query()
                 ->whereIn('venue_id', $models->keys()->all())
-                ->whereIn('status', [
-                    VenueBookingStatusEnum::PENDING->value,
-                    VenueBookingStatusEnum::CONFIRMED->value,
-                ])
+                ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
                 ->where('starts_at', '<', $endsAt)
                 ->where('ends_at', '>', $startsAt)
                 ->where(function ($query) use ($bookingScope): void {
-                    $query->where('scope', VenueBookingScopeEnum::WHOLE->value);
-                    if ($bookingScope === VenueBookingScopeEnum::WHOLE) {
-                        $query->orWhereIn('scope', [VenueBookingScopeEnum::HALF_A->value, VenueBookingScopeEnum::HALF_B->value]);
-                    } else {
-                        $query->orWhere('scope', $bookingScope->value);
-                    }
+                    $query->whereNull('scope')->orWhereIn('scope', $bookingScope->conflictingValues());
                 })
                 ->pluck('venue_id')
                 ->map(fn ($id): int => (int) $id)

@@ -37,6 +37,6 @@ final readonly class AcceptVenueBookingHandler
             DB::afterCommit(static fn () => event(new VenueBookingHeld($booking->id)));
 
             return $booking->fresh(['transitions', 'parties']);
-        });
+        }, lockConflicts: true);
     }
 }

@@ -16,4 +16,14 @@ enum VenueBookingScopeEnum: string
             self::HALF_B => 'Половина B',
         };
     }
+
+    /** @return list<string> */
+    public function conflictingValues(): array
+    {
+        return match ($this) {
+            self::WHOLE => array_column(self::cases(), 'value'),
+            self::HALF_A => [self::WHOLE->value, self::HALF_A->value],
+            self::HALF_B => [self::WHOLE->value, self::HALF_B->value],
+        };
+    }
 }

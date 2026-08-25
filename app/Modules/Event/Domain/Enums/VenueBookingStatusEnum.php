@@ -28,7 +28,13 @@ enum VenueBookingStatusEnum: string
 
     public function occupiesVenue(): bool
     {
-        return in_array($this, [self::PENDING, self::HELD, self::CONFIRMED], true);
+        return in_array($this->value, self::occupyingValues(), true);
+    }
+
+    /** @return list<string> */
+    public static function occupyingValues(): array
+    {
+        return [self::PENDING->value, self::HELD->value, self::CONFIRMED->value];
     }
 
     public function isTerminal(): bool
