@@ -1,3 +1,4 @@
+import '../../css/pages/player-character-three.css';
 import { parseNullableNumber, renderPlayerCharacter } from './player-character-svg-renderer.js';
 import { mountPlayerCharacterThree, updatePlayerCharacterThree } from './player-character-three-renderer.js';
 
