@@ -92,6 +92,14 @@
                     Доступные действия появятся здесь, если у пользователя есть права на управление площадкой.
                 </p>
             @endif
+            @if(auth()->user()?->canonical()->isConfirmed() && app(\App\Support\Features\FeatureFlags::class)->enabled(\App\Support\Features\VenueRentalFeature::RENTAL_FLOW))
+                <div class="venue-management-actions mt-3">
+                    <a href="{{ route('venues.ownership-claims.create', $venue->id) }}" class="btn btn--secondary btn--sm">Подтвердить владение</a>
+                    @if(isset($commercialMembershipsUrl))
+                        <a href="{{ $commercialMembershipsUrl }}" class="btn btn--secondary btn--sm">Коммерческие роли</a>
+                    @endif
+                </div>
+            @endif
         </div>
     @else
         <div class="section-sidebar-block">

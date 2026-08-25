@@ -3,6 +3,9 @@
 ## Цель
 Отделить управление карточкой площадки от управления арендой, платежами и договорённостями.
 
+## Статус
+Выполнена в `feature/115`, ожидает согласованного режима коммита.
+
 ## Доменные изменения
 `ContractMembership`: `OWNER`, `MANAGER`, `BOOKING_OPERATOR`, `FINANCE_VIEWER`; права вычисляются серверной policy.
 
@@ -32,3 +35,23 @@ MembershipGranted/Revoked после commit; уведомление затрон
 - UI не является единственной защитой;
 - изменение прав полностью аудируется.
 
+## Результат выполнения
+
+- существующая `ContractMembership` расширена ролями `BOOKING_OPERATOR` и
+  `FINANCE_VIEWER`; `OWNER` и `MANAGER` получили явную коммерческую матрицу;
+- card permissions и commercial permissions разделены, creator/bootstrap
+  fallback никогда не проходит `VenueCommercialAccess`;
+- Grant/Change/Revoke повторно авторизуются в handler, блокируют venue как mutex,
+  валидируют permission snapshot и используют soft revoke существующего Contract;
+- последний OWNER не может быть отозван или понижен без отдельной передачи;
+  выдача OWNER остаётся только в ownership-claim flow;
+- UI использует общий predictive search, компактный список участников,
+  редактирование фактических прав и явное подтверждение отзыва;
+- события grant/revoke отправляются after commit и создают уведомление; выключенный
+  `rental_flow` блокирует HTTP и application handler;
+- superadmin override разрешён, повторно проверяется сервером и помечается в
+  комментарии аудируемого Contract.
+
+Отдельная таблица memberships не добавлялась: она дублировала бы уже каноническую
+Contract ACL. Историческая уникальность обеспечивается venue-lock и проверкой
+активной роли; после soft revoke допустим новый Contract той же роли.

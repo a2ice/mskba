@@ -18,6 +18,7 @@ use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
+use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
@@ -49,6 +50,7 @@ return [
         VenueSchedule::class,
         VenueScheduleInterval::class,
         VenueReview::class,
+        VenueOwnershipClaim::class,
         Contract::class,
         ContractMembership::class,
         ContractPermission::class,

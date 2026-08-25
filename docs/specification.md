@@ -421,6 +421,18 @@ Telegram-канал спроектирован как many-to-many проекц�
 
 ## Мероприятия и бронирование
 
+Новый flow аренды внедряется независимо от legacy-создания Event и закрыт четырьмя
+переключателями в `config/features.php`: `rental_flow`, `coordination`,
+`external_payment`, `attendance_v2`. Все переключатели читаются через
+`FeatureFlags`, по умолчанию выключены и могут включаться независимо переменными
+`FEATURE_VENUE_RENTAL_*`. Новые HTTP-маршруты должны использовать middleware
+`venue-rental-feature:{feature}`: обычный web-запрос получает неотличимый от
+отсутствующего маршрута `404`, JSON-клиент — `404` с машинным кодом
+`feature_disabled`. Handlers, listeners и jobs проверяют тот же `FeatureFlags` до
+выполнения новой логики. Отключение флага не меняет и не удаляет созданные новым
+flow данные, а legacy-маршруты не помещаются под эти middleware до завершения
+rollout.
+
 Модуль `App\Modules\Event` содержит:
 
 - `Event` — мероприятие с типом `game|training|game_training`, организатором-actor, площадкой, локализованным временем, видимостью и лимитом участников;

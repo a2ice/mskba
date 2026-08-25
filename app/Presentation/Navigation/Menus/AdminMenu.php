@@ -3,10 +3,14 @@
 namespace App\Presentation\Navigation\Menus;
 
 use App\Presentation\Navigation\MenuHandler;
+use App\Support\Features\FeatureFlags;
+use App\Support\Features\VenueRentalFeature;
 
 final class AdminMenu implements MenuHandler
 {
     use MenuHelper;
+
+    public function __construct(private readonly FeatureFlags $features) {}
 
     /**
      * @return array<int, array{label: string, url: string|null, active: bool, visible: bool}>
@@ -63,6 +67,15 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.venues.duplicates, admin.venues.duplicates.*'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-copy-check',
+                'data' => ['count' => 0],
+            ],
+            [
+                'label' => 'Владение площадками',
+                'description' => 'Заявки на подтверждение коммерческого владельца.',
+                'url' => $this->routeUrl('admin.venue-ownership-claims.index'),
+                'active' => $this->isActiveRoute('admin.venue-ownership-claims.*'),
+                'visible' => $isAdmin && $this->features->enabled(VenueRentalFeature::RENTAL_FLOW),
+                'icon' => 'ti-certificate',
                 'data' => ['count' => 0],
             ],
             [

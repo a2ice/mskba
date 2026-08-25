@@ -14,6 +14,11 @@ enum UserNotificationSourceEnum: string
     case TEAM_JOIN_REQUEST_REJECTED = 'team.join_request.rejected';
     case TEAM_JOIN_REQUEST_BLOCKED = 'team.join_request.blocked';
     case TEAM_JOIN_REQUEST_UNBLOCKED = 'team.join_request.unblocked';
+    case VENUE_OWNERSHIP_CLAIM_SUBMITTED = 'venue.ownership_claim.submitted';
+    case VENUE_OWNERSHIP_CLAIM_APPROVED = 'venue.ownership_claim.approved';
+    case VENUE_OWNERSHIP_CLAIM_REJECTED = 'venue.ownership_claim.rejected';
+    case VENUE_MEMBERSHIP_GRANTED = 'venue.membership.granted';
+    case VENUE_MEMBERSHIP_REVOKED = 'venue.membership.revoked';
 
     public function label(): string
     {
@@ -28,6 +33,11 @@ enum UserNotificationSourceEnum: string
             self::TEAM_JOIN_REQUEST_REJECTED => 'Отклонение заявки в команду',
             self::TEAM_JOIN_REQUEST_BLOCKED => 'Блокировка заявок в команду',
             self::TEAM_JOIN_REQUEST_UNBLOCKED => 'Разблокировка заявок в команду',
+            self::VENUE_OWNERSHIP_CLAIM_SUBMITTED => 'Отправка заявки на владение площадкой',
+            self::VENUE_OWNERSHIP_CLAIM_APPROVED => 'Одобрение заявки на владение площадкой',
+            self::VENUE_OWNERSHIP_CLAIM_REJECTED => 'Отклонение заявки на владение площадкой',
+            self::VENUE_MEMBERSHIP_GRANTED => 'Выдача коммерческой роли площадки',
+            self::VENUE_MEMBERSHIP_REVOKED => 'Отзыв коммерческой роли площадки',
         };
     }
 }

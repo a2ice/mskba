@@ -9,6 +9,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
@@ -49,7 +50,9 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchScheduli
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentOnSiteRegistrationController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
@@ -227,6 +230,13 @@ Route::prefix('admin')
         Route::post('/venues/{venueId}/restore', [AdminVenuesController::class, 'restore'])->whereNumber('venueId')->name('admin.venues.restore');
         Route::post('/venues/moderation/{moderationRequest}/approve', [AdminVenuesController::class, 'approve'])->name('admin.venues.moderation.approve');
         Route::post('/venues/moderation/{moderationRequest}/reject', [AdminVenuesController::class, 'reject'])->name('admin.venues.moderation.reject');
+        Route::prefix('venue-ownership-claims')
+            ->middleware(['venue-rental-feature:rental_flow', 'can:manage-users-as-superadmin'])
+            ->group(function () {
+                Route::get('/', [AdminVenueOwnershipClaimsController::class, 'index'])->name('admin.venue-ownership-claims.index');
+                Route::post('/{venueOwnershipClaim}/approve', [AdminVenueOwnershipClaimsController::class, 'approve'])->name('admin.venue-ownership-claims.approve');
+                Route::post('/{venueOwnershipClaim}/reject', [AdminVenueOwnershipClaimsController::class, 'reject'])->name('admin.venue-ownership-claims.reject');
+            });
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'Мероприятия');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
@@ -256,12 +266,29 @@ Route::prefix('venues')->group(function () {
             ->defaults('breadcrumb', 'Добавить площадку');
         Route::post('/', [VenueController::class, 'store'])
             ->name('venues.store');
+        Route::middleware('venue-rental-feature:rental_flow')->group(function () {
+            Route::get('/{venue}/ownership-claim', [VenueOwnershipClaimController::class, 'create'])
+                ->whereNumber('venue')
+                ->name('venues.ownership-claims.create');
+            Route::post('/{venue}/ownership-claims', [VenueOwnershipClaimController::class, 'store'])
+                ->whereNumber('venue')
+                ->name('venues.ownership-claims.store');
+        });
     });
     Route::get('/{alias}/preview', [VenueController::class, 'preview'])
         ->middleware('throttle:60,1')
         ->name('venues.preview');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
+
+Route::prefix('account/venue-ownership-claims')
+    ->middleware(['venue-rental-feature:rental_flow', 'auth'])
+    ->group(function () {
+        Route::get('/{venueOwnershipClaim}', [VenueOwnershipClaimController::class, 'show'])
+            ->name('account.venue-ownership-claims.show');
+        Route::post('/{venueOwnershipClaim}/cancel', [VenueOwnershipClaimController::class, 'cancel'])
+            ->name('account.venue-ownership-claims.cancel');
+    });
 
 Route::prefix('events')->group(function () {
     Route::get('/', [EventController::class, 'index'])
@@ -534,6 +561,16 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/venues', [AccountController::class, 'venues'])
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');
+        Route::prefix('venues/{venue}/commercial-memberships')
+            ->middleware('venue-rental-feature:rental_flow')
+            ->whereNumber('venue')
+            ->group(function () {
+                Route::get('/', [VenueCommercialMembershipController::class, 'index'])->name('account.venues.commercial-memberships.index');
+                Route::get('/candidates', [VenueCommercialMembershipController::class, 'candidates'])->middleware('throttle:60,1')->name('account.venues.commercial-memberships.candidates');
+                Route::post('/', [VenueCommercialMembershipController::class, 'store'])->name('account.venues.commercial-memberships.store');
+                Route::put('/{membership}', [VenueCommercialMembershipController::class, 'update'])->whereNumber('membership')->name('account.venues.commercial-memberships.update');
+                Route::delete('/{membership}', [VenueCommercialMembershipController::class, 'destroy'])->whereNumber('membership')->name('account.venues.commercial-memberships.destroy');
+            });
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');

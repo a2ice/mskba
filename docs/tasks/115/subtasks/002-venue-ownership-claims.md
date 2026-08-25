@@ -3,6 +3,9 @@
 ## Цель
 Безопасно установить коммерческого владельца существующей площадки без передачи прав создателю записи автоматически.
 
+## Статус
+Выполнена в `feature/115`, ожидает согласованного режима коммита.
+
 ## Доменные изменения
 Заявка владения проходит `PENDING → APPROVED|REJECTED|CANCELLED`; `APPROVED` создаёт `ContractMembership` с ролью `OWNER`.
 
@@ -32,3 +35,21 @@ After-commit события submitted/approved/rejected и уведомлени�
 - решение отражено в аудите;
 - creator не получает коммерческие права неявно.
 
+## Результат выполнения
+
+- добавлена state machine заявки `PENDING → APPROVED|REJECTED|CANCELLED` и
+  DB-ограничение одной pending-заявки пользователя на площадку;
+- submit/cancel/review реализованы application handlers с повторной проверкой
+  прав и общим порядком блокировок `venue → claim → contract children`;
+- approve атомарно создаёт активный membership contract, `OWNER` membership и
+  snapshot owner permissions; повторный approve идемпотентен;
+- self-approve, действия обычного admin и выдача второго активного owner
+  запрещены; смена владельца намеренно не подменяется повторной заявкой;
+- добавлены пользовательская форма и история, очередь superadmin, уведомления
+  после commit и аудит решения без копирования текста доказательств в audit log;
+- весь HTTP и application flow закрыт `rental_flow`, поэтому при выключенном
+  флаге новые маршруты дают `404/feature_disabled`, а handler прекращает работу.
+
+Проверки защищают повторную заявку, отмену и повторную подачу, atomic owner
+membership, permission snapshot, идемпотентность, self-approve, второго owner,
+роль superadmin, аудит, уведомления и выключенный feature flag.

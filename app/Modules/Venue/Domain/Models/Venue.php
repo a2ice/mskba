@@ -204,6 +204,11 @@ class Venue extends Model
         return $this->hasMany(VenueBooking::class);
     }
 
+    public function ownershipClaims(): HasMany
+    {
+        return $this->hasMany(VenueOwnershipClaim::class);
+    }
+
     public function tags(): HasMany
     {
         return $this->hasMany(VenueTag::class);
