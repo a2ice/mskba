@@ -9,6 +9,7 @@ const GLTF_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/load
 
 const MODEL_SOURCE_COMMIT = '3f97faf85e46d2f9a122b0a8b8d3ccc0af598f91';
 const MODEL_BASE_URL = `https://cdn.jsdelivr.net/gh/kunalkushwaha/vsim@${MODEL_SOURCE_COMMIT}/packages/assets/library`;
+const MODEL_DISPLAY_OFFSET_METERS = 0.05;
 
 // Female keeps the existing temporary source until its own procedural model is designed.
 const MODEL_URLS = {
@@ -199,6 +200,7 @@ function measureAndNormalizeModel(runtime) {
     const { THREE, model, modelRoot } = runtime;
 
     modelRoot.scale.set(1, 1, 1);
+    modelRoot.position.set(0, 0, 0);
     model.position.set(0, 0, 0);
     model.rotation.set(0, runtime.isProcedural ? 0 : -Math.PI / 2, 0);
     modelRoot.updateMatrixWorld(true);
@@ -237,9 +239,20 @@ function applyBodyScale(runtime, state) {
         // Procedural morphology changes X/Z itself. Y stays canonical, so weight,
         // body type, uniform and hair can never silently alter the requested height.
         runtime.modelRoot.scale.setScalar(uniformScale);
+        // Presentation-only lift: 5 cm is 2% of the literal 250 cm viewport.
+        // The anatomical floor/crown metric inside the model remains unchanged.
+        runtime.modelRoot.position.y = MODEL_DISPLAY_OFFSET_METERS;
+        if (runtime.shadow) {
+            runtime.shadow.position.y = MODEL_DISPLAY_OFFSET_METERS + 0.004;
+        }
         runtime.targetHeightMeters = heightMeters;
         runtime.massScale = 1;
         return;
+    }
+
+    runtime.modelRoot.position.y = 0;
+    if (runtime.shadow) {
+        runtime.shadow.position.y = 0.004;
     }
 
     const massScale = calculateBodyMassScale(state);
@@ -327,7 +340,8 @@ function updateHeightMarker(runtime) {
     }
 
     const heightMeters = clamp(heightCm / 100, 0, 2.5);
-    const point = new runtime.THREE.Vector3(-0.72, heightMeters, 0);
+    const displayOffset = runtime.isProcedural ? MODEL_DISPLAY_OFFSET_METERS : 0;
+    const point = new runtime.THREE.Vector3(-0.72, heightMeters + displayOffset, 0);
     runtime.camera.updateMatrixWorld(true);
     point.project(runtime.camera);
 
@@ -474,7 +488,8 @@ async function createRuntime(stage, state) {
     const modelRoot = new THREE.Group();
     modelRoot.rotation.y = -0.10;
     scene.add(modelRoot);
-    scene.add(createShadow(THREE));
+    const shadow = createShadow(THREE);
+    scene.add(shadow);
 
     const runtime = {
         ...engine,
@@ -484,6 +499,7 @@ async function createRuntime(stage, state) {
         scene,
         camera,
         modelRoot,
+        shadow,
         model: null,
         modelBaseHeight: null,
         mixer: null,
@@ -595,6 +611,8 @@ export function destroyPlayerCharacterThree(stage) {
         materials.filter(Boolean).forEach((material) => material.dispose?.());
     });
 
+    runtime.shadow?.geometry?.dispose?.();
+    runtime.shadow?.material?.dispose?.();
     runtime.renderer.dispose();
     RUNTIME.delete(stage);
 }
