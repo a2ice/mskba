@@ -80,6 +80,11 @@ class VenueBooking extends Model
         return $this->hasMany(VenueBookingAttendanceRound::class, 'venue_booking_id');
     }
 
+    public function extensionRequests(): HasMany
+    {
+        return $this->hasMany(VenueBookingExtensionRequest::class)->orderByDesc('requested_at');
+    }
+
     /** @param array<string, mixed> $attributes */
     public function applyLifecycleTransition(array $attributes): void
     {

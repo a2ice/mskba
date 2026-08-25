@@ -51,7 +51,7 @@ final class VenueBookingController extends Controller
         VenueBookingAuthorization $authorization,
         VenueBookingActionState $actions,
     ): JsonResponse|Response {
-        $venueBooking->load(['venue', 'transitions.actor.user', 'attendanceRounds.responses.user']);
+        $venueBooking->load(['venue', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user']);
         $actor = $actors->resolveForRequest($request);
 
         try {
@@ -70,13 +70,21 @@ final class VenueBookingController extends Controller
             ->with('participants.user')
             ->where('venue_booking_id', $venueBooking->id)
             ->first();
+        $isRequester = $request->user()?->canonical()->id === $venueBooking->requester?->canonical()->id;
+        $canDecideExtensions = false;
+        try {
+            $authorization->assertCommercialDecision($actor, $venueBooking->venue);
+            $canDecideExtensions = true;
+        } catch (VenueBookingTransitionException) {
+        }
 
         return ThemeResolver::page('venue-bookings.show', [
             'booking' => $venueBooking,
             'actions' => $actionState,
             'attendanceRound' => $attendanceRound,
             'attendanceCandidates' => $rentalCoordination?->participants->whereNull('left_at')->values() ?? collect(),
-            'isRequester' => $request->user()?->canonical()->id === $venueBooking->requester?->canonical()->id,
+            'isRequester' => $isRequester,
+            'canDecideExtensions' => $canDecideExtensions,
         ]);
     }
 
@@ -182,6 +190,14 @@ final class VenueBookingController extends Controller
             'hold_expires_at' => $booking->hold_expires_at?->utc()->toIso8601String(),
             'effective_protection_until' => $booking->effective_protection_until?->utc()->toIso8601String(),
             'actions' => $actions,
+            'extensions' => $booking->extensionRequests->map(fn ($extension): array => [
+                'id' => $extension->public_id,
+                'status' => $extension->status->value,
+                'previous_deadline_at' => $extension->previous_deadline_at->utc()->toIso8601String(),
+                'requested_until' => $extension->requested_until->utc()->toIso8601String(),
+                'reason' => $extension->reason,
+                'decision_reason' => $extension->decision_reason,
+            ])->values(),
         ];
     }
 }

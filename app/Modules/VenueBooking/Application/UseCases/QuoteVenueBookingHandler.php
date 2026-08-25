@@ -108,6 +108,8 @@ final readonly class QuoteVenueBookingHandler
                 'maximum_advance_days' => $policy->maximum_advance_days,
                 'requires_payment' => $policy->requires_payment,
                 'hold_duration_minutes' => $policy->hold_duration_minutes,
+                'allows_hold_extension' => $policy->allows_hold_extension,
+                'maximum_hold_extension_minutes' => $policy->maximum_hold_extension_minutes,
                 'payment_window_minutes' => $policy->payment_window_minutes,
                 'cancellation_before_minutes' => $policy->cancellation_before_minutes,
             ],

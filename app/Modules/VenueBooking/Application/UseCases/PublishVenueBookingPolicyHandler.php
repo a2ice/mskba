@@ -78,6 +78,10 @@ final readonly class PublishVenueBookingPolicyHandler
                 ? (int) $data['half_price_per_step_minor']
                 : null,
             'hold_duration_minutes' => (int) ($data['hold_duration_minutes'] ?? 0),
+            'allows_hold_extension' => (bool) ($data['allows_hold_extension'] ?? false),
+            'maximum_hold_extension_minutes' => isset($data['maximum_hold_extension_minutes'])
+                ? (int) $data['maximum_hold_extension_minutes']
+                : null,
             'requires_payment' => (bool) ($data['requires_payment'] ?? false),
             'payment_window_minutes' => isset($data['payment_window_minutes'])
                 ? (int) $data['payment_window_minutes']
@@ -127,6 +131,16 @@ final readonly class PublishVenueBookingPolicyHandler
 
         if ($normalized['hold_duration_minutes'] < 1 || $normalized['hold_duration_minutes'] > 1440) {
             throw new VenueBookingPolicyException('Срок удержания должен быть от 1 минуты до 24 часов.');
+        }
+
+        if ($normalized['allows_hold_extension']
+            && (($normalized['maximum_hold_extension_minutes'] ?? 0) < 1
+                || $normalized['maximum_hold_extension_minutes'] > 1440)) {
+            throw new VenueBookingPolicyException('Максимальное продление должно быть от 1 минуты до 24 часов.');
+        }
+
+        if (! $normalized['allows_hold_extension']) {
+            $normalized['maximum_hold_extension_minutes'] = null;
         }
 
         if ($normalized['requires_payment'] && ($normalized['payment_window_minutes'] ?? 0) < 1) {

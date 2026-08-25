@@ -57,6 +57,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
@@ -312,6 +313,10 @@ Route::prefix('account/venue-bookings')
         Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
         Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
         Route::post('/{venueBooking}/confirm', [VenueBookingController::class, 'confirm'])->name('account.venue-bookings.confirm');
+        Route::post('/{venueBooking}/extensions', [VenueBookingExtensionController::class, 'store'])->name('account.venue-bookings.extensions.store');
+        Route::post('/{venueBooking}/extensions/{extensionRequest}/approve', [VenueBookingExtensionController::class, 'approve'])->name('account.venue-bookings.extensions.approve');
+        Route::post('/{venueBooking}/extensions/{extensionRequest}/reject', [VenueBookingExtensionController::class, 'reject'])->name('account.venue-bookings.extensions.reject');
+        Route::post('/{venueBooking}/extensions/{extensionRequest}/cancel', [VenueBookingExtensionController::class, 'cancel'])->name('account.venue-bookings.extensions.cancel');
         Route::post('/{venueBooking}/attendance-rounds', [VenueBookingAttendanceController::class, 'store'])
             ->middleware('venue-rental-feature:attendance_v2')
             ->name('venue-booking-attendance.store');

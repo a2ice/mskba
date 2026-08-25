@@ -29,11 +29,13 @@
                 <div class="col-md-6"><label class="form-label">Цена всей площадки за шаг, minor units</label><input class="form-control" type="number" name="whole_price_per_step_minor" min="0" required value="{{ $value('whole_price_per_step_minor', 0) }}"><small class="text-muted">Для RUB: 100 = 1 ₽.</small></div>
                 <div class="col-md-6"><label class="form-label">Цена половины за шаг, minor units</label><input class="form-control" type="number" name="half_price_per_step_minor" min="0" value="{{ $value('half_price_per_step_minor') }}"></div>
                 <div class="col-md-4"><label class="form-label">Hold, мин</label><input class="form-control" type="number" name="hold_duration_minutes" min="1" max="1440" required value="{{ $value('hold_duration_minutes', 30) }}"></div>
+                <div class="col-md-4"><label class="form-label">Максимальное продление hold, мин</label><input class="form-control" type="number" name="maximum_hold_extension_minutes" min="1" max="1440" value="{{ $value('maximum_hold_extension_minutes', 30) }}"></div>
                 <div class="col-md-4"><label class="form-label">Платёжное окно, мин</label><input class="form-control" type="number" name="payment_window_minutes" min="1" max="1440" value="{{ $value('payment_window_minutes', 30) }}"></div>
                 <div class="col-md-4"><label class="form-label">Срок quote, мин</label><input class="form-control" type="number" name="quote_validity_minutes" min="1" max="120" required value="{{ $value('quote_validity_minutes', 15) }}"></div>
                 <div class="col-md-6"><label class="form-label">Бесплатная отмена не позднее, мин</label><input class="form-control" type="number" name="cancellation_before_minutes" min="0" value="{{ $value('cancellation_before_minutes') }}"></div>
             </div>
             @include('theme::partials.forms.toggle', ['name' => 'requires_payment', 'title' => 'Требуется оплата', 'checked' => $value('requires_payment', true), 'wrapperClass' => 'form-group field my-3'])
+            @include('theme::partials.forms.toggle', ['name' => 'allows_hold_extension', 'title' => 'Разрешить согласование продления hold', 'checked' => $value('allows_hold_extension', false), 'wrapperClass' => 'form-group field my-3'])
             <button class="btn btn--primary btn--sm" type="submit">Опубликовать новую версию</button>
         </div></form>
     </div></section>

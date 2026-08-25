@@ -64,6 +64,43 @@
             </div></div>
         @endif
 
+        <div class="card mb-4"><div class="card-body">
+            <h2 class="h4">Продление удержания</h2>
+            @php
+                $extensionAllowed = (bool) data_get($booking->quote_snapshot, 'policy.allows_hold_extension', false);
+                $extensionLimit = (int) data_get($booking->quote_snapshot, 'policy.maximum_hold_extension_minutes', 0);
+                $pendingExtension = $booking->extensionRequests->first(fn($extension) => $extension->status === \App\Modules\VenueBooking\Domain\Enums\VenueBookingExtensionStatus::PENDING);
+            @endphp
+            @if($isRequester && $extensionAllowed && !$pendingExtension && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD && $booking->effective_protection_until?->isFuture())
+                <p class="text-muted">Можно запросить срок не позднее {{ $booking->hold_expires_at->addMinutes($extensionLimit)->format('d.m.Y H:i') }}.</p>
+                <form method="POST" action="{{ route('account.venue-bookings.extensions.store', $booking) }}" class="row g-3 mb-4">
+                    @csrf
+                    <div class="col-md-4"><label class="form-label">Новый срок</label><input class="form-control" type="datetime-local" name="requested_until" min="{{ $booking->effective_protection_until->format('Y-m-d\TH:i') }}" max="{{ $booking->hold_expires_at->addMinutes($extensionLimit)->format('Y-m-d\TH:i') }}" required></div>
+                    <div class="col-md-6"><label class="form-label">Причина</label><textarea class="form-control" name="reason" maxlength="2000" required></textarea></div>
+                    <div class="col-md-2 align-self-end"><button class="btn btn--primary btn--sm" type="submit">Запросить</button></div>
+                </form>
+            @endif
+            @forelse($booking->extensionRequests as $extension)
+                <div class="border-top pt-3 mb-3">
+                    <p><strong>{{ $extension->status->label() }}</strong>: {{ $extension->previous_deadline_at->format('d.m.Y H:i') }} → {{ $extension->requested_until->format('d.m.Y H:i') }}</p>
+                    <p>{{ $extension->reason }}</p>
+                    @if($extension->decision_reason)<p class="text-muted">Комментарий: {{ $extension->decision_reason }}</p>@endif
+                    @if($extension->status === \App\Modules\VenueBooking\Domain\Enums\VenueBookingExtensionStatus::PENDING)
+                        <div class="venue-management-actions">
+                            @if($canDecideExtensions)
+                                @foreach(['approve' => 'Одобрить', 'reject' => 'Отклонить'] as $decision => $label)
+                                    <form method="POST" action="{{ route('account.venue-bookings.extensions.'.$decision, [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">{{ $label }}</button></form>
+                                @endforeach
+                            @endif
+                            @if($isRequester)<form method="POST" action="{{ route('account.venue-bookings.extensions.cancel', [$booking, $extension]) }}">@csrf<button class="btn btn--secondary btn--sm" type="submit">Отменить запрос</button></form>@endif
+                        </div>
+                    @endif
+                </div>
+            @empty
+                <p class="text-muted">Запросов на продление пока нет.</p>
+            @endforelse
+        </div></div>
+
         <div class="card"><div class="card-body">
             <h2 class="h4">История</h2>
             <ul>

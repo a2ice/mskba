@@ -15,7 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'minimum_duration_minutes', 'maximum_duration_minutes', 'time_step_minutes',
     'minimum_lead_time_minutes', 'maximum_advance_days', 'currency',
     'whole_price_per_step_minor', 'half_price_per_step_minor',
-    'hold_duration_minutes', 'requires_payment', 'payment_window_minutes',
+    'hold_duration_minutes', 'allows_hold_extension', 'maximum_hold_extension_minutes',
+    'requires_payment', 'payment_window_minutes',
     'quote_validity_minutes', 'cancellation_before_minutes',
     'published_by_user_id', 'published_at', 'active_marker',
 ])]
@@ -53,6 +54,8 @@ class VenueBookingPolicy extends Model
             'whole_price_per_step_minor' => 'integer',
             'half_price_per_step_minor' => 'integer',
             'hold_duration_minutes' => 'integer',
+            'allows_hold_extension' => 'boolean',
+            'maximum_hold_extension_minutes' => 'integer',
             'requires_payment' => 'boolean',
             'payment_window_minutes' => 'integer',
             'quote_validity_minutes' => 'integer',

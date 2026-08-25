@@ -3,6 +3,9 @@
 ## Цель
 Позволить запросить и явно согласовать ограниченное продление hold.
 
+## Статус
+Выполнена в `feature/115`.
+
 ## Доменные изменения
 Extension request имеет requested_until, reason и `PENDING|APPROVED|REJECTED|CANCELLED`; только APPROVED меняет deadline.
 
@@ -31,4 +34,3 @@ ExtensionRequested/Approved/Rejected; после approve переоценива�
 - запрос сам ничего не продлевает;
 - approve атомарен и конфликтобезопасен;
 - старые expiry jobs становятся harmless.
-

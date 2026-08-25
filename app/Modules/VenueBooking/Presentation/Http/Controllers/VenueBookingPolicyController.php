@@ -49,13 +49,15 @@ final class VenueBookingPolicyController extends Controller
             'whole_price_per_step_minor' => ['required', 'integer', 'min:0'],
             'half_price_per_step_minor' => ['nullable', 'integer', 'min:0'],
             'hold_duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+            'allows_hold_extension' => ['nullable', 'boolean'],
+            'maximum_hold_extension_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
             'requires_payment' => ['nullable', 'boolean'],
             'payment_window_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
             'quote_validity_minutes' => ['required', 'integer', 'min:1', 'max:120'],
             'cancellation_before_minutes' => ['nullable', 'integer', 'min:0', 'max:525600'],
         ]);
 
-        foreach (['is_enabled', 'allows_whole', 'allows_halves', 'requires_payment'] as $boolean) {
+        foreach (['is_enabled', 'allows_whole', 'allows_halves', 'requires_payment', 'allows_hold_extension'] as $boolean) {
             $validated[$boolean] = $request->boolean($boolean);
         }
 
