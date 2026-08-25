@@ -4,7 +4,7 @@ namespace App\Modules\Identity\Domain\Support;
 
 final class PlayerCharacterAppearanceOptions
 {
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     public const GENDERS = ['male', 'female'];
 
@@ -51,6 +51,31 @@ final class PlayerCharacterAppearanceOptions
         'full_beard',
     ];
 
+    public const PIERCINGS = [
+        'left_ear',
+        'right_ear',
+        'both_ears',
+        'eyebrow',
+        'nose',
+        'lip',
+    ];
+
+    public const TATTOO_LOCATIONS = [
+        'left_upper_arm',
+        'right_upper_arm',
+        'left_forearm',
+        'right_forearm',
+        'neck',
+        'chest',
+        'back',
+        'left_calf',
+        'right_calf',
+    ];
+
+    /**
+     * Kept for backward-compatible stored payloads. Uniform configuration is not
+     * exposed in the image-render modal during Task 124.
+     */
     public const UNIFORM_KITS = [
         'mskba_home',
         'mskba_light',
@@ -74,7 +99,7 @@ final class PlayerCharacterAppearanceOptions
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array<string, mixed>
      */
     public static function defaults(string $gender = 'male'): array
     {
@@ -87,7 +112,11 @@ final class PlayerCharacterAppearanceOptions
             'hairstyle' => $gender === 'female' ? 'female_ponytail' : 'male_fade',
             'hair_color' => 'dark_brown',
             'facial_hair' => 'none',
+            'piercings' => [],
+            'tattoos' => [],
+            'tattoo_note' => '',
             'uniform_kit' => 'mskba_home',
+            'face_photo_path' => null,
         ];
     }
 }
