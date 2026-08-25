@@ -7,8 +7,11 @@
     z-index: 3;
     inset: 0;
     overflow: hidden;
-    pointer-events: auto;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
     touch-action: pan-y;
+    transition: opacity 180ms ease, visibility 180ms ease;
 }
 
 .account-player-character-three__canvas {
@@ -24,10 +27,24 @@
 }
 
 .account-player-character-stage__figure {
+    visibility: visible;
+    opacity: 1;
     transition: opacity 180ms ease, visibility 180ms ease;
 }
 
-.account-player-character-stage[data-renderer="three-v1"] .account-player-character-stage__figure {
+/*
+ * The renderer name is intentionally not used as the visibility switch.
+ * Task 119 introduced `three-procedural-male-v1`, while Task 118 used
+ * `three-v1`. The stable contract is the renderer lifecycle status:
+ * only a ready 3D renderer may replace the SVG fallback.
+ */
+.account-player-character-stage[data-three-status="ready"] .account-player-character-three {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.account-player-character-stage[data-three-status="ready"] .account-player-character-stage__figure {
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
@@ -38,6 +55,12 @@
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
+}
+
+.account-player-character-stage[data-renderer="svg-fallback"] .account-player-character-stage__figure,
+.account-player-character-stage[data-three-status="error"] .account-player-character-stage__figure {
+    visibility: visible;
+    opacity: 1;
 }
 
 .account-player-character-stage__scale,
