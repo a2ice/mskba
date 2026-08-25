@@ -1,10 +1,7 @@
-import '../../css/pages/player-character-three.css';
-import { mountPlayerCharacterThree, updatePlayerCharacterThree } from './player-character-three-renderer.js';
+import '../../css/pages/player-character-image.css';
 
-const DEFAULT_HAIRSTYLE = {
-    male: 'male_fade',
-    female: 'female_ponytail',
-};
+const MAX_FACE_EDGE = 640;
+const FACE_JPEG_QUALITY = 0.84;
 
 function parseNullableNumber(value) {
     if (value === null || value === undefined || value === '') {
@@ -19,106 +16,108 @@ function characterField(form, key) {
     return form.querySelector(`[data-player-character-field="${key}"]`);
 }
 
-function normalizeGender(value) {
-    return value === 'female' ? 'female' : 'male';
-}
-
-function readState(stage, form) {
-    return {
-        gender: normalizeGender(stage.dataset.gender),
-        heightCm: parseNullableNumber(form.querySelector('[data-player-character-input="height"]')?.value),
-        weightKg: parseNullableNumber(form.querySelector('[data-player-character-input="weight"]')?.value),
-        bodyType: form.querySelector('[data-player-character-input="body-type"]')?.value || 'unspecified',
-        skinTone: characterField(form, 'skin-tone')?.value || 'warm',
-        hairstyle: characterField(form, 'hairstyle')?.value || DEFAULT_HAIRSTYLE[normalizeGender(stage.dataset.gender)],
-        hairColor: characterField(form, 'hair-color')?.value || 'dark_brown',
-        facialHair: characterField(form, 'facial-hair')?.value || 'none',
-        uniformKit: characterField(form, 'uniform-kit')?.value || 'mskba_home',
-    };
-}
-
-function syncChoiceButtons(configurator, field, value) {
-    configurator.querySelectorAll(`[data-player-character-choice="${field}"]`).forEach((button) => {
+function syncChoiceButtons(root, field, value) {
+    root.querySelectorAll(`[data-player-character-choice="${field}"]`).forEach((button) => {
         button.setAttribute('aria-pressed', button.dataset.value === value ? 'true' : 'false');
     });
 }
 
-function setCharacterField(form, configurator, field, value) {
+function setChoice(form, modal, field, value) {
     const input = characterField(form, field);
     if (!input) {
         return;
     }
 
     input.value = value;
-    syncChoiceButtons(configurator, field, value);
+    syncChoiceButtons(modal, field, value);
 }
 
-function syncProfileGenderControls(stage, form, configurator) {
-    const gender = normalizeGender(stage.dataset.gender);
-    const hairstyleInput = characterField(form, 'hairstyle');
-    const compatibleButtons = [];
+function renderRequestedInput(form) {
+    return form.querySelector('[data-player-character-render-requested]');
+}
 
-    configurator.querySelectorAll('[data-player-character-choice="hairstyle"]').forEach((button) => {
-        const compatible = button.dataset.characterGender === gender;
-        button.hidden = !compatible;
-        if (compatible) {
-            compatibleButtons.push(button);
+function markRenderRequested(form) {
+    const input = renderRequestedInput(form);
+    if (input) {
+        input.value = '1';
+    }
+}
+
+function updateMetricStage(stage, form) {
+    const height = parseNullableNumber(form.querySelector('[data-player-character-input="height"]')?.value);
+    const normalized = height === null ? 180 : Math.min(250, Math.max(0, height));
+    const percent = normalized / 250 * 100;
+
+    stage.style.setProperty('--player-height-percent', percent.toFixed(4));
+    stage.dataset.hasHeight = height === null ? 'false' : 'true';
+
+    const marker = stage.querySelector('[data-player-character-height-marker]');
+    const label = marker?.querySelector('[data-player-character-height-label]');
+    if (!marker) {
+        return;
+    }
+
+    if (height === null) {
+        marker.hidden = true;
+        marker.setAttribute('aria-expanded', 'false');
+        return;
+    }
+
+    marker.hidden = false;
+    marker.setAttribute('aria-label', `${height} см`);
+    if (label) {
+        label.textContent = `${height} см`;
+    }
+}
+
+function showRenderState(stage, status, options = {}) {
+    const generated = stage.querySelector('[data-player-character-generated]');
+    const errorMessage = stage.querySelector('[data-player-character-render-error-message]');
+
+    stage.dataset.renderStatus = status;
+
+    if (status === 'ready' && generated) {
+        const resultUrl = options.resultUrl || stage.dataset.renderResultUrl;
+        if (resultUrl && generated.getAttribute('src') !== resultUrl) {
+            generated.setAttribute('src', resultUrl);
         }
-    });
-
-    const hairstyleIsCompatible = compatibleButtons.some((button) => button.dataset.value === hairstyleInput?.value);
-    if (!hairstyleIsCompatible && hairstyleInput) {
-        setCharacterField(
-            form,
-            configurator,
-            'hairstyle',
-            DEFAULT_HAIRSTYLE[gender] || compatibleButtons[0]?.dataset.value || '',
-        );
     }
 
-    const facialHairGroup = configurator.querySelector('[data-player-character-facial-hair-group]');
-    if (facialHairGroup) {
-        facialHairGroup.hidden = gender === 'female';
-    }
-
-    if (gender === 'female') {
-        setCharacterField(form, configurator, 'facial-hair', 'none');
+    if (status === 'error' && errorMessage) {
+        errorMessage.textContent = options.error
+            || stage.dataset.renderError
+            || 'Не удалось собрать игровой образ. Попробуйте изменить настройки.';
     }
 }
 
-function updateStage(stage, form) {
-    const state = readState(stage, form);
-    stage.dataset.hasHeight = state.heightCm === null ? 'false' : 'true';
-    updatePlayerCharacterThree(stage, state);
+function settleMockRender(stage) {
+    if (stage.dataset.renderStatus !== 'generating') {
+        return;
+    }
 
-    stage.dispatchEvent(new CustomEvent('player-character:change', {
-        bubbles: true,
-        detail: state,
-    }));
+    const readyAt = Date.parse(stage.dataset.renderReadyAt || '');
+    if (!Number.isFinite(readyAt)) {
+        return;
+    }
 
-    return state;
-}
+    const settle = () => {
+        if (stage.dataset.renderMode === 'error') {
+            const message = 'Не удалось собрать игровой образ. Это тестовая ошибка — измените режим ответа и сохраните профиль ещё раз.';
+            stage.dataset.renderError = message;
+            showRenderState(stage, 'error', { error: message });
+            return;
+        }
 
-function bindCharacterChoices(stage, form, configurator) {
-    configurator.querySelectorAll('[data-player-character-choice]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const field = button.dataset.playerCharacterChoice;
-            const value = button.dataset.value;
-            if (!field || !value) {
-                return;
-            }
+        showRenderState(stage, 'ready', { resultUrl: stage.dataset.renderResultUrl });
+    };
 
-            setCharacterField(form, configurator, field, value);
-            updateStage(stage, form);
-        });
-    });
-}
+    const remaining = readyAt - Date.now();
+    if (remaining <= 0) {
+        settle();
+        return;
+    }
 
-function bindPhysicalInputs(stage, form) {
-    form.querySelectorAll('[data-player-character-input]').forEach((input) => {
-        input.addEventListener('change', () => updateStage(stage, form));
-        input.addEventListener('input', () => updateStage(stage, form));
-    });
+    window.setTimeout(settle, remaining);
 }
 
 function bindHeightMarker(stage) {
@@ -144,54 +143,163 @@ function bindHeightMarker(stage) {
     });
 }
 
-function waitUntilNearViewport(stage) {
-    if (!('IntersectionObserver' in window)) {
-        return Promise.resolve();
+function openModal(modal) {
+    if (typeof modal.showModal === 'function') {
+        if (!modal.open) {
+            modal.showModal();
+        }
+        return;
     }
 
-    const rect = stage.getBoundingClientRect();
-    const preloadDistance = 320;
-    if (rect.top < window.innerHeight + preloadDistance && rect.bottom > -preloadDistance) {
-        return Promise.resolve();
+    modal.setAttribute('open', '');
+}
+
+function closeModal(modal) {
+    if (typeof modal.close === 'function') {
+        modal.close();
+        return;
     }
 
-    return new Promise((resolve) => {
-        const observer = new IntersectionObserver((entries) => {
-            if (!entries.some((entry) => entry.isIntersecting)) {
+    modal.removeAttribute('open');
+}
+
+function bindModal(stage, form, modal) {
+    form.querySelectorAll('[data-player-character-open-modal]').forEach((button) => {
+        button.addEventListener('click', () => openModal(modal));
+    });
+
+    modal.querySelectorAll('[data-player-character-close-modal]').forEach((button) => {
+        button.addEventListener('click', () => closeModal(modal));
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeModal(modal);
+        }
+    });
+
+    modal.querySelectorAll('[data-player-character-choice]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const field = button.dataset.playerCharacterChoice;
+            const value = button.dataset.value;
+            if (!field || !value) {
                 return;
             }
-
-            observer.disconnect();
-            resolve();
-        }, {
-            rootMargin: `${preloadDistance}px 0px`,
-            threshold: 0.01,
+            setChoice(form, modal, field, value);
         });
-        observer.observe(stage);
+    });
+
+    modal.querySelector('[data-player-character-apply]')?.addEventListener('click', () => {
+        markRenderRequested(form);
+        closeModal(modal);
     });
 }
 
-async function bindPlayerCharacterStage(stage) {
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('read failed'));
+        reader.readAsDataURL(file);
+    });
+}
+
+function loadImage(dataUrl) {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('image failed'));
+        image.src = dataUrl;
+    });
+}
+
+async function normalizeFacePhoto(file) {
+    if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) {
+        throw new Error('Выберите JPG, PNG или WebP.');
+    }
+
+    const dataUrl = await readFileAsDataUrl(file);
+    const image = await loadImage(dataUrl);
+    const ratio = Math.min(1, MAX_FACE_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.max(1, Math.round(image.naturalWidth * ratio));
+    const height = Math.max(1, Math.round(image.naturalHeight * ratio));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+        throw new Error('Не удалось подготовить фото.');
+    }
+
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', FACE_JPEG_QUALITY);
+}
+
+function bindFaceUpload(form, modal) {
+    const input = modal.querySelector('[data-player-character-face-input]');
+    const hidden = form.querySelector('[data-player-character-face-data]');
+    const label = modal.querySelector('[data-player-character-face-label]');
+    if (!input || !hidden) {
+        return;
+    }
+
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        if (label) {
+            label.textContent = 'Подготавливаем фото…';
+        }
+
+        try {
+            hidden.value = await normalizeFacePhoto(file);
+            if (label) {
+                label.textContent = `Выбрано: ${file.name}`;
+            }
+            markRenderRequested(form);
+        } catch (error) {
+            hidden.value = '';
+            input.value = '';
+            if (label) {
+                label.textContent = error instanceof Error ? error.message : 'Не удалось обработать фото.';
+            }
+        }
+    });
+}
+
+function bindPhysicalInputs(stage, form) {
+    form.querySelectorAll('[data-player-character-input]').forEach((input) => {
+        const handle = () => {
+            updateMetricStage(stage, form);
+            markRenderRequested(form);
+        };
+        input.addEventListener('change', handle);
+        input.addEventListener('input', handle);
+    });
+}
+
+function bindPlayerCharacterStage(stage) {
     const form = stage.closest('form');
-    const configurator = form?.querySelector('[data-player-character-configurator]');
-    if (!form || !configurator) {
+    const modal = form?.querySelector('[data-player-character-modal]');
+    if (!form || !modal) {
         return;
     }
 
-    syncProfileGenderControls(stage, form, configurator);
-    bindCharacterChoices(stage, form, configurator);
-    bindPhysicalInputs(stage, form);
+    updateMetricStage(stage, form);
     bindHeightMarker(stage);
+    bindModal(stage, form, modal);
+    bindFaceUpload(form, modal);
+    bindPhysicalInputs(stage, form);
+    showRenderState(stage, stage.dataset.renderStatus || 'idle');
+    settleMockRender(stage);
 
-    const initialState = updateStage(stage, form);
-    await waitUntilNearViewport(stage);
-
-    const runtime = await mountPlayerCharacterThree(stage, initialState);
-    if (!runtime) {
-        return;
-    }
-
-    updateStage(stage, form);
+    form.addEventListener('submit', () => {
+        if (renderRequestedInput(form)?.value === '1') {
+            showRenderState(stage, 'generating');
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
