@@ -93,6 +93,10 @@ function enhanceQuestionTooltip(element, title) {
 }
 
 function tooltipVariant(element) {
+    if (element.is('.account-player-character-configurator__swatch')) {
+        return TITLE_VARIANT;
+    }
+
     const variant = String(element.attr('data-tooltip-variant') || QUESTION_VARIANT).trim();
 
     return variant === TITLE_VARIANT ? TITLE_VARIANT : QUESTION_VARIANT;

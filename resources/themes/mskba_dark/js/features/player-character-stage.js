@@ -1,5 +1,9 @@
 import '../../css/pages/player-character-three.css';
 import { mountPlayerCharacterThree, updatePlayerCharacterThree } from './player-character-authored-renderer.js';
+import {
+    applyAuthoredBodyShape,
+    updateAuthoredAccessories,
+} from './player-character-authored-customization.js';
 
 const DEFAULT_HAIRSTYLE = {
     male: 'male_fade',
@@ -86,10 +90,20 @@ function syncProfileGenderControls(stage, form, configurator) {
     }
 }
 
-function updateStage(stage, form) {
+function updateAuthoredMaleCustomization(runtime, state) {
+    if (!runtime || normalizeGender(state.gender) !== 'male') {
+        return;
+    }
+
+    applyAuthoredBodyShape(runtime, state);
+    updateAuthoredAccessories(runtime, state);
+}
+
+function updateStage(stage, form, runtime = null) {
     const state = readState(stage, form);
     stage.dataset.hasHeight = state.heightCm === null ? 'false' : 'true';
     updatePlayerCharacterThree(stage, state);
+    updateAuthoredMaleCustomization(runtime, state);
 
     stage.dispatchEvent(new CustomEvent('player-character:change', {
         bubbles: true,
@@ -99,7 +113,7 @@ function updateStage(stage, form) {
     return state;
 }
 
-function bindCharacterChoices(stage, form, configurator) {
+function bindCharacterChoices(stage, form, configurator, runtimeRef) {
     configurator.querySelectorAll('[data-player-character-choice]').forEach((button) => {
         button.addEventListener('click', () => {
             const field = button.dataset.playerCharacterChoice;
@@ -109,15 +123,15 @@ function bindCharacterChoices(stage, form, configurator) {
             }
 
             setCharacterField(form, configurator, field, value);
-            updateStage(stage, form);
+            updateStage(stage, form, runtimeRef.current);
         });
     });
 }
 
-function bindPhysicalInputs(stage, form) {
+function bindPhysicalInputs(stage, form, runtimeRef) {
     form.querySelectorAll('[data-player-character-input]').forEach((input) => {
-        input.addEventListener('change', () => updateStage(stage, form));
-        input.addEventListener('input', () => updateStage(stage, form));
+        input.addEventListener('change', () => updateStage(stage, form, runtimeRef.current));
+        input.addEventListener('input', () => updateStage(stage, form, runtimeRef.current));
     });
 }
 
@@ -178,20 +192,22 @@ async function bindPlayerCharacterStage(stage) {
         return;
     }
 
+    const runtimeRef = { current: null };
+
     syncProfileGenderControls(stage, form, configurator);
-    bindCharacterChoices(stage, form, configurator);
-    bindPhysicalInputs(stage, form);
+    bindCharacterChoices(stage, form, configurator, runtimeRef);
+    bindPhysicalInputs(stage, form, runtimeRef);
     bindHeightMarker(stage);
 
     const initialState = updateStage(stage, form);
     await waitUntilNearViewport(stage);
 
-    const runtime = await mountPlayerCharacterThree(stage, initialState);
-    if (!runtime) {
+    runtimeRef.current = await mountPlayerCharacterThree(stage, initialState);
+    if (!runtimeRef.current) {
         return;
     }
 
-    updateStage(stage, form);
+    updateStage(stage, form, runtimeRef.current);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

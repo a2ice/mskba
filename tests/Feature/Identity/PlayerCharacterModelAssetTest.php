@@ -53,4 +53,30 @@ final class PlayerCharacterModelAssetTest extends TestCase
         $this->assertStringNotContainsString('DecompressionStream', $source);
         $this->assertStringNotContainsString('modelPart', $source);
     }
+
+    #[Test]
+    public function authored_character_customization_is_wired_for_body_shape_hair_and_facial_hair(): void
+    {
+        $stage = file_get_contents(resource_path('themes/mskba_dark/js/features/player-character-stage.js'));
+        $customization = file_get_contents(resource_path('themes/mskba_dark/js/features/player-character-authored-customization.js'));
+        $tooltips = file_get_contents(resource_path('themes/mskba_dark/js/features/tooltips.js'));
+
+        $this->assertIsString($stage);
+        $this->assertIsString($customization);
+        $this->assertIsString($tooltips);
+
+        $this->assertStringContainsString('applyAuthoredBodyShape', $stage);
+        $this->assertStringContainsString('updateAuthoredAccessories', $stage);
+
+        $this->assertStringContainsString('BODY_TYPE_SHAPE', $customization);
+        $this->assertStringContainsString("male_fade", $customization);
+        $this->assertStringContainsString("short_beard", $customization);
+        $this->assertStringContainsString("hairColor", $customization);
+        $this->assertStringContainsString("facialHair", $customization);
+
+        $this->assertStringContainsString(
+            ".account-player-character-configurator__swatch",
+            $tooltips,
+        );
+    }
 }
