@@ -136,6 +136,46 @@
             </div></div>
         @endif
 
+        @if(config('features.venue_rental.conversations'))
+            <section class="card mb-4" aria-labelledby="booking-conversation-title"><div class="card-body">
+                <h2 class="h4" id="booking-conversation-title">Переписка @if($conversationUnread)<span class="badge">{{ $conversationUnread }} новых</span>@endif</h2>
+                <p class="text-muted">Сообщения не меняют статус, цену или срок удержания. Доменные решения показаны отдельно в истории ниже.</p>
+                <div id="booking-conversation-messages" aria-live="polite" data-poll-url="{{ route('account.venue-bookings.conversation.index', $booking) }}" data-conversation-id="{{ $conversation?->public_id }}">
+                    @forelse($conversation?->messages?->sortBy('id') ?? [] as $message)
+                        <article class="border-top py-2" data-message-id="{{ $message->id }}">
+                            <strong>{{ $message->authorActor->user?->username ?? 'Система' }}</strong>
+                            <time datetime="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->format('d.m.Y H:i') }}</time>
+                            <p>{{ $message->body }}</p>
+                            @if($message->attachment_path)<a href="{{ route('account.venue-bookings.conversation.attachment', [$booking, $message]) }}">Скачать: {{ $message->attachment_name }}</a>@endif
+                        </article>
+                    @empty
+                        <p class="text-muted">Сообщений пока нет.</p>
+                    @endforelse
+                </div>
+                <form id="booking-conversation-form" method="POST" action="{{ route('account.venue-bookings.conversation.store', $booking) }}" class="mt-3">
+                    @csrf
+                    <input type="hidden" name="client_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                    <label class="form-label" for="booking-message-body">Новое сообщение</label>
+                    <textarea class="form-control" id="booking-message-body" name="body" maxlength="4000" required></textarea>
+                    <button class="btn btn--primary btn--sm mt-2" type="submit">Отправить</button>
+                </form>
+                <form method="POST" enctype="multipart/form-data" action="{{ route('account.venue-bookings.conversation.attach', $booking) }}" class="mt-3">
+                    @csrf
+                    <input type="hidden" name="client_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                    <label class="form-label" for="booking-message-attachment">Безопасное вложение (JPG, PNG, PDF, TXT до 10 МБ)</label>
+                    <input class="form-control" id="booking-message-attachment" type="file" name="attachment" accept="image/jpeg,image/png,application/pdf,text/plain" required>
+                    <button class="btn btn--secondary btn--sm mt-2" type="submit">Прикрепить</button>
+                </form>
+                @if($conversation && $conversation->messages->isNotEmpty())
+                    <form method="POST" action="{{ route('account.venue-bookings.conversation.read', [$booking, $conversation]) }}" class="mt-2">
+                        @csrf
+                        <input type="hidden" name="message_id" value="{{ $conversation->messages->sortByDesc('id')->first()->public_id }}">
+                        <button class="btn btn--secondary btn--sm" type="submit">Отметить прочитанным</button>
+                    </form>
+                @endif
+            </div></section>
+        @endif
+
         <div class="card"><div class="card-body">
             <h2 class="h4">История</h2>
             <ul>

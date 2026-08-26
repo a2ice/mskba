@@ -91,6 +91,11 @@ class VenueBooking extends Model
         return $this->hasOne(VenueBookingPaymentAttempt::class);
     }
 
+    public function conversation(): HasOne
+    {
+        return $this->hasOne(VenueBookingConversation::class);
+    }
+
     /** @param array<string, mixed> $attributes */
     public function applyLifecycleTransition(array $attributes): void
     {

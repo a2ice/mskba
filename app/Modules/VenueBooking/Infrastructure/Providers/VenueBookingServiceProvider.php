@@ -3,8 +3,10 @@
 namespace App\Modules\VenueBooking\Infrastructure\Providers;
 
 use App\Modules\VenueBooking\Application\Services\VenueBookingCommandContext;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingPolicyPublished;
 use App\Modules\VenueBooking\Infrastructure\Listeners\InvalidateVenueSearchAfterPolicyPublished;
+use App\Modules\VenueBooking\Infrastructure\Listeners\NotifyVenueBookingMessageRecipients;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,5 +20,6 @@ final class VenueBookingServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(VenueBookingPolicyPublished::class, InvalidateVenueSearchAfterPolicyPublished::class);
+        Event::listen(VenueBookingMessageSent::class, NotifyVenueBookingMessageRecipients::class);
     }
 }

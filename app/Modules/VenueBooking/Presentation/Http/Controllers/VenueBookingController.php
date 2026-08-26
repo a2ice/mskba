@@ -3,8 +3,10 @@
 namespace App\Modules\VenueBooking\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Coordination\Domain\Models\VenueRentalCoordination;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
@@ -15,6 +17,7 @@ use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingConflictException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingConversation;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -70,6 +73,23 @@ final class VenueBookingController extends Controller
             ->with('participants.user')
             ->where('venue_booking_id', $venueBooking->id)
             ->first();
+        $conversation = null;
+        $conversationUnread = 0;
+        if (config('features.venue_rental.conversations')) {
+            $conversation = VenueBookingConversation::query()
+                ->with(['messages' => fn ($query) => $query->with('authorActor.user')->latest('id')->limit(30), 'readMarkers'])
+                ->where('venue_booking_id', $venueBooking->id)
+                ->first();
+            $lastReadId = $conversation?->readMarkers->firstWhere('user_id', $request->user()?->canonical()->id)?->last_read_message_id ?? 0;
+            $conversationUnread = $conversation?->messages()->where('id', '>', $lastReadId)->count() ?? 0;
+            if ($actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
+                AuditLog::query()->create([
+                    'actor_id' => $actor->id, 'auditable_type' => VenueBooking::class,
+                    'auditable_id' => $venueBooking->id, 'event' => 'conversation_viewed_for_support',
+                    'old_values' => [], 'new_values' => [], 'metadata' => ['route' => $request->route()?->getName()],
+                ]);
+            }
+        }
         $isRequester = $request->user()?->canonical()->id === $venueBooking->requester?->canonical()->id;
         $canDecideExtensions = false;
         $canConfirmPayment = false;
@@ -92,6 +112,8 @@ final class VenueBookingController extends Controller
             'isRequester' => $isRequester,
             'canDecideExtensions' => $canDecideExtensions,
             'canConfirmPayment' => $canConfirmPayment,
+            'conversation' => $conversation,
+            'conversationUnread' => $conversationUnread,
         ]);
     }
 

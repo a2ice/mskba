@@ -57,6 +57,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversationController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
@@ -327,6 +328,13 @@ Route::prefix('account/venue-bookings')
         Route::post('/{venueBooking}/attendance-rounds', [VenueBookingAttendanceController::class, 'store'])
             ->middleware('venue-rental-feature:attendance_v2')
             ->name('venue-booking-attendance.store');
+        Route::middleware('venue-rental-feature:conversations')->group(function (): void {
+            Route::get('/{venueBooking}/conversation', [VenueBookingConversationController::class, 'index'])->name('account.venue-bookings.conversation.index');
+            Route::post('/{venueBooking}/conversation/messages', [VenueBookingConversationController::class, 'store'])->middleware('throttle:20,1')->name('account.venue-bookings.conversation.store');
+            Route::post('/{venueBooking}/conversation/attachments', [VenueBookingConversationController::class, 'attach'])->middleware('throttle:10,1')->name('account.venue-bookings.conversation.attach');
+            Route::get('/{venueBooking}/conversation/messages/{message}/attachment', [VenueBookingConversationController::class, 'download'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.attachment');
+            Route::post('/{venueBooking}/conversation/{conversation}/read', [VenueBookingConversationController::class, 'read'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.read');
+        });
     });
 
 Route::prefix('account/venue-booking-attendance')

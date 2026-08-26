@@ -6,5 +6,6 @@ return [
         'coordination' => (bool) env('FEATURE_VENUE_RENTAL_COORDINATION', false),
         'external_payment' => (bool) env('FEATURE_VENUE_RENTAL_EXTERNAL_PAYMENT', false),
         'attendance_v2' => (bool) env('FEATURE_VENUE_RENTAL_ATTENDANCE_V2', false),
+        'conversations' => (bool) env('FEATURE_VENUE_RENTAL_CONVERSATIONS', false),
     ],
 ];

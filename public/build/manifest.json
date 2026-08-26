@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-BEXRZ5io.css",
+    "file": "assets/app-CtrDc7YO.css",
     "name": "app",
     "names": [
       "app.css"
@@ -15,7 +15,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-BQKTfKPp.css",
+    "file": "assets/app-CvcNMTqo.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-XxN3sxWn.css",
+    "file": "assets/app-k1A-3QBH.css",
     "name": "app",
     "names": [
       "app.css"
@@ -51,12 +51,12 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-BLk9nj_L.js",
+    "file": "assets/app-fyIlidnt.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
     "css": [
-      "assets/app-BXQ9_l5r.css"
+      "assets/app-CVUSFHhG.css"
     ]
   },
   "resources/themes/mskba_streetball/css/app.css": {
