@@ -22,6 +22,7 @@ use Illuminate\Support\Collection;
     'user_id',
     'access_level',
     'sport_roles',
+    'jersey_number',
     'is_captain',
     'is_default_starter',
     'invitation_status',
@@ -56,6 +57,15 @@ class ContractMembership extends Model
         return $this->hasSportRole(TeamMemberTypeEnum::PLAYER);
     }
 
+    public function formattedJerseyNumber(): ?string
+    {
+        if ($this->jersey_number === null) {
+            return null;
+        }
+
+        return str_pad((string) $this->jersey_number, 2, '0', STR_PAD_LEFT);
+    }
+
     /** @return array<int, string> */
     public function sportRoleValues(): array
     {
@@ -88,6 +98,7 @@ class ContractMembership extends Model
         return [
             'scope_type' => ContractMembershipScopeTypeEnum::class,
             'sport_roles' => 'array',
+            'jersey_number' => 'integer',
             'is_captain' => 'boolean',
             'is_default_starter' => 'boolean',
             'invitation_status' => TeamInvitationStatusEnum::class,
