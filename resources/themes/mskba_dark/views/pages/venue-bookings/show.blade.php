@@ -163,6 +163,51 @@
             </div></div>
         @endif
 
+        @if(config('features.venue_rental.contributions') && $contributionSummary)
+            @php
+                $contributionExponent = $contributionSummary['currency_exponent'];
+                $contributionDivisor = 10 ** $contributionExponent;
+                $formatContribution = static function (int $minor) use ($contributionDivisor, $contributionExponent): string {
+                    $whole = (string) intdiv($minor, $contributionDivisor);
+                    if ($contributionExponent === 0) return $whole;
+                    return $whole.','.str_pad((string) ($minor % $contributionDivisor), $contributionExponent, '0', STR_PAD_LEFT);
+                };
+                $ownContribution = $contributionSummary['own_commitment'];
+            @endphp
+            <section class="card mb-4" aria-labelledby="booking-contributions-title"><div class="card-body">
+                <h2 class="h4" id="booking-contributions-title">Обещания участников</h2>
+                <p class="text-muted">Это добровольное обещание покрыть часть аренды, а не списание денег и не подтверждение оплаты.</p>
+                <dl class="row">
+                    <dt class="col-sm-4">Цель</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['target_minor']) }} {{ $contributionSummary['currency'] }}</dd>
+                    <dt class="col-sm-4">Обещано</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['committed_minor']) }} {{ $contributionSummary['currency'] }}</dd>
+                    <dt class="col-sm-4">Фактически подтверждено внешней оплатой</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['confirmed_minor']) }} {{ $contributionSummary['currency'] }}</dd>
+                </dl>
+                @if($contributionSummary['is_open'])
+                    <form method="POST" action="{{ route('account.venue-bookings.contributions.store', $booking) }}" class="row g-3">
+                        @csrf
+                        <div class="col-md-4">
+                            <label class="form-label" for="contribution-amount">Моё обещание, {{ $contributionSummary['currency'] }}</label>
+                            <input class="form-control" id="contribution-amount" name="amount" inputmode="decimal" value="{{ old('amount', $ownContribution ? $formatContribution($ownContribution['amount_minor']) : '') }}" required>
+                        </div>
+                        <div class="col-md-5 align-self-end">
+                            <label class="form-check"><input class="form-check-input" type="checkbox" name="share_with_organizer" value="1" @checked(old('share_with_organizer', $ownContribution['share_with_organizer'] ?? false))> Разрешить организатору видеть мою индивидуальную сумму</label>
+                        </div>
+                        <div class="col-md-3 align-self-end"><button class="btn btn--primary btn--sm" type="submit">Сохранить обещание</button></div>
+                    </form>
+                @else
+                    <p class="text-muted">Сбор закрыт: новые обещания не принимаются.</p>
+                @endif
+                @if($ownContribution)
+                    <p class="mt-3">Ваша текущая сумма: <strong>{{ $formatContribution($ownContribution['amount_minor']) }} {{ $ownContribution['currency'] }}</strong>.</p>
+                    <form method="POST" action="{{ route('account.venue-bookings.contributions.destroy', $booking) }}">
+                        @csrf
+                        @method('DELETE')
+                        <button class="btn btn--secondary btn--sm" type="submit">Отозвать обещание</button>
+                    </form>
+                @endif
+            </div></section>
+        @endif
+
         @if(config('features.venue_rental.conversations'))
             <section class="card mb-4" aria-labelledby="booking-conversation-title"><div class="card-body">
                 <h2 class="h4" id="booking-conversation-title">Переписка @if($conversationUnread)<span class="badge">{{ $conversationUnread }} новых</span>@endif</h2>

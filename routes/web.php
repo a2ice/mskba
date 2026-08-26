@@ -56,6 +56,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipCon
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\BookingContributionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversationController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventController;
@@ -342,6 +343,11 @@ Route::prefix('account/venue-bookings')
         Route::post('/{venueBooking}/event/{event}/reschedule', [VenueBookingEventController::class, 'reschedule'])
             ->middleware('venue-rental-feature:booking_events')
             ->name('account.venue-bookings.event.reschedule');
+        Route::middleware('venue-rental-feature:contributions')->group(function (): void {
+            Route::get('/{venueBooking}/contributions', [BookingContributionController::class, 'show'])->name('account.venue-bookings.contributions.show');
+            Route::post('/{venueBooking}/contributions', [BookingContributionController::class, 'store'])->name('account.venue-bookings.contributions.store');
+            Route::delete('/{venueBooking}/contributions/me', [BookingContributionController::class, 'destroy'])->name('account.venue-bookings.contributions.destroy');
+        });
     });
 
 Route::prefix('account/venue-booking-attendance')

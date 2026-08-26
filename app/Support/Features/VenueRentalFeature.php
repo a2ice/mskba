@@ -10,6 +10,7 @@ enum VenueRentalFeature: string
     case ATTENDANCE_V2 = 'attendance_v2';
     case CONVERSATIONS = 'conversations';
     case BOOKING_EVENTS = 'booking_events';
+    case CONTRIBUTIONS = 'contributions';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum VenueRentalFeature: string
             self::ATTENDANCE_V2 => 'Подтверждение участников V2',
             self::CONVERSATIONS => 'Переписка по аренде',
             self::BOOKING_EVENTS => 'Мероприятия из подтверждённых броней',
+            self::CONTRIBUTIONS => 'Приватные вклады участников',
         };
     }
 }

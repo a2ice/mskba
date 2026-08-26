@@ -96,6 +96,11 @@ class VenueBooking extends Model
         return $this->hasOne(VenueBookingConversation::class);
     }
 
+    public function contributionCommitments(): HasMany
+    {
+        return $this->hasMany(BookingContributionCommitment::class);
+    }
+
     /** @param array<string, mixed> $attributes */
     public function applyLifecycleTransition(array $attributes): void
     {

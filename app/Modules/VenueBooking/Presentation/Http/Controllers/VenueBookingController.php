@@ -12,6 +12,7 @@ use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\CancelVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\ConfirmVenueBookingHandler;
+use App\Modules\VenueBooking\Application\UseCases\GetContributionSummaryHandler;
 use App\Modules\VenueBooking\Application\UseCases\RejectVenueBookingHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingConflictException;
@@ -53,6 +54,7 @@ final class VenueBookingController extends Controller
         CurrentActorResolver $actors,
         VenueBookingAuthorization $authorization,
         VenueBookingActionState $actions,
+        GetContributionSummaryHandler $contributions,
     ): JsonResponse|Response {
         $venueBooking->load(['venue', 'event', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
         $actor = $actors->resolveForRequest($request);
@@ -75,6 +77,14 @@ final class VenueBookingController extends Controller
             ->first();
         $conversation = null;
         $conversationUnread = 0;
+        $contributionSummary = null;
+        if (config('features.venue_rental.contributions')) {
+            try {
+                $contributionSummary = $contributions->handle($venueBooking, $actor, $request->route()?->getName());
+            } catch (VenueBookingTransitionException) {
+                // Commercial viewers do not automatically receive participant contribution data.
+            }
+        }
         if (config('features.venue_rental.conversations')) {
             $conversation = VenueBookingConversation::query()
                 ->with(['messages' => fn ($query) => $query->with('authorActor.user')->latest('id')->limit(30), 'readMarkers'])
@@ -114,6 +124,7 @@ final class VenueBookingController extends Controller
             'canConfirmPayment' => $canConfirmPayment,
             'conversation' => $conversation,
             'conversationUnread' => $conversationUnread,
+            'contributionSummary' => $contributionSummary,
         ]);
     }
 
