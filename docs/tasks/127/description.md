@@ -25,4 +25,6 @@
 
 ## Проверки
 
-Перед merge требуется проверить PHP-синтаксис изменённых PHP-файлов, diff и релевантный feature-тест `TeamJerseyNumberTest`.
+- PR diff проверен целиком перед merge;
+- `php -l` успешно пройден для изменённых production PHP-файлов, migration и нового `TeamJerseyNumberTest`;
+- отдельного PR-CI workflow в репозитории нет; PHPUnit-тест добавлен в кодовую базу, но полный Laravel test suite в GitHub connector-среде не запускался.
