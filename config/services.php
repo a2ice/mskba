@@ -44,4 +44,9 @@ return [
         'vk_url' => env('VK_COMMUNITY_URL', 'https://vk.ru/mskba_official'),
     ],
 
+    'venue_rental_payment' => [
+        'driver' => env('VENUE_RENTAL_PAYMENT_DRIVER', 'external_manual'),
+        'merchant' => env('VENUE_RENTAL_PAYMENT_MERCHANT', 'mskba'),
+    ],
+
 ];

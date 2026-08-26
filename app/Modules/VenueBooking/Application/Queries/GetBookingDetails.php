@@ -58,6 +58,8 @@ final readonly class GetBookingDetails
                 'currency' => $booking->paymentAttempt->currency,
                 'method' => $booking->paymentAttempt->method,
                 'status' => $booking->paymentAttempt->status->value,
+                'provider' => $booking->paymentAttempt->provider,
+                'provider_reference_masked' => $booking->paymentAttempt->provider_reference === null ? null : '***'.substr($booking->paymentAttempt->provider_reference, -4),
             ],
             'extensions' => $booking->extensionRequests->map(fn ($extension): array => [
                 'id' => $extension->public_id,

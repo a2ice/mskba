@@ -10,5 +10,6 @@ return [
         'booking_events' => (bool) env('FEATURE_VENUE_RENTAL_BOOKING_EVENTS', false),
         'contributions' => (bool) env('FEATURE_VENUE_RENTAL_CONTRIBUTIONS', false),
         'portal' => (bool) env('FEATURE_VENUE_RENTAL_PORTAL', false),
+        'payment_port' => (bool) env('FEATURE_VENUE_RENTAL_PAYMENT_PORT', false),
     ],
 ];

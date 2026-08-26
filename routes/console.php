@@ -4,6 +4,7 @@ use App\Modules\Coordination\Application\UseCases\CloseExpiredPollsHandler;
 use App\Modules\Coordination\Application\UseCases\CloseExpiredVenueBookingAttendanceRoundsHandler;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\VenueBooking\Application\Services\PaymentReconciliationDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingExpiryDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use Illuminate\Foundation\Inspiring;
@@ -47,6 +48,10 @@ Artisan::command('venue-booking:expire-due {--batch=100}', function (VenueBookin
     $this->info('Поставлено задач на истечение: '.$dispatcher->dispatchDue((int) $this->option('batch')));
 })->purpose('Ставит в очередь короткие идемпотентные задачи истечения hold');
 
+Artisan::command('venue-booking:reconcile-payments {--batch=100}', function (PaymentReconciliationDispatcher $dispatcher) {
+    $this->info('Поставлено задач сверки платежей: '.$dispatcher->dispatchStale((int) $this->option('batch')));
+})->purpose('Сверяет зависшие payment intents с настроенным провайдером');
+
 Schedule::command('coordination:close-expired')
     ->everyMinute()
     ->withoutOverlapping();
@@ -65,5 +70,10 @@ Schedule::command('venue-booking:dispatch-outbox')
 
 Schedule::command('venue-booking:expire-due')
     ->everyMinute()
+    ->onOneServer()
+    ->withoutOverlapping();
+
+Schedule::command('venue-booking:reconcile-payments')
+    ->everyFiveMinutes()
     ->onOneServer()
     ->withoutOverlapping();

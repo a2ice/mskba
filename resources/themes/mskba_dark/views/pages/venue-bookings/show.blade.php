@@ -142,6 +142,7 @@
                 @elseif($booking->paymentAttempt)
                     @php $payment = $booking->paymentAttempt; @endphp
                     <p>{{ number_format($payment->amount_minor / 100, 2, ',', ' ') }} {{ $payment->currency }}, способ: {{ $payment->method }}</p>
+                    <p class="text-muted">Источник: {{ $payment->provider }}@if($payment->provider_reference), reference ***{{ substr($payment->provider_reference, -4) }}@endif</p>
                     <p>{{ $payment->payment_instructions }}</p>
                     <p class="text-muted">Оплатить и сообщить до {{ $payment->window_expires_at->format('d.m.Y H:i') }}. Заявление об оплате само по себе не подтверждает бронь.</p>
                     @if($isRequester && $payment->status === \App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState::WINDOW_OPEN && now()->lessThan($payment->window_expires_at))

@@ -12,6 +12,7 @@ enum VenueRentalFeature: string
     case BOOKING_EVENTS = 'booking_events';
     case CONTRIBUTIONS = 'contributions';
     case PORTAL = 'portal';
+    case PAYMENT_PORT = 'payment_port';
 
     public function label(): string
     {
@@ -24,6 +25,7 @@ enum VenueRentalFeature: string
             self::BOOKING_EVENTS => 'Мероприятия из подтверждённых броней',
             self::CONTRIBUTIONS => 'Приватные вклады участников',
             self::PORTAL => 'Кабинет аренды и read projections',
+            self::PAYMENT_PORT => 'Платёжный порт аренды',
         };
     }
 }

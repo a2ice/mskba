@@ -2,6 +2,7 @@
 
 namespace App\Modules\VenueBooking\Application\UseCases;
 
+use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
@@ -44,10 +45,22 @@ final readonly class ConfirmVenueBookingPaymentHandler
 
             $attempt->update(['status' => VenueBookingPaymentState::CONFIRMED, 'reviewed_by_actor_id' => $actor->id, 'review_reason' => $reason, 'reviewed_at' => now()]);
             $booking->forceFill(['payment_state' => VenueBookingPaymentState::CONFIRMED, 'optimistic_version' => $booking->optimistic_version + 1])->save();
+            AuditLog::query()->create([
+                'actor_id' => $actor->id, 'auditable_type' => VenueBookingPaymentAttempt::class,
+                'auditable_id' => $attempt->id, 'event' => 'manual_payment_confirmed',
+                'old_values' => ['status' => VenueBookingPaymentState::CLAIMED->value],
+                'new_values' => ['status' => VenueBookingPaymentState::CONFIRMED->value],
+                'metadata' => ['provider' => $attempt->provider, 'provider_reference' => $this->mask($attempt->provider_reference)],
+            ]);
             $this->outbox->record($booking->id, VenueBookingPaymentConfirmed::class, ['payment_attempt_id' => $attempt->id]);
 
             return $attempt->fresh();
         }, lockConflicts: true);
+    }
+
+    private function mask(?string $reference): ?string
+    {
+        return $reference === null ? null : '***'.substr($reference, -4);
     }
 
     private function assertAttempt(VenueBookingPaymentAttempt $attempt, VenueBooking $booking): void

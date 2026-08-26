@@ -4,6 +4,12 @@
 
 Определить безопасную границу платёжной интеграции: сейчас поддержать внешнюю ручную оплату, а позднее подключить провайдера без переписывания booking aggregate и без преждевременного внедрения внутреннего кошелька.
 
+## Статус
+
+Выполнена в `feature/115`.
+
+Существующая payment attempt из 013 расширена provider/idempotency/merchant-полями и реализует persistence для intent/attempt без преждевременного ledger. `PaymentProviderPort` отделяет booking от SDK, а `ExternalManualPaymentAdapter` сохраняет прежний flow и принципиально не принимает webhook. Webhook проверяется адаптером, дедуплицируется по provider event ID, сверяет booking, сумму, валюту и merchant, хранит только hash и allowlist safe payload. Подтверждение идемпотентно и меняет только payment state; booking подтверждается прежней отдельной командой. Reconciliation использует distributed lock и те же блокировки aggregate.
+
 ## Доменные изменения
 
 - Ввести абстракцию `PaymentIntent`/`PaymentAttempt`, связанную с booking, суммой snapshot, валютой и provider reference.

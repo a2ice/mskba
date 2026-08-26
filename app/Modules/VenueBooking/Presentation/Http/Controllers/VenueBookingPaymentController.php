@@ -83,6 +83,8 @@ final class VenueBookingPaymentController extends Controller
                 'currency' => $attempt->currency,
                 'window_expires_at' => $attempt->window_expires_at->utc()->toIso8601String(),
                 'booking_status' => $attempt->booking->status->value,
+                'provider' => $attempt->provider,
+                'provider_reference_masked' => $attempt->provider_reference === null ? null : '***'.substr($attempt->provider_reference, -4),
             ]);
         }
 
