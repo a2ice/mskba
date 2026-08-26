@@ -12,6 +12,13 @@ use Illuminate\Http\Request;
 
 final class TeamSettingsController extends Controller
 {
+    private const array COLOR_KEYS = [
+        'home_primary',
+        'home_secondary',
+        'away_primary',
+        'away_secondary',
+    ];
+
     public function updateApplications(
         string $team,
         Request $request,
@@ -33,5 +40,36 @@ final class TeamSettingsController extends Controller
         $item->update($updates);
 
         return back()->with('status', 'Настройки команды обновлены.');
+    }
+
+    public function updateColors(
+        string $team,
+        Request $request,
+        CurrentActorResolver $actors,
+        TeamManagementAccess $access,
+    ): RedirectResponse {
+        $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
+        $actor = $actors->resolveForRequest($request);
+        abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::EDIT_SETTINGS), 403);
+
+        $rules = ['colors' => ['nullable', 'array']];
+        foreach (self::COLOR_KEYS as $key) {
+            $rules["colors.{$key}"] = ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'];
+        }
+
+        $data = $request->validate($rules);
+        $input = $data['colors'] ?? [];
+        $colors = [];
+
+        foreach (self::COLOR_KEYS as $key) {
+            $value = $input[$key] ?? null;
+            if (is_string($value) && $value !== '') {
+                $colors[$key] = strtolower($value);
+            }
+        }
+
+        $item->update(['colors' => $colors === [] ? null : $colors]);
+
+        return back()->with('status', 'Цвета команды обновлены.');
     }
 }

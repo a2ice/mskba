@@ -29,6 +29,51 @@
 @if($team->logo)<form class="team-logo-delete-form" method="POST" action="{{ route('teams.logo.destroy', $team->routeIdentifier()) }}" onsubmit="return confirm('Удалить логотип команды?')">@csrf @method('DELETE')<button class="btn btn--secondary btn--sm" type="submit">Удалить логотип</button></form>@endif
 </section>
 
+@php
+    $teamColors = old('colors', $team->colors ?? []);
+    $teamColorOptions = [
+        'home_primary' => 'Основной домашний',
+        'home_secondary' => 'Дополнительный домашний',
+        'away_primary' => 'Основной гостевой',
+        'away_secondary' => 'Дополнительный гостевой',
+    ];
+@endphp
+<section class="section-card mb-4">
+    <h2>Цвета команды</h2>
+    <p class="form-hint mb-3">Цвета формы и визуального оформления команды. Каждый цвет необязателен.</p>
+    <form method="POST" action="{{ route('teams.settings.colors.update', $team->routeIdentifier()) }}">
+        @csrf @method('PATCH')
+        <div class="row g-3">
+            @foreach($teamColorOptions as $key => $label)
+                @php($color = data_get($teamColors, $key))
+                <div class="col-12 col-md-6">
+                    <label class="form-label" for="team-color-{{ $key }}">{{ $label }}</label>
+                    <div class="d-flex align-items-center gap-2" data-team-color>
+                        <input
+                            id="team-color-{{ $key }}"
+                            class="form-control form-control-color"
+                            type="color"
+                            value="{{ $color ?: '#000000' }}"
+                            style="{{ $color ? '' : 'opacity:.45' }}"
+                            aria-label="{{ $label }}"
+                            oninput="const root=this.closest('[data-team-color]');root.querySelector('input[type=hidden]').value=this.value;root.querySelector('[data-team-color-value]').textContent=this.value.toUpperCase();this.style.opacity='1';"
+                        >
+                        <input type="hidden" name="colors[{{ $key }}]" value="{{ $color }}">
+                        <code data-team-color-value>{{ $color ? strtoupper($color) : 'Не задан' }}</code>
+                        <button
+                            class="btn btn--secondary btn--sm"
+                            type="button"
+                            onclick="const root=this.closest('[data-team-color]');root.querySelector('input[type=hidden]').value='';root.querySelector('[data-team-color-value]').textContent='Не задан';root.querySelector('input[type=color]').style.opacity='.45';"
+                        >Сбросить</button>
+                    </div>
+                    @error('colors.'.$key)<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                </div>
+            @endforeach
+        </div>
+        <button class="btn btn--primary mt-3" type="submit">Сохранить цвета</button>
+    </form>
+</section>
+
 <form method="POST" action="{{ route('teams.update', $team->routeIdentifier()) }}" class="section-card mb-4">@csrf @method('PUT')
 <h2>Данные команды</h2>
 <div class="team-data-readonly mb-3"><span class="form-label">Название</span><strong>{{ $team->name }}</strong><input type="hidden" name="name" value="{{ $team->base_name ?? $team->name }}"></div>
