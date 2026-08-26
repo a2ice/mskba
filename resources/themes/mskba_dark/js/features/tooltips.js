@@ -58,8 +58,9 @@ function isIconOnlyTooltipSource(element) {
         return true;
     }
 
-    const containsIcon = element.is('i, svg, img, picture')
-        || element.find('i, svg, img, picture').length > 0;
+    const iconSelector = 'i, svg, img, picture, [aria-hidden="true"]';
+    const containsIcon = element.is(iconSelector)
+        || element.find(iconSelector).length > 0;
 
     if (!containsIcon) {
         return false;
@@ -67,7 +68,7 @@ function isIconOnlyTooltipSource(element) {
 
     const textContent = element
         .clone()
-        .find('i, svg, img, picture')
+        .find(iconSelector)
         .remove()
         .end()
         .text()
@@ -93,7 +94,7 @@ function enhanceQuestionTooltip(element, title) {
 }
 
 function tooltipVariant(element) {
-    if (element.is('.account-player-character-configurator__swatch')) {
+    if (element.is('.account-player-character-configurator__swatch') || isIconOnlyTooltipSource(element)) {
         return TITLE_VARIANT;
     }
 
