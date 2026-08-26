@@ -93,6 +93,21 @@
                                         'wrapperClass' => 'team-sport-role-option',
                                     ])
                                 </div>
+                                <div class="mt-3">
+                                    <label class="form-label" for="team-member-{{ $member->id }}-jersey-number">Номер игрока</label>
+                                    <input
+                                        id="team-member-{{ $member->id }}-jersey-number"
+                                        class="form-control"
+                                        type="number"
+                                        name="jersey_number"
+                                        min="0"
+                                        max="999"
+                                        inputmode="numeric"
+                                        value="{{ $member->jersey_number }}"
+                                        placeholder="00–999"
+                                    >
+                                    <p class="form-hint mt-2">Необязательно. Значения 0–9 отображаются как 00–09.</p>
+                                </div>
                                 <p class="form-hint mt-3">Капитан и стартовый участник должны иметь роль «Игрок».</p>
                                 <button class="btn btn--primary btn--sm mt-3" type="submit">Сохранить роли</button>
                             </form>
