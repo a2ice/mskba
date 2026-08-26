@@ -1,5 +1,3 @@
-const CANONICAL_HEIGHT_METERS = 1.79;
-
 const BODY_TYPE_SHAPE = {
     unspecified: { width: 0, depth: 0 },
     slim: { width: -0.07, depth: -0.05 },
@@ -39,7 +37,7 @@ function bodyShapeForState(state) {
 function material(THREE, color, options = {}) {
     return new THREE.MeshStandardMaterial({
         color,
-        roughness: options.roughness ?? 0.88,
+        roughness: options.roughness ?? 0.9,
         metalness: 0,
         transparent: options.transparent ?? false,
         opacity: options.opacity ?? 1,
@@ -120,59 +118,150 @@ function createLoftYGeometry(THREE, rings, radialSegments = 36, capBottom = fals
     return geometry;
 }
 
-function addHairCap(THREE, group, hairMaterial, rings, name) {
-    group.add(mesh(
-        THREE,
-        createLoftYGeometry(THREE, rings),
-        hairMaterial,
-        name,
+function quantile(values, amount) {
+    if (!values.length) {
+        return 0;
+    }
+
+    const sorted = [...values].sort((a, b) => a - b);
+    const index = clamp(Math.round((sorted.length - 1) * amount), 0, sorted.length - 1);
+    return sorted[index];
+}
+
+function collectHeadMetrics(runtime) {
+    if (runtime.authoredHeadMetrics) {
+        return runtime.authoredHeadMetrics;
+    }
+
+    const { THREE, model, modelRoot } = runtime;
+    if (!model || !modelRoot) {
+        return null;
+    }
+
+    // Measure the authored mesh in modelRoot-local coordinates. This cancels the
+    // current viewport height scale/rotation and makes the accessory anchors follow
+    // the actual GLB instead of coordinates borrowed from the procedural prototype.
+    model.scale.set(1, 1, 1);
+    modelRoot.updateMatrixWorld(true);
+    model.updateMatrixWorld(true);
+
+    const inverseRoot = new THREE.Matrix4().copy(modelRoot.matrixWorld).invert();
+    const localMatrix = new THREE.Matrix4();
+    const point = new THREE.Vector3();
+    const samples = [];
+
+    model.traverse((object) => {
+        const position = object.geometry?.getAttribute?.('position');
+        if (!object.isMesh || !position) {
+            return;
+        }
+
+        object.updateMatrixWorld(true);
+        localMatrix.multiplyMatrices(inverseRoot, object.matrixWorld);
+
+        for (let index = 0; index < position.count; index += 1) {
+            point.fromBufferAttribute(position, index).applyMatrix4(localMatrix);
+            samples.push({ x: point.x, y: point.y, z: point.z });
+        }
+    });
+
+    if (!samples.length) {
+        return null;
+    }
+
+    const ys = samples.map((entry) => entry.y);
+    const floorY = Math.min(...ys);
+    const crownY = Math.max(...ys);
+    const height = Math.max(crownY - floorY, 0.001);
+    const headStartY = floorY + height * 0.815;
+    const head = samples.filter((entry) => entry.y >= headStartY);
+
+    const xs = head.map((entry) => entry.x);
+    const zs = head.map((entry) => entry.z);
+    const headMinX = quantile(xs, 0.01);
+    const headMaxX = quantile(xs, 0.99);
+    const headMinZ = quantile(zs, 0.01);
+    const headMaxZ = quantile(zs, 0.99);
+
+    runtime.authoredHeadMetrics = {
+        floorY,
+        crownY,
+        height,
+        head,
+        centerX: (headMinX + headMaxX) * 0.5,
+        centerZ: (headMinZ + headMaxZ) * 0.5,
+        halfWidth: Math.max((headMaxX - headMinX) * 0.5, 0.055),
+        halfDepth: Math.max((headMaxZ - headMinZ) * 0.5, 0.06),
+        hairlineY: floorY + height * 0.895,
+        mouthY: floorY + height * 0.852,
+        jawY: floorY + height * 0.827,
+        chinY: floorY + height * 0.807,
+    };
+
+    return runtime.authoredHeadMetrics;
+}
+
+function frontSurfaceZ(metrics, x, y) {
+    const xTolerance = Math.max(metrics.halfWidth * 0.24, 0.018);
+    const yTolerance = Math.max(metrics.height * 0.010, 0.016);
+    let candidates = metrics.head.filter((entry) => (
+        Math.abs(entry.x - x) <= xTolerance
+        && Math.abs(entry.y - y) <= yTolerance
     ));
+
+    if (!candidates.length) {
+        candidates = metrics.head.filter((entry) => Math.abs(entry.y - y) <= yTolerance * 1.8);
+    }
+
+    if (!candidates.length) {
+        return metrics.centerZ + metrics.halfDepth;
+    }
+
+    // Camera is on +Z and the authored male faces it at yaw=0, so +Z is the face.
+    return quantile(candidates.map((entry) => entry.z), 0.985);
+}
+
+function addHairCap(THREE, group, hairMaterial, rings, name) {
+    group.add(mesh(THREE, createLoftYGeometry(THREE, rings), hairMaterial, name));
 }
 
 function addHairTuft(THREE, group, hairMaterial, position, scale, name) {
-    group.add(ellipsoid(
-        THREE,
-        0.050,
-        scale,
-        hairMaterial,
-        position,
-        name,
-        24,
-        16,
-    ));
+    group.add(ellipsoid(THREE, 0.05, scale, hairMaterial, position, name, 24, 16));
 }
 
-function buildHair(THREE, group, state, hairMaterial) {
+function buildHair(THREE, group, state, hairMaterial, metrics) {
     const hairstyle = state.hairstyle || 'male_fade';
     if (hairstyle === 'male_bald') {
         return;
     }
 
+    const { centerX: x, centerZ: z, halfWidth: w, halfDepth: d, crownY, hairlineY } = metrics;
+    const capTop = crownY + Math.max(metrics.height * 0.003, 0.004);
+    const crownSpan = Math.max(crownY - hairlineY, 0.10);
+
     if (hairstyle === 'male_buzz') {
         addHairCap(THREE, group, hairMaterial, [
-            { y: 1.676, rx: 0.0825, rz: 0.0805, cz: 0.002 },
-            { y: 1.724, rx: 0.0790, rz: 0.0780 },
-            { y: 1.764, rx: 0.0680, rz: 0.0710, cz: -0.002 },
-            { y: 1.792, rx: 0.0460, rz: 0.0550, cz: -0.004 },
-            { y: 1.800, rx: 0.0240, rz: 0.0310, cz: -0.005 },
+            { y: hairlineY, cx: x, cz: z, rx: w * 1.015, rz: d * 1.015 },
+            { y: hairlineY + crownSpan * 0.42, cx: x, cz: z, rx: w * 0.95, rz: d * 0.96 },
+            { y: hairlineY + crownSpan * 0.78, cx: x, cz: z, rx: w * 0.76, rz: d * 0.82 },
+            { y: capTop, cx: x, cz: z - d * 0.04, rx: w * 0.30, rz: d * 0.36 },
         ], 'MSKBA_Authored_Hair_Buzz');
         return;
     }
 
     if (hairstyle === 'male_fade') {
         addHairCap(THREE, group, hairMaterial, [
-            { y: 1.666, rx: 0.0820, rz: 0.0800, cz: 0.001 },
-            { y: 1.710, rx: 0.0800, rz: 0.0790 },
-            { y: 1.750, rx: 0.0710, rz: 0.0740, cz: -0.002 },
-            { y: 1.786, rx: 0.0530, rz: 0.0610, cz: -0.005 },
-            { y: 1.806, rx: 0.0280, rz: 0.0360, cz: -0.007 },
+            { y: hairlineY + crownSpan * 0.08, cx: x, cz: z, rx: w * 1.01, rz: d * 1.01 },
+            { y: hairlineY + crownSpan * 0.48, cx: x, cz: z, rx: w * 0.94, rz: d * 0.96 },
+            { y: hairlineY + crownSpan * 0.78, cx: x, cz: z - d * 0.02, rx: w * 0.72, rz: d * 0.79 },
+            { y: capTop, cx: x, cz: z - d * 0.05, rx: w * 0.28, rz: d * 0.34 },
         ], 'MSKBA_Authored_Hair_Fade_Sides');
         addHairTuft(
             THREE,
             group,
             hairMaterial,
-            [0, 1.792, 0.011],
-            [1.38, 0.72, 1.22],
+            [x, crownY + w * 0.13, z + d * 0.03],
+            [w / 0.05 * 0.78, w / 0.05 * 0.30, d / 0.05 * 0.70],
             'MSKBA_Authored_Hair_Fade_Top',
         );
         return;
@@ -180,56 +269,36 @@ function buildHair(THREE, group, state, hairMaterial) {
 
     if (hairstyle === 'male_short') {
         addHairCap(THREE, group, hairMaterial, [
-            { y: 1.668, rx: 0.0835, rz: 0.0815, cz: 0.001 },
-            { y: 1.716, rx: 0.0820, rz: 0.0810, cz: -0.001 },
-            { y: 1.760, rx: 0.0720, rz: 0.0760, cz: -0.004 },
-            { y: 1.800, rx: 0.0520, rz: 0.0610, cx: 0.004, cz: -0.008 },
-            { y: 1.823, rx: 0.0270, rz: 0.0360, cx: 0.006, cz: -0.011 },
-        ], 'MSKBA_Authored_Hair_Short_Cap');
-        addHairTuft(THREE, group, hairMaterial, [-0.034, 1.815, 0.021], [0.86, 0.66, 0.90], 'MSKBA_Authored_Hair_Short_Tuft');
-        addHairTuft(THREE, group, hairMaterial, [0.004, 1.830, 0.028], [0.92, 0.72, 0.94], 'MSKBA_Authored_Hair_Short_Tuft');
-        addHairTuft(THREE, group, hairMaterial, [0.040, 1.812, 0.018], [0.78, 0.62, 0.86], 'MSKBA_Authored_Hair_Short_Tuft');
+            { y: hairlineY, cx: x, cz: z, rx: w * 1.02, rz: d * 1.02 },
+            { y: hairlineY + crownSpan * 0.45, cx: x, cz: z, rx: w * 0.97, rz: d * 0.99 },
+            { y: hairlineY + crownSpan * 0.82, cx: x + w * 0.04, cz: z - d * 0.03, rx: w * 0.76, rz: d * 0.83 },
+            { y: capTop + w * 0.08, cx: x + w * 0.07, cz: z - d * 0.06, rx: w * 0.30, rz: d * 0.35 },
+        ], 'MSKBA_Authored_Hair_Short');
         return;
     }
 
     addHairCap(THREE, group, hairMaterial, [
-        { y: 1.660, rx: 0.0830, rz: 0.0810 },
-        { y: 1.710, rx: 0.0840, rz: 0.0830, cz: -0.001 },
-        { y: 1.755, rx: 0.0760, rz: 0.0790, cz: -0.004 },
-        { y: 1.790, rx: 0.0550, rz: 0.0630, cz: -0.006 },
-        { y: 1.805, rx: 0.0320, rz: 0.0420, cz: -0.008 },
+        { y: hairlineY, cx: x, cz: z, rx: w * 1.02, rz: d * 1.02 },
+        { y: hairlineY + crownSpan * 0.48, cx: x, cz: z, rx: w * 1.00, rz: d * 1.01 },
+        { y: hairlineY + crownSpan * 0.82, cx: x, cz: z - d * 0.03, rx: w * 0.78, rz: d * 0.85 },
+        { y: capTop, cx: x, cz: z - d * 0.05, rx: w * 0.34, rz: d * 0.40 },
     ], 'MSKBA_Authored_Hair_Curls_Cap');
 
-    const curls = [
-        [-0.066, 1.740, 0.025, 0.029],
-        [-0.068, 1.754, -0.012, 0.029],
-        [0.067, 1.742, 0.024, 0.029],
-        [0.069, 1.755, -0.014, 0.029],
-        [-0.052, 1.775, 0.050, 0.030],
-        [-0.017, 1.796, 0.061, 0.031],
-        [0.020, 1.801, 0.058, 0.031],
-        [0.053, 1.778, 0.048, 0.030],
-        [-0.050, 1.805, 0.018, 0.031],
-        [-0.016, 1.828, 0.024, 0.032],
-        [0.021, 1.833, 0.021, 0.032],
-        [0.052, 1.808, 0.014, 0.031],
-        [-0.055, 1.790, -0.038, 0.030],
-        [-0.020, 1.819, -0.050, 0.032],
-        [0.018, 1.824, -0.051, 0.032],
-        [0.053, 1.794, -0.040, 0.030],
-        [0.000, 1.850, -0.008, 0.033],
-    ];
-
-    curls.forEach(([x, y, z, radius], index) => {
+    const curlRadius = Math.max(w * 0.25, 0.020);
+    [
+        [-0.62, 0.36, 0.54], [-0.22, 0.52, 0.66], [0.22, 0.54, 0.64], [0.62, 0.36, 0.52],
+        [-0.55, 0.72, 0.08], [-0.18, 0.84, 0.18], [0.20, 0.86, 0.16], [0.56, 0.72, 0.06],
+        [-0.35, 1.02, -0.18], [0.02, 1.10, -0.20], [0.38, 1.00, -0.18],
+    ].forEach(([dx, dy, dz], index) => {
         group.add(ellipsoid(
             THREE,
-            radius,
-            [1.04, 0.94 + (index % 3) * 0.05, 1.02],
+            curlRadius,
+            [1, 0.90 + (index % 3) * 0.08, 0.96],
             hairMaterial,
-            [x, y, z],
+            [x + dx * w, crownY - crownSpan * 0.30 + dy * w, z + dz * d],
             'MSKBA_Authored_Hair_Curl',
-            20,
-            14,
+            18,
+            12,
         ));
     });
 }
@@ -238,101 +307,118 @@ function facialMaterial(baseMaterial, opacity = 1) {
     const copy = baseMaterial.clone();
     copy.opacity = opacity;
     copy.transparent = opacity < 1;
-    copy.depthWrite = opacity >= 1;
+    copy.depthWrite = opacity >= 0.95;
     return copy;
 }
 
-function addMustache(THREE, group, hairMaterial, opacity = 1) {
-    const left = ellipsoid(
+function addFacialPatch(THREE, group, hairMaterial, metrics, x, y, radius, scale, name, opacity = 1) {
+    // Put the patch on the measured face surface, not at a hard-coded procedural Z.
+    const z = frontSurfaceZ(metrics, x, y) + 0.0015;
+    group.add(ellipsoid(
         THREE,
-        0.024,
-        [1.05, 0.34, 0.42],
+        radius,
+        [scale[0], scale[1], scale[2]],
         facialMaterial(hairMaterial, opacity),
-        [-0.019, 1.583, 0.083],
-        'MSKBA_Authored_Mustache',
-    );
-    const right = ellipsoid(
-        THREE,
-        0.024,
-        [1.05, 0.34, 0.42],
-        facialMaterial(hairMaterial, opacity),
-        [0.019, 1.583, 0.083],
-        'MSKBA_Authored_Mustache',
-    );
-    left.rotation.z = 0.12;
-    right.rotation.z = -0.12;
-    group.add(left, right);
+        [x, y, z],
+        name,
+        20,
+        12,
+    ));
 }
 
-function addJawPatches(THREE, group, hairMaterial, scale = 1, opacity = 1, centralOnly = false) {
+function addMustache(THREE, group, hairMaterial, metrics, opacity = 1) {
+    const xOffset = metrics.halfWidth * 0.23;
+    const radius = Math.max(metrics.halfWidth * 0.23, 0.016);
+    for (const sign of [-1, 1]) {
+        addFacialPatch(
+            THREE,
+            group,
+            hairMaterial,
+            metrics,
+            metrics.centerX + sign * xOffset,
+            metrics.mouthY + metrics.height * 0.006,
+            radius,
+            [1.0, 0.30, 0.12],
+            'MSKBA_Authored_Mustache',
+            opacity,
+        );
+    }
+}
+
+function addJawPatches(THREE, group, hairMaterial, metrics, scale = 1, opacity = 1, centralOnly = false) {
+    const w = metrics.halfWidth;
+    const baseRadius = Math.max(w * 0.31, 0.020) * scale;
     const patches = centralOnly
         ? [
-            [0, 1.535, 0.075, 0.039, [0.92, 0.88, 0.54]],
-            [0, 1.512, 0.071, 0.033, [0.78, 0.90, 0.56]],
+            [0, metrics.jawY, 0.94, 0.66],
+            [0, metrics.chinY, 0.82, 0.70],
         ]
         : [
-            [-0.050, 1.575, 0.065, 0.034, [0.78, 0.72, 0.48]],
-            [0.050, 1.575, 0.065, 0.034, [0.78, 0.72, 0.48]],
-            [-0.035, 1.548, 0.071, 0.035, [0.90, 0.78, 0.52]],
-            [0.035, 1.548, 0.071, 0.035, [0.90, 0.78, 0.52]],
-            [0, 1.528, 0.073, 0.040, [1.08, 0.90, 0.58]],
+            [-0.54, metrics.jawY + metrics.height * 0.010, 0.78, 0.60],
+            [0.54, metrics.jawY + metrics.height * 0.010, 0.78, 0.60],
+            [-0.32, metrics.jawY - metrics.height * 0.004, 0.88, 0.66],
+            [0.32, metrics.jawY - metrics.height * 0.004, 0.88, 0.66],
+            [0, metrics.chinY + metrics.height * 0.006, 1.02, 0.72],
         ];
 
-    patches.forEach(([x, y, z, radius, patchScale]) => {
-        group.add(ellipsoid(
+    patches.forEach(([xFactor, y, xScale, yScale]) => {
+        addFacialPatch(
             THREE,
-            radius * scale,
-            patchScale,
-            facialMaterial(hairMaterial, opacity),
-            [x, y, z],
+            group,
+            hairMaterial,
+            metrics,
+            metrics.centerX + xFactor * w,
+            y,
+            baseRadius,
+            [xScale, yScale, 0.13],
             'MSKBA_Authored_Beard',
-            20,
-            14,
-        ));
+            opacity,
+        );
     });
 }
 
-function buildFacialHair(THREE, group, state, hairMaterial) {
+function buildFacialHair(THREE, group, state, hairMaterial, metrics) {
     const facialHair = state.facialHair || 'none';
     if (facialHair === 'none') {
         return;
     }
 
     if (facialHair === 'stubble') {
-        addMustache(THREE, group, hairMaterial, 0.32);
-        addJawPatches(THREE, group, hairMaterial, 0.86, 0.28);
+        addMustache(THREE, group, hairMaterial, metrics, 0.34);
+        addJawPatches(THREE, group, hairMaterial, metrics, 0.90, 0.30);
         return;
     }
 
     if (facialHair === 'mustache') {
-        addMustache(THREE, group, hairMaterial);
+        addMustache(THREE, group, hairMaterial, metrics);
         return;
     }
 
     if (facialHair === 'goatee') {
-        addMustache(THREE, group, hairMaterial);
-        addJawPatches(THREE, group, hairMaterial, 0.88, 1, true);
+        addMustache(THREE, group, hairMaterial, metrics);
+        addJawPatches(THREE, group, hairMaterial, metrics, 0.86, 1, true);
         return;
     }
 
     if (facialHair === 'short_beard') {
-        addMustache(THREE, group, hairMaterial);
-        addJawPatches(THREE, group, hairMaterial, 0.92, 1);
+        addMustache(THREE, group, hairMaterial, metrics);
+        addJawPatches(THREE, group, hairMaterial, metrics, 0.88, 1);
         return;
     }
 
-    addMustache(THREE, group, hairMaterial);
-    addJawPatches(THREE, group, hairMaterial, 1.14, 1);
-    group.add(ellipsoid(
+    addMustache(THREE, group, hairMaterial, metrics);
+    addJawPatches(THREE, group, hairMaterial, metrics, 1.02, 1);
+    addFacialPatch(
         THREE,
-        0.046,
-        [1.02, 1.18, 0.62],
-        facialMaterial(hairMaterial),
-        [0, 1.502, 0.071],
+        group,
+        hairMaterial,
+        metrics,
+        metrics.centerX,
+        metrics.chinY - metrics.height * 0.010,
+        Math.max(metrics.halfWidth * 0.34, 0.022),
+        [0.92, 1.06, 0.16],
         'MSKBA_Authored_Full_Beard_Chin',
-        22,
-        16,
-    ));
+    );
 }
 
 function disposeGroup(group) {
@@ -340,7 +426,6 @@ function disposeGroup(group) {
         if (object === group) {
             return;
         }
-
         object.geometry?.dispose?.();
         const materials = Array.isArray(object.material) ? object.material : [object.material];
         materials.filter(Boolean).forEach((entry) => entry.dispose?.());
@@ -361,23 +446,27 @@ function ensureAccessoryRoot(runtime) {
 }
 
 function syncAccessoryScale(runtime) {
-    if (!runtime.accessoryRoot || !runtime.modelBaseHeight) {
+    if (!runtime.accessoryRoot) {
         return;
     }
 
-    const canonicalScale = runtime.modelBaseHeight / CANONICAL_HEIGHT_METERS;
-    const widthScale = runtime.bodyWidthScale || 1;
-    const depthScale = runtime.bodyDepthScale || 1;
+    // Accessories are built directly in the authored modelRoot coordinate system.
+    // Only mirror the body morphology scale; the modelRoot already owns height scale.
     runtime.accessoryRoot.scale.set(
-        canonicalScale * widthScale,
-        canonicalScale,
-        canonicalScale * depthScale,
+        runtime.bodyWidthScale || 1,
+        1,
+        runtime.bodyDepthScale || 1,
     );
 }
 
 export function applyAuthoredBodyShape(runtime, state) {
     if (!runtime.model) {
         return;
+    }
+
+    // Cache real head anchors while the authored GLB is still at canonical X/Z scale.
+    if (!runtime.authoredHeadMetrics) {
+        collectHeadMetrics(runtime);
     }
 
     const shape = bodyShapeForState(state);
@@ -394,7 +483,8 @@ export function applyAuthoredBodyShape(runtime, state) {
 }
 
 export function updateAuthoredAccessories(runtime, state) {
-    if (!runtime.modelBaseHeight) {
+    const metrics = collectHeadMetrics(runtime);
+    if (!metrics) {
         return;
     }
 
@@ -412,8 +502,8 @@ export function updateAuthoredAccessories(runtime, state) {
     const hairMaterial = material(runtime.THREE, color, { roughness: 0.92 });
     hairMaterial.userData.playerCharacterRole = 'hair';
 
-    buildHair(runtime.THREE, root, state, hairMaterial);
-    buildFacialHair(runtime.THREE, root, state, hairMaterial);
+    buildHair(runtime.THREE, root, state, hairMaterial, metrics);
+    buildFacialHair(runtime.THREE, root, state, hairMaterial, metrics);
     syncAccessoryScale(runtime);
 }
 
@@ -425,4 +515,5 @@ export function destroyAuthoredAccessories(runtime) {
     disposeGroup(runtime.accessoryRoot);
     runtime.modelRoot?.remove(runtime.accessoryRoot);
     runtime.accessoryRoot = null;
+    runtime.authoredHeadMetrics = null;
 }
