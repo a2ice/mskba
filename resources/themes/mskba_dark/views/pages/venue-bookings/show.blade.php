@@ -31,6 +31,33 @@
             </div>
         </div></div>
 
+        @if(config('features.venue_rental.booking_events') && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
+            <div class="card mb-4"><div class="card-body">
+                <h2 class="h4">Мероприятие</h2>
+                @if($booking->event)
+                    <a href="{{ route('events.show', $booking->event->routeIdentifier()) }}">Открыть созданное мероприятие «{{ $booking->event->title }}»</a>
+                    @if($isRequester && $booking->starts_at->isFuture())
+                        <form method="POST" action="{{ route('account.venue-bookings.event.reschedule', [$booking, $booking->event]) }}" class="row g-3 mt-2">
+                            @csrf
+                            <input type="hidden" name="venue_id" value="{{ $booking->venue_id }}">
+                            <div class="col-md-4"><label class="form-label">Новое начало</label><input class="form-control" type="datetime-local" name="starts_at" value="{{ $booking->starts_at->format('Y-m-d\TH:i') }}" required></div>
+                            <div class="col-md-3"><label class="form-label">Длительность, мин</label><input class="form-control" type="number" name="duration_minutes" min="1" max="1440" value="{{ (int) $booking->starts_at->diffInMinutes($booking->ends_at) }}" required></div>
+                            <div class="col-md-3"><label class="form-label">Зона</label><select class="form-control" name="scope"><option value="whole" @selected($booking->scope?->value === 'whole')>Вся площадка</option><option value="half_a" @selected($booking->scope?->value === 'half_a')>Половина A</option><option value="half_b" @selected($booking->scope?->value === 'half_b')>Половина B</option></select></div>
+                            <div class="col-md-2 align-self-end"><button class="btn btn--secondary btn--sm" type="submit">Перенести</button></div>
+                        </form>
+                    @endif
+                @elseif($isRequester)
+                    <form method="POST" action="{{ route('account.venue-bookings.event.store', $booking) }}" class="row g-3">
+                        @csrf
+                        <div class="col-md-5"><label class="form-label">Название</label><input class="form-control" name="title" maxlength="255" required></div>
+                        <div class="col-md-3"><label class="form-label">Тип</label><select class="form-control" name="type"><option value="training">Тренировка</option><option value="game_training">Игровая тренировка</option><option value="game">Игра</option></select></div>
+                        <div class="col-md-2"><label class="form-label">Видимость</label><select class="form-control" name="visibility"><option value="public">Публичное</option><option value="private">По приглашению</option></select></div>
+                        <div class="col-md-2 align-self-end"><button class="btn btn--primary btn--sm" type="submit">Создать</button></div>
+                    </form>
+                @endif
+            </div></div>
+        @endif
+
         @if(config('features.venue_rental.attendance_v2'))
             <div class="card mb-4"><div class="card-body">
                 <h2 class="h4">Подтверждение явки</h2>

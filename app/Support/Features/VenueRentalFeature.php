@@ -9,6 +9,7 @@ enum VenueRentalFeature: string
     case EXTERNAL_PAYMENT = 'external_payment';
     case ATTENDANCE_V2 = 'attendance_v2';
     case CONVERSATIONS = 'conversations';
+    case BOOKING_EVENTS = 'booking_events';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum VenueRentalFeature: string
             self::EXTERNAL_PAYMENT => 'Внешняя оплата аренды',
             self::ATTENDANCE_V2 => 'Подтверждение участников V2',
             self::CONVERSATIONS => 'Переписка по аренде',
+            self::BOOKING_EVENTS => 'Мероприятия из подтверждённых броней',
         };
     }
 }

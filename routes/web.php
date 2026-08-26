@@ -58,6 +58,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimControlle
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversationController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
@@ -335,6 +336,12 @@ Route::prefix('account/venue-bookings')
             Route::get('/{venueBooking}/conversation/messages/{message}/attachment', [VenueBookingConversationController::class, 'download'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.attachment');
             Route::post('/{venueBooking}/conversation/{conversation}/read', [VenueBookingConversationController::class, 'read'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.read');
         });
+        Route::post('/{venueBooking}/event', [VenueBookingEventController::class, 'store'])
+            ->middleware('venue-rental-feature:booking_events')
+            ->name('account.venue-bookings.event.store');
+        Route::post('/{venueBooking}/event/{event}/reschedule', [VenueBookingEventController::class, 'reschedule'])
+            ->middleware('venue-rental-feature:booking_events')
+            ->name('account.venue-bookings.event.reschedule');
     });
 
 Route::prefix('account/venue-booking-attendance')

@@ -54,7 +54,7 @@ final class VenueBookingController extends Controller
         VenueBookingAuthorization $authorization,
         VenueBookingActionState $actions,
     ): JsonResponse|Response {
-        $venueBooking->load(['venue', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
+        $venueBooking->load(['venue', 'event', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
         $actor = $actors->resolveForRequest($request);
 
         try {

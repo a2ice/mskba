@@ -168,6 +168,9 @@
             @if(session('error')) <div class="alert alert-danger event-show__alert">{{ session('error') }}</div> @endif
             @if(session('photo_status')) <div class="alert alert-success event-show__alert">{{ session('photo_status') }}</div> @endif
             @if(session('photo_error') || $errors->has('photo')) <div class="alert alert-danger event-show__alert">{{ session('photo_error') ?: $errors->first('photo') }}</div> @endif
+            @if($event->sourceBooking)
+                <div class="alert alert-info event-show__alert">Площадка, зона и время управляются связанной бронью. Статус брони: {{ $event->sourceBooking->status->label() }}.</div>
+            @endif
 
             <section class="event-hero" data-event-hero data-event-hero-source="{{ $heroUsesResultPhotos ? 'results' : 'venue' }}">
                 <div class="event-hero__track" data-event-hero-track>

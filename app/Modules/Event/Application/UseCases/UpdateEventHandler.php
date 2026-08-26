@@ -122,6 +122,9 @@ final class UpdateEventHandler
             $endsAt = $bookingChanged ? $localStart->addMinutes($durationMinutes) : $event->ends_at;
 
             if ($bookingChanged) {
+                if ($event->booking_id !== null) {
+                    throw new InvalidArgumentException('Время и площадка связанного мероприятия меняются только через перенос брони.');
+                }
                 if (! $currentVenue->hasFreeAccess() || ! $targetVenue->hasFreeAccess()) {
                     throw new InvalidArgumentException(
                         'Площадку и время пока можно менять только для мероприятий на свободных площадках.'
