@@ -88,4 +88,34 @@ final class TeamColorsTest extends TestCase
 
         $this->assertSame(['home_primary' => '#123456'], $team->fresh()->colors);
     }
+
+    public function test_team_colors_edit_uses_compact_controls_and_safe_home_gradient(): void
+    {
+        $owner = User::factory()->create([
+            'username' => 'team-colors-ui-owner',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $this->actingAs($owner)->post(route('teams.store'), [
+            'name' => 'Команда цветного фона',
+            'sport_types' => ['basketball'],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $team = Team::query()->where('name', 'Команда цветного фона')->firstOrFail();
+        $team->update([
+            'colors' => [
+                'home_primary' => '#ffffff',
+                'home_secondary' => '#ff6600',
+            ],
+        ]);
+
+        $this->get(route('teams.edit', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('team-color-picker', false)
+            ->assertSee('team-color-reset', false)
+            ->assertSee('Применить')
+            ->assertDontSee('Сохранить цвета')
+            ->assertSee('linear-gradient(180deg, var(--page) 0 110px, transparent 170px)', false)
+            ->assertSee('linear-gradient(90deg, #ffffff, #ff6600)', false);
+    }
 }
