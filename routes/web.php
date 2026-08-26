@@ -63,6 +63,7 @@ use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventCont
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
@@ -292,6 +293,10 @@ Route::prefix('venues')->group(function () {
         Route::post('/{venue}/rental/quote', [VenueRentalQuoteController::class, 'quote'])
             ->whereNumber('venue')
             ->name('venues.rental.quote');
+        Route::get('/{venue}/rental/availability', [VenueBookingProjectionController::class, 'availability'])
+            ->middleware('venue-rental-feature:portal')
+            ->whereNumber('venue')
+            ->name('venues.rental.availability');
     });
     Route::get('/{alias}/preview', [VenueController::class, 'preview'])
         ->middleware('throttle:60,1')
@@ -312,6 +317,11 @@ Route::prefix('account/venue-bookings')
     ->middleware(['venue-rental-feature:rental_flow', 'auth'])
     ->group(function () {
         Route::post('/', [VenueBookingController::class, 'store'])->name('account.venue-bookings.store');
+        Route::middleware('venue-rental-feature:portal')->group(function (): void {
+            Route::get('/', [VenueBookingProjectionController::class, 'requester'])->name('account.venue-bookings.index');
+            Route::get('/inbox', [VenueBookingProjectionController::class, 'owner'])->name('account.venue-bookings.inbox');
+            Route::get('/{venueBooking}/timeline', [VenueBookingProjectionController::class, 'timeline'])->name('account.venue-bookings.timeline');
+        });
         Route::get('/{venueBooking}', [VenueBookingController::class, 'show'])->name('account.venue-bookings.show');
         Route::post('/{venueBooking}/accept', [VenueBookingController::class, 'accept'])->name('account.venue-bookings.accept');
         Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');

@@ -9,5 +9,6 @@ return [
         'conversations' => (bool) env('FEATURE_VENUE_RENTAL_CONVERSATIONS', false),
         'booking_events' => (bool) env('FEATURE_VENUE_RENTAL_BOOKING_EVENTS', false),
         'contributions' => (bool) env('FEATURE_VENUE_RENTAL_CONTRIBUTIONS', false),
+        'portal' => (bool) env('FEATURE_VENUE_RENTAL_PORTAL', false),
     ],
 ];

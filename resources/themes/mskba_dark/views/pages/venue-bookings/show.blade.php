@@ -128,7 +128,7 @@
             @endforelse
         </div></div>
 
-        @if(config('features.venue_rental.external_payment') && (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false))
+        @if(config('features.venue_rental.external_payment') && $canViewPayment && (bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false))
             <div class="card mb-4"><div class="card-body">
                 <h2 class="h4">Внешняя оплата</h2>
                 <p><strong>Статус:</strong> {{ $booking->payment_state->value }}</p>

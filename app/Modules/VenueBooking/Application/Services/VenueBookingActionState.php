@@ -15,11 +15,11 @@ final readonly class VenueBookingActionState
     public function __construct(private VenueCommercialAccess $commercialAccess) {}
 
     /** @return array<string, array{allowed: bool, reason: string|null}> */
-    public function for(VenueBooking $booking, Actor $actor): array
+    public function for(VenueBooking $booking, Actor $actor, ?bool $canDecideOverride = null): array
     {
         $isRequester = $actor->user_id === $booking->requester_user_id;
-        $canDecide = $actor->user !== null
-            && $this->commercialAccess->allows($actor->user, $booking->venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS);
+        $canDecide = $canDecideOverride ?? ($actor->user !== null
+            && $this->commercialAccess->allows($actor->user, $booking->venue, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS));
         $now = CarbonImmutable::now();
         $heldActive = $booking->effective_protection_until !== null
             && $now->lessThan($booking->effective_protection_until);
@@ -77,5 +77,19 @@ final readonly class VenueBookingActionState
         }
 
         return $paymentReady ? 'CONFIRM_UNAVAILABLE' : 'PAYMENT_NOT_CONFIRMED';
+    }
+
+    /** @param array<string, array{allowed: bool, reason: string|null}> $actions */
+    public function primary(array $actions, bool $isRequester): ?string
+    {
+        $priority = $isRequester ? ['cancel'] : ['accept', 'confirm', 'reject', 'cancel'];
+
+        foreach ($priority as $action) {
+            if ($actions[$action]['allowed'] ?? false) {
+                return $action;
+            }
+        }
+
+        return null;
     }
 }

@@ -7,6 +7,10 @@ use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Coordination\Domain\Models\VenueRentalCoordination;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
+use App\Modules\VenueBooking\Application\Queries\GetBookingDetails;
 use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
@@ -27,6 +31,8 @@ use Illuminate\Http\Response;
 
 final class VenueBookingController extends Controller
 {
+    public function __construct(private readonly GetBookingDetails $details) {}
+
     public function store(
         Request $request,
         CurrentActorResolver $actors,
@@ -55,6 +61,7 @@ final class VenueBookingController extends Controller
         VenueBookingAuthorization $authorization,
         VenueBookingActionState $actions,
         GetContributionSummaryHandler $contributions,
+        VenueCommercialAccess $commercialAccess,
     ): JsonResponse|Response {
         $venueBooking->load(['venue', 'event', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
         $actor = $actors->resolveForRequest($request);
@@ -67,7 +74,7 @@ final class VenueBookingController extends Controller
 
         $actionState = $actions->for($venueBooking, $actor);
         if ($request->expectsJson()) {
-            return response()->json($this->payload($venueBooking, $actionState));
+            return response()->json($this->details->handle($venueBooking, $actor));
         }
 
         $attendanceRound = $venueBooking->attendanceRounds->sortByDesc('id')->first();
@@ -101,6 +108,8 @@ final class VenueBookingController extends Controller
             }
         }
         $isRequester = $request->user()?->canonical()->id === $venueBooking->requester?->canonical()->id;
+        $canViewPayment = $isRequester || ($actor->user !== null
+            && $commercialAccess->allows($actor->user, $venueBooking->venue, VenuePermissionEnum::VIEW_PAYMENTS));
         $canDecideExtensions = false;
         $canConfirmPayment = false;
         try {
@@ -122,6 +131,7 @@ final class VenueBookingController extends Controller
             'isRequester' => $isRequester,
             'canDecideExtensions' => $canDecideExtensions,
             'canConfirmPayment' => $canConfirmPayment,
+            'canViewPayment' => $canViewPayment,
             'conversation' => $conversation,
             'conversationUnread' => $conversationUnread,
             'contributionSummary' => $contributionSummary,
@@ -131,65 +141,70 @@ final class VenueBookingController extends Controller
     public function accept(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, AcceptVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
         [$key, $correlation] = $this->commandIdentifiers($request);
+        $actor = $actors->resolveForRequest($request);
 
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $this->version($request), $key, $correlation), 'Заявка принята, слот удерживается.');
+        return $this->command($request, $venueBooking, $actor, fn () => $handler->handle($venueBooking->id, $actor, $this->version($request), $key, $correlation), 'Заявка принята, слот удерживается.');
     }
 
     public function reject(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, RejectVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:2000']]);
         [$key, $correlation] = $this->commandIdentifiers($request);
+        $actor = $actors->resolveForRequest($request);
 
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $validated['reason'] ?? null, $this->version($request), $key, $correlation), 'Заявка отклонена.');
+        return $this->command($request, $venueBooking, $actor, fn () => $handler->handle($venueBooking->id, $actor, $validated['reason'] ?? null, $this->version($request), $key, $correlation), 'Заявка отклонена.');
     }
 
     public function cancel(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, CancelVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
         $validated = $request->validate(['reason' => ['nullable', 'string', 'max:2000']]);
         [$key, $correlation] = $this->commandIdentifiers($request);
+        $actor = $actors->resolveForRequest($request);
 
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $validated['reason'] ?? null, $this->version($request), $key, $correlation), 'Бронь отменена.');
+        return $this->command($request, $venueBooking, $actor, fn () => $handler->handle($venueBooking->id, $actor, $validated['reason'] ?? null, $this->version($request), $key, $correlation), 'Бронь отменена.');
     }
 
     public function confirm(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, ConfirmVenueBookingHandler $handler): JsonResponse|RedirectResponse
     {
         [$key, $correlation] = $this->commandIdentifiers($request);
+        $actor = $actors->resolveForRequest($request);
 
-        return $this->command($request, fn () => $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $this->version($request), $key, $correlation), 'Бронь подтверждена.');
+        return $this->command($request, $venueBooking, $actor, fn () => $handler->handle($venueBooking->id, $actor, $this->version($request), $key, $correlation), 'Бронь подтверждена.');
     }
 
     /** @param callable(): VenueBooking $callback */
-    private function command(Request $request, callable $callback, string $message): JsonResponse|RedirectResponse
+    private function command(Request $request, VenueBooking $reference, Actor $actor, callable $callback, string $message): JsonResponse|RedirectResponse
     {
         try {
             $booking = $callback();
         } catch (VenueBookingTransitionException $exception) {
-            return $this->error($request, $exception);
+            return $this->error($request, $exception, $reference, $actor);
         }
 
         if ($request->expectsJson()) {
-            return response()->json([
-                'booking_id' => $booking->public_id,
-                'status' => $booking->status->value,
-                'version' => $booking->optimistic_version,
-            ]);
+            return response()->json($this->details->handle($booking, $actor));
         }
 
         return back()->with('status', $message);
     }
 
-    private function error(Request $request, VenueBookingTransitionException $exception): JsonResponse|RedirectResponse
+    private function error(Request $request, VenueBookingTransitionException $exception, ?VenueBooking $booking = null, ?Actor $actor = null): JsonResponse|RedirectResponse
     {
         $status = $exception->errorCode === 'BOOKING_FORBIDDEN' ? 403 : 409;
 
         if ($request->expectsJson()) {
-            return response()->json([
+            $payload = [
                 'code' => $exception->errorCode,
                 'message' => $exception->getMessage(),
                 'suggested_starts_at' => $exception instanceof VenueBookingConflictException
                     ? $exception->suggestedStartsAt
                     : [],
-            ], $status);
+            ];
+            if ($exception->errorCode === 'BOOKING_VERSION_CONFLICT' && $booking !== null && $actor !== null) {
+                $payload['current_state'] = $this->details->handle($booking->fresh(), $actor);
+            }
+
+            return response()->json($payload, $status);
         }
 
         return back()->withInput()->with('error', $exception->getMessage());
@@ -211,42 +226,5 @@ final class VenueBookingController extends Controller
         validator(['correlation' => $correlation], ['correlation' => ['nullable', 'uuid']])->validate();
 
         return [(string) $key, $correlation === null ? null : (string) $correlation];
-    }
-
-    /** @param array<string, array{allowed: bool, reason: string|null}> $actions
-     * @return array<string, mixed>
-     */
-    private function payload(VenueBooking $booking, array $actions): array
-    {
-        return [
-            'booking_id' => $booking->public_id,
-            'status' => $booking->status->value,
-            'status_label' => $booking->status->label(),
-            'version' => $booking->optimistic_version,
-            'event_id' => $booking->event_id,
-            'starts_at' => $booking->starts_at->utc()->toIso8601String(),
-            'ends_at' => $booking->ends_at->utc()->toIso8601String(),
-            'server_time' => now()->utc()->toIso8601String(),
-            'hold_expires_at' => $booking->hold_expires_at?->utc()->toIso8601String(),
-            'effective_protection_until' => $booking->effective_protection_until?->utc()->toIso8601String(),
-            'payment_state' => $booking->payment_state->value,
-            'payment_window_expires_at' => $booking->payment_window_expires_at?->utc()->toIso8601String(),
-            'payment_attempt' => $booking->paymentAttempt === null ? null : [
-                'id' => $booking->paymentAttempt->public_id,
-                'amount_minor' => $booking->paymentAttempt->amount_minor,
-                'currency' => $booking->paymentAttempt->currency,
-                'method' => $booking->paymentAttempt->method,
-                'status' => $booking->paymentAttempt->status->value,
-            ],
-            'actions' => $actions,
-            'extensions' => $booking->extensionRequests->map(fn ($extension): array => [
-                'id' => $extension->public_id,
-                'status' => $extension->status->value,
-                'previous_deadline_at' => $extension->previous_deadline_at->utc()->toIso8601String(),
-                'requested_until' => $extension->requested_until->utc()->toIso8601String(),
-                'reason' => $extension->reason,
-                'decision_reason' => $extension->decision_reason,
-            ])->values(),
-        ];
     }
 }
