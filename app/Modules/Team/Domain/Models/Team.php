@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'name_sequence',
     'alias',
     'description',
+    'colors',
     'status',
     'accepts_join_requests',
     'accepts_competition_invitations',
@@ -114,6 +115,7 @@ class Team extends Model
         return [
             'status' => TeamStatusEnum::class,
             'name_sequence' => 'integer',
+            'colors' => 'array',
             'accepts_join_requests' => 'boolean',
             'accepts_competition_invitations' => 'boolean',
         ];
