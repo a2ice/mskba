@@ -39,6 +39,8 @@ final class TeamSportsServiceProvider extends ServiceProvider
                 ->name('teams.members.sports.update');
             Route::patch('/teams/{team}/settings/applications', [TeamSettingsController::class, 'updateApplications'])
                 ->name('teams.settings.applications.update');
+            Route::patch('/teams/{team}/settings/colors', [TeamSettingsController::class, 'updateColors'])
+                ->name('teams.settings.colors.update');
             Route::get('/teams/{team}/join-requests', [TeamJoinRequestController::class, 'index'])
                 ->name('teams.join-requests.index');
             Route::post('/teams/{team}/join-requests', [TeamJoinRequestController::class, 'store'])
