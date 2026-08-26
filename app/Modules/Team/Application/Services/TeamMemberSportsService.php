@@ -28,6 +28,7 @@ final class TeamMemberSportsService
         array $sportRoles,
         bool $isCaptain,
         bool $isDefaultStarter,
+        ?int $jerseyNumber,
     ): void {
         DB::transaction(function () use (
             $team,
@@ -36,6 +37,7 @@ final class TeamMemberSportsService
             $sportRoles,
             $isCaptain,
             $isDefaultStarter,
+            $jerseyNumber,
         ): void {
             $lockedTeam = Team::query()->lockForUpdate()->findOrFail($team->id);
             if (! $this->access->allows($lockedTeam, $actor, TeamPermissionEnum::MANAGE_ROLES)) {
@@ -90,6 +92,7 @@ final class TeamMemberSportsService
 
             $lockedMembership->update([
                 'sport_roles' => $roles->map->value->all(),
+                'jersey_number' => $jerseyNumber,
                 'is_captain' => $isCaptain,
                 'is_default_starter' => $isDefaultStarter,
             ]);

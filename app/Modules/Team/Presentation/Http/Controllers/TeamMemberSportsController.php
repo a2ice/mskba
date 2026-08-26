@@ -28,12 +28,16 @@ final class TeamMemberSportsController extends Controller
         $data = $request->validate([
             'sport_roles' => ['nullable', 'array'],
             'sport_roles.*' => ['required', 'distinct', Rule::enum(TeamMemberTypeEnum::class)],
+            'jersey_number' => ['nullable', 'integer', 'min:0', 'max:999'],
             'is_captain' => ['nullable', 'boolean'],
             'is_default_starter' => ['nullable', 'boolean'],
         ]);
 
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $teamMembership = ContractMembership::query()->findOrFail($membership);
+        $jerseyNumber = array_key_exists('jersey_number', $data)
+            ? ($data['jersey_number'] === null ? null : (int) $data['jersey_number'])
+            : $teamMembership->jersey_number;
 
         try {
             $members->update(
@@ -43,11 +47,12 @@ final class TeamMemberSportsController extends Controller
                 $data['sport_roles'] ?? [],
                 (bool) ($data['is_captain'] ?? false),
                 (bool) ($data['is_default_starter'] ?? false),
+                $jerseyNumber,
             );
         } catch (InvalidArgumentException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
         }
 
-        return back()->with('status', 'Спортивные роли участника обновлены.');
+        return back()->with('status', 'Спортивные данные участника обновлены.');
     }
 }
