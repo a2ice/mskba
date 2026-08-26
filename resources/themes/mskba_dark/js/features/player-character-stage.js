@@ -1,5 +1,5 @@
 import '../../css/pages/player-character-three.css';
-import { mountPlayerCharacterThree, updatePlayerCharacterThree } from './player-character-three-renderer.js';
+import { mountPlayerCharacterThree, updatePlayerCharacterThree } from './player-character-authored-renderer.js';
 
 const DEFAULT_HAIRSTYLE = {
     male: 'male_fade',
