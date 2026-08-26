@@ -64,6 +64,14 @@ final class TeamJerseyNumberTest extends TestCase
         $this->get(route('teams.show', $secondTeam->routeIdentifier()))
             ->assertOk()
             ->assertSee('№777');
+
+        $this->put(route('teams.members.sports.update', [$secondTeam->routeIdentifier(), $secondMembership->id]), [
+            'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+            'is_captain' => 1,
+            'jersey_number' => 0,
+        ])->assertSessionHas('status')->assertSessionHasNoErrors();
+
+        $this->assertSame(0, $secondMembership->fresh()->jersey_number);
     }
 
     public function test_duplicate_jersey_number_is_rejected_within_same_team(): void
@@ -92,7 +100,7 @@ final class TeamJerseyNumberTest extends TestCase
 
         $this->put(route('teams.members.sports.update', [$team->routeIdentifier(), $ownerMembership->id]), [
             'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
-            'jersey_number' => 23,
+            'jersey_number' => 0,
         ])->assertSessionHas('status')->assertSessionHasNoErrors();
 
         $this->actingAs($owner)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
@@ -108,8 +116,8 @@ final class TeamJerseyNumberTest extends TestCase
 
         $this->actingAs($owner)->put(route('teams.members.sports.update', [$team->routeIdentifier(), $candidateMembership->id]), [
             'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
-            'jersey_number' => 23,
-        ])->assertSessionHas('error', 'Номер №23 уже занят другим участником команды.');
+            'jersey_number' => 0,
+        ])->assertSessionHas('error', 'Номер №00 уже занят другим участником команды.');
 
         $this->assertNull($candidateMembership->fresh()->jersey_number);
 
