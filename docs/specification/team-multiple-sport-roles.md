@@ -85,6 +85,19 @@ A user with `team.roles.manage` permission can edit all sport roles of an accept
 
 The editor includes the owner, including an owner with no sport roles.
 
+## Player jersey number
+
+A player's jersey number is team-scoped sporting metadata and is stored on `ContractMembership`, not on `User`. This allows the same user to use different numbers in different teams.
+
+Rules:
+
+- `jersey_number` is nullable;
+- the stored value is an integer from `0` through `999`;
+- leading zeroes are presentation only and are not stored in the database;
+- values shorter than two digits are displayed with a leading zero: `0` → `00`, `1` → `01`, `9` → `09`;
+- two- and three-digit values are displayed unchanged: `77` → `77`, `777` → `777`;
+- the number is edited together with the member's sporting data by a user allowed to manage team roles.
+
 ## Member removal hierarchy
 
 The permission `team.members.remove` is necessary but is not sufficient on its own. A non-owner can remove only a member with a strictly lower administrative access level.
