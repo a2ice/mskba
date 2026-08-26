@@ -101,6 +101,41 @@
             @endforelse
         </div></div>
 
+        @if((bool) data_get($booking->quote_snapshot, 'policy.requires_payment', false))
+            <div class="card mb-4"><div class="card-body">
+                <h2 class="h4">Внешняя оплата</h2>
+                <p><strong>Статус:</strong> {{ $booking->payment_state->value }}</p>
+                @if(!$booking->paymentAttempt && $canConfirmPayment && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::HELD && $booking->effective_protection_until?->isFuture())
+                    <form method="POST" action="{{ route('account.venue-bookings.payment.open', $booking) }}" class="row g-3">
+                        @csrf
+                        <div class="col-md-3"><label class="form-label">Способ</label><select class="form-control" name="method"><option value="bank_transfer">Банковский перевод</option><option value="cash">Наличные</option><option value="other">Другой</option></select></div>
+                        <div class="col-md-7"><label class="form-label">Реквизиты и инструкция</label><textarea class="form-control" name="payment_instructions" maxlength="4000" required></textarea></div>
+                        <div class="col-md-2 align-self-end"><button class="btn btn--primary btn--sm" type="submit">Открыть окно</button></div>
+                    </form>
+                @elseif($booking->paymentAttempt)
+                    @php $payment = $booking->paymentAttempt; @endphp
+                    <p>{{ number_format($payment->amount_minor / 100, 2, ',', ' ') }} {{ $payment->currency }}, способ: {{ $payment->method }}</p>
+                    <p>{{ $payment->payment_instructions }}</p>
+                    <p class="text-muted">Оплатить и сообщить до {{ $payment->window_expires_at->format('d.m.Y H:i') }}. Заявление об оплате само по себе не подтверждает бронь.</p>
+                    @if($isRequester && $payment->status === \App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState::WINDOW_OPEN && now()->lessThan($payment->window_expires_at))
+                        <form method="POST" enctype="multipart/form-data" action="{{ route('account.venue-bookings.payment.claim', [$booking, $payment]) }}" class="row g-3">
+                            @csrf
+                            <div class="col-md-4"><label class="form-label">Номер/ссылка подтверждения</label><input class="form-control" name="reference" maxlength="255"></div>
+                            <div class="col-md-3"><label class="form-label">Комментарий</label><textarea class="form-control" name="note" maxlength="2000"></textarea></div>
+                            <div class="col-md-3"><label class="form-label">Чек (JPG, PNG, PDF до 5 МБ)</label><input class="form-control" type="file" name="evidence_file" accept="image/jpeg,image/png,application/pdf"></div>
+                            <div class="col-md-2 align-self-end"><button class="btn btn--primary btn--sm" type="submit">Я оплатил</button></div>
+                        </form>
+                    @endif
+                    @if($canConfirmPayment && $payment->status === \App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState::CLAIMED)
+                        <div class="venue-management-actions">
+                            <form method="POST" action="{{ route('account.venue-bookings.payment.confirm', [$booking, $payment]) }}">@csrf<button class="btn btn--primary btn--sm" type="submit">Подтвердить оплату</button></form>
+                            <form method="POST" action="{{ route('account.venue-bookings.payment.reject', [$booking, $payment]) }}">@csrf<input type="hidden" name="reason" value="Доказательство оплаты не принято."><button class="btn btn--secondary btn--sm" type="submit">Отклонить</button></form>
+                        </div>
+                    @endif
+                @endif
+            </div></div>
+        @endif
+
         <div class="card"><div class="card-body">
             <h2 class="h4">История</h2>
             <ul>

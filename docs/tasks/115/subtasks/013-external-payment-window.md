@@ -3,6 +3,9 @@
 ## Цель
 Поддержать оплату вне платформы, сохранив слот на ограниченное время и фиксируя решение коммерческой стороны.
 
+## Статус
+Выполнена в `feature/115`.
+
 ## Доменные изменения
 Payment state: `NOT_REQUIRED|NOT_STARTED`, `READY`, `WINDOW_OPEN`, `CLAIMED`, `CONFIRMED`, `REJECTED|DISPUTED`, `EXPIRED`. Booking остаётся HELD до payment CONFIRMED.
 
@@ -31,4 +34,3 @@ Callback/confirm около deadline, двойной claim, неверная с�
 - CLAIMED не подтверждает booking;
 - только CONFIRMED переводит booking дальше;
 - платёжное окно не создаёт бесконечный hold.
-

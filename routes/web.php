@@ -58,6 +58,7 @@ use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimControlle
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
 use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
@@ -317,6 +318,10 @@ Route::prefix('account/venue-bookings')
         Route::post('/{venueBooking}/extensions/{extensionRequest}/approve', [VenueBookingExtensionController::class, 'approve'])->name('account.venue-bookings.extensions.approve');
         Route::post('/{venueBooking}/extensions/{extensionRequest}/reject', [VenueBookingExtensionController::class, 'reject'])->name('account.venue-bookings.extensions.reject');
         Route::post('/{venueBooking}/extensions/{extensionRequest}/cancel', [VenueBookingExtensionController::class, 'cancel'])->name('account.venue-bookings.extensions.cancel');
+        Route::post('/{venueBooking}/payment-window', [VenueBookingPaymentController::class, 'open'])->name('account.venue-bookings.payment.open');
+        Route::post('/{venueBooking}/payments/{paymentAttempt}/claim', [VenueBookingPaymentController::class, 'claim'])->name('account.venue-bookings.payment.claim');
+        Route::post('/{venueBooking}/payments/{paymentAttempt}/confirm', [VenueBookingPaymentController::class, 'confirm'])->name('account.venue-bookings.payment.confirm');
+        Route::post('/{venueBooking}/payments/{paymentAttempt}/reject', [VenueBookingPaymentController::class, 'reject'])->name('account.venue-bookings.payment.reject');
         Route::post('/{venueBooking}/attendance-rounds', [VenueBookingAttendanceController::class, 'store'])
             ->middleware('venue-rental-feature:attendance_v2')
             ->name('venue-booking-attendance.store');

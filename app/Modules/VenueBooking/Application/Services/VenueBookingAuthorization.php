@@ -21,6 +21,14 @@ final readonly class VenueBookingAuthorization
         }
     }
 
+    public function assertCanConfirmPayment(Actor $actor, Venue $venue): void
+    {
+        $user = $actor->user;
+        if ($user === null || ! $this->commercialAccess->allows($user, $venue, VenuePermissionEnum::CONFIRM_PAYMENTS)) {
+            throw new VenueBookingTransitionException('Недостаточно прав для проверки оплаты.', 'BOOKING_FORBIDDEN');
+        }
+    }
+
     public function assertCanView(Actor $actor, VenueBooking $booking, Venue $venue): void
     {
         if ($actor->user_id === $booking->requester_user_id) {

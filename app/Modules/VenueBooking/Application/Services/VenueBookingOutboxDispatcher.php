@@ -6,6 +6,11 @@ use App\Modules\VenueBooking\Domain\Events\VenueBookingCancelled;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingConfirmed;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingExpired;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingHeld;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentClaimed;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentConfirmed;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentExpired;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentRejected;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentWindowOpened;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingRejected;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingRequested;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage;
@@ -41,10 +46,12 @@ final class VenueBookingOutboxDispatcher
             if (! in_array($eventClass, $this->allowedEventTypes(), true)) {
                 throw new \UnexpectedValueException('Unsupported venue booking outbox event type.');
             }
-            event(new $eventClass(
-                bookingId: (int) $message->payload['booking_id'],
-                messageId: $message->message_id,
-            ));
+            $arguments = ['bookingId' => (int) $message->payload['booking_id']];
+            if (isset($message->payload['payment_attempt_id'])) {
+                $arguments['paymentAttemptId'] = (int) $message->payload['payment_attempt_id'];
+            }
+            $arguments['messageId'] = $message->message_id;
+            event(new $eventClass(...$arguments));
             $message->update([
                 'status' => 'published',
                 'processing_started_at' => null,
@@ -103,6 +110,11 @@ final class VenueBookingOutboxDispatcher
             VenueBookingRejected::class,
             VenueBookingCancelled::class,
             VenueBookingExpired::class,
+            VenueBookingPaymentWindowOpened::class,
+            VenueBookingPaymentClaimed::class,
+            VenueBookingPaymentConfirmed::class,
+            VenueBookingPaymentRejected::class,
+            VenueBookingPaymentExpired::class,
         ];
     }
 }

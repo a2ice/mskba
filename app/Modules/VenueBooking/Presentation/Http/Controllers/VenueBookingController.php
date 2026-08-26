@@ -51,7 +51,7 @@ final class VenueBookingController extends Controller
         VenueBookingAuthorization $authorization,
         VenueBookingActionState $actions,
     ): JsonResponse|Response {
-        $venueBooking->load(['venue', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user']);
+        $venueBooking->load(['venue', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
         $actor = $actors->resolveForRequest($request);
 
         try {
@@ -72,9 +72,15 @@ final class VenueBookingController extends Controller
             ->first();
         $isRequester = $request->user()?->canonical()->id === $venueBooking->requester?->canonical()->id;
         $canDecideExtensions = false;
+        $canConfirmPayment = false;
         try {
             $authorization->assertCommercialDecision($actor, $venueBooking->venue);
             $canDecideExtensions = true;
+        } catch (VenueBookingTransitionException) {
+        }
+        try {
+            $authorization->assertCanConfirmPayment($actor, $venueBooking->venue);
+            $canConfirmPayment = true;
         } catch (VenueBookingTransitionException) {
         }
 
@@ -85,6 +91,7 @@ final class VenueBookingController extends Controller
             'attendanceCandidates' => $rentalCoordination?->participants->whereNull('left_at')->values() ?? collect(),
             'isRequester' => $isRequester,
             'canDecideExtensions' => $canDecideExtensions,
+            'canConfirmPayment' => $canConfirmPayment,
         ]);
     }
 
@@ -189,6 +196,15 @@ final class VenueBookingController extends Controller
             'server_time' => now()->utc()->toIso8601String(),
             'hold_expires_at' => $booking->hold_expires_at?->utc()->toIso8601String(),
             'effective_protection_until' => $booking->effective_protection_until?->utc()->toIso8601String(),
+            'payment_state' => $booking->payment_state->value,
+            'payment_window_expires_at' => $booking->payment_window_expires_at?->utc()->toIso8601String(),
+            'payment_attempt' => $booking->paymentAttempt === null ? null : [
+                'id' => $booking->paymentAttempt->public_id,
+                'amount_minor' => $booking->paymentAttempt->amount_minor,
+                'currency' => $booking->paymentAttempt->currency,
+                'method' => $booking->paymentAttempt->method,
+                'status' => $booking->paymentAttempt->status->value,
+            ],
             'actions' => $actions,
             'extensions' => $booking->extensionRequests->map(fn ($extension): array => [
                 'id' => $extension->public_id,

@@ -75,6 +75,7 @@ final class VenueBookingLifecycle
             'terminal_at' => $now,
             'hold_expires_at' => null,
             'effective_protection_until' => null,
+            'payment_window_expires_at' => null,
         ]);
     }
 
@@ -96,6 +97,7 @@ final class VenueBookingLifecycle
             'confirmed_at' => $now,
             'hold_expires_at' => null,
             'effective_protection_until' => null,
+            'payment_window_expires_at' => null,
         ]);
     }
 
@@ -112,6 +114,7 @@ final class VenueBookingLifecycle
             'terminal_at' => $now,
             'hold_expires_at' => null,
             'effective_protection_until' => null,
+            'payment_window_expires_at' => null,
             'payment_state' => $booking->payment_state === VenueBookingPaymentState::NOT_REQUIRED
                 ? VenueBookingPaymentState::NOT_REQUIRED
                 : VenueBookingPaymentState::EXPIRED,

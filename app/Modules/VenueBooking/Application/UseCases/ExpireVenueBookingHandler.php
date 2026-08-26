@@ -7,9 +7,12 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
 use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutbox;
+use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingExpired;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentExpired;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPaymentAttempt;
 use App\Modules\VenueBooking\Domain\Services\VenueBookingLifecycle;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
@@ -35,6 +38,11 @@ final readonly class ExpireVenueBookingHandler
         return $this->commands->execute('venue_booking.expire', $systemActor, [
             'booking_id' => $bookingId, 'expected_version' => $expectedVersion,
         ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking) use ($systemActor, $expectedVersion): VenueBooking {
+            $paymentAttempt = VenueBookingPaymentAttempt::query()->where('venue_booking_id', $booking->id)->lockForUpdate()->first();
+            if ($paymentAttempt !== null && in_array($paymentAttempt->status, [VenueBookingPaymentState::WINDOW_OPEN, VenueBookingPaymentState::CLAIMED], true)) {
+                $paymentAttempt->update(['status' => VenueBookingPaymentState::EXPIRED, 'expired_at' => now()]);
+                $this->outbox->record($booking->id, VenueBookingPaymentExpired::class, ['payment_attempt_id' => $paymentAttempt->id]);
+            }
             $this->lifecycle->expire($booking, $systemActor, CarbonImmutable::now(), $expectedVersion);
             $this->outbox->record($booking->id, VenueBookingExpired::class);
 

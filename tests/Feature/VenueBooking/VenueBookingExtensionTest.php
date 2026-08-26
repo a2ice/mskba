@@ -16,17 +16,25 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use App\Modules\VenueBooking\Application\UseCases\ApproveVenueBookingExtensionHandler;
 use App\Modules\VenueBooking\Application\UseCases\CancelVenueBookingExtensionHandler;
+use App\Modules\VenueBooking\Application\UseCases\CancelVenueBookingHandler;
+use App\Modules\VenueBooking\Application\UseCases\ClaimVenueBookingPaymentHandler;
+use App\Modules\VenueBooking\Application\UseCases\ConfirmVenueBookingPaymentHandler;
+use App\Modules\VenueBooking\Application\UseCases\OpenVenueBookingPaymentWindowHandler;
 use App\Modules\VenueBooking\Application\UseCases\RejectVenueBookingExtensionHandler;
 use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingExtensionHandler;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingExtensionStatus;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentConfirmed;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage;
 use App\Modules\VenueBooking\Infrastructure\Jobs\ExpireVenueBookingIfDueJob;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -134,6 +142,81 @@ final class VenueBookingExtensionTest extends TestCase
         $this->assertTrue($booking->effective_protection_until->equalTo($booking->refresh()->effective_protection_until));
     }
 
+    public function test_payment_claim_does_not_confirm_booking_and_double_claim_is_safe(): void
+    {
+        Queue::fake();
+        [, $ownerActor, $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $booking = $this->paymentBooking($venue, $applicant, $applicantActor);
+        $attempt = app(OpenVenueBookingPaymentWindowHandler::class)->handle($booking->id, $ownerActor, 'bank_transfer', 'Перевод по реквизитам.');
+
+        $this->assertSame(12500, $attempt->amount_minor);
+        $this->assertSame('RUB', $attempt->currency);
+        $this->assertTrue($booking->refresh()->effective_protection_until->equalTo($attempt->window_expires_at));
+
+        $handler = app(ClaimVenueBookingPaymentHandler::class);
+        $handler->handle($booking->id, $attempt->id, $applicantActor, ['reference' => 'receipt-42']);
+        $version = $booking->refresh()->optimistic_version;
+        $handler->handle($booking->id, $attempt->id, $applicantActor, ['reference' => 'duplicate']);
+
+        $this->assertSame($version, $booking->refresh()->optimistic_version);
+        $this->assertSame(VenueBookingPaymentState::CLAIMED, $booking->payment_state);
+        $this->assertSame(VenueBookingStatusEnum::HELD, $booking->status);
+    }
+
+    public function test_payment_confirmation_uses_quote_amount_and_only_unlocks_booking_confirmation(): void
+    {
+        Queue::fake();
+        [, $ownerActor, $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $booking = $this->paymentBooking($venue, $applicant, $applicantActor);
+        $attempt = app(OpenVenueBookingPaymentWindowHandler::class)->handle($booking->id, $ownerActor, 'cash', 'В кассе площадки.');
+        app(ClaimVenueBookingPaymentHandler::class)->handle($booking->id, $attempt->id, $applicantActor, []);
+
+        $attempt->update(['amount_minor' => 1]);
+        $this->expectCode('INVALID_PAYMENT_AMOUNT', fn () => app(ConfirmVenueBookingPaymentHandler::class)->handle($booking->id, $attempt->id, $ownerActor));
+        $attempt->update(['amount_minor' => 12500]);
+        app(ConfirmVenueBookingPaymentHandler::class)->handle($booking->id, $attempt->id, $ownerActor);
+
+        $this->assertSame(VenueBookingPaymentState::CONFIRMED, $booking->refresh()->payment_state);
+        $this->assertSame(VenueBookingStatusEnum::HELD, $booking->status);
+        $message = VenueBookingOutboxMessage::query()->where('event_type', VenueBookingPaymentConfirmed::class)->firstOrFail();
+        Event::fake([VenueBookingPaymentConfirmed::class]);
+        app(VenueBookingOutboxDispatcher::class)->dispatch($message->id);
+        Event::assertDispatched(VenueBookingPaymentConfirmed::class, fn (VenueBookingPaymentConfirmed $event): bool => $event->paymentAttemptId === $attempt->id && $event->messageId === $message->message_id);
+    }
+
+    public function test_payment_window_expires_once_and_parallel_cancel_wins_over_review(): void
+    {
+        Queue::fake();
+        [, $ownerActor, $venue] = $this->ownedVenue();
+        [$applicant, $applicantActor] = $this->userAndActor();
+        $booking = $this->paymentBooking($venue, $applicant, $applicantActor);
+        $attempt = app(OpenVenueBookingPaymentWindowHandler::class)->handle($booking->id, $ownerActor, 'other', 'Внешняя оплата.');
+        app(ClaimVenueBookingPaymentHandler::class)->handle($booking->id, $attempt->id, $applicantActor, []);
+        $booking->refresh();
+        $job = new ExpireVenueBookingIfDueJob($booking->id, $booking->optimistic_version, $booking->effective_protection_until->toIso8601String());
+        CarbonImmutable::setTestNow($booking->effective_protection_until);
+        $this->expectCode('PAYMENT_WINDOW_EXPIRED', fn () => app(ConfirmVenueBookingPaymentHandler::class)->handle($booking->id, $attempt->id, $ownerActor));
+        CarbonImmutable::setTestNow($booking->effective_protection_until->addSecond());
+        app()->call([$job, 'handle']);
+
+        $this->assertSame(VenueBookingStatusEnum::EXPIRED, $booking->refresh()->status);
+        $this->assertSame(VenueBookingPaymentState::EXPIRED, $attempt->refresh()->status);
+        $this->expectCode('PAYMENT_CONFIRM_UNAVAILABLE', fn () => app(ConfirmVenueBookingPaymentHandler::class)->handle($booking->id, $attempt->id, $ownerActor));
+
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-25 10:00:00', 'Europe/Moscow'));
+        [$secondApplicant, $secondActor] = $this->userAndActor();
+        $cancelled = $this->paymentBooking($venue, $secondApplicant, $secondActor);
+        $cancelledAttempt = app(OpenVenueBookingPaymentWindowHandler::class)->handle($cancelled->id, $ownerActor, 'other', 'Внешняя оплата.');
+        app(ClaimVenueBookingPaymentHandler::class)->handle($cancelled->id, $cancelledAttempt->id, $secondActor, []);
+        app(CancelVenueBookingHandler::class)->handle($cancelled->id, $secondActor, 'Отмена заявителем.');
+
+        $this->assertSame(VenueBookingStatusEnum::CANCELLED, $cancelled->refresh()->status);
+        $this->assertSame(VenueBookingPaymentState::EXPIRED, $cancelledAttempt->refresh()->status);
+        $this->expectCode('PAYMENT_CONFIRM_UNAVAILABLE', fn () => app(ConfirmVenueBookingPaymentHandler::class)->handle($cancelled->id, $cancelledAttempt->id, $ownerActor));
+    }
+
     private function heldBooking(Venue $venue, User $requester, Actor $actor, ?CarbonImmutable $startsAt = null): VenueBooking
     {
         $startsAt ??= CarbonImmutable::now()->addDay();
@@ -160,6 +243,22 @@ final class VenueBookingExtensionTest extends TestCase
             'effective_protection_until' => $deadline,
             'held_at' => now(),
         ]);
+    }
+
+    private function paymentBooking(Venue $venue, User $requester, Actor $actor): VenueBooking
+    {
+        $booking = $this->heldBooking($venue, $requester, $actor);
+        $booking->update([
+            'quote_snapshot' => ['policy' => [
+                'requires_payment' => true,
+                'payment_window_minutes' => 45,
+                'hold_duration_minutes' => 30,
+                'time_step_minutes' => 30,
+            ], 'pricing' => ['amount_minor' => 12500, 'currency' => 'RUB']],
+            'payment_state' => VenueBookingPaymentState::NOT_STARTED,
+        ]);
+
+        return $booking->refresh();
     }
 
     /** @return array{User, Actor, Venue} */

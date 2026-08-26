@@ -15,12 +15,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 #[Fillable([
     'public_id', 'flow', 'venue_id', 'event_id', 'created_by_actor_id',
     'requester_user_id', 'policy_version_id', 'quote_id', 'quote_snapshot',
-    'payment_state', 'status', 'scope', 'starts_at', 'ends_at',
+    'payment_state', 'payment_window_expires_at', 'status', 'scope', 'starts_at', 'ends_at',
     'hold_expires_at', 'effective_protection_until', 'optimistic_version',
     'requested_at', 'held_at', 'confirmed_at', 'terminal_at',
 ])]
@@ -85,6 +86,11 @@ class VenueBooking extends Model
         return $this->hasMany(VenueBookingExtensionRequest::class)->orderByDesc('requested_at');
     }
 
+    public function paymentAttempt(): HasOne
+    {
+        return $this->hasOne(VenueBookingPaymentAttempt::class);
+    }
+
     /** @param array<string, mixed> $attributes */
     public function applyLifecycleTransition(array $attributes): void
     {
@@ -111,6 +117,7 @@ class VenueBooking extends Model
         return [
             'quote_snapshot' => 'array',
             'payment_state' => VenueBookingPaymentState::class,
+            'payment_window_expires_at' => 'immutable_datetime',
             'status' => VenueBookingStatusEnum::class,
             'scope' => VenueBookingScopeEnum::class,
             'starts_at' => 'immutable_datetime',
