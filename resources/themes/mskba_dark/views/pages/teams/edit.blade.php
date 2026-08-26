@@ -28,7 +28,7 @@
         }
 
         return sprintf(
-            'rgba(%d, %d, %d, .75)',
+            'rgba(%d, %d, %d, .65)',
             hexdec(substr($hex, 0, 2)),
             hexdec(substr($hex, 2, 2)),
             hexdec(substr($hex, 4, 2)),
@@ -151,6 +151,7 @@
                             type="button"
                             title="Сбросить цвет"
                             data-tooltip-variant="title"
+                            data-tooltip-icon
                             aria-label="Сбросить цвет: {{ $label }}"
                             data-team-color-reset
                             @disabled(!$color)
