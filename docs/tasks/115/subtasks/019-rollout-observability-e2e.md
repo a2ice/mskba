@@ -4,6 +4,12 @@
 
 Ввести flow аренды поэтапно и обратимо, с измеримыми воротами готовности, миграционным runbook, мониторингом конфликтов и полным набором критических E2E/конкурентных проверок до расширения охвата.
 
+## Статус
+
+Выполнена в `feature/115`.
+
+Rollout поддерживает режимы `internal`, `allowlist` по user/venue/contract, стабильный процент, `all`, `read_only` и master kill switches. `read_only` сохраняет чтение существующих броней при закрытых mutation endpoints. Диагностическая команда агрегирует overdue holds, scheduler/outbox/payment/webhook lag, conflicts и deadlock retries без PII. Конкурентные транзакции используют фиксированный порядок блокировок и ограниченный retry только распознанных deadlock/serialization failures с jitter; доменные ошибки не повторяются. SLO, alerts, волны, stop conditions, migration rehearsal и repair описаны в [runbook](../venue-rental-rollout-runbook.md).
+
 ## Доменные изменения
 
 - Новых бизнес-правил не добавлять; зафиксировать production invariants всех предыдущих этапов.

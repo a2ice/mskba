@@ -10,12 +10,19 @@ final class VenueBookingConflictMetrics
 {
     public function record(VenueBooking $candidate, int $conflictsCount): void
     {
-        Cache::increment('metrics:venue_booking:conflicts');
-        Log::info('venue_booking_conflict', [
-            'venue_id' => $candidate->venue_id,
-            'booking_id' => $candidate->id,
-            'scope' => $candidate->scope->value,
-            'conflicts_count' => $conflictsCount,
-        ]);
+        try {
+            Cache::increment('metrics:venue_booking:conflicts');
+        } catch (\Throwable) {
+            // Conflict enforcement remains available if the metrics backend is down.
+        }
+        try {
+            Log::info('venue_booking_conflict', [
+                'venue_id' => $candidate->venue_id,
+                'booking_id' => $candidate->id,
+                'scope' => $candidate->scope->value,
+                'conflicts_count' => $conflictsCount,
+            ]);
+        } catch (\Throwable) {
+        }
     }
 }

@@ -9,13 +9,21 @@ use Symfony\Component\HttpFoundation\Response;
 
 final readonly class EnsureVenueRentalFeatureEnabled
 {
-    public function __construct(private FeatureFlags $features) {}
+    public function __construct(private FeatureFlags $features, private VenueRentalRollout $rollout) {}
 
     public function handle(Request $request, Closure $next, string $feature): Response
     {
         $feature = VenueRentalFeature::tryFrom($feature);
 
-        if ($feature !== null && $this->features->enabled($feature)) {
+        $venue = $request->route('venue');
+        $venueId = is_object($venue) ? (int) $venue->getKey() : (is_numeric($venue) ? (int) $venue : null);
+        $contract = $request->route('contract');
+        $contractId = is_object($contract) ? (int) $contract->getKey() : (is_numeric($contract) ? (int) $contract : null);
+        $stableKey = (string) ($request->user()?->canonical()->id ?? $venueId ?? $request->ip());
+
+        if ($feature !== null
+            && $this->features->enabled($feature)
+            && $this->rollout->allows($feature, $request->user(), $venueId, $contractId, $stableKey, ! $request->isMethodSafe())) {
             return $next($request);
         }
 

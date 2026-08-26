@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 final class LockedVenueBooking
 {
-    public function __construct(private readonly VenueBookingConflictService $conflicts) {}
+    public function __construct(private readonly VenueBookingConflictService $conflicts, private readonly DeadlockRetrier $deadlocks) {}
 
     /** @template T
      * @param  Closure(VenueBooking, Venue): T  $callback
@@ -19,7 +19,7 @@ final class LockedVenueBooking
     {
         $candidate = VenueBooking::query()->findOrFail($bookingId);
 
-        return DB::transaction(function () use ($bookingId, $candidate, $callback, $lockConflicts): mixed {
+        return $this->deadlocks->run(fn (): mixed => DB::transaction(function () use ($bookingId, $candidate, $callback, $lockConflicts): mixed {
             $venue = Venue::query()->lockForUpdate()->findOrFail($candidate->venue_id);
 
             if ($lockConflicts) {
@@ -36,6 +36,6 @@ final class LockedVenueBooking
             }
 
             return $callback($booking, $venue);
-        });
+        }));
     }
 }

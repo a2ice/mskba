@@ -134,7 +134,7 @@ final class VenueBookingProjectionTest extends TestCase
     /** @return array{User, Actor} */
     private function userAndActor(): array
     {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED, 'username' => 'projection-'.Str::lower(Str::random(12))]);
 
         return [$user, app(CurrentActorResolver::class)->resolve($user, null)];
     }

@@ -6,6 +6,7 @@ use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\VenueBooking\Application\Services\PaymentReconciliationDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingExpiryDispatcher;
+use App\Modules\VenueBooking\Application\Services\VenueBookingOperationalHealth;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -51,6 +52,16 @@ Artisan::command('venue-booking:expire-due {--batch=100}', function (VenueBookin
 Artisan::command('venue-booking:reconcile-payments {--batch=100}', function (PaymentReconciliationDispatcher $dispatcher) {
     $this->info('Поставлено задач сверки платежей: '.$dispatcher->dispatchStale((int) $this->option('batch')));
 })->purpose('Сверяет зависшие payment intents с настроенным провайдером');
+
+Artisan::command('venue-booking:diagnose {--json}', function (VenueBookingOperationalHealth $health) {
+    $snapshot = $health->snapshot();
+    if ($this->option('json')) {
+        $this->line(json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+
+        return;
+    }
+    $this->table(['Metric', 'Value'], collect($snapshot)->map(fn ($value, $key) => [$key, $value])->values()->all());
+})->purpose('Показывает безопасные операционные метрики аренды без PII');
 
 Schedule::command('coordination:close-expired')
     ->everyMinute()

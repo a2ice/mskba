@@ -12,4 +12,11 @@ return [
         'portal' => (bool) env('FEATURE_VENUE_RENTAL_PORTAL', false),
         'payment_port' => (bool) env('FEATURE_VENUE_RENTAL_PAYMENT_PORT', false),
     ],
+    'venue_rental_rollout' => [
+        'mode' => env('VENUE_RENTAL_ROLLOUT_MODE', 'all'),
+        'percentage' => (int) env('VENUE_RENTAL_ROLLOUT_PERCENTAGE', 100),
+        'user_ids' => array_values(array_filter(array_map('intval', explode(',', (string) env('VENUE_RENTAL_ROLLOUT_USER_IDS', ''))))),
+        'venue_ids' => array_values(array_filter(array_map('intval', explode(',', (string) env('VENUE_RENTAL_ROLLOUT_VENUE_IDS', ''))))),
+        'contract_ids' => array_values(array_filter(array_map('intval', explode(',', (string) env('VENUE_RENTAL_ROLLOUT_CONTRACT_IDS', ''))))),
+    ],
 ];
