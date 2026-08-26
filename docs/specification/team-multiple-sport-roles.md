@@ -96,6 +96,9 @@ Rules:
 - leading zeroes are presentation only and are not stored in the database;
 - values shorter than two digits are displayed with a leading zero: `0` → `00`, `1` → `01`, `9` → `09`;
 - two- and three-digit values are displayed unchanged: `77` → `77`, `777` → `777`;
+- among accepted memberships with active contracts in the same team, a non-null jersey number must be unique;
+- the same number may be reused in another team and may be reused in the original team after the previous membership is no longer active;
+- the uniqueness check runs inside the team-locked sporting-data transaction, so concurrent updates through this flow cannot reserve the same number simultaneously;
 - the number is edited together with the member's sporting data by a user allowed to manage team roles.
 
 ## Member removal hierarchy
