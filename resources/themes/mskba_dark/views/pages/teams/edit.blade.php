@@ -15,15 +15,34 @@
     $savedTeamColors = $team->colors ?? [];
     $pageHomePrimary = data_get($savedTeamColors, 'home_primary');
     $pageHomeSecondary = data_get($savedTeamColors, 'home_secondary');
-    $pageHomeFrom = $pageHomePrimary ?: $pageHomeSecondary;
-    $pageHomeTo = $pageHomeSecondary ?: $pageHomePrimary;
+    $pageHomePrimaryEffective = $pageHomePrimary ?: $pageHomeSecondary;
+    $pageHomeSecondaryEffective = $pageHomeSecondary ?: $pageHomePrimary;
+    $teamColorRgba = static function (?string $hex): ?string {
+        if (!$hex) {
+            return null;
+        }
+
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) !== 6 || !ctype_xdigit($hex)) {
+            return null;
+        }
+
+        return sprintf(
+            'rgba(%d, %d, %d, .75)',
+            hexdec(substr($hex, 0, 2)),
+            hexdec(substr($hex, 2, 2)),
+            hexdec(substr($hex, 4, 2)),
+        );
+    };
+    $pageHomePrimaryRgba = $teamColorRgba($pageHomePrimaryEffective);
+    $pageHomeSecondaryRgba = $teamColorRgba($pageHomeSecondaryEffective);
 @endphp
 <style>
-@if($pageHomeFrom)
+@if($pageHomePrimaryRgba)
 .site-content {
     background:
         linear-gradient(180deg, var(--page) 0 110px, transparent 170px),
-        linear-gradient(90deg, {{ $pageHomeFrom }}, {{ $pageHomeTo }});
+        linear-gradient(90deg, {{ $pageHomePrimaryRgba }} 0%, {{ $pageHomeSecondaryRgba }} 50%, {{ $pageHomePrimaryRgba }} 100%);
 }
 @endif
 .team-color-control {
@@ -131,6 +150,7 @@
                             class="team-color-reset"
                             type="button"
                             title="Сбросить цвет"
+                            data-tooltip-variant="title"
                             aria-label="Сбросить цвет: {{ $label }}"
                             data-team-color-reset
                             @disabled(!$color)

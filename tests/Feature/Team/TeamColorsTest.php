@@ -113,9 +113,10 @@ final class TeamColorsTest extends TestCase
             ->assertOk()
             ->assertSee('team-color-picker', false)
             ->assertSee('team-color-reset', false)
+            ->assertSee('data-tooltip-variant="title"', false)
             ->assertSee('Применить')
             ->assertDontSee('Сохранить цвета')
             ->assertSee('linear-gradient(180deg, var(--page) 0 110px, transparent 170px)', false)
-            ->assertSee('linear-gradient(90deg, #ffffff, #ff6600)', false);
+            ->assertSee('linear-gradient(90deg, rgba(255, 255, 255, .75) 0%, rgba(255, 102, 0, .75) 50%, rgba(255, 255, 255, .75) 100%)', false);
     }
 }
