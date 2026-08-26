@@ -47,6 +47,7 @@ final class VenueBookingExtensionTest extends TestCase
     {
         parent::setUp();
         config()->set('features.venue_rental.rental_flow', true);
+        config()->set('features.venue_rental.external_payment', true);
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-25 10:00:00', 'Europe/Moscow'));
     }
 

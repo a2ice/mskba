@@ -21,7 +21,7 @@ final readonly class ConfirmVenueBookingPaymentHandler
 
     public function handle(int $bookingId, int $attemptId, Actor $actor, ?string $reason = null): VenueBookingPaymentAttempt
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        $this->features->ensureEnabled(VenueRentalFeature::EXTERNAL_PAYMENT);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($attemptId, $actor, $reason): VenueBookingPaymentAttempt {
             $this->authorization->assertCanConfirmPayment($actor, $venue);

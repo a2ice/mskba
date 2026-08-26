@@ -25,7 +25,7 @@ final readonly class OpenVenueBookingPaymentWindowHandler
 
     public function handle(int $bookingId, Actor $actor, string $method, string $instructions): VenueBookingPaymentAttempt
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        $this->features->ensureEnabled(VenueRentalFeature::EXTERNAL_PAYMENT);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking, $venue) use ($actor, $method, $instructions): VenueBookingPaymentAttempt {
             $this->authorization->assertCanConfirmPayment($actor, $venue);

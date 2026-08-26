@@ -21,7 +21,7 @@ final readonly class ClaimVenueBookingPaymentHandler
     /** @param array<string, string|null> $evidence */
     public function handle(int $bookingId, int $attemptId, Actor $actor, array $evidence): VenueBookingPaymentAttempt
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        $this->features->ensureEnabled(VenueRentalFeature::EXTERNAL_PAYMENT);
 
         return $this->lockedBooking->run($bookingId, function (VenueBooking $booking) use ($attemptId, $actor, $evidence): VenueBookingPaymentAttempt {
             if ($actor->user_id === null || $actor->user_id !== $booking->requester_user_id) {
