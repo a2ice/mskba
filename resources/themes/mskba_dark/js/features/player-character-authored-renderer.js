@@ -1,5 +1,6 @@
-import modelChunk01 from './player-character-authored-model/chunk-01.js';
-import modelChunk02 from './player-character-authored-model/chunk-02.js';
+import modelPart01 from './player-character-authored-model/part-01.js';
+import modelPart02 from './player-character-authored-model/part-02.js';
+import modelPart03 from './player-character-authored-model/part-03.js';
 import {
     destroyPlayerCharacterThree as destroyLegacyRenderer,
     mountPlayerCharacterThree as mountLegacyRenderer,
@@ -77,7 +78,7 @@ async function authoredModelBuffer() {
                 throw new Error('This browser cannot decompress the bundled Player Character model.');
             }
 
-            const compressed = base64ToBytes(modelChunk01 + modelChunk02);
+            const compressed = base64ToBytes(modelPart01 + modelPart02 + modelPart03);
             const stream = new Blob([compressed])
                 .stream()
                 .pipeThrough(new DecompressionStream('gzip'));
