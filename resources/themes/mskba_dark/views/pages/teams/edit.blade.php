@@ -11,6 +11,74 @@
 </ul></div>
 @endsection
 @section('section-content')
+@php
+    $savedTeamColors = $team->colors ?? [];
+    $pageHomePrimary = data_get($savedTeamColors, 'home_primary');
+    $pageHomeSecondary = data_get($savedTeamColors, 'home_secondary');
+    $pageHomeFrom = $pageHomePrimary ?: $pageHomeSecondary;
+    $pageHomeTo = $pageHomeSecondary ?: $pageHomePrimary;
+@endphp
+<style>
+@if($pageHomeFrom)
+.site-content {
+    background:
+        linear-gradient(180deg, var(--page) 0 110px, transparent 170px),
+        linear-gradient(90deg, {{ $pageHomeFrom }}, {{ $pageHomeTo }});
+}
+@endif
+.team-color-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.team-color-picker {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    padding: 3px;
+    border: 1px solid var(--field-border);
+    border-radius: 8px;
+    background: var(--field);
+    cursor: pointer;
+}
+.team-color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+.team-color-picker::-webkit-color-swatch { border: 0; border-radius: 5px; }
+.team-color-picker::-moz-color-swatch { border: 0; border-radius: 5px; }
+.team-color-picker.is-empty { opacity: .45; }
+.team-color-value {
+    min-width: 72px;
+    color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.2;
+}
+.team-color-reset {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    color: var(--text);
+    background: transparent;
+    font: 500 20px/1 var(--font-ui);
+    cursor: pointer;
+}
+.team-color-reset:hover:not(:disabled),
+.team-color-reset:focus-visible:not(:disabled) {
+    border-color: var(--accent-hover);
+    color: var(--accent-text);
+    outline: none;
+}
+.team-color-reset:disabled {
+    opacity: .3;
+    cursor: default;
+}
+</style>
 @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
 @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 <section class="section-card mb-4">
@@ -48,29 +116,32 @@
                 @php($color = data_get($teamColors, $key))
                 <div class="col-12 col-md-6">
                     <label class="form-label" for="team-color-{{ $key }}">{{ $label }}</label>
-                    <div class="d-flex align-items-center gap-2" data-team-color>
+                    <div class="team-color-control" data-team-color>
                         <input
                             id="team-color-{{ $key }}"
-                            class="form-control form-control-color"
+                            @class(['team-color-picker', 'is-empty' => !$color])
                             type="color"
                             value="{{ $color ?: '#000000' }}"
-                            style="{{ $color ? '' : 'opacity:.45' }}"
                             aria-label="{{ $label }}"
-                            oninput="const root=this.closest('[data-team-color]');root.querySelector('input[type=hidden]').value=this.value;root.querySelector('[data-team-color-value]').textContent=this.value.toUpperCase();this.style.opacity='1';"
+                            oninput="const root=this.closest('[data-team-color]');root.querySelector('input[type=hidden]').value=this.value;root.querySelector('[data-team-color-value]').textContent=this.value.toUpperCase();root.querySelector('[data-team-color-reset]').disabled=false;this.classList.remove('is-empty');"
                         >
                         <input type="hidden" name="colors[{{ $key }}]" value="{{ $color }}">
-                        <code data-team-color-value>{{ $color ? strtoupper($color) : 'Не задан' }}</code>
+                        <span class="team-color-value" data-team-color-value>{{ $color ? strtoupper($color) : 'Не задан' }}</span>
                         <button
-                            class="btn btn--secondary btn--sm"
+                            class="team-color-reset"
                             type="button"
-                            onclick="const root=this.closest('[data-team-color]');root.querySelector('input[type=hidden]').value='';root.querySelector('[data-team-color-value]').textContent='Не задан';root.querySelector('input[type=color]').style.opacity='.45';"
-                        >Сбросить</button>
+                            title="Сбросить цвет"
+                            aria-label="Сбросить цвет: {{ $label }}"
+                            data-team-color-reset
+                            @disabled(!$color)
+                            onclick="const root=this.closest('[data-team-color]');root.querySelector('input[type=hidden]').value='';root.querySelector('[data-team-color-value]').textContent='Не задан';root.querySelector('input[type=color]').classList.add('is-empty');this.disabled=true;"
+                        ><span aria-hidden="true">×</span></button>
                     </div>
                     @error('colors.'.$key)<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
             @endforeach
         </div>
-        <button class="btn btn--primary mt-3" type="submit">Сохранить цвета</button>
+        <button class="btn btn--primary mt-3" type="submit">Применить</button>
     </form>
 </section>
 
