@@ -62,6 +62,21 @@ final class TeamMemberSportsService
             $isPlayer = $roles->contains(TeamMemberTypeEnum::PLAYER);
             $wasCaptain = (bool) $lockedMembership->is_captain;
 
+            if ($jerseyNumber !== null) {
+                $jerseyNumberTaken = $lockedTeam->memberships()
+                    ->whereKeyNot($lockedMembership->id)
+                    ->where('jersey_number', $jerseyNumber)
+                    ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                    ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
+                    ->exists();
+
+                if ($jerseyNumberTaken) {
+                    $formattedNumber = str_pad((string) $jerseyNumber, 2, '0', STR_PAD_LEFT);
+
+                    throw new InvalidArgumentException("Номер №{$formattedNumber} уже занят другим участником команды.");
+                }
+            }
+
             if ($wasCaptain && (! $isPlayer || ! $isCaptain)) {
                 throw new InvalidArgumentException('Сначала назначьте другого игрока капитаном команды.');
             }

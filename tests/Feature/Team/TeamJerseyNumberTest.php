@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Team;
 
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
@@ -62,6 +64,69 @@ final class TeamJerseyNumberTest extends TestCase
         $this->get(route('teams.show', $secondTeam->routeIdentifier()))
             ->assertOk()
             ->assertSee('№777');
+
+        $this->put(route('teams.members.sports.update', [$secondTeam->routeIdentifier(), $secondMembership->id]), [
+            'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+            'is_captain' => 1,
+            'jersey_number' => 0,
+        ])->assertSessionHas('status')->assertSessionHasNoErrors();
+
+        $this->assertSame(0, $secondMembership->fresh()->jersey_number);
+    }
+
+    public function test_duplicate_jersey_number_is_rejected_within_same_team(): void
+    {
+        $owner = User::factory()->create([
+            'username' => 'jersey-duplicate-owner',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $candidate = User::factory()->create([
+            'username' => 'jersey-duplicate-candidate',
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $candidate->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+
+        $this->actingAs($owner)->post(route('teams.store'), [
+            'name' => 'Команда уникальных номеров',
+            'sport_types' => ['basketball'],
+            'creator_sport_roles' => [],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $team = Team::query()->where('name', 'Команда уникальных номеров')->firstOrFail();
+        $ownerMembership = $team->memberships()->where('user_id', $owner->id)->firstOrFail();
+
+        $this->put(route('teams.members.sports.update', [$team->routeIdentifier(), $ownerMembership->id]), [
+            'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+            'jersey_number' => 0,
+        ])->assertSessionHas('status')->assertSessionHasNoErrors();
+
+        $this->actingAs($owner)->postJson(route('teams.invitations.store', $team->routeIdentifier()), [
+            'user_id' => $candidate->id,
+            'member_type' => TeamMemberTypeEnum::PLAYER->value,
+        ])->assertCreated();
+
+        $candidateMembership = $team->memberships()->where('user_id', $candidate->id)->firstOrFail();
+
+        $this->actingAs($candidate)->patch(route('teams.invitations.respond', $candidateMembership->id), [
+            'decision' => 'accept',
+        ])->assertRedirect();
+
+        $this->actingAs($owner)->put(route('teams.members.sports.update', [$team->routeIdentifier(), $candidateMembership->id]), [
+            'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+            'jersey_number' => 0,
+        ])->assertSessionHas('error', 'Номер №00 уже занят другим участником команды.');
+
+        $this->assertNull($candidateMembership->fresh()->jersey_number);
+
+        $this->actingAs($owner)->put(route('teams.members.sports.update', [$team->routeIdentifier(), $candidateMembership->id]), [
+            'sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+            'jersey_number' => 24,
+        ])->assertSessionHas('status')->assertSessionHasNoErrors();
+
+        $this->assertSame(24, $candidateMembership->fresh()->jersey_number);
     }
 
     public function test_jersey_number_is_nullable_and_limited_to_zero_through_999(): void
