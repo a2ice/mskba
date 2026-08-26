@@ -1,6 +1,21 @@
 {
+  "node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-DeUDHqRc.js",
+    "name": "three.module",
+    "src": "node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
+  "node_modules/three/examples/jsm/loaders/GLTFLoader.js": {
+    "file": "assets/GLTFLoader-ZImk_JXA.js",
+    "name": "GLTFLoader",
+    "src": "node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "node_modules/three/build/three.module.js"
+    ]
+  },
   "resources/css/app.css": {
-    "file": "assets/app-BEXRZ5io.css",
+    "file": "assets/app-D9EzZMbF.css",
     "name": "app",
     "names": [
       "app.css"
@@ -15,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-BQKTfKPp.css",
+    "file": "assets/app-Ck_djKqO.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +45,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-XxN3sxWn.css",
+    "file": "assets/app-k1A-3QBH.css",
     "name": "app",
     "names": [
       "app.css"
@@ -51,13 +66,24 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-BLk9nj_L.js",
+    "file": "assets/app-BlI3lTZX.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
+    "dynamicImports": [
+      "node_modules/three/build/three.module.js",
+      "node_modules/three/examples/jsm/loaders/GLTFLoader.js"
+    ],
     "css": [
-      "assets/app-BXQ9_l5r.css"
+      "assets/app-CMt9r7s0.css"
+    ],
+    "assets": [
+      "assets/mskba-male-base-test-clean-B3rIY4JY.glb"
     ]
+  },
+  "resources/themes/mskba_dark/models/player-character/mskba-male-base-test-clean.glb": {
+    "file": "assets/mskba-male-base-test-clean-B3rIY4JY.glb",
+    "src": "resources/themes/mskba_dark/models/player-character/mskba-male-base-test-clean.glb"
   },
   "resources/themes/mskba_streetball/css/app.css": {
     "file": "assets/app-IW2P2fJz.css",

@@ -19,6 +19,7 @@
         "laravel-echo": "^2.4.0",
         "pusher-js": "^8.6.0",
         "qrcode": "^1.5.4",
+        "three": "0.184.0",
         "tom-select": "^2.6.1"
     }
 }

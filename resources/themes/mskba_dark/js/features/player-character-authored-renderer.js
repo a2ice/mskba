@@ -1,15 +1,9 @@
-import modelPart01 from './player-character-authored-model/part-01.js';
-import modelPart02 from './player-character-authored-model/part-02.js';
-import modelPart03 from './player-character-authored-model/part-03.js';
+import authoredMaleModelUrl from '../../models/player-character/mskba-male-base-test-clean.glb?url';
 import {
     destroyPlayerCharacterThree as destroyLegacyRenderer,
     mountPlayerCharacterThree as mountLegacyRenderer,
     updatePlayerCharacterThree as updateLegacyRenderer,
 } from './player-character-three-renderer.js';
-
-const THREE_VERSION = '0.184.0';
-const THREE_MODULE_URL = `https://esm.sh/three@${THREE_VERSION}?target=es2022`;
-const GLTF_LOADER_URL = `https://esm.sh/three@${THREE_VERSION}/examples/jsm/loaders/GLTFLoader.js?target=es2022`;
 
 // The viewport is literal metric space: X=-1..1 = 200 cm, Y=0..2.5 = 250 cm.
 const SCENE_LEFT = -1;
@@ -28,7 +22,6 @@ const SKIN_TONES = {
 
 const RUNTIME = new WeakMap();
 let enginePromise = null;
-let authoredModelBufferPromise = null;
 
 function normalizeGender(gender) {
     return gender === 'female' ? 'female' : 'male';
@@ -42,15 +35,11 @@ function targetHeightMeters(state) {
     return clamp((Number(state.heightCm) || 180) / 100, 1.45, SCENE_TOP);
 }
 
-function importRemoteModule(url) {
-    return import(/* @vite-ignore */ url);
-}
-
 async function loadEngine() {
     if (!enginePromise) {
         enginePromise = Promise.all([
-            importRemoteModule(THREE_MODULE_URL),
-            importRemoteModule(GLTF_LOADER_URL),
+            import('three'),
+            import('three/examples/jsm/loaders/GLTFLoader.js'),
         ]).then(([THREE, loaderModule]) => ({
             THREE,
             GLTFLoader: loaderModule.GLTFLoader,
@@ -60,43 +49,8 @@ async function loadEngine() {
     return enginePromise;
 }
 
-function base64ToBytes(value) {
-    const binary = window.atob(value);
-    const bytes = new Uint8Array(binary.length);
-
-    for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.charCodeAt(index);
-    }
-
-    return bytes;
-}
-
-async function authoredModelBuffer() {
-    if (!authoredModelBufferPromise) {
-        authoredModelBufferPromise = (async () => {
-            if (typeof DecompressionStream === 'undefined') {
-                throw new Error('This browser cannot decompress the bundled Player Character model.');
-            }
-
-            const compressed = base64ToBytes(modelPart01 + modelPart02 + modelPart03);
-            const stream = new Blob([compressed])
-                .stream()
-                .pipeThrough(new DecompressionStream('gzip'));
-
-            return new Response(stream).arrayBuffer();
-        })();
-    }
-
-    return authoredModelBufferPromise;
-}
-
 async function loadAuthoredModel(engine) {
-    const buffer = await authoredModelBuffer();
-
-    return new Promise((resolve, reject) => {
-        const loader = new engine.GLTFLoader();
-        loader.parse(buffer, '', resolve, reject);
-    });
+    return new engine.GLTFLoader().loadAsync(authoredMaleModelUrl);
 }
 
 function setLifecycleStatus(stage, status, message = '') {
