@@ -428,6 +428,27 @@
     line-height: 1.2;
 }
 
+.account-player-character-configurator__team-selector {
+    display: grid;
+    flex: 0 1 190px;
+    gap: 5px;
+    min-width: 150px;
+}
+
+.account-player-character-configurator__team-selector > span {
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.account-player-character-configurator__team-selector .form-select {
+    min-height: 34px;
+    padding-block: 5px;
+    font-size: 11px;
+}
+
 .account-player-character-configurator__live {
     display: inline-flex;
     align-items: center;
@@ -601,6 +622,30 @@
     text-align: left;
 }
 
+.account-player-character-configurator__team-kit {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 8px 0;
+}
+
+.account-player-character-configurator__team-kit > span:last-child {
+    display: grid;
+    gap: 2px;
+}
+
+.account-player-character-configurator__team-kit strong {
+    color: rgba(249, 246, 239, 0.9);
+    font-size: 11px;
+}
+
+.account-player-character-configurator__team-kit small {
+    color: var(--text-muted);
+    font-size: 9px;
+}
+
 .account-player-character-configurator__kit > span:last-child {
     display: grid;
     min-width: 0;
@@ -759,6 +804,15 @@
 
     .account-player-character-configurator__kits {
         grid-template-columns: 1fr;
+    }
+
+    .account-player-character-configurator__heading {
+        display: grid;
+    }
+
+    .account-player-character-configurator__team-selector {
+        width: 100%;
+        min-width: 0;
     }
 }
 

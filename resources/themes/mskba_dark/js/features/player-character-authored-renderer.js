@@ -16,6 +16,11 @@ const SKIN_TONES = {
     deep: '#432a22',
 };
 
+const UNIFORM_COLORS = {
+    base: '#555b60',
+    trim: '#08090a',
+};
+
 const MODEL_URLS = {
     female: authoredFemaleModelUrl,
     male: authoredMaleModelUrl,
@@ -108,9 +113,9 @@ function prepareMaterials(runtime) {
                 : role === 'socks'
                     ? '#a8adaf'
                     : role === 'uniform-base'
-                        ? '#555b60'
+                        ? UNIFORM_COLORS.base
                         : role === 'uniform-trim'
-                            ? '#08090a'
+                            ? UNIFORM_COLORS.trim
                             : '#3a271f';
         const result = new runtime.THREE.MeshStandardMaterial({
             name: sourceName || `MSKBA_${role}`,
@@ -164,6 +169,30 @@ function applySkinTone(runtime, state) {
 
         object.material.color.copy(color);
         object.material.needsUpdate = true;
+    });
+}
+
+function applyUniformColors(runtime, state) {
+    const colors = {
+        'uniform-base': new runtime.THREE.Color(state.uniformPrimary || UNIFORM_COLORS.base),
+        'uniform-trim': new runtime.THREE.Color(state.uniformAccent || UNIFORM_COLORS.trim),
+    };
+
+    runtime.model?.traverse((object) => {
+        if (!object.isMesh) {
+            return;
+        }
+
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.filter(Boolean).forEach((material) => {
+            const color = colors[material.userData.playerCharacterRole];
+            if (!color) {
+                return;
+            }
+
+            material.color.copy(color);
+            material.needsUpdate = true;
+        });
     });
 }
 
@@ -404,6 +433,7 @@ async function createRuntime(stage, state) {
     measureAndNormalizeModel(runtime);
     applyMetricHeight(runtime, state);
     applySkinTone(runtime, state);
+    applyUniformColors(runtime, state);
     updateHeightMarker(runtime);
 
     setLifecycleStatus(stage, 'ready');
@@ -436,6 +466,7 @@ export function updatePlayerCharacterThree(stage, state) {
     runtime.state = state;
     applyMetricHeight(runtime, state);
     applySkinTone(runtime, state);
+    applyUniformColors(runtime, state);
     updateHeightMarker(runtime);
 }
 

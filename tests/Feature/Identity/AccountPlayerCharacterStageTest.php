@@ -7,7 +7,10 @@ use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
+use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -60,6 +63,7 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertSee('data-player-character-field="skin-tone"', false)
             ->assertSee('data-player-character-field="hairstyle"', false)
             ->assertSee('data-player-character-field="uniform-kit"', false)
+            ->assertDontSee('data-player-character-team', false)
             ->assertDontSee('data-player-character-choice="gender"', false)
             ->assertDontSee('name="character[gender]"', false)
             ->assertDontSee('PLAYER CHARACTER / 3D POC')
@@ -75,5 +79,40 @@ final class AccountPlayerCharacterStageTest extends TestCase
         $this->assertSame(1, substr_count($content, 'class="account-player-character-three" data-player-character-three'));
         $this->assertSame(1, substr_count($content, 'data-player-character-height-marker'));
         $this->assertSame(0, preg_match('/<svg\s+class="account-player-character-svg"\s+data-player-character-svg/s', $content));
+    }
+
+    public function test_active_player_team_home_colors_are_exposed_to_character_configurator(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $user->profile()->create(['gender' => UserGenderEnum::MALE]);
+        $user->participationRoles(false)->create([
+            'role' => UserParticipationRoleEnum::PLAYER,
+            'status' => UserParticipationRoleStatusEnum::ACTIVE,
+            'assigned_at' => now(),
+            'assigned_by' => $user->id,
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
+        ]);
+
+        $this->actingAs($user)->post(route('teams.store'), [
+            'name' => 'Альфа',
+            'sport_types' => ['basketball'],
+            'creator_sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        Team::query()->where('name', 'Альфа')->firstOrFail()->update([
+            'colors' => [
+                'home_primary' => '#c55a02',
+                'home_secondary' => '#21fd75',
+            ],
+        ]);
+
+        $this->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
+            ->assertOk()
+            ->assertSee('data-player-character-team', false)
+            ->assertSee('data-team-name="Альфа"', false)
+            ->assertSee('data-uniform-primary="#c55a02"', false)
+            ->assertSee('data-uniform-accent="#21fd75"', false);
     }
 }

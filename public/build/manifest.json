@@ -66,7 +66,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-CHTAlm1B.js",
+    "file": "assets/app-lS_xPHY_.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
@@ -75,7 +75,7 @@
       "node_modules/three/examples/jsm/loaders/GLTFLoader.js"
     ],
     "css": [
-      "assets/app-CMt9r7s0.css"
+      "assets/app-DtV6nGR4.css"
     ],
     "assets": [
       "assets/mskba-female-player-v1-W43a19GD.glb",

@@ -18,6 +18,7 @@ use App\Modules\Contact\Presentation\Http\Requests\ConfirmContactVerificationReq
 use App\Modules\Contact\Presentation\Http\Requests\CreateAccountContactRequest;
 use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
 use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
 use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
 use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
@@ -39,6 +40,9 @@ use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsRead
 use App\Modules\Notification\Application\UseCases\MarkUserNotificationAsReadHandler;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
+use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
+use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowAccountVenueScheduleHandler;
@@ -537,6 +541,21 @@ class AccountController extends Controller
 
         abort_if($participationRole === null, 404);
 
+        $playerTeams = collect();
+        if ($roleEnum === UserParticipationRoleEnum::PLAYER) {
+            $identityIds = $user->identityIds();
+            $playerTeams = Team::query()
+                ->whereNull('temporary_for_event_id')
+                ->whereHas('memberships', fn ($memberships) => $memberships
+                    ->whereIn('user_id', $identityIds)
+                    ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                    ->withSportRole(TeamMemberTypeEnum::PLAYER)
+                    ->whereHas('contract', fn ($contract) => $contract
+                        ->where('status', ContractStatusEnum::ACTIVE->value)))
+                ->orderBy('name')
+                ->get(['id', 'name', 'colors']);
+        }
+
         return ThemeResolver::page('account.participation-role', [
             'user' => $user,
             'participationRole' => $participationRole,
@@ -546,6 +565,7 @@ class AccountController extends Controller
             'playerBodyTypes' => PlayerBodyTypeEnum::cases(),
             'playerSkills' => PlayerSelfAssessment::SKILLS,
             'objectivePlayerSkills' => PlayerObjectiveAssessment::SKILLS,
+            'playerTeams' => $playerTeams,
         ]);
     }
 

@@ -27,7 +27,21 @@ function normalizeGender(value) {
     return value === 'female' ? 'female' : 'male';
 }
 
+function selectedTeamUniform(form) {
+    const select = form.querySelector('[data-player-character-team]');
+    const option = select?.selectedOptions?.[0];
+
+    return {
+        teamId: option?.value || null,
+        teamName: option?.dataset.teamName || '',
+        uniformPrimary: option?.dataset.uniformPrimary || null,
+        uniformAccent: option?.dataset.uniformAccent || null,
+    };
+}
+
 function readState(stage, form) {
+    const teamUniform = selectedTeamUniform(form);
+
     return {
         gender: normalizeGender(stage.dataset.gender),
         heightCm: parseNullableNumber(form.querySelector('[data-player-character-input="height"]')?.value),
@@ -38,7 +52,19 @@ function readState(stage, form) {
         hairColor: characterField(form, 'hair-color')?.value || 'dark_brown',
         facialHair: characterField(form, 'facial-hair')?.value || 'none',
         uniformKit: characterField(form, 'uniform-kit')?.value || 'mskba_home',
+        ...teamUniform,
     };
+}
+
+function syncTeamUniformPreview(form, configurator) {
+    const team = selectedTeamUniform(form);
+    const preview = configurator.querySelector('[data-player-character-team-kit-preview]');
+    const name = configurator.querySelector('[data-player-character-team-name]');
+    preview?.style.setProperty('--kit-primary', team.uniformPrimary || '#555b60');
+    preview?.style.setProperty('--kit-accent', team.uniformAccent || '#08090a');
+    if (name) {
+        name.textContent = team.teamName;
+    }
 }
 
 function syncChoiceButtons(configurator, field, value) {
@@ -135,6 +161,19 @@ function bindPhysicalInputs(stage, form, runtimeRef) {
     });
 }
 
+function bindTeamUniform(stage, form, configurator, runtimeRef) {
+    const select = form.querySelector('[data-player-character-team]');
+    if (!select) {
+        return;
+    }
+
+    syncTeamUniformPreview(form, configurator);
+    select.addEventListener('change', () => {
+        syncTeamUniformPreview(form, configurator);
+        updateStage(stage, form, runtimeRef.current);
+    });
+}
+
 function bindHeightMarker(stage) {
     const marker = stage.querySelector('[data-player-character-height-marker]');
     if (!marker) {
@@ -197,6 +236,7 @@ async function bindPlayerCharacterStage(stage) {
     syncProfileGenderControls(stage, form, configurator);
     bindCharacterChoices(stage, form, configurator, runtimeRef);
     bindPhysicalInputs(stage, form, runtimeRef);
+    bindTeamUniform(stage, form, configurator, runtimeRef);
     bindHeightMarker(stage);
 
     const initialState = updateStage(stage, form);

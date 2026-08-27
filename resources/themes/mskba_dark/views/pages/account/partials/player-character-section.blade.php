@@ -78,32 +78,10 @@
     if (! in_array($characterFacialHair, $authoredFacialHairStyles, true)) {
         $characterFacialHair = 'none';
     }
-    $uniformKits = [
-        'mskba_home' => [
-            'label' => 'MSKBA Home',
-            'description' => 'Чёрная / оранжевая',
-            'primary' => '#161816',
-            'accent' => '#ef7d00',
-        ],
-        'mskba_light' => [
-            'label' => 'MSKBA Light',
-            'description' => 'Светлая / оранжевая',
-            'primary' => '#e7e3d9',
-            'accent' => '#ef7d00',
-        ],
-        'street_black' => [
-            'label' => 'Street Black',
-            'description' => 'Графит / белый',
-            'primary' => '#111312',
-            'accent' => '#d9ddd8',
-        ],
-        'city_night' => [
-            'label' => 'City Night',
-            'description' => 'Тёмно-синий / оранжевый',
-            'primary' => '#121928',
-            'accent' => '#f18a19',
-        ],
-    ];
+    $playerTeams = $playerTeams ?? collect();
+    $defaultPlayerTeam = $playerTeams->first();
+    $defaultUniformPrimary = data_get($defaultPlayerTeam?->colors, 'home_primary');
+    $defaultUniformAccent = data_get($defaultPlayerTeam?->colors, 'home_secondary');
 @endphp
 
 <section class="account-player-profile__section account-player-character-section">
@@ -241,6 +219,21 @@
                             Пол берётся из профиля: {{ $characterGender === 'female' ? 'женский' : 'мужской' }}
                         </span>
                     </div>
+                    @if($playerTeams->isNotEmpty())
+                        <label class="account-player-character-configurator__team-selector">
+                            <span>Команда</span>
+                            <select class="form-select" data-player-character-team>
+                                @foreach($playerTeams as $team)
+                                    <option
+                                        value="{{ $team->id }}"
+                                        data-team-name="{{ $team->name }}"
+                                        data-uniform-primary="{{ data_get($team->colors, 'home_primary') }}"
+                                        data-uniform-accent="{{ data_get($team->colors, 'home_secondary') }}"
+                                    >{{ $team->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
                 </div>
 
                 <div class="account-player-character-configurator__group">
@@ -326,27 +319,25 @@
                         <span class="account-player-character-configurator__label">Форма</span>
                         <span>примерка</span>
                     </div>
-                    <div class="account-player-character-configurator__kits">
-                        @foreach($uniformKits as $value => $kit)
-                            <button
-                                type="button"
-                                class="account-player-character-configurator__kit"
-                                data-player-character-choice="uniform-kit"
-                                data-value="{{ $value }}"
-                                aria-pressed="{{ $characterUniformKit === $value ? 'true' : 'false' }}"
-                            >
-                                <span class="account-player-character-configurator__jersey" style="--kit-primary: {{ $kit['primary'] }}; --kit-accent: {{ $kit['accent'] }};">
-                                    <i></i>
-                                </span>
-                                <span>
-                                    <strong>{{ $kit['label'] }}</strong>
-                                    <small>{{ $kit['description'] }}</small>
-                                </span>
-                            </button>
-                        @endforeach
-                    </div>
+                    @if($defaultPlayerTeam)
+                        <div class="account-player-character-configurator__team-kit">
+                            <span
+                                class="account-player-character-configurator__jersey"
+                                style="--kit-primary: {{ $defaultUniformPrimary ?: '#555b60' }}; --kit-accent: {{ $defaultUniformAccent ?: '#08090a' }};"
+                                data-player-character-team-kit-preview
+                            ><i></i></span>
+                            <span>
+                                <strong data-player-character-team-name>{{ $defaultPlayerTeam->name }}</strong>
+                                <small>Домашние цвета команды</small>
+                            </span>
+                        </div>
+                    @else
+                        <p class="account-player-character-configurator__future">
+                            Вступите в команду как игрок, чтобы примерить её домашние цвета.
+                        </p>
+                    @endif
                     <p class="account-player-character-configurator__future">
-                        Позже здесь можно будет примерить форму своей команды и персональный дизайн перед заказом.
+                        Если цвет не задан в настройках команды, соответствующая часть формы остаётся нейтральной.
                     </p>
                     <input type="hidden" name="character[uniform_kit]" value="{{ $characterUniformKit }}" data-player-character-field="uniform-kit">
                     @error('character.uniform_kit') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
