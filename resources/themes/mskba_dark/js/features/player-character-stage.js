@@ -90,8 +90,8 @@ function syncProfileGenderControls(stage, form, configurator) {
     }
 }
 
-function updateAuthoredMaleCustomization(runtime, state) {
-    if (!runtime || normalizeGender(state.gender) !== 'male') {
+function updateAuthoredCustomization(runtime, state) {
+    if (!runtime) {
         return;
     }
 
@@ -103,7 +103,7 @@ function updateStage(stage, form, runtime = null) {
     const state = readState(stage, form);
     stage.dataset.hasHeight = state.heightCm === null ? 'false' : 'true';
     updatePlayerCharacterThree(stage, state);
-    updateAuthoredMaleCustomization(runtime, state);
+    updateAuthoredCustomization(runtime, state);
 
     stage.dispatchEvent(new CustomEvent('player-character:change', {
         bubbles: true,

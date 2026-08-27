@@ -1,9 +1,5 @@
-import authoredMaleModelUrl from '../../models/player-character/mskba-male-base-test-clean.glb?url';
-import {
-    destroyPlayerCharacterThree as destroyLegacyRenderer,
-    mountPlayerCharacterThree as mountLegacyRenderer,
-    updatePlayerCharacterThree as updateLegacyRenderer,
-} from './player-character-three-renderer.js';
+import authoredFemaleModelUrl from '../../models/player-character/mskba-female-player-v1.glb?url';
+import authoredMaleModelUrl from '../../models/player-character/mskba-male-player-v1.glb?url';
 
 // The viewport is literal metric space: X=-1..1 = 200 cm, Y=0..2.5 = 250 cm.
 const SCENE_LEFT = -1;
@@ -18,6 +14,11 @@ const SKIN_TONES = {
     tan: '#9c6749',
     brown: '#704731',
     deep: '#432a22',
+};
+
+const MODEL_URLS = {
+    female: authoredFemaleModelUrl,
+    male: authoredMaleModelUrl,
 };
 
 const RUNTIME = new WeakMap();
@@ -49,8 +50,8 @@ async function loadEngine() {
     return enginePromise;
 }
 
-async function loadAuthoredModel(engine) {
-    return new engine.GLTFLoader().loadAsync(authoredMaleModelUrl);
+async function loadAuthoredModel(engine, gender) {
+    return new engine.GLTFLoader().loadAsync(MODEL_URLS[normalizeGender(gender)]);
 }
 
 function setLifecycleStatus(stage, status, message = '') {
@@ -83,21 +84,69 @@ function createShadow(THREE) {
 }
 
 function prepareMaterials(runtime) {
+    const createMaterial = (sourceMaterial) => {
+        const sourceName = sourceMaterial?.name || '';
+        const role = sourceName === 'MSKBA_Hair'
+            ? 'hair'
+            : sourceName === 'MSKBA_Beard'
+                ? 'beard'
+                : sourceName === 'MSKBA_Shoes_Primary'
+                    ? 'shoes-primary'
+                    : sourceName === 'MSKBA_Shoes_Accent'
+                        ? 'shoes-accent'
+                        : sourceName === 'MSKBA_Socks'
+                            ? 'socks'
+                            : sourceName === 'MSKBA_Uniform_Base'
+                                ? 'uniform-base'
+                                : sourceName === 'MSKBA_Uniform_Trim'
+                                    ? 'uniform-trim'
+                                    : 'skin';
+        const color = role === 'skin'
+            ? SKIN_TONES[runtime.state.skinTone] || SKIN_TONES.warm
+            : role === 'shoes-primary' || role === 'shoes-accent'
+                ? '#eeeeeb'
+                : role === 'socks'
+                    ? '#a8adaf'
+                    : role === 'uniform-base'
+                        ? '#555b60'
+                        : role === 'uniform-trim'
+                            ? '#08090a'
+                            : '#3a271f';
+        const result = new runtime.THREE.MeshStandardMaterial({
+            name: sourceName || `MSKBA_${role}`,
+            color,
+            roughness: role === 'skin'
+                ? 0.72
+                : role.startsWith('shoes-')
+                    ? role === 'shoes-primary' ? 0.42 : 0.48
+                    : role === 'socks'
+                        ? 0.78
+                        : role === 'uniform-base' ? 0.38 : role === 'uniform-trim' ? 0.54 : 0.9,
+            metalness: 0,
+        });
+        result.userData.playerCharacterRole = role;
+        return result;
+    };
+
     runtime.model.traverse((object) => {
         if (!object.isMesh) {
             return;
         }
 
-        const previousMaterials = Array.isArray(object.material) ? object.material : [object.material];
-        previousMaterials.filter(Boolean).forEach((material) => material.dispose?.());
-
-        object.material = new runtime.THREE.MeshStandardMaterial({
-            color: SKIN_TONES[runtime.state.skinTone] || SKIN_TONES.warm,
-            roughness: 0.72,
-            metalness: 0,
-        });
+        object.material = Array.isArray(object.material)
+            ? object.material.map(createMaterial)
+            : createMaterial(object.material);
         object.castShadow = true;
         object.receiveShadow = true;
+    });
+
+    runtime.model.traverse((object) => {
+        if (
+            !object.isMesh
+            && (object.name.startsWith('MSKBA_Hair_') || object.name.startsWith('MSKBA_Beard_'))
+        ) {
+            object.visible = false;
+        }
     });
 }
 
@@ -105,7 +154,11 @@ function applySkinTone(runtime, state) {
     const color = new runtime.THREE.Color(SKIN_TONES[state.skinTone] || SKIN_TONES.warm);
 
     runtime.model?.traverse((object) => {
-        if (!object.isMesh || !object.material?.color) {
+        if (
+            !object.isMesh
+            || !object.material?.color
+            || object.material.userData.playerCharacterRole !== 'skin'
+        ) {
             return;
         }
 
@@ -116,6 +169,10 @@ function applySkinTone(runtime, state) {
 
 function measureAndNormalizeModel(runtime) {
     const { THREE, model, modelRoot } = runtime;
+    const body = model.getObjectByName('Body');
+    if (!body?.isMesh) {
+        throw new Error('Player character asset does not contain the required Body mesh.');
+    }
 
     modelRoot.position.set(0, 0, 0);
     modelRoot.scale.set(1, 1, 1);
@@ -124,7 +181,7 @@ function measureAndNormalizeModel(runtime) {
     modelRoot.updateMatrixWorld(true);
     model.updateMatrixWorld(true);
 
-    const box = new THREE.Box3().setFromObject(model);
+    const box = new THREE.Box3().setFromObject(body);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
@@ -219,7 +276,7 @@ function attachPointerRotation(runtime) {
 
         const delta = event.clientX - previousX;
         previousX = event.clientX;
-        runtime.targetYaw = clamp(runtime.targetYaw + delta * 0.008, -0.85, 0.85);
+        runtime.targetYaw += delta * 0.008;
     });
 
     const release = (event) => {
@@ -246,10 +303,6 @@ function renderLoop(runtime) {
     runtime.lastFrameAt = now;
 
     if (runtime.visible && !document.hidden) {
-        if (!runtime.dragging) {
-            runtime.targetYaw += (runtime.defaultYaw - runtime.targetYaw) * Math.min(1, delta * 1.8);
-        }
-
         runtime.currentYaw += (runtime.targetYaw - runtime.currentYaw) * Math.min(1, delta * 8);
         runtime.modelRoot.rotation.y = runtime.currentYaw;
         runtime.renderer.render(runtime.scene, runtime.camera);
@@ -327,7 +380,6 @@ async function createRuntime(stage, state) {
         visible: true,
         destroyed: false,
         dragging: false,
-        defaultYaw: 0,
         targetYaw: 0,
         currentYaw: 0,
         lastFrameAt: performance.now(),
@@ -345,7 +397,7 @@ async function createRuntime(stage, state) {
 
     attachPointerRotation(runtime);
 
-    const gltf = await loadAuthoredModel(engine);
+    const gltf = await loadAuthoredModel(engine, state.gender);
     runtime.model = gltf.scene;
     runtime.modelRoot.add(runtime.model);
     prepareMaterials(runtime);
@@ -360,10 +412,6 @@ async function createRuntime(stage, state) {
 }
 
 export async function mountPlayerCharacterThree(stage, state) {
-    if (normalizeGender(state.gender) === 'female') {
-        return mountLegacyRenderer(stage, state);
-    }
-
     if (RUNTIME.has(stage)) {
         return RUNTIME.get(stage);
     }
@@ -380,11 +428,6 @@ export async function mountPlayerCharacterThree(stage, state) {
 }
 
 export function updatePlayerCharacterThree(stage, state) {
-    if (normalizeGender(state.gender) === 'female') {
-        updateLegacyRenderer(stage, state);
-        return;
-    }
-
     const runtime = RUNTIME.get(stage);
     if (!runtime) {
         return;
@@ -399,7 +442,6 @@ export function updatePlayerCharacterThree(stage, state) {
 export function destroyPlayerCharacterThree(stage) {
     const runtime = RUNTIME.get(stage);
     if (!runtime) {
-        destroyLegacyRenderer(stage);
         return;
     }
 

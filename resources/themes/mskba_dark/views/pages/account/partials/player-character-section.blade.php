@@ -49,7 +49,9 @@
     $hairstyles = [
         'male_bald' => ['label' => 'Без волос', 'gender' => 'male'],
         'male_buzz' => ['label' => 'Ёжик', 'gender' => 'male'],
-        'male_fade' => ['label' => 'Фейд', 'gender' => 'male'],
+        // Keep the persisted key for backwards compatibility; the authored
+        // MakeHuman asset is visually a regular short hairstyle, not a fade.
+        'male_fade' => ['label' => 'Короткая', 'gender' => 'male'],
         'male_short' => ['label' => 'Короткая', 'gender' => 'male'],
         'male_curls' => ['label' => 'Кудри', 'gender' => 'male'],
         'female_ponytail' => ['label' => 'Хвост', 'gender' => 'female'],
@@ -66,6 +68,16 @@
         'short_beard' => 'Короткая',
         'full_beard' => 'Полная',
     ];
+    $authoredHairstyles = ['male_bald', 'male_fade', 'female_ponytail'];
+    $authoredFacialHairStyles = ['none', 'short_beard'];
+
+    if (! in_array($characterHairstyle, $authoredHairstyles, true)) {
+        $characterHairstyle = $characterDefaults['hairstyle'];
+    }
+
+    if (! in_array($characterFacialHair, $authoredFacialHairStyles, true)) {
+        $characterFacialHair = 'none';
+    }
     $uniformKits = [
         'mskba_home' => [
             'label' => 'MSKBA Home',
@@ -255,6 +267,7 @@
                     <span class="account-player-character-configurator__label">Причёска</span>
                     <div class="account-player-character-configurator__chips" data-player-character-hairstyles>
                         @foreach($hairstyles as $value => $hairstyle)
+                            @continue(! in_array($value, $authoredHairstyles, true))
                             <button
                                 type="button"
                                 class="account-player-character-configurator__chip"
@@ -294,6 +307,7 @@
                     <span class="account-player-character-configurator__label">Усы и борода</span>
                     <div class="account-player-character-configurator__chips">
                         @foreach($facialHairStyles as $value => $label)
+                            @continue(! in_array($value, $authoredFacialHairStyles, true))
                             <button
                                 type="button"
                                 class="account-player-character-configurator__chip"
