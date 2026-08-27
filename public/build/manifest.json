@@ -15,7 +15,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-D9EzZMbF.css",
+    "file": "assets/app-hhipc9U3.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-Ck_djKqO.css",
+    "file": "assets/app-DjASqkqG.css",
     "name": "app",
     "names": [
       "app.css"
@@ -66,7 +66,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-BlI3lTZX.js",
+    "file": "assets/app-CHTAlm1B.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
@@ -78,12 +78,17 @@
       "assets/app-CMt9r7s0.css"
     ],
     "assets": [
-      "assets/mskba-male-base-test-clean-B3rIY4JY.glb"
+      "assets/mskba-female-player-v1-W43a19GD.glb",
+      "assets/mskba-male-player-v1-D20id0gh.glb"
     ]
   },
-  "resources/themes/mskba_dark/models/player-character/mskba-male-base-test-clean.glb": {
-    "file": "assets/mskba-male-base-test-clean-B3rIY4JY.glb",
-    "src": "resources/themes/mskba_dark/models/player-character/mskba-male-base-test-clean.glb"
+  "resources/themes/mskba_dark/models/player-character/mskba-female-player-v1.glb": {
+    "file": "assets/mskba-female-player-v1-W43a19GD.glb",
+    "src": "resources/themes/mskba_dark/models/player-character/mskba-female-player-v1.glb"
+  },
+  "resources/themes/mskba_dark/models/player-character/mskba-male-player-v1.glb": {
+    "file": "assets/mskba-male-player-v1-D20id0gh.glb",
+    "src": "resources/themes/mskba_dark/models/player-character/mskba-male-player-v1.glb"
   },
   "resources/themes/mskba_streetball/css/app.css": {
     "file": "assets/app-IW2P2fJz.css",

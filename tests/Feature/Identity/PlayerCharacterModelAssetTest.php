@@ -8,36 +8,46 @@ use Tests\TestCase;
 final class PlayerCharacterModelAssetTest extends TestCase
 {
     #[Test]
-    public function clean_authored_model_keeps_the_geometry_required_by_the_renderer(): void
+    public function male_and_female_assets_implement_the_same_authored_runtime_contract(): void
     {
-        $path = resource_path('themes/mskba_dark/models/player-character/mskba-male-base-test-clean.glb');
-        $binary = file_get_contents($path);
+        $documents = [];
 
-        $this->assertIsString($binary);
-        $this->assertGreaterThan(500_000, strlen($binary));
+        foreach (['male' => 'Male', 'female' => 'Female'] as $gender => $title) {
+            [$binary, $document] = $this->readGlb(
+                resource_path("themes/mskba_dark/models/player-character/mskba-{$gender}-player-v1.glb"),
+            );
+            $documents[$gender] = $binary;
+            $meshNames = array_column($document['meshes'], 'name');
+            $bodyIndex = array_search("MSKBA_{$title}_Body_Mesh", $meshNames, true);
 
-        $header = unpack('a4magic/Vversion/Vlength', substr($binary, 0, 12));
-        $this->assertSame('glTF', $header['magic']);
-        $this->assertSame(2, $header['version']);
-        $this->assertSame(strlen($binary), $header['length']);
+            $this->assertNotFalse($bodyIndex);
+            $body = $document['meshes'][$bodyIndex];
+            $primitive = $body['primitives'][0];
+            $positionAccessor = $document['accessors'][$primitive['attributes']['POSITION']];
+            $indexAccessor = $document['accessors'][$primitive['indices']];
 
-        $jsonChunk = unpack('Vlength/Vtype', substr($binary, 12, 8));
-        $this->assertSame(0x4E4F534A, $jsonChunk['type']);
-        $document = json_decode(
-            rtrim(substr($binary, 20, $jsonChunk['length']), "\0 \t\n\r"),
-            true,
-            flags: JSON_THROW_ON_ERROR,
-        );
-        $primitive = $document['meshes'][0]['primitives'][0];
-        $positionAccessor = $document['accessors'][$primitive['attributes']['POSITION']];
-        $indexAccessor = $document['accessors'][$primitive['indices']];
+            $this->assertSame(
+                ['body_slim', 'body_heavy', 'body_muscular', 'body_stocky'],
+                $body['extras']['targetNames'],
+            );
+            $this->assertCount(4, $primitive['targets']);
+            $this->assertArrayHasKey('NORMAL', $primitive['attributes']);
+            $this->assertArrayHasKey('TEXCOORD_0', $primitive['attributes']);
+            $this->assertGreaterThanOrEqual(10_000, $positionAccessor['count']);
+            $this->assertGreaterThanOrEqual(60_000, $indexAccessor['count']);
+            $this->assertGreaterThan(1.5, $positionAccessor['max'][1] - $positionAccessor['min'][1]);
+            $this->assertLessThan(2.1, $positionAccessor['max'][1] - $positionAccessor['min'][1]);
+            $this->assertContains("MSKBA_Player_{$title}", array_column($document['nodes'], 'name'));
+            $this->assertContains('Body', array_column($document['nodes'], 'name'));
+            $this->assertContains('Head', array_column($document['nodes'], 'name'));
+            $this->assertContains('MSKBA_Skin', array_column($document['materials'], 'name'));
+            $this->assertContains(
+                $gender === 'male' ? 'MSKBA_Hair_Male_Fade' : 'MSKBA_Hair_Female_Ponytail',
+                array_column($document['nodes'], 'name'),
+            );
+        }
 
-        $this->assertArrayHasKey('NORMAL', $primitive['attributes']);
-        $this->assertArrayHasKey('TEXCOORD_0', $primitive['attributes']);
-        $this->assertGreaterThanOrEqual(10_000, $positionAccessor['count']);
-        $this->assertGreaterThanOrEqual(60_000, $indexAccessor['count']);
-        $this->assertGreaterThan(1.7, $positionAccessor['max'][1] - $positionAccessor['min'][1]);
-        $this->assertLessThan(2.1, $positionAccessor['max'][1] - $positionAccessor['min'][1]);
+        $this->assertNotSame($documents['male'], $documents['female']);
     }
 
     #[Test]
@@ -46,9 +56,10 @@ final class PlayerCharacterModelAssetTest extends TestCase
         $source = file_get_contents(resource_path('themes/mskba_dark/js/features/player-character-authored-renderer.js'));
 
         $this->assertIsString($source);
-        $this->assertStringContainsString('mskba-male-base-test-clean.glb?url', $source);
+        $this->assertStringContainsString('mskba-male-player-v1.glb?url', $source);
+        $this->assertStringContainsString('mskba-female-player-v1.glb?url', $source);
         $this->assertStringContainsString("import('three')", $source);
-        $this->assertStringContainsString('loadAsync(authoredMaleModelUrl)', $source);
+        $this->assertStringContainsString('MODEL_URLS[normalizeGender(gender)]', $source);
         $this->assertStringNotContainsString('esm.sh', $source);
         $this->assertStringNotContainsString('DecompressionStream', $source);
         $this->assertStringNotContainsString('modelPart', $source);
@@ -68,15 +79,45 @@ final class PlayerCharacterModelAssetTest extends TestCase
         $this->assertStringContainsString('applyAuthoredBodyShape', $stage);
         $this->assertStringContainsString('updateAuthoredAccessories', $stage);
 
-        $this->assertStringContainsString('BODY_TYPE_SHAPE', $customization);
-        $this->assertStringContainsString("male_fade", $customization);
-        $this->assertStringContainsString("short_beard", $customization);
+        $this->assertStringContainsString('BODY_TYPE_MORPHS', $customization);
+        $this->assertStringContainsString("'body_heavy'", $customization);
+        $this->assertStringContainsString('MSKBA_Hair_Male_Fade', $customization);
+        $this->assertStringContainsString('MSKBA_Hair_Female_Ponytail', $customization);
+        $this->assertStringContainsString('MSKBA_Beard_Short', $customization);
         $this->assertStringContainsString("hairColor", $customization);
         $this->assertStringContainsString("facialHair", $customization);
+        $this->assertStringNotContainsString('SphereGeometry', $customization);
+        $this->assertStringNotContainsString('collectHeadMetrics', $customization);
 
         $this->assertStringContainsString(
             ".account-player-character-configurator__swatch",
             $tooltips,
         );
+    }
+
+    /**
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function readGlb(string $path): array
+    {
+        $binary = file_get_contents($path);
+
+        $this->assertIsString($binary);
+        $this->assertGreaterThan(1_000_000, strlen($binary));
+
+        $header = unpack('a4magic/Vversion/Vlength', substr($binary, 0, 12));
+        $this->assertSame('glTF', $header['magic']);
+        $this->assertSame(2, $header['version']);
+        $this->assertSame(strlen($binary), $header['length']);
+
+        $jsonChunk = unpack('Vlength/Vtype', substr($binary, 12, 8));
+        $this->assertSame(0x4E4F534A, $jsonChunk['type']);
+        $document = json_decode(
+            rtrim(substr($binary, 20, $jsonChunk['length']), "\0 \t\n\r"),
+            true,
+            flags: JSON_THROW_ON_ERROR,
+        );
+
+        return [$binary, $document];
     }
 }
