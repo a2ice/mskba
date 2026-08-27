@@ -82,6 +82,12 @@
     $defaultPlayerTeam = $playerTeams->first();
     $defaultUniformPrimary = data_get($defaultPlayerTeam?->colors, 'home_primary');
     $defaultUniformAccent = data_get($defaultPlayerTeam?->colors, 'home_secondary');
+    $defaultUniformColorStatus = match (true) {
+        ! $defaultUniformPrimary && ! $defaultUniformAccent => 'У команды не установлены домашние цвета. Используются штатные цвета формы.',
+        ! $defaultUniformPrimary => 'У команды не установлен основной домашний цвет. Используется штатный цвет формы.',
+        ! $defaultUniformAccent => 'У команды не установлен дополнительный домашний цвет. Используется штатный цвет полосок.',
+        default => '',
+    };
 @endphp
 
 <section class="account-player-profile__section account-player-character-section">
@@ -331,14 +337,16 @@
                                 <small>Домашние цвета команды</small>
                             </span>
                         </div>
+                        <p
+                            class="account-player-character-configurator__future"
+                            data-player-character-team-color-status
+                            @if($defaultUniformColorStatus === '') hidden @endif
+                        >{{ $defaultUniformColorStatus }}</p>
                     @else
                         <p class="account-player-character-configurator__future">
                             Вступите в команду как игрок, чтобы примерить её домашние цвета.
                         </p>
                     @endif
-                    <p class="account-player-character-configurator__future">
-                        Если цвет не задан в настройках команды, соответствующая часть формы остаётся нейтральной.
-                    </p>
                     <input type="hidden" name="character[uniform_kit]" value="{{ $characterUniformKit }}" data-player-character-field="uniform-kit">
                     @error('character.uniform_kit') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>

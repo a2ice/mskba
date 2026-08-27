@@ -108,11 +108,19 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ],
         ]);
 
+        $this->post(route('teams.store'), [
+            'name' => 'Аа без цветов',
+            'sport_types' => ['basketball'],
+            'creator_sport_roles' => [TeamMemberTypeEnum::PLAYER->value],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
         $this->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
             ->assertOk()
             ->assertSee('data-player-character-team', false)
             ->assertSee('data-team-name="Альфа"', false)
             ->assertSee('data-uniform-primary="#c55a02"', false)
-            ->assertSee('data-uniform-accent="#21fd75"', false);
+            ->assertSee('data-uniform-accent="#21fd75"', false)
+            ->assertSee('data-team-name="Аа без цветов"', false)
+            ->assertSee('У команды не установлены домашние цвета. Используются штатные цвета формы.', false);
     }
 }

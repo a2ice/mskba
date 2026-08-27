@@ -60,10 +60,22 @@ function syncTeamUniformPreview(form, configurator) {
     const team = selectedTeamUniform(form);
     const preview = configurator.querySelector('[data-player-character-team-kit-preview]');
     const name = configurator.querySelector('[data-player-character-team-name]');
+    const colorStatus = configurator.querySelector('[data-player-character-team-color-status]');
     preview?.style.setProperty('--kit-primary', team.uniformPrimary || '#555b60');
     preview?.style.setProperty('--kit-accent', team.uniformAccent || '#08090a');
     if (name) {
         name.textContent = team.teamName;
+    }
+
+    if (colorStatus) {
+        colorStatus.textContent = !team.uniformPrimary && !team.uniformAccent
+            ? 'У команды не установлены домашние цвета. Используются штатные цвета формы.'
+            : !team.uniformPrimary
+                ? 'У команды не установлен основной домашний цвет. Используется штатный цвет формы.'
+                : !team.uniformAccent
+                    ? 'У команды не установлен дополнительный домашний цвет. Используется штатный цвет полосок.'
+                    : '';
+        colorStatus.hidden = colorStatus.textContent === '';
     }
 }
 
