@@ -177,7 +177,7 @@ def build_clean_human(services, gender: str, phenotype: dict[str, float], name: 
 
 
 def shape_uniform_asset(garment: bpy.types.Object, role: str) -> None:
-    """Give fitted MHCLO sources a loose sports cut and mark side trim panels."""
+    """Give fitted MHCLO sources a loose sports cut and integrated side panels."""
     coordinates = [vertex.co for vertex in garment.data.vertices]
     minimum_x = min(point.x for point in coordinates)
     maximum_x = max(point.x for point in coordinates)
@@ -192,16 +192,21 @@ def shape_uniform_asset(garment: bpy.types.Object, role: str) -> None:
     for vertex in garment.data.vertices:
         vertical = (vertex.co.z - minimum_z) / height if height else 0.5
         if role == "jersey":
-            # A basketball jersey hangs more freely at its hem than at shoulders.
-            loosen = 1.055 + (1.0 - vertical) * 0.055
-            vertex.co.x = center_x + (vertex.co.x - center_x) * loosen
-            vertex.co.y = center_y + (vertex.co.y - center_y) * (loosen + 0.015)
-            vertex.co.z = maximum_z - (maximum_z - vertex.co.z) * 1.12
+            # Keep the shoulders controlled while letting the body and hem hang.
+            loosen_x = 1.18 + (1.0 - vertical) * 0.17
+            loosen_y = 1.22 + (1.0 - vertical) * 0.16
+            vertex.co.x = center_x + (vertex.co.x - center_x) * loosen_x
+            vertex.co.y = center_y + (vertex.co.y - center_y) * loosen_y
+            vertex.co.z = maximum_z - (maximum_z - vertex.co.z) * 1.15
         else:
-            # Keep a comfortable gap around hips and thighs without changing waist.
-            loosen = 1.025 + (1.0 - vertical) * 0.075
-            vertex.co.x = center_x + (vertex.co.x - center_x) * loosen
-            vertex.co.y = center_y + (vertex.co.y - center_y) * (loosen + 0.020)
+            # Basketball shorts need visible ease around hips and especially thighs.
+            loosen_x = 1.22 + (1.0 - vertical) * 0.13
+            loosen_y = 1.24 + (1.0 - vertical) * 0.14
+            vertex.co.x = center_x + (vertex.co.x - center_x) * loosen_x
+            vertex.co.y = center_y + (vertex.co.y - center_y) * loosen_y
+
+    if role == "jersey":
+        straighten_jersey_drape(garment, center_x, center_y)
 
     garment.data.update()
     bpy.context.view_layer.objects.active = garment
@@ -212,73 +217,60 @@ def shape_uniform_asset(garment: bpy.types.Object, role: str) -> None:
     subdivision.render_levels = 1
     bpy.ops.object.modifier_apply(modifier=subdivision.name)
     garment.select_set(False)
-    append_uniform_trim_planes(
-        garment,
-        role,
-        center_x,
-        minimum_z,
-        maximum_z,
-    )
+    mark_integrated_uniform_side_panels(garment, role)
 
 
-def append_uniform_trim_planes(
+def straighten_jersey_drape(
+    garment: bpy.types.Object,
+    center_x: float,
+    center_y: float,
+) -> None:
+    """Keep the lower jersey near the chest envelope instead of tracing the waist."""
+    minimum_z = min(vertex.co.z for vertex in garment.data.vertices)
+    maximum_z = max(vertex.co.z for vertex in garment.data.vertices)
+    height = maximum_z - minimum_z
+    rings = [[] for _ in range(16)]
+
+    for vertex in garment.data.vertices:
+        vertical = (vertex.co.z - minimum_z) / height if height else 0.5
+        rings[min(15, int(vertical * 16))].append(vertex)
+
+    chest_vertices = [
+        vertex for ring_index in range(8, 13) for vertex in rings[ring_index]
+    ]
+    chest_half_x = max(abs(vertex.co.x - center_x) for vertex in chest_vertices)
+    chest_half_y = max(abs(vertex.co.y - center_y) for vertex in chest_vertices)
+    target_half_x = chest_half_x * 0.96
+    target_half_y = chest_half_y * 0.96
+
+    for ring_index, vertices in enumerate(rings):
+        if not vertices or ring_index >= 11:
+            continue
+        half_x = max(abs(vertex.co.x - center_x) for vertex in vertices)
+        half_y = max(abs(vertex.co.y - center_y) for vertex in vertices)
+        scale_x = max(1.0, target_half_x / max(half_x, 0.001))
+        scale_y = max(1.0, target_half_y / max(half_y, 0.001))
+        for vertex in vertices:
+            vertex.co.x = center_x + (vertex.co.x - center_x) * scale_x
+            vertex.co.y = center_y + (vertex.co.y - center_y) * scale_y
+
+
+def mark_integrated_uniform_side_panels(
     garment: bpy.types.Object,
     role: str,
-    center_x: float,
-    minimum_z: float,
-    maximum_z: float,
 ) -> None:
-    coordinates = [tuple(vertex.co) for vertex in garment.data.vertices]
-    faces = [tuple(polygon.vertices) for polygon in garment.data.polygons]
+    """Use the garment's own side-facing polygons as the accent panel."""
+    minimum_z = min(vertex.co.z for vertex in garment.data.vertices)
+    maximum_z = max(vertex.co.z for vertex in garment.data.vertices)
     height = maximum_z - minimum_z
     trim_faces = []
-    bottom = minimum_z + height * 0.035
-    top = maximum_z - height * (0.24 if role == "jersey" else 0.035)
-    half_width = max(abs(point[0] - center_x) for point in coordinates)
-    stripe_width = half_width * (0.10 if role == "jersey" else 0.08)
 
-    for side in (-1, 1):
-        side_points = [point for point in coordinates if (point[0] - center_x) * side > 0]
-        bottom_points = [point for point in side_points if abs(point[2] - bottom) < height * 0.08]
-        top_points = [point for point in side_points if abs(point[2] - top) < height * 0.08]
+    for polygon in garment.data.polygons:
+        relative_z = (polygon.center.z - minimum_z) / height if height else 0.5
+        maximum_z_ratio = 0.74 if role == "jersey" else 0.98
+        if abs(polygon.normal.x) >= 0.62 and 0.02 <= relative_z <= maximum_z_ratio:
+            trim_faces.append(polygon.index)
 
-        def outside(points):
-            return min(point[0] for point in points) if side < 0 else max(point[0] for point in points)
-
-        outer_bottom = outside(bottom_points) - side * 0.012
-        outer_top = outside(top_points) - side * 0.012
-        for front, reverse in ((True, False), (False, True)):
-            y_bottom = (
-                min(point[1] for point in bottom_points) - 0.003
-                if front
-                else max(point[1] for point in bottom_points) + 0.003
-            )
-            y_top = (
-                min(point[1] for point in top_points) - 0.003
-                if front
-                else max(point[1] for point in top_points) + 0.003
-            )
-            first = len(coordinates)
-            coordinates.extend(
-                (
-                    (outer_bottom - side * stripe_width, y_bottom, bottom),
-                    (outer_bottom, y_bottom, bottom),
-                    (outer_top, y_top, top),
-                    (outer_top - side * stripe_width, y_top, top),
-                )
-            )
-            face = (first, first + 1, first + 2, first + 3)
-            faces.append(tuple(reversed(face)) if reverse else face)
-            trim_faces.append(len(faces) - 1)
-
-    mesh = bpy.data.meshes.new(f"{garment.data.name}_WithTrim")
-    mesh.from_pydata(coordinates, [], faces)
-    mesh.update()
-    old_mesh = garment.data
-    garment.data = mesh
-    bpy.data.meshes.remove(old_mesh)
-    for polygon in mesh.polygons:
-        polygon.use_smooth = True
     garment["mskba_trim_faces"] = trim_faces
 
 
@@ -880,8 +872,8 @@ def prepare_root(body, variants, accessories, variant_accessories, gender: str):
     shoes_primary = material("MSKBA_Shoes_Primary", (0.92, 0.92, 0.90, 1.0), 0.42)
     shoes_accent = material("MSKBA_Shoes_Accent", (0.92, 0.92, 0.90, 1.0), 0.46)
     socks = material("MSKBA_Socks", (0.66, 0.68, 0.69, 1.0), 0.78)
-    uniform_base = material("MSKBA_Uniform_Base", (0.30, 0.32, 0.34, 1.0), 0.38)
-    uniform_trim = material("MSKBA_Uniform_Trim", (0.012, 0.014, 0.016, 1.0), 0.54)
+    uniform_base = material("MSKBA_Uniform_Base", (0.30, 0.32, 0.34, 1.0), 0.86)
+    uniform_trim = material("MSKBA_Uniform_Trim", (0.012, 0.014, 0.016, 1.0), 0.82)
     body.data.materials.clear()
     body.data.materials.append(skin)
 

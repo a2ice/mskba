@@ -126,7 +126,7 @@ function prepareMaterials(runtime) {
                     ? role === 'shoes-primary' ? 0.42 : 0.48
                     : role === 'socks'
                         ? 0.78
-                        : role === 'uniform-base' ? 0.38 : role === 'uniform-trim' ? 0.54 : 0.9,
+                        : role === 'uniform-base' ? 0.86 : role === 'uniform-trim' ? 0.82 : 0.9,
             metalness: 0,
         });
         result.userData.playerCharacterRole = role;
