@@ -255,7 +255,9 @@
                                 </div>
                             </div>
                         @endif
-                        @if($admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED && ! $participantPoolLocked && (!$continuous || ! $admission->entry?->matchesAsA()->exists() && ! $admission->entry?->matchesAsB()->exists()))
+                        @php($admissionEntryHasMatches = $admission->entry !== null && ($admission->entry->matchesAsA()->exists() || $admission->entry->matchesAsB()->exists()))
+                        @php($canRevokeAdmission = $admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED && ! $participantPoolLocked && (! $continuous || ! $admissionEntryHasMatches))
+                        @if($canRevokeAdmission)
                             <form class="mt-2" method="POST" action="{{ route('tournaments.admissions.revoke', [$tournament->routeIdentifier(), $admission]) }}">@csrf @method('DELETE')<button class="btn btn--danger btn--sm">Отозвать</button></form>
                         @endif
                     @endforeach
