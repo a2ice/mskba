@@ -5,6 +5,7 @@ namespace App\Modules\Tournament\Application\UseCases;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
@@ -31,6 +32,9 @@ final class CreateTournamentHandler
         $recruitmentMode = $format === GameFormatEnum::STREETBALL_1X1
             ? TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
             : TournamentRecruitmentModeEnum::from($data['recruitment_mode'] ?? TournamentRecruitmentModeEnum::PREFORMED_TEAMS->value);
+        $enrollmentPolicy = $recruitmentMode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
+            ? TournamentEnrollmentPolicyEnum::from($data['enrollment_policy'] ?? TournamentEnrollmentPolicyEnum::FIXED_POOL->value)
+            : TournamentEnrollmentPolicyEnum::FIXED_POOL;
 
         return DB::transaction(fn (): Tournament => Tournament::query()->create([
             'created_by_actor_id' => $actor->id,
@@ -45,6 +49,8 @@ final class CreateTournamentHandler
             'full_description' => $data['full_description'] ?? null,
             'format' => $format,
             'recruitment_mode' => $recruitmentMode,
+            'enrollment_policy' => $enrollmentPolicy,
+            'round_robin_legs' => (int) ($data['round_robin_legs'] ?? 1),
             'accepts_unconfirmed_participants' => $recruitmentMode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
                 && (bool) ($data['accepts_unconfirmed_participants'] ?? false),
         ]));
