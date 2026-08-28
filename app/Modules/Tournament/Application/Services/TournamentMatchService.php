@@ -25,12 +25,13 @@ final class TournamentMatchService
             if ($locked->status === TournamentStatusEnum::CANCELLED) {
                 throw new InvalidArgumentException('В отменённый турнир нельзя добавлять матчи.');
             }
-            if ($locked->participant_pool_locked_at === null) {
+            if ($locked->tournament_closed_at !== null) {
+                throw new InvalidArgumentException('В завершённый турнир нельзя добавлять матчи.');
+            }
+            if (! $locked->isContinuous() && $locked->participant_pool_locked_at === null) {
                 throw new InvalidArgumentException('Сначала завершите набор участников.');
             }
-            if ($locked->matches()->whereHas('game', fn ($query) => $query
-                ->whereNotNull('actual_started_at')
-                ->orWhereIn('status', [GameStatusEnum::IN_PROGRESS->value, GameStatusEnum::COMPLETED->value]))->exists()) {
+            if (! $locked->isContinuous() && $locked->competitionHasStarted()) {
                 throw new InvalidArgumentException('После начала турнира добавлять новые матчи нельзя.');
             }
             $entries = $locked->entries()->whereKey([$entryA->id, $entryB->id])->lockForUpdate()->get();
@@ -53,6 +54,9 @@ final class TournamentMatchService
         DB::transaction(function () use ($tournament, $orderedIds, $actor): void {
             $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+            if ($locked->tournament_closed_at !== null) {
+                throw new InvalidArgumentException('Порядок завершённого турнира менять нельзя.');
+            }
             $matches = $locked->matches()->lockForUpdate()->get()->keyBy('id');
             if (array_values(array_unique($orderedIds)) !== $orderedIds
                 || collect($orderedIds)->sort()->values()->all() !== $matches->keys()->sort()->values()->all()) {
@@ -60,7 +64,7 @@ final class TournamentMatchService
             }
             $positions = collect($orderedIds)->flip()->map(fn ($position): int => $position + 1);
             $started = $matches->filter(fn (TournamentMatch $match): bool => $match->game_id !== null && ($match->game?->actual_started_at !== null
-                || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true)));
+                || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::AWAITING_RESULT, GameStatusEnum::COMPLETED], true)));
             if ($started->contains(fn (TournamentMatch $match): bool => $positions->get($match->id) !== $match->sequence)) {
                 throw new InvalidArgumentException('Уже начатые и завершённые игры должны оставаться на своих позициях.');
             }
@@ -73,6 +77,9 @@ final class TournamentMatchService
         DB::transaction(function () use ($tournament, $match, $actor): void {
             $locked = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($locked, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+            if ($locked->tournament_closed_at !== null) {
+                throw new InvalidArgumentException('Матчи завершённого турнира менять нельзя.');
+            }
             $lockedMatch = $locked->matches()->whereKey($match->id)->lockForUpdate()->firstOrFail();
             if ($lockedMatch->game_id !== null) {
                 throw new InvalidArgumentException('Назначенный на Game матч нельзя удалить.');

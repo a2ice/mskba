@@ -9,6 +9,7 @@
     $canManageStatus = $effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::MANAGE_STATUS);
     $canDeleteTournament = $effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::DELETE);
     $participantPoolLocked = (bool) $participantPoolLocked;
+    $continuous = $tournament->isContinuous();
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -31,7 +32,7 @@
                 @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT)
                     <li class="nav-item"><a class="nav-link" href="#on-site-registration">Регистрация на месте</a></li>
                 @endif
-                @if($entries->count() >= 2 && $participantPoolLocked)<li class="nav-item"><a class="nav-link" href="#matches">Матчи и расписание</a></li>@endif
+                @if($matchesAvailable)<li class="nav-item"><a class="nav-link" href="#matches">Матчи и расписание</a></li>@endif
             @endif
             @if($canManageStaff)<li class="nav-item"><a class="nav-link" href="#staff">Ответственные</a></li>@endif
             @if($canManageStatus)<li class="nav-item"><a class="nav-link" href="#status">Статус</a></li>@endif
@@ -77,6 +78,8 @@
                 <input type="hidden" name="starts_on" value="{{ $tournament->starts_on->format('Y-m-d') }}">@if($tournament->ends_on)<input type="hidden" name="ends_on" value="{{ $tournament->ends_on->format('Y-m-d') }}">@endif
                 @if($tournament->format)<input type="hidden" name="format" value="{{ $tournament->format->value }}">@endif
                 <input type="hidden" name="recruitment_mode" value="{{ $tournament->recruitment_mode->value }}">
+                <input type="hidden" name="enrollment_policy" value="{{ $tournament->enrollment_policy->value }}">
+                <input type="hidden" name="round_robin_legs" value="{{ $tournament->round_robin_legs }}">
                 <div class="mb-3"><label class="form-label">Краткое описание</label><textarea class="form-control" name="short_description" maxlength="1000">{{ old('short_description', $tournament->short_description) }}</textarea></div>
                 <div class="mb-3"><label class="form-label">Полное описание</label><textarea class="form-control" name="full_description" rows="8" maxlength="20000">{{ old('full_description', $tournament->full_description) }}</textarea></div>
                 <div class="mb-3"><label class="form-label">Обложка</label><input class="form-control" type="file" name="cover" accept="image/*"></div>
@@ -85,11 +88,24 @@
         </div>
     @endif
 
-    @if($effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::MANAGE_STATUS))
-        <div class="event-card mb-4" id="status"><h2>Статус</h2><form method="POST" action="{{ route('tournaments.status', $tournament->routeIdentifier()) }}">@csrf @method('PATCH')<div class="row g-3"><div class="col-md-4"><select class="form-select" name="status">@foreach($statuses as $status)<option value="{{ $status->value }}" @selected($tournament->status === $status)>{{ $status->label() }}</option>@endforeach</select></div><div class="col-md-8"><input class="form-control" name="status_comment" value="{{ $tournament->status_comment }}" maxlength="2000" placeholder="Комментарий к статусу"></div></div><button class="btn btn--primary btn--sm mt-3">Сохранить статус</button></form></div>
+    @if($canManageStatus)
+        <div class="event-card mb-4" id="status">
+            <h2>Статус</h2>
+            <form method="POST" action="{{ route('tournaments.status', $tournament->routeIdentifier()) }}">@csrf @method('PATCH')<div class="row g-3"><div class="col-md-4"><select class="form-select" name="status">@foreach($statuses as $status)<option value="{{ $status->value }}" @selected($tournament->status === $status)>{{ $status->label() }}</option>@endforeach</select></div><div class="col-md-8"><input class="form-control" name="status_comment" value="{{ $tournament->status_comment }}" maxlength="2000" placeholder="Комментарий к статусу"></div></div><button class="btn btn--primary btn--sm mt-3">Сохранить статус</button></form>
+            @if($continuous)
+                <hr>
+                <h3 class="h5">Жизненный цикл открытой лиги</h3>
+                @if($tournament->tournament_closed_at)
+                    <div class="alert alert-info mb-0">Турнир завершён {{ $tournament->tournament_closed_at->format('d.m.Y H:i') }}. Новые команды и матчи больше не принимаются.</div>
+                @else
+                    <p class="form-text">Завершение турнира отдельно от закрытия набора. Перед завершением все уже назначенные игры должны быть завершены или отменены; неназначенные матчи могут остаться несыгранными.</p>
+                    <form method="POST" action="{{ route('tournaments.status', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Завершить турнир? После этого нельзя будет принимать команды, добавлять, назначать или переносить матчи.')">@csrf @method('PATCH')<input type="hidden" name="lifecycle_action" value="close_tournament"><button class="btn btn--danger btn--sm" type="submit">Завершить турнир</button></form>
+                @endif
+            @endif
+        </div>
     @endif
 
-    @if($effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::MANAGE_STAFF))
+    @if($canManageStaff)
         <div class="event-card mb-4" id="staff">
             <h2>Ответственные</h2>
             <form method="POST" action="{{ route('tournaments.staff.invite', $tournament->routeIdentifier()) }}" class="mb-4">@csrf
@@ -156,7 +172,7 @@
                     </form>
                 </div>
             @endif
-            <p><strong>Режим:</strong> {{ $tournament->recruitment_mode->label() }}</p>
+            <p><strong>Режим:</strong> {{ $tournament->recruitment_mode->label() }}@if($continuous) · <strong>{{ $tournament->enrollment_policy->label() }}</strong> · {{ $tournament->round_robin_legs === 2 ? '2 круга' : '1 круг' }}@endif</p>
             @php($hasFormedTeams = $entries->contains(fn ($entry) => $entry->source === \App\Modules\Tournament\Domain\Enums\TournamentEntrySourceEnum::ASSEMBLED))
             @if($acceptsAdmissions)
             <form method="POST" action="{{ route('tournaments.admissions.invite', $tournament->routeIdentifier()) }}" class="mb-4" data-tournament-candidate-search data-search-url="{{ route('tournaments.admissions.candidates', $tournament->routeIdentifier()) }}">@csrf
@@ -169,27 +185,36 @@
                 ])
                 <button class="btn btn--primary btn--sm mt-3">Пригласить</button>
             </form>
-            @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS && $entries->count() >= 2)
-                <form class="mb-4" method="POST" action="{{ route('tournaments.participant-pool.lock', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Завершить набор команд? Новые заявки и отзыв принятых команд будут закрыты.')">
+            @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS && ($entries->count() >= 2 || $continuous))
+                <form class="mb-4" method="POST" action="{{ route('tournaments.participant-pool.lock', $tournament->routeIdentifier()) }}" onsubmit="return confirm('{{ $continuous ? 'Закрыть набор новых команд? Уже созданные матчи и сам турнир продолжатся.' : 'Завершить набор команд? Новые заявки и отзыв принятых команд будут закрыты.' }}')">
                     @csrf
-                    <button class="btn btn--primary" type="submit">Завершить набор команд</button>
+                    <button class="btn btn--primary" type="submit">{{ $continuous ? 'Закрыть набор команд' : 'Завершить набор команд' }}</button>
                 </form>
             @endif
             @else
                 <div class="alert alert-info mb-4">
                     @if($hasFormedTeams ?? false)
                         Приём заявок и приглашений закрыт: команды уже сформированы. Чтобы изменить пул участников, сначала расформируйте команды.
+                    @elseif($continuous && $tournament->recruitment_closed_at !== null && $tournament->tournament_closed_at === null)
+                        Набор новых команд закрыт. Турнир продолжается, существующие и будущие назначенные игры сохраняются.
                     @elseif($participantPoolLocked && $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS)
                         Набор готовых команд завершён. Принятые команды зафиксированы для формирования расписания.
                     @elseif($competitionStarted)
                         Приём заявок и приглашений закрыт: турнир уже начался.
+                    @elseif($tournament->tournament_closed_at !== null)
+                        Приём заявок закрыт: турнир завершён.
                     @elseif($tournament->status !== \App\Modules\Tournament\Domain\Enums\TournamentStatusEnum::CONFIRMED)
                         Приём заявок и приглашений закрыт из-за текущего статуса турнира.
                     @else
                         Приём заявок и приглашений на этот турнир закрыт.
                     @endif
                 </div>
-                @if($participantPoolLocked && $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS && ! $matches->contains(fn ($match) => $match->game_id !== null))
+                @if($continuous && $tournament->recruitment_closed_at !== null && $tournament->tournament_closed_at === null)
+                    <form class="mb-4" method="POST" action="{{ route('tournaments.participant-pool.unlock', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Снова открыть набор новых команд? Уже сыгранные и назначенные матчи останутся без изменений.')">
+                        @csrf @method('DELETE')
+                        <button class="btn btn--secondary" type="submit">Снова открыть набор команд</button>
+                    </form>
+                @elseif($participantPoolLocked && $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS && ! $matches->contains(fn ($match) => $match->game_id !== null))
                     <form class="mb-4" method="POST" action="{{ route('tournaments.participant-pool.unlock', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Возобновить набор команд? Черновая схема матчей будет удалена.')">
                         @csrf @method('DELETE')
                         <button class="btn btn--secondary" type="submit">Возобновить набор команд</button>
@@ -217,9 +242,7 @@
                                             @foreach($entries as $entry)<option value="{{ $entry->id }}">{{ $entry->name }}</option>@endforeach
                                         </select>
                                     @endif
-                                    <div class="d-flex flex-wrap gap-2 mt-3">
-                                        <button class="btn btn--primary btn--sm">Принять</button>
-                                    </div>
+                                    <div class="d-flex flex-wrap gap-2 mt-3"><button class="btn btn--primary btn--sm">Принять</button></div>
                                 </form>
                                 @endif
                                 <label class="form-label mt-3" for="response-comment-{{ $admission->id }}">Причина отклонения или блокировки <span class="text-muted">(необязательно)</span></label>
@@ -232,20 +255,15 @@
                                 </div>
                             </div>
                         @endif
-                        @if($admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED && ! $participantPoolLocked)
+                        @php($admissionEntryHasMatches = $admission->entry !== null && ($admission->entry->matchesAsA()->exists() || $admission->entry->matchesAsB()->exists()))
+                        @php($canRevokeAdmission = $admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED && ! $participantPoolLocked && (! $continuous || ! $admissionEntryHasMatches))
+                        @if($canRevokeAdmission)
                             <form class="mt-2" method="POST" action="{{ route('tournaments.admissions.revoke', [$tournament->routeIdentifier(), $admission]) }}">@csrf @method('DELETE')<button class="btn btn--danger btn--sm">Отозвать</button></form>
                         @endif
                     @endforeach
-                    @if($participantPoolLocked && $admissionHistory->contains(fn ($admission) => $admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED))
-                        <p class="form-text mt-2">
-                            @if($competitionStarted)
-                                Отзыв участника недоступен: турнир уже начался.
-                            @elseif($matches->contains(fn ($match) => $match->game_id !== null))
-                                Отзыв участника недоступен: матчи уже назначены.
-                            @else
-                                Чтобы отозвать участника, сначала {{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'возобновите набор' : 'расформируйте команды' }}.
-                            @endif
-                        </p>
+                    @if(($participantPoolLocked || $continuous) && $admissionHistory->contains(fn ($admission) => $admission->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED))
+                        @php($acceptedEntry = $admissionHistory->first(fn ($item) => $item->status === \App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum::ACCEPTED)?->entry)
+                        @if($acceptedEntry && ($acceptedEntry->matchesAsA()->exists() || $acceptedEntry->matchesAsB()->exists()))<p class="form-text mt-2">Команда уже включена в спортивную историю турнира; её допуск нельзя отозвать без изменения сыгранных/созданных матчей.</p>@endif
                     @endif
                 </div>
             @empty<p>Заявок и приглашений пока нет.</p>@endforelse
@@ -259,95 +277,59 @@
                 @if($hasFormedTeams)
                     <h2>Команды сформированы</h2>
                     <p>Чтобы изменить составы, названия, логотипы или формат турнира, сначала расформируйте команды. Подтверждённые игроки останутся в пуле.@if($matches->isNotEmpty()) Черновая круговая схема также будет удалена.@endif</p>
-                    <form class="mt-3" method="POST" action="{{ route('tournaments.formation.disband', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Расформировать команды? Составы и черновая круговая схема будут удалены, подтверждённые игроки останутся в пуле.')">
-                        @csrf @method('DELETE')
-                        <button class="btn btn--danger" type="submit">Расформировать команды</button>
-                    </form>
+                    <form class="mt-3" method="POST" action="{{ route('tournaments.formation.disband', $tournament->routeIdentifier()) }}" onsubmit="return confirm('Расформировать команды? Составы и черновая круговая схема будут удалены, подтверждённые игроки останутся в пуле.')">@csrf @method('DELETE')<button class="btn btn--danger" type="submit">Расформировать команды</button></form>
                 @else
                 <h2>Balanced-формирование</h2><p>В пуле: {{ $acceptedPlayerCount }} игроков. Preview можно пересчитать и скорректировать перетаскиванием.</p>
-                <form class="row g-3" data-tournament-formation-form>
-                    <div class="col-md-6"><label class="form-label">Источник оценки</label><select class="form-select" name="assessment_source">@foreach($assessmentSources as $source)<option value="{{ $source->value }}">{{ $source->label() }}</option>@endforeach</select></div>
-                    <div class="col-md-3"><label class="form-label">Команд</label><input class="form-control" type="number" name="team_count" value="2" min="2" max="64" required></div>
-                    <div class="col-md-3 d-flex align-items-end"><button class="btn btn--primary w-100" type="submit">Сформировать</button></div>
-                </form>
-                <div class="alert mt-3" data-tournament-formation-message hidden></div>
-                <div class="row g-3 mt-2" data-tournament-formation-preview></div>
-                <button class="btn btn--primary mt-3" type="button" data-tournament-formation-apply hidden>Утвердить команды</button>
+                <form class="row g-3" data-tournament-formation-form><div class="col-md-6"><label class="form-label">Источник оценки</label><select class="form-select" name="assessment_source">@foreach($assessmentSources as $source)<option value="{{ $source->value }}">{{ $source->label() }}</option>@endforeach</select></div><div class="col-md-3"><label class="form-label">Команд</label><input class="form-control" type="number" name="team_count" value="2" min="2" max="64" required></div><div class="col-md-3 d-flex align-items-end"><button class="btn btn--primary w-100" type="submit">Сформировать</button></div></form>
+                <div class="alert mt-3" data-tournament-formation-message hidden></div><div class="row g-3 mt-2" data-tournament-formation-preview></div><button class="btn btn--primary mt-3" type="button" data-tournament-formation-apply hidden>Утвердить команды</button>
                 @endif
             </div>
         @endif
-        @if($entries->count() >= 2 && $participantPoolLocked)
+        @if($matchesAvailable)
             @php($scheduleLocked = $matches->contains(fn ($match) => $match->game_id !== null))
             @php($pairCount = intdiv($entries->count() * ($entries->count() - 1), 2))
-            @php($currentLegs = $matches->isEmpty() ? null : ($pairCount > 0 && $matches->count() === $pairCount * 2 ? 2 : 1))
+            @php($currentLegs = $continuous ? (int) $tournament->round_robin_legs : ($matches->isEmpty() ? null : ($pairCount > 0 && $matches->count() === $pairCount * 2 ? 2 : 1)))
             <div class="event-card tournament-scheme mb-4" data-tournament-schedule data-preview-url="{{ route('tournaments.schedule.preview', $tournament->routeIdentifier()) }}" data-apply-url="{{ route('tournaments.schedule.apply', $tournament->routeIdentifier()) }}" data-has-matches="{{ $matches->isNotEmpty() ? '1' : '0' }}" data-schedule-locked="{{ $scheduleLocked ? '1' : '0' }}">
                 <h2 class="mb-1">Круговая схема</h2>
-                <p class="mb-3">Выберите, сколько раз каждая пара команд встретится в турнире.</p>
-                <form data-tournament-schedule-form>
-                    <fieldset class="tournament-scheme__choices" @disabled($scheduleLocked)>
-                        <legend class="visually-hidden">Количество кругов</legend>
-                        <label class="tournament-scheme__choice">
-                            <input type="radio" name="legs" value="1" @checked($currentLegs === 1)>
-                            <span><strong>Один круг</strong><small><span class="fs-lil-smaller">Каждая пара команд играет один матч.</span></small></span>
-                        </label>
-                        <label class="tournament-scheme__choice">
-                            <input type="radio" name="legs" value="2" @checked($currentLegs === 2)>
-                            <span><strong>Два круга</strong><small><span class="fs-lil-smaller">Каждая пара играет два матча с переменой сторон.</span></small></span>
-                        </label>
-                    </fieldset>
-                </form>
+                <p class="mb-3">{{ $continuous ? 'Каждая новая команда автоматически получает недостающие матчи с уже участвующими командами. Правило кругов хранится в турнире.' : 'Выберите, сколько раз каждая пара команд встретится в турнире.' }}</p>
+                <form data-tournament-schedule-form><fieldset class="tournament-scheme__choices" @disabled($scheduleLocked)><legend class="visually-hidden">Количество кругов</legend><label class="tournament-scheme__choice"><input type="radio" name="legs" value="1" @checked($currentLegs === 1)><span><strong>Один круг</strong><small><span class="fs-lil-smaller">Каждая пара команд играет один матч.</span></small></span></label><label class="tournament-scheme__choice"><input type="radio" name="legs" value="2" @checked($currentLegs === 2)><span><strong>Два круга</strong><small><span class="fs-lil-smaller">Каждая пара играет два матча с переменой сторон.</span></small></span></label></fieldset></form>
                 <div class="alert mt-3" data-tournament-schedule-message hidden></div>
-                @if($scheduleLocked)
-                    <div class="alert alert-info mt-3">Схему нельзя изменить: один или несколько матчей уже назначены.</div>
-                @endif
+                @if($scheduleLocked)<div class="alert alert-info mt-3">Количество кругов зафиксировано: один или несколько матчей уже назначены. Новые команды получат матчи по этому же правилу.</div>@endif
             </div>
             <div class="event-card mb-4" id="matches"><h2><span title="Добавляйте отдельные матчи, меняйте их порядок и назначайте время и площадку">Матчи и расписание</span></h2>
+                @if($continuous)<p class="form-text">Сыгранные и начатые игры — неизменяемая история. Будущие матчи можно переставлять; перенос даты/площадки выполняется отдельно и не зависит от их позиции в списке.</p>@endif
                 @if($matches->isNotEmpty())
-                    @php($fixedMatchIds = $matches->filter(fn ($match) => $match->game_id !== null && ($match->game?->actual_started_at !== null || in_array($match->game?->status, [\App\Modules\Event\Domain\Enums\GameStatusEnum::IN_PROGRESS, \App\Modules\Event\Domain\Enums\GameStatusEnum::COMPLETED], true)))->pluck('id'))
+                    @php($fixedMatchIds = $matches->filter(fn ($match) => $match->game_id !== null && ($match->game?->actual_started_at !== null || in_array($match->game?->status, [\App\Modules\Event\Domain\Enums\GameStatusEnum::IN_PROGRESS, \App\Modules\Event\Domain\Enums\GameStatusEnum::AWAITING_RESULT, \App\Modules\Event\Domain\Enums\GameStatusEnum::COMPLETED], true)))->pluck('id'))
                     <form method="POST" action="{{ route('tournaments.matches.reorder', $tournament->routeIdentifier()) }}" data-tournament-match-order>@csrf @method('PATCH')
                         <div class="tournament-match-order" data-tournament-match-list>
                             @foreach($matches as $match)
                                 @php($matchOrderFixed = $fixedMatchIds->contains($match->id))
-                                <div class="tournament-match-order__row" @unless($matchOrderFixed) draggable="true" @endunless data-tournament-match-row data-match-order-fixed="{{ $matchOrderFixed ? '1' : '0' }}" data-match-id="{{ $match->id }}">
+                                <div class="tournament-match-order__row" @unless($matchOrderFixed || $tournament->tournament_closed_at) draggable="true" @endunless data-tournament-match-row data-match-order-fixed="{{ $matchOrderFixed || $tournament->tournament_closed_at ? '1' : '0' }}" data-match-id="{{ $match->id }}">
                                     <input type="hidden" name="positions[{{ $match->id }}]" value="{{ $match->sequence }}" data-match-position>
-                                    @unless($matchOrderFixed)<span class="tournament-match-order__handle" aria-hidden="true"><i class="ti ti-grip-vertical"></i></span>@endunless
+                                    @unless($matchOrderFixed || $tournament->tournament_closed_at)<span class="tournament-match-order__handle" aria-hidden="true"><i class="ti ti-grip-vertical"></i></span>@endunless
                                     <span class="tournament-match-order__position" data-match-position-label>{{ $match->sequence }}</span>
                                     @php($orderScore = $match->game?->status === \App\Modules\Event\Domain\Enums\GameStatusEnum::COMPLETED ? $match->game->sides->keyBy('slot') : null)
                                     <strong class="tournament-match-order__title">{{ $match->entryA->name }} — {{ $match->entryB->name }}@if($orderScore) {{ $orderScore->get('A')?->score ?? '—' }}:{{ $orderScore->get('B')?->score ?? '—' }}@endif</strong>
                                     @if($match->game)<a class="fc-link" href="{{ route('events.show', $match->game->event->routeIdentifier()) }}">Открыть игру</a>@endif
-                                    @unless($match->game)<button class="btn btn--danger btn--sm tournament-match-order__delete" type="submit" form="delete-match-{{ $match->id }}">Удалить</button>@endunless
+                                    @unless($match->game || $tournament->tournament_closed_at)<button class="btn btn--danger btn--sm tournament-match-order__delete" type="submit" form="delete-match-{{ $match->id }}">Удалить</button>@endunless
                                 </div>
                             @endforeach
                         </div>
-                        @if($matches->count() - $fixedMatchIds->count() >= 2)<button class="btn btn--secondary btn--sm">Сохранить порядок</button>@endif
+                        @if(!$tournament->tournament_closed_at && $matches->count() - $fixedMatchIds->count() >= 2)<button class="btn btn--secondary btn--sm">Сохранить порядок</button>@endif
                     </form>
-                    @if($fixedMatchIds->isNotEmpty())<p class="form-text mt-3">Начатые и завершённые игры зафиксированы. Остальные матчи можно менять местами между свободными позициями.</p>@endif
-                    @foreach($matches as $match)@unless($match->game)<form id="delete-match-{{ $match->id }}" method="POST" action="{{ route('tournaments.matches.destroy', [$tournament->routeIdentifier(), $match]) }}">@csrf @method('DELETE')</form>@endunless @endforeach
+                    @if($fixedMatchIds->isNotEmpty())<p class="form-text mt-3">Начатые, ожидающие результата и завершённые игры зафиксированы. Остальные матчи можно менять местами между свободными позициями.</p>@endif
+                    @foreach($matches as $match)@unless($match->game || $tournament->tournament_closed_at)<form id="delete-match-{{ $match->id }}" method="POST" action="{{ route('tournaments.matches.destroy', [$tournament->routeIdentifier(), $match]) }}">@csrf @method('DELETE')</form>@endunless @endforeach
                 @endif
                 <hr>
-                @if(! $competitionStarted)
+                @if(!$tournament->tournament_closed_at && (!$competitionStarted || $continuous))
                 <h3>Добавить отдельный матч</h3>
-                <p class="form-text mb-3">Создаёт дополнительную пару между двумя существующими командами. Новые участники здесь не добавляются.</p>
+                <p class="form-text mb-3">Создаёт дополнительную пару между двумя существующими командами. В открытой лиге это доступно и после старта; автоматически созданные пары при этом не затрагиваются.</p>
                 <form method="POST" action="{{ route('tournaments.matches.store', $tournament->routeIdentifier()) }}" class="row g-3 my-4">@csrf
-                    <div class="col-md-9 d-flex flex-wrap align-items-center gap-3">
-                        @foreach(['entry_a_id' => 'Сторона A', 'entry_b_id' => 'Сторона B'] as $field => $label)
-                            <div>
-                                @include('theme::partials.forms.entity-predictive-search', [
-                                    'id' => 'tournamentMatch'.($field === 'entry_a_id' ? 'A' : 'B'),
-                                    'name' => $field,
-                                    'label' => $label,
-                                    'placeholder' => 'Начните вводить название…',
-                                    'minimumLength' => 1,
-                                    'initialMessage' => 'Введите часть названия и выберите команду.',
-                                    'options' => $entries->map(fn ($entry) => ['id' => $entry->id, 'label' => $entry->name, 'meta' => 'Команда #'.$entry->id]),
-                                ])
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="col-md-3 d-flex align-items-center">
-                        <button class="btn btn--primary btn--sm w-100">Добавить</button>
-                    </div>
+                    <div class="col-md-9 d-flex flex-wrap align-items-center gap-3">@foreach(['entry_a_id' => 'Сторона A', 'entry_b_id' => 'Сторона B'] as $field => $label)<div>@include('theme::partials.forms.entity-predictive-search', ['id' => 'tournamentMatch'.($field === 'entry_a_id' ? 'A' : 'B'), 'name' => $field, 'label' => $label, 'placeholder' => 'Начните вводить название…', 'minimumLength' => 1, 'initialMessage' => 'Введите часть названия и выберите команду.', 'options' => $entries->map(fn ($entry) => ['id' => $entry->id, 'label' => $entry->name, 'meta' => 'Команда #'.$entry->id])])</div>@endforeach</div>
+                    <div class="col-md-3 d-flex align-items-center"><button class="btn btn--primary btn--sm w-100">Добавить</button></div>
                 </form>
+                @elseif($tournament->tournament_closed_at)
+                    <div class="alert alert-info my-4">Турнир завершён: спортивная структура зафиксирована.</div>
                 @else
                     <div class="alert alert-info my-4">Добавление новых матчей закрыто: турнир уже начался.</div>
                 @endif
@@ -355,7 +337,7 @@
                 @if($matches->isNotEmpty())
                     @foreach($matches as $match)@if(!$match->game)
                         <details class="border rounded p-3 mt-3"><summary><strong>Назначить: {{ $match->entryA->name }} — {{ $match->entryB->name }}</strong></summary>
-                            <form class="row g-3 mt-2" method="POST" action="{{ route('tournaments.matches.schedule', [$tournament->routeIdentifier(), $match]) }}">@csrf
+                            @if(!$tournament->tournament_closed_at)<form class="row g-3 mt-2" method="POST" action="{{ route('tournaments.matches.schedule', [$tournament->routeIdentifier(), $match]) }}">@csrf
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-starts">Начало</label><input class="form-control" id="match-{{ $match->id }}-starts" type="datetime-local" name="starts_at" value="{{ old('starts_at', $tournament->starts_on->isAfter(today()) ? $tournament->starts_on->setTime(19, 0)->format('Y-m-d\TH:i') : now()->addHour()->startOfHour()->format('Y-m-d\TH:i')) }}" required></div>
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-duration">Длительность, минут</label><input class="form-control" id="match-{{ $match->id }}-duration" type="number" name="duration_minutes" value="{{ old('duration_minutes', 90) }}" min="1" max="1440" required></div>
                                 <div class="col-12">@include('theme::partials.venues.predictive-selector', ['id' => 'match'.$match->id.'Venue', 'selectedVenue' => $tournament->defaultVenue, 'startInput' => '#match-'.$match->id.'-starts', 'durationInput' => '#match-'.$match->id.'-duration', 'confirmedOnly' => true])</div>
@@ -363,43 +345,28 @@
                                 <div class="col-md-4"><label class="form-label">Хронометраж</label><select class="form-select" name="timing_mode" data-match-timing-mode><option value="whole_game">Игра целиком</option><option value="periods">По периодам</option></select></div>
                                 <div class="col-md-4" data-match-periods-field><label class="form-label">Периодов</label><select class="form-select" name="periods_count" data-match-periods-count disabled><option value="4">4</option><option value="2">2</option></select></div>
                                 <div class="col-12"><button class="btn btn--primary" type="submit">Создать игру и бронь</button></div>
-                            </form>
+                            </form>@else<p class="form-text mt-2 mb-0">Матч остался несыгранным при завершении турнира.</p>@endif
                         </details>
                     @elseif($match->game->status === \App\Modules\Event\Domain\Enums\GameStatusEnum::SCHEDULED && $match->game->actual_started_at === null)
                         <details class="border rounded p-3 mt-3"><summary><strong>Перенести: {{ $match->entryA->name }} — {{ $match->entryB->name }}</strong></summary>
-                            <form class="row g-3 mt-2" method="POST" action="{{ route('tournaments.matches.reschedule', [$tournament->routeIdentifier(), $match]) }}">@csrf @method('PUT')
+                            @if(!$tournament->tournament_closed_at)<form class="row g-3 mt-2" method="POST" action="{{ route('tournaments.matches.reschedule', [$tournament->routeIdentifier(), $match]) }}">@csrf @method('PUT')
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-move-starts">Новое начало</label><input class="form-control" id="match-{{ $match->id }}-move-starts" type="datetime-local" name="starts_at" value="{{ $match->game->event->starts_at->format('Y-m-d\TH:i') }}" required></div>
                                 <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-move-duration">Длительность, минут</label><input class="form-control" id="match-{{ $match->id }}-move-duration" type="number" name="duration_minutes" value="{{ (int) $match->game->event->starts_at->diffInMinutes($match->game->event->ends_at) }}" min="1" max="1440" required></div>
                                 <div class="col-12">@include('theme::partials.venues.predictive-selector', ['id' => 'moveMatch'.$match->id.'Venue', 'selectedVenue' => $match->game->event->venue, 'selectedScope' => $match->game->event->booking?->scope?->value ?? 'whole', 'startInput' => '#match-'.$match->id.'-move-starts', 'durationInput' => '#match-'.$match->id.'-move-duration', 'confirmedOnly' => true])</div>
                                 <div class="col-12"><button class="btn btn--primary" type="submit">Перенести игру и бронь</button></div>
-                            </form>
+                            </form>@endif
                         </details>
                     @else
-                        @php($gameStateLabel = match ($match->game->status) {
-                            \App\Modules\Event\Domain\Enums\GameStatusEnum::IN_PROGRESS => 'Сейчас играют',
-                            \App\Modules\Event\Domain\Enums\GameStatusEnum::AWAITING_RESULT => 'Ожидает результата',
-                            \App\Modules\Event\Domain\Enums\GameStatusEnum::COMPLETED => 'Завершена',
-                            \App\Modules\Event\Domain\Enums\GameStatusEnum::CANCELLED => 'Отменена',
-                            default => $match->game->actual_started_at !== null ? 'Сейчас играют' : $match->game->status->label(),
-                        })
+                        @php($gameStateLabel = match ($match->game->status) { \App\Modules\Event\Domain\Enums\GameStatusEnum::IN_PROGRESS => 'Сейчас играют', \App\Modules\Event\Domain\Enums\GameStatusEnum::AWAITING_RESULT => 'Ожидает результата', \App\Modules\Event\Domain\Enums\GameStatusEnum::COMPLETED => 'Завершена', \App\Modules\Event\Domain\Enums\GameStatusEnum::CANCELLED => 'Отменена', default => $match->game->actual_started_at !== null ? 'Сейчас играют' : $match->game->status->label(), })
                         @php($completedScore = $match->game->status === \App\Modules\Event\Domain\Enums\GameStatusEnum::COMPLETED ? $match->game->sides->keyBy('slot') : null)
-                        <details class="border rounded p-3 mt-3">
-                            <summary><strong>{{ $gameStateLabel }}: {{ $match->entryA->name }} — {{ $match->entryB->name }}@if($completedScore) {{ $completedScore->get('A')?->score ?? '—' }}:{{ $completedScore->get('B')?->score ?? '—' }}@endif</strong></summary>
-                            <fieldset class="row g-3 mt-2" disabled>
-                                <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-readonly-starts">Начало</label><input class="form-control" id="match-{{ $match->id }}-readonly-starts" type="datetime-local" value="{{ $match->game->event->starts_at->format('Y-m-d\TH:i') }}"></div>
-                                <div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-readonly-duration">Длительность, минут</label><input class="form-control" id="match-{{ $match->id }}-readonly-duration" type="number" value="{{ (int) $match->game->event->starts_at->diffInMinutes($match->game->event->ends_at) }}"></div>
-                                <div class="col-12"><label class="form-label" for="match-{{ $match->id }}-readonly-venue">Площадка</label><input class="form-control" id="match-{{ $match->id }}-readonly-venue" type="text" value="{{ $match->game->event->venue?->name ?? 'Не указана' }}"></div>
-                                <div class="col-12"><label class="form-label" for="match-{{ $match->id }}-readonly-scope">Игровая зона</label><input class="form-control" id="match-{{ $match->id }}-readonly-scope" type="text" value="{{ $match->game->event->booking?->scope?->label() ?? 'Вся площадка' }}"></div>
-                            </fieldset>
-                            <a class="fc-link d-inline-block mt-3" href="{{ route('events.show', $match->game->event->routeIdentifier()) }}">Открыть игру</a>
-                        </details>
+                        <details class="border rounded p-3 mt-3"><summary><strong>{{ $gameStateLabel }}: {{ $match->entryA->name }} — {{ $match->entryB->name }}@if($completedScore) {{ $completedScore->get('A')?->score ?? '—' }}:{{ $completedScore->get('B')?->score ?? '—' }}@endif</strong></summary><fieldset class="row g-3 mt-2" disabled><div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-readonly-starts">Начало</label><input class="form-control" id="match-{{ $match->id }}-readonly-starts" type="datetime-local" value="{{ $match->game->event->starts_at->format('Y-m-d\TH:i') }}"></div><div class="col-md-6"><label class="form-label" for="match-{{ $match->id }}-readonly-duration">Длительность, минут</label><input class="form-control" id="match-{{ $match->id }}-readonly-duration" type="number" value="{{ (int) $match->game->event->starts_at->diffInMinutes($match->game->event->ends_at) }}"></div><div class="col-12"><label class="form-label" for="match-{{ $match->id }}-readonly-venue">Площадка</label><input class="form-control" id="match-{{ $match->id }}-readonly-venue" type="text" value="{{ $match->game->event->venue?->name ?? 'Не указана' }}"></div><div class="col-12"><label class="form-label" for="match-{{ $match->id }}-readonly-scope">Игровая зона</label><input class="form-control" id="match-{{ $match->id }}-readonly-scope" type="text" value="{{ $match->game->event->booking?->scope?->label() ?? 'Вся площадка' }}"></div></fieldset><a class="fc-link d-inline-block mt-3" href="{{ route('events.show', $match->game->event->routeIdentifier()) }}">Открыть игру</a></details>
                     @endif @endforeach
                 @endif
             </div>
         @endif
     @endif
 
-    @if($effectivePermissions->contains(\App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum::DELETE))
+    @if($canDeleteTournament)
         <div class="event-card" id="delete"><h2>Удаление</h2><form method="POST" action="{{ route('tournaments.destroy', $tournament->routeIdentifier()) }}" onsubmit="const reason = window.prompt('Укажите причину удаления турнира:'); if (reason === null) return false; if (!reason.trim()) { window.alert('Причина удаления обязательна.'); return false; } this.elements.deletion_reason.value = reason.trim();">@csrf @method('DELETE')<input type="hidden" name="deletion_reason" value=""><button class="btn btn--danger" type="submit">Удалить турнир</button></form></div>
     @endif
 @endsection

@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPhaseEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
@@ -37,9 +38,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'full_description',
     'format',
     'recruitment_mode',
+    'enrollment_policy',
+    'round_robin_legs',
     'accepts_unconfirmed_participants',
     'allows_on_site_registration',
     'participant_pool_locked_at',
+    'recruitment_closed_at',
+    'recruitment_closed_by_actor_id',
+    'tournament_closed_at',
+    'tournament_closed_by_actor_id',
 ])]
 class Tournament extends Model
 {
@@ -79,6 +86,16 @@ class Tournament extends Model
         return $this->belongsTo(Venue::class, 'default_venue_id');
     }
 
+    public function recruitmentClosedByActor(): BelongsTo
+    {
+        return $this->belongsTo(Actor::class, 'recruitment_closed_by_actor_id');
+    }
+
+    public function tournamentClosedByActor(): BelongsTo
+    {
+        return $this->belongsTo(Actor::class, 'tournament_closed_by_actor_id');
+    }
+
     public function staffMemberships(): HasMany
     {
         return $this->hasMany(ContractMembership::class, 'scope_id')
@@ -100,13 +117,22 @@ class Tournament extends Model
         return $this->hasMany(TournamentMatch::class)->orderBy('sequence');
     }
 
+    public function isContinuous(): bool
+    {
+        return $this->enrollment_policy === TournamentEnrollmentPolicyEnum::CONTINUOUS;
+    }
+
     public function phase(): TournamentPhaseEnum
     {
         if ($this->status === TournamentStatusEnum::CANCELLED) {
             return TournamentPhaseEnum::CANCELLED;
         }
 
-        if ($this->allMatchesCompleted() || $this->ends_on?->isBefore(today())) {
+        if ($this->tournament_closed_at !== null) {
+            return TournamentPhaseEnum::COMPLETED;
+        }
+
+        if (! $this->isContinuous() && ($this->allMatchesCompleted() || $this->ends_on?->isBefore(today()))) {
             return TournamentPhaseEnum::COMPLETED;
         }
 
@@ -119,12 +145,21 @@ class Tournament extends Model
 
     public function acceptsAdmissions(): bool
     {
-        return $this->status === TournamentStatusEnum::CONFIRMED
-            && ! $this->competitionHasStarted()
+        if ($this->status !== TournamentStatusEnum::CONFIRMED || $this->tournament_closed_at !== null) {
+            return false;
+        }
+
+        if ($this->isContinuous()) {
+            return $this->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
+                && $this->recruitment_closed_at === null
+                && ! $this->ends_on?->isBefore(today());
+        }
+
+        return ! $this->competitionHasStarted()
             && $this->participant_pool_locked_at === null;
     }
 
-    private function competitionHasStarted(): bool
+    public function competitionHasStarted(): bool
     {
         return $this->matches()->whereHas('game', fn (Builder $query) => $query
             ->whereNotNull('actual_started_at')
@@ -158,9 +193,13 @@ class Tournament extends Model
             'status' => TournamentStatusEnum::class,
             'format' => GameFormatEnum::class,
             'recruitment_mode' => TournamentRecruitmentModeEnum::class,
+            'enrollment_policy' => TournamentEnrollmentPolicyEnum::class,
+            'round_robin_legs' => 'integer',
             'accepts_unconfirmed_participants' => 'boolean',
             'allows_on_site_registration' => 'boolean',
             'participant_pool_locked_at' => 'immutable_datetime',
+            'recruitment_closed_at' => 'immutable_datetime',
+            'tournament_closed_at' => 'immutable_datetime',
             'starts_on' => 'immutable_date',
             'ends_on' => 'immutable_date',
         ];

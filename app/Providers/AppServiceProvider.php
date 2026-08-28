@@ -13,6 +13,8 @@ use App\Modules\Location\Domain\Models\MetroStation;
 use App\Modules\Portal\Application\Services\SiteSummaryService;
 use App\Modules\Portal\Infrastructure\Observers\EventSiteSummaryObserver;
 use App\Modules\Portal\Infrastructure\Observers\UserSiteSummaryObserver;
+use App\Modules\Tournament\Domain\Models\TournamentEntry;
+use App\Modules\Tournament\Infrastructure\Observers\TournamentEntryObserver;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleException;
@@ -63,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
 
         Event::observe(EventSiteSummaryObserver::class);
         User::observe(UserSiteSummaryObserver::class);
+        TournamentEntry::observe(TournamentEntryObserver::class);
 
         foreach ([
             Venue::class,
