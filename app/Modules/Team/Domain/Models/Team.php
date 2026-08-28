@@ -51,13 +51,17 @@ class Team extends Model
         return $query->where('alias', $identifier);
     }
 
-    /** @param Builder<Team> $query */
+    /**
+     * Permanent active teams eligible for competition flows.
+     * Invitation-specific callers must additionally respect accepts_competition_invitations.
+     *
+     * @param Builder<Team> $query
+     */
     public function scopeCompetitionInvitable(Builder $query): Builder
     {
         return $query
             ->whereNull('temporary_for_event_id')
-            ->where('status', TeamStatusEnum::ACTIVE->value)
-            ->where('accepts_competition_invitations', true);
+            ->where('status', TeamStatusEnum::ACTIVE->value);
     }
 
     public function temporaryForEvent(): BelongsTo
