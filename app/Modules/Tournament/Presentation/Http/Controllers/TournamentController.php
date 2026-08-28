@@ -161,7 +161,7 @@ final class TournamentController extends Controller
                 ->whereIn('status', [TournamentAdmissionStatusEnum::PENDING->value, TournamentAdmissionStatusEnum::ACCEPTED->value])
                 ->pluck('team_id');
             $teamApplicationOptions = Team::query()
-                ->competitionInvitable()
+                ->competitionEligible()
                 ->whereNotIn('id', $alreadyAppliedTeamIds)
                 ->orderBy('name')
                 ->get()
