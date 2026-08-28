@@ -36,7 +36,7 @@ final class ContinuousTournamentScheduleExpander
 
             $others = $tournament->entries()
                 ->where('status', TournamentEntryStatusEnum::ACTIVE->value)
-                ->whereKeyNot($newEntry->id)
+                ->where('id', '!=', $newEntry->id)
                 ->orderByRaw('CASE WHEN position IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('position')
                 ->orderBy('id')
