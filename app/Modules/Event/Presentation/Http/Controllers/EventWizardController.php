@@ -71,7 +71,7 @@ final class EventWizardController extends Controller
 
         $publicTeams = Team::query()
             ->with('logo')
-            ->competitionInvitable()
+            ->competitionEligible()
             ->where('accepts_competition_invitations', true)
             ->when($query !== '', fn ($builder) => $builder->whereRaw(
                 'LOWER(name) LIKE ?',
