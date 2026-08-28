@@ -79,28 +79,22 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasIndex('tournaments', ['enrollment_policy', 'recruitment_closed_at'])) {
-            Schema::table('tournaments', function (Blueprint $table): void {
-                $table->dropIndex('tournaments_enrollment_open_idx');
-            });
+        foreach ([
+            ['enrollment_policy', 'recruitment_closed_at'],
+            ['tournament_closed_at'],
+        ] as $columns) {
+            if ($indexName = $this->indexName($columns)) {
+                Schema::table('tournaments', fn (Blueprint $table) => $table->dropIndex($indexName));
+            }
         }
 
-        if (Schema::hasIndex('tournaments', ['tournament_closed_at'])) {
-            Schema::table('tournaments', function (Blueprint $table): void {
-                $table->dropIndex(['tournament_closed_at']);
-            });
-        }
-
-        if (Schema::hasForeignKey('tournaments', ['recruitment_closed_by_actor_id'])) {
-            Schema::table('tournaments', function (Blueprint $table): void {
-                $table->dropForeign(['recruitment_closed_by_actor_id']);
-            });
-        }
-
-        if (Schema::hasForeignKey('tournaments', ['tournament_closed_by_actor_id'])) {
-            Schema::table('tournaments', function (Blueprint $table): void {
-                $table->dropForeign(['tournament_closed_by_actor_id']);
-            });
+        foreach ([
+            'recruitment_closed_by_actor_id',
+            'tournament_closed_by_actor_id',
+        ] as $column) {
+            if ($foreignKeyName = $this->foreignKeyName($column)) {
+                Schema::table('tournaments', fn (Blueprint $table) => $table->dropForeign($foreignKeyName));
+            }
         }
 
         foreach ([
@@ -115,5 +109,28 @@ return new class extends Migration
                 Schema::table('tournaments', fn (Blueprint $table) => $table->dropColumn($column));
             }
         }
+    }
+
+    /** @param list<string> $columns */
+    private function indexName(array $columns): ?string
+    {
+        foreach (Schema::getIndexes('tournaments') as $index) {
+            if ($index['columns'] === $columns) {
+                return $index['name'];
+            }
+        }
+
+        return null;
+    }
+
+    private function foreignKeyName(string $column): ?string
+    {
+        foreach (Schema::getForeignKeys('tournaments') as $foreignKey) {
+            if ($foreignKey['columns'] === [$column]) {
+                return $foreignKey['name'];
+            }
+        }
+
+        return null;
     }
 };
