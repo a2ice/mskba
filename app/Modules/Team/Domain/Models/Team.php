@@ -57,7 +57,7 @@ class Team extends Model
      *
      * @param Builder<Team> $query
      */
-    public function scopeCompetitionInvitable(Builder $query): Builder
+    public function scopeCompetitionEligible(Builder $query): Builder
     {
         return $query
             ->whereNull('temporary_for_event_id')
