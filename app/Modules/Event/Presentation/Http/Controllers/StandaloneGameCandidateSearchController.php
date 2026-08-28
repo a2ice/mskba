@@ -46,6 +46,7 @@ final class StandaloneGameCandidateSearchController extends Controller
             ])->whereNotNull('team_id')->pluck('team_id');
             $candidates = Team::query()
                 ->competitionInvitable()
+                ->where('accepts_competition_invitations', true)
                 ->whereNotIn('id', $excluded)
                 ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($data['q']).'%'])
                 ->orderBy('name')
