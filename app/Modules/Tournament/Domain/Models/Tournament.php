@@ -151,7 +151,8 @@ class Tournament extends Model
 
         if ($this->isContinuous()) {
             return $this->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
-                && $this->recruitment_closed_at === null;
+                && $this->recruitment_closed_at === null
+                && ! $this->ends_on?->isBefore(today());
         }
 
         return ! $this->competitionHasStarted()
