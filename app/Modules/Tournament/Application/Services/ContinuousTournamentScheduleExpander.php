@@ -21,6 +21,7 @@ final class ContinuousTournamentScheduleExpander
 
             if ($tournament->enrollment_policy !== TournamentEnrollmentPolicyEnum::CONTINUOUS
                 || $tournament->recruitment_mode !== TournamentRecruitmentModeEnum::PREFORMED_TEAMS
+                || $tournament->recruitment_closed_at !== null
                 || $tournament->tournament_closed_at !== null) {
                 return;
             }
