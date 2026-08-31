@@ -31,7 +31,8 @@ final class TournamentCandidateSearchController extends Controller
                 TournamentAdmissionStatusEnum::ACCEPTED->value,
             ])->whereNotNull('team_id')->pluck('team_id');
             $candidates = Team::query()
-                ->competitionInvitable()
+                ->competitionEligible()
+                ->where('accepts_competition_invitations', true)
                 ->whereNotIn('id', $excluded)
                 ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($data['q']).'%'])
                 ->orderBy('name')->limit(10)->get()

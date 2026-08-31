@@ -12,9 +12,11 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
+use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Application\Services\TournamentAccess;
 use App\Modules\Tournament\Application\Services\TournamentCoverManager;
 use App\Modules\Tournament\Application\Services\TournamentEntryRosterResolver;
+use App\Modules\Tournament\Application\Services\TournamentLifecycleService;
 use App\Modules\Tournament\Application\Services\TournamentPlayerCharacteristics;
 use App\Modules\Tournament\Application\Services\TournamentStaffService;
 use App\Modules\Tournament\Application\Services\TournamentStandingsService;
@@ -26,6 +28,7 @@ use App\Modules\Tournament\Domain\Enums\TournamentAdmissionDirectionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionRoleEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAdmissionStatusEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentAssessmentSourceEnum;
+use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
@@ -57,11 +60,16 @@ final class TournamentController extends Controller
             ->when($validated['query'] ?? null, fn ($query, $value) => $query->where('title', 'like', '%'.$value.'%'))
             ->when($validated['date_from'] ?? null, fn ($query, $value) => $query->where('starts_on', '>=', $value))
             ->when($validated['date_to'] ?? null, fn ($query, $value) => $query->where('starts_on', '<=', $value))
-            ->when($period === 'upcoming', fn ($query) => $query->where('starts_on', '>', $now->toDateString()))
+            ->when($period === 'upcoming', fn ($query) => $query
+                ->whereNull('tournament_closed_at')
+                ->where('starts_on', '>', $now->toDateString()))
             ->when($period === 'current', fn ($query) => $query
+                ->whereNull('tournament_closed_at')
                 ->where('starts_on', '<=', $now->toDateString())
                 ->where(fn ($dates) => $dates->whereNull('ends_on')->orWhere('ends_on', '>=', $now->toDateString())))
-            ->when($period === 'past', fn ($query) => $query->whereNotNull('ends_on')->where('ends_on', '<', $now->toDateString()))
+            ->when($period === 'past', fn ($query) => $query->where(fn ($past) => $past
+                ->whereNotNull('tournament_closed_at')
+                ->orWhere(fn ($dated) => $dated->whereNotNull('ends_on')->where('ends_on', '<', $now->toDateString()))))
             ->orderByDesc('starts_on')
             ->orderByDesc('id')
             ->paginate(20)
@@ -83,6 +91,7 @@ final class TournamentController extends Controller
         return ThemeResolver::page('tournaments.create', [
             'formats' => $this->formats(),
             'recruitmentModes' => TournamentRecruitmentModeEnum::cases(),
+            'enrollmentPolicies' => TournamentEnrollmentPolicyEnum::cases(),
         ]);
     }
 
@@ -143,6 +152,22 @@ final class TournamentController extends Controller
                 TournamentAdmissionStatusEnum::ACCEPTED->value,
             ])
             ->exists();
+        $teamApplicationOptions = collect();
+        if ($actor !== null
+            && $item->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
+            && $item->acceptsAdmissions()) {
+            $alreadyAppliedTeamIds = $item->admissions()
+                ->whereNotNull('team_id')
+                ->whereIn('status', [TournamentAdmissionStatusEnum::PENDING->value, TournamentAdmissionStatusEnum::ACCEPTED->value])
+                ->pluck('team_id');
+            $teamApplicationOptions = Team::query()
+                ->competitionEligible()
+                ->whereNotIn('id', $alreadyAppliedTeamIds)
+                ->orderBy('name')
+                ->get()
+                ->filter(fn (Team $team): bool => $teamAccess->allows($team, $actor, TeamPermissionEnum::MANAGE_TOURNAMENT_PARTICIPATION))
+                ->values();
+        }
         $publicParticipantCount = $item->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
             ? $item->admissions()
                 ->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)
@@ -162,6 +187,7 @@ final class TournamentController extends Controller
                 && $item->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
                 && $item->acceptsAdmissions()
                 && ! $hasActiveApplication,
+            'teamApplicationOptions' => $teamApplicationOptions,
             'admissionRoles' => TournamentAdmissionRoleEnum::cases(),
             'myPendingInvitations' => $myPendingInvitations,
             'publicParticipantCount' => $publicParticipantCount,
@@ -201,7 +227,7 @@ final class TournamentController extends Controller
             ->map(fn ($admission): int => $admission->user->canonical()->id)
             ->unique()
             ->count();
-        $competitionStarted = $matches->contains(fn ($match): bool => $match->game?->actual_started_at !== null || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true));
+        $competitionStarted = $matches->contains(fn ($match): bool => $match->game?->actual_started_at !== null || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::AWAITING_RESULT, GameStatusEnum::COMPLETED], true));
         $participantEntryNames = collect();
         $entries->each(function ($entry) use ($entryRosters, $participantEntryNames): void {
             $members = $entryRosters->resolveUsers($entry);
@@ -218,12 +244,15 @@ final class TournamentController extends Controller
                 'playerProfile.selfAssessment',
             ]));
         });
+        $hasMatches = $matches->isNotEmpty();
+        $matchesAvailable = $entries->count() >= 2 && ($item->isContinuous() || $item->participant_pool_locked_at !== null);
 
         return ThemeResolver::page('tournaments.manage', [
             'tournament' => $item,
             'formats' => $this->formats(),
             'statuses' => TournamentStatusEnum::cases(),
             'recruitmentModes' => TournamentRecruitmentModeEnum::cases(),
+            'enrollmentPolicies' => TournamentEnrollmentPolicyEnum::cases(),
             'permissionOptions' => TournamentPermissionEnum::cases(),
             'effectivePermissions' => $effectivePermissions,
             'isOwner' => $access->isOwner($item, $actor),
@@ -241,11 +270,16 @@ final class TournamentController extends Controller
             'preparationStatus' => $this->preparationStatus($item, $entries, $matches, $acceptedPlayerCount),
             'canManageGames' => $access->allows($item, $actor, TournamentPermissionEnum::MANAGE_GAMES),
             'acceptsAdmissions' => $item->acceptsAdmissions(),
-            'structuralSettingsLocked' => $item->participant_pool_locked_at !== null,
-            'recruitmentSettingLocked' => $item->admissions()->exists(),
+            'structuralSettingsLocked' => $item->participant_pool_locked_at !== null || $hasMatches,
+            'recruitmentSettingLocked' => $item->admissions()->exists() || $hasMatches,
+            'enrollmentSettingLocked' => $item->admissions()->exists() || $hasMatches,
+            'roundRobinSettingLocked' => $hasMatches,
             'admissionSettingLocked' => ! $item->acceptsAdmissions() || $item->participant_pool_locked_at !== null,
             'participantPoolLocked' => $item->participant_pool_locked_at !== null,
-            'datesFullyLocked' => $competitionStarted,
+            'matchesAvailable' => $matchesAvailable,
+            'startsDateLocked' => $competitionStarted,
+            'endsDateLocked' => $competitionStarted && ! $item->isContinuous(),
+            'datesFullyLocked' => $competitionStarted && ! $item->isContinuous(),
             'competitionStarted' => $competitionStarted,
         ]);
     }
@@ -275,15 +309,23 @@ final class TournamentController extends Controller
         Request $request,
         string $tournament,
         ChangeTournamentStatusHandler $handler,
+        TournamentLifecycleService $lifecycle,
         CurrentActorResolver $actors,
     ): RedirectResponse {
         $data = $request->validate([
-            'status' => ['required', Rule::enum(TournamentStatusEnum::class)],
+            'lifecycle_action' => ['nullable', Rule::in(['close_tournament'])],
+            'status' => ['nullable', 'required_without:lifecycle_action', Rule::enum(TournamentStatusEnum::class)],
             'status_comment' => ['nullable', 'string', 'max:2000'],
         ]);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
         try {
+            if (($data['lifecycle_action'] ?? null) === 'close_tournament') {
+                $item = Tournament::query()->whereRouteIdentifier($tournament)->firstOrFail();
+                $lifecycle->close($item, $actor);
+
+                return back()->with('status', 'Турнир завершён. Итоговая таблица зафиксирована текущими подтверждёнными результатами.');
+            }
             $handler->handle($tournament, $actor, TournamentStatusEnum::from($data['status']), $data['status_comment'] ?? null);
         } catch (InvalidArgumentException $exception) {
             return back()->with('error', $exception->getMessage());
@@ -409,11 +451,14 @@ final class TournamentController extends Controller
         if ($tournament->status === TournamentStatusEnum::CANCELLED) {
             return ['label' => 'Турнир отменён', 'modifier' => 'is-danger', 'icon' => 'ti-circle-x'];
         }
-        if ($matches->isNotEmpty() && $matches->every(fn ($match): bool => $match->game?->status === GameStatusEnum::COMPLETED)) {
+        if ($tournament->tournament_closed_at !== null) {
             return ['label' => 'Турнир завершён', 'modifier' => 'is-complete', 'icon' => 'ti-circle-check'];
         }
-        if ($matches->contains(fn ($match): bool => $match->game?->actual_started_at !== null || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true))) {
-            return ['label' => 'Турнир идёт', 'modifier' => 'is-live', 'icon' => 'ti-player-play'];
+        if (! $tournament->isContinuous() && $matches->isNotEmpty() && $matches->every(fn ($match): bool => $match->game?->status === GameStatusEnum::COMPLETED)) {
+            return ['label' => 'Турнир завершён', 'modifier' => 'is-complete', 'icon' => 'ti-circle-check'];
+        }
+        if ($matches->contains(fn ($match): bool => $match->game?->actual_started_at !== null || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::AWAITING_RESULT, GameStatusEnum::COMPLETED], true))) {
+            return ['label' => $tournament->isContinuous() && $tournament->recruitment_closed_at === null ? 'Турнир идёт · набор открыт' : 'Турнир идёт', 'modifier' => 'is-live', 'icon' => 'ti-player-play'];
         }
         if ($matches->isNotEmpty() && $matches->every(fn ($match): bool => $match->game_id !== null)) {
             return ['label' => 'Расписание готово', 'modifier' => 'is-ready', 'icon' => 'ti-calendar-check'];
@@ -422,19 +467,19 @@ final class TournamentController extends Controller
             return ['label' => 'Назначение матчей', 'modifier' => 'is-progress', 'icon' => 'ti-calendar-time'];
         }
         if ($matches->isNotEmpty()) {
-            return ['label' => 'Схема сформирована', 'modifier' => 'is-progress', 'icon' => 'ti-tournament'];
+            return ['label' => $tournament->isContinuous() ? 'Открытая лига · матчи сформированы' : 'Схема сформирована', 'modifier' => 'is-progress', 'icon' => 'ti-tournament'];
         }
         if ($tournament->participant_pool_locked_at !== null) {
             return ['label' => $tournament->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Команды определены' : 'Команды сформированы', 'modifier' => 'is-progress', 'icon' => 'ti-users-group'];
         }
         if ($entries->isNotEmpty()) {
-            return ['label' => $tournament->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Набор команд' : 'Участники определены', 'modifier' => 'is-progress', 'icon' => 'ti-users'];
+            return ['label' => $tournament->isContinuous() && $tournament->recruitment_closed_at === null ? 'Открытая лига · набор команд' : ($tournament->recruitment_mode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Набор команд' : 'Участники определены'), 'modifier' => 'is-progress', 'icon' => 'ti-users'];
         }
         if ($acceptedPlayerCount > 0) {
             return ['label' => 'Набор участников', 'modifier' => 'is-pending', 'icon' => 'ti-user-plus'];
         }
 
-        return ['label' => 'Подготовка турнира', 'modifier' => 'is-pending', 'icon' => 'ti-settings'];
+        return ['label' => $tournament->isContinuous() ? 'Открытая лига · набор открыт' : 'Подготовка турнира', 'modifier' => 'is-pending', 'icon' => 'ti-settings'];
     }
 
     /** @return array<string, mixed> */
@@ -456,6 +501,8 @@ final class TournamentController extends Controller
             'full_description' => ['nullable', 'string', 'max:20000'],
             'format' => ['nullable', Rule::in($this->formats()->pluck('value')->all())],
             'recruitment_mode' => ['nullable', Rule::enum(TournamentRecruitmentModeEnum::class)],
+            'enrollment_policy' => ['nullable', Rule::enum(TournamentEnrollmentPolicyEnum::class)],
+            'round_robin_legs' => ['nullable', 'integer', Rule::in([1, 2])],
             'accepts_unconfirmed_participants' => ['nullable', 'boolean'],
             'cover' => ['nullable', 'image', 'max:10240'],
         ]);

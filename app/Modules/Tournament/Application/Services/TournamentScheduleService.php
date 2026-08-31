@@ -63,6 +63,7 @@ final class TournamentScheduleService
                     $locked->matches()->create([...$match, 'round' => $round['round'], 'sequence' => $sequence++]);
                 }
             }
+            $locked->forceFill(['round_robin_legs' => $legs])->save();
         });
     }
 
@@ -71,8 +72,14 @@ final class TournamentScheduleService
         if ($tournament->status === TournamentStatusEnum::CANCELLED) {
             throw new InvalidArgumentException('Для отменённого турнира нельзя формировать расписание.');
         }
-        if ($tournament->participant_pool_locked_at === null) {
+        if ($tournament->tournament_closed_at !== null) {
+            throw new InvalidArgumentException('Для завершённого турнира нельзя формировать расписание.');
+        }
+        if (! $tournament->isContinuous() && $tournament->participant_pool_locked_at === null) {
             throw new InvalidArgumentException('Сначала завершите набор участников.');
+        }
+        if ($this->activeEntries($tournament)->count() < 2) {
+            throw new InvalidArgumentException('Для круговой схемы нужны минимум две стороны.');
         }
     }
 

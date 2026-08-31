@@ -6,6 +6,7 @@ use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Tournament\Application\Services\TournamentAccess;
+use App\Modules\Tournament\Domain\Enums\TournamentEnrollmentPolicyEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentPermissionEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
@@ -40,11 +41,15 @@ final class UpdateTournamentHandler
             }
             $scheduledMatches = $tournament->matches()->whereNotNull('game_id')->with('game.event')->get();
             $competitionStarted = $scheduledMatches->contains(fn ($match): bool => $match->game?->actual_started_at !== null
-                || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::COMPLETED], true));
-            $datesChanged = ! $startsOn->isSameDay($tournament->starts_on)
-                || ($endsOn?->toDateString() !== $tournament->ends_on?->toDateString());
-            if ($competitionStarted && $datesChanged) {
-                throw new InvalidArgumentException('Даты турнира нельзя менять после начала первой игры.');
+                || in_array($match->game?->status, [GameStatusEnum::IN_PROGRESS, GameStatusEnum::AWAITING_RESULT, GameStatusEnum::COMPLETED], true));
+            $startsChanged = ! $startsOn->isSameDay($tournament->starts_on);
+            $endsChanged = $endsOn?->toDateString() !== $tournament->ends_on?->toDateString();
+            $datesChanged = $startsChanged || $endsChanged;
+            if ($competitionStarted && $startsChanged) {
+                throw new InvalidArgumentException('Дату начала турнира нельзя менять после начала первой игры.');
+            }
+            if ($competitionStarted && $endsChanged && ! $tournament->isContinuous()) {
+                throw new InvalidArgumentException('Дату окончания обычного турнира нельзя менять после начала первой игры.');
             }
             if ($datesChanged && $scheduledMatches->contains(function ($match) use ($startsOn, $endsOn): bool {
                 $event = $match->game?->event;
@@ -65,13 +70,37 @@ final class UpdateTournamentHandler
                 $recruitmentMode = $format === GameFormatEnum::STREETBALL_1X1
                     ? TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
                     : TournamentRecruitmentModeEnum::from($data['recruitment_mode'] ?? $tournament->recruitment_mode->value);
-                if ($recruitmentMode !== $tournament->recruitment_mode && $tournament->admissions()->exists()) {
-                    throw new InvalidArgumentException('Режим набора нельзя менять после первой заявки или приглашения.');
+                $enrollmentPolicy = $recruitmentMode === TournamentRecruitmentModeEnum::PREFORMED_TEAMS
+                    ? TournamentEnrollmentPolicyEnum::from($data['enrollment_policy'] ?? $tournament->enrollment_policy->value)
+                    : TournamentEnrollmentPolicyEnum::FIXED_POOL;
+                $roundRobinLegs = (int) ($data['round_robin_legs'] ?? $tournament->round_robin_legs ?? 1);
+                $hasAdmissions = $tournament->admissions()->exists();
+                $hasMatches = $tournament->matches()->exists();
+
+                if ($recruitmentMode !== $tournament->recruitment_mode && ($hasAdmissions || $hasMatches)) {
+                    throw new InvalidArgumentException('Режим набора нельзя менять после первой заявки, приглашения или матча.');
                 }
-                $participantPoolLocked = $tournament->participant_pool_locked_at !== null;
-                if ($format !== $tournament->format && $participantPoolLocked) {
-                    throw new InvalidArgumentException('Сначала разблокируйте пул участников, чтобы изменить формат турнира.');
+                if ($enrollmentPolicy !== $tournament->enrollment_policy && ($hasAdmissions || $hasMatches)) {
+                    throw new InvalidArgumentException('Тип набора нельзя менять после первой заявки, приглашения или матча.');
                 }
+                if ($roundRobinLegs !== (int) $tournament->round_robin_legs && $hasMatches) {
+                    throw new InvalidArgumentException('Количество кругов нельзя менять после появления матчей.');
+                }
+                if (! in_array($roundRobinLegs, [1, 2], true)) {
+                    throw new InvalidArgumentException('Поддерживается один или два круга.');
+                }
+                $structuralSettingsLocked = $tournament->participant_pool_locked_at !== null || $hasMatches;
+                if ($format !== $tournament->format && $structuralSettingsLocked) {
+                    throw new InvalidArgumentException('Формат турнира нельзя менять после фиксации состава или появления матчей.');
+                }
+                if ($tournament->tournament_closed_at !== null && ($datesChanged
+                    || $format !== $tournament->format
+                    || $recruitmentMode !== $tournament->recruitment_mode
+                    || $enrollmentPolicy !== $tournament->enrollment_policy
+                    || $roundRobinLegs !== (int) $tournament->round_robin_legs)) {
+                    throw new InvalidArgumentException('Спортивные настройки завершённого турнира менять нельзя.');
+                }
+
                 $attributes += [
                     'title' => $data['title'],
                     'default_venue_id' => $data['default_venue_id'] ?? null,
@@ -79,7 +108,9 @@ final class UpdateTournamentHandler
                     'ends_on' => $endsOn,
                     'format' => $format,
                     'recruitment_mode' => $recruitmentMode,
-                    'accepts_unconfirmed_participants' => $participantPoolLocked || ! $tournament->acceptsAdmissions()
+                    'enrollment_policy' => $enrollmentPolicy,
+                    'round_robin_legs' => $roundRobinLegs,
+                    'accepts_unconfirmed_participants' => $structuralSettingsLocked || ! $tournament->acceptsAdmissions()
                         ? $tournament->accepts_unconfirmed_participants
                         : $recruitmentMode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
                             && (bool) ($data['accepts_unconfirmed_participants'] ?? false),

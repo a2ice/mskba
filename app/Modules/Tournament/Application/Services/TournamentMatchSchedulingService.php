@@ -49,7 +49,9 @@ final class TournamentMatchSchedulingService
             $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
             $lockedMatch = $lockedTournament->matches()->whereKey($match->id)->lockForUpdate()->firstOrFail();
-            if ($lockedTournament->status === TournamentStatusEnum::CANCELLED || $lockedMatch->game_id !== null) {
+            if ($lockedTournament->status === TournamentStatusEnum::CANCELLED
+                || $lockedTournament->tournament_closed_at !== null
+                || $lockedMatch->game_id !== null) {
                 throw new InvalidArgumentException('Этот матч нельзя назначить или он уже назначен.');
             }
 
@@ -166,6 +168,9 @@ final class TournamentMatchSchedulingService
             $venues = Venue::query()->whereKey($venueIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
+            if ($lockedTournament->tournament_closed_at !== null) {
+                throw new InvalidArgumentException('Игры завершённого турнира переносить нельзя.');
+            }
             $lockedMatch = $lockedTournament->matches()->whereKey($match->id)->lockForUpdate()->firstOrFail();
             $game = Game::query()->whereKey($lockedMatch->game_id)->lockForUpdate()->firstOrFail();
             $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();

@@ -9,6 +9,7 @@
         $organizer?->profile?->last_name,
     ]))) ?: $organizer?->username ?: 'Организатор';
     $teamsLabel = $tournament->format?->sideSize() === 1 ? 'Участники' : 'Команды';
+    $continuous = $tournament->isContinuous();
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
@@ -16,7 +17,7 @@
     'sectionId' => 'tournament',
     'sectionClass' => 'tournaments-section tournament-show-section',
     'contentTitle' => $tournament->title,
-    'contentSubtitle' => $tournament->starts_on->format('d.m.Y').($tournament->ends_on ? ' — '.$tournament->ends_on->format('d.m.Y') : ''),
+    'contentSubtitle' => $tournament->starts_on->format('d.m.Y').($tournament->ends_on ? ' — '.$tournament->ends_on->format('d.m.Y') : ($continuous ? ' — без заданной даты окончания' : '')),
     'sidebarLabel' => 'Навигация турнира',
 ])
 
@@ -46,7 +47,13 @@
             <img class="tournament-show-hero__cover" src="{{ $tournament->cover->publicUrl() }}" alt="Обложка турнира {{ $tournament->title }}">
         @endif
         <span class="eyebrow">Турнир · {{ $tournament->phase()->label() }}</span>
-        <p><strong>{{ $tournament->status->label() }}</strong>@if($tournament->format) · {{ $tournament->format->label() }}@endif</p>
+        <p><strong>{{ $tournament->status->label() }}</strong>@if($tournament->format) · {{ $tournament->format->label() }}@endif @if($continuous) · <strong>Открытая лига</strong> · {{ $tournament->round_robin_legs === 2 ? '2 круга' : '1 круг' }}@endif</p>
+        @if($continuous && !$tournament->tournament_closed_at)
+            <div class="alert {{ $tournament->recruitment_closed_at ? 'alert-info' : 'alert-success' }}">
+                <strong>{{ $tournament->recruitment_closed_at ? 'Набор команд закрыт' : 'Набор команд открыт' }}</strong>
+                @if(!$tournament->recruitment_closed_at)<br>Новая постоянная команда может присоединиться уже по ходу турнира; недостающие встречи будут добавлены автоматически.@endif
+            </div>
+        @endif
         <p class="tournament-organizer"><span>Организатор:</span> <button class="tournament-organizer__trigger" type="button" title="Действия для связи с организатором появятся здесь позже" data-tooltip-variant="title" data-tournament-organizer-trigger data-organizer-id="{{ $organizer?->id }}" data-organizer-username="{{ $organizer?->username }}">{{ $organizerName }}</button></p>
         @if($tournament->status_comment)<div class="alert alert-info">{{ $tournament->status_comment }}</div>@endif
         @if($tournament->short_description)<p>{{ $tournament->short_description }}</p>@endif
@@ -63,9 +70,18 @@
                 @endforeach
             @elseif($canApplyAsPlayer)
                 <span data-tournament-application-cta="{{ $tournament->id }}"><button class="btn btn--primary btn--sm mt-4 js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="tournament-application-role">Подать заявку</button></span>
+            @elseif($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS && $tournament->acceptsAdmissions())
+                @if($teamApplicationOptions->isNotEmpty())
+                    <form method="POST" action="{{ route('tournaments.admissions.apply', $tournament->routeIdentifier()) }}" class="row g-2 align-items-end mt-4">@csrf
+                        <div class="col-md-8"><label class="form-label" for="tournamentTeamApplication">Подать заявку постоянной командой</label><select class="form-select" id="tournamentTeamApplication" name="team_id" required><option value="">Выберите команду</option>@foreach($teamApplicationOptions as $team)<option value="{{ $team->id }}">{{ $team->name }}</option>@endforeach</select></div>
+                        <div class="col-md-4"><button class="btn btn--primary w-100" type="submit">Подать заявку командой</button></div>
+                    </form>
+                @else
+                    <p class="form-text mt-4">Чтобы подать заявку командой, нужна активная постоянная команда, которую вы имеете право представлять в турнирах.</p>
+                @endif
             @endif
         @else
-            @if($tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT && $tournament->acceptsAdmissions())
+            @if($tournament->acceptsAdmissions())
                 <span data-tournament-application-cta="{{ $tournament->id }}"><button
                     class="btn btn--primary btn--sm mt-4 js-handler"
                     type="button"
@@ -73,7 +89,7 @@
                     data-modal-action="open"
                     data-modal-target="auth-entry-classic"
                     data-auth-redirect-url="{{ route('tournaments.show', $tournament->routeIdentifier(), false) }}"
-                >Подать заявку</button></span>
+                >{{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Подать заявку командой' : 'Подать заявку' }}</button></span>
             @endif
         @endauth
     </article>
@@ -100,7 +116,7 @@
         @endif
     @endauth
 
-    <section class="section-card mb-4" id="overview"><h2>Обзор</h2><p>{{ $tournament->short_description ?: 'Описание турнира пока не добавлено.' }}</p><div class="d-flex flex-wrap gap-3"><span>{{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Команд' : 'Участников' }}: {{ $publicParticipantCount }}</span><span>Матчей: {{ $tournament->matches->count() }}</span><span>Подтверждено результатов: {{ (int) (collect($standings)->sum('played') / 2) }}</span></div></section>
+    <section class="section-card mb-4" id="overview"><h2>Обзор</h2><p>{{ $tournament->short_description ?: 'Описание турнира пока не добавлено.' }}</p><div class="d-flex flex-wrap gap-3"><span>{{ $tournament->recruitment_mode === \App\Modules\Tournament\Domain\Enums\TournamentRecruitmentModeEnum::PREFORMED_TEAMS ? 'Команд' : 'Участников' }}: {{ $publicParticipantCount }}</span><span>Матчей: {{ $tournament->matches->count() }}</span><span>Подтверждено результатов: {{ (int) (collect($standings)->sum('played') / 2) }}</span>@if($continuous)<span>{{ $tournament->recruitment_closed_at ? 'Набор закрыт' : 'Набор открыт' }}</span>@endif</div></section>
 
     <section class="section-card mb-4" id="teams"><h2>{{ $teamsLabel }}</h2>
         @if($tournament->entries->isNotEmpty())<div class="tournament-team-grid">@foreach($tournament->entries as $entry)
