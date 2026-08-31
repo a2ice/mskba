@@ -140,8 +140,8 @@ function updateAuthoredCustomization(runtime, state) {
 function updateStage(stage, form, runtime = null) {
     const state = readState(stage, form);
     stage.dataset.hasHeight = state.heightCm === null ? 'false' : 'true';
-    updatePlayerCharacterThree(stage, state);
     updateAuthoredCustomization(runtime, state);
+    updatePlayerCharacterThree(stage, state);
 
     stage.dispatchEvent(new CustomEvent('player-character:change', {
         bubbles: true,

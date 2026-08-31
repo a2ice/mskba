@@ -8,6 +8,34 @@ use Tests\TestCase;
 final class PlayerCharacterModelAssetTest extends TestCase
 {
     #[Test]
+    public function male_body_preview_exposes_the_height_and_bmi_morph_lattice(): void
+    {
+        [, $document] = $this->readGlb(
+            resource_path('themes/mskba_dark/models/player-character/mskba-male-player-body-posed-preview.glb'),
+        );
+        $meshNames = array_column($document['meshes'], 'name');
+        $bodyIndex = array_search('Body_Mesh', $meshNames, true);
+
+        $this->assertNotFalse($bodyIndex);
+        $targetNames = $document['meshes'][$bodyIndex]['extras']['targetNames'];
+
+        foreach ([
+            'metric_h150_bmi17',
+            'metric_h150_bmi23',
+            'metric_h150_bmi38',
+            'metric_h185_bmi17',
+            'metric_h185_bmi38',
+            'metric_h220_bmi17',
+            'metric_h220_bmi23',
+            'metric_h220_bmi38',
+            'body_athletic',
+            'body_muscle',
+        ] as $targetName) {
+            $this->assertContains($targetName, $targetNames);
+        }
+    }
+
+    #[Test]
     public function male_and_female_assets_implement_the_same_authored_runtime_contract(): void
     {
         $documents = [];
@@ -56,7 +84,7 @@ final class PlayerCharacterModelAssetTest extends TestCase
         $source = file_get_contents(resource_path('themes/mskba_dark/js/features/player-character-authored-renderer.js'));
 
         $this->assertIsString($source);
-        $this->assertStringContainsString('mskba-male-player-v1.glb?url', $source);
+        $this->assertStringContainsString('mskba-male-player-body-posed-preview.glb?url', $source);
         $this->assertStringContainsString('mskba-female-player-v1.glb?url', $source);
         $this->assertStringContainsString("import('three')", $source);
         $this->assertStringContainsString('MODEL_URLS[normalizeGender(gender)]', $source);
@@ -80,7 +108,9 @@ final class PlayerCharacterModelAssetTest extends TestCase
         $this->assertStringContainsString('updateAuthoredAccessories', $stage);
 
         $this->assertStringContainsString('BODY_TYPE_MORPHS', $customization);
-        $this->assertStringContainsString("'body_heavy'", $customization);
+        $this->assertStringContainsString("'metric_h150_bmi38'", $customization);
+        $this->assertStringContainsString("'metric_h220_bmi38'", $customization);
+        $this->assertStringContainsString('BMI_NODES', $customization);
         $this->assertStringContainsString('MSKBA_Hair_Male_Fade', $customization);
         $this->assertStringContainsString('MSKBA_Hair_Female_Ponytail', $customization);
         $this->assertStringContainsString('MSKBA_Beard_Short', $customization);

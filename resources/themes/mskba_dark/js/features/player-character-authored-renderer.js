@@ -1,5 +1,5 @@
 import authoredFemaleModelUrl from '../../models/player-character/mskba-female-player-v1.glb?url';
-import authoredMaleModelUrl from '../../models/player-character/mskba-male-player-v1.glb?url';
+import authoredMaleModelUrl from '../../models/player-character/mskba-male-player-body-posed-preview.glb?url';
 
 // The viewport is literal metric space: X=-1..1 = 200 cm, Y=0..2.5 = 250 cm.
 const SCENE_LEFT = -1;
@@ -38,7 +38,7 @@ function clamp(value, min, max) {
 }
 
 function targetHeightMeters(state) {
-    return clamp((Number(state.heightCm) || 180) / 100, 1.45, SCENE_TOP);
+    return clamp((Number(state.heightCm) || 185) / 100, 1.5, 2.2);
 }
 
 async function loadEngine() {
@@ -210,7 +210,7 @@ function measureAndNormalizeModel(runtime) {
     modelRoot.updateMatrixWorld(true);
     model.updateMatrixWorld(true);
 
-    const box = new THREE.Box3().setFromObject(body);
+    const box = new THREE.Box3().setFromObject(body, true);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
@@ -224,17 +224,35 @@ function measureAndNormalizeModel(runtime) {
 }
 
 function applyMetricHeight(runtime, state) {
-    if (!runtime.modelRoot || !runtime.modelBaseHeight) {
+    const body = runtime.model?.getObjectByName('Body');
+    if (!runtime.modelRoot || !body?.isMesh) {
         return;
     }
 
-    const heightMeters = targetHeightMeters(state);
-    const uniformScale = heightMeters / runtime.modelBaseHeight;
+    const yaw = runtime.modelRoot.rotation.y;
+    runtime.modelRoot.rotation.y = 0;
+    runtime.modelRoot.scale.set(1, 1, 1);
+    runtime.model.position.set(0, 0, 0);
+    runtime.modelRoot.updateMatrixWorld(true);
+    runtime.model.updateMatrixWorld(true);
 
-    runtime.modelRoot.scale.setScalar(uniformScale);
+    // `precise=true` evaluates the currently blended morph vertices. Without it,
+    // Three.js uses bounds covering every height/BMI target, which raises the
+    // visible feet above the floor and produces the wrong metric height.
+    const box = new runtime.THREE.Box3().setFromObject(body, true);
+    const size = box.getSize(new runtime.THREE.Vector3());
+    const center = box.getCenter(new runtime.THREE.Vector3());
+    const heightMeters = targetHeightMeters(state);
+    const authoredHeight = Math.max(size.y, 0.001);
+    const calibrationScale = heightMeters / authoredHeight;
+
+    runtime.model.position.set(-center.x, -box.min.y, -center.z);
+    runtime.modelRoot.scale.setScalar(calibrationScale);
     runtime.modelRoot.position.set(0, 0, 0);
+    runtime.modelRoot.rotation.y = yaw;
+    runtime.modelRoot.updateMatrixWorld(true);
     runtime.targetHeightMeters = heightMeters;
-    runtime.displayWidthMeters = runtime.modelBaseWidth * uniformScale;
+    runtime.displayWidthMeters = size.x * calibrationScale;
 }
 
 function updateHeightMarker(runtime) {
