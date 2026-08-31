@@ -15,7 +15,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-hhipc9U3.css",
+    "file": "assets/app-C8VR-Ojc.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-DjASqkqG.css",
+    "file": "assets/app-BgFkkd-g.css",
     "name": "app",
     "names": [
       "app.css"
@@ -66,7 +66,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-CZq7k3p6.js",
+    "file": "assets/app-BsTBj7eJ.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
@@ -79,16 +79,16 @@
     ],
     "assets": [
       "assets/mskba-female-player-v1-C_A-jYPE.glb",
-      "assets/mskba-male-player-v1-Dg5Enc-A.glb"
+      "assets/mskba-male-player-body-posed-preview-DQ-2zDMm.glb"
     ]
   },
   "resources/themes/mskba_dark/models/player-character/mskba-female-player-v1.glb": {
     "file": "assets/mskba-female-player-v1-C_A-jYPE.glb",
     "src": "resources/themes/mskba_dark/models/player-character/mskba-female-player-v1.glb"
   },
-  "resources/themes/mskba_dark/models/player-character/mskba-male-player-v1.glb": {
-    "file": "assets/mskba-male-player-v1-Dg5Enc-A.glb",
-    "src": "resources/themes/mskba_dark/models/player-character/mskba-male-player-v1.glb"
+  "resources/themes/mskba_dark/models/player-character/mskba-male-player-body-posed-preview.glb": {
+    "file": "assets/mskba-male-player-body-posed-preview-DQ-2zDMm.glb",
+    "src": "resources/themes/mskba_dark/models/player-character/mskba-male-player-body-posed-preview.glb"
   },
   "resources/themes/mskba_streetball/css/app.css": {
     "file": "assets/app-IW2P2fJz.css",

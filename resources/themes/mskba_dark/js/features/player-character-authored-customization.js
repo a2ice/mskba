@@ -1,18 +1,30 @@
 const MORPH_NAMES = [
+    'metric_h150_bmi17',
+    'metric_h150_bmi23',
+    'metric_h150_bmi38',
+    'metric_h185_bmi17',
+    'metric_h185_bmi38',
+    'metric_h220_bmi17',
+    'metric_h220_bmi23',
+    'metric_h220_bmi38',
     'body_slim',
-    'body_heavy',
-    'body_muscular',
+    'body_fat',
+    'body_athletic',
+    'body_muscle',
     'body_stocky',
 ];
 
 const BODY_TYPE_MORPHS = {
     unspecified: {},
-    slim: { body_slim: 0.72 },
-    athletic: { body_muscular: 0.28 },
-    muscular: { body_muscular: 0.88 },
-    stocky: { body_stocky: 0.82, body_heavy: 0.12 },
-    large: { body_heavy: 0.78, body_stocky: 0.36 },
+    slim: { body_slim: 0.25 },
+    athletic: { body_athletic: 0.65 },
+    muscular: { body_muscle: 0.72 },
+    stocky: { body_stocky: 0.45 },
+    large: { body_fat: 0.30, body_stocky: 0.12 },
 };
+
+const HEIGHT_NODES = [150, 185, 220];
+const BMI_NODES = [17, 23, 38];
 
 const HAIR_TONES = {
     black: '#171513',
@@ -36,22 +48,54 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
 
+function interpolationSegment(nodes, rawValue) {
+    const value = clamp(rawValue, nodes[0], nodes[nodes.length - 1]);
+    const upperIndex = nodes.findIndex((node) => node >= value);
+    const upper = nodes[Math.max(upperIndex, 0)];
+    const lower = nodes[Math.max(upperIndex - 1, 0)];
+
+    if (lower === upper) {
+        return [{ value: lower, weight: 1 }];
+    }
+
+    const progress = (value - lower) / (upper - lower);
+    return [
+        { value: lower, weight: 1 - progress },
+        { value: upper, weight: progress },
+    ];
+}
+
+function metricMorphWeights(state) {
+    const heightCm = clamp(Number(state.heightCm) || 185, 150, 220);
+    const heightMeters = heightCm / 100;
+    const weightKg = clamp(Number(state.weightKg) || 78, 40, 140);
+    const bmi = weightKg / (heightMeters * heightMeters);
+    const weights = {};
+
+    interpolationSegment(HEIGHT_NODES, heightCm).forEach((heightNode) => {
+        interpolationSegment(BMI_NODES, bmi).forEach((bmiNode) => {
+            // h185/bmi23 is the Basis itself. Its interpolation share remains
+            // implicit; all other nodes are deltas relative to that basis.
+            if (heightNode.value === 185 && bmiNode.value === 23) {
+                return;
+            }
+
+            weights[`metric_h${heightNode.value}_bmi${bmiNode.value}`] =
+                heightNode.weight * bmiNode.weight;
+        });
+    });
+
+    return weights;
+}
+
 function morphWeights(state) {
     const weights = Object.fromEntries(MORPH_NAMES.map((name) => [name, 0]));
+    Object.assign(weights, metricMorphWeights(state));
+
     const bodyType = BODY_TYPE_MORPHS[state.bodyType] || BODY_TYPE_MORPHS.unspecified;
     Object.entries(bodyType).forEach(([name, value]) => {
         weights[name] = value;
     });
-
-    const heightMeters = Math.max((Number(state.heightCm) || 180) / 100, 1.45);
-    const weightKg = Number(state.weightKg) || 78;
-    const bmiDelta = clamp((weightKg / (heightMeters * heightMeters) - 22.5) / 12, -1, 1);
-
-    if (bmiDelta < 0) {
-        weights.body_slim = clamp(weights.body_slim + Math.abs(bmiDelta) * 0.58, 0, 1);
-    } else {
-        weights.body_heavy = clamp(weights.body_heavy + bmiDelta * 0.62, 0, 1);
-    }
 
     return weights;
 }
