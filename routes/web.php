@@ -35,10 +35,12 @@ use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
 use App\Modules\Team\Presentation\Http\Controllers\AccountTeamsController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamController;
+use App\Modules\Team\Presentation\Http\Controllers\TeamHiringController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamInvitationController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamPermissionController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamRoleController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamRosterController;
+use App\Modules\Team\Presentation\Http\Controllers\TeamVenueController;
 use App\Modules\Telegram\Presentation\Http\Controllers\StartTelegramBotLoginController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramBotLoginStatusController;
 use App\Modules\Telegram\Presentation\Http\Controllers\TelegramMiniAppController;
@@ -516,6 +518,13 @@ Route::prefix('teams')->group(function () {
         Route::post('/', [TeamController::class, 'store'])->middleware('can:team-create')->name('teams.store');
         Route::get('/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit')->defaults('breadcrumb', 'Управление командой');
         Route::put('/{team}', [TeamController::class, 'update'])->name('teams.update');
+        Route::get('/{team}/venues', [TeamVenueController::class, 'index'])->name('teams.venues.index')->defaults('breadcrumb', 'Площадки');
+        Route::post('/{team}/venues', [TeamVenueController::class, 'store'])->name('teams.venues.store');
+        Route::delete('/{team}/venues/{relation}', [TeamVenueController::class, 'destroy'])->whereNumber('relation')->name('teams.venues.destroy');
+        Route::get('/{team}/hiring', [TeamHiringController::class, 'index'])->name('teams.hiring.index')->defaults('breadcrumb', 'Набор в команду');
+        Route::post('/{team}/hiring', [TeamHiringController::class, 'store'])->name('teams.hiring.store');
+        Route::put('/{team}/hiring/{hiringPosition}', [TeamHiringController::class, 'update'])->whereNumber('hiringPosition')->name('teams.hiring.update');
+        Route::patch('/{team}/hiring/{hiringPosition}/status', [TeamHiringController::class, 'status'])->whereNumber('hiringPosition')->name('teams.hiring.status');
         Route::delete('/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
         Route::post('/{team}/logo', [TeamController::class, 'storeLogo'])
             ->middleware('throttle:10,1')->name('teams.logo.store');

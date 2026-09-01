@@ -1,6 +1,6 @@
 @php
     $title = 'Команды';
-    $activeFilterCount = collect(['member_count', 'sport_type'])->filter(fn ($key) => filled($filters[$key] ?? null))->count();
+    $activeFilterCount = collect(['member_count', 'sport_type', 'hiring'])->filter(fn ($key) => filled($filters[$key] ?? null))->count();
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -46,6 +46,13 @@
                         <option value="">Любая</option>
                         <option value="streetball" @selected($filters['sport_type'] === 'streetball')>Стритбольная</option>
                         <option value="basketball" @selected($filters['sport_type'] === 'basketball')>Баскетбольная</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Набор игроков</span>
+                    <select name="hiring" class="form-select">
+                        <option value="">Любой</option>
+                        <option value="1" @selected($filters['hiring'])>Идёт набор</option>
                     </select>
                 </label>
                 <div class="teams-catalog-filters__actions">
@@ -113,6 +120,12 @@
                                         <i class="ti ti-alert-triangle team-status-badge__icon" aria-hidden="true"></i>
                                     </span>
                                 @endunless
+                                @if($team->active_hiring_positions_count > 0)
+                                    <span class="catalog-card__badge team-status-badge" title="Команда ведёт набор" data-tooltip-variant="title" data-tooltip-icon aria-label="Команда ведёт набор">
+                                        <span class="team-status-badge__label">Идёт набор</span>
+                                        <i class="ti ti-user-plus team-status-badge__icon" aria-hidden="true"></i>
+                                    </span>
+                                @endif
                             </div>
                             <h2 class="catalog-card__title"><a href="{{ route('teams.show', $team->routeIdentifier()) }}">{{ $team->name }}</a></h2>
                             <p class="catalog-card__description team-catalog-card__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>

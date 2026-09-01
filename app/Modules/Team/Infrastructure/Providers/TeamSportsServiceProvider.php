@@ -82,7 +82,7 @@ final class TeamSportsServiceProvider extends ServiceProvider
             $identityIds = $actor?->user?->canonical()->identityIds() ?? [];
             $currentJoinRequest = $identityIds === []
                 ? null
-                : $team->joinRequests()->whereIn('user_id', $identityIds)->latest('id')->first();
+                : $team->joinRequests()->with('hiringPosition')->whereIn('user_id', $identityIds)->latest('id')->first();
             $isActiveMember = $identityIds !== [] && $team->memberships()
                 ->whereIn('user_id', $identityIds)
                 ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
@@ -97,6 +97,7 @@ final class TeamSportsServiceProvider extends ServiceProvider
                 'hasCompleteRoster' => $startingLineups->every('is_complete'),
                 'canEditSettings' => $actor !== null && $access->allows($team, $actor, TeamPermissionEnum::EDIT_SETTINGS),
                 'canManageJoinRequests' => $actor !== null && $access->allows($team, $actor, TeamPermissionEnum::MANAGE_JOIN_REQUESTS),
+                'canManageHiring' => $actor !== null && $access->allows($team, $actor, TeamPermissionEnum::MANAGE_HIRING),
                 'currentJoinRequest' => $currentJoinRequest,
                 'isActiveTeamMember' => $isActiveMember,
                 'canApplyToTeam' => auth()->check()

@@ -18,6 +18,8 @@
 @if($canEditSettings)<li class="nav-item"><a class="nav-link" href="{{ route('teams.edit', $team->routeIdentifier()) }}">Основные настройки</a></li>@endif
 @if($canManageMembersAndRoster)<li class="nav-item"><a class="nav-link" href="{{ route('teams.management', $team->routeIdentifier()) }}">Состав и участники</a></li>@endif
 <li class="nav-item active"><a class="nav-link active" href="{{ route('teams.join-requests.index', $team->routeIdentifier()) }}">Заявки на вступление</a></li>
+@if($canManageVenues)<li class="nav-item"><a class="nav-link" href="{{ route('teams.venues.index', $team->routeIdentifier()) }}">Площадки</a></li>@endif
+@if($canManageHiring)<li class="nav-item"><a class="nav-link" href="{{ route('teams.hiring.index', $team->routeIdentifier()) }}">Набор</a></li>@endif
 </ul></div>
 @endsection
 @section('section-content')
@@ -34,6 +36,7 @@
                     <div>
                         <strong>{{ $userName($entry) }}</strong>
                         <span>{{ '@'.$entry->user->username }} · {{ $entry->status->label() }}</span>
+                        @if($entry->hiringPosition)<span>Заявка на вакансию #{{ $entry->hiringPosition->id }}</span>@endif
                     </div>
                 </div>
 

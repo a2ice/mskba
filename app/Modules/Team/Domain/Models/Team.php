@@ -55,7 +55,7 @@ class Team extends Model
      * Permanent active teams eligible for competition flows.
      * Invitation-specific callers must additionally respect accepts_competition_invitations.
      *
-     * @param Builder<Team> $query
+     * @param  Builder<Team>  $query
      */
     public function scopeCompetitionEligible(Builder $query): Builder
     {
@@ -88,6 +88,16 @@ class Team extends Model
     public function sportProfiles(): HasMany
     {
         return $this->hasMany(TeamSportProfile::class);
+    }
+
+    public function venueRelations(): HasMany
+    {
+        return $this->hasMany(TeamVenueRelation::class);
+    }
+
+    public function hiringPositions(): HasMany
+    {
+        return $this->hasMany(TeamHiringPosition::class);
     }
 
     public function media(): MorphMany

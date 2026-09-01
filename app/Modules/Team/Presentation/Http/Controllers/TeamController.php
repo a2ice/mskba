@@ -25,7 +25,9 @@ use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamSportTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
+use App\Modules\Team\Domain\Enums\TeamVenueRelationTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Presentation\Theming\ThemeResolver;
 use App\Support\Text\CyrillicTransliterator;
 use Illuminate\Http\JsonResponse;
@@ -48,10 +50,12 @@ final class TeamController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
             'member_count' => ['nullable', Rule::in(['small', 'medium', 'large'])],
             'sport_type' => ['nullable', Rule::enum(TeamSportTypeEnum::class)],
+            'hiring' => ['nullable', 'boolean'],
         ]);
         $search = trim((string) ($filters['q'] ?? ''));
         $memberCount = (string) ($filters['member_count'] ?? '');
         $sportType = (string) ($filters['sport_type'] ?? '');
+        $hiring = $request->boolean('hiring');
         $activeMemberships = fn ($query) => $query
             ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
             ->whereHas('contract', fn ($contract) => $contract->where('status', ContractStatusEnum::ACTIVE));
@@ -64,6 +68,7 @@ final class TeamController extends Controller
                     'sportProfiles',
                     fn ($profiles) => $profiles->where('sport_type', $sportType),
                 ))
+                ->when($hiring, fn ($query) => $query->whereHas('hiringPositions', fn ($positions) => $positions->available()))
                 ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search): void {
                     $query->whereLike('name', "%{$search}%")
                         ->orWhereLike('description', "%{$search}%");
@@ -82,10 +87,11 @@ final class TeamController extends Controller
                         ->with(['contract', 'user.profile']),
                 ])
                 ->withCount(['memberships as active_memberships_count' => $activeMemberships])
+                ->withCount(['hiringPositions as active_hiring_positions_count' => fn ($positions) => $positions->available()])
                 ->orderBy('name')
                 ->paginate(20)
                 ->withQueryString(),
-            'filters' => ['q' => $search, 'member_count' => $memberCount, 'sport_type' => $sportType],
+            'filters' => ['q' => $search, 'member_count' => $memberCount, 'sport_type' => $sportType, 'hiring' => $hiring],
         ]);
     }
 
@@ -197,7 +203,17 @@ final class TeamController extends Controller
         PageSeoResolver $pageSeo,
     ): Response {
         $item = Team::query()->whereRouteIdentifier($team)
-            ->with(['logo', 'sportProfiles.lineupMembers', 'memberships.contract.permissions', 'memberships.user.profile.activeAvatar'])
+            ->with([
+                'logo',
+                'sportProfiles.lineupMembers',
+                'memberships.contract.permissions',
+                'memberships.user.profile.activeAvatar',
+                'venueRelations' => fn ($relations) => $relations
+                    ->where('relation_type', TeamVenueRelationTypeEnum::DESIRED)
+                    ->whereHas('venue', fn ($venues) => $venues->where('status', VenueStatusEnum::CONFIRMED))
+                    ->with('venue'),
+                'hiringPositions' => fn ($positions) => $positions->available()->oldest(),
+            ])
             ->firstOrFail();
         $actor = $actors->resolveForRequest($request);
         $activeMemberships = $item->memberships
@@ -242,6 +258,8 @@ final class TeamController extends Controller
             'hasCompleteRoster' => $startingLineups->every('is_complete'),
             'canManage' => $actor !== null && $access->canManage($item, $actor),
             'canManageMembersAndRoster' => $actor !== null && $access->canManageMembersAndRoster($item, $actor),
+            'canManageVenues' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_VENUES),
+            'canManageHiring' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_HIRING),
             'canManageRoster' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROSTER),
             'canInviteMembers' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::INVITE_MEMBERS),
             'canManageRoles' => $actor !== null && $access->allows($item, $actor, TeamPermissionEnum::MANAGE_ROLES),
@@ -277,6 +295,8 @@ final class TeamController extends Controller
                 && $item->status === TeamStatusEnum::ACTIVE,
             'canManageMembersAndRoster' => $access->canManageMembersAndRoster($item, $actor),
             'canManageJoinRequests' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_JOIN_REQUESTS),
+            'canManageVenues' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_VENUES),
+            'canManageHiring' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_HIRING),
         ]);
     }
 

@@ -13,12 +13,14 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Application\Services\TeamNotificationService;
 use App\Modules\Team\Application\Services\TeamRosterService;
+use App\Modules\Team\Domain\Enums\TeamHiringStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Team\Domain\Models\TeamHiringPosition;
 use App\Modules\Team\Domain\Models\TeamJoinRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
@@ -40,7 +42,7 @@ final class TeamJoinRequestController extends Controller
         abort_if($actor === null || ! $access->allows($item, $actor, TeamPermissionEnum::MANAGE_JOIN_REQUESTS), 403);
 
         $requests = $item->joinRequests()
-            ->with(['user.profile.activeAvatar', 'reviewedBy.profile'])
+            ->with(['user.profile.activeAvatar', 'reviewedBy.profile', 'hiringPosition'])
             ->orderByRaw("case status when 'pending' then 0 when 'blocked' then 1 else 2 end")
             ->orderByDesc('updated_at')
             ->get();
@@ -50,50 +52,74 @@ final class TeamJoinRequestController extends Controller
             'joinRequests' => $requests,
             'canEditSettings' => $access->allows($item, $actor, TeamPermissionEnum::EDIT_SETTINGS),
             'canManageMembersAndRoster' => $access->canManageMembersAndRoster($item, $actor),
+            'canManageVenues' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_VENUES),
+            'canManageHiring' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_HIRING),
         ]);
     }
 
     public function store(string $team, Request $request, TeamNotificationService $teamNotifications): RedirectResponse
     {
+        $data = $request->validate(['team_hiring_position_id' => ['nullable', 'integer']]);
         $item = Team::query()->whereRouteIdentifier($team)->firstOrFail();
         $user = $request->user()->canonical();
         abort_if($user->isBlocked() || $user->trashed(), 403);
-        abort_if($item->status !== TeamStatusEnum::ACTIVE || ! $item->accepts_join_requests, 422, 'Команда сейчас не принимает заявки.');
+        abort_if($item->status !== TeamStatusEnum::ACTIVE, 422, 'Команда сейчас не принимает заявки.');
 
-        $identityIds = $user->identityIds();
-        $alreadyMember = $item->memberships()
-            ->whereIn('user_id', $identityIds)
-            ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
-            ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
-            ->exists();
-        abort_if($alreadyMember, 422, 'Вы уже состоите в этой команде.');
+        $joinRequest = DB::transaction(function () use ($item, $user, $data): TeamJoinRequest {
+            $lockedTeam = Team::query()->lockForUpdate()->findOrFail($item->id);
+            $hiringPositionId = isset($data['team_hiring_position_id']) ? (int) $data['team_hiring_position_id'] : null;
+            $hiringPosition = $hiringPositionId === null
+                ? null
+                : TeamHiringPosition::query()
+                    ->where('team_id', $lockedTeam->id)
+                    ->whereKey($hiringPositionId)
+                    ->lockForUpdate()
+                    ->first();
+            abort_if(
+                $hiringPositionId !== null && ($hiringPosition === null
+                    || $hiringPosition->status !== TeamHiringStatusEnum::ACTIVE
+                    || $hiringPosition->remainingSpots() === 0),
+                422,
+                'Эта вакансия уже закрыта.',
+            );
+            abort_if($hiringPosition === null && ! $lockedTeam->accepts_join_requests, 422, 'Команда сейчас не принимает общие заявки.');
 
-        $joinRequest = TeamJoinRequest::query()
-            ->where('team_id', $item->id)
-            ->whereIn('user_id', $identityIds)
-            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
-            ->orderBy('id')
-            ->first();
-        if ($joinRequest === null) {
-            $joinRequest = new TeamJoinRequest([
-                'team_id' => $item->id,
-                'user_id' => $user->id,
-            ]);
-        }
+            $identityIds = $user->identityIds();
+            $alreadyMember = $lockedTeam->memberships()
+                ->whereIn('user_id', $identityIds)
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->whereHas('contract', fn ($query) => $query->where('status', ContractStatusEnum::ACTIVE->value))
+                ->exists();
+            abort_if($alreadyMember, 422, 'Вы уже состоите в этой команде.');
 
-        abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::BLOCKED, 422, 'Отправка заявок в эту команду для вас заблокирована.');
-        abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::PENDING, 422, 'Ваша заявка уже ожидает решения.');
-        abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::ACCEPTED, 422, 'Ваша заявка уже была принята.');
+            $joinRequest = TeamJoinRequest::query()
+                ->where('team_id', $lockedTeam->id)
+                ->whereIn('user_id', $identityIds)
+                ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
+            if ($joinRequest === null) {
+                $joinRequest = new TeamJoinRequest(['team_id' => $lockedTeam->id, 'user_id' => $user->id]);
+            }
 
-        $joinRequest->fill([
-            'status' => TeamJoinRequestStatusEnum::PENDING,
-            'review_reason' => null,
-            'reviewed_by_user_id' => null,
-            'reviewed_at' => null,
-        ])->save();
+            abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::BLOCKED, 422, 'Отправка заявок в эту команду для вас заблокирована.');
+            abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::PENDING, 422, 'Ваша заявка уже ожидает решения.');
+            abort_if($joinRequest->exists && $joinRequest->status === TeamJoinRequestStatusEnum::ACCEPTED, 422, 'Ваша заявка уже была принята.');
+
+            $joinRequest->fill([
+                'team_hiring_position_id' => $hiringPosition?->id,
+                'status' => TeamJoinRequestStatusEnum::PENDING,
+                'review_reason' => null,
+                'reviewed_by_user_id' => null,
+                'reviewed_at' => null,
+            ])->save();
+
+            return $joinRequest;
+        });
         $teamNotifications->joinRequestSubmitted($item, $joinRequest);
 
-        return back()->with('status', 'Заявка на вступление отправлена.');
+        return back()->with('status', isset($data['team_hiring_position_id']) ? 'Заявка на вакансию отправлена.' : 'Заявка на вступление отправлена.');
     }
 
     public function respond(
@@ -127,13 +153,17 @@ final class TeamJoinRequestController extends Controller
         $reviewReason = filled($data['review_reason'] ?? null) ? trim($data['review_reason']) : null;
 
         if ($action === 'unblock') {
-            abort_if($entry->status !== TeamJoinRequestStatusEnum::BLOCKED, 422, 'Разблокировать можно только заблокированную заявку.');
-            $entry->update([
-                'status' => TeamJoinRequestStatusEnum::REJECTED,
-                'review_reason' => null,
-                'reviewed_by_user_id' => $reviewedByUserId,
-                'reviewed_at' => now(),
-            ]);
+            DB::transaction(function () use ($item, $entry, $reviewedByUserId): void {
+                Team::query()->lockForUpdate()->findOrFail($item->id);
+                $lockedEntry = TeamJoinRequest::query()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+                abort_if($lockedEntry->status !== TeamJoinRequestStatusEnum::BLOCKED, 422, 'Разблокировать можно только заблокированную заявку.');
+                $lockedEntry->update([
+                    'status' => TeamJoinRequestStatusEnum::REJECTED,
+                    'review_reason' => null,
+                    'reviewed_by_user_id' => $reviewedByUserId,
+                    'reviewed_at' => now(),
+                ]);
+            });
             $teamNotifications->joinRequestReviewed($item, $entry->fresh(), 'unblock');
 
             return back()->with('status', 'Пользователь разблокирован и сможет отправить заявку повторно.');
@@ -143,8 +173,21 @@ final class TeamJoinRequestController extends Controller
 
         if ($action === 'accept') {
             DB::transaction(function () use ($item, $entry, $rosters, $reviewReason, $reviewedByUserId): void {
+                Team::query()->lockForUpdate()->findOrFail($item->id);
+                $hiringPosition = $entry->team_hiring_position_id === null
+                    ? null
+                    : TeamHiringPosition::query()
+                        ->where('team_id', $item->id)
+                        ->whereKey($entry->team_hiring_position_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
                 $lockedEntry = TeamJoinRequest::query()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
                 abort_if($lockedEntry->status !== TeamJoinRequestStatusEnum::PENDING, 422, 'Эта заявка уже обработана.');
+                abort_if(
+                    $hiringPosition !== null && ($hiringPosition->status !== TeamHiringStatusEnum::ACTIVE || $hiringPosition->remainingSpots() === 0),
+                    422,
+                    'Вакансия уже закрыта или заполнена.',
+                );
 
                 $targetUser = $lockedEntry->user()->firstOrFail()->canonical();
                 $membership = $item->memberships()
@@ -193,18 +236,34 @@ final class TeamJoinRequestController extends Controller
                     'reviewed_at' => now(),
                 ]);
                 $rosters->synchronizePlayer($item, $membership->id);
+
+                if ($hiringPosition !== null) {
+                    $spotsFilled = $hiringPosition->spots_filled + 1;
+                    $hiringPosition->update([
+                        'spots_filled' => $spotsFilled,
+                        'status' => $spotsFilled >= $hiringPosition->spots_total
+                            ? TeamHiringStatusEnum::CLOSED
+                            : TeamHiringStatusEnum::ACTIVE,
+                        'closed_at' => $spotsFilled >= $hiringPosition->spots_total ? now() : null,
+                    ]);
+                }
             });
             $teamNotifications->joinRequestReviewed($item, $entry->fresh(), 'accept');
 
             return back()->with('status', 'Заявка принята. Пользователь добавлен в команду.');
         }
 
-        $entry->update([
-            'status' => $action === 'block' ? TeamJoinRequestStatusEnum::BLOCKED : TeamJoinRequestStatusEnum::REJECTED,
-            'review_reason' => $reviewReason,
-            'reviewed_by_user_id' => $reviewedByUserId,
-            'reviewed_at' => now(),
-        ]);
+        DB::transaction(function () use ($item, $entry, $action, $reviewReason, $reviewedByUserId): void {
+            Team::query()->lockForUpdate()->findOrFail($item->id);
+            $lockedEntry = TeamJoinRequest::query()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+            abort_if($lockedEntry->status !== TeamJoinRequestStatusEnum::PENDING, 422, 'Эта заявка уже обработана.');
+            $lockedEntry->update([
+                'status' => $action === 'block' ? TeamJoinRequestStatusEnum::BLOCKED : TeamJoinRequestStatusEnum::REJECTED,
+                'review_reason' => $reviewReason,
+                'reviewed_by_user_id' => $reviewedByUserId,
+                'reviewed_at' => now(),
+            ]);
+        });
         $teamNotifications->joinRequestReviewed($item, $entry->fresh(), $action);
 
         return back()->with('status', $action === 'block' ? 'Пользователь заблокирован.' : 'Заявка отклонена.');

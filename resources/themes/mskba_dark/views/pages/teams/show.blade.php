@@ -21,6 +21,14 @@
 
         return "{$count} {$label}";
     };
+    $spotsLabel = static function (int $count): string {
+        $modulo100 = $count % 100;
+        $modulo10 = $count % 10;
+
+        return $modulo100 >= 11 && $modulo100 <= 14
+            ? 'мест'
+            : match ($modulo10) { 1 => 'место', 2, 3, 4 => 'места', default => 'мест' };
+    };
     $canManageRoster = false;
     $canManageRoles = false;
     $canManagePermissions = false;
@@ -40,6 +48,8 @@
 @if($canEditSettings)<li class="nav-item"><a class="nav-link" href="{{ route('teams.edit', $team->routeIdentifier()) }}">Основные настройки</a></li>@endif
 @if($canManageMembersAndRoster)<li class="nav-item"><a class="nav-link" href="{{ route('teams.management', $team->routeIdentifier()) }}">Состав и участники</a></li>@endif
 @if($canManageJoinRequests)<li class="nav-item"><a class="nav-link" href="{{ route('teams.join-requests.index', $team->routeIdentifier()) }}">Заявки на вступление</a></li>@endif
+@if($canManageVenues)<li class="nav-item"><a class="nav-link" href="{{ route('teams.venues.index', $team->routeIdentifier()) }}">Площадки</a></li>@endif
+@if($canManageHiring)<li class="nav-item"><a class="nav-link" href="{{ route('teams.hiring.index', $team->routeIdentifier()) }}">Набор</a></li>@endif
 </ul></div>
 @endsection
 @section('section-content')
@@ -80,12 +90,53 @@
         </div>
     </header>
 
+    @if($team->venueRelations->isNotEmpty())
+        <section class="team-profile__section" aria-labelledby="team-venues-title">
+            <div class="team-profile__section-heading"><i class="ti ti-map-pin"></i><div><span>Где играем</span><h2 id="team-venues-title">Желаемые площадки</h2></div></div>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach($team->venueRelations as $relation)
+                    <a class="btn btn--secondary btn--sm" href="{{ route('venues.show', $relation->venue->routeIdentifier()) }}"><i class="ti ti-map-pin"></i>{{ $relation->venue->name }}</a>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if($team->hiringPositions->isNotEmpty())
+        <section class="team-profile__section" aria-labelledby="team-hiring-title">
+            <div class="team-profile__section-heading"><i class="ti ti-user-plus"></i><div><span>Команда ведёт набор</span><h2 id="team-hiring-title">Ищем игроков</h2></div></div>
+            <div class="section-list">
+                @foreach($team->hiringPositions as $vacancy)
+                    <article class="section-card">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                            <div>
+                                <strong>{{ $vacancy->remainingSpots() }} {{ $spotsLabel($vacancy->remainingSpots()) }}</strong>
+                                @if($vacancy->playerPositions()->isNotEmpty())<p class="form-hint mb-1"><b>Амплуа:</b> {{ $vacancy->playerPositions()->map->label()->join(', ') }}</p>@endif
+                                @if($vacancy->minimum_experience_years !== null)<p class="form-hint mb-1"><b>Опыт:</b> от {{ $vacancy->minimum_experience_years }} лет</p>@endif
+                                @if($vacancy->gender !== null)<p class="form-hint mb-1"><b>Пол:</b> {{ $vacancy->gender->label() }}</p>@endif
+                                @if($vacancy->description)<p class="mt-2 mb-0">{!! nl2br(e($vacancy->description)) !!}</p>@endif
+                            </div>
+                            @auth
+                                @if(!$isActiveTeamMember && $canApplyToTeam && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::ACCEPTED)
+                                    <form method="POST" action="{{ route('teams.join-requests.store', $team->routeIdentifier()) }}" onsubmit="return confirm('Отправить заявку на эту вакансию?')">
+                                        @csrf
+                                        <input type="hidden" name="team_hiring_position_id" value="{{ $vacancy->id }}">
+                                        <button class="btn btn--primary btn--sm" type="submit">Подать заявку</button>
+                                    </form>
+                                @endif
+                            @endauth
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
     @auth
         @if(!$isActiveTeamMember)
             <section class="team-profile__section" aria-labelledby="team-join-title">
                 <div class="team-profile__section-heading"><i class="ti ti-user-plus"></i><div><span>Участие</span><h2 id="team-join-title">Вступление в команду</h2></div></div>
                 @if($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
-                    <p class="form-hint">Ваша заявка отправлена и ожидает решения.</p>
+                    <p class="form-hint">Ваша {{ $currentJoinRequest->hiringPosition ? 'заявка на вакансию' : 'заявка на вступление' }} ожидает решения.</p>
                 @elseif($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::BLOCKED)
                     <p class="form-hint">Отправка заявок в эту команду для вас заблокирована.</p>
                     @if($currentJoinRequest->review_reason)<div class="alert alert-danger mt-3"><strong>Причина:</strong><span class="review-reason">{!! nl2br(e($currentJoinRequest->review_reason)) !!}</span></div>@endif
@@ -99,7 +150,7 @@
                         <button class="btn btn--primary" type="submit">Подать заявку</button>
                     </form>
                 @else
-                    <p class="form-hint">Команда сейчас не принимает заявки на вступление.</p>
+                    <p class="form-hint">Команда сейчас не принимает общие заявки. Если выше есть активная вакансия, можно откликнуться на неё.</p>
                 @endif
             </section>
         @endif

@@ -63,6 +63,8 @@ final class TeamManagementController extends Controller
             'canManagePermissions' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_PERMISSIONS),
             'canRemoveMembers' => $access->allows($item, $actor, TeamPermissionEnum::REMOVE_MEMBERS),
             'canManageMembersAndRoster' => true,
+            'canManageVenues' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_VENUES),
+            'canManageHiring' => $access->allows($item, $actor, TeamPermissionEnum::MANAGE_HIRING),
             'currentUserId' => $actor->user_id,
             'teamPermissions' => TeamPermissionEnum::cases(),
         ]);

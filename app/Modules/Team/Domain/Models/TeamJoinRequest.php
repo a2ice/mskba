@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'team_id',
     'user_id',
+    'team_hiring_position_id',
     'status',
     'review_reason',
     'reviewed_by_user_id',
@@ -26,6 +27,11 @@ final class TeamJoinRequest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function hiringPosition(): BelongsTo
+    {
+        return $this->belongsTo(TeamHiringPosition::class, 'team_hiring_position_id');
     }
 
     public function reviewedBy(): BelongsTo
