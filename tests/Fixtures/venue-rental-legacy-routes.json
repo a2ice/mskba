@@ -1,0 +1,51 @@
+[
+    {
+        "method": "POST",
+        "uri": "coordination",
+        "name": "coordination.store",
+        "action": "App\\Modules\\Coordination\\Presentation\\Http\\Controllers\\CoordinationController@store",
+        "middleware": ["web", "auth", "can:coordination-create"]
+    },
+    {
+        "method": "POST",
+        "uri": "coordination/{coordination}/event",
+        "name": "coordination.event.store",
+        "action": "App\\Modules\\Coordination\\Presentation\\Http\\Controllers\\CoordinationController@createEvent",
+        "middleware": ["web", "auth"]
+    },
+    {
+        "method": "POST",
+        "uri": "events",
+        "name": "events.store",
+        "action": "App\\Modules\\Event\\Presentation\\Http\\Controllers\\EventController@store",
+        "middleware": ["web", "auth"]
+    },
+    {
+        "method": "POST",
+        "uri": "events/{event}/cancel",
+        "name": "events.cancel",
+        "action": "App\\Modules\\Event\\Presentation\\Http\\Controllers\\EventController@cancel",
+        "middleware": ["web", "auth"]
+    },
+    {
+        "method": "POST",
+        "uri": "tournaments/{tournament}/matches/{match}/schedule",
+        "name": "tournaments.matches.schedule",
+        "action": "App\\Modules\\Tournament\\Presentation\\Http\\Controllers\\TournamentMatchSchedulingController",
+        "middleware": ["web", "auth"]
+    },
+    {
+        "method": "PUT",
+        "uri": "tournaments/{tournament}/matches/{match}/schedule",
+        "name": "tournaments.matches.reschedule",
+        "action": "App\\Modules\\Tournament\\Presentation\\Http\\Controllers\\TournamentMatchSchedulingController@update",
+        "middleware": ["web", "auth"]
+    },
+    {
+        "method": "GET|HEAD",
+        "uri": "venues/search",
+        "name": "venues.search",
+        "action": "App\\Modules\\Venue\\Presentation\\Http\\Controllers\\VenueController@search",
+        "middleware": ["web", "throttle:60,1"]
+    }
+]

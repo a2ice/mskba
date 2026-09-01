@@ -90,6 +90,18 @@
 - `staff`;
 - `agent`.
 
+Коммерческий контур аренды использует в той же таблице роли `owner`, `manager`,
+`booking_operator`, `finance_viewer`. Старые `admin|staff|agent` сохраняются для
+обратной совместимости карточки площадки и сами по себе не дают коммерческих
+прав. Коммерческие capabilities хранятся в обычном permission snapshot:
+`rental.memberships.manage`, `rental.policy.manage`, `rental.bookings.view`,
+`rental.bookings.decide`, `rental.payments.view`, `rental.payments.confirm`.
+
+`VenueCommercialAccess` не использует creator/bootstrap fallback. Он проверяет
+только активный Contract permission либо подтверждённый superadmin override.
+Поэтому открытая ранее сессия теряет отозванное право на следующей серверной
+команде без ожидания cache/session refresh.
+
 `player` не входит в стартовый набор для `venue` membership. Игровое участие пользователя должно моделироваться через событие, команду, тренировку, бронирование или отдельную заявку.
 
 ### Relation contract
@@ -197,6 +209,20 @@ access level template
 - после появления действующего owner membership contract права управления определяются контрактами, а не фактом создания записи;
 - creator fallback удаляется после backfill и проверки owner contracts либо остается только как явно ограниченное bootstrap-правило для сущностей без владельца.
 
+Подтверждённое коммерческое владение начинается только с модерируемой
+`VenueOwnershipClaim`, а не с `created_by_actor_id`. Подтверждённый пользователь
+передаёт текстовое основание и проверяемые контакты; одновременно у него может
+быть только одна pending-заявка на площадку. Решение принимает только
+подтверждённый `superadmin`, причём self-approve запрещён.
+
+Одобрение выполняется под mutex строки `venues`: после повторной проверки
+отсутствия активного owner создаются `Contract`, `ContractMembership(owner)` и
+snapshot всех owner permissions, затем claim переводится в `approved` в той же
+транзакции. Повторное одобрение уже approved-заявки идемпотентно. Второй owner
+не выдаётся; передача владения остаётся отдельным будущим процессом. Текст
+доказательств доступен только заявителю и `superadmin` и исключён из audit log,
+а статус, reviewer и причина решения аудируются.
+
 Переходный порядок:
 
 1. Добавить новую модель membership contracts. Выполнено.
@@ -218,6 +244,16 @@ User wants action on Venue
  -> check required permission
  -> bootstrap creator fallback only if the Venue has no active owner membership contract
 ```
+
+Выдача, изменение и отзыв коммерческих ролей сериализуются блокировкой площадки.
+Активная роль той же тройки `venue + user + access_level` проверяется внутри этой
+транзакции. Отзыв мягкий: `contracts.status=inactive` и `expires_at=now`, история
+membership и permissions не удаляется. Отдельная таблица venue memberships и
+дублирующий unique index не вводятся, поскольку `ContractMembership` уже
+является каноническим хранилищем, а повторная выдача после soft revoke должна
+создавать новый исторический contract. Последнего `OWNER` нельзя отозвать или
+понизить через общий membership flow; передача владения требует отдельной
+атомарной команды.
 
 ## Связанная задача
 

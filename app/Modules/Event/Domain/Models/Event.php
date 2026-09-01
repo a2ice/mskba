@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking as RentalVenueBooking;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'venue_id',
+    'booking_id',
+    'booking_snapshot',
     'organizer_actor_id',
     'primary_game_id',
     'title',
@@ -91,6 +94,11 @@ class Event extends Model
         return $this->hasOne(VenueBooking::class);
     }
 
+    public function sourceBooking(): BelongsTo
+    {
+        return $this->belongsTo(RentalVenueBooking::class, 'booking_id');
+    }
+
     public function games(): HasMany
     {
         return $this->hasMany(Game::class);
@@ -127,6 +135,7 @@ class Event extends Model
             'type' => EventTypeEnum::class,
             'status' => EventStatusEnum::class,
             'visibility' => EventVisibilityEnum::class,
+            'booking_snapshot' => 'array',
             'starts_at' => 'immutable_datetime',
             'ends_at' => 'immutable_datetime',
             'max_participants' => 'integer',

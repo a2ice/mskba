@@ -241,6 +241,72 @@ Endpoint `GET /venues/search` возвращает универсальную JS
 
 `VenueSearchCache` хранит в основном cache store (Redis в штатном Docker runtime, `array` в тестах) версионированную поисковую проекцию и на 60 секунд результаты безопасных публичных запросов `confirmed_only`. Наблюдатель за площадкой, тегами, адресно-метровыми сущностями, расписанием и `VenueBooking` увеличивает версию при изменениях; старый ключ перестаёт читаться и истекает по TTL. При фильтрации конкретного интервала расписания загружаются eager loading, пересекающиеся брони выбираются одним запросом, после чего применяется `VenueEventAvailability`. Это UX-оптимизация, а не источник истины: `CreateEventHandler` повторяет проверку под транзакционной блокировкой.
 
+Коммерческие условия аренды площадки хранятся отдельно в append-only версиях
+`venue_booking_policies`. Только одна версия площадки помечена активной; новая
+публикация создаёт следующую версию, а не переписывает предыдущую. Политика
+задаёт доступные зоны, шаг и границы длительности, lead time, горизонт
+бронирования, hold/payment/cancellation windows и цены. Денежные значения
+хранятся и вычисляются как integer minor units вместе с ISO currency, без
+float-арифметики. Публикацию выполняет владелец или участник Contract ACL с
+`manage_booking_policy`; проверка повторяется в application handler.
+
+Публичный расчёт аренды доступен только при включённом `rental_flow` и активной
+включённой политике. `QuoteVenueBookingHandler` интерпретирует локальное время в
+timezone расписания площадки, проверяет шаг, длительность, lead time, горизонт,
+разрешённую зону и текущую доступность. Результат сохраняется в
+`venue_booking_quotes` как неизменяемый snapshot версии политики, запроса,
+формулы и итоговой суммы. Клиентские `amount_minor` и `policy_version_id` не
+участвуют в расчёте. Quote сам по себе не удерживает слот; будущая команда
+создания заявки обязана проверить срок действия и повторно подтвердить snapshot.
+Публикация политики создаёт audit log и после commit инвалидирует поисковый кэш.
+
+Новый коммерческий агрегат аренды использует ту же таблицу `venue_bookings`, но
+отделён от Event полем `flow=rental`, nullable `event_id` и моделью модуля
+`VenueBooking`. Старые строки `flow=legacy` и статус `PENDING` не меняют смысл:
+они продолжают занимать интервал. Новый `REQUESTED` слот не занимает;
+`HELD` занимает его до защиты, `CONFIRMED` — без временного deadline, а
+`REJECTED`, `CANCELLED` и `EXPIRED` терминальны. До включения conflict engine
+новый flow остаётся закрыт выключенным по умолчанию feature flag.
+
+Каждая rental-бронь ссылается на исходный quote и копирует его snapshot,
+заявителя, область и интервал. Текущие hold/payment deadlines, payment state и
+optimistic version находятся в корне агрегата. Все изменения статуса проходят
+через `VenueBookingLifecycle` и application handlers; прямой Eloquent update
+статуса запрещён. Handler сначала блокирует площадку как mutex, затем строку
+брони, проверяет права и ожидаемую версию и атомарно добавляет запись в
+append-only `venue_booking_transitions`. Ошибка откатывает и состояние, и
+timeline; событие публикуется только after commit. JSON read model возвращает
+не только статус, но и допустимость каждого следующего действия с безопасным
+машинным reason code. Event остаётся `null` вплоть до отдельной команды из
+подтверждённой брони.
+
+Конкурентное занятие ресурса проверяет единый `VenueBookingConflictService`.
+Интервалы полуоткрытые: соседние `[start,end)` и `[end,next_end)` совместимы.
+`WHOLE` пересекается с любой областью, одинаковые половины пересекаются, разные
+половины совместимы. Блокирующие статусы — legacy `PENDING` и новые
+`HELD/CONFIRMED`; `REQUESTED` ресурс не занимает. Перед Hold и повторной
+проверкой Confirm transaction блокирует venue как mutex, затем найденные
+пересекающиеся booking rows по id и target booking. Благодаря venue mutex два
+параллельных transaction не могут одновременно пройти пустой range query даже
+в MySQL без подходящего gap lock. Ошибка конфликта возвращает `409
+BOOKING_CONFLICT` и только безопасные варианты следующего времени, не сведения
+о чужой заявке. Timeline и доменное событие при rollback не создаются.
+
+Каждая изменяющая rental-команда имеет UUID idempotency key. Receipt с actor,
+именем команды, correlation ID, каноническим payload hash и результатом
+создаётся в одной транзакции с агрегатом и timeline. Повтор того же key и
+payload возвращает сохранённый результат; изменение payload или endpoint при
+том же actor+key отклоняется как `IDEMPOTENCY_KEY_REUSED`. HTTP требует ключ
+явно, а внутренний адаптер может сгенерировать его для одноразовой команды.
+
+Доменные события брони записываются в `venue_booking_outbox_messages` внутри
+той же транзакции. После commit очередь пытается доставить message, а минутный
+scheduler повторяет pending и восстанавливает processing claim, зависший более
+пяти минут. Доставка at-least-once: event содержит уникальный message ID, а
+listener с критическим эффектом использует `VenueBookingEventConsumer::once`.
+Consumer receipt и эффект выполняются одной транзакцией, поэтому ошибка эффекта
+не помечает message обработанным.
+
 `SiteSummaryService` кеширует в основном cache store суточное количество опубликованных/завершённых мероприятий типов `game` и `game_training`, а также общее количество незаблокированных и неудалённых пользователей. Observer-ы `Event` и `User` инвалидируют ключи после commit, поэтому незавершённая транзакция не может преждевременно наполнить кеш старыми данными. Online presence — отдельная Redis Sorted Set: ID пользователя является member, timestamp активности — score; middleware и frontend heartbeat обновляют score, просроченные members удаляются по временному окну. Такой presence атомарен и не удваивает пользователя при нескольких вкладках. Административный список пользователей читает один snapshot Sorted Set со score и сопоставляет его с текущей страницей аккаунтов, избегая N+1 Redis-запросов. Redis-сводка является presentation-проекцией, а не источником истины для мероприятий или аккаунтов. На главной суточный badge ведёт в журнал с составным фильтром `games` (`game` + `game_training`) и текущей датой; при нулевом online соответствующий badge скрывается.
 
 Для ветки тегов поисковый запрос дополнительно проходит через `CyrillicTransliterator` и `Str::slug`, после чего сравнивается с `venue_tags.slug`. Поэтому поиск тегов не зависит от регистра и не требует DB-specific оператора `ILIKE`; исходное сравнение с `VenueTag::name` остаётся fallback для значений, не образующих slug.
@@ -433,6 +499,93 @@ Telegram-канал спроектирован как many-to-many проекц�
 
 ## Мероприятия и бронирование
 
+Новый flow аренды внедряется независимо от legacy-создания Event и закрыт четырьмя
+переключателями в `config/features.php`: `rental_flow`, `coordination`,
+`external_payment`, `attendance_v2`. Все переключатели читаются через
+`FeatureFlags`, по умолчанию выключены и могут включаться независимо переменными
+`FEATURE_VENUE_RENTAL_*`. Новые HTTP-маршруты должны использовать middleware
+`venue-rental-feature:{feature}`: обычный web-запрос получает неотличимый от
+отсутствующего маршрута `404`, JSON-клиент — `404` с машинным кодом
+`feature_disabled`. Handlers, listeners и jobs проверяют тот же `FeatureFlags` до
+выполнения новой логики. Отключение флага не меняет и не удаляет созданные новым
+flow данные, а legacy-маршруты не помещаются под эти middleware до завершения
+rollout.
+
+`VenueRentalCoordination` — отдельный агрегат предварительного интереса, не
+связанный с legacy `CoordinationSession` и его опросами. Он фиксирует venue,
+scope, `[starts_at, ends_at)`, organizer actor/user, видимость сбора и отдельную
+видимость списка участников. Активное участие хранится в
+`venue_rental_coordination_participants`; уникальная пара coordination/user и
+блокировка корня делают повторный или конкурентный Join идемпотентным, а
+leave/rejoin сохраняет одну историческую строку.
+
+Создание сбора использует `QuoteVenueBookingHandler` для проверки текущей
+политики и доступности, но не сохраняет quote как резерв, не создаёт
+`VenueBooking`/`Event` и не входит в conflict checker. Явная команда Convert
+блокирует coordination, проверяет organizer actor, получает новый quote для
+сохранённого интервала и вызывает общий `RequestVenueBookingHandler` с UUID
+idempotency key. Результат — только `REQUESTED`, поэтому ресурс по-прежнему не
+занят до отдельной команды Hold. Если новый quote недоступен, связь с booking и
+смена статуса откатываются. События coordination публикуются after commit; Join
+создаёт уведомление организатору без ложного сообщения о бронировании.
+
+Операции состава используют порядок
+`venue_rental_coordinations → venue_rental_coordination_participants`.
+Конвертация не держит coordination при будущем захвате venue mutex: она
+завершается на `REQUESTED`, а Hold позднее использует установленный порядок
+`venues → venue_bookings`. Это исключает обратный цикл блокировок между двумя
+агрегатами.
+
+Attendance V2 моделируется отдельно от legacy coordination poll сущностями
+`venue_booking_attendance_rounds` и
+`venue_booking_attendance_responses`. Раунд создаётся только requester actor-ом
+для booking в состоянии `HELD` с будущим `effective_protection_until`.
+Сервер вычисляет `deadline_at = min(requested_deadline,
+effective_protection_until)`; attendance никогда не изменяет booking deadline.
+Уникальный nullable active marker допускает историю закрытых раундов, но не
+более одного открытого на booking.
+
+При открытии создаётся неизменяемый список приглашённых canonical confirmed
+users. Их nullable response принимает `yes|no|maybe`; повтор того же значения
+идемпотентен, а смена ответа под блокировкой корня пересчитывает сохранённые
+YES/NO/MAYBE/PENDING counters. `threshold_reached_at` обеспечивает однократный
+ThresholdReached при первом достижении `minimum_yes_responses`. Персональные
+ответы показываются по `responses_visibility=participants|organizer`, тогда как
+агрегаты доступны каждому приглашённому.
+
+Порядок изменяющих блокировок —
+`venues → venue_bookings → venue_booking_attendance_rounds → responses`.
+Respond повторно проверяет статус и protection deadline booking, поэтому
+просроченный или уже подтверждённый hold не принимает ответ даже до фоновой
+синхронизации. Ежеминутная команда
+`venue-booking:close-expired-attendance` закрывает дедлайны, а booking events
+Confirmed/Cancelled/Expired/Rejected закрывают связанный open round. События
+attendance и уведомления отправляются after commit; ни ответ, ни threshold не
+являются командой VenueBooking.
+
+Истечение hold обслуживает ежеминутная команда
+`venue-booking:expire-due`, запланированная с `onOneServer` и
+`withoutOverlapping`. `VenueBookingExpiryDispatcher` делает короткую выборку по
+существующему индексу `(status,effective_protection_until)`, ограничивает batch
+и не открывает транзакцию на весь набор. Для каждой строки ставится отдельная
+`ExpireVenueBookingIfDueJob` с observed optimistic version и ISO deadline.
+
+Worker до блокировки отбрасывает уже неактуальные status/version/deadline, а
+затем вызывает общий `ExpireVenueBookingHandler`, который допускает только
+system actor и повторяет проверку через `VenueBookingLifecycle` под порядком
+`venues → venue_bookings`. UUIDv5 idempotency key детерминирован из
+booking/version/deadline, поэтому duplicate delivery создаёт не более одного
+timeline/outbox effect. Гонки с Confirm, будущими Extension и payment callback
+завершаются stale noop, если они успели изменить status, version или effective
+deadline.
+
+Отдельные expiry columns не вводятся: `terminal_at` хранит момент, а
+append-only transition — reason и system actor. `effective_protection_until`
+является единственным scheduler deadline и в будущем включает активное payment
+window. Метрики `metrics:venue_booking:expiry:{scheduled|completed|stale|failed}`
+показывают работу очереди. API возвращает `server_time` и effective deadline;
+клиент не является источником истины для истечения.
+
 Модуль `App\Modules\Event` содержит:
 
 - `Event` — мероприятие с типом `game|training|game_training`, организатором-actor, площадкой, локализованным временем, видимостью и лимитом участников;
@@ -507,6 +660,35 @@ Telegram-карточка использует inline callbacks `event:{id}:join
 `TelegramEventMessageBuilder` формирует текстовую проекцию мероприятия: игровые типы (`game`, `game_training`) получают заголовок «Играем на {площадка}», остальные сохраняют собственный title; тип активности и описание выводятся с явными подписями, а пустое описание заменяется прочерком. Описание ограничивается длиной сниппета до HTML-экранирования, чтобы вместе с остальными полями оставаться внутри лимита сообщения Telegram.
 
 Кнопка просмотра Telegram-карточки использует deep link Main Mini App `https://t.me/{bot}?startapp=event_{id}`. Подписанный Telegram `start_param` проходит через `TelegramMiniAppStartDestinationResolver`: разрешён только формат `event_{id}`, мероприятие должно существовать, а клиент получает исключительно относительный внутренний маршрут. После успешной Mini App-авторизации frontend выполняет переход внутри текущего WebView. Произвольный URL из параметра запуска не принимается, поэтому этот сценарий не создаёт open redirect.
+
+Rental coordination использует отдельную проекцию
+`telegram_venue_rental_publications` с foreign keys на coordination, nullable
+booking и зарегистрированный Telegram chat. Публичный сбор публикуется в
+активные чаты с `publishes_coordination`; private сбор в чат не попадает.
+`TelegramVenueRentalMessageBuilder` выводит фиксированный интервал, participant
+count и вычисляет предупреждение о незанятом слоте из текущего booking status.
+Created/Joined/Closed/Converted и booking lifecycle events ставят
+`SyncTelegramVenueRentalPublicationJob`; job выполняет Bot API вне доменной
+транзакции, сериализуется cache lock, повторяется с backoff и пересоздаёт
+удалённое сообщение.
+
+Callback `rentalcoord:{coordination_id}:join|leave` принимается только для
+сохранённой тройки coordination/chat/message. `callback_query.from.id`
+резолвится через канонический `TelegramAccount`, после чего адаптер вызывает
+общие `JoinVenueRentalCoordinationHandler` или
+`LeaveVenueRentalCoordinationHandler`; неподтверждённый пользователь не
+проходит application invariant. Уникальные `callback_id` и nullable
+`update_id` сохраняются в `telegram_venue_rental_updates`; cache lock защищает
+одновременный replay, а повтор completed callback только отвечает актуальным
+status/participation. Webhook и polling передают update ID в общий callback job.
+
+Deep link имеет allowlisted формат
+`rental_coordination_{public_uuid}`. Resolver проверяет флаг `coordination`,
+существование сущности и для private-сбора organizer/active participant ACL,
+после чего возвращает только относительный route. Доверенная граница Mini App
+не меняется: `initData` сначала проходит HMAC и age validation, авторизует
+канонического пользователя в Laravel-сессии и только затем используется для
+перехода и обычных защищённых HTTP-команд.
 
 `ResolveTelegramUserHandler` под cache lock по Telegram ID находит существующую связь либо атомарно создаёт `User`, профиль, `TelegramAccount` и подтверждённый Telegram-контакт. Регистрация из чата получает канал `telegram_chat`; последующая Mini App-авторизация переиспользует эту связь и не создаёт второй аккаунт.
 

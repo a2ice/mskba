@@ -9,10 +9,13 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
+use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
+use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
 use App\Modules\Event\Presentation\Http\Controllers\EventController;
 use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
@@ -49,8 +52,19 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentMatchScheduli
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentOnSiteRegistrationController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\BookingContributionController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingConversationController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingEventController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingExtensionController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPaymentController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingPolicyController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueBookingProjectionController;
+use App\Modules\VenueBooking\Presentation\Http\Controllers\VenueRentalQuoteController;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Support\Facades\Route;
 
@@ -227,6 +241,13 @@ Route::prefix('admin')
         Route::post('/venues/{venueId}/restore', [AdminVenuesController::class, 'restore'])->whereNumber('venueId')->name('admin.venues.restore');
         Route::post('/venues/moderation/{moderationRequest}/approve', [AdminVenuesController::class, 'approve'])->name('admin.venues.moderation.approve');
         Route::post('/venues/moderation/{moderationRequest}/reject', [AdminVenuesController::class, 'reject'])->name('admin.venues.moderation.reject');
+        Route::prefix('venue-ownership-claims')
+            ->middleware(['venue-rental-feature:rental_flow', 'can:manage-users-as-superadmin'])
+            ->group(function () {
+                Route::get('/', [AdminVenueOwnershipClaimsController::class, 'index'])->name('admin.venue-ownership-claims.index');
+                Route::post('/{venueOwnershipClaim}/approve', [AdminVenueOwnershipClaimsController::class, 'approve'])->name('admin.venue-ownership-claims.approve');
+                Route::post('/{venueOwnershipClaim}/reject', [AdminVenueOwnershipClaimsController::class, 'reject'])->name('admin.venue-ownership-claims.reject');
+            });
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'Мероприятия');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
@@ -256,12 +277,121 @@ Route::prefix('venues')->group(function () {
             ->defaults('breadcrumb', 'Добавить площадку');
         Route::post('/', [VenueController::class, 'store'])
             ->name('venues.store');
+        Route::middleware('venue-rental-feature:rental_flow')->group(function () {
+            Route::get('/{venue}/ownership-claim', [VenueOwnershipClaimController::class, 'create'])
+                ->whereNumber('venue')
+                ->name('venues.ownership-claims.create');
+            Route::post('/{venue}/ownership-claims', [VenueOwnershipClaimController::class, 'store'])
+                ->whereNumber('venue')
+                ->name('venues.ownership-claims.store');
+        });
+    });
+    Route::middleware('venue-rental-feature:rental_flow')->group(function () {
+        Route::get('/{venue}/rental', [VenueRentalQuoteController::class, 'show'])
+            ->whereNumber('venue')
+            ->name('venues.rental.show');
+        Route::post('/{venue}/rental/quote', [VenueRentalQuoteController::class, 'quote'])
+            ->whereNumber('venue')
+            ->name('venues.rental.quote');
+        Route::get('/{venue}/rental/availability', [VenueBookingProjectionController::class, 'availability'])
+            ->middleware('venue-rental-feature:portal')
+            ->whereNumber('venue')
+            ->name('venues.rental.availability');
     });
     Route::get('/{alias}/preview', [VenueController::class, 'preview'])
         ->middleware('throttle:60,1')
         ->name('venues.preview');
     Route::get('/{alias}', [VenueController::class, 'show'])->name('venues.show');
 });
+
+Route::prefix('account/venue-ownership-claims')
+    ->middleware(['venue-rental-feature:rental_flow', 'auth'])
+    ->group(function () {
+        Route::get('/{venueOwnershipClaim}', [VenueOwnershipClaimController::class, 'show'])
+            ->name('account.venue-ownership-claims.show');
+        Route::post('/{venueOwnershipClaim}/cancel', [VenueOwnershipClaimController::class, 'cancel'])
+            ->name('account.venue-ownership-claims.cancel');
+    });
+
+Route::prefix('account/venue-bookings')
+    ->middleware(['venue-rental-feature:rental_flow', 'auth'])
+    ->group(function () {
+        Route::post('/', [VenueBookingController::class, 'store'])->name('account.venue-bookings.store');
+        Route::middleware('venue-rental-feature:portal')->group(function (): void {
+            Route::get('/', [VenueBookingProjectionController::class, 'requester'])->name('account.venue-bookings.index');
+            Route::get('/inbox', [VenueBookingProjectionController::class, 'owner'])->name('account.venue-bookings.inbox');
+            Route::get('/{venueBooking}/timeline', [VenueBookingProjectionController::class, 'timeline'])->name('account.venue-bookings.timeline');
+        });
+        Route::get('/{venueBooking}', [VenueBookingController::class, 'show'])->name('account.venue-bookings.show');
+        Route::post('/{venueBooking}/accept', [VenueBookingController::class, 'accept'])->name('account.venue-bookings.accept');
+        Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
+        Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
+        Route::post('/{venueBooking}/confirm', [VenueBookingController::class, 'confirm'])->name('account.venue-bookings.confirm');
+        Route::post('/{venueBooking}/extensions', [VenueBookingExtensionController::class, 'store'])->name('account.venue-bookings.extensions.store');
+        Route::post('/{venueBooking}/extensions/{extensionRequest}/approve', [VenueBookingExtensionController::class, 'approve'])->name('account.venue-bookings.extensions.approve');
+        Route::post('/{venueBooking}/extensions/{extensionRequest}/reject', [VenueBookingExtensionController::class, 'reject'])->name('account.venue-bookings.extensions.reject');
+        Route::post('/{venueBooking}/extensions/{extensionRequest}/cancel', [VenueBookingExtensionController::class, 'cancel'])->name('account.venue-bookings.extensions.cancel');
+        Route::middleware('venue-rental-feature:external_payment')->group(function (): void {
+            Route::post('/{venueBooking}/payment-window', [VenueBookingPaymentController::class, 'open'])->name('account.venue-bookings.payment.open');
+            Route::post('/{venueBooking}/payments/{paymentAttempt}/claim', [VenueBookingPaymentController::class, 'claim'])->name('account.venue-bookings.payment.claim');
+            Route::post('/{venueBooking}/payments/{paymentAttempt}/confirm', [VenueBookingPaymentController::class, 'confirm'])->name('account.venue-bookings.payment.confirm');
+            Route::post('/{venueBooking}/payments/{paymentAttempt}/reject', [VenueBookingPaymentController::class, 'reject'])->name('account.venue-bookings.payment.reject');
+        });
+        Route::post('/{venueBooking}/attendance-rounds', [VenueBookingAttendanceController::class, 'store'])
+            ->middleware('venue-rental-feature:attendance_v2')
+            ->name('venue-booking-attendance.store');
+        Route::middleware('venue-rental-feature:conversations')->group(function (): void {
+            Route::get('/{venueBooking}/conversation', [VenueBookingConversationController::class, 'index'])->name('account.venue-bookings.conversation.index');
+            Route::post('/{venueBooking}/conversation/messages', [VenueBookingConversationController::class, 'store'])->middleware('throttle:20,1')->name('account.venue-bookings.conversation.store');
+            Route::post('/{venueBooking}/conversation/attachments', [VenueBookingConversationController::class, 'attach'])->middleware('throttle:10,1')->name('account.venue-bookings.conversation.attach');
+            Route::get('/{venueBooking}/conversation/messages/{message}/attachment', [VenueBookingConversationController::class, 'download'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.attachment');
+            Route::post('/{venueBooking}/conversation/{conversation}/read', [VenueBookingConversationController::class, 'read'])->middleware('throttle:60,1')->name('account.venue-bookings.conversation.read');
+        });
+        Route::post('/{venueBooking}/event', [VenueBookingEventController::class, 'store'])
+            ->middleware('venue-rental-feature:booking_events')
+            ->name('account.venue-bookings.event.store');
+        Route::post('/{venueBooking}/event/{event}/reschedule', [VenueBookingEventController::class, 'reschedule'])
+            ->middleware('venue-rental-feature:booking_events')
+            ->name('account.venue-bookings.event.reschedule');
+        Route::middleware('venue-rental-feature:contributions')->group(function (): void {
+            Route::get('/{venueBooking}/contributions', [BookingContributionController::class, 'show'])->name('account.venue-bookings.contributions.show');
+            Route::post('/{venueBooking}/contributions', [BookingContributionController::class, 'store'])->name('account.venue-bookings.contributions.store');
+            Route::delete('/{venueBooking}/contributions/me', [BookingContributionController::class, 'destroy'])->name('account.venue-bookings.contributions.destroy');
+        });
+    });
+
+Route::prefix('account/venue-booking-attendance')
+    ->middleware(['venue-rental-feature:attendance_v2', 'auth'])
+    ->group(function () {
+        Route::get('/{venueBookingAttendanceRound}', [VenueBookingAttendanceController::class, 'show'])
+            ->name('venue-booking-attendance.show')
+            ->defaults('breadcrumb', 'Подтверждение явки');
+        Route::post('/{venueBookingAttendanceRound}/response', [VenueBookingAttendanceController::class, 'respond'])
+            ->name('venue-booking-attendance.respond');
+        Route::post('/{venueBookingAttendanceRound}/close', [VenueBookingAttendanceController::class, 'close'])
+            ->name('venue-booking-attendance.close');
+    });
+
+Route::prefix('rental-interest')
+    ->middleware('venue-rental-feature:coordination')
+    ->group(function () {
+        Route::get('/{venueRentalCoordination}', [VenueRentalCoordinationController::class, 'show'])
+            ->name('venue-rental-coordinations.show')
+            ->defaults('breadcrumb', 'Сбор на аренду');
+        Route::middleware('auth')->group(function () {
+            Route::post('/', [VenueRentalCoordinationController::class, 'store'])
+                ->name('venue-rental-coordinations.store');
+            Route::post('/{venueRentalCoordination}/join', [VenueRentalCoordinationController::class, 'join'])
+                ->name('venue-rental-coordinations.join');
+            Route::post('/{venueRentalCoordination}/leave', [VenueRentalCoordinationController::class, 'leave'])
+                ->name('venue-rental-coordinations.leave');
+            Route::post('/{venueRentalCoordination}/close', [VenueRentalCoordinationController::class, 'close'])
+                ->name('venue-rental-coordinations.close');
+            Route::post('/{venueRentalCoordination}/booking', [VenueRentalCoordinationController::class, 'convert'])
+                ->middleware('venue-rental-feature:rental_flow')
+                ->name('venue-rental-coordinations.convert');
+        });
+    });
 
 Route::prefix('events')->group(function () {
     Route::get('/', [EventController::class, 'index'])
@@ -534,6 +664,24 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/venues', [AccountController::class, 'venues'])
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');
+        Route::prefix('venues/{venue}/commercial-memberships')
+            ->middleware('venue-rental-feature:rental_flow')
+            ->whereNumber('venue')
+            ->group(function () {
+                Route::get('/', [VenueCommercialMembershipController::class, 'index'])->name('account.venues.commercial-memberships.index');
+                Route::get('/candidates', [VenueCommercialMembershipController::class, 'candidates'])->middleware('throttle:60,1')->name('account.venues.commercial-memberships.candidates');
+                Route::post('/', [VenueCommercialMembershipController::class, 'store'])->name('account.venues.commercial-memberships.store');
+                Route::put('/{membership}', [VenueCommercialMembershipController::class, 'update'])->whereNumber('membership')->name('account.venues.commercial-memberships.update');
+                Route::delete('/{membership}', [VenueCommercialMembershipController::class, 'destroy'])->whereNumber('membership')->name('account.venues.commercial-memberships.destroy');
+            });
+        Route::middleware('venue-rental-feature:rental_flow')->group(function () {
+            Route::get('/venues/{venue}/booking-policy', [VenueBookingPolicyController::class, 'edit'])
+                ->whereNumber('venue')
+                ->name('account.venues.booking-policy.edit');
+            Route::put('/venues/{venue}/booking-policy', [VenueBookingPolicyController::class, 'update'])
+                ->whereNumber('venue')
+                ->name('account.venues.booking-policy.update');
+        });
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');

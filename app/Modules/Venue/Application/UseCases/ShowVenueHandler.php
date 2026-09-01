@@ -124,10 +124,7 @@ final class ShowVenueHandler
         $openingState = $this->openingState($venue);
         $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
         $occupiedSlots = $venue->bookings()
-            ->whereIn('status', [
-                VenueBookingStatusEnum::PENDING->value,
-                VenueBookingStatusEnum::CONFIRMED->value,
-            ])
+            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
             ->where('ends_at', '>', now())
             ->with('event')
             ->orderBy('starts_at')

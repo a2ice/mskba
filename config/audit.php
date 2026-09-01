@@ -18,9 +18,12 @@ use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
+use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking as RentalVenueBooking;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 
 return [
     'enabled' => env('AUDIT_LOG_ENABLED', true),
@@ -49,6 +52,9 @@ return [
         VenueSchedule::class,
         VenueScheduleInterval::class,
         VenueReview::class,
+        VenueOwnershipClaim::class,
+        VenueBookingPolicy::class,
+        RentalVenueBooking::class,
         Contract::class,
         ContractMembership::class,
         ContractPermission::class,

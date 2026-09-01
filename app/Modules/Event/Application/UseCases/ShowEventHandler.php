@@ -29,6 +29,7 @@ final class ShowEventHandler
                     ->orderBy('sort_order')
                     ->orderBy('id'),
                 'booking',
+                'sourceBooking',
                 'organizerActor.user.profile.activeAvatar',
                 'organizerActor.user.telegramAccount',
                 'organizerActor.user.contacts',

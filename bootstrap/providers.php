@@ -9,6 +9,7 @@ use App\Modules\Notification\Infrastructure\Providers\NotificationServiceProvide
 use App\Modules\Team\Infrastructure\Providers\TeamSportsServiceProvider;
 use App\Modules\Telegram\Infrastructure\Providers\TelegramServiceProvider;
 use App\Modules\Venue\Infrastructure\Providers\VenueAccessServiceProvider;
+use App\Modules\VenueBooking\Infrastructure\Providers\VenueBookingServiceProvider;
 use App\Modules\Vk\Infrastructure\Providers\VkServiceProvider;
 use App\Providers\AccessServiceProvider;
 use App\Providers\AppServiceProvider;
@@ -25,5 +26,6 @@ return [
     TeamSportsServiceProvider::class,
     TelegramServiceProvider::class,
     VenueAccessServiceProvider::class,
+    VenueBookingServiceProvider::class,
     VkServiceProvider::class,
 ];

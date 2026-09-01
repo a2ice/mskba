@@ -1,0 +1,52 @@
+<?php
+
+namespace App\Modules\VenueBooking\Application\UseCases;
+
+use App\Modules\Identity\Domain\Enums\ActorTypeEnum;
+use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
+use App\Modules\VenueBooking\Application\Services\LockedVenueBooking;
+use App\Modules\VenueBooking\Application\Services\VenueBookingOutbox;
+use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingExpired;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingPaymentExpired;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPaymentAttempt;
+use App\Modules\VenueBooking\Domain\Services\VenueBookingLifecycle;
+use App\Support\Features\FeatureFlags;
+use App\Support\Features\VenueRentalFeature;
+use Carbon\CarbonImmutable;
+
+final readonly class ExpireVenueBookingHandler
+{
+    public function __construct(
+        private LockedVenueBooking $lockedBooking,
+        private VenueBookingLifecycle $lifecycle,
+        private FeatureFlags $features,
+        private IdempotentVenueBookingCommand $commands,
+        private VenueBookingOutbox $outbox,
+    ) {}
+
+    public function handle(int $bookingId, Actor $systemActor, ?int $expectedVersion = null, ?string $idempotencyKey = null, ?string $correlationId = null): VenueBooking
+    {
+        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        if ($systemActor->type !== ActorTypeEnum::SYSTEM) {
+            throw new VenueBookingTransitionException('Истечение брони доступно только системной команде.', 'BOOKING_FORBIDDEN');
+        }
+
+        return $this->commands->execute('venue_booking.expire', $systemActor, [
+            'booking_id' => $bookingId, 'expected_version' => $expectedVersion,
+        ], fn (): VenueBooking => $this->lockedBooking->run($bookingId, function (VenueBooking $booking) use ($systemActor, $expectedVersion): VenueBooking {
+            $paymentAttempt = VenueBookingPaymentAttempt::query()->where('venue_booking_id', $booking->id)->lockForUpdate()->first();
+            if ($paymentAttempt !== null && in_array($paymentAttempt->status, [VenueBookingPaymentState::WINDOW_OPEN, VenueBookingPaymentState::CLAIMED], true)) {
+                $paymentAttempt->update(['status' => VenueBookingPaymentState::EXPIRED, 'expired_at' => now()]);
+                $this->outbox->record($booking->id, VenueBookingPaymentExpired::class, ['payment_attempt_id' => $paymentAttempt->id]);
+            }
+            $this->lifecycle->expire($booking, $systemActor, CarbonImmutable::now(), $expectedVersion);
+            $this->outbox->record($booking->id, VenueBookingExpired::class);
+
+            return $booking->fresh('transitions');
+        }), $idempotencyKey, $correlationId);
+    }
+}

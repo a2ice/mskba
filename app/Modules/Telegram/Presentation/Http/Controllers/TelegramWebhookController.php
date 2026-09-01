@@ -22,7 +22,8 @@ final class TelegramWebhookController extends Controller
         $callback = $request->input('callback_query');
 
         if (is_array($callback)) {
-            ProcessTelegramCallbackJob::dispatch($callback);
+            $updateId = $request->input('update_id');
+            ProcessTelegramCallbackJob::dispatch($callback, is_numeric($updateId) ? (int) $updateId : null);
         }
 
         $message = $request->input('message');

@@ -28,6 +28,9 @@ final class CancelEventHandler
             Venue::query()->whereKey($reference->venue_id)->lockForUpdate()->firstOrFail();
             $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::CANCEL_EVENT);
+            if ($event->booking_id !== null) {
+                throw new InvalidArgumentException('Связанное мероприятие отменяется только через отмену брони.');
+            }
 
             if ($event->status === EventStatusEnum::CANCELLED) {
                 return $event;
