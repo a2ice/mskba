@@ -10,6 +10,8 @@ function initWizardVenueAvailability(form) {
     const list = selector?.querySelector('[data-venue-selector-list]');
     const scopeInput = selector?.querySelector('[data-venue-booking-scope-input]');
     const previewOpen = selector?.querySelector('[data-venue-preview-open]');
+    const rentalNote = form.querySelector('[data-wizard-rental-note]');
+    const submitButton = form.querySelector('[data-wizard-submit]');
     if (!selector || !valueInput || !textInput || !scopeInput) return;
 
     const standardSearchUrl = selector.dataset.searchUrl;
@@ -50,6 +52,34 @@ function initWizardVenueAvailability(form) {
         scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
+    const updateRentalState = (venue) => {
+        if (!rentalNote || !submitButton || !venue) return;
+        const policy = venue.rental_policy;
+        if (policy) {
+            const amountMinor = scopeInput.value === 'whole'
+                ? policy.whole_amount_minor
+                : policy.half_amount_minor;
+            const divisor = 10 ** Number(policy.currency_exponent || 0);
+            const price = Number.isFinite(Number(amountMinor))
+                ? new Intl.NumberFormat('ru-RU', {
+                    style: 'currency',
+                    currency: policy.currency || 'RUB',
+                    maximumFractionDigits: 2,
+                }).format(Number(amountMinor) / divisor)
+                : null;
+            rentalNote.textContent = `Будет создана заявка на аренду${price ? ` на сумму ${price}` : ''}. Мероприятие опубликуется автоматически после подтверждения брони.`;
+            submitButton.textContent = 'Отправить заявку на аренду';
+            return;
+        }
+        if (!venue.has_free_access) {
+            rentalNote.textContent = 'Владелец площадки ещё не опубликовал условия аренды. Создание мероприятия пока недоступно.';
+            submitButton.textContent = 'Создать мероприятие';
+            return;
+        }
+        rentalNote.textContent = 'Свободная площадка будет забронирована сразу, мероприятие сразу появится в каталоге.';
+        submitButton.textContent = 'Создать мероприятие';
+    };
+
     const applyAvailableScopes = (venue, notify = false) => {
         if (!venue || Number(venue.id) !== Number(valueInput.value)) return false;
         const scopes = Array.isArray(venue.available_scopes) ? venue.available_scopes : [];
@@ -67,6 +97,7 @@ function initWizardVenueAvailability(form) {
             option.disabled = !scopes.includes(option.value);
             option.textContent = `${scopeLabel(option.value)}${scopes.includes(option.value) ? '' : ' — занято'}`;
         });
+        updateRentalState(currentVenue);
 
         if (notify && changed) {
             validateExactScope();
@@ -183,6 +214,7 @@ function initWizardVenueAvailability(form) {
                 previewOpen.dataset.previewUrl = venue.preview_url || '';
                 previewOpen.hidden = !venue.preview_url;
             }
+            updateRentalState(venue);
 
             const resolved = await resolveAvailableScopes(venue);
             if (!resolved) validateExactScope();
@@ -196,6 +228,7 @@ function initWizardVenueAvailability(form) {
     }
 
     valueInput.addEventListener('change', chooseAvailableScopeFromSearchResult);
+    scopeInput.addEventListener('change', () => updateRentalState(knownSelectedVenue()));
     [startInput, durationInput].filter(Boolean).forEach((input) => input.addEventListener('change', () => {
         const venue = knownSelectedVenue();
         if (!valueInput.value) return;

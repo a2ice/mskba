@@ -63,7 +63,7 @@ final class VenueBookingController extends Controller
         GetContributionSummaryHandler $contributions,
         VenueCommercialAccess $commercialAccess,
     ): JsonResponse|Response {
-        $venueBooking->load(['venue', 'event', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
+        $venueBooking->load(['venue', 'event', 'eventIntent', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
         $actor = $actors->resolveForRequest($request);
 
         try {

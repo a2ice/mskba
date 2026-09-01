@@ -25,6 +25,7 @@
 
 <form method="POST" action="{{ $formAction }}" data-event-create-form data-current-date="{{ $currentDate }}">
     @csrf
+    <input type="hidden" name="event_request_id" value="{{ old('event_request_id', $eventRequestId) }}">
     <div class="form-group field mb-3">
         <label class="form-label" for="{{ $formIdPrefix }}Title">Название</label>
         <input id="{{ $formIdPrefix }}Title" class="form-control @error('title') is-invalid @enderror" name="title" value="{{ old('title', $defaultTitle) }}" maxlength="150" required data-event-title data-generated-title="{{ $defaultTitle }}">

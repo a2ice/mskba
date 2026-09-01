@@ -6,9 +6,11 @@ use App\Modules\VenueBooking\Application\Payments\PaymentProviderPort;
 use App\Modules\VenueBooking\Application\Services\VenueBookingCommandContext;
 use App\Modules\VenueBooking\Domain\Events\ContributionCommitmentSet;
 use App\Modules\VenueBooking\Domain\Events\ContributionCommitmentWithdrawn;
+use App\Modules\VenueBooking\Domain\Events\VenueBookingConfirmed;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingPolicyPublished;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Infrastructure\Listeners\CreateEventFromConfirmedBookingIntent;
 use App\Modules\VenueBooking\Infrastructure\Listeners\InvalidateVenueSearchAfterPolicyPublished;
 use App\Modules\VenueBooking\Infrastructure\Listeners\NotifyVenueBookingMessageRecipients;
 use App\Modules\VenueBooking\Infrastructure\Listeners\QueueContributionSummaryNotification;
@@ -35,6 +37,7 @@ final class VenueBookingServiceProvider extends ServiceProvider
     {
         VenueBooking::observe(VenueBookingProjectionObserver::class);
         Event::listen(VenueBookingPolicyPublished::class, InvalidateVenueSearchAfterPolicyPublished::class);
+        Event::listen(VenueBookingConfirmed::class, CreateEventFromConfirmedBookingIntent::class);
         Event::listen(VenueBookingMessageSent::class, NotifyVenueBookingMessageRecipients::class);
         Event::listen(ContributionCommitmentSet::class, QueueContributionSummaryNotification::class);
         Event::listen(ContributionCommitmentWithdrawn::class, QueueContributionSummaryNotification::class);

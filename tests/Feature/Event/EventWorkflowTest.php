@@ -149,22 +149,20 @@ final class EventWorkflowTest extends TestCase
             ->assertSee('Вечерняя игра');
     }
 
-    public function test_booking_that_requires_approval_creates_draft_event(): void
+    public function test_booking_that_requires_approval_without_rental_policy_does_not_create_legacy_draft(): void
     {
         $user = User::factory()->create();
         [$venue, $start, $end] = $this->availableVenue(['requires_booking_approval' => true]);
 
-        $this->actingAs($user)->post(route('events.store'), $this->payload($venue, $start, $end));
-
-        $event = $venue->events()->firstOrFail();
-        $this->assertSame(EventStatusEnum::DRAFT, $event->status);
-        $this->assertSame(VenueBookingStatusEnum::PENDING, $event->booking->status);
-
         $this->actingAs($user)
-            ->get(route('events.show', $event->routeIdentifier()))
-            ->assertOk()
-            ->assertSee('Мероприятие пока не опубликовано.')
-            ->assertSee('не отображается в каталоге и не отправляется в выбранные Telegram-чаты.');
+            ->post(route('events.store'), $this->payload($venue, $start, $end))
+            ->assertSessionHas(
+                'error',
+                'Для этой площадки ещё не опубликованы условия аренды. Обратитесь к владельцу площадки.',
+            );
+
+        $this->assertDatabaseCount('events', 0);
+        $this->assertDatabaseCount('venue_bookings', 0);
     }
 
     public function test_participation_actions_are_replaced_after_registration_closes(): void
@@ -841,10 +839,12 @@ final class EventWorkflowTest extends TestCase
     public function test_booking_cannot_be_moved_when_current_or_target_venue_is_not_free(): void
     {
         $organizer = User::factory()->create();
-        [$managedVenue, $start, $end] = $this->availableVenue(['requires_booking_approval' => true]);
+        [$managedVenue, $start, $end] = $this->availableVenue();
         [$freeVenue] = $this->availableVenue();
         $this->actingAs($organizer)->post(route('events.store'), $this->payload($managedVenue, $start, $end));
         $event = $managedVenue->events()->firstOrFail();
+        $managedVenue->update(['requires_booking_approval' => true]);
+        $managedVenue->refresh();
 
         $this->actingAs($organizer)
             ->get(route('events.edit', $event->routeIdentifier()))
