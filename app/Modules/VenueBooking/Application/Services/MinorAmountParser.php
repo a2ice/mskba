@@ -42,4 +42,21 @@ final class MinorAmountParser
     {
         return self::EXPONENTS[strtoupper($currency)] ?? 2;
     }
+
+    public function format(int $amountMinor, string $currency): string
+    {
+        $exponent = $this->exponent($currency);
+        if ($exponent === 0) {
+            return (string) $amountMinor;
+        }
+
+        $factor = 10 ** $exponent;
+        $whole = intdiv($amountMinor, $factor);
+        $fraction = rtrim(
+            str_pad((string) ($amountMinor % $factor), $exponent, '0', STR_PAD_LEFT),
+            '0',
+        );
+
+        return $fraction === '' ? (string) $whole : $whole.'.'.$fraction;
+    }
 }

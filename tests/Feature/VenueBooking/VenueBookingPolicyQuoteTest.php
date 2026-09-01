@@ -20,8 +20,8 @@ use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use LogicException;
 use Tests\TestCase;
 
@@ -151,6 +151,61 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         app(PublishVenueBookingPolicyHandler::class)->handle($venue, $stranger, $this->policyData());
     }
 
+    public function test_owner_enters_policy_prices_in_rubles_and_they_are_stored_in_minor_units(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+
+        $this->actingAs($owner)
+            ->put(route('account.venues.booking-policy.update', $venue), $this->policyFormData([
+                'whole_price_per_step' => '1500,50',
+                'half_price_per_step' => '750',
+            ]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('venue_booking_policies', [
+            'venue_id' => $venue->id,
+            'whole_price_per_step_minor' => 150050,
+            'half_price_per_step_minor' => 75000,
+        ]);
+    }
+
+    public function test_free_half_rental_accepts_an_empty_half_price(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+
+        $this->actingAs($owner)
+            ->put(route('account.venues.booking-policy.update', $venue), $this->policyFormData([
+                'requires_payment' => '0',
+                'whole_price_per_step' => '0',
+                'half_price_per_step' => '',
+            ]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors()
+            ->assertSessionMissing('error');
+
+        $this->assertDatabaseHas('venue_booking_policies', [
+            'venue_id' => $venue->id,
+            'whole_price_per_step_minor' => 0,
+            'half_price_per_step_minor' => null,
+        ]);
+    }
+
+    public function test_half_rental_toggle_is_disabled_without_two_playing_zones(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(1);
+
+        $response = $this->actingAs($owner)
+            ->get(route('account.venues.booking-policy.edit', $venue))
+            ->assertOk()
+            ->assertSeeText('Недоступно: в характеристиках площадки должно быть указано минимум две игровые зоны.');
+
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]+name="allows_halves"[^>]+disabled[^>]*>/s',
+            $response->getContent(),
+        );
+    }
+
     public function test_http_quote_ignores_client_price_and_returns_server_snapshot(): void
     {
         [$owner, $venue] = $this->ownedVenue(2);
@@ -249,6 +304,34 @@ final class VenueBookingPolicyQuoteTest extends TestCase
             'payment_window_minutes' => 30,
             'quote_validity_minutes' => 15,
             'cancellation_before_minutes' => 1440,
+            ...$overrides,
+        ];
+    }
+
+    /** @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function policyFormData(array $overrides = []): array
+    {
+        return [
+            'is_enabled' => '1',
+            'allows_whole' => '1',
+            'allows_halves' => '1',
+            'minimum_duration_minutes' => '60',
+            'maximum_duration_minutes' => '180',
+            'time_step_minutes' => '30',
+            'minimum_lead_time_minutes' => '120',
+            'maximum_advance_days' => '90',
+            'currency' => 'RUB',
+            'whole_price_per_step' => '500',
+            'half_price_per_step' => '300',
+            'hold_duration_minutes' => '30',
+            'allows_hold_extension' => '0',
+            'maximum_hold_extension_minutes' => '30',
+            'requires_payment' => '1',
+            'payment_window_minutes' => '30',
+            'quote_validity_minutes' => '15',
+            'cancellation_before_minutes' => '1440',
             ...$overrides,
         ];
     }
