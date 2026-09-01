@@ -62,13 +62,21 @@ jobs:
             update_env_value VK_ID_APP_ID "$VK_ID_APP_ID"
             update_env_value VK_ID_REDIRECT_URI "$VK_ID_REDIRECT_URI"
 
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
-
             COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
             HOST_UID="$(id -u)"
             HOST_GID="$(id -g)"
+
+            # Vite runs in a container and can leave tracked build artifacts
+            # owned by a container user. Normalize them before git needs to
+            # replace/remove those files on the next deployment.
+            if [ -d public/build ]; then
+              $COMPOSE run -T --rm --no-deps --user 0:0 phpfpm \
+                chown -R "$HOST_UID:$HOST_GID" public/build </dev/null
+            fi
+
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
 
             mkdir -p bootstrap/cache public/build
 
@@ -84,7 +92,8 @@ jobs:
 
             $COMPOSE --profile build run -T --rm node </dev/null
             test -f public/build/manifest.json
-            $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:$HOST_GID" vendor public/build </dev/null || true
+            $COMPOSE run -T --rm --no-deps --user 0:0 phpfpm \
+              chown -R "$HOST_UID:$HOST_GID" vendor public/build </dev/null
 
             $COMPOSE run -T --rm phpfpm sh -lc "mkdir -p storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && rm -f bootstrap/cache/*.php" </dev/null
             $COMPOSE run -T --rm phpfpm php artisan storage:link </dev/null
