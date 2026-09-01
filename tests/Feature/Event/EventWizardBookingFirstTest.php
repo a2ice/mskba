@@ -84,6 +84,20 @@ final class EventWizardBookingFirstTest extends TestCase
             ->assertJsonPath('venues.0.rental_policy.whole_amount_minor', 400000)
             ->assertJsonPath('venues.0.available_scopes', ['whole', 'half_a', 'half_b']);
 
+        $this->actingAs($requester)->getJson(route('events.wizard.venues', [
+            'venue_id' => $venue->id,
+            'discover_scopes' => 1,
+            'confirmed_only' => 1,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+            'starts_at' => $startsAt->format('Y-m-d\TH:i'),
+            'duration_minutes' => 75,
+            'booking_scope' => 'whole',
+            'limit' => 1,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('venues.0.rental_policy.whole_amount_minor', null)
+            ->assertJsonPath('venues.0.rental_policy.half_amount_minor', null);
+
         $payload = [
             'event_request_id' => $requestId,
             'venue_id' => $venue->id,

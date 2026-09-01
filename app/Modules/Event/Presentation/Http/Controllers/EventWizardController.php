@@ -246,7 +246,7 @@ final class EventWizardController extends Controller
                     }
                     $scopes = array_values(array_intersect($scopes, $allowedScopes));
                 }
-                $steps = $policy !== null && $durationMinutes !== null && $policy->time_step_minutes > 0
+                $steps = $policy !== null && $durationMinutes !== null && $policy->acceptsDuration($durationMinutes)
                     ? intdiv($durationMinutes, $policy->time_step_minutes)
                     : null;
 

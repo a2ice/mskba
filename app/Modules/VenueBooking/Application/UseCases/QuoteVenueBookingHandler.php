@@ -57,9 +57,7 @@ final readonly class QuoteVenueBookingHandler
             throw new VenueBookingPolicyException('Начало аренды должно соответствовать шагу времени политики.');
         }
 
-        if ($durationMinutes < $policy->minimum_duration_minutes
-            || $durationMinutes > $policy->maximum_duration_minutes
-            || $durationMinutes % $policy->time_step_minutes !== 0) {
+        if (! $policy->acceptsDuration($durationMinutes)) {
             throw new VenueBookingPolicyException('Длительность не соответствует ограничениям политики.');
         }
 

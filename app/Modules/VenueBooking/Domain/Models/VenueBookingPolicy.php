@@ -24,6 +24,14 @@ class VenueBookingPolicy extends Model
 {
     use Auditable;
 
+    public function acceptsDuration(int $durationMinutes): bool
+    {
+        return $this->time_step_minutes > 0
+            && $durationMinutes >= $this->minimum_duration_minutes
+            && $durationMinutes <= $this->maximum_duration_minutes
+            && $durationMinutes % $this->time_step_minutes === 0;
+    }
+
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
