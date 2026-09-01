@@ -159,6 +159,12 @@ final class EventWorkflowTest extends TestCase
         $event = $venue->events()->firstOrFail();
         $this->assertSame(EventStatusEnum::DRAFT, $event->status);
         $this->assertSame(VenueBookingStatusEnum::PENDING, $event->booking->status);
+
+        $this->actingAs($user)
+            ->get(route('events.show', $event->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Мероприятие пока не опубликовано.')
+            ->assertSee('не отображается в каталоге и не отправляется в выбранные Telegram-чаты.');
     }
 
     public function test_participation_actions_are_replaced_after_registration_closes(): void

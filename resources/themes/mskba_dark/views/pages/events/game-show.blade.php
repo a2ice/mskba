@@ -7,6 +7,7 @@
     use App\Modules\Event\Domain\Enums\GameStatusEnum;
     use App\Modules\Event\Domain\Enums\GameLineupRoleEnum;
     use App\Modules\Event\Domain\Enums\GamePeriodStatusEnum;
+    use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
     use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
     use App\Modules\Team\Domain\Enums\TeamLineupAssignmentEnum;
 
@@ -50,6 +51,12 @@
     $managementMode = $managementMode ?? false;
     $tournament = $game->tournamentMatch?->tournament;
     $tournamentCandidates = $tournamentCandidates ?? collect();
+    $formationLabel = $isEmbeddedGame ? 'Команды из участников' : $game->recruitment_mode->label();
+    $formationTooltip = match (true) {
+        $isEmbeddedGame => 'Стороны этой мини-игры формируются из участников основного мероприятия.',
+        $game->recruitment_mode === GameRecruitmentModeEnum::PREFORMED_TEAMS => 'Заявки подают готовые команды, после чего организатор утверждает две стороны.',
+        default => 'Заявки подают отдельные игроки, после чего организатор формирует из них две стороны.',
+    };
     $canEditComposition = $managementMode
         && $canManageRoster
         && $game->actual_started_at === null
@@ -84,12 +91,13 @@
             @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
             @if(session('photo_status')) <div class="alert alert-success">{{ session('photo_status') }}</div> @endif
             @if(session('photo_error') || $errors->has('photo')) <div class="alert alert-danger">{{ session('photo_error') ?: $errors->first('photo') }}</div> @endif
+            @include('theme::pages.events.partials.pending-booking-publication-notice')
 
             <a class="game-control__back" href="{{ $tournament ? route('tournaments.show', $tournament->routeIdentifier()) : route('events.show', $event->routeIdentifier()) }}"><i class="ti ti-arrow-left"></i>{{ $tournament ? 'Назад к турниру' : 'Назад к мероприятию' }}</a>
 
             <header class="game-control__header">
                 <div class="game-control__identity"><span class="eyebrow">{{ $tournament ? 'Игра турнира' : ($isEmbeddedGame ? 'Мини-игра' : 'Игра') }}</span><h1>{{ $title }}</h1>@if($tournament)<p>Турнир «<a href="{{ route('tournaments.show', $tournament->routeIdentifier()) }}">{{ $tournament->title }}</a>»</p>@elseif($isEmbeddedGame)<p>В рамках «<a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a>»</p>@endif</div>
-                <div class="game-control__chips"><span>{{ $game->format?->label() ?? $game->formatLabel() }}</span><span>{{ $game->scoring_type->label() }} · {{ $game->timing_mode->label() }}@if($game->periods_count) · {{ $game->periods_count }}@endif</span><span class="{{ $gameState[1] }}"><i class="ti ti-point-filled"></i>{{ $gameState[0] }}</span><span><i class="ti ti-users"></i>Команды из участников</span></div>
+                <div class="game-control__chips"><span>{{ $game->format?->label() ?? $game->formatLabel() }}</span><span>{{ $game->scoring_type->label() }} · {{ $game->timing_mode->label() }}@if($game->periods_count) · {{ $game->periods_count }}@endif</span><span class="{{ $gameState[1] }}"><i class="ti ti-point-filled"></i>{{ $gameState[0] }}</span><span title="{{ $formationTooltip }}" data-tooltip-variant="title"><i class="ti ti-users"></i>{{ $formationLabel }}</span></div>
                 <div class="game-control__meta"><span><i class="ti ti-map-pin"></i>{{ $event->venue->name }}@if($event->booking?->scope) · {{ $event->booking->scope->label() }}@endif</span><span><i class="ti ti-clock"></i>{{ $effectiveStartsAt && $effectiveEndsAt ? $effectiveStartsAt->format('H:i').'–'.$effectiveEndsAt->format('H:i') : 'Время на игру не задано' }}</span></div>
             </header>
 
