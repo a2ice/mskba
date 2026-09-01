@@ -251,6 +251,40 @@ final class EventCreationWizardTest extends TestCase
         $this->assertSame('preformed_teams', $game->recruitment_mode->value);
     }
 
+    public function test_game_training_can_book_a_half_independently_of_game_format(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        Actor::factory()->create([
+            'type' => ActorTypeEnum::USER->value,
+            'user_id' => $user->id,
+        ]);
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED->value,
+            'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
+            'requires_payment' => false,
+            'requires_booking_approval' => false,
+        ]);
+        $venue->characteristics()->create(['hoops_count' => 2]);
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->startOfHour();
+
+        $response = $this->actingAs($user)
+            ->from(route('events.wizard'))
+            ->post(route('events.store'), [
+                'venue_id' => $venue->id,
+                'title' => 'Игровая тренировка на половине',
+                'type' => EventTypeEnum::GAME_TRAINING->value,
+                'visibility' => 'public',
+                'starts_at' => $start->format('Y-m-d\TH:i'),
+                'duration_minutes' => 60,
+                'booking_scope' => VenueBookingScopeEnum::HALF_A->value,
+            ]);
+
+        $event = Event::query()->where('title', 'Игровая тренировка на половине')->firstOrFail();
+        $response->assertRedirect(route('events.show', $event->routeIdentifier()));
+        $this->assertSame(EventTypeEnum::GAME_TRAINING, $event->type);
+        $this->assertSame(VenueBookingScopeEnum::HALF_A, $event->booking->scope);
+    }
+
     public function test_wizard_preserves_selected_venue_id_after_server_validation_redirect(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);

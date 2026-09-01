@@ -14,35 +14,15 @@ function initWizardVenueAvailability(form) {
 
     const standardSearchUrl = selector.dataset.searchUrl;
     const flexibleSearchUrl = `${window.location.pathname.replace(/\/$/, '')}/venues`;
-    const typeRadios = Array.from(form.querySelectorAll('[data-wizard-type]'));
-    const formatRadios = Array.from(form.querySelectorAll('[data-game-format]'));
-    const scoringInput = form.querySelector('[data-game-scoring]');
-    const sideAInput = form.querySelector('[data-game-side-a]');
-    const sideBInput = form.querySelector('[data-game-side-b]');
-    const customInputs = Array.from(form.querySelectorAll(
-        '[data-custom-side-a], [data-custom-side-b], [data-custom-scoring], [data-custom-timing]',
-    ));
     const startInput = selector.dataset.startInput
         ? document.querySelector(selector.dataset.startInput)
         : null;
     const durationInput = selector.dataset.durationInput
         ? document.querySelector(selector.dataset.durationInput)
         : null;
-    let flexible = false;
     let currentVenue = null;
     let scopeController = null;
     let hydrationController = null;
-
-    const selected = (items) => items.find((item) => item.checked)?.value || '';
-    const isHalfCourtCompatible = () => {
-        if (selected(typeRadios) !== 'game') return false;
-        const format = selected(formatRadios);
-        if (format === 'streetball_3x3' || format === 'streetball_1x1') return true;
-        if (format !== 'custom') return false;
-
-        return scoringInput?.value === 'streetball'
-            && Math.max(Number(sideAInput?.value || 0), Number(sideBInput?.value || 0)) <= 3;
-    };
 
     const parsedListVenues = () => {
         if (!list?.dataset.venues) return [];
@@ -70,29 +50,8 @@ function initWizardVenueAvailability(form) {
         scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
-    const applySearchMode = (revalidate = true) => {
-        const nextFlexible = isHalfCourtCompatible();
-        const changed = flexible !== nextFlexible;
-        flexible = nextFlexible;
-        selector.dataset.searchUrl = flexible ? flexibleSearchUrl : standardSearchUrl;
-
-        if (!flexible && scopeInput.value !== 'whole') {
-            scopeInput.value = 'whole';
-        }
-
-        if (!revalidate || !changed || !valueInput.value) return;
-        const venue = knownSelectedVenue();
-        if (flexible && venue) {
-            resolveAvailableScopes(venue).then((resolved) => {
-                if (!resolved) validateExactScope();
-            });
-        } else {
-            validateExactScope();
-        }
-    };
-
     const applyAvailableScopes = (venue, notify = false) => {
-        if (!flexible || !venue || Number(venue.id) !== Number(valueInput.value)) return false;
+        if (!venue || Number(venue.id) !== Number(valueInput.value)) return false;
         const scopes = Array.isArray(venue.available_scopes) ? venue.available_scopes : [];
         if (!scopes.length) return false;
 
@@ -124,8 +83,6 @@ function initWizardVenueAvailability(form) {
         const venue = selectedVenueFromList();
         if (!venue) return;
         currentVenue = venue;
-        if (!flexible) return;
-
         if (!applyAvailableScopes(venue, false)) {
             resolveAvailableScopes(venue).then((resolved) => {
                 if (!resolved) validateExactScope();
@@ -134,7 +91,7 @@ function initWizardVenueAvailability(form) {
     };
 
     async function resolveAvailableScopes(venue) {
-        if (!flexible || !venue?.id || !startInput?.value || !durationInput?.value) return false;
+        if (!venue?.id || !startInput?.value || !durationInput?.value) return false;
         scopeController?.abort();
         const controller = new AbortController();
         scopeController = controller;
@@ -217,18 +174,18 @@ function initWizardVenueAvailability(form) {
             const address = displayAddress(venue.address);
             textInput.value = `${venue.name}${address ? ` — ${address}` : ''}`;
             selector.dataset.selectedHoopsCount = String(venue.hoops_count || 1);
+            const scopeContainer = selector.querySelector('[data-venue-booking-scope]');
+            const supportsHalves = Number(venue.hoops_count) >= 2;
+            if (scopeContainer) scopeContainer.hidden = !supportsHalves;
+            if (!supportsHalves) scopeInput.value = 'whole';
             if (clearButton) clearButton.hidden = false;
             if (previewOpen) {
                 previewOpen.dataset.previewUrl = venue.preview_url || '';
                 previewOpen.hidden = !venue.preview_url;
             }
 
-            if (flexible) {
-                const resolved = await resolveAvailableScopes(venue);
-                if (!resolved) validateExactScope();
-            } else {
-                validateExactScope();
-            }
+            const resolved = await resolveAvailableScopes(venue);
+            if (!resolved) validateExactScope();
         } catch (error) {
             if (error.name !== 'AbortError') {
                 textInput.setCustomValidity('Не удалось восстановить выбранную площадку. Выберите её повторно.');
@@ -238,14 +195,11 @@ function initWizardVenueAvailability(form) {
         }
     }
 
-    typeRadios.forEach((input) => input.addEventListener('change', () => applySearchMode()));
-    formatRadios.forEach((input) => input.addEventListener('change', () => applySearchMode()));
-    customInputs.forEach((input) => input.addEventListener('change', () => applySearchMode()));
     valueInput.addEventListener('change', chooseAvailableScopeFromSearchResult);
     [startInput, durationInput].filter(Boolean).forEach((input) => input.addEventListener('change', () => {
         const venue = knownSelectedVenue();
         if (!valueInput.value) return;
-        if (flexible && venue) {
+        if (venue) {
             resolveAvailableScopes(venue).then((resolved) => {
                 if (!resolved) validateExactScope();
             });
@@ -254,7 +208,7 @@ function initWizardVenueAvailability(form) {
         }
     }));
 
-    applySearchMode(false);
+    selector.dataset.searchUrl = flexibleSearchUrl;
     window.setTimeout(hydrateInitialVenue, 0);
 }
 

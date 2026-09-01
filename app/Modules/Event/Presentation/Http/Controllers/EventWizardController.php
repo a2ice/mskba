@@ -177,7 +177,7 @@ final class EventWizardController extends Controller
         $limit = (int) ($validated['limit'] ?? 20);
         $hasAvailabilityWindow = $startsAt !== null && $durationMinutes !== null;
 
-        // Discovery keeps a streetball venue when at least one bookable zone is
+        // Discovery keeps a multi-zone venue when at least one physical scope is
         // free. Exact revalidation still checks only the user's selected scope.
         $scopes = $hasAvailabilityWindow && ($venueId === null || $discoverScopes)
             ? VenueBookingScopeEnum::cases()
