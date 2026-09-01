@@ -36,6 +36,7 @@
             data-default-title="{{ $defaultTitle }}"
         >
             @csrf
+            <input type="hidden" name="event_request_id" value="{{ old('event_request_id', $eventRequestId) }}">
 
             <div class="event-wizard__progress" aria-label="Прогресс создания">
                 <div class="event-wizard__progress-copy">
@@ -229,7 +230,7 @@
                                 'showFavorites' => true,
                             ])
                         </div>
-                        <div class="event-wizard-note"><i class="ti ti-layout-2" aria-hidden="true"></i><span>Для площадок с двумя кольцами можно выбрать всю площадку или отдельную половину. Занятые варианты помечаются автоматически.</span></div>
+                        <div class="event-wizard-note"><i class="ti ti-layout-2" aria-hidden="true"></i><span data-wizard-rental-note>Для площадок с двумя игровыми зонами можно выбрать всю площадку или отдельную половину, если это разрешено условиями аренды. Занятые варианты помечаются автоматически.</span></div>
                     </section>
 
                     <section class="event-wizard-step" data-wizard-step="participants" data-step-title="Кто участвует?" hidden>

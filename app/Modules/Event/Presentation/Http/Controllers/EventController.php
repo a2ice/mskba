@@ -12,8 +12,6 @@ use App\Modules\Event\Application\Services\GameStatisticsFields;
 use App\Modules\Event\Application\UseCases\AddEventParticipantHandler;
 use App\Modules\Event\Application\UseCases\CancelEventHandler;
 use App\Modules\Event\Application\UseCases\CompleteEventHandler;
-use App\Modules\Event\Application\UseCases\CreateEventHandler;
-use App\Modules\Event\Application\UseCases\CreateStandaloneGameHandler;
 use App\Modules\Event\Application\UseCases\JoinEventHandler;
 use App\Modules\Event\Application\UseCases\LeaveEventHandler;
 use App\Modules\Event\Application\UseCases\ListEventsHandler;
@@ -24,6 +22,7 @@ use App\Modules\Event\Application\UseCases\RespondEventResponsibilityHandler;
 use App\Modules\Event\Application\UseCases\SearchEventParticipantCandidatesHandler;
 use App\Modules\Event\Application\UseCases\SetEventParticipationHandler;
 use App\Modules\Event\Application\UseCases\ShowEventHandler;
+use App\Modules\Event\Application\UseCases\SubmitEventWizardHandler;
 use App\Modules\Event\Application\UseCases\UpdateEventHandler;
 use App\Modules\Event\Application\UseCases\UpdateEventResponsibilityPermissionsHandler;
 use App\Modules\Event\Application\UseCases\UpdateManagedEventParticipantStatusHandler;
@@ -47,16 +46,17 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Telegram\Application\Services\TelegramChatRegistry;
-use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
 use App\Modules\Tournament\Application\Services\TournamentEntryRosterResolver;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
+use App\Support\Features\FeatureDisabledException;
 use Carbon\CarbonImmutable;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 
@@ -158,16 +158,14 @@ final class EventController extends Controller
                 ->where('status', TeamStatusEnum::ACTIVE->value)
                 ->orderBy('name')
                 ->get(),
+            'eventRequestId' => (string) Str::uuid(),
         ]);
     }
 
     public function store(
         CreateEventRequest $request,
-        CreateEventHandler $events,
-        CreateStandaloneGameHandler $standaloneGames,
+        SubmitEventWizardHandler $events,
         CurrentActorResolver $actors,
-        TelegramChatRegistry $telegramChats,
-        PrepareTelegramEventPublicationsHandler $prepareTelegramPublications,
     ): RedirectResponse {
         $actor = $actors->resolveForRequest($request);
 
@@ -177,36 +175,22 @@ final class EventController extends Controller
 
         try {
             $data = $request->validated();
-            $telegramChats->activeEventChats();
-            $event = DB::transaction(function () use (
-                $actor,
-                $data,
-                $events,
-                $standaloneGames,
-                $prepareTelegramPublications,
-            ) {
-                $event = $data['type'] === EventTypeEnum::GAME->value
-                    ? $standaloneGames->handle($actor, $data)
-                    : $events->handle($actor, $data);
-
-                if ((bool) ($data['publish_to_telegram'] ?? false)) {
-                    $prepareTelegramPublications->handle(
-                        $event,
-                        $data['telegram_chat_ids'] ?? [],
-                    );
-                }
-
-                return $event;
-            });
-        } catch (InvalidArgumentException $exception) {
+            $result = $events->handle($actor, $data);
+        } catch (InvalidArgumentException|DomainException $exception) {
             return back()->withInput()->with('error', $exception->getMessage());
+        } catch (FeatureDisabledException) {
+            return back()->withInput()->with('error', 'Онлайн-аренда этой площадки временно недоступна.');
         }
 
-        $message = $event->booking?->status->value === 'confirmed'
-            ? 'Мероприятие создано, площадка забронирована.'
-            : 'Мероприятие сохранено. Бронирование ожидает подтверждения площадки.';
+        if ($result->booking !== null) {
+            return redirect()
+                ->route('account.venue-bookings.show', $result->booking)
+                ->with('status', 'Заявка на аренду отправлена. Мероприятие будет опубликовано после подтверждения брони.');
+        }
 
-        return redirect()->route('events.show', $event->routeIdentifier())->with('status', $message);
+        return redirect()
+            ->route('events.show', $result->event->routeIdentifier())
+            ->with('status', 'Мероприятие создано, площадка забронирована.');
     }
 
     public function show(

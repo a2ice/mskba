@@ -19,12 +19,15 @@ use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 final class EventWizardController extends Controller
@@ -47,6 +50,7 @@ final class EventWizardController extends Controller
             'defaultTitle' => $selectedType->label().' - '.$now->format('Ymd'),
             'durationOptions' => range(30, 480, 30),
             'telegramChats' => $telegramChats->activeEventChats(),
+            'eventRequestId' => (string) Str::uuid(),
         ]);
     }
 
@@ -146,6 +150,7 @@ final class EventWizardController extends Controller
         Request $request,
         SearchVenuesHandler $searchVenues,
         CurrentActorResolver $actors,
+        MinorAmountParser $amounts,
     ): JsonResponse {
         $validated = $request->validate([
             'query' => ['nullable', 'string', 'max:100'],
@@ -221,30 +226,63 @@ final class EventWizardController extends Controller
             ->mapWithKeys(fn (Venue $venue): array => [
                 $venue->id => (int) ($venue->characteristics?->hoops_count ?? 1),
             ]);
+        $rentalPolicies = VenueBookingPolicy::query()
+            ->whereIn('venue_id', $venues->pluck('id'))
+            ->where('active_marker', true)
+            ->where('is_enabled', true)
+            ->get()
+            ->keyBy('venue_id');
 
         return response()->json([
-            'venues' => $venues->map(fn ($venue): array => [
-                'id' => $venue->id,
-                'name' => $venue->name,
-                'type' => $venue->type,
-                'status' => $venue->status,
-                'is_confirmed' => $venue->status === VenueStatusEnum::CONFIRMED->label(),
-                'description' => $venue->shortDescription,
-                'address' => $venue->displayAddress,
-                'raw_address' => $venue->rawAddress,
-                'requires_payment' => $venue->requiresPayment,
-                'requires_booking_approval' => $venue->requiresBookingApproval,
-                'has_free_access' => $venue->hasFreeAccess(),
-                'operational_status' => $venue->operationalStatus,
-                'metro_stations' => $venue->metroStations,
-                'tags' => $venue->tags,
-                'latitude' => $venue->latitude,
-                'longitude' => $venue->longitude,
-                'url' => route('venues.show', $venue->routeIdentifier()),
-                'preview_url' => route('venues.preview', $venue->routeIdentifier()),
-                'hoops_count' => $hoopsByVenue->get($venue->id, 1),
-                'available_scopes' => array_values(array_unique($availableScopes[$venue->id] ?? [])),
-            ])->all(),
+            'venues' => $venues->map(function ($venue) use ($amounts, $availableScopes, $durationMinutes, $hoopsByVenue, $rentalPolicies): array {
+                $policy = $rentalPolicies->get($venue->id);
+                $scopes = array_values(array_unique($availableScopes[$venue->id] ?? []));
+                if ($policy !== null) {
+                    $allowedScopes = $policy->allows_halves
+                        ? ['whole', 'half_a', 'half_b']
+                        : ['whole'];
+                    if (! $policy->allows_whole) {
+                        $allowedScopes = array_values(array_diff($allowedScopes, ['whole']));
+                    }
+                    $scopes = array_values(array_intersect($scopes, $allowedScopes));
+                }
+                $steps = $policy !== null && $durationMinutes !== null && $policy->time_step_minutes > 0
+                    ? intdiv($durationMinutes, $policy->time_step_minutes)
+                    : null;
+
+                return [
+                    'id' => $venue->id,
+                    'name' => $venue->name,
+                    'type' => $venue->type,
+                    'status' => $venue->status,
+                    'is_confirmed' => $venue->status === VenueStatusEnum::CONFIRMED->label(),
+                    'description' => $venue->shortDescription,
+                    'address' => $venue->displayAddress,
+                    'raw_address' => $venue->rawAddress,
+                    'requires_payment' => $venue->requiresPayment,
+                    'requires_booking_approval' => $venue->requiresBookingApproval,
+                    'has_free_access' => $venue->hasFreeAccess(),
+                    'operational_status' => $venue->operationalStatus,
+                    'metro_stations' => $venue->metroStations,
+                    'tags' => $venue->tags,
+                    'latitude' => $venue->latitude,
+                    'longitude' => $venue->longitude,
+                    'url' => route('venues.show', $venue->routeIdentifier()),
+                    'preview_url' => route('venues.preview', $venue->routeIdentifier()),
+                    'hoops_count' => $hoopsByVenue->get($venue->id, 1),
+                    'available_scopes' => $scopes,
+                    'rental_policy' => $policy === null ? null : [
+                        'currency' => $policy->currency,
+                        'currency_exponent' => $amounts->exponent($policy->currency),
+                        'requires_payment' => $policy->requires_payment,
+                        'time_step_minutes' => $policy->time_step_minutes,
+                        'whole_amount_minor' => $steps === null ? null : $steps * $policy->whole_price_per_step_minor,
+                        'half_amount_minor' => $steps === null || $policy->half_price_per_step_minor === null
+                            ? null
+                            : $steps * $policy->half_price_per_step_minor,
+                    ],
+                ];
+            })->all(),
         ]);
     }
 

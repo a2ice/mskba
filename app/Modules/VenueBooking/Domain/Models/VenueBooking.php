@@ -46,6 +46,11 @@ class VenueBooking extends Model
         return $this->belongsTo(Event::class);
     }
 
+    public function eventIntent(): HasOne
+    {
+        return $this->hasOne(VenueBookingEventIntent::class, 'venue_booking_id');
+    }
+
     public function creatorActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'created_by_actor_id');

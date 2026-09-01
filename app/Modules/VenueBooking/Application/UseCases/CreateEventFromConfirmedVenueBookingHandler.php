@@ -19,6 +19,8 @@ use App\Modules\Event\Domain\Events\EventCreatedFromBooking;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Telegram\Application\UseCases\PrepareTelegramEventPublicationsHandler;
+use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
@@ -35,6 +37,7 @@ final readonly class CreateEventFromConfirmedVenueBookingHandler
         private CyrillicTransliterator $transliterator,
         private StandaloneGameFormationService $standaloneGames,
         private StandaloneGameInitialSelectionService $initialSelections,
+        private PrepareTelegramEventPublicationsHandler $telegramPublications,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -93,15 +96,40 @@ final readonly class CreateEventFromConfirmedVenueBookingHandler
             }
             if ($event->type === EventTypeEnum::GAME) {
                 $game = $this->standaloneGames->initialize(
-                    $event, $actor, null, null, 5, 5,
-                    GameScoringTypeEnum::STREETBALL,
-                    GameFormatEnum::STREETBALL_3X3,
-                    GameTimingModeEnum::WHOLE_GAME,
+                    $event,
+                    $actor,
                     null,
-                    GameRecruitmentModeEnum::PREFORMED_TEAMS,
-                    true,
+                    null,
+                    (int) ($data['side_a_size'] ?? 5),
+                    (int) ($data['side_b_size'] ?? 5),
+                    GameScoringTypeEnum::from($data['scoring_type'] ?? GameScoringTypeEnum::BASKETBALL->value),
+                    GameFormatEnum::from($data['game_format'] ?? GameFormatEnum::BASKETBALL_5X5->value),
+                    GameTimingModeEnum::from($data['timing_mode'] ?? GameTimingModeEnum::PERIODS->value),
+                    isset($data['periods_count']) ? (int) $data['periods_count'] : 4,
+                    GameRecruitmentModeEnum::from(
+                        $data['game_recruitment_mode'] ?? GameRecruitmentModeEnum::PREFORMED_TEAMS->value,
+                    ),
+                    (bool) ($data['game_accepts_applications'] ?? true),
                 );
-                $this->initialSelections->apply($game, $actor, null, null);
+                $this->initialSelections->apply(
+                    $game,
+                    $actor,
+                    isset($data['team_a_id']) ? (int) $data['team_a_id'] : null,
+                    isset($data['team_b_id']) ? (int) $data['team_b_id'] : null,
+                );
+            }
+            if ((bool) ($data['publish_to_telegram'] ?? false)) {
+                $chatIds = TelegramChat::query()
+                    ->whereKey(array_map('intval', $data['telegram_chat_ids'] ?? []))
+                    ->where('is_active', true)
+                    ->where('publishes_events', true)
+                    ->pluck('id')
+                    ->map(static fn ($id): int => (int) $id)
+                    ->all();
+
+                if ($chatIds !== []) {
+                    $this->telegramPublications->handle($event, $chatIds);
+                }
             }
             $booking->forceFill(['event_id' => $event->id])->save();
             DB::afterCommit(static function () use ($event, $booking): void {

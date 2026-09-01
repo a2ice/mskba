@@ -11,6 +11,7 @@ use App\Modules\Event\Domain\Enums\GameTimingModeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -19,6 +20,9 @@ final class CreateEventRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $prepared = [
+            'event_request_id' => $this->filled('event_request_id')
+                ? $this->input('event_request_id')
+                : (string) Str::uuid(),
             'publish_to_telegram' => $this->boolean('publish_to_telegram'),
             'game_accepts_applications' => $this->input('type') === EventTypeEnum::GAME->value
                 ? ($this->has('game_accepts_applications') ? $this->boolean('game_accepts_applications') : true)
@@ -56,6 +60,7 @@ final class CreateEventRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'event_request_id' => ['required', 'uuid'],
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
             'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'title' => ['required', 'string', 'max:150'],

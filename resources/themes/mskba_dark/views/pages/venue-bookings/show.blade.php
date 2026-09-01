@@ -31,6 +31,17 @@
             </div>
         </div></div>
 
+        @if($booking->eventIntent && !$booking->event)
+            <div class="alert alert-info mb-4">
+                <strong>Мероприятие «{{ $booking->eventIntent->event_payload['title'] }}» ожидает подтверждения брони.</strong>
+                @if($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
+                    Страница мероприятия создаётся автоматически. Обновите страницу через несколько секунд.
+                @else
+                    До подтверждения отдельный черновик не создаётся и публикация в каталоге и Telegram не выполняется.
+                @endif
+            </div>
+        @endif
+
         @if(config('features.venue_rental.booking_events') && $booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
             <div class="card mb-4"><div class="card-body">
                 <h2 class="h4">Мероприятие</h2>
@@ -46,7 +57,7 @@
                             <div class="col-md-2 align-self-end"><button class="btn btn--secondary btn--sm" type="submit">Перенести</button></div>
                         </form>
                     @endif
-                @elseif($isRequester)
+                @elseif($isRequester && !$booking->eventIntent)
                     <form method="POST" action="{{ route('account.venue-bookings.event.store', $booking) }}" class="row g-3">
                         @csrf
                         <div class="col-md-5"><label class="form-label">Название</label><input class="form-control" name="title" maxlength="255" required></div>
