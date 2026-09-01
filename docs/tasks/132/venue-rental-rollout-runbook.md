@@ -14,7 +14,10 @@
 2. Запустить expand migrations при выключенных master flags. Для DDL замерить lock wait; при превышении 5 с прервать и перенести индекс в online/concurrent процедуру конкретной СУБД.
 3. Backfill всегда оформлять отдельной командой с `--dry-run`, batch ≤ 500, устойчивым `id > cursor`, счётчиками scanned/changed/skipped/failed и сохранением cursor. Текущая задача не требует backfill.
 4. Выполнить `php artisan migrate:status`, `php artisan venue-booking:diagnose --json`, migration rollback rehearsal на копии и полный test suite.
-5. Deploy кода, включить `FEATURE_VENUE_RENTAL_*`, оставить `VENUE_RENTAL_ROLLOUT_MODE=internal`, затем расширять волны.
+5. Deploy кода, для первой закрытой волны включить `FEATURE_VENUE_RENTAL_FLOW=true` и
+   `FEATURE_VENUE_RENTAL_PORTAL=true`, оставить `VENUE_RENTAL_ROLLOUT_MODE=internal`, очистить config
+   cache и проверить страницы управления супер-администратором. Остальные `FEATURE_VENUE_RENTAL_*`
+   включать только при готовности соответствующего сценария; затем расширять волны.
 6. Contract migrations и удаление legacy consumers выполняются отдельной задачей после периода стабильности.
 
 ## Наблюдаемость и alerts

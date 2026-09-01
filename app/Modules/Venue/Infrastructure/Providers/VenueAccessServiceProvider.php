@@ -17,6 +17,7 @@ use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipClaimNotifica
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
+use App\Support\Features\VenueRentalRollout;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
@@ -52,12 +53,9 @@ class VenueAccessServiceProvider extends ServiceProvider
             }
 
             $user = request()->user();
-            if (
-                $venue !== null
-                && app(FeatureFlags::class)->enabled(VenueRentalFeature::RENTAL_FLOW)
-            ) {
+            if ($venue !== null) {
                 $venueModel = Venue::query()->find($venue->id);
-                if ($venueModel !== null) {
+                if ($venueModel !== null && $this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venueModel)) {
                     if (VenueBookingPolicy::query()->where('venue_id', $venueModel->id)->where('active_marker', true)->where('is_enabled', true)->exists()) {
                         $view->with('rentalUrl', route('venues.rental.show', $venueModel));
                     }
@@ -72,5 +70,58 @@ class VenueAccessServiceProvider extends ServiceProvider
                 }
             }
         });
+
+        View::composer('theme::partials.venues.internal-sidebar', function ($view): void {
+            $venue = $view->getData()['venue'] ?? null;
+            $user = request()->user();
+
+            if (! $venue instanceof Venue
+                || $user === null
+                || ! $this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venue)) {
+                return;
+            }
+
+            $access = app(VenueCommercialAccess::class);
+
+            if ($access->allows($user, $venue, VenuePermissionEnum::MANAGE_BOOKING_POLICY)) {
+                $view->with('bookingPolicyUrl', route('account.venues.booking-policy.edit', $venue));
+            }
+
+            if ($access->allows($user, $venue, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
+                $view->with('commercialMembershipsUrl', route('account.venues.commercial-memberships.index', $venue));
+            }
+
+            if ($access->allows($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS)
+                && $this->rentalFeatureAllows(VenueRentalFeature::PORTAL, $venue)) {
+                $view->with('venueBookingInboxUrl', route('account.venue-bookings.inbox', ['venue_id' => $venue->id]));
+            }
+
+            if (VenueBookingPolicy::query()
+                ->where('venue_id', $venue->id)
+                ->where('active_marker', true)
+                ->where('is_enabled', true)
+                ->exists()) {
+                $view->with('rentalUrl', route('venues.rental.show', $venue));
+            }
+        });
+    }
+
+    private function rentalFeatureAllows(VenueRentalFeature $feature, ?Venue $venue): bool
+    {
+        if (! app(FeatureFlags::class)->enabled($feature)) {
+            return false;
+        }
+
+        $user = request()->user();
+        $stableKey = (string) ($user?->canonical()->id ?? $venue?->id ?? request()->ip());
+
+        return app(VenueRentalRollout::class)->allows(
+            $feature,
+            $user,
+            $venue?->id,
+            null,
+            $stableKey,
+            false,
+        );
     }
 }

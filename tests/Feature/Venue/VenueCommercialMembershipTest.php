@@ -214,6 +214,34 @@ final class VenueCommercialMembershipTest extends TestCase
         ]);
     }
 
+    public function test_internal_superadmin_sees_rental_sections_in_venue_management_navigation(): void
+    {
+        config()->set('features.venue_rental.portal', true);
+        config()->set('features.venue_rental_rollout.mode', 'internal');
+
+        $superadmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($superadmin, null)->id,
+        ]);
+
+        $response = $this->actingAs($superadmin)
+            ->get(route('account.venues.edit', $venue->routeIdentifier()))
+            ->assertOk();
+
+        $response
+            ->assertSee(route('account.venues.booking-policy.edit', $venue), false)
+            ->assertSee(route('account.venues.commercial-memberships.index', $venue), false)
+            ->assertSee(route('account.venue-bookings.inbox', ['venue_id' => $venue->id]), false);
+
+        $this->actingAs($superadmin)
+            ->get(route('account.venues.booking-policy.edit', $venue))
+            ->assertOk()
+            ->assertSee('Управление площадкой');
+    }
+
     private function createMembership(
         User $user,
         Venue $venue,

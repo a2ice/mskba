@@ -1,11 +1,21 @@
-@php $title = 'Коммерческие роли · '.$venue->name; @endphp
+@php
+    $title = 'Коммерческие роли · '.$venue->name;
+    $venueSidebarActive = 'commercial-memberships';
+@endphp
 
-@extends('theme::layouts.app', ['title' => $title])
+@extends('theme::layouts.section-sidebar', [
+    'title' => $title,
+    'sectionId' => 'account',
+    'sectionClass' => 'account-section',
+    'contentTitle' => $title,
+    'sidebarLabel' => 'Управление площадкой',
+])
 
-@section('content')
-    <section class="first-screen"><div class="inner">
-        @include('theme::partials.breadcrumbs')
-        <h1 class="section-title mb-4">{{ $title }}</h1>
+@section('section-sidebar')
+    @include('theme::partials.venues.internal-sidebar')
+@endsection
+
+@section('section-content')
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
@@ -56,5 +66,4 @@
                 @endunless
             </div></article>
         @endforeach
-    </div></section>
 @endsection

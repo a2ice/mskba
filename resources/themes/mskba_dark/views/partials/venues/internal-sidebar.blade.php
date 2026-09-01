@@ -24,6 +24,26 @@
             >Расписание</a>
         @endif
 
+        @if($bookingPolicyUrl ?? null)
+            <a
+                href="{{ $bookingPolicyUrl }}"
+                @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'booking-policy'])
+                @if(($venueSidebarActive ?? null) === 'booking-policy') aria-current="page" @endif
+            >Условия аренды</a>
+        @endif
+
+        @if($commercialMembershipsUrl ?? null)
+            <a
+                href="{{ $commercialMembershipsUrl }}"
+                @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'commercial-memberships'])
+                @if(($venueSidebarActive ?? null) === 'commercial-memberships') aria-current="page" @endif
+            >Коммерческие роли</a>
+        @endif
+
+        @if($venueBookingInboxUrl ?? null)
+            <a href="{{ $venueBookingInboxUrl }}" class="venue-side-nav__link">Заявки на аренду</a>
+        @endif
+
         <a
             href="{{ route('account.venues.status', $venue->routeIdentifier()) }}"
             @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'status'])
@@ -36,5 +56,14 @@
             target="_blank"
             rel="noopener noreferrer"
         >Просмотр</a>
+
+        @if($rentalUrl ?? null)
+            <a
+                href="{{ $rentalUrl }}"
+                class="venue-side-nav__link"
+                target="_blank"
+                rel="noopener noreferrer"
+            >Страница аренды</a>
+        @endif
     </nav>
 </div>

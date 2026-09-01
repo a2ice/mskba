@@ -291,26 +291,15 @@ function initEventWizard(form) {
         }
     }
 
-    function halfCourtEligible() {
-        if (currentType() !== 'game') return false;
-        const format = currentFormat();
-        if (['streetball_3x3', 'streetball_1x1'].includes(format)) return true;
-        if (format !== 'custom') return false;
-        return scoringInput?.value === 'streetball'
-            && Math.max(Number(sideAInput?.value || 0), Number(sideBInput?.value || 0)) <= 3;
-    }
-
     function syncVenueScope() {
         if (!scopeWrap || !scopeInput || !venueSelector) return;
-        if (!halfCourtEligible()) {
+        const supportsHalves = Number(venueSelector.dataset.selectedHoopsCount || 0) >= 2;
+        scopeWrap.hidden = !supportsHalves;
+        if (!supportsHalves) {
             const changed = scopeInput.value !== 'whole';
             scopeInput.value = 'whole';
-            scopeWrap.hidden = true;
             if (changed) scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
-            return;
         }
-        const hoops = Number(venueSelector.dataset.selectedHoopsCount || 0);
-        scopeWrap.hidden = hoops < 2;
     }
 
     venueValue?.addEventListener('change', () => {
