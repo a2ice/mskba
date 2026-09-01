@@ -1,6 +1,19 @@
 @php
     $title = 'Условия аренды · '.$venue->name;
     $fieldValue = static fn(string $key, mixed $default = null): mixed => old($key, $policy?->{$key} ?? $default);
+    $currency = strtoupper((string) $fieldValue('currency', 'RUB'));
+    $currencyLabel = $currency === 'RUB' ? '₽' : $currency;
+    $amounts = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
+    $canRentHalves = (int) ($venue->characteristics?->hoops_count ?? 0) >= 2;
+    $priceValue = static function (string $input, string $policyField, ?int $default = null) use ($policy, $amounts, $currency): string {
+        if (session()->hasOldInput($input)) {
+            return (string) old($input, '');
+        }
+
+        $minor = $policy?->{$policyField} ?? $default;
+
+        return $minor === null ? '' : $amounts->format((int) $minor, $currency);
+    };
     $venueSidebarActive = 'booking-policy';
 @endphp
 
@@ -23,9 +36,17 @@
 
         <form method="POST" action="{{ route('account.venues.booking-policy.update', $venue) }}" class="card"><div class="card-body">
             @csrf @method('PUT')
-            @include('theme::partials.forms.toggle', ['name' => 'is_enabled', 'title' => 'Принимать заявки на аренду', 'checked' => $fieldValue('is_enabled', false)])
+            @include('theme::partials.forms.toggle', ['name' => 'is_enabled', 'title' => 'Принимать заявки на аренду', 'description' => 'Отдельно включает приём новых заявок. Статусы площадки «активна» и «подтверждена» при этом не изменяются.', 'checked' => $fieldValue('is_enabled', false)])
             @include('theme::partials.forms.toggle', ['name' => 'allows_whole', 'title' => 'Разрешить аренду всей площадки', 'checked' => $fieldValue('allows_whole', true)])
-            @include('theme::partials.forms.toggle', ['name' => 'allows_halves', 'title' => 'Разрешить аренду половин', 'description' => 'Доступно только при наличии минимум двух игровых зон.', 'checked' => $fieldValue('allows_halves', false)])
+            @include('theme::partials.forms.toggle', [
+                'name' => 'allows_halves',
+                'title' => 'Разрешить аренду половин',
+                'description' => $canRentHalves
+                    ? 'Можно сдавать половину А и половину Б независимо друг от друга.'
+                    : 'Недоступно: в характеристиках площадки должно быть указано минимум две игровые зоны.',
+                'checked' => $canRentHalves && $fieldValue('allows_halves', false),
+                'inputAttributes' => ['disabled' => ! $canRentHalves],
+            ])
 
             <div class="row g-3">
                 <div class="col-md-4"><label class="form-label">Минимальная длительность, мин</label><input class="form-control" type="number" name="minimum_duration_minutes" min="15" max="1440" required value="{{ $fieldValue('minimum_duration_minutes', 60) }}"></div>
@@ -34,8 +55,18 @@
                 <div class="col-md-4"><label class="form-label">Минимум до начала, мин</label><input class="form-control" type="number" name="minimum_lead_time_minutes" min="0" required value="{{ $fieldValue('minimum_lead_time_minutes', 120) }}"></div>
                 <div class="col-md-4"><label class="form-label">Горизонт бронирования, дней</label><input class="form-control" type="number" name="maximum_advance_days" min="1" max="730" required value="{{ $fieldValue('maximum_advance_days', 90) }}"></div>
                 <div class="col-md-4"><label class="form-label">Валюта ISO</label><input class="form-control" name="currency" minlength="3" maxlength="3" required value="{{ $fieldValue('currency', 'RUB') }}"></div>
-                <div class="col-md-6"><label class="form-label">Цена всей площадки за шаг, minor units</label><input class="form-control" type="number" name="whole_price_per_step_minor" min="0" required value="{{ $fieldValue('whole_price_per_step_minor', 0) }}"><small class="text-muted">Для RUB: 100 = 1 ₽.</small></div>
-                <div class="col-md-6"><label class="form-label">Цена половины за шаг, minor units</label><input class="form-control" type="number" name="half_price_per_step_minor" min="0" value="{{ $fieldValue('half_price_per_step_minor') }}"></div>
+                <div class="col-md-6">
+                    <label class="form-label">Цена всей площадки за выбранный шаг, {{ $currencyLabel }}</label>
+                    <input class="form-control @error('whole_price_per_step') is-invalid @enderror" type="text" inputmode="decimal" name="whole_price_per_step" required value="{{ $priceValue('whole_price_per_step', 'whole_price_per_step_minor', 0) }}">
+                    @error('whole_price_per_step')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <small class="text-muted">Например, 1500 — это 1 500 {{ $currencyLabel }} за выбранный шаг времени.</small>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Цена половины за выбранный шаг, {{ $currencyLabel }}</label>
+                    <input class="form-control @error('half_price_per_step') is-invalid @enderror" type="text" inputmode="decimal" name="half_price_per_step" value="{{ $priceValue('half_price_per_step', 'half_price_per_step_minor') }}">
+                    @error('half_price_per_step')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <small class="text-muted">Можно оставить пустой для бесплатной аренды или если аренда половин отключена.</small>
+                </div>
                 <div class="col-md-4"><label class="form-label">Hold, мин</label><input class="form-control" type="number" name="hold_duration_minutes" min="1" max="1440" required value="{{ $fieldValue('hold_duration_minutes', 30) }}"></div>
                 <div class="col-md-4"><label class="form-label">Максимальное продление hold, мин</label><input class="form-control" type="number" name="maximum_hold_extension_minutes" min="1" max="1440" value="{{ $fieldValue('maximum_hold_extension_minutes', 30) }}"></div>
                 <div class="col-md-4"><label class="form-label">Платёжное окно, мин</label><input class="form-control" type="number" name="payment_window_minutes" min="1" max="1440" value="{{ $fieldValue('payment_window_minutes', 30) }}"></div>

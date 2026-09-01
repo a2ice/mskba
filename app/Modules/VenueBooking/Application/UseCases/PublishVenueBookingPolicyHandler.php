@@ -125,7 +125,7 @@ final readonly class PublishVenueBookingPolicyHandler
         }
 
         if ($normalized['whole_price_per_step_minor'] < 0
-            || ($normalized['allows_halves'] && ($normalized['half_price_per_step_minor'] ?? -1) < 0)) {
+            || ($normalized['half_price_per_step_minor'] !== null && $normalized['half_price_per_step_minor'] < 0)) {
             throw new VenueBookingPolicyException('Цена не может быть отрицательной.');
         }
 

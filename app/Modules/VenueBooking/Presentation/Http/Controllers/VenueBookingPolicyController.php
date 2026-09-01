@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
 use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +35,7 @@ final class VenueBookingPolicyController extends Controller
         Request $request,
         Venue $venue,
         PublishVenueBookingPolicyHandler $publish,
+        MinorAmountParser $amounts,
         VenueCommercialAccess $access,
     ): RedirectResponse {
         abort_unless($access->allows($request->user(), $venue, VenuePermissionEnum::MANAGE_BOOKING_POLICY), 403);
@@ -46,8 +49,8 @@ final class VenueBookingPolicyController extends Controller
             'minimum_lead_time_minutes' => ['required', 'integer', 'min:0', 'max:525600'],
             'maximum_advance_days' => ['required', 'integer', 'min:1', 'max:730'],
             'currency' => ['required', 'string', 'size:3'],
-            'whole_price_per_step_minor' => ['required', 'integer', 'min:0'],
-            'half_price_per_step_minor' => ['nullable', 'integer', 'min:0'],
+            'whole_price_per_step' => ['required', 'string', 'max:32'],
+            'half_price_per_step' => ['nullable', 'string', 'max:32'],
             'hold_duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'allows_hold_extension' => ['nullable', 'boolean'],
             'maximum_hold_extension_minutes' => ['nullable', 'integer', 'min:1', 'max:1440'],
@@ -60,6 +63,23 @@ final class VenueBookingPolicyController extends Controller
         foreach (['is_enabled', 'allows_whole', 'allows_halves', 'requires_payment', 'allows_hold_extension'] as $boolean) {
             $validated[$boolean] = $request->boolean($boolean);
         }
+
+        $currency = strtoupper($validated['currency']);
+        try {
+            $validated['whole_price_per_step_minor'] = $amounts->parse($validated['whole_price_per_step'], $currency);
+        } catch (VenueBookingTransitionException $exception) {
+            return back()->withInput()->withErrors(['whole_price_per_step' => $exception->getMessage()]);
+        }
+
+        try {
+            $validated['half_price_per_step_minor'] = isset($validated['half_price_per_step'])
+                ? $amounts->parse($validated['half_price_per_step'], $currency)
+                : null;
+        } catch (VenueBookingTransitionException $exception) {
+            return back()->withInput()->withErrors(['half_price_per_step' => $exception->getMessage()]);
+        }
+
+        unset($validated['whole_price_per_step'], $validated['half_price_per_step']);
 
         try {
             $policy = $publish->handle($venue, $request->user(), $validated);

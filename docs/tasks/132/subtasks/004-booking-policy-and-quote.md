@@ -42,7 +42,9 @@ PolicyPublished; кэш доступности инвалидируется по
   проверяет commercial permission `manage_booking_policy` в application layer;
 - политика задаёт доступные зоны, шаг и границы длительности, lead time,
   горизонт, hold/payment/cancellation windows и цены в целых minor units с
-  трёхбуквенной валютой;
+  трёхбуквенной валютой; форма владельца принимает цены в основных единицах
+  валюты (`1500` или `1500,50` для RUB), а presentation layer без float
+  конвертирует их в minor units для домена и snapshot;
 - `QuoteVenueBookingHandler` повторно проверяет расписание и занятость в timezone
   площадки, считает цену только на сервере и сохраняет неизменяемый quote со
   snapshot формулы, входных данных и версии правил;
