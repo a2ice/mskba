@@ -66,6 +66,8 @@ final class GameLifecycleWorkflowTest extends TestCase
             )
             ->assertSee('data-game-lifecycle-actions', false)
             ->assertSee('Ожидает запуска')
+            ->assertSee('Готовые команды')
+            ->assertDontSee('Команды из участников')
             ->assertSee('Перейти к управлению игрой')
             ->assertSee(route('events.games.manage', $routeParameters), false);
 
