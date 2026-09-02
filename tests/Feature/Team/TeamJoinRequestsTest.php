@@ -37,6 +37,22 @@ final class TeamJoinRequestsTest extends TestCase
             ->assertRedirect();
         $this->assertTrue($team->fresh()->accepts_join_requests);
 
+        auth()->logout();
+        $generalIntent = 'team:'.$team->id.':general';
+        $generalIntentUrl = route('teams.show', [
+            'team' => $team->routeIdentifier(),
+            'team_join_intent' => $generalIntent,
+        ], false);
+        $this->get(route('teams.show', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('data-team-join-auth-intent="'.$generalIntent.'"', false)
+            ->assertSee('data-auth-redirect-url="'.$generalIntentUrl.'"', false);
+
+        $this->actingAs($applicant)
+            ->get($generalIntentUrl)
+            ->assertOk()
+            ->assertSee('data-team-join-auto-form="'.$generalIntent.'"', false);
+
         $this->actingAs($applicant)
             ->get(route('teams.show', $team->routeIdentifier()))
             ->assertOk()

@@ -194,10 +194,25 @@ $(document).on('modal:opened', function(_event, modal) {
     }
 
     resetClassicModalState(modal);
-    modal.find('[data-auth-redirect-input]').val(String(modal.data('authRedirectUrl') || '').trim());
+    const redirectUrl = String(modal.data('authRedirectUrl') || '').trim();
+    modal.find('[data-auth-redirect-input]').val(redirectUrl);
+    updateVkAuthenticationUrl(modal, redirectUrl);
     activateSection(modal, getInitialSection(modal));
     modal.removeData('modalInitialSection');
 });
+
+function updateVkAuthenticationUrl(modal, redirectUrl) {
+    const link = modal.find('[data-vk-auth-url]');
+    const endpoint = String(link.data('vkAuthUrl') || '').trim();
+
+    if (!link.length || !endpoint) {
+        return;
+    }
+
+    const url = new URL(endpoint, window.location.origin);
+    url.searchParams.set('redirect_to', redirectUrl || window.location.href);
+    link.attr('href', url.toString());
+}
 
 $(document).on('modal:closed', function(_event, modal) {
     if (!isClassicAuthModal(modal)) {

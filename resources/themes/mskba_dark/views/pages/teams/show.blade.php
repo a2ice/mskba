@@ -41,6 +41,8 @@
     };
     $headerCoach = $coaches->first();
     $headerCaptain = $activeMemberships->first(fn ($membership) => $membership->is_captain);
+    $requestedJoinIntent = (string) request()->query('team_join_intent', '');
+    $generalJoinIntent = 'team:'.$team->id.':general';
 @endphp
 @section('section-sidebar')
 <div class="section-sidebar-block"><h2 class="section-sidebar-block__title">Команда</h2><ul class="sidebar-nav nav flex-column">
@@ -106,6 +108,8 @@
             <div class="team-profile__section-heading"><i class="ti ti-user-plus"></i><div><span>Команда ведёт набор</span><h2 id="team-hiring-title">Ищем игроков</h2></div></div>
             <div class="section-list">
                 @foreach($team->hiringPositions as $vacancy)
+                    @php($vacancyIntent = 'team:'.$team->id.':vacancy:'.$vacancy->id)
+                    @php($isCurrentVacancyRequest = $currentJoinRequest?->team_hiring_position_id === $vacancy->id)
                     <article class="section-card">
                         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                             <div>
@@ -115,27 +119,69 @@
                                 @if($vacancy->gender !== null)<p class="form-hint mb-1"><b>Пол:</b> {{ $vacancy->gender->label() }}</p>@endif
                                 @if($vacancy->description)<p class="mt-2 mb-0">{!! nl2br(e($vacancy->description)) !!}</p>@endif
                             </div>
-                            @auth
-                                @if(!$isActiveTeamMember && $canApplyToTeam && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::ACCEPTED)
+                            <div>
+                                @if(auth()->guest())
+                                    <button
+                                        class="btn btn--primary btn--sm js-handler"
+                                        type="button"
+                                        data-handler="modal"
+                                        data-modal-action="open"
+                                        data-modal-target="auth-entry-classic"
+                                        data-auth-redirect-url="{{ route('teams.show', ['team' => $team->routeIdentifier(), 'team_join_intent' => $vacancyIntent], false) }}"
+                                        data-team-join-auth-intent="{{ $vacancyIntent }}"
+                                    >Подать заявку</button>
+                                @else
+                                    @if($isCurrentVacancyRequest && $currentJoinRequest->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
+                                        <span class="team-profile__status team-status-badge">Заявка на рассмотрении</span>
+                                    @elseif($isCurrentVacancyRequest && $currentJoinRequest->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::ACCEPTED)
+                                        <span class="team-profile__status team-status-badge">Заявка принята</span>
+                                    @elseif($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::BLOCKED)
+                                        <p class="form-hint mb-0">Подача заявок заблокирована.</p>
+                                        @if($currentJoinRequest->review_reason)<div class="alert alert-danger mt-2 mb-0"><strong>Причина:</strong> {!! nl2br(e($currentJoinRequest->review_reason)) !!}</div>@endif
+                                    @elseif($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
+                                        <p class="form-hint mb-0">Другая заявка уже на рассмотрении.</p>
+                                    @elseif(!$isActiveTeamMember && $canApplyToTeam && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::ACCEPTED)
+                                        @if($isCurrentVacancyRequest && $currentJoinRequest->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::REJECTED)
+                                            <p class="form-hint mb-2">Предыдущая заявка отклонена.</p>
+                                            @if($currentJoinRequest->review_reason)<div class="alert alert-danger mb-2"><strong>Причина:</strong> {!! nl2br(e($currentJoinRequest->review_reason)) !!}</div>@endif
+                                        @endif
                                     <form method="POST" action="{{ route('teams.join-requests.store', $team->routeIdentifier()) }}" onsubmit="return confirm('Отправить заявку на эту вакансию?')">
                                         @csrf
                                         <input type="hidden" name="team_hiring_position_id" value="{{ $vacancy->id }}">
-                                        <button class="btn btn--primary btn--sm" type="submit">Подать заявку</button>
+                                        <button class="btn btn--primary btn--sm" type="submit">{{ $isCurrentVacancyRequest ? 'Подать повторно' : 'Подать заявку' }}</button>
                                     </form>
+                                    @endif
                                 @endif
-                            @endauth
+                            </div>
                         </div>
+                        @auth
+                            @if(!$isActiveTeamMember && $canApplyToTeam && $requestedJoinIntent === $vacancyIntent && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::ACCEPTED)
+                                <form method="POST" action="{{ route('teams.join-requests.store', $team->routeIdentifier()) }}" data-team-join-auto-form="{{ $vacancyIntent }}" hidden>
+                                    @csrf
+                                    <input type="hidden" name="team_hiring_position_id" value="{{ $vacancy->id }}">
+                                </form>
+                            @endif
+                        @endauth
                     </article>
                 @endforeach
             </div>
         </section>
     @endif
 
-    @auth
-        @if(!$isActiveTeamMember)
+    @if(auth()->guest() ? $team->accepts_join_requests : (!$isActiveTeamMember && $currentJoinRequest?->hiringPosition === null))
             <section class="team-profile__section" aria-labelledby="team-join-title">
                 <div class="team-profile__section-heading"><i class="ti ti-user-plus"></i><div><span>Участие</span><h2 id="team-join-title">Вступление в команду</h2></div></div>
-                @if($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
+                @if(auth()->guest())
+                    <button
+                        class="btn btn--primary js-handler"
+                        type="button"
+                        data-handler="modal"
+                        data-modal-action="open"
+                        data-modal-target="auth-entry-classic"
+                        data-auth-redirect-url="{{ route('teams.show', ['team' => $team->routeIdentifier(), 'team_join_intent' => $generalJoinIntent], false) }}"
+                        data-team-join-auth-intent="{{ $generalJoinIntent }}"
+                    >Подать заявку</button>
+                @elseif($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
                     <p class="form-hint">Ваша {{ $currentJoinRequest->hiringPosition ? 'заявка на вакансию' : 'заявка на вступление' }} ожидает решения.</p>
                 @elseif($currentJoinRequest?->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::BLOCKED)
                     <p class="form-hint">Отправка заявок в эту команду для вас заблокирована.</p>
@@ -152,9 +198,15 @@
                 @else
                     <p class="form-hint">Команда сейчас не принимает общие заявки. Если выше есть активная вакансия, можно откликнуться на неё.</p>
                 @endif
+                @auth
+                    @if(!$isActiveTeamMember && $canApplyToTeam && $team->accepts_join_requests && $requestedJoinIntent === $generalJoinIntent && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING && $currentJoinRequest?->status !== \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::ACCEPTED)
+                        <form method="POST" action="{{ route('teams.join-requests.store', $team->routeIdentifier()) }}" data-team-join-auto-form="{{ $generalJoinIntent }}" hidden>
+                            @csrf
+                        </form>
+                    @endif
+                @endauth
             </section>
-        @endif
-    @endauth
+    @endif
 
     <section class="team-profile__section" aria-labelledby="team-coaches-title">
         <div class="team-profile__section-heading"><i class="ti ti-user-cog"></i><div><h2 id="team-coaches-title">Тренеры</h2></div></div>

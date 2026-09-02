@@ -15,7 +15,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-C8VR-Ojc.css",
+    "file": "assets/app-YYdVMYha.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-BgFkkd-g.css",
+    "file": "assets/app-bJ9NgRcW.css",
     "name": "app",
     "names": [
       "app.css"
@@ -66,7 +66,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-dwhVUThJ.js",
+    "file": "assets/app-DUyYciJG.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,

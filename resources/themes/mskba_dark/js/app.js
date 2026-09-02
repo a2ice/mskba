@@ -48,6 +48,7 @@ import './features/team-name-suggestion.js';
 import './features/team-pending-invitations.js';
 import './features/team-management.js';
 import './features/team-member-card-details.js';
+import './features/team-join-application.js';
 import './features/venue-show.js';
 import './features/venue-activity.js';
 import './features/venue-booking-status.js';

@@ -48,14 +48,28 @@ final class TeamHiringTest extends TestCase
             ->assertOk()
             ->assertSee($team->name)
             ->assertSee('Идёт набор');
+        auth()->logout();
+        $vacancyIntent = 'team:'.$team->id.':vacancy:'.$vacancy->id;
+        $afterAuthenticationUrl = route('teams.show', [
+            'team' => $team->routeIdentifier(),
+            'team_join_intent' => $vacancyIntent,
+        ], false);
         $this->get(route('teams.show', $team->routeIdentifier()))
             ->assertOk()
             ->assertSee('Ищем игроков')
             ->assertSee('Центровой')
-            ->assertSee('Ищем игрока на вечерние тренировки.');
+            ->assertSee('Ищем игрока на вечерние тренировки.')
+            ->assertSee('data-modal-target="auth-entry-classic"', false)
+            ->assertSee('data-team-join-auth-intent="'.$vacancyIntent.'"', false)
+            ->assertSee('data-auth-redirect-url="'.$afterAuthenticationUrl.'"', false);
 
         $candidate = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $candidate->profile()->create(['gender' => UserGenderEnum::MALE]);
+        $this->actingAs($candidate)
+            ->get($afterAuthenticationUrl)
+            ->assertOk()
+            ->assertSee('data-team-join-auto-form="'.$vacancyIntent.'"', false)
+            ->assertSee('name="team_hiring_position_id" value="'.$vacancy->id.'"', false);
         $this->actingAs($candidate)
             ->post(route('teams.join-requests.store', $team->routeIdentifier()), [
                 'team_hiring_position_id' => $vacancy->id,
@@ -65,6 +79,10 @@ final class TeamHiringTest extends TestCase
         $joinRequest = TeamJoinRequest::query()->where('user_id', $candidate->id)->sole();
         $this->assertSame($vacancy->id, $joinRequest->team_hiring_position_id);
         $this->assertSame(TeamJoinRequestStatusEnum::PENDING, $joinRequest->status);
+        $this->get(route('teams.show', $team->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('Заявка на рассмотрении')
+            ->assertDontSee('data-team-join-auto-form', false);
 
         $this->actingAs($creator)
             ->patch(route('teams.join-requests.respond', [$team->routeIdentifier(), $joinRequest->id]), [
