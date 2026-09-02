@@ -23,6 +23,7 @@ final class ListEventsHandler
         ?string $dateFrom = null,
         ?string $dateTo = null,
         ?string $outcome = null,
+        bool $showCancelled = false,
         ?int $venueId = null,
         bool $hasMiniGames = false,
         string $search = '',
@@ -35,6 +36,12 @@ final class ListEventsHandler
             ? null
             : CarbonImmutable::parse($dateTo, $timezone)->endOfDay()->utc();
         $identityIds = $actor?->user?->canonical()->identityIds() ?? [];
+        $publicStatuses = $period === 'past'
+            ? [EventStatusEnum::PUBLISHED->value, EventStatusEnum::COMPLETED->value]
+            : [EventStatusEnum::PUBLISHED->value];
+        if ($showCancelled) {
+            $publicStatuses[] = EventStatusEnum::CANCELLED->value;
+        }
 
         return Event::query()
             ->with([
@@ -57,15 +64,10 @@ final class ListEventsHandler
                 fn ($query) => $query->where('ends_at', '<=', now())->orderByDesc('ends_at'),
                 fn ($query) => $query->where('ends_at', '>', now())->orderBy('starts_at'),
             )
-            ->where(function ($query) use ($identityIds, $period): void {
-                $query->where(function ($public) use ($period): void {
+            ->where(function ($query) use ($identityIds, $publicStatuses): void {
+                $query->where(function ($public) use ($publicStatuses): void {
                     $public
-                        ->whereIn('status', $period === 'past'
-                            ? [
-                                EventStatusEnum::PUBLISHED->value,
-                                EventStatusEnum::COMPLETED->value,
-                            ]
-                            : [EventStatusEnum::PUBLISHED->value])
+                        ->whereIn('status', $publicStatuses)
                         ->where('visibility', EventVisibilityEnum::PUBLIC->value);
                 });
 
@@ -75,6 +77,7 @@ final class ListEventsHandler
                     });
                 }
             })
+            ->when(! $showCancelled, fn ($query) => $query->where('status', '!=', EventStatusEnum::CANCELLED->value))
             ->when($types !== [], fn ($query) => $query->whereIn(
                 'type',
                 array_map(

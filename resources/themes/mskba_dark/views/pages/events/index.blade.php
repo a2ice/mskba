@@ -9,6 +9,7 @@
         filled($dateFrom),
         filled($dateTo),
         filled($outcome),
+        $showCancelled,
         filled($venueId),
         $hasMiniGames,
     ])->filter()->count();
@@ -52,6 +53,10 @@
                     <a @class(['events-filter-chip', 'is-active' => $period === 'past']) href="{{ route('events.index', $pastToggleQuery) }}">
                         <i class="ti {{ $period === 'past' ? 'ti-square-check' : 'ti-square' }}" aria-hidden="true"></i><span>Показывать прошедшие</span>
                     </a>
+                    <label class="events-filter-chip events-filter-chip--toggle">
+                        <input type="checkbox" name="show_cancelled" value="1" @checked($showCancelled) onchange="this.form.submit()">
+                        <span><i class="ti ti-calendar-cancel" aria-hidden="true"></i>Показывать отменённые</span>
+                    </label>
                     <label class="events-filter-chip">
                         <i class="ti ti-calendar-event" aria-hidden="true"></i>
                         <input type="date" name="date_from" value="{{ $dateFrom }}" aria-label="Дата мероприятия" onchange="this.form.submit()">

@@ -79,6 +79,7 @@ final class EventController extends Controller
                 Rule::when($request->filled('date_from'), ['after_or_equal:date_from']),
             ],
             'outcome' => ['nullable', Rule::in(['completed', 'cancelled', 'unmarked'])],
+            'show_cancelled' => ['nullable', 'boolean'],
             'venue_id' => ['nullable', 'integer', 'exists:venues,id'],
             'has_mini_games' => ['nullable', 'boolean'],
         ]);
@@ -93,6 +94,7 @@ final class EventController extends Controller
         $dateFrom = $validated['date_from'] ?? null;
         $dateTo = $validated['date_to'] ?? null;
         $outcome = $period === 'past' ? ($validated['outcome'] ?? null) : null;
+        $showCancelled = (bool) ($validated['show_cancelled'] ?? false) || $outcome === 'cancelled';
         $venueId = isset($validated['venue_id']) ? (int) $validated['venue_id'] : null;
         $hasMiniGames = (bool) ($validated['has_mini_games'] ?? false);
         $search = trim((string) ($validated['q'] ?? ''));
@@ -105,6 +107,7 @@ final class EventController extends Controller
                 $dateFrom,
                 $dateTo,
                 $outcome,
+                $showCancelled,
                 $venueId,
                 $hasMiniGames,
                 $search,
@@ -116,6 +119,7 @@ final class EventController extends Controller
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
             'outcome' => $outcome,
+            'showCancelled' => $showCancelled,
             'venueId' => $venueId,
             'hasMiniGames' => $hasMiniGames,
             'search' => $search,
