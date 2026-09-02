@@ -9,7 +9,7 @@
         filled($dateFrom),
         filled($dateTo),
         filled($outcome),
-        $showCancelled,
+        $statusFilter !== 'not_cancelled',
         filled($venueId),
         $hasMiniGames,
     ])->filter()->count();
@@ -53,9 +53,14 @@
                     <a @class(['events-filter-chip', 'is-active' => $period === 'past']) href="{{ route('events.index', $pastToggleQuery) }}">
                         <i class="ti {{ $period === 'past' ? 'ti-square-check' : 'ti-square' }}" aria-hidden="true"></i><span>Показывать прошедшие</span>
                     </a>
-                    <label class="events-filter-chip events-filter-chip--toggle">
-                        <input type="checkbox" name="show_cancelled" value="1" @checked($showCancelled) onchange="this.form.submit()">
-                        <span><i class="ti ti-calendar-cancel" aria-hidden="true"></i>Показывать отменённые</span>
+                    <label @class(['events-filter-chip', 'is-active' => $statusFilter !== 'not_cancelled'])>
+                        <i class="ti ti-list-check" aria-hidden="true"></i>
+                        <span>Статус</span>
+                        <select name="status" aria-label="Статус мероприятия" onchange="this.form.submit()">
+                            <option value="all" @selected($statusFilter === 'all')>Все</option>
+                            <option value="not_cancelled" @selected($statusFilter === 'not_cancelled')>Не отменённые</option>
+                            <option value="cancelled" @selected($statusFilter === 'cancelled')>Отменённые</option>
+                        </select>
                     </label>
                     <label class="events-filter-chip">
                         <i class="ti ti-calendar-event" aria-hidden="true"></i>
@@ -75,7 +80,7 @@
                     <label class="field"><span class="form-label">Площадка</span><select class="form-select" name="venue_id"><option value="">Все площадки</option>@foreach($filterVenues as $venue)<option value="{{ $venue->id }}" @selected($venueId === $venue->id)>{{ $venue->name }}</option>@endforeach</select></label>
                     <label class="field"><span class="form-label">Дата по</span><input class="form-control" type="date" name="date_to" value="{{ $dateTo }}"></label>
                     @if($period === 'past')
-                        <label class="field"><span class="form-label">Итог</span><select class="form-select" name="outcome"><option value="">Все итоги</option><option value="completed" @selected($outcome === 'completed')>Состоялось</option><option value="cancelled" @selected($outcome === 'cancelled')>Отменено</option><option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option></select></label>
+                        <label class="field"><span class="form-label">Итог</span><select class="form-select" name="outcome"><option value="">Все итоги</option><option value="completed" @selected($outcome === 'completed')>Состоялось</option><option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option></select></label>
                     @endif
                     <div class="events-catalog-filters__actions"><button class="btn btn--primary btn--sm">Применить</button><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить</a></div>
                 </div>

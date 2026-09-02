@@ -23,7 +23,7 @@ final class ListEventsHandler
         ?string $dateFrom = null,
         ?string $dateTo = null,
         ?string $outcome = null,
-        bool $showCancelled = false,
+        string $status = 'not_cancelled',
         ?int $venueId = null,
         bool $hasMiniGames = false,
         string $search = '',
@@ -39,7 +39,7 @@ final class ListEventsHandler
         $publicStatuses = $period === 'past'
             ? [EventStatusEnum::PUBLISHED->value, EventStatusEnum::COMPLETED->value]
             : [EventStatusEnum::PUBLISHED->value];
-        if ($showCancelled) {
+        if ($status !== 'not_cancelled') {
             $publicStatuses[] = EventStatusEnum::CANCELLED->value;
         }
 
@@ -77,7 +77,8 @@ final class ListEventsHandler
                     });
                 }
             })
-            ->when(! $showCancelled, fn ($query) => $query->where('status', '!=', EventStatusEnum::CANCELLED->value))
+            ->when($status === 'not_cancelled', fn ($query) => $query->where('status', '!=', EventStatusEnum::CANCELLED->value))
+            ->when($status === 'cancelled', fn ($query) => $query->where('status', EventStatusEnum::CANCELLED->value))
             ->when($types !== [], fn ($query) => $query->whereIn(
                 'type',
                 array_map(

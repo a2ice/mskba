@@ -1055,12 +1055,20 @@ final class EventWorkflowTest extends TestCase
         auth()->logout();
         $this->get(route('events.index'))
             ->assertOk()
-            ->assertSee('name="show_cancelled"', false)
+            ->assertSee('name="status"', false)
+            ->assertSee('value="not_cancelled" selected', false)
             ->assertDontSee('Отменённая игра для фильтра');
-        $this->get(route('events.index', ['show_cancelled' => 1]))
+        $this->get(route('events.index', ['status' => 'all']))
             ->assertOk()
             ->assertSee('Отменённая игра для фильтра')
-            ->assertSee('name="show_cancelled" value="1" checked', false);
+            ->assertSee('Игра для фильтра')
+            ->assertSee('value="all" selected', false);
+        $this->get(route('events.index', ['status' => 'cancelled']))
+            ->assertOk()
+            ->assertSee('Отменённая игра для фильтра')
+            ->assertDontSee('Игра для фильтра')
+            ->assertDontSee('Тренировка для фильтра')
+            ->assertSee('value="cancelled" selected', false);
 
         $this->actingAs($organizer)
             ->get(route('events.index', [
@@ -1106,10 +1114,16 @@ final class EventWorkflowTest extends TestCase
             ->assertDontSee('Отменённая игра для фильтра');
 
         $this->actingAs($organizer)
+            ->get(route('events.index', ['period' => 'past', 'status' => 'cancelled']))
+            ->assertOk()
+            ->assertSee('Отменённая игра для фильтра')
+            ->assertSee('value="cancelled" selected', false);
+
+        $this->actingAs($organizer)
             ->get(route('events.index', ['period' => 'past', 'outcome' => 'cancelled']))
             ->assertOk()
             ->assertSee('Отменённая игра для фильтра')
-            ->assertSee('name="show_cancelled" value="1" checked', false);
+            ->assertSee('value="cancelled" selected', false);
 
         $this->assertSame(EventStatusEnum::PUBLISHED, $training->refresh()->status);
     }
