@@ -511,6 +511,12 @@ Telegram-канал спроектирован как many-to-many проекц�
 flow данные, а legacy-маршруты не помещаются под эти middleware до завершения
 rollout.
 
+Если новый flow вызывается из общего HTTP-маршрута, который нельзя целиком закрыть
+middleware аренды (например, из мастера создания мероприятий), application handler
+обязан дополнительно проверить и master flag, и `VenueRentalRollout` для текущего
+пользователя и площадки. Mutation не должна создавать сущность, detail-маршрут
+которой тот же пользователь затем не может открыть из-за более строгого rollout.
+
 `VenueRentalCoordination` — отдельный агрегат предварительного интереса, не
 связанный с legacy `CoordinationSession` и его опросами. Он фиксирует venue,
 scope, `[starts_at, ends_at)`, organizer actor/user, видимость сбора и отдельную

@@ -8,8 +8,10 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingEventIntent;
+use App\Support\Features\FeatureDisabledException;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
+use App\Support\Features\VenueRentalRollout;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -20,12 +22,14 @@ final readonly class RequestEventVenueBookingHandler
         private QuoteVenueBookingHandler $quotes,
         private RequestVenueBookingHandler $bookings,
         private FeatureFlags $features,
+        private VenueRentalRollout $rollout,
     ) {}
 
     /** @param array<string, mixed> $data */
     public function handle(Actor $actor, Venue $venue, array $data): VenueBooking
     {
         $this->features->ensureEnabled(VenueRentalFeature::BOOKING_EVENTS);
+        $this->ensureRolloutAllowsBooking($actor, $venue);
 
         return DB::transaction(function () use ($actor, $venue, $data): VenueBooking {
             $lockedVenue = Venue::query()->lockForUpdate()->findOrFail($venue->id);
@@ -93,5 +97,17 @@ final readonly class RequestEventVenueBookingHandler
 
             return $booking->load('eventIntent');
         });
+    }
+
+    private function ensureRolloutAllowsBooking(Actor $actor, Venue $venue): void
+    {
+        $user = $actor->user?->canonical();
+        $stableKey = (string) ($user?->id ?? $actor->id);
+
+        foreach ([VenueRentalFeature::RENTAL_FLOW, VenueRentalFeature::BOOKING_EVENTS] as $feature) {
+            if (! $this->rollout->allows($feature, $user, $venue->id, null, $stableKey, true)) {
+                throw new FeatureDisabledException($feature);
+            }
+        }
     }
 }

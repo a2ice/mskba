@@ -39,6 +39,7 @@ final class EventWizardBookingFirstTest extends TestCase
         parent::setUp();
         config()->set('features.venue_rental.rental_flow', true);
         config()->set('features.venue_rental.booking_events', true);
+        config()->set('features.venue_rental_rollout.mode', 'all');
         Carbon::setTestNow('2026-09-01 12:00:00 Europe/Moscow');
     }
 
@@ -160,6 +161,50 @@ final class EventWizardBookingFirstTest extends TestCase
             'status' => 'pending',
         ]);
         $this->assertDatabaseCount('events', 1);
+    }
+
+    public function test_wizard_cannot_create_a_rental_booking_outside_the_active_rollout(): void
+    {
+        config()->set('features.venue_rental_rollout.mode', 'internal');
+
+        $requester = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::USER,
+        ]);
+        $owner = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $venue = $this->venue($owner);
+        $startsAt = CarbonImmutable::now('Europe/Moscow')->addDays(4)->setTime(18, 0);
+
+        $this->actingAs($requester)
+            ->from(route('events.wizard', ['type' => 'game']))
+            ->post(route('events.store'), [
+                'event_request_id' => (string) Str::uuid(),
+                'venue_id' => $venue->id,
+                'booking_scope' => 'whole',
+                'title' => 'Игра вне rollout',
+                'type' => 'game',
+                'visibility' => 'public',
+                'starts_at' => $startsAt->format('Y-m-d\TH:i'),
+                'duration_minutes' => 120,
+                'max_participants' => 10,
+                'side_a_size' => 5,
+                'side_b_size' => 5,
+                'scoring_type' => GameScoringTypeEnum::BASKETBALL->value,
+                'game_format' => GameFormatEnum::BASKETBALL_5X5->value,
+                'timing_mode' => GameTimingModeEnum::PERIODS->value,
+                'periods_count' => 4,
+                'game_recruitment_mode' => GameRecruitmentModeEnum::INDIVIDUAL_DRAFT->value,
+                'game_accepts_applications' => true,
+            ])
+            ->assertRedirect(route('events.wizard', ['type' => 'game']))
+            ->assertSessionHas('error', 'Онлайн-аренда этой площадки временно недоступна.');
+
+        $this->assertDatabaseCount('venue_bookings', 0);
+        $this->assertDatabaseCount('venue_booking_event_intents', 0);
+        $this->assertDatabaseCount('events', 0);
     }
 
     private function venue(User $publisher): Venue
