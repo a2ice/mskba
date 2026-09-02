@@ -76,3 +76,5 @@ export const subscribePrivate = (channelName, eventName, handler) => {
 };
 
 export const realtimeState = () => state;
+
+export const realtimeSocketId = () => echo?.socketId?.() || null;

@@ -7,6 +7,7 @@ use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\VenueBooking\Application\Queries\GetVenueBookingConversationSummary;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
 use App\Modules\VenueBooking\Application\UseCases\AttachVenueBookingConversationFileHandler;
 use App\Modules\VenueBooking\Application\UseCases\MarkVenueBookingConversationReadHandler;
@@ -25,13 +26,25 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class VenueBookingConversationController extends Controller
 {
-    public function index(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, VenueBookingAuthorization $authorization): JsonResponse
-    {
+    public function index(
+        Request $request,
+        VenueBooking $venueBooking,
+        CurrentActorResolver $actors,
+        VenueBookingAuthorization $authorization,
+        GetVenueBookingConversationSummary $summary,
+    ): JsonResponse {
         $venueBooking->load('venue');
-        $this->authorizeConversation($actors->resolveForRequest($request), $venueBooking, $authorization);
+        $actor = $actors->resolveForRequest($request);
+        $this->authorizeConversation($actor, $venueBooking, $authorization);
         $conversation = VenueBookingConversation::query()->where('venue_booking_id', $venueBooking->id)->first();
         if ($conversation === null) {
-            return response()->json(['conversation_id' => null, 'messages' => [], 'has_more' => false]);
+            return response()->json([
+                'conversation_id' => null,
+                'messages' => [],
+                'has_more' => false,
+                'unread_count' => 0,
+                'latest_message_id' => null,
+            ]);
         }
 
         $validated = $request->validate(['before_id' => ['nullable', 'integer', 'min:1'], 'after_id' => ['nullable', 'integer', 'min:0']]);
@@ -51,6 +64,7 @@ final class VenueBookingConversationController extends Controller
             'conversation_id' => $conversation->public_id,
             'messages' => $messages->map(fn (VenueBookingMessage $message): array => $this->messagePayload($message)),
             'has_more' => $hasMore,
+            ...$summary->handle($venueBooking, $actor),
         ]);
     }
 

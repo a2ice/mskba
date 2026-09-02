@@ -1,69 +1,248 @@
-import { realtimeState, subscribePrivate } from '../../../../js/realtime.js';
+import {
+    realtimeSocketId,
+    realtimeState,
+    subscribePrivate,
+} from '../../../../js/realtime.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    const page = document.querySelector('[data-venue-booking-page]');
+    const modal = document.querySelector('[data-modal="venue-booking-conversation"]');
     const region = document.querySelector('#booking-conversation-messages');
-    const form = document.querySelector('#booking-conversation-form');
-    if (!region || !form) return;
+    const messageForm = document.querySelector('#booking-conversation-form');
+    const attachmentForm = document.querySelector('[data-booking-conversation-attachment]');
 
-    let lastId = Math.max(0, ...Array.from(region.querySelectorAll('[data-message-id]')).map((node) => Number(node.dataset.messageId)));
-    let unsubscribe = () => {};
+    if (!page) return;
 
-    const render = (message, pending = false) => {
-        const existing = region.querySelector(`[data-client-id="${CSS.escape(message.client_id)}"]`);
-        const article = existing || document.createElement('article');
-        article.className = 'border-top py-2';
-        article.dataset.clientId = message.client_id;
-        if (message.id) article.dataset.messageId = message.id;
-        article.replaceChildren();
-        const author = document.createElement('strong');
-        author.textContent = message.author || 'Вы';
-        const body = document.createElement('p');
-        body.textContent = message.body || '';
-        article.append(author, body);
-        if (pending) article.setAttribute('aria-label', 'Сообщение отправляется');
-        else article.removeAttribute('aria-label');
-        if (!existing) region.append(article);
-        lastId = Math.max(lastId, Number(message.id || 0));
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const bookingId = page.dataset.bookingId;
+    let bookingVersion = Number(page.dataset.bookingVersion || 0);
+    let lastId = region
+        ? Math.max(0, ...Array.from(region.querySelectorAll('[data-message-id]')).map((node) => Number(node.dataset.messageId || 0)))
+        : 0;
+    let latestMessagePublicId = region?.querySelector('[data-message-public-id]:last-of-type')?.dataset.messagePublicId || null;
+    let conversationId = region?.dataset.conversationId || null;
+    let conversationUnsubscribe = () => {};
+    let reloadScheduled = false;
+
+    const jsonHeaders = () => {
+        const headers = { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken };
+        const socketId = realtimeSocketId();
+        if (socketId) headers['X-Socket-ID'] = socketId;
+        return headers;
     };
 
-    const poll = async () => {
+    const isModalOpen = () => modal?.classList.contains('is-open') === true;
+
+    const setStatus = (message, error = false) => {
+        const status = modal?.querySelector('[data-booking-conversation-status]');
+        if (!status) return;
+        status.textContent = message;
+        status.classList.toggle('is-error', error);
+    };
+
+    const setUnread = (count) => {
+        const normalized = Math.max(0, Number(count || 0));
+        document.querySelectorAll('[data-booking-unread-count]').forEach((node) => {
+            node.textContent = String(normalized);
+        });
+        document.querySelectorAll('[data-booking-unread-wrap]').forEach((node) => {
+            node.hidden = normalized === 0;
+        });
+        document.querySelectorAll('[data-booking-message-notice]').forEach((node) => {
+            node.classList.toggle('is-unread', normalized > 0);
+        });
+        document.querySelectorAll('[data-booking-message-notice-label]').forEach((node) => {
+            node.textContent = normalized > 0 ? 'Новые сообщения' : 'Переписка по заявке';
+        });
+    };
+
+    const scheduleReload = () => {
+        if (reloadScheduled) return;
+        reloadScheduled = true;
+        window.setTimeout(() => window.location.reload(), 180);
+    };
+
+    const attachmentUrl = (messageId) => `${region.dataset.attachmentUrlBase}/${encodeURIComponent(messageId)}/attachment`;
+
+    const render = (message, pending = false) => {
+        if (!region || !message) return;
+        const clientId = message.client_id || '';
+        const existing = clientId
+            ? region.querySelector(`[data-client-id="${CSS.escape(clientId)}"]`)
+            : region.querySelector(`[data-message-id="${Number(message.id || 0)}"]`);
+        const article = existing || document.createElement('article');
+        article.className = 'venue-booking-message';
+        if (clientId) article.dataset.clientId = clientId;
+        if (message.id) article.dataset.messageId = String(message.id);
+        if (message.message_id) article.dataset.messagePublicId = message.message_id;
+        article.replaceChildren();
+
+        const header = document.createElement('div');
+        header.className = 'venue-booking-message__header';
+        const author = document.createElement('strong');
+        author.textContent = message.author || 'Вы';
+        header.append(author);
+        if (message.created_at) {
+            const time = document.createElement('time');
+            const date = new Date(message.created_at);
+            time.dateTime = message.created_at;
+            time.textContent = Number.isNaN(date.getTime())
+                ? ''
+                : date.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
+            header.append(time);
+        }
+        article.append(header);
+
+        if (message.body) {
+            const body = document.createElement('p');
+            body.textContent = message.body;
+            article.append(body);
+        }
+        if (message.attachment && message.message_id) {
+            const link = document.createElement('a');
+            link.href = attachmentUrl(message.message_id);
+            link.textContent = `Скачать: ${message.attachment.name}`;
+            article.append(link);
+        }
+        article.classList.toggle('is-pending', pending);
+        if (pending) article.setAttribute('aria-label', 'Сообщение отправляется');
+        else article.removeAttribute('aria-label');
+        region.querySelector('[data-booking-conversation-empty]')?.remove();
+        if (!existing) region.append(article);
+        lastId = Math.max(lastId, Number(message.id || 0));
+        latestMessagePublicId = message.message_id || latestMessagePublicId;
+        region.scrollTop = region.scrollHeight;
+    };
+
+    const markRead = async () => {
+        if (!region || !conversationId || !latestMessagePublicId || !isModalOpen()) return;
+        const body = new FormData();
+        body.set('message_id', latestMessagePublicId);
+        const response = await fetch(`${region.dataset.readUrlBase}/${conversationId}/read`, {
+            method: 'POST',
+            body,
+            headers: jsonHeaders(),
+            credentials: 'same-origin',
+        });
+        if (response.ok) setUnread(0);
+    };
+
+    const subscribeConversation = (nextConversationId) => {
+        if (!nextConversationId || (nextConversationId === conversationId && region?.dataset.conversationSubscribed === '1')) return;
+        conversationId = nextConversationId;
+        if (region) {
+            region.dataset.conversationId = nextConversationId;
+            region.dataset.conversationSubscribed = '1';
+        }
+        conversationUnsubscribe();
+        conversationUnsubscribe = subscribePrivate(
+            `venue-booking-conversations.${nextConversationId}`,
+            '.booking.message.sent',
+            () => pollConversation(),
+        );
+    };
+
+    const pollConversation = async () => {
+        if (!region) return;
         const separator = region.dataset.pollUrl.includes('?') ? '&' : '?';
-        const response = await fetch(`${region.dataset.pollUrl}${separator}after_id=${lastId}`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        const response = await fetch(`${region.dataset.pollUrl}${separator}after_id=${lastId}`, {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        });
         if (!response.ok) return;
         const payload = await response.json();
         payload.messages.forEach((message) => render(message));
-        if (!region.dataset.conversationId && payload.conversation_id) subscribe(payload.conversation_id);
+        if (payload.conversation_id) subscribeConversation(payload.conversation_id);
+        if (payload.latest_message_id) latestMessagePublicId = payload.latest_message_id;
+        if (isModalOpen()) await markRead();
+        else setUnread(payload.unread_count);
     };
 
-    const subscribe = (conversationId) => {
-        if (!conversationId) return;
-        region.dataset.conversationId = conversationId;
-        unsubscribe();
-        unsubscribe = subscribePrivate(`venue-booking-conversations.${conversationId}`, '.booking.message.sent', poll);
+    const pollBooking = async () => {
+        const response = await fetch(page.dataset.bookingDetailsUrl, {
+            headers: { Accept: 'application/json' },
+            credentials: 'same-origin',
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const nextVersion = Number(payload.version || 0);
+        if (nextVersion > bookingVersion) {
+            bookingVersion = nextVersion;
+            scheduleReload();
+            return;
+        }
+        if (!isModalOpen()) setUnread(payload.conversation?.unread_count || 0);
+        if (payload.conversation?.conversation_id) subscribeConversation(payload.conversation.conversation_id);
     };
 
-    subscribe(region.dataset.conversationId);
-    window.addEventListener('mskba:realtime-state', (event) => {
-        if (event.detail.state === 'connected') poll();
-    });
-    window.setInterval(() => {
-        if (realtimeState() !== 'connected') poll();
-    }, 15000);
-
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
+    const submitForm = async (form, optimistic = false) => {
         const data = new FormData(form);
-        const optimistic = { client_id: data.get('client_id'), body: data.get('body'), author: 'Вы' };
-        render(optimistic, true);
-        const response = await fetch(form.action, { method: 'POST', body: data, headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+        const pending = optimistic ? {
+            client_id: data.get('client_id'),
+            body: data.get('body'),
+            author: 'Вы',
+        } : null;
+        if (pending) render(pending, true);
+        setStatus('Отправляем…');
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: data,
+            headers: jsonHeaders(),
+            credentials: 'same-origin',
+        });
         if (!response.ok) {
-            form.submit();
+            setStatus('Не удалось отправить сообщение. Попробуйте ещё раз.', true);
+            if (pending) region?.querySelector(`[data-client-id="${CSS.escape(String(pending.client_id))}"]`)?.remove();
             return;
         }
         const message = await response.json();
         render(message);
-        subscribe(message.conversation_id);
-        form.querySelector('[name="body"]').value = '';
-        form.querySelector('[name="client_id"]').value = crypto.randomUUID();
+        subscribeConversation(message.conversation_id);
+        form.reset();
+        const clientId = form.querySelector('[name="client_id"]');
+        if (clientId) clientId.value = crypto.randomUUID();
+        setStatus('Сообщение отправлено.');
+        await markRead();
+    };
+
+    subscribePrivate(`venue-bookings.${bookingId}`, '.booking.updated', (payload) => {
+        if (Number(payload.version || 0) > bookingVersion) scheduleReload();
+    });
+    subscribePrivate(`venue-bookings.${bookingId}`, '.booking.message.sent', (payload) => {
+        if (payload.conversation_id) subscribeConversation(payload.conversation_id);
+        pollConversation();
+    });
+    subscribeConversation(conversationId);
+
+    window.addEventListener('mskba:realtime-state', (event) => {
+        if (event.detail.state === 'connected') {
+            pollBooking();
+            pollConversation();
+        }
+    });
+    window.setInterval(() => {
+        pollBooking();
+        if (realtimeState() !== 'connected' || isModalOpen()) pollConversation();
+    }, 15000);
+
+    const modalObserver = modal ? new MutationObserver(() => {
+        if (isModalOpen()) {
+            pollConversation();
+            window.setTimeout(() => region?.scrollTo({ top: region.scrollHeight }), 0);
+        }
+    }) : null;
+    if (modal && modalObserver) modalObserver.observe(modal, { attributes: true, attributeFilter: ['class', 'hidden'] });
+
+    if (window.location.hash === '#booking-conversation') {
+        document.querySelector('[data-booking-message-notice], .venue-booking-applicant__button')?.click();
+    }
+
+    messageForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitForm(messageForm, true);
+    });
+    attachmentForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitForm(attachmentForm);
     });
 });

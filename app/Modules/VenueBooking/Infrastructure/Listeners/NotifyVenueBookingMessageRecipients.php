@@ -38,7 +38,7 @@ final class NotifyVenueBookingMessageRecipients implements ShouldQueue
                     type: UserNotificationTypeEnum::SYSTEM,
                     title: 'Новое сообщение по аренде',
                     body: 'В переписке по заявке появилось новое сообщение.',
-                    actionUrl: route('account.venue-bookings.show', $booking),
+                    actionUrl: route('account.venue-bookings.show', $booking).'#booking-conversation',
                     actionText: 'Открыть переписку',
                     payload: ['booking_id' => $booking->public_id, 'message_id' => $message->public_id],
                 ));

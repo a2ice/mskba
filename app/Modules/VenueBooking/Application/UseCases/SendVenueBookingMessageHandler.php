@@ -58,7 +58,7 @@ final readonly class SendVenueBookingMessageHandler
             ]);
             DB::afterCommit(static function () use ($booking, $conversation, $message): void {
                 event(new VenueBookingMessageSent($booking->id, $conversation->id, $message->id));
-                broadcast(new VenueBookingMessageSentBroadcast($conversation->public_id, $message->public_id))->toOthers();
+                broadcast(new VenueBookingMessageSentBroadcast($booking->public_id, $conversation->public_id, $message->public_id))->toOthers();
             });
 
             return $message->fresh('authorActor.user');

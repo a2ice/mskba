@@ -73,8 +73,9 @@ final class VenueBookingController extends Controller
         }
 
         $actionState = $actions->for($venueBooking, $actor);
+        $detailsPayload = $this->details->handle($venueBooking, $actor);
         if ($request->expectsJson()) {
-            return response()->json($this->details->handle($venueBooking, $actor));
+            return response()->json($detailsPayload);
         }
 
         $attendanceRound = $venueBooking->attendanceRounds->sortByDesc('id')->first();
@@ -83,7 +84,7 @@ final class VenueBookingController extends Controller
             ->where('venue_booking_id', $venueBooking->id)
             ->first();
         $conversation = null;
-        $conversationUnread = 0;
+        $conversationUnread = (int) data_get($detailsPayload, 'conversation.unread_count', 0);
         $contributionSummary = null;
         if (config('features.venue_rental.contributions')) {
             try {
@@ -97,8 +98,6 @@ final class VenueBookingController extends Controller
                 ->with(['messages' => fn ($query) => $query->with('authorActor.user')->latest('id')->limit(30), 'readMarkers'])
                 ->where('venue_booking_id', $venueBooking->id)
                 ->first();
-            $lastReadId = $conversation?->readMarkers->firstWhere('user_id', $request->user()?->canonical()->id)?->last_read_message_id ?? 0;
-            $conversationUnread = $conversation?->messages()->where('id', '>', $lastReadId)->count() ?? 0;
             if ($actor->user?->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
                 AuditLog::query()->create([
                     'actor_id' => $actor->id, 'auditable_type' => VenueBooking::class,

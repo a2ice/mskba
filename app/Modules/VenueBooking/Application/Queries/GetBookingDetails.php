@@ -8,10 +8,18 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Support\Features\FeatureFlags;
+use App\Support\Features\VenueRentalFeature;
 
 final readonly class GetBookingDetails
 {
-    public function __construct(private VenueBookingAuthorization $authorization, private VenueBookingActionState $actionState, private VenueCommercialAccess $commercialAccess) {}
+    public function __construct(
+        private VenueBookingAuthorization $authorization,
+        private VenueBookingActionState $actionState,
+        private VenueCommercialAccess $commercialAccess,
+        private GetVenueBookingConversationSummary $conversationSummary,
+        private FeatureFlags $features,
+    ) {}
 
     /** @return array<string, mixed> */
     public function handle(VenueBooking $booking, Actor $actor): array
@@ -24,13 +32,17 @@ final readonly class GetBookingDetails
         $includeFinancial = $isRequester || ($actor->user !== null
             && $this->commercialAccess->allows($actor->user, $booking->venue, VenuePermissionEnum::VIEW_PAYMENTS));
 
-        return $this->serialize($booking, $actions, $this->actionState->primary($actions, $isRequester), $includeFinancial);
+        $conversation = $this->features->enabled(VenueRentalFeature::CONVERSATIONS)
+            ? $this->conversationSummary->handle($booking, $actor)
+            : null;
+
+        return $this->serialize($booking, $actions, $this->actionState->primary($actions, $isRequester), $includeFinancial, $conversation);
     }
 
     /** @param array<string, array{allowed: bool, reason: string|null}> $actions
      * @return array<string, mixed>
      */
-    public function serialize(VenueBooking $booking, array $actions, ?string $primaryAction, bool $includeFinancial): array
+    public function serialize(VenueBooking $booking, array $actions, ?string $primaryAction, bool $includeFinancial, ?array $conversation = null): array
     {
         return [
             'booking_id' => $booking->public_id,
@@ -38,6 +50,7 @@ final readonly class GetBookingDetails
             'status' => $booking->status->value,
             'status_label' => $booking->status->label(),
             'venue' => ['id' => $booking->venue_id, 'name' => $booking->venue->name],
+            'requester' => ['name' => $booking->requester?->username],
             'scope' => $booking->scope?->value,
             'starts_at' => $booking->starts_at->utc()->toIso8601String(),
             'ends_at' => $booking->ends_at->utc()->toIso8601String(),
@@ -69,6 +82,7 @@ final readonly class GetBookingDetails
                 'reason' => $extension->reason,
                 'decision_reason' => $extension->decision_reason,
             ])->values()->all(),
+            'conversation' => $conversation,
             'event_id' => $booking->event_id,
             'event_route_id' => $booking->event?->routeIdentifier(),
             'server_time' => now()->utc()->toIso8601String(),

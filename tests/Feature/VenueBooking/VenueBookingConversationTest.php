@@ -17,13 +17,16 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Queries\GetVenueBookingConversationSummary;
 use App\Modules\VenueBooking\Application\UseCases\AttachVenueBookingConversationFileHandler;
 use App\Modules\VenueBooking\Application\UseCases\MarkVenueBookingConversationReadHandler;
 use App\Modules\VenueBooking\Application\UseCases\SendVenueBookingMessageHandler;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Infrastructure\Broadcasting\VenueBookingChannel;
 use App\Modules\VenueBooking\Infrastructure\Broadcasting\VenueBookingMessageSentBroadcast;
+use App\Modules\VenueBooking\Infrastructure\Broadcasting\VenueBookingUpdatedBroadcast;
 use Carbon\CarbonImmutable;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -116,9 +119,75 @@ final class VenueBookingConversationTest extends TestCase
             $this->assertSame('INVALID_CONVERSATION_ATTACHMENT', $exception->errorCode);
         }
 
-        $broadcast = new VenueBookingMessageSentBroadcast($message->conversation->public_id, $message->public_id);
-        $this->assertInstanceOf(PrivateChannel::class, $broadcast->broadcastOn());
-        $this->assertSame('private-venue-booking-conversations.'.$message->conversation->public_id, $broadcast->broadcastOn()->name);
+        $broadcast = new VenueBookingMessageSentBroadcast($booking->public_id, $message->conversation->public_id, $message->public_id);
+        $channels = $broadcast->broadcastOn();
+        $this->assertContainsOnlyInstancesOf(PrivateChannel::class, $channels);
+        $this->assertSame([
+            'private-venue-bookings.'.$booking->public_id,
+            'private-venue-booking-conversations.'.$message->conversation->public_id,
+        ], array_map(static fn (PrivateChannel $channel): string => $channel->name, $channels));
+    }
+
+    public function test_booking_channel_is_private_and_available_only_to_booking_parties(): void
+    {
+        [$owner, , $venue] = $this->ownedVenue();
+        [$requester, $requesterActor] = $this->userAndActor();
+        [$outsider] = $this->userAndActor();
+        $booking = $this->booking($venue, $requester, $requesterActor);
+        $channel = app(VenueBookingChannel::class);
+
+        $this->assertTrue($channel->join($requester, $booking->public_id));
+        $this->assertTrue($channel->join($owner, $booking->public_id));
+        $this->assertFalse($channel->join($outsider, $booking->public_id));
+        $this->assertFalse($channel->join($requester, (string) Str::uuid()));
+
+        $broadcast = new VenueBookingUpdatedBroadcast($booking->public_id, 2);
+        $this->assertSame('private-venue-bookings.'.$booking->public_id, $broadcast->broadcastOn()->name);
+        $this->assertSame(['booking_id' => $booking->public_id, 'version' => 2], $broadcast->broadcastWith());
+    }
+
+    public function test_unread_summary_excludes_own_messages_and_is_exposed_in_booking_details(): void
+    {
+        [$owner, $ownerActor, $venue] = $this->ownedVenue();
+        [$requester, $requesterActor] = $this->userAndActor();
+        $booking = $this->booking($venue, $requester, $requesterActor);
+        $messages = app(SendVenueBookingMessageHandler::class);
+        $first = $messages->handle($booking->id, $requesterActor, (string) Str::uuid(), 'Вопрос заявителя');
+        $second = $messages->handle($booking->id, $ownerActor, (string) Str::uuid(), 'Ответ площадки');
+        $summary = app(GetVenueBookingConversationSummary::class);
+
+        $this->assertSame(1, $summary->handle($booking, $requesterActor)['unread_count']);
+        $this->assertSame(1, $summary->handle($booking, $ownerActor)['unread_count']);
+
+        $this->actingAs($owner)->get(route('account.venue-bookings.show', $booking))
+            ->assertOk()
+            ->assertSee($requester->username)
+            ->assertSee('venue-booking-applicant__button', false)
+            ->assertSee('data-modal="venue-booking-conversation"', false);
+
+        app(MarkVenueBookingConversationReadHandler::class)->handle(
+            $booking->id,
+            $first->conversation_id,
+            $ownerActor,
+            $second->id,
+        );
+        $this->assertSame(0, $summary->handle($booking, $ownerActor)['unread_count']);
+
+        $this->actingAs($requester)->getJson(route('account.venue-bookings.show', $booking))
+            ->assertOk()
+            ->assertJsonPath('requester.name', $requester->username)
+            ->assertJsonPath('conversation.unread_count', 1)
+            ->assertJsonPath('conversation.latest_message_id', $second->public_id);
+
+        $this->actingAs($requester)->getJson(route('account.venue-bookings.conversation.index', $booking))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('latest_message_id', $second->public_id);
+
+        $this->actingAs($requester)->get(route('account.venue-bookings.show', $booking))
+            ->assertOk()
+            ->assertSee('Новые сообщения')
+            ->assertSee('data-booking-unread-count', false);
     }
 
     private function booking(Venue $venue, User $requester, Actor $actor): VenueBooking
