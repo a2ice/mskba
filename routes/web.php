@@ -320,11 +320,19 @@ Route::prefix('account/venue-bookings')
     ->group(function () {
         Route::post('/', [VenueBookingController::class, 'store'])->name('account.venue-bookings.store');
         Route::middleware('venue-rental-feature:portal')->group(function (): void {
-            Route::get('/', [VenueBookingProjectionController::class, 'requester'])->name('account.venue-bookings.index');
-            Route::get('/inbox', [VenueBookingProjectionController::class, 'owner'])->name('account.venue-bookings.inbox');
-            Route::get('/{venueBooking}/timeline', [VenueBookingProjectionController::class, 'timeline'])->name('account.venue-bookings.timeline');
+            Route::get('/', [VenueBookingProjectionController::class, 'requester'])
+                ->name('account.venue-bookings.index')
+                ->defaults('breadcrumb', 'Заявки на аренду');
+            Route::get('/inbox', [VenueBookingProjectionController::class, 'owner'])
+                ->name('account.venue-bookings.inbox')
+                ->defaults('breadcrumb', 'Входящие заявки');
+            Route::get('/{venueBooking}/timeline', [VenueBookingProjectionController::class, 'timeline'])
+                ->name('account.venue-bookings.timeline')
+                ->defaults('breadcrumb', 'История заявки');
         });
-        Route::get('/{venueBooking}', [VenueBookingController::class, 'show'])->name('account.venue-bookings.show');
+        Route::get('/{venueBooking}', [VenueBookingController::class, 'show'])
+            ->name('account.venue-bookings.show')
+            ->defaults('breadcrumb', 'Заявка на аренду');
         Route::post('/{venueBooking}/accept', [VenueBookingController::class, 'accept'])->name('account.venue-bookings.accept');
         Route::post('/{venueBooking}/reject', [VenueBookingController::class, 'reject'])->name('account.venue-bookings.reject');
         Route::post('/{venueBooking}/cancel', [VenueBookingController::class, 'cancel'])->name('account.venue-bookings.cancel');
