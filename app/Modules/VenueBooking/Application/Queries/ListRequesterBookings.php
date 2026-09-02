@@ -14,7 +14,7 @@ final readonly class ListRequesterBookings
     public function handle(Actor $actor, int $page = 1, int $perPage = 20): array
     {
         abort_if($actor->user === null, 403);
-        $paginator = VenueBooking::query()->with(['venue', 'event', 'paymentAttempt', 'extensionRequests'])->where('flow', 'rental')
+        $paginator = VenueBooking::query()->with(['venue', 'requester', 'event', 'paymentAttempt', 'extensionRequests'])->where('flow', 'rental')
             ->whereIn('requester_user_id', $actor->user->identityIds())
             ->latest('updated_at')->paginate(min(50, max(1, $perPage)), ['*'], 'page', max(1, $page));
         $data = collect($paginator->items())->map(function (VenueBooking $booking) use ($actor): array {

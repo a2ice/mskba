@@ -3,33 +3,78 @@
 @extends('theme::layouts.app', ['title' => $title])
 
 @section('content')
-    <section class="first-screen"><div class="inner">
+    <section
+        class="first-screen venue-booking-page"
+        data-venue-booking-page
+        data-booking-id="{{ $booking->public_id }}"
+        data-booking-version="{{ $booking->optimistic_version }}"
+        data-booking-details-url="{{ route('account.venue-bookings.show', $booking) }}"
+    ><div class="inner">
         @include('theme::partials.breadcrumbs')
         <h1 class="section-title mb-4">{{ $title }}</h1>
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
-        <div class="card mb-4"><div class="card-body">
-            <p><strong>Статус:</strong> {{ $booking->status->label() }}</p>
-            <p>{{ $booking->starts_at->format('d.m.Y H:i') }}–{{ $booking->ends_at->format('d.m.Y H:i') }}</p>
+        <div class="card mb-4 venue-booking-summary"><div class="card-body">
+            <div class="venue-booking-summary__header">
+                <div>
+                    <p><strong>Статус:</strong> {{ $booking->status->label() }}</p>
+                    <p>{{ $booking->starts_at->format('d.m.Y H:i') }}–{{ $booking->ends_at->format('d.m.Y H:i') }}</p>
+                </div>
+                @if(!$isRequester)
+                    <div class="venue-booking-applicant">
+                        <span class="venue-booking-applicant__label">Заявитель</span>
+                        @if(config('features.venue_rental.conversations'))
+                            <button
+                                class="venue-booking-applicant__button"
+                                type="button"
+                                data-handler="modal"
+                                data-modal-action="open"
+                                data-modal-target="venue-booking-conversation"
+                            >
+                                <i class="ti ti-user" aria-hidden="true"></i>
+                                <span>{{ $booking->requester?->username ?? 'Пользователь' }}</span>
+                                <span data-booking-unread-wrap @if(!$conversationUnread) hidden @endif>(<span data-booking-unread-count>{{ $conversationUnread }}</span>)</span>
+                            </button>
+                        @else
+                            <strong>{{ $booking->requester?->username ?? 'Пользователь' }}</strong>
+                        @endif
+                    </div>
+                @endif
+            </div>
             @if($booking->hold_expires_at)<p>Удержание до {{ $booking->hold_expires_at->format('d.m.Y H:i') }}</p>@endif
             @if($booking->effective_protection_until)<p>Текущий срок защиты слота: {{ $booking->effective_protection_until->format('d.m.Y H:i') }}</p>@endif
             <p class="text-muted">Серверное время: {{ now()->format('d.m.Y H:i:s') }}</p>
             <p class="text-muted">Версия состояния: {{ $booking->optimistic_version }}</p>
 
-            <div class="venue-management-actions">
+            <div class="venue-booking-actions">
                 @foreach(['accept' => 'Принять', 'confirm' => 'Подтвердить', 'reject' => 'Отклонить', 'cancel' => 'Отменить'] as $action => $label)
                     @if($actions[$action]['allowed'])
                         <form method="POST" action="{{ route('account.venue-bookings.'.$action, $booking) }}">
                             @csrf
                             <input type="hidden" name="version" value="{{ $booking->optimistic_version }}">
                             <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                            <button class="btn btn--secondary btn--sm" type="submit">{{ $label }}</button>
+                            <button class="btn {{ in_array($action, ['accept', 'confirm'], true) ? 'btn--primary' : 'btn--secondary' }} btn--sm" type="submit">{{ $label }}</button>
                         </form>
                     @endif
                 @endforeach
             </div>
         </div></div>
+
+        @if($isRequester && config('features.venue_rental.conversations'))
+            <button
+                class="venue-booking-message-notice {{ $conversationUnread ? 'is-unread' : '' }}"
+                type="button"
+                data-booking-message-notice
+                data-handler="modal"
+                data-modal-action="open"
+                data-modal-target="venue-booking-conversation"
+            >
+                <i class="ti ti-message-circle" aria-hidden="true"></i>
+                <span data-booking-message-notice-label>{{ $conversationUnread ? 'Новые сообщения' : 'Переписка по заявке' }}</span>
+                <span data-booking-unread-wrap @if(!$conversationUnread) hidden @endif>(<span data-booking-unread-count>{{ $conversationUnread }}</span>)</span>
+            </button>
+        @endif
 
         @if($booking->eventIntent && !$booking->event)
             <div class="alert alert-info mb-4">
@@ -221,43 +266,54 @@
         @endif
 
         @if(config('features.venue_rental.conversations'))
-            <section class="card mb-4" aria-labelledby="booking-conversation-title"><div class="card-body">
-                <h2 class="h4" id="booking-conversation-title">Переписка @if($conversationUnread)<span class="badge">{{ $conversationUnread }} новых</span>@endif</h2>
+            @component('theme::partials.modal.layout', [
+                'id' => 'venue-booking-conversation',
+                'dialogClass' => 'venue-booking-conversation-modal__dialog',
+            ])
+                <div class="venue-booking-conversation-modal__heading">
+                    <p class="venue-booking-conversation-modal__eyebrow">Заявка на аренду</p>
+                    <h2 class="modal_title" id="modal-title-venue-booking-conversation">Переписка</h2>
+                    <p>{{ $isRequester ? $booking->venue->name : ($booking->requester?->username ?? 'Пользователь') }}</p>
+                </div>
                 <p class="text-muted">Сообщения не меняют статус, цену или срок удержания. Доменные решения показаны отдельно в истории ниже.</p>
-                <div id="booking-conversation-messages" aria-live="polite" data-poll-url="{{ route('account.venue-bookings.conversation.index', $booking) }}" data-conversation-id="{{ $conversation?->public_id }}">
+                <div
+                    id="booking-conversation-messages"
+                    class="venue-booking-conversation-modal__messages"
+                    aria-live="polite"
+                    data-poll-url="{{ route('account.venue-bookings.conversation.index', $booking) }}"
+                    data-read-url-base="{{ url('/account/venue-bookings/'.$booking->public_id.'/conversation') }}"
+                    data-attachment-url-base="{{ url('/account/venue-bookings/'.$booking->public_id.'/conversation/messages') }}"
+                    data-conversation-id="{{ $conversation?->public_id }}"
+                >
                     @forelse($conversation?->messages?->sortBy('id') ?? [] as $message)
-                        <article class="border-top py-2" data-message-id="{{ $message->id }}">
-                            <strong>{{ $message->authorActor->user?->username ?? 'Система' }}</strong>
-                            <time datetime="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->format('d.m.Y H:i') }}</time>
+                        <article class="venue-booking-message" data-message-id="{{ $message->id }}" data-message-public-id="{{ $message->public_id }}">
+                            <div class="venue-booking-message__header">
+                                <strong>{{ $message->authorActor->user?->username ?? 'Система' }}</strong>
+                                <time datetime="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->format('d.m.Y H:i') }}</time>
+                            </div>
                             <p>{{ $message->body }}</p>
                             @if($message->attachment_path)<a href="{{ route('account.venue-bookings.conversation.attachment', [$booking, $message]) }}">Скачать: {{ $message->attachment_name }}</a>@endif
                         </article>
                     @empty
-                        <p class="text-muted">Сообщений пока нет.</p>
+                        <p class="text-muted" data-booking-conversation-empty>Сообщений пока нет.</p>
                     @endforelse
                 </div>
-                <form id="booking-conversation-form" method="POST" action="{{ route('account.venue-bookings.conversation.store', $booking) }}" class="mt-3">
+                <form id="booking-conversation-form" method="POST" action="{{ route('account.venue-bookings.conversation.store', $booking) }}" class="venue-booking-conversation-modal__form">
                     @csrf
                     <input type="hidden" name="client_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                    <label class="form-label" for="booking-message-body">Новое сообщение</label>
+                    <label class="form-label" for="booking-message-body">Сообщение</label>
                     <textarea class="form-control" id="booking-message-body" name="body" maxlength="4000" required></textarea>
-                    <button class="btn btn--primary btn--sm mt-2" type="submit">Отправить</button>
+                    <button class="btn btn--primary btn--sm" type="submit">Отправить</button>
                 </form>
-                <form method="POST" enctype="multipart/form-data" action="{{ route('account.venue-bookings.conversation.attach', $booking) }}" class="mt-3">
+                <form method="POST" enctype="multipart/form-data" action="{{ route('account.venue-bookings.conversation.attach', $booking) }}" class="venue-booking-conversation-modal__attachment" data-booking-conversation-attachment>
                     @csrf
                     <input type="hidden" name="client_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                    <label class="form-label" for="booking-message-attachment">Безопасное вложение (JPG, PNG, PDF, TXT до 10 МБ)</label>
+                    <label class="form-label" for="booking-message-attachment">Вложение: JPG, PNG, PDF или TXT до 10 МБ</label>
                     <input class="form-control" id="booking-message-attachment" type="file" name="attachment" accept="image/jpeg,image/png,application/pdf,text/plain" required>
-                    <button class="btn btn--secondary btn--sm mt-2" type="submit">Прикрепить</button>
+                    <button class="btn btn--secondary btn--sm" type="submit">Прикрепить</button>
                 </form>
-                @if($conversation && $conversation->messages->isNotEmpty())
-                    <form method="POST" action="{{ route('account.venue-bookings.conversation.read', [$booking, $conversation]) }}" class="mt-2">
-                        @csrf
-                        <input type="hidden" name="message_id" value="{{ $conversation->messages->sortByDesc('id')->first()->public_id }}">
-                        <button class="btn btn--secondary btn--sm" type="submit">Отметить прочитанным</button>
-                    </form>
-                @endif
-            </div></section>
+                <p class="venue-booking-conversation-modal__status" data-booking-conversation-status aria-live="polite"></p>
+            @endcomponent
         @endif
 
         <div class="card"><div class="card-body">

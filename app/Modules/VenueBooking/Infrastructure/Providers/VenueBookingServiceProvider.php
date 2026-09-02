@@ -4,12 +4,14 @@ namespace App\Modules\VenueBooking\Infrastructure\Providers;
 
 use App\Modules\VenueBooking\Application\Payments\PaymentProviderPort;
 use App\Modules\VenueBooking\Application\Services\VenueBookingCommandContext;
+use App\Modules\VenueBooking\Domain\Events\BookingProjectionUpdated;
 use App\Modules\VenueBooking\Domain\Events\ContributionCommitmentSet;
 use App\Modules\VenueBooking\Domain\Events\ContributionCommitmentWithdrawn;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingConfirmed;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingPolicyPublished;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
+use App\Modules\VenueBooking\Infrastructure\Listeners\BroadcastVenueBookingProjectionUpdate;
 use App\Modules\VenueBooking\Infrastructure\Listeners\CreateEventFromConfirmedBookingIntent;
 use App\Modules\VenueBooking\Infrastructure\Listeners\InvalidateVenueSearchAfterPolicyPublished;
 use App\Modules\VenueBooking\Infrastructure\Listeners\NotifyVenueBookingMessageRecipients;
@@ -36,6 +38,7 @@ final class VenueBookingServiceProvider extends ServiceProvider
     public function boot(): void
     {
         VenueBooking::observe(VenueBookingProjectionObserver::class);
+        Event::listen(BookingProjectionUpdated::class, BroadcastVenueBookingProjectionUpdate::class);
         Event::listen(VenueBookingPolicyPublished::class, InvalidateVenueSearchAfterPolicyPublished::class);
         Event::listen(VenueBookingConfirmed::class, CreateEventFromConfirmedBookingIntent::class);
         Event::listen(VenueBookingMessageSent::class, NotifyVenueBookingMessageRecipients::class);

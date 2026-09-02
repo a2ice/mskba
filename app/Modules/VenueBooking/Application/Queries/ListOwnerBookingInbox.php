@@ -28,7 +28,7 @@ final readonly class ListOwnerBookingInbox
             abort(403);
         }
 
-        $paginator = VenueBooking::query()->with(['venue', 'event', 'paymentAttempt', 'extensionRequests'])->where('flow', 'rental')
+        $paginator = VenueBooking::query()->with(['venue', 'requester', 'event', 'paymentAttempt', 'extensionRequests'])->where('flow', 'rental')
             ->when($venueIds !== null, fn ($query) => $query->whereIn('venue_id', $venueIds))
             ->when($venueId !== null, fn ($query) => $query->where('venue_id', $venueId))
             ->when($statuses !== [], fn ($query) => $query->whereIn('status', $statuses))

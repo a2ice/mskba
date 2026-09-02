@@ -10,3 +10,171 @@
     transform: none;
     box-shadow: none;
 }
+
+.venue-booking-summary__header,
+.venue-booking-actions,
+.venue-booking-applicant__button,
+.venue-booking-message-notice,
+.venue-booking-message__header {
+    display: flex;
+    align-items: center;
+}
+
+.venue-booking-summary__header {
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.venue-booking-applicant {
+    display: grid;
+    gap: 6px;
+    justify-items: end;
+}
+
+.venue-booking-applicant__label,
+.venue-booking-conversation-modal__eyebrow {
+    color: var(--accent-color, #ff651b);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.venue-booking-applicant__button,
+.venue-booking-message-notice {
+    gap: 8px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: 16px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color .2s ease, background-color .2s ease;
+}
+
+.venue-booking-applicant__button {
+    padding: 10px 16px;
+}
+
+.venue-booking-applicant__button:hover,
+.venue-booking-message-notice:hover,
+.venue-booking-message-notice.is-unread {
+    border-color: var(--accent-color, #ff651b);
+    background: rgba(255, 101, 27, .1);
+}
+
+.venue-booking-actions {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.venue-booking-actions form {
+    margin: 0;
+}
+
+.venue-booking-message-notice {
+    width: 100%;
+    justify-content: center;
+    margin: 0 0 24px;
+    padding: 16px 20px;
+}
+
+.venue-booking-conversation-modal__dialog {
+    width: min(720px, calc(100vw - 32px));
+    max-width: 720px;
+}
+
+.venue-booking-conversation-modal__heading {
+    padding-right: 44px;
+}
+
+.venue-booking-conversation-modal__heading p,
+.venue-booking-conversation-modal__heading h2 {
+    margin-bottom: 6px;
+}
+
+.venue-booking-conversation-modal__messages {
+    display: grid;
+    gap: 10px;
+    max-height: min(44vh, 420px);
+    margin: 18px 0;
+    padding: 4px 8px 4px 0;
+    overflow-y: auto;
+}
+
+.venue-booking-message {
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .035);
+}
+
+.venue-booking-message.is-pending {
+    opacity: .55;
+}
+
+.venue-booking-message__header {
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 5px;
+}
+
+.venue-booking-message__header time,
+.venue-booking-conversation-modal__status {
+    color: rgba(255, 255, 255, .62);
+    font-size: 13px;
+}
+
+.venue-booking-message p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.venue-booking-message a {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--accent-color, #ff651b);
+}
+
+.venue-booking-conversation-modal__form,
+.venue-booking-conversation-modal__attachment {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.venue-booking-conversation-modal__form .btn,
+.venue-booking-conversation-modal__attachment .btn {
+    justify-self: start;
+}
+
+.venue-booking-conversation-modal__status {
+    min-height: 20px;
+    margin: 12px 0 0;
+}
+
+.venue-booking-conversation-modal__status.is-error {
+    color: #ff9f8c;
+}
+
+@media (max-width: 767px) {
+    .venue-booking-summary__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .venue-booking-applicant {
+        justify-items: start;
+    }
+
+    .venue-booking-actions .btn {
+        width: 100%;
+    }
+
+    .venue-booking-actions form {
+        flex: 1 1 160px;
+    }
+}
