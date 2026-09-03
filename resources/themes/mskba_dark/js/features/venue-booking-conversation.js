@@ -101,9 +101,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const render = (message, pending = false) => {
         if (!region || !message) return;
         const clientId = message.client_id || '';
-        const existing = clientId
+        const messageId = Number(message.id || 0);
+        const existingByClientId = clientId
             ? region.querySelector(`[data-client-id="${CSS.escape(clientId)}"]`)
-            : region.querySelector(`[data-message-id="${Number(message.id || 0)}"]`);
+            : null;
+        const existing = existingByClientId
+            || (messageId > 0 ? region.querySelector(`[data-message-id="${messageId}"]`) : null);
         const article = existing || document.createElement('article');
         const isOwn = pending || message.is_own === true;
         article.className = `venue-booking-message ${isOwn ? 'is-own' : 'is-incoming'}`;
@@ -142,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         article.classList.toggle('is-pending', pending);
         region.querySelector('[data-booking-conversation-empty]')?.remove();
         if (!existing) region.append(article);
-        lastId = Math.max(lastId, Number(message.id || 0));
+        lastId = Math.max(lastId, messageId);
         latestMessagePublicId = message.message_id || latestMessagePublicId;
         region.scrollTop = region.scrollHeight;
     };
