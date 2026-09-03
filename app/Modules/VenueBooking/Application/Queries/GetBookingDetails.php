@@ -24,7 +24,7 @@ final readonly class GetBookingDetails
     /** @return array<string, mixed> */
     public function handle(VenueBooking $booking, Actor $actor): array
     {
-        $booking->loadMissing(['venue', 'requester', 'event', 'paymentAttempt', 'extensionRequests']);
+        $booking->loadMissing(['venue', 'requester.profile.activeAvatar', 'event', 'paymentAttempt', 'extensionRequests']);
         $this->authorization->assertCanView($actor, $booking, $booking->venue);
         $actions = $this->actionState->for($booking, $actor);
         $isRequester = $actor->user_id === $booking->requester_user_id;
@@ -50,7 +50,7 @@ final readonly class GetBookingDetails
             'status' => $booking->status->value,
             'status_label' => $booking->status->label(),
             'venue' => ['id' => $booking->venue_id, 'name' => $booking->venue->name],
-            'requester' => ['name' => $booking->requester?->username],
+            'requester' => $this->requester($booking),
             'scope' => $booking->scope?->value,
             'starts_at' => $booking->starts_at->utc()->toIso8601String(),
             'ends_at' => $booking->ends_at->utc()->toIso8601String(),
@@ -87,6 +87,25 @@ final readonly class GetBookingDetails
             'event_route_id' => $booking->event?->routeIdentifier(),
             'server_time' => now()->utc()->toIso8601String(),
             'updated_at' => $booking->updated_at->utc()->toIso8601String(),
+        ];
+    }
+
+    /** @return array{name: string, avatar_url: string|null} */
+    private function requester(VenueBooking $booking): array
+    {
+        $user = $booking->requester;
+        if ($user === null) {
+            return ['name' => 'Пользователь', 'avatar_url' => null];
+        }
+
+        $profile = $user->profile;
+        $name = $profile?->first_name
+            ? trim($profile->first_name.($profile->last_name ? ' '.$profile->last_name : ''))
+            : ($user->username ?: 'Пользователь #'.$user->id);
+
+        return [
+            'name' => $name,
+            'avatar_url' => $profile?->activeAvatar?->publicUrl(),
         ];
     }
 }

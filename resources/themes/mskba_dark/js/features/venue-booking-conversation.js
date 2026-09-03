@@ -56,6 +56,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const setRequesterIdentity = (requester) => {
+        if (!requester) return;
+
+        const button = document.querySelector('.venue-booking-applicant__button');
+        const fallbackName = document.querySelector('.venue-booking-applicant > strong');
+        const nameNode = button
+            ? Array.from(button.children).find((node) => node.tagName === 'SPAN' && !node.hasAttribute('data-booking-unread-wrap'))
+            : fallbackName;
+
+        if (nameNode && requester.name) {
+            nameNode.textContent = requester.name;
+        }
+
+        if (!button || !requester.avatar_url) return;
+
+        let avatar = button.querySelector('.venue-booking-applicant__avatar');
+        if (!avatar) {
+            avatar = document.createElement('img');
+            avatar.className = 'venue-booking-applicant__avatar';
+            avatar.alt = '';
+            const icon = button.querySelector('.ti-user');
+            if (icon) icon.replaceWith(avatar);
+            else button.prepend(avatar);
+        }
+        avatar.src = requester.avatar_url;
+    };
+
     const scheduleReload = () => {
         if (reloadScheduled) return;
         reloadScheduled = true;
@@ -165,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!response.ok) return;
         const payload = await response.json();
+        setRequesterIdentity(payload.requester);
         const nextVersion = Number(payload.version || 0);
         if (nextVersion > bookingVersion) {
             bookingVersion = nextVersion;
@@ -213,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pollConversation();
     });
     subscribeConversation(conversationId);
+    pollBooking();
 
     window.addEventListener('mskba:realtime-state', (event) => {
         if (event.detail.state === 'connected') {
