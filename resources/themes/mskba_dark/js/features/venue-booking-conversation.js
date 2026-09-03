@@ -69,6 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
             nameNode.textContent = requester.name;
         }
 
+        const modalCounterparty = document.querySelector('.venue-booking-applicant')
+            ? modal?.querySelector('.venue-booking-conversation-modal__heading > p:last-child')
+            : null;
+        if (modalCounterparty && requester.name) {
+            modalCounterparty.textContent = requester.name;
+        }
+
         if (!button || !requester.avatar_url) return;
 
         let avatar = button.querySelector('.venue-booking-applicant__avatar');
@@ -98,18 +105,19 @@ document.addEventListener('DOMContentLoaded', () => {
             ? region.querySelector(`[data-client-id="${CSS.escape(clientId)}"]`)
             : region.querySelector(`[data-message-id="${Number(message.id || 0)}"]`);
         const article = existing || document.createElement('article');
-        article.className = 'venue-booking-message';
+        const isOwn = pending || message.is_own === true;
+        article.className = `venue-booking-message ${isOwn ? 'is-own' : 'is-incoming'}`;
         if (clientId) article.dataset.clientId = clientId;
         if (message.id) article.dataset.messageId = String(message.id);
         if (message.message_id) article.dataset.messagePublicId = message.message_id;
         article.replaceChildren();
+        article.setAttribute('aria-label', pending
+            ? 'Исходящее сообщение отправляется'
+            : (isOwn ? 'Исходящее сообщение' : 'Входящее сообщение'));
 
-        const header = document.createElement('div');
-        header.className = 'venue-booking-message__header';
-        const author = document.createElement('strong');
-        author.textContent = message.author || 'Вы';
-        header.append(author);
         if (message.created_at) {
+            const header = document.createElement('div');
+            header.className = 'venue-booking-message__header';
             const time = document.createElement('time');
             const date = new Date(message.created_at);
             time.dateTime = message.created_at;
@@ -117,8 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? ''
                 : date.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
             header.append(time);
+            article.append(header);
         }
-        article.append(header);
 
         if (message.body) {
             const body = document.createElement('p');
@@ -132,8 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
             article.append(link);
         }
         article.classList.toggle('is-pending', pending);
-        if (pending) article.setAttribute('aria-label', 'Сообщение отправляется');
-        else article.removeAttribute('aria-label');
         region.querySelector('[data-booking-conversation-empty]')?.remove();
         if (!existing) region.append(article);
         lastId = Math.max(lastId, Number(message.id || 0));
@@ -169,10 +175,13 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     };
 
-    const pollConversation = async () => {
+    const pollConversation = async (hydrate = false) => {
         if (!region) return;
         const separator = region.dataset.pollUrl.includes('?') ? '&' : '?';
-        const response = await fetch(`${region.dataset.pollUrl}${separator}after_id=${lastId}`, {
+        const url = hydrate
+            ? region.dataset.pollUrl
+            : `${region.dataset.pollUrl}${separator}after_id=${lastId}`;
+        const response = await fetch(url, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
         });
@@ -208,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const pending = optimistic ? {
             client_id: data.get('client_id'),
             body: data.get('body'),
-            author: 'Вы',
+            is_own: true,
         } : null;
         if (pending) render(pending, true);
         setStatus('Отправляем…');
@@ -242,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     subscribeConversation(conversationId);
     pollBooking();
+    pollConversation(true);
 
     window.addEventListener('mskba:realtime-state', (event) => {
         if (event.detail.state === 'connected') {

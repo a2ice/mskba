@@ -62,7 +62,7 @@ final class VenueBookingConversationController extends Controller
 
         return response()->json([
             'conversation_id' => $conversation->public_id,
-            'messages' => $messages->map(fn (VenueBookingMessage $message): array => $this->messagePayload($message)),
+            'messages' => $messages->map(fn (VenueBookingMessage $message): array => $this->messagePayload($message, $actor)),
             'has_more' => $hasMore,
             ...$summary->handle($venueBooking, $actor),
         ]);
@@ -71,14 +71,15 @@ final class VenueBookingConversationController extends Controller
     public function store(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, SendVenueBookingMessageHandler $handler): JsonResponse|RedirectResponse
     {
         $data = $request->validate(['client_id' => ['required', 'uuid'], 'body' => ['required', 'string', 'max:4000']]);
+        $actor = $actors->resolveForRequest($request);
         try {
-            $message = $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $data['client_id'], $data['body']);
+            $message = $handler->handle($venueBooking->id, $actor, $data['client_id'], $data['body']);
         } catch (VenueBookingTransitionException $exception) {
             return $this->error($request, $exception);
         }
 
         return $request->expectsJson()
-            ? response()->json($this->messagePayload($message), 201)
+            ? response()->json($this->messagePayload($message, $actor), 201)
             : back()->with('status', 'Сообщение отправлено.');
     }
 
@@ -109,13 +110,14 @@ final class VenueBookingConversationController extends Controller
             'attachment' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf,txt', 'max:10240'],
         ]);
         $file = $request->file('attachment');
+        $actor = $actors->resolveForRequest($request);
         try {
-            $message = $handler->handle($venueBooking->id, $actors->resolveForRequest($request), $data['client_id'], $file->getContent(), $file->getClientOriginalName(), (string) $file->getMimeType(), $file->getSize(), $data['body'] ?? null);
+            $message = $handler->handle($venueBooking->id, $actor, $data['client_id'], $file->getContent(), $file->getClientOriginalName(), (string) $file->getMimeType(), $file->getSize(), $data['body'] ?? null);
         } catch (VenueBookingTransitionException $exception) {
             return $this->error($request, $exception);
         }
 
-        return $request->expectsJson() ? response()->json($this->messagePayload($message), 201) : back()->with('status', 'Вложение отправлено.');
+        return $request->expectsJson() ? response()->json($this->messagePayload($message, $actor), 201) : back()->with('status', 'Вложение отправлено.');
     }
 
     public function download(Request $request, VenueBooking $venueBooking, VenueBookingMessage $message, CurrentActorResolver $actors, VenueBookingAuthorization $authorization): StreamedResponse
@@ -133,7 +135,7 @@ final class VenueBookingConversationController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function messagePayload(VenueBookingMessage $message): array
+    private function messagePayload(VenueBookingMessage $message, Actor $viewer): array
     {
         return [
             'id' => $message->id,
@@ -143,6 +145,7 @@ final class VenueBookingConversationController extends Controller
             'type' => $message->type,
             'body' => $message->body,
             'author' => $message->authorActor->user?->username,
+            'is_own' => $message->author_actor_id === $viewer->id,
             'created_at' => $message->created_at->utc()->toIso8601String(),
             'attachment' => $message->attachment_path === null ? null : [
                 'name' => $message->attachment_name, 'mime' => $message->attachment_mime, 'size' => $message->attachment_size,
