@@ -143,3 +143,24 @@ jobs:
             # Re-resolve the upstream after Docker has recreated the Reverb
             # container and potentially assigned it a different network IP.
             $COMPOSE exec -T nginx nginx -s reload
+
+            # Verify a real HTTP request through nginx -> PHP-FPM -> Laravel.
+            # Any 1xx-4xx response means the application stack answered;
+            # 5xx/502 or a connection failure must fail the deployment.
+            HTTP_READY=0
+            for ATTEMPT in $(seq 1 15); do
+              if $COMPOSE exec -T phpfpm php -r '$socket = @fsockopen("nginx", 80, $errno, $errstr, 2); if ($socket === false) { exit(1); } fwrite($socket, "GET / HTTP/1.1\r\nHost: mskba.ru\r\nConnection: close\r\n\r\n"); $status = fgets($socket); fclose($socket); exit(is_string($status) && preg_match("/^HTTP\\/[0-9.]+ [1-4][0-9]{2}/", $status) === 1 ? 0 : 1);'; then
+                HTTP_READY=1
+                break
+              fi
+
+              sleep 2
+            done
+
+            if [ "$HTTP_READY" -ne 1 ]; then
+              echo "::error::Application HTTP health check failed after deployment." >&2
+              $COMPOSE ps >&2
+              $COMPOSE logs --tail=150 phpfpm nginx >&2
+              $COMPOSE exec -T phpfpm php artisan about >&2 || true
+              exit 1
+            fi
