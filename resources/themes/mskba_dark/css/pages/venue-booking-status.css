@@ -57,6 +57,15 @@
     padding: 10px 16px;
 }
 
+.venue-booking-applicant__avatar {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: rgba(255, 255, 255, .08);
+}
+
 .venue-booking-applicant__button:hover,
 .venue-booking-message-notice:hover,
 .venue-booking-message-notice.is-unread {
