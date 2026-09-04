@@ -30,9 +30,57 @@ $(document).on('click', '[data-home-flow-tab]', function () {
     activatePanel(modal, String(this.dataset.homeFlowTab || 'search'));
 });
 
-function initHomeVenueDiscovery(root) {
+function prepareHomeVenueDiscovery(root) {
+    root.dataset.homeVenueDiscovery = '';
+    root.dataset.searchUrl ||= '/venues/search';
+
+    const shell = root.querySelector('.home-venue-search-shell');
+    const queryInput = shell?.querySelector('input[type="search"], input[type="text"]');
+    if (queryInput) queryInput.dataset.homeVenueQuery = '';
+
+    const filterRow = shell?.querySelector('.home-filter-row');
+    if (filterRow && !filterRow.querySelector('[data-home-venue-metro]')) {
+        const metroButton = [...filterRow.querySelectorAll('button')]
+            .find((button) => button.querySelector('.ti-train'));
+        const metroWrap = document.createElement('label');
+        metroWrap.className = 'home-metro-filter';
+        metroWrap.innerHTML = '<i class="ti ti-train" aria-hidden="true"></i><select data-home-venue-metro aria-label="Фильтр по метро"><option value="">Любое метро</option></select>';
+        if (metroButton) metroButton.replaceWith(metroWrap);
+        else filterRow.prepend(metroWrap);
+    }
+
+    const mapFocus = filterRow ? [...filterRow.querySelectorAll('button')]
+        .find((button) => button.querySelector('.ti-map')) : null;
+    if (mapFocus) mapFocus.dataset.homeVenueMapFocus = '';
+
+    if (shell && !shell.querySelector('[data-home-venue-results]')) {
+        const results = document.createElement('div');
+        results.className = 'home-venue-predictive-results';
+        results.dataset.homeVenueResults = '';
+        results.hidden = true;
+        shell.append(results);
+    }
+
+    const mapPreview = root.querySelector('.home-venue-map-preview');
+    if (mapPreview && !mapPreview.querySelector('[data-home-venue-map]')) {
+        mapPreview.replaceChildren();
+        const status = document.createElement('p');
+        status.className = 'home-venue-map-preview__status';
+        status.dataset.homeVenueMapStatus = '';
+        status.textContent = 'Загружаем площадки на карте…';
+        const canvas = document.createElement('div');
+        canvas.className = 'home-venue-map-preview__canvas';
+        canvas.dataset.homeVenueMap = '';
+        mapPreview.append(canvas, status);
+    }
+
+    return root;
+}
+
+function initHomeVenueDiscovery(rawRoot) {
+    const root = prepareHomeVenueDiscovery(rawRoot);
     const searchUrl = root.dataset.searchUrl || '/venues/search';
-    const apiKey = root.dataset.yandexMapApiKey || '';
+    const apiKey = root.dataset.yandexMapApiKey || document.body?.dataset.yandexMapApiKey || '';
     const queryInput = root.querySelector('[data-home-venue-query]');
     const metroSelect = root.querySelector('[data-home-venue-metro]');
     const results = root.querySelector('[data-home-venue-results]');
@@ -45,9 +93,7 @@ function initHomeVenueDiscovery(root) {
     let mapReady = null;
     let initialVenues = [];
 
-    if (!(queryInput instanceof HTMLInputElement) || !(results instanceof HTMLElement)) {
-        return;
-    }
+    if (!(queryInput instanceof HTMLInputElement) || !(results instanceof HTMLElement)) return;
 
     const fetchVenues = async (query = '', metroId = '', limit = 30, signal = null) => {
         const url = new URL(searchUrl, window.location.origin);
@@ -86,14 +132,12 @@ function initHomeVenueDiscovery(root) {
             const item = document.createElement('a');
             item.className = 'home-venue-predictive-result';
             item.href = venue.url || '#';
-
             const copy = document.createElement('span');
             const title = document.createElement('strong');
             const meta = document.createElement('small');
             title.textContent = venue.name || 'Площадка';
             meta.textContent = venue.address || venue.raw_address || 'Адрес уточняется';
             copy.append(title, meta);
-
             const arrow = document.createElement('i');
             arrow.className = 'ti ti-arrow-up-right';
             item.append(copy, arrow);
@@ -239,4 +283,5 @@ function escapeHtml(value) {
     return node.innerHTML;
 }
 
-document.querySelectorAll('[data-home-venue-discovery]').forEach(initHomeVenueDiscovery);
+const venueDiscoveryRoots = document.querySelectorAll('[data-home-venue-discovery], .home-split--venues');
+[...new Set(venueDiscoveryRoots)].forEach(initHomeVenueDiscovery);
