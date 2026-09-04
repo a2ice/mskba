@@ -145,6 +145,24 @@ function prepareEventWizard(flow) {
         });
     }
 
+    function createSummaryChip(selection) {
+        const button = document.createElement('button');
+        const label = document.createElement('small');
+        const value = document.createElement('strong');
+        const icon = document.createElement('i');
+
+        button.type = 'button';
+        button.className = 'home-flow-total__chip';
+        button.dataset.homeFlowSummaryStep = String(selection.step);
+        label.textContent = selection.label;
+        value.textContent = selection.value;
+        icon.className = 'ti ti-pencil';
+
+        button.append(label, value, icon);
+        button.addEventListener('click', () => navigateBack(selection.step));
+        return button;
+    }
+
     function renderTotal() {
         const selections = [];
         if (state.step >= 1 && state.typeLabel) {
@@ -155,15 +173,7 @@ function prepareEventWizard(flow) {
         }
 
         total.hidden = selections.length === 0;
-        totalItems.replaceChildren(...selections.map((selection) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'home-flow-total__chip';
-            button.dataset.homeFlowSummaryStep = String(selection.step);
-            button.innerHTML = `<small>${selection.label}</small><strong>${selection.value}</strong><i class="ti ti-pencil"></i>`;
-            button.addEventListener('click', () => navigateBack(selection.step));
-            return button;
-        }));
+        totalItems.replaceChildren(...selections.map(createSummaryChip));
     }
 
     function setStep(step) {
