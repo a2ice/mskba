@@ -1,5 +1,6 @@
 @import './pages/home-refinements';
 @import './pages/home-hero-refinements';
+@import './pages/home-hero-cleanup';
 
 .nav-link.active {
 }
