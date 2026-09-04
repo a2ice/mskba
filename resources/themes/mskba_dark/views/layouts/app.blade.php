@@ -77,6 +77,7 @@
     <body
         class="theme-shell {{ $routeClass }}"
         style="--site-body-bottom-bg: url('{{ asset('images/bg-indoor.png') }}');"
+        data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"
         @if($isTelegramMiniApp)
             data-telegram-mini-app
             data-account-url="{{ route('account') }}"
