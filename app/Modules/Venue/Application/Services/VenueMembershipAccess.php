@@ -28,6 +28,25 @@ final class VenueMembershipAccess
             ->exists();
     }
 
+    public function activeOwnerMembership(Venue $venue): ?ContractMembership
+    {
+        return $this->baseOwnerQuery()
+            ->with(['user.profile', 'contract'])
+            ->where('scope_id', $venue->id)
+            ->latest('id')
+            ->first();
+    }
+
+    public function activeOwner(Venue $venue): ?User
+    {
+        $user = $this->activeOwnerMembership($venue)?->user;
+        if ($user === null) {
+            return null;
+        }
+
+        return $user->canonical()->loadMissing('profile');
+    }
+
     /**
      * @return array<int>
      */
