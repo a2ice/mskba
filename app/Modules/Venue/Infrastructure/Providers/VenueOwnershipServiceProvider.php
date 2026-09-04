@@ -24,6 +24,9 @@ final class VenueOwnershipServiceProvider extends ServiceProvider
                     ->name('venues.management');
 
                 Route::middleware('auth')->group(function (): void {
+                    Route::get('/venues/{venue}/management/verify', [VenueOwnershipClaimController::class, 'verify'])
+                        ->whereNumber('venue')
+                        ->name('venues.management.verify');
                     Route::post('/venues/{venue}/management/claim', [VenueOwnershipClaimController::class, 'store'])
                         ->whereNumber('venue')
                         ->name('venues.management.claim');
