@@ -38,11 +38,15 @@ final class ListVenuesHandler
 
             $query
                 ->when($filters['search'] ?? null, function ($filtered, string $search): void {
-                    $needle = '%'.addcslashes(trim($search), '%_\\').'%';
-                    $filtered->where(fn ($match) => $match
-                        ->where('name', 'like', $needle)
-                        ->orWhere('raw_address', 'like', $needle)
-                        ->orWhere('short_description', 'like', $needle));
+                    $terms = preg_split('/\s+/u', trim($search), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+                    foreach ($terms as $term) {
+                        $needle = '%'.addcslashes($term, '%_\\').'%';
+                        $filtered->where(fn ($match) => $match
+                            ->where('name', 'ilike', $needle)
+                            ->orWhere('raw_address', 'ilike', $needle)
+                            ->orWhere('short_description', 'ilike', $needle));
+                    }
                 })
                 ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->where('type', $type))
                 ->when($filters['operational_status'] ?? null, fn ($filtered, string $status) => $filtered->where('operational_status', $status))
