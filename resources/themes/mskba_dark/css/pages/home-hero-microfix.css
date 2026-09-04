@@ -1,0 +1,26 @@
+/* Small production polish for the homepage hero status and event modal. */
+
+/* Center the white plus optically inside the orange status dot without relying
+   on pseudo-element positioning. */
+body.main .home-welcome__eyebrow:has(.home-status-action) .home-welcome__eyebrow-dot {
+    background:
+        linear-gradient(#fff, #fff) center / 6px 1.5px no-repeat,
+        linear-gradient(#fff, #fff) center / 1.5px 6px no-repeat,
+        var(--accent-hover);
+}
+
+body.main .home-welcome__eyebrow:has(.home-status-action) .home-welcome__eyebrow-dot::before,
+body.main .home-welcome__eyebrow:has(.home-status-action) .home-welcome__eyebrow-dot::after {
+    display: none;
+}
+
+/* Let the event-flow dialog fit its current step instead of reserving an
+   artificial block of empty vertical space. */
+body.main [data-home-flow="event"] [data-home-flow-panel="search"] {
+    min-height: 0;
+}
+
+body.main .modal__dialog.home-flow-modal__dialog {
+    height: auto;
+    min-height: 0;
+}
