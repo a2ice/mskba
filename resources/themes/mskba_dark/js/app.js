@@ -13,6 +13,7 @@ import '../css/pages/venue-activity.css';
 import '../css/pages/venue-booking-status.css';
 import '../css/pages/venue-booking-policy.css';
 import '../css/pages/player-character.css';
+import '../css/pages/home-venue-discovery.css';
 
 window.$ = $;
 window.jQuery = $;
