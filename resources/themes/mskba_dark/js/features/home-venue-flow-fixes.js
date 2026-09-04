@@ -29,7 +29,8 @@ function refineVenueFlow(currentFlow) {
     const searchPanel = currentFlow.querySelector('[data-home-flow-panel="search"]');
     const typeButtons = [...(searchPanel?.querySelectorAll('[data-home-venue-type]') || [])];
     const continueButton = searchPanel?.querySelector('.home-flow-venue-type-stage .home-flow-modal__actions .btn');
-    const controlsRow = searchPanel?.querySelector('.home-flow-row');
+    const legacyControlsRows = [...(searchPanel?.querySelectorAll('.home-flow-row') || [])]
+        .filter((row) => row.querySelector('.home-flow-filter'));
     const paymentInputs = [...(searchPanel?.querySelectorAll('.home-flow-venue-payment .form-toggle__input') || [])];
     const venueInput = sharedSelector?.querySelector('[data-venue-selector-input]');
     const venueValue = sharedSelector?.querySelector('[data-venue-selector-value]');
@@ -104,9 +105,11 @@ function refineVenueFlow(currentFlow) {
     // nested shared selector while step visibility continues to work.
     sharedStage?.classList.remove('home-flow-field');
 
-    // The shared selector owns the map and metro controls, so the old draft row
-    // ("Метро" / "Свойства") is no longer needed.
-    controlsRow?.remove();
+    // The shared selector owns the map and metro controls, so every legacy draft
+    // row containing the old "Метро" / "Свойства" buttons must be removed. There
+    // can be more than one .home-flow-row in this panel, so do not rely on the
+    // first generic row.
+    legacyControlsRows.forEach((row) => row.remove());
     continueButton?.closest('.home-flow-modal__actions')?.remove();
 
     resetSharedSelection();
