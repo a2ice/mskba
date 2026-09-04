@@ -83,6 +83,7 @@ import './features/notification-toasts.js';
 import './features/coordination-form.js';
 import './features/venue-selector.js';
 import './features/venue-selector-metro.js';
+import './features/venue-selector-metro-map-sync.js';
 import './features/embedded-entity-preview.js';
 import './features/site-summary.js';
 import './features/home-flow.js';
@@ -120,8 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
             },
             onItemAdd() {
-                this.setTextboxValue('');
-                this.refreshOptions(false);
+                window.setTimeout(() => {
+                    this.setTextboxValue('');
+                    this.refreshOptions(false);
+                    this.close();
+                    this.blur();
+                }, 0);
             },
         });
     });
