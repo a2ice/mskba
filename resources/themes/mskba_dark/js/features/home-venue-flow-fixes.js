@@ -1,3 +1,4 @@
+import $ from 'jquery';
 import '../../css/pages/home-venue-flow-fixes.css';
 
 const venueFlows = new WeakSet();
