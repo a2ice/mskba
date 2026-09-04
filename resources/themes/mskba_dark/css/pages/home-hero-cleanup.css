@@ -1,0 +1,63 @@
+/* Follow-up cleanup for homepage hero and event flow modal. */
+
+/* Header should take part in normal document flow instead of overlaying content. */
+body .site-header {
+    position: relative;
+}
+
+/* "New game" keeps the larger dot but no pulse. Build the plus from two
+   centered lines so it is optically centered inside the circle. */
+body.main .home-welcome__eyebrow:has(.home-status-action) .home-welcome__eyebrow-dot::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    inset: auto;
+    display: block;
+    width: 7px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: #fff;
+    content: "";
+    transform: translate(-50%, -50%);
+}
+
+body.main .home-welcome__eyebrow:has(.home-status-action) .home-welcome__eyebrow-dot::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    inset: auto;
+    display: block;
+    width: 1.5px;
+    height: 7px;
+    border: 0;
+    border-radius: 999px;
+    background: #fff;
+    content: "";
+    opacity: 1;
+    animation: none;
+    transform: translate(-50%, -50%);
+}
+
+/* Keep the event modal labelled for accessibility, but remove the large
+   visible "Что хотите сделать?" heading from the composition. */
+body.main [data-home-flow="event"] > .modal_title {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+}
+
+/* Creation tab: remove explanatory copy, but preserve breathing room between
+   the progress pills and the four creation choices. */
+body.main [data-home-flow="event"] [data-home-flow-panel="create"] .home-flow-intro {
+    display: none;
+}
+
+body.main [data-home-flow="event"] [data-home-flow-panel="create"] .home-flow-create-grid {
+    margin-top: 15px;
+}
