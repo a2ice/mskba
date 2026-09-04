@@ -1,12 +1,23 @@
 import $ from 'jquery';
 
 const eventWizards = new WeakMap();
+const venueWizards = new WeakMap();
 const EVENT_TYPE_VALUES = ['any', 'game', 'training', 'game_training', 'tournament'];
 const EVENT_STEP_COPY = [
     ['Выберите тип мероприятия', 'После выбора сразу перейдём к локации.'],
     ['Где хотите играть?', 'Укажите площадку, адрес, район или метро. Можно оставить любую локацию.'],
     ['Когда удобно?', 'Укажите диапазон дат или сразу посмотрите все подходящие мероприятия.'],
 ];
+const VENUE_TYPES = [
+    ['any', 'Любой', 'ti ti-layout-grid'],
+    ['sports_hall', 'Спортзал', 'ti ti-building-community'],
+    ['school', 'Школа', 'ti ti-school'],
+    ['university', 'Университет', 'ti ti-building-bank'],
+    ['sports_complex', 'Спорткомплекс', 'ti ti-building-stadium'],
+    ['arena', 'Арена', 'ti ti-trophy'],
+    ['street_court', 'Уличная площадка', 'ti ti-ball-basketball'],
+];
+const HOME_SUBTITLE = 'MSKBA объединяет игроков, команды, площадки, организаторов спортивных мероприятий и других участников баскетбольной жизни Москвы и области.';
 
 function activatePanel(modal, section) {
     const requested = section === 'create' ? 'create' : 'search';
@@ -22,6 +33,18 @@ function activatePanel(modal, section) {
 
 function normalizeLabel(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function initHomepageCopy() {
+    const subtitle = document.querySelector('.home-welcome__subtitle');
+    if (subtitle) {
+        subtitle.textContent = HOME_SUBTITLE;
+    }
+
+    const venueTitle = document.querySelector('[data-home-flow="venue"] .modal_title');
+    if (venueTitle) {
+        venueTitle.remove();
+    }
 }
 
 function prepareEventWizard(flow) {
@@ -312,6 +335,286 @@ function prepareEventWizard(flow) {
     return api;
 }
 
+function createVenuePaymentToggle(title, checked = true) {
+    const wrapper = document.createElement('div');
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    const control = document.createElement('span');
+    const text = document.createElement('strong');
+
+    wrapper.className = 'form-group field mb-0';
+    label.className = 'form-toggle';
+    input.className = 'form-toggle__input';
+    input.type = 'checkbox';
+    input.checked = checked;
+    control.className = 'form-toggle__control';
+    control.setAttribute('aria-hidden', 'true');
+    text.className = 'form-toggle__title';
+    text.textContent = title;
+
+    label.append(input, control, text);
+    wrapper.append(label);
+
+    return { wrapper, input };
+}
+
+function prepareVenueWizard(flow) {
+    if (!flow || flow.dataset.homeFlow !== 'venue') {
+        return null;
+    }
+
+    if (venueWizards.has(flow)) {
+        return venueWizards.get(flow);
+    }
+
+    const title = flow.querySelector('.modal_title');
+    if (title) {
+        title.remove();
+    }
+
+    const panel = flow.querySelector('[data-home-flow-panel="search"]');
+    const steps = panel?.querySelector('.home-flow-steps');
+    const searchField = panel?.querySelector('.home-flow-field');
+    const searchInput = searchField?.querySelector('input');
+    const controlsRow = panel?.querySelector('.home-flow-row');
+    const actions = panel?.querySelector('.home-flow-modal__actions');
+    const catalogLink = actions?.querySelector('a');
+    const note = panel?.querySelector('.home-flow-note');
+
+    if (!panel || !steps || !searchField || !searchInput || !controlsRow || !actions) {
+        return null;
+    }
+
+    steps.innerHTML = '<span class="is-active">1 · Тип</span><span>2 · Поиск</span>';
+    const progressItems = [...steps.querySelectorAll('span')];
+
+    const total = document.createElement('div');
+    total.className = 'home-flow-total';
+    total.hidden = true;
+    total.innerHTML = '<span class="home-flow-total__label">Вы выбрали</span><div class="home-flow-total__items"></div>';
+
+    const typeStage = document.createElement('div');
+    typeStage.className = 'home-flow-venue-type-stage';
+
+    const copy = document.createElement('div');
+    copy.className = 'home-flow-step-copy';
+    copy.innerHTML = '<strong>Выберите тип площадки</strong><span>Можно искать площадки любого типа или выбрать конкретный.</span>';
+
+    const typeGrid = document.createElement('div');
+    typeGrid.className = 'home-flow-type-grid';
+
+    VENUE_TYPES.forEach(([value, label, icon]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.homeVenueType = value;
+        button.innerHTML = `<i class="${icon}"></i>${label}`;
+        typeGrid.append(button);
+    });
+
+    const paymentRow = document.createElement('div');
+    paymentRow.className = 'home-flow-row home-flow-venue-payment';
+    paymentRow.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+
+    const paidToggle = createVenuePaymentToggle('Платные');
+    const freeToggle = createVenuePaymentToggle('Бесплатные');
+    paymentRow.append(paidToggle.wrapper, freeToggle.wrapper);
+
+    const typeActions = document.createElement('div');
+    typeActions.className = 'home-flow-modal__actions';
+    const continueButton = document.createElement('button');
+    continueButton.type = 'button';
+    continueButton.className = 'btn btn--primary';
+    continueButton.innerHTML = 'Продолжить <i class="ti ti-arrow-right"></i>';
+    typeActions.append(continueButton);
+
+    typeStage.append(copy, typeGrid, paymentRow, typeActions);
+    steps.after(total);
+    total.after(typeStage);
+
+    if (catalogLink) {
+        catalogLink.textContent = 'Посмотреть все';
+    }
+    if (note) {
+        note.hidden = true;
+    }
+
+    const state = {
+        step: 0,
+        typeValue: 'any',
+        typeLabel: 'Любой',
+        paid: true,
+        free: true,
+    };
+
+    const totalItems = total.querySelector('.home-flow-total__items');
+    const typeButtons = [...typeGrid.querySelectorAll('button')];
+    const baseCatalogUrl = catalogLink?.href || '';
+
+    function updateTypeButtons() {
+        typeButtons.forEach((button) => {
+            const selected = button.dataset.homeVenueType === state.typeValue;
+            button.classList.toggle('is-selected', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
+    }
+
+    function updateCatalogLink() {
+        if (!catalogLink || !baseCatalogUrl) {
+            return;
+        }
+
+        const url = new URL(baseCatalogUrl, window.location.origin);
+        const query = normalizeLabel(searchInput.value);
+
+        if (state.typeValue && state.typeValue !== 'any') {
+            url.searchParams.set('type', state.typeValue);
+        } else {
+            url.searchParams.delete('type');
+        }
+
+        if (state.paid && !state.free) {
+            url.searchParams.set('requires_payment', '1');
+        } else if (!state.paid && state.free) {
+            url.searchParams.set('requires_payment', '0');
+        } else {
+            url.searchParams.delete('requires_payment');
+        }
+
+        if (query) {
+            url.searchParams.set('query', query);
+        } else {
+            url.searchParams.delete('query');
+        }
+
+        catalogLink.href = url.toString();
+    }
+
+    function renderTotal() {
+        if (state.step === 0) {
+            total.hidden = true;
+            totalItems.replaceChildren();
+            return;
+        }
+
+        const chip = document.createElement('button');
+        const label = document.createElement('small');
+        const value = document.createElement('strong');
+        const icon = document.createElement('i');
+        const payment = state.paid && state.free ? 'платные и бесплатные' : (state.paid ? 'платные' : 'бесплатные');
+
+        chip.type = 'button';
+        chip.className = 'home-flow-total__chip';
+        label.textContent = 'Тип';
+        value.textContent = `${state.typeLabel} · ${payment}`;
+        icon.className = 'ti ti-pencil';
+        chip.append(label, value, icon);
+        chip.addEventListener('click', () => setStep(0));
+
+        total.hidden = false;
+        totalItems.replaceChildren(chip);
+    }
+
+    function setStep(step) {
+        state.step = step === 1 ? 1 : 0;
+
+        progressItems.forEach((item, index) => {
+            const active = index === state.step;
+            const complete = index < state.step;
+            item.classList.toggle('is-active', active);
+            item.classList.toggle('is-complete', complete);
+            item.setAttribute('aria-current', active ? 'step' : 'false');
+            item.tabIndex = complete ? 0 : -1;
+            item.setAttribute('role', complete ? 'button' : 'presentation');
+        });
+
+        typeStage.hidden = state.step !== 0;
+        searchField.hidden = state.step !== 1;
+        controlsRow.hidden = state.step !== 1;
+        actions.hidden = state.step !== 1;
+        renderTotal();
+        updateCatalogLink();
+    }
+
+    function syncPaymentState(changedInput) {
+        state.paid = paidToggle.input.checked;
+        state.free = freeToggle.input.checked;
+
+        if (!state.paid && !state.free) {
+            changedInput.checked = true;
+            state.paid = paidToggle.input.checked;
+            state.free = freeToggle.input.checked;
+        }
+
+        renderTotal();
+        updateCatalogLink();
+    }
+
+    function reset() {
+        state.step = 0;
+        state.typeValue = 'any';
+        state.typeLabel = 'Любой';
+        state.paid = true;
+        state.free = true;
+        paidToggle.input.checked = true;
+        freeToggle.input.checked = true;
+        searchInput.value = '';
+        updateTypeButtons();
+        setStep(0);
+    }
+
+    typeButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            state.typeValue = button.dataset.homeVenueType || 'any';
+            state.typeLabel = normalizeLabel(button.textContent) || 'Любой';
+            updateTypeButtons();
+        });
+    });
+
+    paidToggle.input.addEventListener('change', () => syncPaymentState(paidToggle.input));
+    freeToggle.input.addEventListener('change', () => syncPaymentState(freeToggle.input));
+    continueButton.addEventListener('click', () => {
+        setStep(1);
+        window.setTimeout(() => searchInput.focus(), 0);
+    });
+    searchInput.addEventListener('input', updateCatalogLink);
+    progressItems[0]?.addEventListener('click', () => {
+        if (state.step > 0) {
+            setStep(0);
+        }
+    });
+    progressItems[0]?.addEventListener('keydown', (event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && state.step > 0) {
+            event.preventDefault();
+            setStep(0);
+        }
+    });
+
+    updateTypeButtons();
+    setStep(0);
+
+    const api = { reset, setStep };
+    venueWizards.set(flow, api);
+    return api;
+}
+
+function prepareWizard(flow) {
+    if (!flow) {
+        return null;
+    }
+
+    if (flow.dataset.homeFlow === 'event') {
+        return prepareEventWizard(flow);
+    }
+
+    if (flow.dataset.homeFlow === 'venue') {
+        return prepareVenueWizard(flow);
+    }
+
+    return null;
+}
+
+initHomepageCopy();
+
 $(document).on('modal:opened', function (_event, modal) {
     const flow = modal.find('[data-home-flow]');
     if (!flow.length) {
@@ -322,7 +625,7 @@ $(document).on('modal:opened', function (_event, modal) {
     activatePanel(modal, requested);
     modal.removeData('modalInitialSection');
 
-    const wizard = prepareEventWizard(flow.get(0));
+    const wizard = prepareWizard(flow.get(0));
     if (wizard && requested !== 'create') {
         wizard.reset();
     }
@@ -337,7 +640,7 @@ $(document).on('click', '[data-home-flow-tab]', function () {
     const requested = String(this.dataset.homeFlowTab || 'search');
     activatePanel(modal, requested);
 
-    const wizard = prepareEventWizard(modal.find('[data-home-flow]').get(0));
+    const wizard = prepareWizard(modal.find('[data-home-flow]').get(0));
     if (wizard && requested === 'search') {
         wizard.reset();
     }
