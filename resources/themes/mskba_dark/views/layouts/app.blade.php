@@ -161,6 +161,21 @@
                     'showMetroFilter' => true,
                 ])
             </div>
+
+            <div class="home-venue-section-selector-source" data-home-venue-section-selector-source>
+                @include('theme::partials.venues.predictive-selector', [
+                    'id' => 'homeVenueSectionSearch',
+                    'name' => 'home_venue_section_id',
+                    'label' => 'Найти площадку',
+                    'selectedVenue' => null,
+                    'confirmedOnly' => true,
+                    'operationalStatus' => \App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::ACTIVE->value,
+                    'required' => false,
+                    'showBookingScope' => false,
+                    'showFavorites' => false,
+                    'showMetroFilter' => true,
+                ])
+            </div>
         @endif
 
         @include('theme::partials.modal')
