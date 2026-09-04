@@ -65,6 +65,12 @@ if (flow && sharedSelector) {
                 return;
             }
 
+            // home-flow needs this class only while it discovers the location
+            // stage on first open. Afterwards the stored element reference is
+            // enough; removing it prevents generic home-flow field CSS from
+            // restyling the nested shared venue selector.
+            stage.classList.remove('home-flow-field');
+
             // The old draft had a separate Continue button. The shared venue
             // selector advances automatically after a real venue is selected.
             modal.find('.home-flow-location-actions .home-flow-next').remove();
