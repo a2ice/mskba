@@ -9,31 +9,31 @@ use App\Modules\Venue\Domain\Events\VenueOwnershipClaimSubmitted;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
-use App\Support\Features\FeatureFlags;
-use App\Support\Features\VenueRentalFeature;
 use Illuminate\Support\Facades\DB;
 
 final readonly class SubmitVenueOwnershipClaimHandler
 {
     public function __construct(
         private VenueMembershipAccess $memberships,
-        private FeatureFlags $features,
     ) {}
 
     public function handle(Venue $venue, User $applicant, string $evidence): VenueOwnershipClaim
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $applicant = $applicant->canonical();
 
         if (! $applicant->isConfirmed() || $applicant->isBlocked() || $applicant->trashed()) {
             throw new VenueOwnershipClaimException('Подать заявку может только подтверждённый активный пользователь.');
         }
 
+        if (! $applicant->hasVerifiedPrimaryContact()) {
+            throw new VenueOwnershipClaimException('Для подачи заявки сначала подтвердите основной контакт аккаунта.');
+        }
+
         $claim = DB::transaction(function () use ($venue, $applicant, $evidence): VenueOwnershipClaim {
             $lockedVenue = Venue::query()->lockForUpdate()->findOrFail($venue->id);
 
             if ($this->memberships->hasActiveOwner($lockedVenue)) {
-                throw new VenueOwnershipClaimException('У площадки уже есть подтверждённый владелец. Смена владельца выполняется отдельным процессом.');
+                throw new VenueOwnershipClaimException('У площадки уже есть подтверждённый представитель. Смена владельца выполняется отдельным процессом.');
             }
 
             $hasPendingClaim = VenueOwnershipClaim::query()
