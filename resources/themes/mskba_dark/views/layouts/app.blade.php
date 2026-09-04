@@ -131,6 +131,23 @@
             </footer>
         </div>
 
+        @if(Route::currentRouteName() === 'welcome')
+            <div class="home-event-venue-selector-source" data-home-event-venue-selector-source>
+                @include('theme::partials.venues.predictive-selector', [
+                    'id' => 'homeEventVenue',
+                    'name' => 'home_event_venue_id',
+                    'label' => 'Площадка',
+                    'selectedVenue' => null,
+                    'confirmedOnly' => true,
+                    'operationalStatus' => \App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::ACTIVE->value,
+                    'required' => false,
+                    'showBookingScope' => false,
+                    'showFavorites' => false,
+                    'showMetroFilter' => true,
+                ])
+            </div>
+        @endif
+
         @include('theme::partials.modal')
         @include('theme::partials.notification-toasts')
     </body>

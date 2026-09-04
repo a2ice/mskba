@@ -82,9 +82,11 @@ import './features/game-qr-join.js';
 import './features/notification-toasts.js';
 import './features/coordination-form.js';
 import './features/venue-selector.js';
+import './features/venue-selector-metro.js';
 import './features/embedded-entity-preview.js';
 import './features/site-summary.js';
 import './features/home-flow.js';
+import './features/home-event-venue-bridge.js';
 import './features/home-venue-flow-fixes.js';
 import './features/reactions.js';
 import './features/admin-action-modals.js';
@@ -107,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.metro_select').forEach((select) => {
         new TomSelect(select, {
             create: false,
-            placeholder: 'Начните вводить станцию метро...',
+            placeholder: select.dataset.placeholder || 'Начните вводить станцию метро...',
             plugins: ['remove_button'],
             render: {
                 option(data, escape) {

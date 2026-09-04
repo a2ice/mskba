@@ -14,11 +14,17 @@
     'selectedScope' => 'whole',
     'required' => true,
     'showBookingScope' => true,
+    'showMetroFilter' => request()->routeIs('events.wizard'),
+    'metroOptions' => null,
 ])
 
 @php
     $mapModalId = $mapModal ?: $id.'-map';
     $previewModalId = $id.'-preview';
+    $metroFilterId = $id.'MetroFilter';
+    $resolvedMetroOptions = $showMetroFilter
+        ? ($metroOptions ?? app(\App\Modules\Location\Application\UseCases\ListMetrostationsHandler::class)->handle())
+        : collect();
     $selectedId = data_get($selectedVenue, 'id');
     $selectedAddressModel = data_get($selectedVenue, 'location.address');
     $selectedAddress = $selectedVenue
@@ -110,6 +116,15 @@
             data-modal-target="{{ $mapModalId }}"
             data-venue-map-selector-open
         >На карте</a>
+        @if($showMetroFilter)
+            <button
+                class="fc-link venue-selector__metro-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="{{ $metroFilterId }}Panel"
+                data-venue-selector-metro-toggle
+            >Выбор метро</button>
+        @endif
         <a
             href="#venue-preview"
             class="fc-link js-handler"
@@ -121,6 +136,33 @@
             @if(!$selectedVenue) hidden @endif
         >Посмотреть площадку</a>
     </div>
+
+    @if($showMetroFilter)
+        <div
+            class="venue-selector__metro-panel mt-2"
+            id="{{ $metroFilterId }}Panel"
+            data-venue-selector-metro-panel
+            hidden
+        >
+            <label class="form-label" for="{{ $metroFilterId }}">Метро</label>
+            <select
+                id="{{ $metroFilterId }}"
+                class="form-select metro_select venue-selector__metro-select"
+                multiple
+                data-venue-selector-metro-filter
+                data-placeholder="Выберите одну или несколько станций"
+            >
+                @foreach($resolvedMetroOptions as $metro)
+                    <option
+                        value="{{ $metro->id }}"
+                        data-line-name="{{ $metro->lineName }}"
+                        data-line-color="{{ $metro->lineColor ?? '#666666' }}"
+                    >{{ $metro->name }}@if($metro->lineName) ({{ $metro->lineName }})@endif</option>
+                @endforeach
+            </select>
+            <p class="form-text">Можно выбрать несколько станций. Поиск и карта покажут площадки рядом хотя бы с одной из них.</p>
+        </div>
+    @endif
 </div>
 
 @component('theme::partials.modal.layout', [

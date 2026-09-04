@@ -1,0 +1,46 @@
+.venue-selector__metro-toggle {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.venue-selector__metro-toggle.is-active {
+    color: var(--accent-text);
+}
+
+.venue-selector__metro-panel {
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .025);
+}
+
+.venue-selector__metro-panel[hidden] {
+    display: none !important;
+}
+
+.venue-selector__metro-panel .form-label {
+    margin-bottom: 8px;
+}
+
+.venue-selector__metro-panel .ts-wrapper {
+    width: 100%;
+}
+
+.venue-selector__metro-panel .ts-control {
+    min-height: 46px;
+}
+
+.home-event-venue-selector-source > .venue-selector {
+    display: none;
+}
+
+.home-flow-event-venue-stage > .venue-selector {
+    width: 100%;
+}
+
+.home-flow-event-venue-stage .venue-selector__links {
+    margin-top: 10px;
+}
