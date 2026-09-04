@@ -116,16 +116,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     return metroOptionTemplate(data, escape);
                 },
                 item(data, escape) {
-                    return metroOptionTemplate(data, escape);
+                    return metroItemTemplate(data, escape);
                 },
+            },
+            onItemAdd() {
+                this.setTextboxValue('');
+                this.refreshOptions(false);
             },
         });
     });
 });
 
-function metroOptionTemplate(data, escape) {
+function metroStationName(text) {
+    return String(text || '')
+        .replace(/\s*\([^()]*\)\s*$/, '')
+        .trim();
+}
+
+function metroColor(data) {
     const rawColor = String(data.lineColor || '#666666').trim();
-    const color = /^(?:#|rgb|hsl)/i.test(rawColor) ? rawColor : `#${rawColor}`;
+    return /^(?:#|rgb|hsl)/i.test(rawColor) ? rawColor : `#${rawColor}`;
+}
+
+function metroOptionTemplate(data, escape) {
+    const color = metroColor(data);
     const lineName = data.lineName
         ? `<span class="metro-option__line">${escape(data.lineName)}</span>`
         : '';
@@ -133,8 +147,17 @@ function metroOptionTemplate(data, escape) {
     return `
         <div class="metro-option">
             <span class="metro-dot" style="background:${color};"></span>
-            <span class="metro-option__name">${escape(data.text)}</span>
+            <span class="metro-option__name">${escape(metroStationName(data.text))}</span>
             ${lineName}
+        </div>
+    `;
+}
+
+function metroItemTemplate(data, escape) {
+    return `
+        <div class="metro-option metro-option--selected">
+            <span class="metro-dot" style="background:${metroColor(data)};"></span>
+            <span class="metro-option__name">${escape(metroStationName(data.text))}</span>
         </div>
     `;
 }
