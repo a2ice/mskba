@@ -9,8 +9,11 @@ use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 #[Fillable([
+    'public_id',
     'venue_id',
     'applicant_user_id',
     'status',
@@ -26,6 +29,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class VenueOwnershipClaim extends Model
 {
     use Auditable;
+
+    protected static function booted(): void
+    {
+        static::creating(function (VenueOwnershipClaim $claim): void {
+            $claim->public_id ??= (string) Str::uuid();
+        });
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'public_id';
+    }
 
     public function venue(): BelongsTo
     {
@@ -45,6 +60,11 @@ class VenueOwnershipClaim extends Model
     public function ownerContractMembership(): BelongsTo
     {
         return $this->belongsTo(ContractMembership::class, 'owner_contract_membership_id');
+    }
+
+    public function conversation(): HasOne
+    {
+        return $this->hasOne(VenueOwnershipClaimConversation::class, 'venue_ownership_claim_id');
     }
 
     protected function casts(): array
