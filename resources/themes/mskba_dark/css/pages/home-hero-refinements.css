@@ -1,0 +1,361 @@
+/* Hero-only polish pass: status indicators, transition gradient and event search wizard. */
+
+body.main .home-welcome::after {
+    inset: auto 0 0;
+    z-index: 1;
+    width: 100%;
+    height: 25%;
+    opacity: 1;
+    background: linear-gradient(
+        180deg,
+        rgba(17, 18, 17, 0) 0%,
+        rgba(17, 18, 17, .12) 22%,
+        rgba(17, 18, 17, .48) 58%,
+        rgba(17, 18, 17, .86) 84%,
+        #111211 100%
+    );
+    background-image: linear-gradient(
+        180deg,
+        rgba(17, 18, 17, 0) 0%,
+        rgba(17, 18, 17, .12) 22%,
+        rgba(17, 18, 17, .48) 58%,
+        rgba(17, 18, 17, .86) 84%,
+        #111211 100%
+    );
+    background-size: auto;
+    mask-image: none;
+    -webkit-mask-image: none;
+}
+
+body.main .home-welcome__content {
+    z-index: 2;
+}
+
+body.main .home-welcome__eyebrow {
+    align-items: center;
+}
+
+body.main .home-welcome__eyebrow-dot {
+    display: grid;
+    place-items: center;
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    color: var(--accent-hover);
+    box-shadow: 0 0 16px rgba(255, 116, 39, .78);
+}
+
+body.main .home-welcome__eyebrow-dot--online {
+    color: #38ce84;
+    background: #38ce84;
+    box-shadow: 0 0 16px rgba(56, 206, 132, .72);
+}
+
+body.main .home-welcome__eyebrow-dot::after {
+    display: block;
+    inset: -6px;
+    border: 1px solid currentColor;
+    opacity: 0;
+    animation: homeHeroStatusPulse 1.8s ease-out infinite;
+}
+
+body.main .home-welcome__eyebrow:has(.home-status-action) .home-welcome__eyebrow-dot::before {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    content: "+";
+    color: #fff;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+    transform: translateY(-.5px);
+}
+
+body.main .home-status-action {
+    gap: 0;
+}
+
+body.main .home-status-action > i.ti-plus {
+    display: none;
+}
+
+@keyframes homeHeroStatusPulse {
+    0% {
+        opacity: .78;
+        transform: scale(.62);
+    }
+    72%,
+    100% {
+        opacity: 0;
+        transform: scale(1.72);
+    }
+}
+
+.modal__dialog.home-flow-modal__dialog {
+    width: min(720px, calc(100vw - 32px));
+    max-width: 720px;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    padding: 28px 28px 26px;
+}
+
+.home-flow-modal {
+    gap: 16px;
+}
+
+.home-flow-modal .modal_title {
+    max-width: 520px;
+    margin-bottom: 2px;
+    font-size: clamp(30px, 3.4vw, 40px);
+    line-height: 1.04;
+}
+
+.home-flow-modal__tabs {
+    margin-bottom: 2px;
+}
+
+[data-home-flow="event"] [data-home-flow-panel="search"] {
+    min-height: 390px;
+}
+
+[data-home-flow="event"] .home-flow-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+
+[data-home-flow="event"] .home-flow-steps span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 7px 9px;
+    text-align: center;
+    transition: border-color .2s ease, background .2s ease, color .2s ease;
+}
+
+[data-home-flow="event"] .home-flow-steps span.is-complete {
+    border: 1px solid rgba(255, 111, 38, .22);
+    background: rgba(255, 111, 38, .055);
+    color: rgba(255, 255, 255, .72);
+    cursor: pointer;
+}
+
+[data-home-flow="event"] .home-flow-steps span.is-complete:hover,
+[data-home-flow="event"] .home-flow-steps span.is-complete:focus-visible {
+    border-color: rgba(255, 111, 38, .48);
+    color: #fff;
+    outline: none;
+}
+
+.home-flow-total {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 11px 12px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .025);
+}
+
+.home-flow-total[hidden] {
+    display: none !important;
+}
+
+.home-flow-total__label {
+    color: rgba(255, 255, 255, .42);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.home-flow-total__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.home-flow-total__chip {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    min-height: 36px;
+    padding: 7px 9px;
+    border: 1px solid rgba(255, 111, 38, .2);
+    border-radius: 10px;
+    background: rgba(255, 111, 38, .055);
+    color: #fff;
+    cursor: pointer;
+}
+
+.home-flow-total__chip:hover,
+.home-flow-total__chip:focus-visible {
+    border-color: rgba(255, 111, 38, .5);
+    outline: none;
+}
+
+.home-flow-total__chip small {
+    color: var(--accent-text);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.home-flow-total__chip strong {
+    overflow: hidden;
+    max-width: 210px;
+    font-size: 11px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.home-flow-total__chip i {
+    color: rgba(255, 255, 255, .46);
+    font-size: 13px;
+}
+
+.home-flow-step-copy {
+    display: grid;
+    gap: 4px;
+    margin: 18px 0 14px;
+}
+
+.home-flow-step-copy strong {
+    color: #fff;
+    font-size: 20px;
+    line-height: 1.18;
+}
+
+.home-flow-step-copy span {
+    color: rgba(255, 255, 255, .5);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+[data-home-flow="event"] .home-flow-type-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+[data-home-flow="event"] .home-flow-type-grid button {
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: center;
+    min-height: 82px;
+    padding: 15px 17px;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+[data-home-flow="event"] .home-flow-type-grid button i {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 111, 38, .25);
+    border-radius: 12px;
+    background: rgba(255, 111, 38, .065);
+    font-size: 20px;
+}
+
+[data-home-flow="event"] .home-flow-type-grid button.is-selected {
+    border-color: rgba(255, 111, 38, .72);
+    background: linear-gradient(135deg, rgba(255, 111, 38, .17), rgba(255, 111, 38, .055));
+    box-shadow: inset 0 0 0 1px rgba(255, 111, 38, .08);
+}
+
+[data-home-flow="event"] .home-flow-field {
+    margin-top: 0;
+}
+
+[data-home-flow="event"] .home-flow-field.has-error > div {
+    border-color: rgba(255, 92, 92, .62);
+    box-shadow: 0 0 0 2px rgba(255, 92, 92, .08);
+}
+
+.home-flow-location-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px;
+    margin-top: 12px;
+}
+
+.home-flow-location-actions .home-flow-filter,
+.home-flow-location-actions .btn {
+    min-height: 40px;
+}
+
+.home-flow-location-actions .home-flow-next {
+    margin-left: auto;
+}
+
+[data-home-flow="event"] .home-flow-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 12px;
+}
+
+[data-home-flow="event"] .home-flow-row .home-flow-field {
+    width: 100%;
+}
+
+[data-home-flow="event"] .home-flow-modal__actions {
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+[data-home-flow="event"] .home-flow-modal__actions .btn {
+    min-width: 150px;
+}
+
+@media (max-width: 700px) {
+    .modal__dialog.home-flow-modal__dialog {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+        padding: 24px 20px 22px;
+    }
+
+    .home-flow-total {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .home-flow-total__label {
+        white-space: normal;
+    }
+
+    .home-flow-location-actions .home-flow-next {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    [data-home-flow="event"] .home-flow-type-grid,
+    [data-home-flow="event"] .home-flow-row {
+        grid-template-columns: 1fr;
+    }
+
+    [data-home-flow="event"] .home-flow-type-grid button {
+        min-height: 72px;
+    }
+
+    .home-flow-location-actions .btn,
+    .home-flow-location-actions .home-flow-filter,
+    [data-home-flow="event"] .home-flow-modal__actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
