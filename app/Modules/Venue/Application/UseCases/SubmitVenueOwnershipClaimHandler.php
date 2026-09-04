@@ -21,12 +21,12 @@ final readonly class SubmitVenueOwnershipClaimHandler
     {
         $applicant = $applicant->canonical();
 
-        if (! $applicant->isConfirmed() || $applicant->isBlocked() || $applicant->trashed()) {
-            throw new VenueOwnershipClaimException('Подать заявку может только подтверждённый активный пользователь.');
+        if ($applicant->isBlocked() || $applicant->trashed()) {
+            throw new VenueOwnershipClaimException('Подать заявку может только активный пользователь.');
         }
 
-        if (! $applicant->hasVerifiedPrimaryContact()) {
-            throw new VenueOwnershipClaimException('Для подачи заявки сначала подтвердите основной контакт аккаунта.');
+        if (! $applicant->isConfirmed() && ! $applicant->hasVerifiedPrimaryContact()) {
+            throw new VenueOwnershipClaimException('Для подачи заявки подтвердите аккаунт или основной контакт.');
         }
 
         $claim = DB::transaction(function () use ($venue, $applicant, $evidence): VenueOwnershipClaim {
