@@ -1,0 +1,30 @@
+/* Safari/iOS may apply the native button chrome to the unauthenticated
+   "Новая игра" action in the mobile summary bar. Keep buttons and links
+   visually identical here. */
+@media screen and (max-width: 768px) {
+    .mobile-primary-bar__stat .site-summary-empty-action {
+        display: inline;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        -webkit-appearance: none;
+        appearance: none;
+        background: transparent;
+        box-shadow: none;
+        color: inherit;
+        font: inherit;
+        line-height: inherit;
+        text-align: inherit;
+        text-decoration: none;
+        white-space: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-primary-bar__stat .site-summary-empty-action:focus-visible {
+        outline: 2px solid var(--accent-hover);
+        outline-offset: 3px;
+    }
+}
