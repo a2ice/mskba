@@ -6,31 +6,48 @@ body.main .site-header {
     -webkit-backdrop-filter: blur(14px);
 }
 
+body.main .home-welcome__eyebrow {
+    border: 0;
+}
+
+body.main .home-welcome__eyebrow-dot::after {
+    display: none;
+}
+
 body.main .home-section-head__eyebrow {
     line-height: 1.35;
 }
 
+body.main .home-section-head--compact .home-section-head__eyebrow {
+    margin-bottom: 18px;
+}
+
 @media (min-width: 901px) {
+    body.main .home-welcome {
+        min-height: clamp(690px, 82svh, 780px);
+    }
+
     body.main .home-welcome__content {
         padding-top: 118px;
-        padding-bottom: 142px;
+        padding-bottom: 122px;
     }
 
     body.main .home-welcome__main {
-        grid-template-columns: minmax(0, 1.08fr) minmax(360px, .68fr);
-        gap: clamp(42px, 5vw, 76px);
+        grid-template-columns: minmax(0, 820px);
+        justify-content: start;
+        gap: 0;
     }
 
     body.main .home-welcome__copy {
-        max-width: 735px;
+        max-width: 780px;
     }
 
     body.main .home-welcome__badges {
-        margin-bottom: 27px;
+        margin-bottom: 29px;
     }
 
     body.main .home-welcome__kicker {
-        margin-bottom: 13px;
+        margin-bottom: 20px;
         font-size: 12px;
         letter-spacing: .12em;
     }
@@ -57,27 +74,8 @@ body.main .home-section-head__eyebrow {
         margin-top: 23px;
     }
 
-    body.main .home-activity {
-        max-width: 430px;
-        padding: 16px;
-        border-radius: 24px;
-    }
-
-    body.main .home-activity__media {
-        height: 145px;
-    }
-
-    body.main .home-activity__body {
-        padding: 17px;
-    }
-
-    body.main .home-activity__body h2 {
-        font-size: clamp(24px, 1.65vw, 30px);
-        line-height: 1.12;
-    }
-
     body.main .home-highlights-section {
-        margin-top: -38px;
+        margin-top: -28px;
         padding-bottom: 76px;
     }
 
@@ -91,9 +89,13 @@ body.main .home-section-head__eyebrow {
     }
 
     body.main .home-section-head__eyebrow {
-        margin-bottom: 12px;
+        margin-bottom: 14px;
         font-size: 10px;
         letter-spacing: .11em;
+    }
+
+    body.main .home-section-head--compact .home-section-head__eyebrow {
+        margin-bottom: 18px;
     }
 
     body.main .home-section-head h2,
@@ -134,12 +136,12 @@ body.main .home-section-head__eyebrow {
 
 @media (min-width: 901px) and (max-height: 850px) {
     body.main .home-welcome {
-        min-height: 760px;
+        min-height: 690px;
     }
 
     body.main .home-welcome__content {
         padding-top: 104px;
-        padding-bottom: 112px;
+        padding-bottom: 104px;
     }
 
     body.main .home-welcome__title {
