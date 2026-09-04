@@ -39,6 +39,9 @@ final class VenueOwnershipClaimController extends Controller
                 ->first(fn (VenueOwnershipClaim $claim): bool => $claim->status === VenueOwnershipClaimStatusEnum::PENDING);
         }
 
+        $identityVerified = $user !== null
+            && ($user->isConfirmed() || $user->hasVerifiedPrimaryContact());
+
         return ThemeResolver::page('venues.ownership', [
             'venue' => $venue,
             'owner' => $owner,
@@ -46,12 +49,9 @@ final class VenueOwnershipClaimController extends Controller
             'pendingClaim' => $pendingClaim,
             'claimHistory' => $claimHistory,
             'canSubmitClaim' => $owner === null
-                && $user !== null
-                && $user->isConfirmed()
-                && $user->hasVerifiedPrimaryContact()
+                && $identityVerified
                 && $pendingClaim === null,
-            'needsAccountConfirmation' => $user !== null
-                && (! $user->isConfirmed() || ! $user->hasVerifiedPrimaryContact()),
+            'needsAccountConfirmation' => $user !== null && ! $identityVerified,
         ]);
     }
 
@@ -61,7 +61,7 @@ final class VenueOwnershipClaimController extends Controller
 
         return redirect()
             ->route('account.confirmation')
-            ->with('info', 'Чтобы подтвердить управление площадкой, сначала подтвердите аккаунт и основной контакт.');
+            ->with('info', 'Чтобы подтвердить управление площадкой, сначала подтвердите аккаунт или основной контакт.');
     }
 
     public function create(Request $request, Venue $venue): RedirectResponse
@@ -71,7 +71,7 @@ final class VenueOwnershipClaimController extends Controller
             return redirect()->route('venues.management', $venue);
         }
 
-        if (! $user->isConfirmed() || ! $user->hasVerifiedPrimaryContact()) {
+        if (! $user->isConfirmed() && ! $user->hasVerifiedPrimaryContact()) {
             return $this->verify($request, $venue);
         }
 
