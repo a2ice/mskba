@@ -1,7 +1,7 @@
 /* Desktop refinement pass for the redesigned homepage. */
 
 body.main .site-header {
-    background: rgba(4, 5, 4, calc(.12 + (var(--header-bg-alpha) * .84)));
+    background: rgba(4, 5, 4, .72);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
 }
