@@ -16,7 +16,6 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
-use App\Support\Features\FeatureDisabledException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -41,6 +40,7 @@ final class VenueOwnershipClaimWorkflowTest extends TestCase
 
         $this->assertSame(VenueOwnershipClaimStatusEnum::PENDING, $claim->status);
         $this->assertTrue($claim->active_marker);
+        $this->assertNotEmpty($claim->public_id);
 
         $this->expectException(VenueOwnershipClaimException::class);
         $submit->handle($venue, $user, 'Повторная заявка.');
@@ -88,11 +88,11 @@ final class VenueOwnershipClaimWorkflowTest extends TestCase
         $this->assertDatabaseCount('contract_memberships', 1);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $applicant->id,
-            'title' => 'Владение площадкой подтверждено',
+            'title' => 'Управление площадкой подтверждено',
         ]);
     }
 
-    public function test_self_approval_and_second_owner_are_rejected_without_partial_membership(): void
+    public function test_self_approval_is_rejected_and_other_pending_claims_close_after_owner_is_confirmed(): void
     {
         $firstApplicant = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -118,16 +118,15 @@ final class VenueOwnershipClaimWorkflowTest extends TestCase
 
         $review->approve($selfClaim, $reviewer);
 
-        try {
-            $review->approve($secondClaim, $reviewer);
-            $this->fail('A second active owner must be rejected.');
-        } catch (VenueOwnershipClaimException) {
-            $this->assertDatabaseCount('contract_memberships', 1);
-            $this->assertSame(VenueOwnershipClaimStatusEnum::PENDING, $secondClaim->refresh()->status);
-        }
+        $this->assertDatabaseCount('contract_memberships', 1);
+        $this->assertSame(VenueOwnershipClaimStatusEnum::REJECTED, $secondClaim->refresh()->status);
+        $this->assertSame(
+            'Управление площадкой подтверждено по другой заявке.',
+            $secondClaim->decision_reason,
+        );
     }
 
-    public function test_unconfirmed_user_cannot_submit_and_disabled_flag_blocks_application_handler(): void
+    public function test_unverified_user_cannot_submit_but_ownership_handler_does_not_depend_on_rental_feature(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
         $venue = Venue::factory()->create();
@@ -135,15 +134,16 @@ final class VenueOwnershipClaimWorkflowTest extends TestCase
 
         try {
             $submit->handle($venue, $user, 'Документы.');
-            $this->fail('Unconfirmed user must not submit a claim.');
+            $this->fail('Unverified user must not submit a claim.');
         } catch (VenueOwnershipClaimException) {
             $this->assertDatabaseCount('venue_ownership_claims', 0);
         }
 
         config()->set('features.venue_rental.rental_flow', false);
+        $confirmed = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $claim = $submit->handle($venue, $confirmed, 'Подтверждающие документы и рабочие контакты.');
 
-        $this->expectException(FeatureDisabledException::class);
-        $submit->handle($venue, $user, 'Документы.');
+        $this->assertSame(VenueOwnershipClaimStatusEnum::PENDING, $claim->status);
     }
 
     public function test_superadmin_can_reject_claim_with_reason(): void
@@ -164,7 +164,7 @@ final class VenueOwnershipClaimWorkflowTest extends TestCase
         $this->assertDatabaseCount('contract_memberships', 0);
     }
 
-    public function test_http_routes_are_hidden_when_disabled_and_expose_claim_flow_when_enabled(): void
+    public function test_public_management_flow_is_available_independently_from_rental_feature(): void
     {
         $applicant = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $reviewer = User::factory()->create([
@@ -174,28 +174,23 @@ final class VenueOwnershipClaimWorkflowTest extends TestCase
         $venue = Venue::factory()->create();
 
         config()->set('features.venue_rental.rental_flow', false);
-        $this->actingAs($applicant)
-            ->getJson(route('venues.ownership-claims.create', $venue))
-            ->assertNotFound()
-            ->assertJsonPath('code', 'feature_disabled');
-
-        config()->set('features.venue_rental.rental_flow', true);
         config()->set('audit.ignore_console', false);
-        $this->actingAs($applicant)
-            ->get(route('venues.ownership-claims.create', $venue))
+
+        $this->get(route('venues.management', $venue))
             ->assertOk();
+
         $this->actingAs($applicant)
-            ->post(route('venues.ownership-claims.store', $venue), [
+            ->post(route('venues.management.claim', $venue), [
                 'evidence' => 'Контракт и контакты управляющей организации.',
             ])
             ->assertRedirect();
 
         $claim = $venue->ownershipClaims()->firstOrFail();
         $this->actingAs($reviewer)
-            ->get(route('admin.venue-ownership-claims.index'))
+            ->get(route('account.venue-ownership.show', $claim))
             ->assertOk();
         $this->actingAs($reviewer)
-            ->post(route('admin.venue-ownership-claims.approve', $claim), ['reason' => 'Проверено.'])
+            ->post(route('account.venue-ownership.approve', $claim), ['reason' => 'Проверено.'])
             ->assertRedirect();
 
         $this->assertSame(VenueOwnershipClaimStatusEnum::APPROVED, $claim->refresh()->status);
@@ -217,13 +212,11 @@ final class VenueOwnershipClaimWorkflowTest extends TestCase
         $claim = app(SubmitVenueOwnershipClaimHandler::class)->handle($venue, $applicant, 'Документы владельца площадки.');
 
         $this->actingAs($admin)
-            ->get(route('admin.venue-ownership-claims.index'))
+            ->get(route('account.venue-ownership.show', $claim))
             ->assertForbidden();
         $this->actingAs($admin)
-            ->post(route('admin.venue-ownership-claims.approve', $claim))
-            ->assertForbidden();
-        $this->actingAs($admin)
-            ->get(route('account.venue-ownership-claims.show', $claim))
-            ->assertForbidden();
+            ->post(route('account.venue-ownership.approve', $claim))
+            ->assertRedirect();
+        $this->assertSame(VenueOwnershipClaimStatusEnum::PENDING, $claim->refresh()->status);
     }
 }
