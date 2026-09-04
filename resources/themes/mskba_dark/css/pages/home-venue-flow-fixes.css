@@ -1,0 +1,22 @@
+/* Targeted homepage venue wizard fixes. */
+
+.modal__dialog.home-flow-modal__dialog {
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+[data-home-flow="venue"],
+[data-home-flow="venue"] [data-home-flow-panel],
+[data-home-flow="venue"] .home-flow-venue-type-stage,
+[data-home-flow="venue"] .home-flow-type-grid,
+[data-home-flow="venue"] .home-flow-total,
+[data-home-flow="venue"] .home-flow-field,
+[data-home-flow="venue"] .home-flow-row {
+    min-width: 0;
+    max-width: 100%;
+}
+
+[data-home-flow="venue"] .home-flow-type-grid > *,
+[data-home-flow="venue"] .home-flow-row > * {
+    min-width: 0;
+}
