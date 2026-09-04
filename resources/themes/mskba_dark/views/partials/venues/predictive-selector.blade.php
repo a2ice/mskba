@@ -14,7 +14,7 @@
     'selectedScope' => 'whole',
     'required' => true,
     'showBookingScope' => true,
-    'showMetroFilter' => true,
+    'showMetroFilter' => false,
     'metroOptions' => null,
 ])
 
