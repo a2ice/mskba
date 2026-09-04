@@ -42,6 +42,18 @@ function initMetroAwareMap(container) {
             .filter((value) => Number.isInteger(value) && value > 0);
     }
 
+    function selectedMetroNames() {
+        return Array.from(metroSelect.selectedOptions)
+            .map((option) => {
+                try {
+                    return normalizeMetroName(JSON.parse(option.dataset.data || '{}').text || option.textContent);
+                } catch (_) {
+                    return normalizeMetroName(option.textContent);
+                }
+            })
+            .filter(Boolean);
+    }
+
     async function loadFilteredMap() {
         const version = ++renderVersion;
 
@@ -133,6 +145,7 @@ function initMetroAwareMap(container) {
 
     async function fetchMergedVenues() {
         const metroIds = selectedMetroIds();
+        const metroNames = selectedMetroNames();
         const requests = metroIds.length > 0
             ? metroIds.map((metroId) => fetchVenues(metroId))
             : [fetchVenues(null)];
@@ -143,7 +156,17 @@ function initMetroAwareMap(container) {
             unique.set(Number(venue.id), venue);
         });
 
-        return Array.from(unique.values())
+        let venues = Array.from(unique.values());
+
+        // Some selector contexts (notably the event-creation wizard) use a
+        // specialized availability endpoint. It returns metro metadata, but may
+        // not apply metro_station_id itself. Keep the shared component correct in
+        // every context by enforcing the same OR rule on the returned payload.
+        if (metroNames.length > 0) {
+            venues = venues.filter((venue) => venueMatchesMetro(venue, metroNames));
+        }
+
+        return venues
             .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'ru'))
             .slice(0, 200);
     }
@@ -218,6 +241,17 @@ function initMetroAwareMap(container) {
         option.remove();
         mapModal.querySelector('[data-modal-action="close"]')?.click();
     }
+}
+
+function venueMatchesMetro(venue, selectedNames) {
+    const venueMetros = Array.isArray(venue.metro_stations) ? venue.metro_stations : [];
+    return venueMetros.some((metro) => selectedNames.includes(normalizeMetroName(metro)));
+}
+
+function normalizeMetroName(value) {
+    return String(value || '')
+        .replace(/\s*\([^()]*\)\s*$/, '')
+        .trim();
 }
 
 function displayAddress(address) {
