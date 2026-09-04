@@ -1,4 +1,5 @@
 import { loadYandexMaps } from '../core/yandex-maps.js';
+import '../../css/pages/venue-catalog-fixes.css';
 
 const MOSCOW_METRO_AREA_BOUNDS = [
     [55.25, 36.75],
@@ -16,7 +17,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const mapFrame = catalog.querySelector('[data-venue-catalog-map-frame]');
     const viewInput = catalog.querySelector('[data-venue-view-input]');
     const viewButtons = Array.from(catalog.querySelectorAll('[data-venue-view]'));
+    const searchInput = catalog.querySelector('input[name="search"][form="venue-catalog-filter-form"]');
+    const filterForm = document.getElementById('venue-catalog-filter-form');
     let mapPromise = null;
+    let searchTimer = null;
+
+    searchInput?.addEventListener('input', () => {
+        window.clearTimeout(searchTimer);
+        searchTimer = window.setTimeout(() => {
+            filterForm?.requestSubmit();
+        }, 450);
+    });
+
+    searchInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            window.clearTimeout(searchTimer);
+        }
+    });
 
     filterToggle?.addEventListener('click', () => {
         const open = filters.hidden;
