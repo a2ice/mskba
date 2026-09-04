@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Infrastructure\Providers;
 
 use App\Modules\Moderation\Domain\Events\ModerationRequestApproved;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Events\VenueMembershipGranted;
 use App\Modules\Venue\Domain\Events\VenueMembershipRevoked;
@@ -46,27 +47,37 @@ class VenueAccessServiceProvider extends ServiceProvider
 
         View::composer('theme::pages.venues.show', function ($view): void {
             $venue = $view->getData()['venue'] ?? null;
+            $user = request()->user();
 
-            if ($venue !== null && ($venue->canEdit || $venue->canEditSchedule)) {
+            if ($venue === null) {
+                return;
+            }
+
+            $venueModel = Venue::query()->find($venue->id);
+            if ($venueModel === null) {
+                return;
+            }
+
+            $hasConfirmedOwner = app(VenueMembershipAccess::class)->hasActiveOwner($venueModel);
+            if (! $hasConfirmedOwner) {
+                $view->with('contextManagementUrl', route('venues.management', $venueModel));
+                $view->with('contextManagementLabel', 'Подтвердить управление');
+            } elseif ($venue->canEdit || $venue->canEditSchedule) {
                 $view->with('contextManagementUrl', route('account.venues.show', $venue->routeIdentifier()));
                 $view->with('contextManagementLabel', 'Управление площадкой');
             }
 
-            $user = request()->user();
-            if ($venue !== null) {
-                $venueModel = Venue::query()->find($venue->id);
-                if ($venueModel !== null && $this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venueModel)) {
-                    if (VenueBookingPolicy::query()->where('venue_id', $venueModel->id)->where('active_marker', true)->where('is_enabled', true)->exists()) {
-                        $view->with('rentalUrl', route('venues.rental.show', $venueModel));
-                    }
+            if ($this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venueModel)) {
+                if (VenueBookingPolicy::query()->where('venue_id', $venueModel->id)->where('active_marker', true)->where('is_enabled', true)->exists()) {
+                    $view->with('rentalUrl', route('venues.rental.show', $venueModel));
+                }
 
-                    if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
-                        $view->with('commercialMembershipsUrl', route('account.venues.commercial-memberships.index', $venueModel));
-                    }
+                if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
+                    $view->with('commercialMembershipsUrl', route('account.venues.commercial-memberships.index', $venueModel));
+                }
 
-                    if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY)) {
-                        $view->with('bookingPolicyUrl', route('account.venues.booking-policy.edit', $venueModel));
-                    }
+                if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY)) {
+                    $view->with('bookingPolicyUrl', route('account.venues.booking-policy.edit', $venueModel));
                 }
             }
         });
