@@ -10,12 +10,12 @@ use App\Modules\Venue\Domain\Models\VenueOwnershipClaimConversation;
 use App\Modules\Venue\Infrastructure\Http\Middleware\VenueOwnershipIntendedRedirect;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimConversationController;
+use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\ServiceProvider;
 
-final class VenueOwnershipServiceProvider extends ServiceProvider
+final class VenueOwnershipServiceProvider extends RouteServiceProvider
 {
     public function boot(Router $router): void
     {
@@ -57,6 +57,10 @@ final class VenueOwnershipServiceProvider extends ServiceProvider
                                 ->middleware('throttle:60,1')
                                 ->name('account.venue-ownership.conversation.attachment');
                         });
+
+                    Route::get('/admin/venue-management-claims', [AdminVenueOwnershipClaimsController::class, 'index'])
+                        ->middleware('can:manage-users-as-superadmin')
+                        ->name('admin.venue-management-claims.index');
                 });
             });
         });
