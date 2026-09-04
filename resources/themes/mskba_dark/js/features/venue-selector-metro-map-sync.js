@@ -114,7 +114,7 @@ function initMetroAwareMap(container) {
                 controls: ['zoomControl', 'fullscreenControl'],
             });
 
-            mapped.forEach((venue) => {
+            const placemarks = mapped.map((venue) => {
                 const placemark = new window.ymaps.Placemark(
                     [Number(venue.latitude), Number(venue.longitude)],
                     {
@@ -126,10 +126,25 @@ function initMetroAwareMap(container) {
                 );
 
                 placemark.events.add('click', () => selectVenueThroughCore(venue));
-                yandexMap.geoObjects.add(placemark);
+                return placemark;
             });
 
-            const bounds = yandexMap.geoObjects.getBounds();
+            // Native Yandex Maps clustering keeps dense areas readable: the
+            // cluster icon shows the number of venues, clicking it zooms in and
+            // the group naturally splits into smaller clusters / individual pins.
+            const clusterer = new window.ymaps.Clusterer({
+                preset: 'islands#invertedOrangeClusterIcons',
+                groupByCoordinates: false,
+                gridSize: 64,
+                clusterDisableClickZoom: false,
+                clusterOpenBalloonOnClick: false,
+                clusterHideIconOnBalloonOpen: false,
+                geoObjectHideIconOnBalloonOpen: false,
+            });
+            clusterer.add(placemarks);
+            yandexMap.geoObjects.add(clusterer);
+
+            const bounds = clusterer.getBounds();
             if (bounds) {
                 yandexMap.setBounds(bounds, { checkZoomRange: true, zoomMargin: 40 });
             }
