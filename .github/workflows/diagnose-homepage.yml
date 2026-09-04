@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/diagnose-homepage.yml"
+      - "resources/themes/mskba_dark/views/pages/welcome.blade.php"
   workflow_dispatch:
 
 jobs:
