@@ -1,0 +1,29 @@
+/* Venue catalog search/list polish. */
+
+.venue-catalog-card__image {
+    align-self: start;
+    height: 210px;
+    max-height: 210px;
+    overflow: hidden;
+}
+
+.venue-catalog-card__image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (max-width: 900px) {
+    .venue-catalog-card__image {
+        height: 180px;
+        max-height: 180px;
+    }
+}
+
+@media (max-width: 640px) {
+    .venue-catalog-card__image {
+        height: 112px;
+        max-height: 112px;
+    }
+}
