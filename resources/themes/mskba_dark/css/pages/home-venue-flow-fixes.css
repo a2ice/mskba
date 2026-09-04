@@ -11,7 +11,8 @@
 [data-home-flow="venue"] .home-flow-type-grid,
 [data-home-flow="venue"] .home-flow-total,
 [data-home-flow="venue"] .home-flow-field,
-[data-home-flow="venue"] .home-flow-row {
+[data-home-flow="venue"] .home-flow-row,
+[data-home-flow="venue"] .home-flow-venue-selector-stage {
     min-width: 0;
     max-width: 100%;
 }
@@ -19,4 +20,8 @@
 [data-home-flow="venue"] .home-flow-type-grid > *,
 [data-home-flow="venue"] .home-flow-row > * {
     min-width: 0;
+}
+
+[data-home-flow="venue"] .home-flow-venue-selector-stage {
+    width: 100%;
 }
