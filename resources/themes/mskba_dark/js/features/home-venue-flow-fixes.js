@@ -35,11 +35,52 @@ function refineVenueFlow(currentFlow) {
     const venueValue = sharedSelector?.querySelector('[data-venue-selector-value]');
     const venueClear = sharedSelector?.querySelector('[data-venue-selector-clear]');
 
-    if (!searchPanel || typeButtons.length === 0 || !continueButton || !sharedSelector) {
+    if (!searchPanel || typeButtons.length === 0 || !sharedSelector) {
         return;
     }
 
+    function currentType() {
+        return typeButtons.find((button) => button.classList.contains('is-selected'))?.dataset.homeVenueType || 'any';
+    }
+
+    function resetSharedSelection() {
+        if (venueInput?.value || venueValue?.value) {
+            venueClear?.click();
+        }
+    }
+
+    function syncSharedFilters(clearSelection) {
+        const type = currentType();
+        const paid = paymentInputs[0]?.checked !== false;
+        const free = paymentInputs[1]?.checked !== false;
+        const payment = paid && !free ? '1' : (!paid && free ? '0' : '');
+        const nextType = type === 'any' ? '' : type;
+        const currentTypeFilter = sharedSelector.dataset.venueTypeFilter || '';
+        const currentPaymentFilter = sharedSelector.dataset.requiresPaymentFilter || '';
+        const changed = currentTypeFilter !== nextType || currentPaymentFilter !== payment;
+
+        if (nextType) {
+            sharedSelector.dataset.venueTypeFilter = nextType;
+        } else {
+            delete sharedSelector.dataset.venueTypeFilter;
+        }
+
+        if (payment) {
+            sharedSelector.dataset.requiresPaymentFilter = payment;
+        } else {
+            delete sharedSelector.dataset.requiresPaymentFilter;
+        }
+
+        if (clearSelection && changed) {
+            resetSharedSelection();
+        }
+    }
+
     if (!venueFlows.has(currentFlow)) {
+        if (!continueButton) {
+            return;
+        }
+
         typeButtons.forEach((button) => {
             button.addEventListener('click', () => {
                 // The original home-flow handler stores the selected type first.
@@ -66,46 +107,10 @@ function refineVenueFlow(currentFlow) {
     // The shared selector owns the map and metro controls, so the old draft row
     // ("Метро" / "Свойства") is no longer needed.
     controlsRow?.remove();
-    continueButton.closest('.home-flow-modal__actions')?.remove();
+    continueButton?.closest('.home-flow-modal__actions')?.remove();
 
     resetSharedSelection();
     syncSharedFilters(false);
-
-    function currentType() {
-        return typeButtons.find((button) => button.classList.contains('is-selected'))?.dataset.homeVenueType || 'any';
-    }
-
-    function syncSharedFilters(clearSelection) {
-        const type = currentType();
-        const paid = paymentInputs[0]?.checked !== false;
-        const free = paymentInputs[1]?.checked !== false;
-        const payment = paid && !free ? '1' : (!paid && free ? '0' : '');
-        const nextType = type === 'any' ? '' : type;
-        const changed = sharedSelector.dataset.venueTypeFilter !== nextType
-            || sharedSelector.dataset.requiresPaymentFilter !== payment;
-
-        if (nextType) {
-            sharedSelector.dataset.venueTypeFilter = nextType;
-        } else {
-            delete sharedSelector.dataset.venueTypeFilter;
-        }
-
-        if (payment) {
-            sharedSelector.dataset.requiresPaymentFilter = payment;
-        } else {
-            delete sharedSelector.dataset.requiresPaymentFilter;
-        }
-
-        if (clearSelection && changed) {
-            resetSharedSelection();
-        }
-    }
-
-    function resetSharedSelection() {
-        if (venueInput?.value || venueValue?.value) {
-            venueClear?.click();
-        }
-    }
 }
 
 $(document).on('modal:opened', function (_event, modal) {
