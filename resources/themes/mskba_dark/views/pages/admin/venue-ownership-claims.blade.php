@@ -1,8 +1,8 @@
-@php $title = 'Заявки на владение площадками'; @endphp
+@php $title = 'Подтверждение управления площадками'; @endphp
 
 @extends('theme::partials.admin.list-shell', [
     'title' => $title,
-    'subtitle' => 'Проверка полномочий и выдача owner membership.',
+    'subtitle' => 'Проверка полномочий и выдача подтверждённого OWNER membership.',
 ])
 
 @section('section-content')
@@ -22,25 +22,21 @@
 
     @forelse($claims as $claim)
         <article class="card mb-4"><div class="card-body">
-            <h2 class="h4">№{{ $claim->id }} · {{ $claim->venue->name }}</h2>
-            <p>Заявитель: {{ $claim->applicant->profile?->first_name ?: $claim->applicant->username ?: 'user #'.$claim->applicant->id }}</p>
-            <p>Отправлена: {{ $claim->submitted_at->format('d.m.Y H:i') }}</p>
+            <div class="d-flex justify-content-between gap-3 flex-wrap align-items-start">
+                <div>
+                    <h2 class="h4">{{ $claim->venue->name }}</h2>
+                    <p>Заявитель: {{ trim(($claim->applicant->profile?->first_name ?? '').' '.($claim->applicant->profile?->last_name ?? '')) ?: $claim->applicant->username ?: 'user #'.$claim->applicant->id }}</p>
+                    <p>Отправлена: {{ $claim->submitted_at->format('d.m.Y H:i') }}</p>
+                </div>
+                <a class="btn btn--primary btn--sm" href="{{ route('account.venue-ownership.show', $claim) }}">
+                    Открыть заявку и переписку
+                </a>
+            </div>
             <h3 class="h5 mt-3">Подтверждение</h3>
             <p>{!! nl2br(e($claim->evidence)) !!}</p>
             @if($claim->decision_reason)<p><strong>Причина решения:</strong> {{ $claim->decision_reason }}</p>@endif
             @if($claim->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::PENDING)
-                <div class="d-flex gap-3 flex-wrap mt-4">
-                    <form method="POST" action="{{ route('admin.venue-ownership-claims.approve', $claim) }}">
-                        @csrf
-                        <input class="form-control mb-2" name="reason" maxlength="2000" placeholder="Комментарий (необязательно)">
-                        <button class="btn btn--primary btn--sm" type="submit">Одобрить</button>
-                    </form>
-                    <form method="POST" action="{{ route('admin.venue-ownership-claims.reject', $claim) }}">
-                        @csrf
-                        <input class="form-control mb-2" name="reason" required minlength="5" maxlength="2000" placeholder="Причина отказа">
-                        <button class="btn btn--secondary btn--sm" type="submit">Отклонить</button>
-                    </form>
-                </div>
+                <p class="text-muted mt-3 mb-0">Решение и переписка доступны на странице заявки.</p>
             @endif
         </div></article>
     @empty
