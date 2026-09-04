@@ -143,6 +143,7 @@
                     'required' => false,
                     'showBookingScope' => false,
                     'showFavorites' => false,
+                    'showMetroFilter' => true,
                 ])
             </div>
         @endif
