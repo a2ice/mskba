@@ -14,7 +14,7 @@
     'selectedScope' => 'whole',
     'required' => true,
     'showBookingScope' => true,
-    'showMetroFilter' => false,
+    'showMetroFilter' => request()->routeIs('events.wizard'),
     'metroOptions' => null,
 ])
 
