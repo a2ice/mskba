@@ -33,14 +33,26 @@
     min-height: 46px;
 }
 
-.home-event-venue-selector-source > .venue-selector {
+.home-event-venue-selector-source > .venue-selector,
+.home-venue-selector-source > .venue-selector {
     display: none;
 }
 
-.home-flow-event-venue-stage > .venue-selector {
+.home-flow-event-venue-stage > .venue-selector,
+.home-flow-venue-selector-stage > .venue-selector {
+    display: block;
     width: 100%;
 }
 
-.home-flow-event-venue-stage .venue-selector__links {
+.home-flow-event-venue-stage .venue-selector__links,
+.home-flow-venue-selector-stage .venue-selector__links {
     margin-top: 10px;
+}
+
+.home-flow-location-any.home-text-link {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
 }
