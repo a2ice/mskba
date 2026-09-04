@@ -16,6 +16,25 @@
         ->withCount(['participants as participants_count' => fn ($query) => $query->where('status', 'confirmed')])
         ->orderBy('starts_at')->limit(3)->get();
 
+    $upcomingGamesCount = \App\Modules\Event\Domain\Models\Event::query()
+        ->whereIn('type', [
+            \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME->value,
+            \App\Modules\Event\Domain\Enums\EventTypeEnum::GAME_TRAINING->value,
+        ])
+        ->where('status', \App\Modules\Event\Domain\Enums\EventStatusEnum::PUBLISHED->value)
+        ->where('visibility', \App\Modules\Event\Domain\Enums\EventVisibilityEnum::PUBLIC->value)
+        ->where('starts_at', '>', now())
+        ->count();
+
+    $upcomingGamesModulo100 = $upcomingGamesCount % 100;
+    $upcomingGamesModulo10 = $upcomingGamesCount % 10;
+    $upcomingGamesText = match (true) {
+        $upcomingGamesModulo100 >= 11 && $upcomingGamesModulo100 <= 14 => "{$upcomingGamesCount} предстоящих игр",
+        $upcomingGamesModulo10 === 1 => "{$upcomingGamesCount} предстоящая игра",
+        $upcomingGamesModulo10 >= 2 && $upcomingGamesModulo10 <= 4 => "{$upcomingGamesCount} предстоящие игры",
+        default => "{$upcomingGamesCount} предстоящих игр",
+    };
+
     $homeVenues = \App\Modules\Venue\Domain\Models\Venue::query()
         ->where('status', \App\Modules\Venue\Domain\Enums\VenueStatusEnum::CONFIRMED->value)
         ->where('operational_status', \App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum::ACTIVE->value)
@@ -48,9 +67,6 @@
         ['anchor' => '#teams', 'icon' => 'ti ti-users-group', 'title' => 'Команды', 'text' => 'Создавай состав или присоединяйся к другим.'],
         ['anchor' => '#tournaments', 'icon' => 'ti ti-trophy', 'title' => 'Турниры', 'text' => 'Участвуй, следи за матчами или организуй свой.'],
     ];
-
-    $activityEvent = $homeEvents->first();
-    $activityNews = $latestNews->first();
 @endphp
 
 <section class="home-welcome">
@@ -61,10 +77,9 @@
         <div class="home-welcome__main">
             <div class="home-welcome__copy">
                 <div class="home-welcome__badges">
-                    <div class="home-welcome__eyebrow" data-today-events-summary>
+                    <div class="home-welcome__eyebrow">
                         <span class="home-welcome__eyebrow-dot"></span>
-                        <a href="{{ route('events.index', ['type' => 'games', 'date_from' => $today, 'date_to' => $today]) }}" data-today-events-link @if($siteSummary->todayEvents === 0) hidden @endif>{{ $siteSummary->todayEventsText() }}</a>
-                        <span data-today-events-empty @if($siteSummary->todayEvents > 0) hidden @endif>Баскетбол начинается здесь</span>
+                        <a href="{{ $gamesUrl }}">{{ $upcomingGamesText }}</a>
                     </div>
                     <p class="home-welcome__eyebrow home-welcome__eyebrow--online" data-online-summary @if($siteSummary->onlineUsers === 0) hidden @endif>
                         <span class="home-welcome__eyebrow-dot home-welcome__eyebrow-dot--online"></span>
@@ -90,59 +105,6 @@
 
                 <a class="home-welcome__how" href="#highlights">Что можно делать в MSKBA <i class="ti ti-arrow-down"></i></a>
             </div>
-
-            <aside class="home-activity">
-                <div class="home-activity__header">
-                    <span><i class="ti ti-activity"></i> Сейчас на MSKBA</span>
-                    <span class="home-activity__live-dot"></span>
-                </div>
-
-                @if($featuredTournament)
-                    <a class="home-activity__feature" href="{{ route('tournaments.show', $featuredTournament->routeIdentifier()) }}">
-                        <div class="home-activity__media">
-                            <img src="{{ $featuredTournament->cover?->publicUrl() ?? asset('images/home-court.png') }}" alt="">
-                            <span>{{ $currentTournament ? 'Идёт турнир' : 'Скоро турнир' }}</span>
-                        </div>
-                        <div class="home-activity__body">
-                            <h2>{{ $featuredTournament->title }}</h2>
-                            <p>{{ \Illuminate\Support\Str::limit($featuredTournament->short_description ?: 'Матчи, участники, результаты и турнирная таблица в одном месте.', 130) }}</p>
-                            <div class="home-activity__meta">
-                                <span><i class="ti ti-calendar"></i>{{ $featuredTournament->starts_on?->format('d.m') }}</span>
-                                <span><i class="ti ti-users"></i>{{ $featuredTournament->entries_count }} команд / участников</span>
-                            </div>
-                            <strong>Открыть турнир <i class="ti ti-arrow-up-right"></i></strong>
-                        </div>
-                    </a>
-                @elseif($activityEvent)
-                    @php
-                        $activityStart = $activityEvent->starts_at->setTimezone($timezone);
-                    @endphp
-                    <a class="home-activity__feature home-activity__feature--event" href="{{ route('events.show', $activityEvent->routeIdentifier()) }}">
-                        <div class="home-activity__body">
-                            <span class="home-activity__badge">Ближайшая игра</span>
-                            <h2>{{ $activityEvent->title }}</h2>
-                            <p>{{ $activityEvent->venue?->name ?: 'Площадка уточняется' }}</p>
-                            <div class="home-activity__meta"><span><i class="ti ti-clock"></i>{{ $activityStart->format('d.m · H:i') }}</span><span><i class="ti ti-users"></i>{{ $activityEvent->participants_count }} участников</span></div>
-                            <strong>Открыть игру <i class="ti ti-arrow-up-right"></i></strong>
-                        </div>
-                    </a>
-                @else
-                    <div class="home-activity__feature home-activity__feature--event">
-                        <div class="home-activity__body">
-                            <span class="home-activity__badge">Начни первым</span>
-                            <h2>Собери игру</h2>
-                            <p>Выбери площадку и время — остальные смогут присоединиться через MSKBA.</p>
-                            <strong>Баскетбол начинается с приглашения.</strong>
-                        </div>
-                    </div>
-                @endif
-
-                @if($activityNews)
-                    <a class="home-activity__news" href="{{ $activityNews->destinationUrl() }}">
-                        <small>ПОСЛЕДНЕЕ</small><span>{{ $activityNews->title }}</span><i class="ti ti-arrow-right"></i>
-                    </a>
-                @endif
-            </aside>
         </div>
     </div>
 </section>
