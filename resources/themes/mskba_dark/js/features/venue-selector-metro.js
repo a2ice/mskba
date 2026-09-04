@@ -3,7 +3,28 @@ import '../../css/venue-selector-metro.css';
 
 const selectorStates = new WeakMap();
 
+prepareMetroSelectOptionData();
 document.querySelectorAll('[data-venue-selector]').forEach(initVenueMetroFilter);
+
+function prepareMetroSelectOptionData() {
+    document.querySelectorAll('.metro_select').forEach((select) => {
+        Array.from(select.options).forEach((option) => {
+            const lineName = String(option.dataset.lineName || '').trim();
+            const rawText = String(option.textContent || '').trim();
+            const suffix = lineName ? ` (${lineName})` : '';
+            const stationName = suffix && rawText.endsWith(suffix)
+                ? rawText.slice(0, -suffix.length).trim()
+                : rawText;
+
+            option.dataset.data = JSON.stringify({
+                value: option.value,
+                text: stationName,
+                lineName,
+                lineColor: option.dataset.lineColor || '#666666',
+            });
+        });
+    });
+}
 
 function initVenueMetroFilter(container) {
     if (!container || selectorStates.has(container)) {
@@ -18,6 +39,13 @@ function initVenueMetroFilter(container) {
     const clearButton = container.querySelector('[data-venue-selector-clear]');
     const list = container.querySelector('[data-venue-selector-list]');
     const message = container.querySelector('[data-venue-selector-message]');
+    const scopeInput = container.querySelector('[data-venue-booking-scope-input]');
+    const startInput = container.dataset.startInput
+        ? document.querySelector(container.dataset.startInput)
+        : null;
+    const durationInput = container.dataset.durationInput
+        ? document.querySelector(container.dataset.durationInput)
+        : null;
     const mapOpenOriginal = container.querySelector('[data-venue-map-selector-open]');
     const mapModal = document.querySelector(`[data-modal="${container.dataset.mapModal}"]`);
     const mapElement = mapModal?.querySelector('[data-venue-selector-map]');
@@ -59,17 +87,13 @@ function initVenueMetroFilter(container) {
         searchController?.abort();
         searchController = null;
 
-        const metroIds = selectedMetroIds();
-        if (metroIds.length === 0) {
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            return;
-        }
-
-        searchTimer = window.setTimeout(() => searchWithMetros(input.value.trim()), 80);
+        // Metro is a passive OR-filter. Selecting a station must not open or
+        // populate venue suggestions by itself. The selected station IDs are
+        // applied only on the next predictive input request and on the map.
     });
 
     input.addEventListener('input', (event) => {
-        if (selectedMetroIds().length === 0) {
+        if (!hasActiveFilters()) {
             return;
         }
 
@@ -82,7 +106,13 @@ function initVenueMetroFilter(container) {
         searchController?.abort();
         searchController = null;
 
-        searchTimer = window.setTimeout(() => searchWithMetros(input.value.trim()), 300);
+        const query = input.value.trim();
+        if (!query) {
+            setLoading(false);
+            return;
+        }
+
+        searchTimer = window.setTimeout(() => searchWithFilters(query), 300);
     }, { capture: true });
 
     mapOpen?.addEventListener('click', () => {
@@ -108,8 +138,23 @@ function initVenueMetroFilter(container) {
 
     function selectedMetroNames() {
         return Array.from(metroSelect.selectedOptions)
-            .map((option) => String(option.textContent || '').replace(/\s*\([^)]*\)\s*$/, '').trim())
+            .map((option) => {
+                try {
+                    return String(JSON.parse(option.dataset.data || '{}').text || '').trim();
+                } catch (_) {
+                    return String(option.textContent || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+                }
+            })
             .filter(Boolean);
+    }
+
+    function hasActiveFilters() {
+        const venueType = String(container.dataset.venueTypeFilter || '').trim();
+        const payment = String(container.dataset.requiresPaymentFilter || '').trim();
+        return selectedMetroIds().length > 0
+            || (venueType !== '' && venueType !== 'any')
+            || payment === '0'
+            || payment === '1';
     }
 
     function updateMetroToggle() {
@@ -124,13 +169,13 @@ function initVenueMetroFilter(container) {
         }
 
         valueInput.value = '';
+        input.value = '';
         const previewOpen = container.querySelector('[data-venue-preview-open]');
         if (previewOpen) {
             previewOpen.dataset.previewUrl = '';
             previewOpen.hidden = true;
         }
         const scope = container.querySelector('[data-venue-booking-scope]');
-        const scopeInput = container.querySelector('[data-venue-booking-scope-input]');
         if (scope) {
             scope.hidden = true;
         }
@@ -140,7 +185,7 @@ function initVenueMetroFilter(container) {
         valueInput.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    async function searchWithMetros(query) {
+    async function searchWithFilters(query) {
         const version = ++renderVersion;
         searchController?.abort();
         const controller = new AbortController();
@@ -148,7 +193,7 @@ function initVenueMetroFilter(container) {
         setLoading(true);
 
         try {
-            const venues = await fetchMergedVenues(query, 30, controller.signal);
+            const venues = await fetchMergedVenues(query, 30, controller.signal, true);
             if (version !== renderVersion) {
                 return;
             }
@@ -170,11 +215,13 @@ function initVenueMetroFilter(container) {
         }
     }
 
-    async function fetchMergedVenues(query = '', limit = 30, signal = null) {
+    async function fetchMergedVenues(query = '', limit = 30, signal = null, checkAvailability = true) {
         const metroIds = selectedMetroIds();
+        // Multiple metro stations are intentionally OR-ed: one request per
+        // station, then a union by venue id.
         const requests = metroIds.length > 0
-            ? metroIds.map((metroId) => fetchVenues(query, limit, metroId, signal))
-            : [fetchVenues(query, limit, null, signal)];
+            ? metroIds.map((metroId) => fetchVenues(query, limit, metroId, signal, checkAvailability))
+            : [fetchVenues(query, limit, null, signal, checkAvailability)];
         const groups = await Promise.all(requests);
         const unique = new Map();
 
@@ -187,7 +234,7 @@ function initVenueMetroFilter(container) {
             .slice(0, limit);
     }
 
-    async function fetchVenues(query, limit, metroStationId, signal) {
+    async function fetchVenues(query, limit, metroStationId, signal, checkAvailability = true) {
         const parameters = new URLSearchParams({
             query,
             confirmed_only: container.dataset.confirmedOnly || '0',
@@ -199,6 +246,22 @@ function initVenueMetroFilter(container) {
         }
         if (metroStationId) {
             parameters.set('metro_station_id', String(metroStationId));
+        }
+
+        const venueType = String(container.dataset.venueTypeFilter || '').trim();
+        if (venueType && venueType !== 'any') {
+            parameters.set('type', venueType);
+        }
+
+        const requiresPayment = String(container.dataset.requiresPaymentFilter || '').trim();
+        if (requiresPayment === '0' || requiresPayment === '1') {
+            parameters.set('requires_payment', requiresPayment);
+        }
+
+        if (checkAvailability && startInput?.value && durationInput?.value) {
+            parameters.set('starts_at', startInput.value);
+            parameters.set('duration_minutes', durationInput.value);
+            parameters.set('booking_scope', scopeInput?.value || 'whole');
         }
 
         const response = await fetch(`${container.dataset.searchUrl}?${parameters.toString()}`, {
@@ -283,7 +346,7 @@ function initVenueMetroFilter(container) {
         mapMessage.hidden = false;
 
         try {
-            const venues = await fetchMergedVenues('', 200, null);
+            const venues = await fetchMergedVenues('', 200, null, false);
             const mapped = venues.filter((venue) => Number.isFinite(Number(venue.latitude)) && Number.isFinite(Number(venue.longitude)));
             const unmapped = venues.filter((venue) => !mapped.includes(venue));
             renderMapFallback(unmapped);

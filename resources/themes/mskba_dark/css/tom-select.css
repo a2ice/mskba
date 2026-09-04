@@ -1,3 +1,7 @@
+.ts-wrapper {
+    padding-inline: 0 !important;
+}
+
 .ts-control,
 .ts-wrapper.single.input-active .ts-control {
     background: transparent !important;
@@ -68,4 +72,44 @@
     color: var(--muted);
     font-size: 12px;
     margin-left: auto;
+}
+
+.metro_select + .ts-wrapper .ts-control {
+    align-items: center;
+    gap: 6px;
+}
+
+.metro_select + .ts-wrapper .ts-control > .item {
+    align-items: center;
+    background: #0b0d0b !important;
+    border: 1px solid rgba(255, 255, 255, .5) !important;
+    border-radius: 999px !important;
+    color: #fff !important;
+    display: inline-flex;
+    margin: 2px 0;
+    max-width: 100%;
+    padding: 5px 9px !important;
+}
+
+.metro_select + .ts-wrapper .ts-control > .item .metro-option {
+    min-width: 0;
+}
+
+.metro_select + .ts-wrapper .ts-control > .item .metro-option__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.metro_select + .ts-wrapper .ts-control > .item .metro-option__line {
+    color: rgba(255, 255, 255, .55);
+    margin-left: 2px;
+    white-space: nowrap;
+}
+
+.metro_select + .ts-wrapper .ts-control > .item .remove {
+    border-left: 0 !important;
+    color: rgba(255, 255, 255, .8) !important;
+    margin-left: 5px !important;
+    padding-left: 4px !important;
 }

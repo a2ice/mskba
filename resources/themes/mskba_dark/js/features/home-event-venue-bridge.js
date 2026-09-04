@@ -27,8 +27,7 @@ if (flow && sharedSelector) {
         venueInput?.addEventListener('keydown', (event) => {
             if (event.key === 'Enter' && !venueValue?.value) {
                 // On this step Enter is not a free-form submit: a venue must be
-                // chosen from predictive results, from the map, or skipped via
-                // the explicit "Любая локация" action.
+                // chosen from predictive results, from the map, or skipped.
                 event.stopImmediatePropagation();
             }
         }, { capture: true });
@@ -74,6 +73,12 @@ if (flow && sharedSelector) {
             // The old draft had a separate Continue button. The shared venue
             // selector advances automatically after a real venue is selected.
             modal.find('.home-flow-location-actions .home-flow-next').remove();
+
+            // "Any location" is a skip action, not a secondary CTA.
+            const skip = modal.find('.home-flow-location-any');
+            skip.removeClass('btn btn--secondary').addClass('home-text-link');
+            skip.find('i').remove();
+            skip.find('span').text('Пропустить');
         });
 
         function resetVenueSelection() {
