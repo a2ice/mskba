@@ -1,4 +1,5 @@
 @import './pages/home-refinements';
+@import './pages/home-hero-refinements';
 
 .nav-link.active {
 }
