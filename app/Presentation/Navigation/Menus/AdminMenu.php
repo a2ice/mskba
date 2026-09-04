@@ -3,14 +3,10 @@
 namespace App\Presentation\Navigation\Menus;
 
 use App\Presentation\Navigation\MenuHandler;
-use App\Support\Features\FeatureFlags;
-use App\Support\Features\VenueRentalFeature;
 
 final class AdminMenu implements MenuHandler
 {
     use MenuHelper;
-
-    public function __construct(private readonly FeatureFlags $features) {}
 
     /**
      * @return array<int, array{label: string, url: string|null, active: bool, visible: bool}>
@@ -30,8 +26,8 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.dashboard'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-dashboard',
-                'data' => ['count' => 0], // TODO: добавить динамические данные
-                'hideOnDashboard' => true, // специальный флаг для скрытия плитки на самой странице дашборда
+                'data' => ['count' => 0],
+                'hideOnDashboard' => true,
             ],
             [
                 'label' => 'Пользователи',
@@ -40,7 +36,7 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.users'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-users',
-                'data' => ['count' => 0], // TODO: добавить динамическое количество
+                'data' => ['count' => 0],
             ],
             [
                 'label' => 'Дубли пользователей',
@@ -58,7 +54,7 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.venues, admin.venues.*'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-building-stadium',
-                'data' => ['count' => 0], // TODO: добавить динамическое количество
+                'data' => ['count' => 0],
             ],
             [
                 'label' => 'Дубли площадок',
@@ -70,11 +66,11 @@ final class AdminMenu implements MenuHandler
                 'data' => ['count' => 0],
             ],
             [
-                'label' => 'Владение площадками',
-                'description' => 'Заявки на подтверждение коммерческого владельца.',
-                'url' => $this->routeUrl('admin.venue-ownership-claims.index'),
-                'active' => $this->isActiveRoute('admin.venue-ownership-claims.*'),
-                'visible' => $isAdmin && $this->features->enabled(VenueRentalFeature::RENTAL_FLOW),
+                'label' => 'Управление площадками',
+                'description' => 'Заявки на подтверждение владельцев и официальных представителей.',
+                'url' => $this->routeUrl('admin.venue-management-claims.index'),
+                'active' => $this->isActiveRoute('admin.venue-management-claims.*'),
+                'visible' => $canManageUserDuplicates,
                 'icon' => 'ti-certificate',
                 'data' => ['count' => 0],
             ],
@@ -85,7 +81,7 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.events'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-calendar-event',
-                'data' => ['count' => 0], // TODO: добавить динамическое количество
+                'data' => ['count' => 0],
             ],
             [
                 'label' => 'Команды',
@@ -94,7 +90,7 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.teams'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-shirt-sport',
-                'data' => ['count' => 0], // TODO: добавить динамическое количество
+                'data' => ['count' => 0],
             ],
             [
                 'label' => 'Контент',
@@ -103,7 +99,7 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.content, admin.content.*'),
                 'visible' => $canManageContent,
                 'icon' => 'ti-file-text',
-                'data' => ['count' => 0], // TODO: добавить динамическое количество
+                'data' => ['count' => 0],
             ],
             [
                 'label' => 'Аудит',
@@ -121,7 +117,7 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.settings'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-settings',
-                'data' => ['count' => 0], // TODO: добавить динамическое количество
+                'data' => ['count' => 0],
             ],
             [
                 'label' => 'Telegram-чаты',
