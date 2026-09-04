@@ -18,20 +18,17 @@ use App\Modules\Venue\Domain\Events\VenueOwnershipClaimRejected;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
-use App\Support\Features\FeatureFlags;
-use App\Support\Features\VenueRentalFeature;
+use App\Modules\Venue\Infrastructure\Broadcasting\VenueOwnershipClaimUpdatedBroadcast;
 use Illuminate\Support\Facades\DB;
 
 final readonly class ReviewVenueOwnershipClaimHandler
 {
     public function __construct(
         private VenueMembershipAccess $memberships,
-        private FeatureFlags $features,
     ) {}
 
     public function approve(VenueOwnershipClaim $claim, User $reviewer, ?string $reason = null): VenueOwnershipClaim
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $reviewer = $this->authorizedReviewer($reviewer);
 
         return DB::transaction(function () use ($claim, $reviewer, $reason): VenueOwnershipClaim {
@@ -58,14 +55,47 @@ final readonly class ReviewVenueOwnershipClaimHandler
 
             $claim->forceFill([
                 'status' => VenueOwnershipClaimStatusEnum::APPROVED,
-                'decision_reason' => $reason,
+                'decision_reason' => filled($reason) ? trim((string) $reason) : null,
                 'reviewer_user_id' => $reviewer->id,
                 'owner_contract_membership_id' => $membership->id,
                 'active_marker' => null,
                 'decided_at' => now(),
             ])->save();
 
-            DB::afterCommit(static fn () => event(new VenueOwnershipClaimApproved($claim->id)));
+            $superseded = VenueOwnershipClaim::query()
+                ->where('venue_id', $venue->id)
+                ->whereKeyNot($claim->id)
+                ->where('status', VenueOwnershipClaimStatusEnum::PENDING->value)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($superseded as $otherClaim) {
+                $otherClaim->forceFill([
+                    'status' => VenueOwnershipClaimStatusEnum::REJECTED,
+                    'decision_reason' => 'Управление площадкой подтверждено по другой заявке.',
+                    'reviewer_user_id' => $reviewer->id,
+                    'active_marker' => null,
+                    'decided_at' => now(),
+                ])->save();
+            }
+
+            DB::afterCommit(function () use ($claim, $superseded): void {
+                event(new VenueOwnershipClaimApproved($claim->id));
+                broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                    $claim->public_id,
+                    $claim->status->value,
+                    $claim->status->label(),
+                ))->toOthers();
+
+                foreach ($superseded as $otherClaim) {
+                    event(new VenueOwnershipClaimRejected($otherClaim->id));
+                    broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                        $otherClaim->public_id,
+                        $otherClaim->status->value,
+                        $otherClaim->status->label(),
+                    ))->toOthers();
+                }
+            });
 
             return $claim->refresh();
         });
@@ -73,7 +103,6 @@ final readonly class ReviewVenueOwnershipClaimHandler
 
     public function reject(VenueOwnershipClaim $claim, User $reviewer, string $reason): VenueOwnershipClaim
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $reviewer = $this->authorizedReviewer($reviewer);
 
         return DB::transaction(function () use ($claim, $reviewer, $reason): VenueOwnershipClaim {
@@ -92,7 +121,14 @@ final readonly class ReviewVenueOwnershipClaimHandler
                 'decided_at' => now(),
             ])->save();
 
-            DB::afterCommit(static fn () => event(new VenueOwnershipClaimRejected($claim->id)));
+            DB::afterCommit(function () use ($claim): void {
+                event(new VenueOwnershipClaimRejected($claim->id));
+                broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                    $claim->public_id,
+                    $claim->status->value,
+                    $claim->status->label(),
+                ))->toOthers();
+            });
 
             return $claim->refresh();
         });
