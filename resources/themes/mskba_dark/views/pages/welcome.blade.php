@@ -114,7 +114,9 @@
                         </div>
                     </a>
                 @elseif($activityEvent)
-                    @php($activityStart = $activityEvent->starts_at->setTimezone($timezone))
+                    @php
+                        $activityStart = $activityEvent->starts_at->setTimezone($timezone);
+                    @endphp
                     <a class="home-activity__feature home-activity__feature--event" href="{{ route('events.show', $activityEvent->routeIdentifier()) }}">
                         <div class="home-activity__body">
                             <span class="home-activity__badge">Ближайшая игра</span>
@@ -202,7 +204,9 @@
         </div>
         <div class="home-venue-stack">
             @forelse($homeVenues as $venue)
-                @php($venueAddress = $venue->location?->address?->full_address ?: $venue->raw_address)
+                @php
+                    $venueAddress = $venue->location?->address?->full_address ?: $venue->raw_address;
+                @endphp
                 <a class="home-venue-card" href="{{ route('venues.show', $venue->routeIdentifier()) }}">
                     <img src="{{ $venue->media->sortByDesc('is_featured')->first()?->publicUrl() ?? asset('images/venue-placeholder.png') }}" alt="">
                     <span class="home-venue-card__shade"></span>
