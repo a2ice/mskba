@@ -3,6 +3,7 @@
 @import './pages/home-hero-cleanup';
 @import './pages/home-hero-microfix';
 @import './header-sticky';
+@import './mobile-summary-button-fix';
 
 .nav-link.active {
 }
