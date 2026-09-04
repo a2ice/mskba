@@ -124,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function metroOptionTemplate(data, escape) {
-    const color = data.lineColor || '#666666';
+    const rawColor = String(data.lineColor || '#666666').trim();
+    const color = /^(?:#|rgb|hsl)/i.test(rawColor) ? rawColor : `#${rawColor}`;
     const lineName = data.lineName
         ? `<span class="metro-option__line">${escape(data.lineName)}</span>`
         : '';
