@@ -67,14 +67,25 @@ function initCatalogMap(catalog, getPromise, setPromise) {
             bounds: MOSCOW_METRO_AREA_BOUNDS,
             controls: ['zoomControl', 'fullscreenControl', 'geolocationControl'],
         });
-        points.forEach((point) => {
+        const placemarks = points.map((point) => {
             const coordinates = [point.latitude, point.longitude];
-            map.geoObjects.add(new window.ymaps.Placemark(coordinates, {
+            return new window.ymaps.Placemark(coordinates, {
                 hintContent: point.name,
                 balloonContentHeader: point.name,
                 balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>`,
-            }, { preset: 'islands#orangeSportIcon' }));
+            }, { preset: 'islands#orangeSportIcon' });
         });
+        const clusterer = new window.ymaps.Clusterer({
+            preset: 'islands#invertedOrangeClusterIcons',
+            groupByCoordinates: false,
+            gridSize: 64,
+            clusterDisableClickZoom: false,
+            clusterOpenBalloonOnClick: false,
+            clusterHideIconOnBalloonOpen: false,
+            geoObjectHideIconOnBalloonOpen: false,
+        });
+        clusterer.add(placemarks);
+        map.geoObjects.add(clusterer);
         map.setBounds(MOSCOW_METRO_AREA_BOUNDS, { checkZoomRange: true, zoomMargin: 18 });
         if (status) status.hidden = true;
         window.setTimeout(() => map.container.fitToViewport(), 0);
