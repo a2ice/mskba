@@ -83,6 +83,7 @@ import './features/coordination-form.js';
 import './features/venue-selector.js';
 import './features/embedded-entity-preview.js';
 import './features/site-summary.js';
+import './features/home-flow.js';
 import './features/reactions.js';
 import './features/admin-action-modals.js';
 import './features/admin-venue-bulk-actions.js';
