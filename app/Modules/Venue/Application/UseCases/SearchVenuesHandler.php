@@ -29,7 +29,6 @@ final readonly class SearchVenuesHandler
     ) {}
 
     /**
-     * @param array<int, int> $metroStationIds
      * @return array<int, VenueSearchResultDTO>
      */
     public function handle(
@@ -40,7 +39,6 @@ final readonly class SearchVenuesHandler
         ?VenueTypeEnum $type = null,
         ?VenueStatusEnum $status = null,
         ?int $metroStationId = null,
-        array $metroStationIds = [],
         ?bool $requiresPayment = null,
         ?bool $requiresBookingApproval = null,
         bool $confirmedOnly = false,
@@ -50,23 +48,12 @@ final readonly class SearchVenuesHandler
         VenueBookingScopeEnum $bookingScope = VenueBookingScopeEnum::WHOLE,
         int $limit = 20,
     ): array {
-        $normalizedMetroStationIds = collect([
-            ...$metroStationIds,
-            ...($metroStationId !== null ? [$metroStationId] : []),
-        ])
-            ->map(fn ($id): int => (int) $id)
-            ->filter(fn (int $id): bool => $id > 0)
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
-
         $parameters = [
             'query' => mb_strtolower(trim((string) $query)),
             'venue_id' => $venueId,
             'type' => $type?->value,
             'status' => $status?->value,
-            'metro_station_ids' => $normalizedMetroStationIds,
+            'metro_station_id' => $metroStationId,
             'requires_payment' => $requiresPayment,
             'requires_booking_approval' => $requiresBookingApproval,
             'confirmed_only' => $confirmedOnly,
@@ -122,8 +109,8 @@ final readonly class SearchVenuesHandler
             ->when($parameters['type'], fn (Collection $items, string $value) => $items->where('type_slug', $value))
             ->when($parameters['status'], fn (Collection $items, string $value) => $items->where('status_slug', $value))
             ->when($parameters['operational_status'], fn (Collection $items, string $value) => $items->where('operational_status', $value))
-            ->when($parameters['metro_station_ids'] !== [], fn (Collection $items) => $items->filter(
-                fn (array $venue): bool => array_intersect($parameters['metro_station_ids'], $venue['metro_station_ids']) !== [],
+            ->when($parameters['metro_station_id'], fn (Collection $items, int $value) => $items->filter(
+                fn (array $venue): bool => in_array($value, $venue['metro_station_ids'], true),
             ))
             ->when($parameters['requires_payment'] !== null, fn (Collection $items) => $items->where(
                 'requires_payment',
