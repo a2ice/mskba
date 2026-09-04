@@ -1,7 +1,7 @@
 import $ from 'jquery';
 
 const eventWizards = new WeakMap();
-const EVENT_TYPE_VALUES = ['game', 'training', 'game_training', 'tournament'];
+const EVENT_TYPE_VALUES = ['any', 'game', 'training', 'game_training', 'tournament'];
 const EVENT_STEP_COPY = [
     ['Выберите тип мероприятия', 'После выбора сразу перейдём к локации.'],
     ['Где хотите играть?', 'Укажите площадку, адрес, район или метро. Можно оставить любую локацию.'],
@@ -37,6 +37,15 @@ function prepareEventWizard(flow) {
     const steps = panel?.querySelector('.home-flow-steps');
     const progressItems = steps ? [...steps.querySelectorAll('span')] : [];
     const typeGrid = panel?.querySelector('.home-flow-type-grid');
+
+    if (typeGrid && !typeGrid.querySelector('[data-home-flow-type="any"]')) {
+        const anyTypeButton = document.createElement('button');
+        anyTypeButton.type = 'button';
+        anyTypeButton.dataset.homeFlowType = 'any';
+        anyTypeButton.innerHTML = '<i class="ti ti-layout-grid"></i>Любой';
+        typeGrid.prepend(anyTypeButton);
+    }
+
     const typeButtons = typeGrid ? [...typeGrid.querySelectorAll('button')] : [];
     const locationField = panel?.querySelector('.home-flow-field');
     const locationInput = locationField?.querySelector('input');
