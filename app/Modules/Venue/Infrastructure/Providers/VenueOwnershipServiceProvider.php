@@ -7,16 +7,20 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaimConversation;
+use App\Modules\Venue\Infrastructure\Http\Middleware\VenueOwnershipIntendedRedirect;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimConversationController;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 final class VenueOwnershipServiceProvider extends ServiceProvider
 {
-    public function boot(): void
+    public function boot(Router $router): void
     {
+        $router->pushMiddlewareToGroup('web', VenueOwnershipIntendedRedirect::class);
+
         $this->routes(function (): void {
             Route::middleware('web')->group(function (): void {
                 Route::get('/venues/{venue}/management', [VenueOwnershipClaimController::class, 'landing'])
