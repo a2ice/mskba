@@ -65,6 +65,7 @@ jobs:
             update_env_value TELEGRAM_QUEUE_CONNECTION redis
             update_env_value TELEGRAM_QUEUE_INBOUND telegram-inbound
             update_env_value TELEGRAM_QUEUE_BACKGROUND telegram-background
+            update_env_value TELEGRAM_FORCE_IPV4 true
 
             # Production receives Telegram updates through the existing webhook
             # endpoint. Generate a stable per-server secret once when an older
@@ -200,6 +201,9 @@ jobs:
             done
 
             if [ "$TELEGRAM_CONFIGURED" -ne 1 ]; then
+              echo "::group::Telegram IPv4 network diagnostic" >&2
+              $COMPOSE run -T --rm phpfpm php -r '$host="api.telegram.org"; $ips=gethostbynamel($host) ?: []; fwrite(STDERR, "Resolved IPv4: ".($ips === [] ? "none" : implode(",", $ips)).PHP_EOL); foreach ($ips as $ip) { $started=microtime(true); $socket=@fsockopen($ip, 443, $errno, $errstr, 5); $ms=(int) round((microtime(true)-$started)*1000); if (is_resource($socket)) { fclose($socket); fwrite(STDERR, "TCP {$ip}:443 OK {$ms}ms".PHP_EOL); } else { fwrite(STDERR, "TCP {$ip}:443 FAIL {$ms}ms errno={$errno} {$errstr}".PHP_EOL); } }' </dev/null || true
+              echo "::endgroup::" >&2
               update_env_value TELEGRAM_UPDATES_TRANSPORT polling
               $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
               $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
