@@ -122,7 +122,6 @@
                             <form
                                 id="claim-form"
                                 method="POST"
-                                enctype="multipart/form-data"
                                 action="{{ route('venues.management.claim', $venue) }}"
                                 class="venue-ownership-form"
                             >
@@ -143,19 +142,12 @@
                                 >{{ old('evidence') }}</textarea>
                                 @error('evidence')<div class="alert alert-danger mt-2">{{ $message }}</div>@enderror
 
-                                <label for="ownershipDocuments" class="mt-3">
-                                    <span>Документы-основания <small>(необязательно)</small></span>
-                                    <small>До 5 файлов: JPG, PNG, PDF или TXT, не более 10 МБ каждый. После подтверждения администратор сможет сохранить подходящие файлы в архив владения.</small>
-                                </label>
-                                <input
-                                    id="ownershipDocuments"
-                                    class="form-control"
-                                    type="file"
-                                    name="documents[]"
-                                    multiple
-                                    accept=".jpg,.jpeg,.png,.pdf,.txt"
-                                >
-                                @error('documents.*')<div class="alert alert-danger mt-2">{{ $message }}</div>@enderror
+                                <div class="venue-ownership-inline-state mt-3">
+                                    <div>
+                                        <span>Документы пока не требуются</span>
+                                        <small>Если для проверки понадобятся файлы, администратор запросит их в защищённой переписке по заявке.</small>
+                                    </div>
+                                </div>
 
                                 <button type="submit" class="btn btn--primary mt-3">Подать заявку</button>
                             </form>
