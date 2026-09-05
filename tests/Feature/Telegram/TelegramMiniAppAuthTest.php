@@ -242,7 +242,7 @@ class TelegramMiniAppAuthTest extends TestCase
             ->assertSee('онлайн')
             ->assertSee('data-online-users-count', false)
             ->assertDontSee('Найти игру')
-            ->assertDontSee('Добавить площадку');
+            ->assertSee('Добавить площадку');
     }
 
     public function test_mobile_header_uses_authenticated_user_initials_without_avatar(): void
