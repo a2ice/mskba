@@ -16,6 +16,11 @@ return [
     'updates_transport' => env('TELEGRAM_UPDATES_TRANSPORT', 'webhook'),
     'polling_timeout' => (int) env('TELEGRAM_POLLING_TIMEOUT', 25),
     'polling_retry_delay' => (int) env('TELEGRAM_POLLING_RETRY_DELAY', 5),
+    'queue_connection' => env('TELEGRAM_QUEUE_CONNECTION', 'redis'),
+    'queues' => [
+        'inbound' => env('TELEGRAM_QUEUE_INBOUND', 'telegram-inbound'),
+        'background' => env('TELEGRAM_QUEUE_BACKGROUND', 'telegram-background'),
+    ],
     'reactions' => [
         'positive' => [
             '❤', '👍', '🔥', '🥰', '👏', '🎉', '🤩', '👌', '😍', '❤‍🔥',
