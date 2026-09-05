@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Domain\Models;
 
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimMessageShortCodeEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'author_actor_id',
     'client_id',
     'type',
+    'short_code',
     'body',
     'attachment_disk',
     'attachment_path',
@@ -42,6 +44,7 @@ class VenueOwnershipClaimMessage extends Model
     protected function casts(): array
     {
         return [
+            'short_code' => VenueOwnershipClaimMessageShortCodeEnum::class,
             'created_at' => 'datetime',
             'attachment_size' => 'integer',
         ];
