@@ -22,7 +22,11 @@ final class SyncTelegramCoordinationPublicationJob implements ShouldQueue
     /** @var list<int> */
     public array $backoff = [10, 30, 90];
 
-    public function __construct(public readonly int $publicationId) {}
+    public function __construct(public readonly int $publicationId)
+    {
+        $this->onConnection((string) config('telegram.queue_connection', 'redis'));
+        $this->onQueue((string) config('telegram.queues.background', 'telegram-background'));
+    }
 
     public function handle(
         TelegramBotApiClient $telegram,
