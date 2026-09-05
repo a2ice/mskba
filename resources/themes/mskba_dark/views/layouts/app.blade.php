@@ -6,6 +6,7 @@
     $pageDescription = isset($metaDescription) ? trim((string) $metaDescription) : null;
     $pageKeywords = isset($metaKeywords) ? trim((string) $metaKeywords) : null;
     $pageCanonical = $canonicalUrl ?? url()->current();
+    $contextManagementPlacement = $contextManagementPlacement ?? 'top';
 
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
 
@@ -110,8 +111,8 @@
             @include('theme::partials.header')
 
             <main class="site-content">
-                @if(! empty($contextManagementUrl))
-                    <div class="inner py-3 d-flex justify-content-end">
+                @if(! empty($contextManagementUrl) && $contextManagementPlacement === 'top')
+                    <div class="inner py-3 d-flex justify-content-end" data-context-management-action>
                         <a class="btn btn--secondary btn--sm" href="{{ $contextManagementUrl }}">
                             <i class="ti ti-settings" aria-hidden="true"></i>
                             {{ $contextManagementLabel ?? 'Управление' }}

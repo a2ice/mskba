@@ -72,6 +72,8 @@ class VenueAccessServiceProvider extends ServiceProvider
                 return;
             }
 
+            $view->with('contextManagementPlacement', 'section-after-panel');
+
             $hasCurrentOwnership = VenueOwnership::query()
                 ->where('venue_id', $venueModel->id)
                 ->where('active_marker', true)

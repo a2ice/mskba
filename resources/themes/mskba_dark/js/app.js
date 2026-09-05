@@ -171,16 +171,8 @@ function metroItemTemplate(data, escape) {
     `;
 }
 
-var header,
-    headerHeight = 0;
+var header;
 const HEADER_BACKGROUND_SCROLL_DISTANCE = 360;
-
-function paddingFirstScreen() {
-    header = $('.site-header');
-    headerHeight = header.outerHeight();
-    document.documentElement.style.setProperty('--site-header-height', `${Math.ceil(headerHeight || 0)}px`);
-    $('.first-screen').css('padding-top', headerHeight);
-}
 
 function updateHeaderBackground() {
     header = header && header.length ? header : $('.site-header');
@@ -193,9 +185,5 @@ function updateHeaderBackground() {
     header.css('--header-bg-alpha', progress.toFixed(3));
 }
 
-$(window).on('load resize', function() {
-    paddingFirstScreen();
-    updateHeaderBackground();
-});
-
+$(window).on('load resize', updateHeaderBackground);
 $(window).on('scroll', updateHeaderBackground);

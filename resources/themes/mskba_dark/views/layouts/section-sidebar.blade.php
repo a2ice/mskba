@@ -82,6 +82,15 @@
                             @yield('section-content')
                         </div>
                     </div>
+
+                    @if(! empty($contextManagementUrl) && ($contextManagementPlacement ?? 'top') === 'section-after-panel')
+                        <div class="mt-3 d-flex justify-content-end" data-context-management-action>
+                            <a class="btn btn--secondary btn--sm" href="{{ $contextManagementUrl }}">
+                                <i class="ti ti-settings" aria-hidden="true"></i>
+                                {{ $contextManagementLabel ?? 'Управление' }}
+                            </a>
+                        </div>
+                    @endif
                 </main>
             </div>
         </div>
