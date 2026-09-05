@@ -5,6 +5,8 @@ namespace App\Modules\Venue\Application\Services;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
+use App\Modules\Venue\Domain\Events\VenueUserRestrictionImposed;
+use App\Modules\Venue\Domain\Events\VenueUserRestrictionRevoked;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueUserRestriction;
 use Illuminate\Support\Facades\DB;
@@ -58,19 +60,22 @@ final class VenueUserRestrictionService
                     'imposed_by_user_id' => $administrator->id,
                     'imposed_at' => now(),
                 ])->save();
-
-                return $existing->refresh();
+                $restriction = $existing->refresh();
+            } else {
+                $restriction = VenueUserRestriction::query()->create([
+                    'venue_id' => $venue->id,
+                    'user_id' => $target->id,
+                    'type' => $type,
+                    'reason' => trim($reason),
+                    'imposed_by_user_id' => $administrator->id,
+                    'imposed_at' => now(),
+                    'active_marker' => true,
+                ]);
             }
 
-            return VenueUserRestriction::query()->create([
-                'venue_id' => $venue->id,
-                'user_id' => $target->id,
-                'type' => $type,
-                'reason' => trim($reason),
-                'imposed_by_user_id' => $administrator->id,
-                'imposed_at' => now(),
-                'active_marker' => true,
-            ]);
+            DB::afterCommit(static fn () => event(new VenueUserRestrictionImposed($restriction->id)));
+
+            return $restriction;
         });
     }
 
@@ -93,8 +98,11 @@ final class VenueUserRestrictionService
                 'revoked_at' => now(),
                 'revoke_reason' => filled($reason) ? trim((string) $reason) : null,
             ])->save();
+            $restriction = $restriction->refresh();
 
-            return $restriction->refresh();
+            DB::afterCommit(static fn () => event(new VenueUserRestrictionRevoked($restriction->id)));
+
+            return $restriction;
         });
     }
 
