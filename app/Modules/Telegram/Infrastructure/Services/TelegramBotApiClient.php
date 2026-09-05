@@ -112,19 +112,27 @@ final class TelegramBotApiClient
     private function request(?int $timeoutSeconds = null, bool $asJson = true): PendingRequest
     {
         $options = [];
+        $curlOptions = [];
         $proxy = trim((string) config('telegram.http_proxy'));
         $apiIp = trim((string) config('telegram.api_ip'));
+        $forceIpv4 = (bool) config('telegram.force_ipv4', false);
         $baseHost = parse_url((string) config('telegram.api_base_url'), PHP_URL_HOST);
 
         if ($proxy !== '') {
             $options['proxy'] = $proxy;
         }
 
+        if ($forceIpv4) {
+            $curlOptions[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
+        }
+
         if ($apiIp !== '' && is_string($baseHost) && $baseHost !== '') {
-            $options['curl'] = [
-                CURLOPT_RESOLVE => ["{$baseHost}:443:{$apiIp}"],
-                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-            ];
+            $curlOptions[CURLOPT_RESOLVE] = ["{$baseHost}:443:{$apiIp}"];
+            $curlOptions[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
+        }
+
+        if ($curlOptions !== []) {
+            $options['curl'] = $curlOptions;
         }
 
         $request = Http::withOptions($options)
