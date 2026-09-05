@@ -1,0 +1,31 @@
+Тема: Недоступны сети Telegram с VDS / Telegram webhook не может доставить обновления
+
+Здравствуйте.
+
+Просим проверить сетевую доступность Telegram для нашего VDS в сети 31.41.40.0/21 (AS56577 / Relink LTD).
+
+На сервере обычный исходящий HTTPS работает: google.com и github.com возвращают HTTP 200, TCP/443 к 1.1.1.1 и 8.8.8.8 устанавливается.
+
+При этом TCP/443 стабильно таймаутится к адресам Telegram, в том числе:
+- 149.154.166.110
+- 149.154.167.220
+- 91.108.56.130
+- 91.108.4.1
+
+Проверено как с host VDS, так и из Docker-контейнера, результат одинаковый. Маршрут на host уходит через обычный default gateway, то есть проблема не специфична Docker.
+
+Одновременно Telegram Bot API getWebhookInfo сообщает для webhook https://mskba.ru/api/integrations/telegram/webhook:
+- pending_update_count: 13
+- last_error_message: Connection timed out
+
+Сам endpoint https://mskba.ru/api/integrations/telegram/webhook доступен из внешнего интернета по HTTPS/443 (тестовый POST доходит до nginx и получает ожидаемый HTTP 403 без secret token), но запросы Telegram до приложения не доходят.
+
+Просим проверить:
+1. исходящие ACL/firewall/anti-DDoS/routing к сетям Telegram на TCP/443;
+2. входящие ACL/anti-DDoS для webhook-трафика Telegram на TCP/443;
+3. маршрутизацию/blackhole к префиксам Telegram;
+4. нет ли у вашей сети или upstream ограничений на Telegram.
+
+Для webhook Telegram необходимо разрешить входящий HTTPS как минимум из официально документированных диапазонов 149.154.160.0/20 и 91.108.4.0/22.
+
+Спасибо.
