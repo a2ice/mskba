@@ -24,6 +24,13 @@ enum UserNotificationSourceEnum: string
     case VENUE_MEMBERSHIP_GRANTED = 'venue.membership.granted';
     case VENUE_MEMBERSHIP_REVOKED = 'venue.membership.revoked';
     case VENUE_RENTAL_COORDINATION_JOINED = 'venue_rental.coordination.joined';
+    case VENUE_BOOKING_REQUESTED = 'venue_booking.requested';
+    case VENUE_BOOKING_HELD = 'venue_booking.held';
+    case VENUE_BOOKING_CONFIRMED = 'venue_booking.confirmed';
+    case VENUE_BOOKING_REJECTED = 'venue_booking.rejected';
+    case VENUE_BOOKING_CANCELLED = 'venue_booking.cancelled';
+    case VENUE_BOOKING_EXPIRED = 'venue_booking.expired';
+    case VENUE_BOOKING_MESSAGE = 'venue_booking.message';
     case VENUE_BOOKING_ATTENDANCE_OPENED = 'venue_booking.attendance.opened';
 
     public function label(): string
@@ -49,6 +56,13 @@ enum UserNotificationSourceEnum: string
             self::VENUE_MEMBERSHIP_GRANTED => 'Выдача коммерческой роли площадки',
             self::VENUE_MEMBERSHIP_REVOKED => 'Отзыв коммерческой роли площадки',
             self::VENUE_RENTAL_COORDINATION_JOINED => 'Вступление в сбор по аренде',
+            self::VENUE_BOOKING_REQUESTED => 'Новая заявка на аренду площадки',
+            self::VENUE_BOOKING_HELD => 'Заявка на аренду принята в работу',
+            self::VENUE_BOOKING_CONFIRMED => 'Подтверждение аренды площадки',
+            self::VENUE_BOOKING_REJECTED => 'Отклонение аренды площадки',
+            self::VENUE_BOOKING_CANCELLED => 'Отмена аренды площадки',
+            self::VENUE_BOOKING_EXPIRED => 'Истечение заявки на аренду',
+            self::VENUE_BOOKING_MESSAGE => 'Сообщение по аренде площадки',
             self::VENUE_BOOKING_ATTENDANCE_OPENED => 'Открытие подтверждения явки',
         };
     }
