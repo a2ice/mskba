@@ -96,11 +96,20 @@ return new class extends Migration
                 ]);
             });
 
+        $now = now();
+
         DB::table('contract_memberships')
             ->join('contracts', 'contracts.id', '=', 'contract_memberships.contract_id')
             ->where('contract_memberships.scope_type', 'venue')
             ->where('contract_memberships.access_level', 'owner')
+            ->where('contracts.family', 'membership')
             ->where('contracts.status', 'active')
+            ->where(function ($query) use ($now): void {
+                $query->whereNull('contracts.starts_at')->orWhere('contracts.starts_at', '<=', $now);
+            })
+            ->where(function ($query) use ($now): void {
+                $query->whereNull('contracts.expires_at')->orWhere('contracts.expires_at', '>', $now);
+            })
             ->select(['contract_memberships.id', 'contract_memberships.scope_id', 'contract_memberships.user_id', 'contracts.starts_at'])
             ->orderBy('contract_memberships.id')
             ->get()
