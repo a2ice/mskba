@@ -9,12 +9,18 @@ use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Events\VenueMembershipGranted;
 use App\Modules\Venue\Domain\Events\VenueMembershipRevoked;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimApproved;
+use App\Modules\Venue\Domain\Events\VenueOwnershipClaimMessageSent;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimRejected;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimSubmitted;
+use App\Modules\Venue\Domain\Events\VenueOwnershipStatusChanged;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Infrastructure\Listeners\ConfirmVenueAfterModerationRequestApproved;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueMembershipNotification;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipClaimNotification;
+use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipStatusNotification;
+use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipAdministrators;
+use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipClaimMessageRecipients;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
@@ -40,8 +46,11 @@ class VenueAccessServiceProvider extends ServiceProvider
 
         Event::listen(ModerationRequestApproved::class, ConfirmVenueAfterModerationRequestApproved::class);
         Event::listen(VenueOwnershipClaimSubmitted::class, CreateVenueOwnershipClaimNotification::class);
+        Event::listen(VenueOwnershipClaimSubmitted::class, NotifyVenueOwnershipAdministrators::class);
         Event::listen(VenueOwnershipClaimApproved::class, CreateVenueOwnershipClaimNotification::class);
         Event::listen(VenueOwnershipClaimRejected::class, CreateVenueOwnershipClaimNotification::class);
+        Event::listen(VenueOwnershipClaimMessageSent::class, NotifyVenueOwnershipClaimMessageRecipients::class);
+        Event::listen(VenueOwnershipStatusChanged::class, CreateVenueOwnershipStatusNotification::class);
         Event::listen(VenueMembershipGranted::class, CreateVenueMembershipNotification::class);
         Event::listen(VenueMembershipRevoked::class, CreateVenueMembershipNotification::class);
 
@@ -58,8 +67,13 @@ class VenueAccessServiceProvider extends ServiceProvider
                 return;
             }
 
-            $hasConfirmedOwner = app(VenueMembershipAccess::class)->hasActiveOwner($venueModel);
-            if (! $hasConfirmedOwner) {
+            $hasCurrentOwnership = VenueOwnership::query()
+                ->where('venue_id', $venueModel->id)
+                ->where('active_marker', true)
+                ->exists();
+            $hasActiveOwner = app(VenueMembershipAccess::class)->hasActiveOwner($venueModel);
+
+            if (! $hasCurrentOwnership && ! $hasActiveOwner) {
                 $view->with('contextManagementUrl', route('venues.management', $venueModel));
                 $view->with('contextManagementLabel', 'Подтвердить управление');
             } elseif ($venue->canEdit || $venue->canEditSchedule) {
