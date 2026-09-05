@@ -5,6 +5,7 @@ use App\Modules\Identity\Infrastructure\Http\Middleware\EnforceCreationOperation
 use App\Modules\Identity\Infrastructure\Http\Middleware\RecordBrowserFingerprint;
 use App\Modules\Identity\Infrastructure\Http\Middleware\ResolveCanonicalUserSession;
 use App\Modules\Portal\Infrastructure\Http\Middleware\RecordOnlineUserPresence;
+use App\Modules\Telegram\Infrastructure\Http\Middleware\RouteScopedThrottleRequests;
 use App\Support\Features\EnsureVenueRentalFeatureEnabled;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
         $middleware->alias([
+            'throttle' => RouteScopedThrottleRequests::class,
             'venue-rental-feature' => EnsureVenueRentalFeatureEnabled::class,
         ]);
         $middleware->appendToGroup('web', [
