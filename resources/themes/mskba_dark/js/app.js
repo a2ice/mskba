@@ -56,6 +56,7 @@ import './features/venue-show.js';
 import './features/venue-activity.js';
 import './features/venue-booking-status.js';
 import './features/venue-booking-conversation.js';
+import './features/venue-booking-requester-restriction.js';
 import './features/venue-ownership-claim.js';
 import './features/venue-schedule-form.js';
 import './features/event-create-form.js';
