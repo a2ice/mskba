@@ -45,11 +45,30 @@ jobs:
             echo "=== Telegram getWebhookInfo ==="
             $COMPOSE exec -T phpfpm php artisan tinker --execute='$r=app(\App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient::class)->call("getWebhookInfo"); $i=$r["result"]??[]; echo json_encode(["url"=>$i["url"]??null,"has_custom_certificate"=>$i["has_custom_certificate"]??null,"pending_update_count"=>$i["pending_update_count"]??null,"last_error_date"=>$i["last_error_date"]??null,"last_error_message"=>$i["last_error_message"]??null,"max_connections"=>$i["max_connections"]??null,"allowed_updates"=>$i["allowed_updates"]??null], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).PHP_EOL;' || true
 
-            echo "=== outbound Telegram IPv4 DNS/TCP/HTTPS ==="
-            $COMPOSE exec -T phpfpm php -r '$ips=gethostbynamel("api.telegram.org")?:[]; echo "DNS=".implode(",",$ips).PHP_EOL; foreach(range(1,5) as $n){$t=microtime(true);$s=@fsockopen("api.telegram.org",443,$errno,$errstr,5);$ms=(int)((microtime(true)-$t)*1000);echo "TCP#{$n}=".(is_resource($s)?"OK":"FAIL")." {$ms}ms errno={$errno} {$errstr}".PHP_EOL;if(is_resource($s))fclose($s);}' || true
-            for ATTEMPT in 1 2 3 4 5; do
+            echo "=== Telegram DNS records ==="
+            $COMPOSE exec -T phpfpm php -r '$r=dns_get_record("api.telegram.org", DNS_A|DNS_AAAA); foreach($r as $x){echo (($x["type"]??"")." ".($x["ip"]??$x["ipv6"]??"")).PHP_EOL;}' || true
+
+            echo "=== host/container IPv6 routing ==="
+            ip -6 route || true
+            $COMPOSE exec -T phpfpm sh -lc 'ip -6 route 2>/dev/null || true' || true
+
+            echo "=== outbound Telegram IPv4 TCP/HTTPS ==="
+            $COMPOSE exec -T phpfpm php -r '$ips=gethostbynamel("api.telegram.org")?:[]; echo "DNS=".implode(",",$ips).PHP_EOL; foreach(range(1,3) as $n){$t=microtime(true);$s=@fsockopen("api.telegram.org",443,$errno,$errstr,5);$ms=(int)((microtime(true)-$t)*1000);echo "TCP4#{$n}=".(is_resource($s)?"OK":"FAIL")." {$ms}ms errno={$errno} {$errstr}".PHP_EOL;if(is_resource($s))fclose($s);}' || true
+            for ATTEMPT in 1 2 3; do
               CODE="$($COMPOSE exec -T phpfpm sh -lc "curl -4 -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 https://api.telegram.org" 2>/dev/null || true)"
-              echo "HTTPS#$ATTEMPT=${CODE:-FAIL}"
+              echo "HTTPS4#$ATTEMPT=${CODE:-FAIL}"
+            done
+
+            echo "=== outbound Telegram IPv6 TCP/HTTPS ==="
+            $COMPOSE exec -T phpfpm php -r '$ip="2001:67c:4e8:f004::9"; foreach(range(1,3) as $n){$t=microtime(true);$s=@fsockopen("[{$ip}]",443,$errno,$errstr,5);$ms=(int)((microtime(true)-$t)*1000);echo "TCP6#{$n}=".(is_resource($s)?"OK":"FAIL")." {$ms}ms errno={$errno} {$errstr}".PHP_EOL;if(is_resource($s))fclose($s);}' || true
+            for ATTEMPT in 1 2 3; do
+              CODE="$($COMPOSE exec -T phpfpm sh -lc "curl -6 -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 https://api.telegram.org" 2>/dev/null || true)"
+              echo "HTTPS6#$ATTEMPT=${CODE:-FAIL}"
+            done
+
+            echo "=== sample Telegram network TCP probes ==="
+            for IP in 149.154.166.110 149.154.167.220 91.108.56.130 91.108.4.1; do
+              $COMPOSE exec -T phpfpm php -r '$ip=$argv[1];$t=microtime(true);$s=@fsockopen($ip,443,$errno,$errstr,4);$ms=(int)((microtime(true)-$t)*1000);echo $ip."=".(is_resource($s)?"OK":"FAIL")." {$ms}ms errno={$errno} {$errstr}".PHP_EOL;if(is_resource($s))fclose($s);' "$IP" || true
             done
 
             echo "=== host reverse-proxy webhook access ==="
@@ -58,21 +77,17 @@ jobs:
               echo "--- $FILE ---"
               grep -F '/api/integrations/telegram/webhook' "$FILE" | tail -n 80 || true
             done
-            if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
-              echo "=== host reverse-proxy webhook access via sudo ==="
-              sudo -n sh -lc 'for FILE in /var/log/nginx/access.log /var/log/nginx/*access*.log; do [ -f "$FILE" ] || continue; echo "--- $FILE ---"; grep -F "/api/integrations/telegram/webhook" "$FILE" | tail -n 80 || true; done' || true
-            fi
+            sudo -n sh -lc 'for FILE in /var/log/nginx/access.log /var/log/nginx/*access*.log; do [ -f "$FILE" ] || continue; echo "--- $FILE ---"; grep -F "/api/integrations/telegram/webhook" "$FILE" | tail -n 80 || true; done' 2>/dev/null || true
+
+            echo "=== firewall visibility ==="
+            sudo -n iptables -S 2>/dev/null | head -n 160 || true
+            sudo -n nft list ruleset 2>/dev/null | head -n 200 || true
 
             echo "=== inbound/background worker logs ==="
-            $COMPOSE logs --tail=160 telegram-inbound-queue telegram-background-queue || true
+            $COMPOSE logs --tail=120 telegram-inbound-queue telegram-background-queue || true
 
             echo "=== container nginx webhook access ==="
             $COMPOSE logs --tail=800 nginx 2>&1 | grep -F '/api/integrations/telegram/webhook' | tail -n 100 || true
 
             echo "=== Redis queue keys ==="
             $COMPOSE exec -T redis sh -lc 'redis-cli --scan --pattern "*queues*telegram*" | while read key; do printf "%s " "$key"; redis-cli TYPE "$key"; redis-cli LLEN "$key" 2>/dev/null || true; done' || true
-
-            echo "=== Laravel recent Telegram errors ==="
-            if [ -f storage/logs/laravel.log ]; then
-              tail -n 900 storage/logs/laravel.log | grep -Ei 'telegram|webhook|redis|queue' | tail -n 220 || true
-            fi
