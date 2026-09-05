@@ -11,6 +11,7 @@ return [
     'bot_login_ttl' => (int) env('TELEGRAM_BOT_LOGIN_TTL', 120),
     'api_base_url' => env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org'),
     'api_ip' => env('TELEGRAM_API_IP'),
+    'force_ipv4' => filter_var(env('TELEGRAM_FORCE_IPV4', false), FILTER_VALIDATE_BOOL),
     'http_proxy' => env('TELEGRAM_HTTP_PROXY'),
     'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
     'updates_transport' => env('TELEGRAM_UPDATES_TRANSPORT', 'webhook'),
