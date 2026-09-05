@@ -13,12 +13,15 @@ use App\Modules\Venue\Domain\Events\VenueOwnershipClaimMessageSent;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimRejected;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimSubmitted;
 use App\Modules\Venue\Domain\Events\VenueOwnershipStatusChanged;
+use App\Modules\Venue\Domain\Events\VenueUserRestrictionImposed;
+use App\Modules\Venue\Domain\Events\VenueUserRestrictionRevoked;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Infrastructure\Listeners\ConfirmVenueAfterModerationRequestApproved;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueMembershipNotification;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipClaimNotification;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipStatusNotification;
+use App\Modules\Venue\Infrastructure\Listeners\CreateVenueUserRestrictionNotification;
 use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipAdministrators;
 use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipClaimMessageRecipients;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
@@ -51,6 +54,8 @@ class VenueAccessServiceProvider extends ServiceProvider
         Event::listen(VenueOwnershipClaimRejected::class, CreateVenueOwnershipClaimNotification::class);
         Event::listen(VenueOwnershipClaimMessageSent::class, NotifyVenueOwnershipClaimMessageRecipients::class);
         Event::listen(VenueOwnershipStatusChanged::class, CreateVenueOwnershipStatusNotification::class);
+        Event::listen(VenueUserRestrictionImposed::class, CreateVenueUserRestrictionNotification::class);
+        Event::listen(VenueUserRestrictionRevoked::class, CreateVenueUserRestrictionNotification::class);
         Event::listen(VenueMembershipGranted::class, CreateVenueMembershipNotification::class);
         Event::listen(VenueMembershipRevoked::class, CreateVenueMembershipNotification::class);
 
