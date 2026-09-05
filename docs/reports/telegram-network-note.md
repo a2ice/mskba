@@ -1,0 +1,1 @@
+Temporary note: detailed production diagnostics for the Telegram network incident are kept in `telegram-network-incident-2026-09-05.md`. The diagnostic GitHub Actions workflow itself remains isolated on `diagnostic/telegram-webhook-runtime` and must not be merged into `main`.
