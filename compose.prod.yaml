@@ -24,6 +24,8 @@ services:
 
   telegram:
     container_name: mskbanew-telegram
+    profiles:
+      - polling
 
   db:
     container_name: mskbanew-db
