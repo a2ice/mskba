@@ -8,7 +8,12 @@ use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramCallbackJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramMessageJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionCountJob;
 use App\Modules\Telegram\Infrastructure\Jobs\ProcessTelegramReactionJob;
+use App\Modules\Telegram\Infrastructure\Jobs\SendUserNotificationToTelegramJob;
+use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramContentPublicationJob;
+use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramCoordinationPublicationJob;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramEventPublicationJob;
+use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramProfileAvatarJob;
+use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramVenueRentalPublicationJob;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -29,18 +34,23 @@ final class TelegramQueueIsolationTest extends TestCase
         $this->assertSame('telegram-inbound', $callback->queue);
     }
 
-    public function test_background_telegram_jobs_do_not_share_the_inbound_queue(): void
+    public function test_all_other_telegram_jobs_use_the_dedicated_background_queue(): void
     {
-        $reaction = new ProcessTelegramReactionJob([]);
-        $reactionCount = new ProcessTelegramReactionCountJob([]);
-        $publication = new SyncTelegramEventPublicationJob(42);
+        $jobs = [
+            new ProcessTelegramReactionJob([]),
+            new ProcessTelegramReactionCountJob([]),
+            new SyncTelegramEventPublicationJob(42),
+            new SyncTelegramContentPublicationJob(42),
+            new SyncTelegramCoordinationPublicationJob(42),
+            new SyncTelegramVenueRentalPublicationJob(42),
+            new SyncTelegramProfileAvatarJob(42),
+            new SendUserNotificationToTelegramJob(42),
+        ];
 
-        $this->assertSame('sync', $reaction->connection);
-        $this->assertSame('telegram-background', $reaction->queue);
-        $this->assertSame('sync', $reactionCount->connection);
-        $this->assertSame('telegram-background', $reactionCount->queue);
-        $this->assertSame('sync', $publication->connection);
-        $this->assertSame('telegram-background', $publication->queue);
+        foreach ($jobs as $job) {
+            $this->assertSame('sync', $job->connection, $job::class);
+            $this->assertSame('telegram-background', $job->queue, $job::class);
+        }
     }
 
     public function test_event_publication_sync_has_independent_unique_keys_for_changes_and_start_refresh(): void
