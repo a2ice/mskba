@@ -41,12 +41,26 @@ final class HandleTelegramBotLoginCallback
         }
 
         $token = $matches[1];
+        $challenge = $this->challenges->find($token);
 
-        if ($this->challenges->find($token) === null) {
-            $this->answer($callbackId, 'Ссылка для входа истекла. Запустите вход на сайте ещё раз.', true);
+        if ($challenge === null) {
+            $this->answerSafely($callbackId, 'Ссылка для входа истекла. Запустите вход на сайте ещё раз.', true);
 
             return;
         }
+
+        if (($challenge['status'] ?? null) === 'approved') {
+            $this->answerSafely($callbackId, 'Вход уже подтверждён. Вернитесь на сайт.');
+            $this->markMessageConfirmed((string) $chatId, (int) $messageId);
+
+            return;
+        }
+
+        // Telegram keeps an inline button in the loading state until
+        // answerCallbackQuery is received. Acknowledge the click before any
+        // user resolution / DB work so the client does not spin while the
+        // browser login is already being approved in the background.
+        $acknowledged = $this->answerSafely($callbackId, 'Подтверждаем вход…', timeoutSeconds: 5);
 
         try {
             $resolved = $this->resolveTelegramUser->handle(new TelegramUserIdentityDTO(
@@ -72,18 +86,47 @@ final class HandleTelegramBotLoginCallback
                 (int) $resolved['telegram_account']->id,
                 $resolved['created'],
             )) {
-                $this->answer($callbackId, 'Этот вход уже подтверждён или ссылка истекла.', true);
+                $currentChallenge = $this->challenges->find($token);
+                if (($currentChallenge['status'] ?? null) === 'approved') {
+                    if (! $acknowledged) {
+                        $this->answerSafely($callbackId, 'Вход уже подтверждён. Вернитесь на сайт.');
+                    }
+                    $this->markMessageConfirmed((string) $chatId, (int) $messageId);
+
+                    return;
+                }
+
+                if (! $acknowledged) {
+                    $this->answerSafely($callbackId, 'Этот вход уже подтверждён или ссылка истекла.', true);
+                }
+                $this->markMessageFailed(
+                    (string) $chatId,
+                    (int) $messageId,
+                    'Этот вход уже недоступен. Вернитесь на сайт и запустите вход ещё раз.',
+                );
 
                 return;
             }
 
-            $this->answer($callbackId, 'Вход подтверждён. Вернитесь на сайт.');
+            if (! $acknowledged) {
+                $this->answerSafely($callbackId, 'Вход подтверждён. Вернитесь на сайт.');
+            }
             $this->markMessageConfirmed((string) $chatId, (int) $messageId);
         } catch (InvalidArgumentException $exception) {
-            $this->answer($callbackId, $exception->getMessage(), true);
+            if (! $acknowledged) {
+                $this->answerSafely($callbackId, $exception->getMessage(), true);
+            }
+            $this->markMessageFailed((string) $chatId, (int) $messageId, $exception->getMessage());
         } catch (Throwable $exception) {
             report($exception);
-            $this->answer($callbackId, 'Не удалось подтвердить вход. Попробуйте ещё раз.', true);
+            if (! $acknowledged) {
+                $this->answerSafely($callbackId, 'Не удалось подтвердить вход. Попробуйте ещё раз.', true);
+            }
+            $this->markMessageFailed(
+                (string) $chatId,
+                (int) $messageId,
+                'Не удалось подтвердить вход. Вернитесь на сайт и запустите вход ещё раз.',
+            );
         }
     }
 
@@ -92,23 +135,49 @@ final class HandleTelegramBotLoginCallback
         return is_string($value) && $value !== '' ? $value : null;
     }
 
-    private function answer(string $callbackId, string $message, bool $alert = false): void
-    {
-        $this->telegram->call('answerCallbackQuery', [
-            'callback_query_id' => $callbackId,
-            'text' => mb_substr($message, 0, 200),
-            'show_alert' => $alert,
-            'cache_time' => 0,
-        ]);
+    private function answerSafely(
+        string $callbackId,
+        string $message,
+        bool $alert = false,
+        ?int $timeoutSeconds = null,
+    ): bool {
+        try {
+            $this->telegram->call('answerCallbackQuery', [
+                'callback_query_id' => $callbackId,
+                'text' => mb_substr($message, 0, 200),
+                'show_alert' => $alert,
+                'cache_time' => 0,
+            ], $timeoutSeconds);
+
+            return true;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
     }
 
     private function markMessageConfirmed(string $chatId, int $messageId): void
+    {
+        $this->markMessage(
+            $chatId,
+            $messageId,
+            'Вход в MSKBA подтверждён. Можно вернуться на сайт.',
+        );
+    }
+
+    private function markMessageFailed(string $chatId, int $messageId, string $message): void
+    {
+        $this->markMessage($chatId, $messageId, $message);
+    }
+
+    private function markMessage(string $chatId, int $messageId, string $message): void
     {
         try {
             $this->telegram->call('editMessageText', [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
-                'text' => 'Вход в MSKBA подтверждён. Можно вернуться на сайт.',
+                'text' => $message,
                 'reply_markup' => ['inline_keyboard' => []],
             ]);
         } catch (Throwable $exception) {
