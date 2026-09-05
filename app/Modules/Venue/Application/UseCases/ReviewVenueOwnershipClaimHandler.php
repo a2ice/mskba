@@ -13,10 +13,12 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipStatusEnum;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimApproved;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimRejected;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Infrastructure\Broadcasting\VenueOwnershipClaimUpdatedBroadcast;
 use Illuminate\Support\Facades\DB;
@@ -44,14 +46,28 @@ final readonly class ReviewVenueOwnershipClaimHandler
             }
 
             if ($reviewer->isSameIdentity($claim->applicant_user_id)) {
-                throw new VenueOwnershipClaimException('Нельзя одобрить собственную заявку на владение.');
+                throw new VenueOwnershipClaimException('Нельзя одобрить собственную заявку на управление.');
             }
 
             if ($this->memberships->hasActiveOwner($venue)) {
-                throw new VenueOwnershipClaimException('У площадки уже есть активный владелец. Для смены владельца нужен отдельный процесс.');
+                throw new VenueOwnershipClaimException('У площадки уже есть активный подтверждённый представитель.');
             }
 
             $membership = $this->createOwnerMembership($venue, $claim, $reviewer);
+            $decidedAt = now();
+
+            VenueOwnership::query()->create([
+                'venue_id' => $venue->id,
+                'owner_user_id' => $claim->applicant_user_id,
+                'source_claim_id' => $claim->id,
+                'contract_membership_id' => $membership->id,
+                'status' => VenueOwnershipStatusEnum::ACTIVE,
+                'status_reason' => filled($reason) ? trim((string) $reason) : null,
+                'status_changed_by_user_id' => $reviewer->id,
+                'status_changed_at' => $decidedAt,
+                'approved_at' => $decidedAt,
+                'active_marker' => true,
+            ]);
 
             $claim->forceFill([
                 'status' => VenueOwnershipClaimStatusEnum::APPROVED,
@@ -59,7 +75,7 @@ final readonly class ReviewVenueOwnershipClaimHandler
                 'reviewer_user_id' => $reviewer->id,
                 'owner_contract_membership_id' => $membership->id,
                 'active_marker' => null,
-                'decided_at' => now(),
+                'decided_at' => $decidedAt,
             ])->save();
 
             $superseded = VenueOwnershipClaim::query()
@@ -75,7 +91,7 @@ final readonly class ReviewVenueOwnershipClaimHandler
                     'decision_reason' => 'Управление площадкой подтверждено по другой заявке.',
                     'reviewer_user_id' => $reviewer->id,
                     'active_marker' => null,
-                    'decided_at' => now(),
+                    'decided_at' => $decidedAt,
                 ])->save();
             }
 
@@ -138,8 +154,8 @@ final readonly class ReviewVenueOwnershipClaimHandler
     {
         $reviewer = $reviewer->canonical();
 
-        if (! $reviewer->isConfirmed() || ! $reviewer->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
-            throw new VenueOwnershipClaimException('Рассматривать заявки на владение может только superadmin.');
+        if (! $reviewer->isConfirmed() || ! $reviewer->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
+            throw new VenueOwnershipClaimException('Рассматривать заявки на управление может только администратор или суперадминистратор.');
         }
 
         return $reviewer;
@@ -153,13 +169,13 @@ final readonly class ReviewVenueOwnershipClaimHandler
         $accessLevel = VenueMembershipAccessLevelEnum::OWNER;
         $contract = Contract::query()->create([
             'family' => ContractFamilyEnum::MEMBERSHIP,
-            'name' => "Владение площадкой: {$venue->name}",
+            'name' => "Управление площадкой: {$venue->name}",
             'status' => ContractStatusEnum::ACTIVE,
             'starts_at' => now(),
             'assigned_by' => $reviewer->id,
             'assigned_at' => now(),
             'assigner' => UserParticipationRoleAssignerEnum::USER,
-            'comment' => "Одобрение заявки на владение #{$claim->id}",
+            'comment' => "Одобрение заявки на управление #{$claim->id}",
         ]);
 
         $membership = $contract->membership()->create([
