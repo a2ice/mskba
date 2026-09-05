@@ -24,8 +24,22 @@ final class HandleTelegramBotLoginStartMessage
             || ! is_numeric($chatId)
             || ! is_numeric($telegramUserId)
             || (string) $chatType !== 'private'
-            || (string) $chatId !== (string) $telegramUserId
-            || preg_match('/^\/start(?:@\w+)?\s+login_([A-Za-z0-9_-]{43})$/', trim($text), $matches) !== 1) {
+            || (string) $chatId !== (string) $telegramUserId) {
+            return;
+        }
+
+        $text = trim($text);
+
+        if (preg_match('/^\/start(?:@\w+)?$/', $text) === 1) {
+            $this->telegram->call('sendMessage', [
+                'chat_id' => (string) $chatId,
+                'text' => 'Чтобы войти в MSKBA, вернитесь на сайт и нажмите «Войти через Telegram-бота». Я откроюсь по персональной ссылке и покажу кнопку подтверждения.',
+            ]);
+
+            return;
+        }
+
+        if (preg_match('/^\/start(?:@\w+)?\s+login_([A-Za-z0-9_-]{43})$/', $text, $matches) !== 1) {
             return;
         }
 
