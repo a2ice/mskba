@@ -82,6 +82,8 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
                             ->name('admin.venue-ownership.restrictions.revoke');
                     });
 
+                    Route::get('/account/venue-bookings/{venueBooking}/requester-restriction', [AdminVenueOwnershipController::class, 'rentalRequesterRestriction'])
+                        ->name('account.venue-bookings.requester-restriction');
                     Route::post('/account/venue-bookings/{venueBooking}/block-requester', [AdminVenueOwnershipController::class, 'blockRentalRequester'])
                         ->name('account.venue-bookings.block-requester');
                 });
