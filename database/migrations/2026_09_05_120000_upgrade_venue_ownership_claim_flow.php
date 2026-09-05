@@ -43,6 +43,7 @@ return new class extends Migration
             $table->foreignId('author_actor_id')->constrained('actors')->restrictOnDelete();
             $table->uuid('client_id');
             $table->string('type', 16)->default('text');
+            $table->string('short_code', 48)->nullable();
             $table->text('body')->nullable();
             $table->string('attachment_disk', 32)->nullable();
             $table->string('attachment_path')->nullable();
@@ -58,6 +59,10 @@ return new class extends Migration
             $table->index(
                 ['conversation_id', 'id'],
                 'venue_ownership_claim_message_page',
+            );
+            $table->index(
+                ['conversation_id', 'short_code', 'id'],
+                'venue_ownership_claim_message_short_code',
             );
         });
     }
