@@ -4,7 +4,9 @@ namespace App\Modules\Venue\Application\UseCases;
 
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\Services\VenueMembershipAccess;
+use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimSubmitted;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -15,6 +17,7 @@ final readonly class SubmitVenueOwnershipClaimHandler
 {
     public function __construct(
         private VenueMembershipAccess $memberships,
+        private VenueUserRestrictionService $restrictions,
     ) {}
 
     public function handle(Venue $venue, User $applicant, string $evidence): VenueOwnershipClaim
@@ -31,6 +34,17 @@ final readonly class SubmitVenueOwnershipClaimHandler
 
         $claim = DB::transaction(function () use ($venue, $applicant, $evidence): VenueOwnershipClaim {
             $lockedVenue = Venue::query()->lockForUpdate()->findOrFail($venue->id);
+
+            $restriction = $this->restrictions->active(
+                $lockedVenue,
+                $applicant,
+                VenueUserRestrictionTypeEnum::OWNERSHIP_CLAIM,
+            );
+            if ($restriction !== null) {
+                throw new VenueOwnershipClaimException(
+                    'Для вашего аккаунта заблокирована подача заявок на управление этой площадкой. Причина: '.$restriction->reason,
+                );
+            }
 
             if ($this->memberships->hasActiveOwner($lockedVenue)) {
                 throw new VenueOwnershipClaimException('У площадки уже есть подтверждённый представитель. Смена владельца выполняется отдельным процессом.');
