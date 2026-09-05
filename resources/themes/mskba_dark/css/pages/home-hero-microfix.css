@@ -1,5 +1,11 @@
 /* Small production polish for the homepage hero status and event modal. */
 
+/* Keep hero status metrics on the same left axis as the kicker/title. The
+   legacy pill padding is no longer needed after the pill border was removed. */
+body.main .home-welcome__eyebrow {
+    padding-inline: 0;
+}
+
 /* Center the white plus optically inside the orange status dot without relying
    on pseudo-element positioning. */
 body.main .home-welcome__eyebrow:has(.home-status-action) .home-welcome__eyebrow-dot {
