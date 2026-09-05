@@ -46,6 +46,23 @@ body:not(.main) .site-header > .header-wrapper {
     transition: transform .28s cubic-bezier(.22, .61, .36, 1);
 }
 
+/* The mobile full-screen navigation is position:fixed inside .header-wrapper.
+   A transformed / backdrop-filtered ancestor becomes its containing block,
+   which makes the menu collapse to the sticky header instead of the viewport.
+   While the menu is open, keep the wrapper visually fixed but remove those
+   containing-block triggers so the navigation once again fills the viewport. */
+@media screen and (max-width: 768px) {
+    body.nav-shown .site-header > .header-wrapper,
+    body.nav-shown .site-header.is-fixed > .header-wrapper,
+    body.nav-shown .site-header.is-fixed.is-fixed-shown > .header-wrapper {
+        transform: none;
+        transition: none;
+        will-change: auto;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .site-header.is-fixed.is-fixed-shown > .header-wrapper {
         transition-duration: .01ms;
