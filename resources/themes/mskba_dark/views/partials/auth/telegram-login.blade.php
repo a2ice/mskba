@@ -29,6 +29,10 @@
             </div>
         </div>
 
+        {{--
+        Вход через Telegram-бота временно скрыт из-за недоступности Bot API с production VDS.
+        Возвращаем этот блок после восстановления сетевого доступа к Telegram.
+
         <span class="auth-telegram-login__alternative">или через бота</span>
 
         <button
@@ -41,6 +45,7 @@
             </svg>
             <span data-telegram-bot-login-label>Войти через Telegram-бота</span>
         </button>
+        --}}
 
         <p class="auth-telegram-login__message form-message" aria-live="polite"></p>
     </div>
