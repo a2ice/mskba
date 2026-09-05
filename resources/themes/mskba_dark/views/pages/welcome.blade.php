@@ -78,7 +78,7 @@
 @endphp
 
 <section class="home-welcome">
-    <div class="home-welcome__image"><img src="{{ asset('images/home-court.png') }}" alt=""></div>
+    <div class="home-welcome__image"><img src="{{ asset('images/bg-home-welcome-screen.png') }}" alt=""></div>
     <div class="home-welcome__overlay"></div>
     <div class="home-welcome__content inner">
         <div class="home-welcome__main">
