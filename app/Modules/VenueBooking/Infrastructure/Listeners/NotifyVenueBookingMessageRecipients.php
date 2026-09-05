@@ -4,6 +4,8 @@ namespace App\Modules\VenueBooking\Infrastructure\Listeners;
 
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
+use App\Modules\Notification\Domain\Enums\UserNotificationSourceEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingMessageSent;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingMessage;
@@ -40,7 +42,12 @@ final class NotifyVenueBookingMessageRecipients implements ShouldQueue
                     body: 'В переписке по заявке появилось новое сообщение.',
                     actionUrl: route('account.venue-bookings.show', $booking).'#booking-conversation',
                     actionText: 'Открыть переписку',
-                    payload: ['booking_id' => $booking->public_id, 'message_id' => $message->public_id],
+                    payload: [
+                        'source' => UserNotificationSourceEnum::VENUE_BOOKING_MESSAGE->value,
+                        'delivery_category' => UserNotificationDeliveryCategoryEnum::REQUEST->value,
+                        'booking_id' => $booking->public_id,
+                        'message_id' => $message->public_id,
+                    ],
                 ));
                 DB::table('venue_booking_message_deliveries')->where([
                     'message_id' => $message->id, 'recipient_user_id' => $userId, 'channel' => 'in_app',
