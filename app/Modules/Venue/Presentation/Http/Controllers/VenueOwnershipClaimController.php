@@ -3,7 +3,6 @@
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
@@ -15,14 +14,11 @@ use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
-use App\Modules\Venue\Domain\Models\VenueOwnershipClaimDocument;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 final class VenueOwnershipClaimController extends Controller
 {
@@ -101,34 +97,15 @@ final class VenueOwnershipClaimController extends Controller
         Request $request,
         Venue $venue,
         SubmitVenueOwnershipClaimHandler $submit,
-        CurrentActorResolver $actors,
     ): JsonResponse|RedirectResponse {
         $validated = $request->validate([
             'evidence' => ['required', 'string', 'min:20', 'max:5000'],
-            'documents' => ['nullable', 'array', 'max:5'],
-            'documents.*' => ['file', 'mimes:jpg,jpeg,png,pdf,txt', 'max:10240'],
         ]);
 
         try {
             $claim = $submit->handle($venue, $request->user(), $validated['evidence']);
         } catch (VenueOwnershipClaimException $exception) {
             return $this->error($request, $exception->getMessage(), route('venues.management', $venue));
-        }
-
-        $actor = $actors->resolveForRequest($request);
-        foreach ($request->file('documents', []) as $file) {
-            $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $file->getClientOriginalName()) ?: 'document';
-            $path = 'venue-ownership-claims/'.$claim->public_id.'/initial/'.Str::uuid().'-'.$safeName;
-            Storage::disk('local')->put($path, $file->getContent());
-            VenueOwnershipClaimDocument::query()->create([
-                'venue_ownership_claim_id' => $claim->id,
-                'uploaded_by_actor_id' => $actor->id,
-                'disk' => 'local',
-                'path' => $path,
-                'name' => $file->getClientOriginalName(),
-                'mime' => (string) $file->getMimeType(),
-                'size' => $file->getSize(),
-            ]);
         }
 
         if ($request->expectsJson()) {
@@ -157,7 +134,6 @@ final class VenueOwnershipClaimController extends Controller
             'reviewer.profile',
             'applicant.profile',
             'conversation.messages.conversation',
-            'documents.uploadedByActor.user',
             'ownership.documents',
         ]);
 
