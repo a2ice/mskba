@@ -7,6 +7,7 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Events\VenueOwnershipClaimMessageSent;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaimConversation;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaimMessage;
@@ -135,11 +136,14 @@ final class VenueOwnershipClaimConversationController extends Controller
                 'attachment_size' => $file->getSize(),
             ]);
 
-            DB::afterCommit(fn () => broadcast(new VenueOwnershipClaimMessageSentBroadcast(
-                $claim->public_id,
-                $conversation->public_id,
-                $message->public_id,
-            ))->toOthers());
+            DB::afterCommit(function () use ($claim, $conversation, $message): void {
+                broadcast(new VenueOwnershipClaimMessageSentBroadcast(
+                    $claim->public_id,
+                    $conversation->public_id,
+                    $message->public_id,
+                ))->toOthers();
+                event(new VenueOwnershipClaimMessageSent($message->id));
+            });
 
             return $message->load(['authorActor.user', 'conversation']);
         });
@@ -202,11 +206,14 @@ final class VenueOwnershipClaimConversationController extends Controller
                 'body' => $body,
             ]);
 
-            DB::afterCommit(fn () => broadcast(new VenueOwnershipClaimMessageSentBroadcast(
-                $claim->public_id,
-                $conversation->public_id,
-                $message->public_id,
-            ))->toOthers());
+            DB::afterCommit(function () use ($claim, $conversation, $message): void {
+                broadcast(new VenueOwnershipClaimMessageSentBroadcast(
+                    $claim->public_id,
+                    $conversation->public_id,
+                    $message->public_id,
+                ))->toOthers();
+                event(new VenueOwnershipClaimMessageSent($message->id));
+            });
 
             return $message->load(['authorActor.user', 'conversation']);
         });
