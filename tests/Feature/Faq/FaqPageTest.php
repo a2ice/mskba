@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Faq;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class FaqPageTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_faq_index_page_is_available(): void
     {
         $response = $this->get(route('faq.index'));
