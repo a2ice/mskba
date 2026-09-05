@@ -9,12 +9,13 @@ use App\Modules\Telegram\Application\Services\TelegramEventMessageBuilder;
 use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Telegram\Infrastructure\Exceptions\TelegramBotApiException;
 use App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
-final class SyncTelegramEventPublicationJob implements ShouldQueue
+final class SyncTelegramEventPublicationJob implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Queueable;
 
@@ -23,7 +24,31 @@ final class SyncTelegramEventPublicationJob implements ShouldQueue
     /** @var list<int> */
     public array $backoff = [10, 30, 90];
 
-    public function __construct(public readonly int $eventId) {}
+    public function __construct(
+        public readonly int $eventId,
+        public readonly string $syncKey = 'change',
+    ) {
+        $this->onConnection((string) config('telegram.queue_connection', 'redis'));
+        $this->onQueue((string) config('telegram.queues.background', 'telegram-background'));
+    }
+
+    public function uniqueId(): string
+    {
+        return $this->eventId.':'.$this->syncKey;
+    }
+
+    public function uniqueFor(): int
+    {
+        if (str_starts_with($this->syncKey, 'start:')) {
+            $scheduledAt = (int) substr($this->syncKey, strlen('start:'));
+
+            if ($scheduledAt > 0) {
+                return max(300, $scheduledAt - now()->getTimestamp() + 3600);
+            }
+        }
+
+        return 300;
+    }
 
     public function handle(
         TelegramBotApiClient $telegram,
