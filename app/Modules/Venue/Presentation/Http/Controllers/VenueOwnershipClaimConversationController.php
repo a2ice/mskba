@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimMessageShortCodeEnum;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimMessageSent;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
@@ -18,10 +19,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class VenueOwnershipClaimConversationController extends Controller
 {
+    private const MAX_ATTACHMENTS_PER_CLAIM = 10;
+    private const MAX_ATTACHMENT_BYTES_PER_CLAIM = 52_428_800;
+
     public function index(
         Request $request,
         VenueOwnershipClaim $venueOwnershipClaim,
@@ -51,17 +56,23 @@ final class VenueOwnershipClaimConversationController extends Controller
         }
 
         $isReviewer = $this->isReviewer($request);
+        $isPending = $venueOwnershipClaim->status === VenueOwnershipClaimStatusEnum::PENDING;
+        $filesRequestOpen = $conversation !== null
+            && $isPending
+            && $this->hasOpenFilesRequest($conversation, $venueOwnershipClaim);
 
         return response()->json([
             'claim_id' => $venueOwnershipClaim->public_id,
             'status' => $venueOwnershipClaim->status->value,
             'status_label' => $venueOwnershipClaim->status->label(),
             'conversation_id' => $conversation?->public_id,
-            'can_start' => $conversation === null
-                && $isReviewer
-                && $venueOwnershipClaim->status === VenueOwnershipClaimStatusEnum::PENDING,
-            'can_reply' => $conversation !== null
-                && $venueOwnershipClaim->status === VenueOwnershipClaimStatusEnum::PENDING,
+            'can_start' => $conversation === null && $isReviewer && $isPending,
+            'can_reply' => $conversation !== null && $isPending,
+            'can_attach' => $conversation !== null
+                && $isPending
+                && ($isReviewer || $filesRequestOpen),
+            'can_request_files' => $isReviewer && $isPending,
+            'files_request_open' => $filesRequestOpen,
             'messages' => $messages
                 ->map(fn (VenueOwnershipClaimMessage $message): array => $this->messagePayload($message, $viewer))
                 ->values()
@@ -77,8 +88,16 @@ final class VenueOwnershipClaimConversationController extends Controller
         $data = $request->validate([
             'client_id' => ['required', 'uuid'],
             'body' => ['required', 'string', 'max:4000'],
+            'short_code' => ['nullable', Rule::enum(VenueOwnershipClaimMessageShortCodeEnum::class)],
         ]);
         $actor = $this->authorizeClaim($request, $venueOwnershipClaim, $actors);
+        $shortCode = isset($data['short_code'])
+            ? VenueOwnershipClaimMessageShortCodeEnum::from($data['short_code'])
+            : null;
+
+        if ($shortCode !== null && ! $this->isReviewer($request)) {
+            abort(403, 'Системные действия в переписке доступны только администратору.');
+        }
 
         $message = $this->createMessage(
             request: $request,
@@ -86,6 +105,7 @@ final class VenueOwnershipClaimConversationController extends Controller
             actor: $actor,
             clientId: $data['client_id'],
             body: trim($data['body']),
+            shortCode: $shortCode,
         );
 
         return response()->json($this->messagePayload($message, $actor), 201);
@@ -117,6 +137,9 @@ final class VenueOwnershipClaimConversationController extends Controller
             if ($existing !== null) {
                 return $existing->load(['authorActor.user', 'conversation']);
             }
+
+            $this->ensureAttachmentAllowed($request, $claim, $conversation);
+            $this->ensureAttachmentQuota($conversation, (int) $file->getSize());
 
             $storedName = (string) Str::uuid().'-'.preg_replace('/[^A-Za-z0-9._-]+/', '-', $file->getClientOriginalName());
             $path = 'venue-ownership-claims/'.$claim->public_id.'/'.$conversation->public_id.'/'.$storedName;
@@ -182,8 +205,9 @@ final class VenueOwnershipClaimConversationController extends Controller
         Actor $actor,
         string $clientId,
         string $body,
+        ?VenueOwnershipClaimMessageShortCodeEnum $shortCode = null,
     ): VenueOwnershipClaimMessage {
-        return DB::transaction(function () use ($request, $claim, $actor, $clientId, $body): VenueOwnershipClaimMessage {
+        return DB::transaction(function () use ($request, $claim, $actor, $clientId, $body, $shortCode): VenueOwnershipClaimMessage {
             $claim = VenueOwnershipClaim::query()->lockForUpdate()->findOrFail($claim->id);
             $conversation = $this->conversationForWrite($request, $claim);
             $this->ensureConversationWritable($claim);
@@ -203,6 +227,7 @@ final class VenueOwnershipClaimConversationController extends Controller
                 'author_actor_id' => $actor->id,
                 'client_id' => $clientId,
                 'type' => 'text',
+                'short_code' => $shortCode,
                 'body' => $body,
             ]);
 
@@ -248,6 +273,69 @@ final class VenueOwnershipClaimConversationController extends Controller
         );
     }
 
+    private function ensureAttachmentAllowed(
+        Request $request,
+        VenueOwnershipClaim $claim,
+        VenueOwnershipClaimConversation $conversation,
+    ): void {
+        if ($this->isReviewer($request)) {
+            return;
+        }
+
+        abort_unless(
+            $this->hasOpenFilesRequest($conversation, $claim),
+            409,
+            'Прикрепление файлов откроется после отдельного запроса документов от администратора.',
+        );
+    }
+
+    private function ensureAttachmentQuota(VenueOwnershipClaimConversation $conversation, int $incomingBytes): void
+    {
+        $attachments = VenueOwnershipClaimMessage::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('type', 'attachment');
+
+        abort_if(
+            (clone $attachments)->count() >= self::MAX_ATTACHMENTS_PER_CLAIM,
+            422,
+            'Достигнут лимит вложений по заявке.',
+        );
+
+        $usedBytes = (int) (clone $attachments)->sum('attachment_size');
+        abort_if(
+            $usedBytes + $incomingBytes > self::MAX_ATTACHMENT_BYTES_PER_CLAIM,
+            422,
+            'Достигнут общий лимит объёма вложений по заявке.',
+        );
+    }
+
+    private function hasOpenFilesRequest(
+        VenueOwnershipClaimConversation $conversation,
+        VenueOwnershipClaim $claim,
+    ): bool {
+        $lastRequestId = (int) VenueOwnershipClaimMessage::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('short_code', VenueOwnershipClaimMessageShortCodeEnum::FILES_REQUESTED->value)
+            ->max('id');
+
+        if ($lastRequestId === 0) {
+            return false;
+        }
+
+        $claim->loadMissing('applicant');
+        $applicantActorIds = Actor::query()
+            ->whereIn('user_id', $claim->applicant->identityIds())
+            ->pluck('id');
+
+        $lastApplicantAttachmentId = (int) VenueOwnershipClaimMessage::query()
+            ->where('conversation_id', $conversation->id)
+            ->where('type', 'attachment')
+            ->whereIn('author_actor_id', $applicantActorIds)
+            ->max('id');
+
+        return $lastRequestId > $lastApplicantAttachmentId;
+    }
+
     private function authorizeClaim(
         Request $request,
         VenueOwnershipClaim $claim,
@@ -281,6 +369,8 @@ final class VenueOwnershipClaimConversationController extends Controller
             'conversation_id' => $message->conversation->public_id,
             'client_id' => $message->client_id,
             'type' => $message->type,
+            'short_code' => $message->short_code?->value,
+            'short_code_label' => $message->short_code?->label(),
             'body' => $message->body,
             'is_own' => $message->author_actor_id === $viewer->id,
             'created_at' => $message->created_at?->utc()->toIso8601String(),
