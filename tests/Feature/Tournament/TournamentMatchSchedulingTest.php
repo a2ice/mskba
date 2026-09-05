@@ -170,7 +170,7 @@ final class TournamentMatchSchedulingTest extends TestCase
             ->assertSee('21:17', false, false)
             ->assertSee(route('events.show', $event->routeIdentifier()), false)
             ->assertSee('Открыть игру')
-            ->assertSee('Начатые и завершённые игры зафиксированы.')
+            ->assertSee('Начатые, ожидающие результата и завершённые игры зафиксированы. Остальные матчи можно менять местами между свободными позициями.')
             ->assertSee('data-match-order-fixed="1"', false)
             ->assertDontSee('Сохранить порядок')
             ->assertDontSee('Перенести игру и бронь');
