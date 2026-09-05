@@ -190,7 +190,7 @@ jobs:
             # restore polling in .env/cache and leave the existing poller alive.
             TELEGRAM_CONFIGURED=0
             for ATTEMPT in 1 2 3; do
-              if $COMPOSE run -T --rm phpfpm php artisan telegram:configure-updates --if-configured </dev/null; then
+              if $COMPOSE run -T --rm phpfpm php artisan telegram:configure-updates </dev/null; then
                 TELEGRAM_CONFIGURED=1
                 break
               fi
@@ -209,5 +209,4 @@ jobs:
 
             # Webhook is now authoritative. Remove the legacy long-poll process
             # so it cannot contend for getUpdates or create misleading failures.
-            $COMPOSE stop telegram >/dev/null 2>&1 || true
-            $COMPOSE rm -f telegram >/dev/null 2>&1 || true
+            docker rm -f mskbanew-telegram >/dev/null 2>&1 || true
