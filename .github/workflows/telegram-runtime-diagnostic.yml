@@ -1,0 +1,50 @@
+name: Telegram runtime diagnostic
+
+on:
+  push:
+    branches:
+      - diagnostic/telegram-webhook-runtime
+    paths:
+      - ".github/workflows/telegram-runtime-diagnostic.yml"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect production Telegram runtime
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            set -u
+            cd /var/www/mskba
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+
+            echo "=== deployed revision ==="
+            git rev-parse HEAD || true
+
+            echo "=== telegram non-secret env ==="
+            grep -E '^(TELEGRAM_UPDATES_TRANSPORT|TELEGRAM_QUEUE_CONNECTION|TELEGRAM_QUEUE_INBOUND|TELEGRAM_QUEUE_BACKGROUND|TELEGRAM_FORCE_IPV4)=' .env || true
+
+            echo "=== compose services ==="
+            $COMPOSE ps || true
+
+            echo "=== Telegram getWebhookInfo ==="
+            $COMPOSE exec -T phpfpm php artisan tinker --execute='$r=app(\App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient::class)->call("getWebhookInfo"); $i=$r["result"]??[]; echo json_encode(["url"=>$i["url"]??null,"has_custom_certificate"=>$i["has_custom_certificate"]??null,"pending_update_count"=>$i["pending_update_count"]??null,"last_error_date"=>$i["last_error_date"]??null,"last_error_message"=>$i["last_error_message"]??null,"max_connections"=>$i["max_connections"]??null,"allowed_updates"=>$i["allowed_updates"]??null], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).PHP_EOL;' || true
+
+            echo "=== inbound/background worker logs ==="
+            $COMPOSE logs --tail=120 telegram-inbound-queue telegram-background-queue || true
+
+            echo "=== php/nginx recent logs ==="
+            $COMPOSE logs --tail=120 phpfpm nginx || true
+
+            echo "=== Redis queue keys ==="
+            $COMPOSE exec -T redis sh -lc 'redis-cli --scan --pattern "*queues*telegram*" | while read key; do printf "%s " "$key"; redis-cli TYPE "$key"; redis-cli LLEN "$key" 2>/dev/null || true; done' || true
+
+            echo "=== Laravel recent Telegram errors ==="
+            if [ -f storage/logs/laravel.log ]; then
+              tail -n 500 storage/logs/laravel.log | grep -Ei 'telegram|webhook|redis|queue' | tail -n 160 || true
+            fi
