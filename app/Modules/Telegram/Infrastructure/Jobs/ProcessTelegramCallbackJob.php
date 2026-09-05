@@ -16,7 +16,11 @@ final class ProcessTelegramCallbackJob implements ShouldQueue
     public int $tries = 3;
 
     /** @param array<string, mixed> $callback */
-    public function __construct(public readonly array $callback, public readonly ?int $updateId = null) {}
+    public function __construct(public readonly array $callback, public readonly ?int $updateId = null)
+    {
+        $this->onConnection((string) config('telegram.queue_connection', 'redis'));
+        $this->onQueue((string) config('telegram.queues.inbound', 'telegram-inbound'));
+    }
 
     public function handle(
         HandleEventParticipationCallback $eventHandler,

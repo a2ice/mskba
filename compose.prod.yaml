@@ -10,6 +10,12 @@ services:
   queue:
     container_name: mskbanew-queue
 
+  telegram-inbound-queue:
+    container_name: mskbanew-telegram-inbound-queue
+
+  telegram-background-queue:
+    container_name: mskbanew-telegram-background-queue
+
   reverb:
     container_name: mskbanew-reverb
 

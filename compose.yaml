@@ -59,6 +59,54 @@ services:
         condition: service_started
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]
 
+  telegram-inbound-queue:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    working_dir: /var/www/html
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      BROADCAST_CONNECTION: reverb
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["php", "artisan", "queue:work", "redis", "--queue=telegram-inbound", "--sleep=1", "--tries=3", "--timeout=45"]
+
+  telegram-background-queue:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    working_dir: /var/www/html
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      BROADCAST_CONNECTION: reverb
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["php", "artisan", "queue:work", "redis", "--queue=telegram-background", "--sleep=1", "--tries=3", "--timeout=90"]
+
   reverb:
     build:
       context: .

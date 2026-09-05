@@ -24,7 +24,11 @@ final class SendUserNotificationToTelegramJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [30, 120, 600];
 
-    public function __construct(public readonly int $notificationId) {}
+    public function __construct(public readonly int $notificationId)
+    {
+        $this->onConnection((string) config('telegram.queue_connection', 'redis'));
+        $this->onQueue((string) config('telegram.queues.background', 'telegram-background'));
+    }
 
     public function handle(
         TelegramBotApiClient $client,

@@ -21,7 +21,10 @@ final class ProcessTelegramReactionCountJob implements ShouldQueue
     public function __construct(
         public readonly array $update,
         public readonly ?int $updateId = null,
-    ) {}
+    ) {
+        $this->onConnection((string) config('telegram.queue_connection', 'redis'));
+        $this->onQueue((string) config('telegram.queues.background', 'telegram-background'));
+    }
 
     public function handle(
         TelegramReactionClassifier $classifier,

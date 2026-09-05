@@ -14,7 +14,11 @@ final class ProcessTelegramMessageJob implements ShouldQueue
     public int $tries = 3;
 
     /** @param array<string, mixed> $message */
-    public function __construct(public readonly array $message) {}
+    public function __construct(public readonly array $message)
+    {
+        $this->onConnection((string) config('telegram.queue_connection', 'redis'));
+        $this->onQueue((string) config('telegram.queues.inbound', 'telegram-inbound'));
+    }
 
     public function handle(HandleTelegramBotLoginStartMessage $handler): void
     {
