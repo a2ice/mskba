@@ -5,6 +5,7 @@ const CLASSIC_MODAL = 'auth-entry-classic';
 const DEFAULT_SECTION = 'login';
 const TELEGRAM_LOGIN_DEFAULT_LABEL = 'Войти через Telegram-бота';
 const TELEGRAM_LOGIN_RETRY_LABEL = 'Повторить вход через Telegram-бота';
+const TELEGRAM_LOGIN_POLL_INTERVAL_MS = 2000;
 
 window.mskbaTelegramLogin = function(telegramUser) {
     const container = getActiveTelegramLoginContainer();
@@ -357,7 +358,7 @@ function scheduleTelegramBotLoginPoll(container) {
 
     const timer = window.setTimeout(function() {
         pollTelegramBotLogin(container);
-    }, 1000);
+    }, TELEGRAM_LOGIN_POLL_INTERVAL_MS);
 
     container.data('telegramBotLoginTimer', timer);
 }
