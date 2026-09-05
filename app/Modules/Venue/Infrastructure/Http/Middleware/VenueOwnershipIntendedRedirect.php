@@ -9,6 +9,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class VenueOwnershipIntendedRedirect
 {
+    private const SESSION_KEY = 'venue_ownership.intended_url';
+
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
@@ -19,7 +21,7 @@ final class VenueOwnershipIntendedRedirect
             return $response;
         }
 
-        $intended = $request->session()->pull('url.intended');
+        $intended = $request->session()->pull(self::SESSION_KEY);
         if (! is_string($intended) || $intended === '') {
             return $response;
         }
