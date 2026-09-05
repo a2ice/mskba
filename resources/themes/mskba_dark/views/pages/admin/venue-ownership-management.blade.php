@@ -16,7 +16,7 @@
 
 @extends('theme::partials.admin.list-shell', [
     'title' => $title,
-    'subtitle' => 'Заявки на подтверждение управления, активные владения, основания и изменения статуса.',
+    'subtitle' => 'Заявки на подтверждение управления, активные владения, основания и ограничения пользователей.',
 ])
 
 @section('section-content')
@@ -160,5 +160,51 @@
             @endforelse
         </div>
         <div class="mt-4">{{ $ownerships->links() }}</div>
+    </section>
+
+    <section class="ownership-admin-section">
+        <div class="ownership-admin-section__head">
+            <div>
+                <p class="venue-ownership-card__eyebrow">ОГРАНИЧЕНИЯ</p>
+                <h2>Активные блокировки заявок</h2>
+            </div>
+        </div>
+        <p class="text-muted">Ограничение не является статусом конкретной заявки: оно запрещает этому пользователю создавать новые заявки указанного типа по конкретной площадке.</p>
+
+        <div class="ownership-admin-list">
+            @forelse($activeRestrictions as $restriction)
+                <article class="ownership-admin-card">
+                    <div class="ownership-admin-card__main">
+                        <div class="ownership-admin-card__top">
+                            <span class="ownership-admin-status">{{ $restriction->type->label() }}</span>
+                            <span>{{ $restriction->imposed_at?->format('d.m.Y H:i') }}</span>
+                        </div>
+                        <h3>{{ $restriction->venue->name }}</h3>
+                        <div class="ownership-admin-person">
+                            @include('theme::partials.avatar', ['user' => $restriction->user, 'size' => 'sm'])
+                            <div>
+                                <small>Пользователь</small>
+                                <strong>{{ $displayName($restriction->user) }}</strong>
+                            </div>
+                        </div>
+                        <p><strong>Причина:</strong> {{ $restriction->reason }}</p>
+                        @if($restriction->imposedBy)
+                            <small class="text-muted">Установил: {{ $displayName($restriction->imposedBy) }}</small>
+                        @endif
+                    </div>
+                    <form method="POST" action="{{ route('admin.venue-ownership.restrictions.revoke', $restriction) }}" class="ownership-admin-status-form">
+                        @csrf
+                        <label>
+                            <span>Комментарий при снятии</span>
+                            <input class="form-control" name="reason" maxlength="2000" placeholder="Необязательно">
+                        </label>
+                        <button class="btn btn--secondary btn--sm" type="submit">Снять ограничение</button>
+                    </form>
+                </article>
+            @empty
+                <div class="admin-empty">Активных ограничений нет.</div>
+            @endforelse
+        </div>
+        <div class="mt-4">{{ $activeRestrictions->links() }}</div>
     </section>
 @endsection
