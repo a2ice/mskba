@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Modules\Event\Application\Listeners\RecalculatePlayerObjectiveAssessments;
+use App\Modules\Event\Domain\Enums\GameRecruitmentModeEnum;
 use App\Modules\Event\Domain\Events\GameStatisticsConfirmed;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\VenueBooking;
@@ -61,6 +62,13 @@ class AppServiceProvider extends ServiceProvider
             'theme::partials.mobile-primary-bar',
         ], function ($view): void {
             $view->with('siteSummary', app(SiteSummaryService::class)->get());
+        });
+        View::composer('theme::pages.events.game-show', function ($view): void {
+            $game = $view->getData()['game'] ?? null;
+
+            if ($game?->recruitment_mode === null) {
+                $game->setAttribute('recruitment_mode', GameRecruitmentModeEnum::PREFORMED_TEAMS->value);
+            }
         });
 
         Event::observe(EventSiteSummaryObserver::class);
