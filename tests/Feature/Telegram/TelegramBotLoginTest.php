@@ -74,6 +74,34 @@ final class TelegramBotLoginTest extends TestCase
         ]);
     }
 
+    public function test_bot_login_acknowledges_callback_before_resolving_user(): void
+    {
+        $token = (string) $this
+            ->postJson(route('auth.telegram.bot.start'))
+            ->assertOk()
+            ->json('token');
+        $acknowledgedBeforeUserResolution = false;
+
+        Http::fake(function ($request) use (&$acknowledgedBeforeUserResolution) {
+            if (str_ends_with($request->url(), '/answerCallbackQuery')) {
+                $acknowledgedBeforeUserResolution = User::query()->count() === 0;
+            }
+
+            return Http::response([
+                'ok' => true,
+                'result' => true,
+            ]);
+        });
+
+        app(HandleTelegramBotLoginCallback::class)->handle($this->loginCallback($token));
+
+        $this->assertTrue($acknowledgedBeforeUserResolution);
+        $this->assertSame(1, User::query()->count());
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/answerCallbackQuery')
+            && data_get($request->data(), 'callback_query_id') === 'login-callback-1'
+            && data_get($request->data(), 'text') === 'Подтверждаем вход…');
+    }
+
     public function test_browser_waits_until_bot_login_is_confirmed(): void
     {
         $token = (string) $this
