@@ -18,8 +18,11 @@ use Illuminate\Support\Facades\Route;
 
 final class VenueOwnershipServiceProvider extends RouteServiceProvider
 {
-    public function boot(Router $router): void
+    public function boot(): void
     {
+        parent::boot();
+
+        $router = app(Router::class);
         $router->pushMiddlewareToGroup('web', VenueOwnershipIntendedRedirect::class);
 
         $this->routes(function (): void {
