@@ -7,6 +7,7 @@
             $owner->profile?->last_name,
         ]))) ?: $owner->username;
     }
+    $ownershipUnderReview = $currentOwnership?->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipStatusEnum::UNDER_REVIEW;
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -41,12 +42,19 @@
             @endif
 
             @if($owner)
-                <article class="venue-ownership-card venue-ownership-card--confirmed">
-                    <div class="venue-ownership-status-icon"><i class="ti ti-shield-check"></i></div>
+                <article class="venue-ownership-card {{ $ownershipUnderReview ? 'venue-ownership-card--review' : 'venue-ownership-card--confirmed' }}">
+                    <div class="venue-ownership-status-icon"><i class="ti {{ $ownershipUnderReview ? 'ti-shield-question' : 'ti-shield-check' }}"></i></div>
                     <div>
-                        <p class="venue-ownership-card__eyebrow">УПРАВЛЕНИЕ ПОДТВЕРЖДЕНО</p>
-                        <h2>У площадки есть подтверждённый представитель</h2>
-                        <p>Управление этой площадкой на MSKBA уже подтверждено.</p>
+                        <p class="venue-ownership-card__eyebrow">{{ $ownershipUnderReview ? 'СТАТУС УТОЧНЯЕТСЯ' : 'УПРАВЛЕНИЕ ПОДТВЕРЖДЕНО' }}</p>
+                        <h2>{{ $ownershipUnderReview ? 'Полномочия представителя уточняются' : 'У площадки есть подтверждённый представитель' }}</h2>
+                        @if($ownershipUnderReview)
+                            <p>Администрация MSKBA уточняет основания управления. На это время права управления площадкой приостановлены.</p>
+                            @if($currentOwnership?->status_reason)
+                                <p><strong>Причина:</strong> {{ $currentOwnership->status_reason }}</p>
+                            @endif
+                        @else
+                            <p>Управление этой площадкой на MSKBA уже подтверждено.</p>
+                        @endif
                         <div class="venue-ownership-owner">
                             @include('theme::partials.avatar', ['user' => $owner, 'size' => 'md'])
                             <div>
@@ -82,7 +90,15 @@
                             Войти и подтвердить управление
                         </button>
                     @else
-                        @if($pendingClaim)
+                        @if($restriction)
+                            <div class="venue-ownership-inline-state venue-ownership-inline-state--danger">
+                                <div>
+                                    <span>Повторная подача ограничена</span>
+                                    <strong>Для вашего аккаунта заблокированы заявки на управление этой площадкой.</strong>
+                                    <small>{{ $restriction->reason }}</small>
+                                </div>
+                            </div>
+                        @elseif($pendingClaim)
                             <div class="venue-ownership-inline-state">
                                 <div>
                                     <span>Ваша заявка</span>
@@ -96,16 +112,17 @@
                             <div class="venue-ownership-inline-state">
                                 <div>
                                     <span>Перед подачей заявки</span>
-                                    <strong>Нужно подтвердить аккаунт и основной контакт</strong>
+                                    <strong>Нужно подтвердить аккаунт или основной контакт</strong>
                                 </div>
                                 <a class="btn btn--primary btn--sm" href="{{ route('venues.management.verify', $venue) }}">
-                                    Подтвердить аккаунт
+                                    Подтвердить данные
                                 </a>
                             </div>
                         @elseif($canSubmitClaim)
                             <form
                                 id="claim-form"
                                 method="POST"
+                                enctype="multipart/form-data"
                                 action="{{ route('venues.management.claim', $venue) }}"
                                 class="venue-ownership-form"
                             >
@@ -125,7 +142,22 @@
                                     placeholder="Например: являюсь администратором спорткомплекса, могу подтвердить полномочия с корпоративной почты…"
                                 >{{ old('evidence') }}</textarea>
                                 @error('evidence')<div class="alert alert-danger mt-2">{{ $message }}</div>@enderror
-                                <button type="submit" class="btn btn--primary">Подать заявку</button>
+
+                                <label for="ownershipDocuments" class="mt-3">
+                                    <span>Документы-основания <small>(необязательно)</small></span>
+                                    <small>До 5 файлов: JPG, PNG, PDF или TXT, не более 10 МБ каждый. После подтверждения администратор сможет сохранить подходящие файлы в архив владения.</small>
+                                </label>
+                                <input
+                                    id="ownershipDocuments"
+                                    class="form-control"
+                                    type="file"
+                                    name="documents[]"
+                                    multiple
+                                    accept=".jpg,.jpeg,.png,.pdf,.txt"
+                                >
+                                @error('documents.*')<div class="alert alert-danger mt-2">{{ $message }}</div>@enderror
+
+                                <button type="submit" class="btn btn--primary mt-3">Подать заявку</button>
                             </form>
                         @endif
                     @endguest
