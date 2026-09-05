@@ -12,6 +12,13 @@ body.main .site-header {
     -webkit-backdrop-filter: none;
 }
 
+/* The header now reserves its own height in document flow. The old first-screen
+   offset was compensation for a permanently fixed header and would double the
+   spacing with the current sticky-header behaviour. */
+html body .first-screen {
+    padding-top: 0;
+}
+
 .site-header > .header-wrapper {
     position: relative;
     z-index: 30;
@@ -52,6 +59,12 @@ body:not(.main) .site-header > .header-wrapper {
    While the menu is open, keep the wrapper visually fixed but remove those
    containing-block triggers so the navigation once again fills the viewport. */
 @media screen and (max-width: 768px) {
+    /* Telegram used to add its measured header height to first-screen as well.
+       The header is in flow there too, so keep only the section's own spacing. */
+    html body.telegram-mini-app:not(.main) .first-screen {
+        padding-top: 0;
+    }
+
     body.nav-shown .site-header > .header-wrapper,
     body.nav-shown .site-header.is-fixed > .header-wrapper,
     body.nav-shown .site-header.is-fixed.is-fixed-shown > .header-wrapper {
