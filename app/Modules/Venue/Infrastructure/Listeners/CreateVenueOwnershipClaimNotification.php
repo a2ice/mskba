@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Infrastructure\Listeners;
 
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationSourceEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimApproved;
@@ -50,8 +51,10 @@ final readonly class CreateVenueOwnershipClaimNotification
             title: $title,
             body: $body,
             actionUrl: route('account.venue-ownership.show', $claim, false),
+            actionText: 'Открыть заявку',
             payload: [
                 'source' => $source->value,
+                'delivery_category' => UserNotificationDeliveryCategoryEnum::REQUEST->value,
                 'claim_id' => $claim->public_id,
                 'venue_id' => $claim->venue_id,
             ],
