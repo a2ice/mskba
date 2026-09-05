@@ -72,7 +72,7 @@ final class VenueOwnershipClaimController extends Controller
 
     public function verify(Request $request, Venue $venue): RedirectResponse
     {
-        $request->session()->put('url.intended', route('venues.management', $venue));
+        $request->session()->put('venue_ownership.intended_url', route('venues.management', $venue));
 
         return redirect()
             ->route('account.confirmation')
