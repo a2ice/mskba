@@ -20,6 +20,7 @@ use App\Modules\Venue\Domain\Models\VenueOwnershipDocument;
 use App\Modules\Venue\Domain\Models\VenueUserRestriction;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -61,6 +62,13 @@ final class AdminVenueOwnershipController extends Controller
             ->paginate(30, ['*'], 'ownershipsPage')
             ->withQueryString();
 
+        $activeRestrictions = VenueUserRestriction::query()
+            ->with(['venue', 'user.profile', 'imposedBy.profile'])
+            ->where('active_marker', true)
+            ->latest('imposed_at')
+            ->paginate(30, ['*'], 'restrictionsPage')
+            ->withQueryString();
+
         return ThemeResolver::page('admin.venue-ownership-management', [
             'claims' => $claims,
             'queue' => $queue,
@@ -68,6 +76,7 @@ final class AdminVenueOwnershipController extends Controller
             'ownershipStatus' => $ownershipStatus,
             'ownershipStatuses' => VenueOwnershipStatusEnum::cases(),
             'documentTypes' => VenueOwnershipDocumentTypeEnum::cases(),
+            'activeRestrictions' => $activeRestrictions,
         ]);
     }
 
@@ -195,6 +204,32 @@ final class AdminVenueOwnershipController extends Controller
             $document->name,
             ['Content-Type' => 'application/octet-stream', 'X-Content-Type-Options' => 'nosniff'],
         );
+    }
+
+    public function rentalRequesterRestriction(
+        Request $request,
+        VenueBooking $venueBooking,
+        VenueUserRestrictionService $restrictions,
+    ): JsonResponse {
+        $this->administrator($request);
+        $venueBooking->loadMissing(['venue', 'requester']);
+        abort_unless($venueBooking->requester !== null, 422);
+
+        $restriction = $restrictions->active(
+            $venueBooking->venue,
+            $venueBooking->requester,
+            VenueUserRestrictionTypeEnum::RENTAL_REQUEST,
+        );
+
+        return response()->json([
+            'restricted' => $restriction !== null,
+            'reason' => $restriction?->reason,
+            'imposed_at' => $restriction?->imposed_at?->toIso8601String(),
+            'block_url' => route('account.venue-bookings.block-requester', $venueBooking, false),
+            'revoke_url' => $restriction === null
+                ? null
+                : route('admin.venue-ownership.restrictions.revoke', $restriction, false),
+        ]);
     }
 
     public function blockRentalRequester(
