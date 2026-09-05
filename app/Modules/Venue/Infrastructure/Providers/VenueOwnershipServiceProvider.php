@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Infrastructure\Providers;
 
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipDocumentController;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
@@ -10,6 +11,7 @@ use App\Modules\Venue\Domain\Models\VenueOwnershipClaimConversation;
 use App\Modules\Venue\Infrastructure\Http\Middleware\VenueOwnershipIntendedRedirect;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimConversationController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimDocumentController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Broadcast;
@@ -47,6 +49,9 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
                                 ->name('account.venue-ownership.reject');
                             Route::post('/reject-and-block', [AdminVenueOwnershipController::class, 'rejectAndBlock'])
                                 ->name('account.venue-ownership.reject-and-block');
+                            Route::get('/documents/{document}', [VenueOwnershipClaimDocumentController::class, 'download'])
+                                ->middleware('throttle:60,1')
+                                ->name('account.venue-ownership.documents.download');
                             Route::get('/conversation', [VenueOwnershipClaimConversationController::class, 'index'])
                                 ->name('account.venue-ownership.conversation.index');
                             Route::post('/conversation/messages', [VenueOwnershipClaimConversationController::class, 'store'])
@@ -77,6 +82,8 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
                             ->name('admin.venue-ownership.documents.message');
                         Route::get('/documents/{document}', [AdminVenueOwnershipController::class, 'downloadDocument'])
                             ->name('admin.venue-ownership.documents.download');
+                        Route::patch('/documents/{document}', [AdminVenueOwnershipDocumentController::class, 'update'])
+                            ->name('admin.venue-ownership.documents.update');
                         Route::post('/restrictions/{venueUserRestriction}/revoke', [AdminVenueOwnershipController::class, 'revokeRestriction'])
                             ->name('admin.venue-ownership.restrictions.revoke');
                     });
