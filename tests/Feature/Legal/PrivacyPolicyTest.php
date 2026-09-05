@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Legal;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class PrivacyPolicyTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_privacy_policy_is_publicly_available(): void
     {
         $this->get(route('privacy.policy'))
