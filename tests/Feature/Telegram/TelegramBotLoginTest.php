@@ -118,6 +118,48 @@ final class TelegramBotLoginTest extends TestCase
         $this->assertSame(0, User::query()->count());
     }
 
+    public function test_status_polling_does_not_throttle_a_new_bot_login_start(): void
+    {
+        $token = (string) $this
+            ->postJson(route('auth.telegram.bot.start'))
+            ->assertOk()
+            ->json('token');
+
+        for ($attempt = 0; $attempt < 12; $attempt++) {
+            $this
+                ->postJson(route('auth.telegram.bot.status'), ['token' => $token])
+                ->assertOk()
+                ->assertJsonPath('status', 'pending');
+        }
+
+        $this
+            ->postJson(route('auth.telegram.bot.start'))
+            ->assertOk()
+            ->assertJsonPath('status', 'pending');
+    }
+
+    public function test_bare_start_command_gets_a_helpful_reply_instead_of_silence(): void
+    {
+        app(HandleTelegramBotLoginStartMessage::class)->handle([
+            'message_id' => 99,
+            'from' => [
+                'id' => 777,
+            ],
+            'chat' => [
+                'id' => 777,
+                'type' => 'private',
+            ],
+            'text' => '/start',
+        ]);
+
+        Http::assertSent(fn ($request): bool => $request->url()
+            === 'https://api.telegram.org/bot123456:test-token/sendMessage'
+            && str_contains(
+                (string) data_get($request->data(), 'text'),
+                'вернитесь на сайт',
+            ));
+    }
+
     public function test_bot_login_reuses_existing_telegram_account(): void
     {
         $user = User::factory()->create(['username' => 'existing_player']);
