@@ -1,1 +1,0 @@
-MSKBA Telegram incident 2026-09-05: production VDS can reach normal HTTPS destinations but TCP/443 to tested Telegram IPv4 ranges times out from both host and application container. Telegram getWebhookInfo reported 13 pending updates and last_error_message "Connection timed out". See telegram-network-incident-2026-09-05.md for details.
