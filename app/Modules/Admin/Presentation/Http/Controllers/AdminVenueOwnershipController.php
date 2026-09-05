@@ -24,6 +24,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -124,17 +125,25 @@ final class AdminVenueOwnershipController extends Controller
         $validated = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:2000']]);
 
         try {
-            if ($venueOwnershipClaim->status === VenueOwnershipClaimStatusEnum::PENDING) {
-                $review->reject($venueOwnershipClaim, $request->user(), $validated['reason']);
-            }
-            $venueOwnershipClaim->loadMissing(['venue', 'applicant']);
-            $restrictions->impose(
-                $venueOwnershipClaim->venue,
-                $venueOwnershipClaim->applicant,
-                VenueUserRestrictionTypeEnum::OWNERSHIP_CLAIM,
-                $validated['reason'],
-                $request->user(),
-            );
+            DB::transaction(function () use ($venueOwnershipClaim, $review, $restrictions, $request, $validated): void {
+                $claim = VenueOwnershipClaim::query()
+                    ->with(['venue', 'applicant'])
+                    ->lockForUpdate()
+                    ->findOrFail($venueOwnershipClaim->id);
+
+                if ($claim->status === VenueOwnershipClaimStatusEnum::PENDING) {
+                    $review->reject($claim, $request->user(), $validated['reason']);
+                    $claim->refresh()->loadMissing(['venue', 'applicant']);
+                }
+
+                $restrictions->impose(
+                    $claim->venue,
+                    $claim->applicant,
+                    VenueUserRestrictionTypeEnum::OWNERSHIP_CLAIM,
+                    $validated['reason'],
+                    $request->user(),
+                );
+            });
         } catch (VenueOwnershipClaimException $exception) {
             return back()->with('error', $exception->getMessage());
         }
