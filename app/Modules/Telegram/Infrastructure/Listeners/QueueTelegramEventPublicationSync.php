@@ -14,10 +14,14 @@ final class QueueTelegramEventPublicationSync
             ->whereKey($changed->eventId)
             ->first(['id', 'starts_at']);
 
-        SyncTelegramEventPublicationJob::dispatch($changed->eventId)->afterCommit();
+        SyncTelegramEventPublicationJob::dispatch($changed->eventId, 'change')
+            ->afterCommit();
 
         if ($aggregateEvent?->starts_at->isFuture()) {
-            SyncTelegramEventPublicationJob::dispatch($changed->eventId)
+            SyncTelegramEventPublicationJob::dispatch(
+                $changed->eventId,
+                'start:'.$aggregateEvent->starts_at->getTimestamp(),
+            )
                 ->delay($aggregateEvent->starts_at)
                 ->afterCommit();
         }
