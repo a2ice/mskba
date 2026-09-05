@@ -43,9 +43,9 @@ final class ListVenuesHandler
                     foreach ($terms as $term) {
                         $needle = '%'.addcslashes($term, '%_\\').'%';
                         $filtered->where(fn ($match) => $match
-                            ->where('name', 'ilike', $needle)
-                            ->orWhere('raw_address', 'ilike', $needle)
-                            ->orWhere('short_description', 'ilike', $needle));
+                            ->whereLike('name', $needle)
+                            ->orWhereLike('raw_address', $needle)
+                            ->orWhereLike('short_description', $needle));
                     }
                 })
                 ->when($filters['type'] ?? null, fn ($filtered, string $type) => $filtered->where('type', $type))

@@ -13,25 +13,24 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipStatusEnum;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimApproved;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimRejected;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
-use App\Support\Features\FeatureFlags;
-use App\Support\Features\VenueRentalFeature;
+use App\Modules\Venue\Infrastructure\Broadcasting\VenueOwnershipClaimUpdatedBroadcast;
 use Illuminate\Support\Facades\DB;
 
 final readonly class ReviewVenueOwnershipClaimHandler
 {
     public function __construct(
         private VenueMembershipAccess $memberships,
-        private FeatureFlags $features,
     ) {}
 
     public function approve(VenueOwnershipClaim $claim, User $reviewer, ?string $reason = null): VenueOwnershipClaim
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $reviewer = $this->authorizedReviewer($reviewer);
 
         return DB::transaction(function () use ($claim, $reviewer, $reason): VenueOwnershipClaim {
@@ -47,25 +46,72 @@ final readonly class ReviewVenueOwnershipClaimHandler
             }
 
             if ($reviewer->isSameIdentity($claim->applicant_user_id)) {
-                throw new VenueOwnershipClaimException('Нельзя одобрить собственную заявку на владение.');
+                throw new VenueOwnershipClaimException('Нельзя одобрить собственную заявку на управление.');
             }
 
             if ($this->memberships->hasActiveOwner($venue)) {
-                throw new VenueOwnershipClaimException('У площадки уже есть активный владелец. Для смены владельца нужен отдельный процесс.');
+                throw new VenueOwnershipClaimException('У площадки уже есть активный подтверждённый представитель.');
             }
 
             $membership = $this->createOwnerMembership($venue, $claim, $reviewer);
+            $decidedAt = now();
+
+            VenueOwnership::query()->create([
+                'venue_id' => $venue->id,
+                'owner_user_id' => $claim->applicant_user_id,
+                'source_claim_id' => $claim->id,
+                'contract_membership_id' => $membership->id,
+                'status' => VenueOwnershipStatusEnum::ACTIVE,
+                'status_reason' => filled($reason) ? trim((string) $reason) : null,
+                'status_changed_by_user_id' => $reviewer->id,
+                'status_changed_at' => $decidedAt,
+                'approved_at' => $decidedAt,
+                'active_marker' => true,
+            ]);
 
             $claim->forceFill([
                 'status' => VenueOwnershipClaimStatusEnum::APPROVED,
-                'decision_reason' => $reason,
+                'decision_reason' => filled($reason) ? trim((string) $reason) : null,
                 'reviewer_user_id' => $reviewer->id,
                 'owner_contract_membership_id' => $membership->id,
                 'active_marker' => null,
-                'decided_at' => now(),
+                'decided_at' => $decidedAt,
             ])->save();
 
-            DB::afterCommit(static fn () => event(new VenueOwnershipClaimApproved($claim->id)));
+            $superseded = VenueOwnershipClaim::query()
+                ->where('venue_id', $venue->id)
+                ->whereKeyNot($claim->id)
+                ->where('status', VenueOwnershipClaimStatusEnum::PENDING->value)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($superseded as $otherClaim) {
+                $otherClaim->forceFill([
+                    'status' => VenueOwnershipClaimStatusEnum::REJECTED,
+                    'decision_reason' => 'Управление площадкой подтверждено по другой заявке.',
+                    'reviewer_user_id' => $reviewer->id,
+                    'active_marker' => null,
+                    'decided_at' => $decidedAt,
+                ])->save();
+            }
+
+            DB::afterCommit(function () use ($claim, $superseded): void {
+                event(new VenueOwnershipClaimApproved($claim->id));
+                broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                    $claim->public_id,
+                    $claim->status->value,
+                    $claim->status->label(),
+                ))->toOthers();
+
+                foreach ($superseded as $otherClaim) {
+                    event(new VenueOwnershipClaimRejected($otherClaim->id));
+                    broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                        $otherClaim->public_id,
+                        $otherClaim->status->value,
+                        $otherClaim->status->label(),
+                    ))->toOthers();
+                }
+            });
 
             return $claim->refresh();
         });
@@ -73,7 +119,6 @@ final readonly class ReviewVenueOwnershipClaimHandler
 
     public function reject(VenueOwnershipClaim $claim, User $reviewer, string $reason): VenueOwnershipClaim
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $reviewer = $this->authorizedReviewer($reviewer);
 
         return DB::transaction(function () use ($claim, $reviewer, $reason): VenueOwnershipClaim {
@@ -92,7 +137,14 @@ final readonly class ReviewVenueOwnershipClaimHandler
                 'decided_at' => now(),
             ])->save();
 
-            DB::afterCommit(static fn () => event(new VenueOwnershipClaimRejected($claim->id)));
+            DB::afterCommit(function () use ($claim): void {
+                event(new VenueOwnershipClaimRejected($claim->id));
+                broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                    $claim->public_id,
+                    $claim->status->value,
+                    $claim->status->label(),
+                ))->toOthers();
+            });
 
             return $claim->refresh();
         });
@@ -102,8 +154,8 @@ final readonly class ReviewVenueOwnershipClaimHandler
     {
         $reviewer = $reviewer->canonical();
 
-        if (! $reviewer->isConfirmed() || ! $reviewer->hasSystemRole(UserSystemRoleEnum::SUPERADMIN)) {
-            throw new VenueOwnershipClaimException('Рассматривать заявки на владение может только superadmin.');
+        if (! $reviewer->isConfirmed() || ! $reviewer->system_role->atLeast(UserSystemRoleEnum::ADMIN)) {
+            throw new VenueOwnershipClaimException('Рассматривать заявки на управление может только администратор или суперадминистратор.');
         }
 
         return $reviewer;
@@ -117,13 +169,13 @@ final readonly class ReviewVenueOwnershipClaimHandler
         $accessLevel = VenueMembershipAccessLevelEnum::OWNER;
         $contract = Contract::query()->create([
             'family' => ContractFamilyEnum::MEMBERSHIP,
-            'name' => "Владение площадкой: {$venue->name}",
+            'name' => "Управление площадкой: {$venue->name}",
             'status' => ContractStatusEnum::ACTIVE,
             'starts_at' => now(),
             'assigned_by' => $reviewer->id,
             'assigned_at' => now(),
             'assigner' => UserParticipationRoleAssignerEnum::USER,
-            'comment' => "Одобрение заявки на владение #{$claim->id}",
+            'comment' => "Одобрение заявки на управление #{$claim->id}",
         ]);
 
         $membership = $contract->membership()->create([

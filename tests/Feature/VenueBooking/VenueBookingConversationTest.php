@@ -150,18 +150,20 @@ final class VenueBookingConversationTest extends TestCase
     {
         [$owner, $ownerActor, $venue] = $this->ownedVenue();
         [$requester, $requesterActor] = $this->userAndActor();
+        $requester->forceFill(['username' => 'booking-requester'])->save();
         $booking = $this->booking($venue, $requester, $requesterActor);
         $messages = app(SendVenueBookingMessageHandler::class);
         $first = $messages->handle($booking->id, $requesterActor, (string) Str::uuid(), 'Вопрос заявителя');
         $second = $messages->handle($booking->id, $ownerActor, (string) Str::uuid(), 'Ответ площадки');
         $summary = app(GetVenueBookingConversationSummary::class);
+        $requesterLabel = 'booking-requester';
 
         $this->assertSame(1, $summary->handle($booking, $requesterActor)['unread_count']);
         $this->assertSame(1, $summary->handle($booking, $ownerActor)['unread_count']);
 
         $this->actingAs($owner)->get(route('account.venue-bookings.show', $booking))
             ->assertOk()
-            ->assertSee($requester->username)
+            ->assertSee($requesterLabel)
             ->assertSee('venue-booking-applicant__button', false)
             ->assertSee('data-modal="venue-booking-conversation"', false);
 
@@ -175,7 +177,7 @@ final class VenueBookingConversationTest extends TestCase
 
         $this->actingAs($requester)->getJson(route('account.venue-bookings.show', $booking))
             ->assertOk()
-            ->assertJsonPath('requester.name', $requester->username)
+            ->assertJsonPath('requester.name', $requesterLabel)
             ->assertJsonPath('conversation.unread_count', 1)
             ->assertJsonPath('conversation.latest_message_id', $second->public_id);
 

@@ -28,6 +28,53 @@ final class VenueMembershipAccess
             ->exists();
     }
 
+    public function activeOwnerMembership(Venue $venue): ?ContractMembership
+    {
+        return $this->baseOwnerQuery()
+            ->with(['user.profile', 'contract'])
+            ->where('scope_id', $venue->id)
+            ->latest('id')
+            ->first();
+    }
+
+    public function activeOwner(Venue $venue): ?User
+    {
+        $user = $this->activeOwnerMembership($venue)?->user;
+        if ($user === null) {
+            return null;
+        }
+
+        return $user->canonical()->loadMissing('profile');
+    }
+
+    /** @return array<int> */
+    public function allowedUserIdsForVenue(Venue $venue, VenuePermissionEnum $permission): array
+    {
+        $now = now();
+
+        return ContractMembership::query()
+            ->where('scope_type', ContractMembershipScopeTypeEnum::VENUE->value)
+            ->where('scope_id', $venue->id)
+            ->whereHas('contract', function (Builder $query) use ($permission, $now): void {
+                $query
+                    ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
+                    ->where('status', ContractStatusEnum::ACTIVE->value)
+                    ->where(function (Builder $query) use ($now): void {
+                        $query->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
+                    })
+                    ->where(function (Builder $query) use ($now): void {
+                        $query->whereNull('expires_at')->orWhere('expires_at', '>', $now);
+                    })
+                    ->whereHas('permissions', fn (Builder $query) => $query->where('permission', $permission->value));
+            })
+            ->pluck('user_id')
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     /**
      * @return array<int>
      */

@@ -4,16 +4,26 @@ namespace App\Modules\Venue\Infrastructure\Providers;
 
 use App\Modules\Moderation\Domain\Events\ModerationRequestApproved;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Events\VenueMembershipGranted;
 use App\Modules\Venue\Domain\Events\VenueMembershipRevoked;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimApproved;
+use App\Modules\Venue\Domain\Events\VenueOwnershipClaimMessageSent;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimRejected;
 use App\Modules\Venue\Domain\Events\VenueOwnershipClaimSubmitted;
+use App\Modules\Venue\Domain\Events\VenueOwnershipStatusChanged;
+use App\Modules\Venue\Domain\Events\VenueUserRestrictionImposed;
+use App\Modules\Venue\Domain\Events\VenueUserRestrictionRevoked;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Infrastructure\Listeners\ConfirmVenueAfterModerationRequestApproved;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueMembershipNotification;
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipClaimNotification;
+use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipStatusNotification;
+use App\Modules\Venue\Infrastructure\Listeners\CreateVenueUserRestrictionNotification;
+use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipAdministrators;
+use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipClaimMessageRecipients;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
@@ -39,34 +49,54 @@ class VenueAccessServiceProvider extends ServiceProvider
 
         Event::listen(ModerationRequestApproved::class, ConfirmVenueAfterModerationRequestApproved::class);
         Event::listen(VenueOwnershipClaimSubmitted::class, CreateVenueOwnershipClaimNotification::class);
+        Event::listen(VenueOwnershipClaimSubmitted::class, NotifyVenueOwnershipAdministrators::class);
         Event::listen(VenueOwnershipClaimApproved::class, CreateVenueOwnershipClaimNotification::class);
         Event::listen(VenueOwnershipClaimRejected::class, CreateVenueOwnershipClaimNotification::class);
+        Event::listen(VenueOwnershipClaimMessageSent::class, NotifyVenueOwnershipClaimMessageRecipients::class);
+        Event::listen(VenueOwnershipStatusChanged::class, CreateVenueOwnershipStatusNotification::class);
+        Event::listen(VenueUserRestrictionImposed::class, CreateVenueUserRestrictionNotification::class);
+        Event::listen(VenueUserRestrictionRevoked::class, CreateVenueUserRestrictionNotification::class);
         Event::listen(VenueMembershipGranted::class, CreateVenueMembershipNotification::class);
         Event::listen(VenueMembershipRevoked::class, CreateVenueMembershipNotification::class);
 
         View::composer('theme::pages.venues.show', function ($view): void {
             $venue = $view->getData()['venue'] ?? null;
+            $user = request()->user();
 
-            if ($venue !== null && ($venue->canEdit || $venue->canEditSchedule)) {
+            if ($venue === null) {
+                return;
+            }
+
+            $venueModel = Venue::query()->find($venue->id);
+            if ($venueModel === null) {
+                return;
+            }
+
+            $hasCurrentOwnership = VenueOwnership::query()
+                ->where('venue_id', $venueModel->id)
+                ->where('active_marker', true)
+                ->exists();
+            $hasActiveOwner = app(VenueMembershipAccess::class)->hasActiveOwner($venueModel);
+
+            if (! $hasCurrentOwnership && ! $hasActiveOwner) {
+                $view->with('contextManagementUrl', route('venues.management', $venueModel));
+                $view->with('contextManagementLabel', 'Подтвердить управление');
+            } elseif ($venue->canEdit || $venue->canEditSchedule) {
                 $view->with('contextManagementUrl', route('account.venues.show', $venue->routeIdentifier()));
                 $view->with('contextManagementLabel', 'Управление площадкой');
             }
 
-            $user = request()->user();
-            if ($venue !== null) {
-                $venueModel = Venue::query()->find($venue->id);
-                if ($venueModel !== null && $this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venueModel)) {
-                    if (VenueBookingPolicy::query()->where('venue_id', $venueModel->id)->where('active_marker', true)->where('is_enabled', true)->exists()) {
-                        $view->with('rentalUrl', route('venues.rental.show', $venueModel));
-                    }
+            if ($this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venueModel)) {
+                if (VenueBookingPolicy::query()->where('venue_id', $venueModel->id)->where('active_marker', true)->where('is_enabled', true)->exists()) {
+                    $view->with('rentalUrl', route('venues.rental.show', $venueModel));
+                }
 
-                    if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
-                        $view->with('commercialMembershipsUrl', route('account.venues.commercial-memberships.index', $venueModel));
-                    }
+                if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {
+                    $view->with('commercialMembershipsUrl', route('account.venues.commercial-memberships.index', $venueModel));
+                }
 
-                    if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY)) {
-                        $view->with('bookingPolicyUrl', route('account.venues.booking-policy.edit', $venueModel));
-                    }
+                if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_BOOKING_POLICY)) {
+                    $view->with('bookingPolicyUrl', route('account.venues.booking-policy.edit', $venueModel));
                 }
             }
         });

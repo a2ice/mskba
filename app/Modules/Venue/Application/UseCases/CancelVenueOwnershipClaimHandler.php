@@ -7,17 +7,13 @@ use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
-use App\Support\Features\FeatureFlags;
-use App\Support\Features\VenueRentalFeature;
+use App\Modules\Venue\Infrastructure\Broadcasting\VenueOwnershipClaimUpdatedBroadcast;
 use Illuminate\Support\Facades\DB;
 
 final readonly class CancelVenueOwnershipClaimHandler
 {
-    public function __construct(private FeatureFlags $features) {}
-
     public function handle(VenueOwnershipClaim $claim, User $applicant): VenueOwnershipClaim
     {
-        $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
         $applicant = $applicant->canonical();
 
         return DB::transaction(function () use ($claim, $applicant): VenueOwnershipClaim {
@@ -37,6 +33,12 @@ final readonly class CancelVenueOwnershipClaimHandler
                 'active_marker' => null,
                 'cancelled_at' => now(),
             ])->save();
+
+            DB::afterCommit(fn () => broadcast(new VenueOwnershipClaimUpdatedBroadcast(
+                $claim->public_id,
+                $claim->status->value,
+                $claim->status->label(),
+            ))->toOthers());
 
             return $claim->refresh();
         });

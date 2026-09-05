@@ -98,7 +98,7 @@ final readonly class GetBookingDetails
             return ['name' => 'Пользователь', 'avatar_url' => null];
         }
 
-        $profile = $user->profile;
+        $profile = $user->relationLoaded('profile') ? $user->profile : null;
         $name = $profile?->first_name
             ? trim($profile->first_name.($profile->last_name ? ' '.$profile->last_name : ''))
             : ($user->username ?: 'Пользователь #'.$user->id);

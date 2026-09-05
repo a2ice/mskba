@@ -1,0 +1,244 @@
+.ownership-admin-section {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 42px;
+}
+
+.ownership-admin-section--ownerships {
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.ownership-admin-section__head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+}
+
+.ownership-admin-section__head h2 {
+    margin: 3px 0 0;
+    font-size: clamp(1.35rem, 2vw, 1.8rem);
+}
+
+.ownership-admin-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ownership-admin-tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 7px 13px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 999px;
+    background: #0b0d0b;
+    color: rgba(255,255,255,.72);
+    text-decoration: none;
+    transition: border-color .18s ease, color .18s ease, background .18s ease;
+}
+
+.ownership-admin-tab:hover,
+.ownership-admin-tab.is-active {
+    color: #fff;
+    border-color: rgba(255,101,27,.65);
+    background: rgba(255,101,27,.09);
+}
+
+.ownership-admin-list {
+    display: grid;
+    gap: 12px;
+}
+
+.ownership-admin-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 22px;
+    padding: 18px;
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 18px;
+    background: rgba(11,13,11,.82);
+}
+
+.ownership-admin-card--ownership {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 340px);
+}
+
+.ownership-admin-card__main {
+    min-width: 0;
+    display: grid;
+    gap: 12px;
+}
+
+.ownership-admin-card__top,
+.ownership-admin-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: rgba(255,255,255,.55);
+    font-size: .86rem;
+}
+
+.ownership-admin-card__top {
+    justify-content: space-between;
+}
+
+.ownership-admin-card h3 {
+    margin: 0;
+    font-size: 1.08rem;
+}
+
+.ownership-admin-status {
+    display: inline-flex;
+    align-items: center;
+    width: max-content;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.14);
+    color: #fff;
+    font-size: .78rem;
+    font-weight: 700;
+}
+
+.ownership-admin-status--pending,
+.ownership-admin-status--under_review {
+    border-color: rgba(255,190,70,.42);
+    background: rgba(255,190,70,.08);
+}
+
+.ownership-admin-status--approved,
+.ownership-admin-status--active {
+    border-color: rgba(98,211,142,.42);
+    background: rgba(98,211,142,.08);
+}
+
+.ownership-admin-status--rejected,
+.ownership-admin-status--cancelled,
+.ownership-admin-status--revoked {
+    border-color: rgba(255,105,105,.36);
+    background: rgba(255,105,105,.07);
+}
+
+.ownership-admin-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ownership-admin-person > div:last-child {
+    display: grid;
+    gap: 1px;
+}
+
+.ownership-admin-person small {
+    color: rgba(255,255,255,.46);
+}
+
+.ownership-admin-evidence {
+    margin: 0;
+    color: rgba(255,255,255,.68);
+}
+
+.ownership-admin-card__actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+}
+
+.ownership-admin-status-form {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    padding-left: 18px;
+    border-left: 1px solid rgba(255,255,255,.08);
+}
+
+.ownership-admin-status-form label {
+    display: grid;
+    gap: 6px;
+}
+
+.ownership-admin-status-form label > span {
+    font-size: .82rem;
+    color: rgba(255,255,255,.58);
+}
+
+.ownership-admin-documents {
+    display: grid;
+    gap: 7px;
+    margin-top: 3px;
+}
+
+.ownership-admin-document {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    color: rgba(255,255,255,.76);
+    text-decoration: none;
+    font-size: .88rem;
+}
+
+.ownership-admin-document:hover {
+    color: var(--accent-color, #ff651b);
+}
+
+.venue-ownership-card--review {
+    border-color: rgba(255,190,70,.30);
+    background: linear-gradient(145deg, rgba(255,190,70,.08), rgba(11,13,11,.92));
+}
+
+.venue-ownership-inline-state--danger {
+    border-color: rgba(255,105,105,.28);
+    background: rgba(255,105,105,.06);
+}
+
+.venue-ownership-inline-state--danger small {
+    display: block;
+    margin-top: 5px;
+    color: rgba(255,255,255,.58);
+}
+
+@media (max-width: 900px) {
+    .ownership-admin-card,
+    .ownership-admin-card--ownership {
+        grid-template-columns: 1fr;
+    }
+
+    .ownership-admin-card__actions {
+        justify-content: flex-start;
+    }
+
+    .ownership-admin-status-form {
+        padding-left: 0;
+        padding-top: 14px;
+        border-left: 0;
+        border-top: 1px solid rgba(255,255,255,.08);
+    }
+}
+
+@media (max-width: 560px) {
+    .ownership-admin-section__head {
+        align-items: stretch;
+    }
+
+    .ownership-admin-tabs {
+        width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 2px;
+    }
+
+    .ownership-admin-tab {
+        flex: 0 0 auto;
+    }
+
+    .ownership-admin-card {
+        padding: 14px;
+        border-radius: 15px;
+    }
+}

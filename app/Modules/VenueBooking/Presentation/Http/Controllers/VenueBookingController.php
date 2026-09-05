@@ -9,7 +9,9 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Application\Services\VenueCommercialAccess;
+use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
+use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
 use App\Modules\VenueBooking\Application\Queries\GetBookingDetails;
 use App\Modules\VenueBooking\Application\Services\VenueBookingActionState;
 use App\Modules\VenueBooking\Application\Services\VenueBookingAuthorization;
@@ -62,6 +64,7 @@ final class VenueBookingController extends Controller
         VenueBookingActionState $actions,
         GetContributionSummaryHandler $contributions,
         VenueCommercialAccess $commercialAccess,
+        VenueUserRestrictionService $restrictions,
     ): JsonResponse|Response {
         $venueBooking->load(['venue', 'event', 'eventIntent', 'requester', 'transitions.actor.user', 'attendanceRounds.responses.user', 'extensionRequests.requestedByActor.user', 'extensionRequests.reviewedByActor.user', 'paymentAttempt']);
         $actor = $actors->resolveForRequest($request);
@@ -106,7 +109,20 @@ final class VenueBookingController extends Controller
                 ]);
             }
         }
-        $isRequester = $request->user()?->canonical()->id === $venueBooking->requester?->canonical()->id;
+        $currentUser = $request->user()?->canonical();
+        $isRequester = $currentUser?->id === $venueBooking->requester?->canonical()->id;
+        $isAdministrator = $currentUser !== null
+            && $currentUser->isConfirmed()
+            && $currentUser->system_role->atLeast(UserSystemRoleEnum::ADMIN);
+        $rentalRequesterRestriction = null;
+        if ($isAdministrator && $venueBooking->requester !== null) {
+            $rentalRequesterRestriction = $restrictions->active(
+                $venueBooking->venue,
+                $venueBooking->requester,
+                VenueUserRestrictionTypeEnum::RENTAL_REQUEST,
+            );
+        }
+
         $canViewPayment = $isRequester || ($actor->user !== null
             && $commercialAccess->allows($actor->user, $venueBooking->venue, VenuePermissionEnum::VIEW_PAYMENTS));
         $canDecideExtensions = false;
@@ -128,6 +144,8 @@ final class VenueBookingController extends Controller
             'attendanceRound' => $attendanceRound,
             'attendanceCandidates' => $rentalCoordination?->participants->whereNull('left_at')->values() ?? collect(),
             'isRequester' => $isRequester,
+            'isAdministrator' => $isAdministrator,
+            'rentalRequesterRestriction' => $rentalRequesterRestriction,
             'canDecideExtensions' => $canDecideExtensions,
             'canConfirmPayment' => $canConfirmPayment,
             'canViewPayment' => $canViewPayment,

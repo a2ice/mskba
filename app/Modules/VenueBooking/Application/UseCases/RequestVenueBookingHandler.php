@@ -4,6 +4,8 @@ namespace App\Modules\VenueBooking\Application\UseCases;
 
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
+use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
+use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutbox;
@@ -27,6 +29,7 @@ final readonly class RequestVenueBookingHandler
         private FeatureFlags $features,
         private IdempotentVenueBookingCommand $commands,
         private VenueBookingOutbox $outbox,
+        private VenueUserRestrictionService $restrictions,
     ) {}
 
     public function handle(
@@ -50,7 +53,7 @@ final readonly class RequestVenueBookingHandler
             ['quote_id' => $quotePublicId],
             function () use ($actor, $user, $quote): VenueBooking {
                 return DB::transaction(function () use ($actor, $user, $quote): VenueBooking {
-                    Venue::query()->lockForUpdate()->findOrFail($quote->venue_id);
+                    $venue = Venue::query()->lockForUpdate()->findOrFail($quote->venue_id);
                     $quote = VenueBookingQuote::query()->lockForUpdate()->findOrFail($quote->id);
                     $existing = VenueBooking::query()->where('quote_id', $quote->id)->first();
 
@@ -60,6 +63,18 @@ final readonly class RequestVenueBookingHandler
                         }
 
                         return $existing;
+                    }
+
+                    $restriction = $this->restrictions->active(
+                        $venue,
+                        $user,
+                        VenueUserRestrictionTypeEnum::RENTAL_REQUEST,
+                    );
+                    if ($restriction !== null) {
+                        throw new VenueBookingTransitionException(
+                            'Для вашего аккаунта заблокирована подача заявок на аренду этой площадки. Причина: '.$restriction->reason,
+                            'BOOKING_FORBIDDEN',
+                        );
                     }
 
                     $now = CarbonImmutable::now();

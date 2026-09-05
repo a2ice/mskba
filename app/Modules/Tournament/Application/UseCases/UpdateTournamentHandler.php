@@ -77,11 +77,17 @@ final class UpdateTournamentHandler
                 $hasAdmissions = $tournament->admissions()->exists();
                 $hasMatches = $tournament->matches()->exists();
 
-                if ($recruitmentMode !== $tournament->recruitment_mode && ($hasAdmissions || $hasMatches)) {
-                    throw new InvalidArgumentException('Режим набора нельзя менять после первой заявки, приглашения или матча.');
+                if ($recruitmentMode !== $tournament->recruitment_mode && $hasAdmissions) {
+                    throw new InvalidArgumentException('Режим набора нельзя менять после первой заявки или приглашения.');
                 }
-                if ($enrollmentPolicy !== $tournament->enrollment_policy && ($hasAdmissions || $hasMatches)) {
-                    throw new InvalidArgumentException('Тип набора нельзя менять после первой заявки, приглашения или матча.');
+                if ($recruitmentMode !== $tournament->recruitment_mode && $hasMatches) {
+                    throw new InvalidArgumentException('Режим набора нельзя менять после появления матчей.');
+                }
+                if ($enrollmentPolicy !== $tournament->enrollment_policy && $hasAdmissions) {
+                    throw new InvalidArgumentException('Тип набора нельзя менять после первой заявки или приглашения.');
+                }
+                if ($enrollmentPolicy !== $tournament->enrollment_policy && $hasMatches) {
+                    throw new InvalidArgumentException('Тип набора нельзя менять после появления матчей.');
                 }
                 if ($roundRobinLegs !== (int) $tournament->round_robin_legs && $hasMatches) {
                     throw new InvalidArgumentException('Количество кругов нельзя менять после появления матчей.');
@@ -89,9 +95,13 @@ final class UpdateTournamentHandler
                 if (! in_array($roundRobinLegs, [1, 2], true)) {
                     throw new InvalidArgumentException('Поддерживается один или два круга.');
                 }
-                $structuralSettingsLocked = $tournament->participant_pool_locked_at !== null || $hasMatches;
-                if ($format !== $tournament->format && $structuralSettingsLocked) {
-                    throw new InvalidArgumentException('Формат турнира нельзя менять после фиксации состава или появления матчей.');
+                $participantPoolLocked = $tournament->participant_pool_locked_at !== null;
+                $structuralSettingsLocked = $participantPoolLocked || $hasMatches;
+                if ($format !== $tournament->format && $participantPoolLocked && ! $hasMatches) {
+                    throw new InvalidArgumentException('Сначала разблокируйте пул участников, чтобы изменить формат турнира.');
+                }
+                if ($format !== $tournament->format && $hasMatches) {
+                    throw new InvalidArgumentException('Формат турнира нельзя менять после появления матчей.');
                 }
                 if ($tournament->tournament_closed_at !== null && ($datesChanged
                     || $format !== $tournament->format

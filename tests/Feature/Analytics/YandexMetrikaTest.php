@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Analytics;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class YandexMetrikaTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_counter_is_not_rendered_without_configured_id(): void
     {
         config(['services.yandex_metrika.id' => null]);

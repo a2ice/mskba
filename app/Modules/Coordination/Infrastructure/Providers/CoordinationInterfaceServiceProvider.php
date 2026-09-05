@@ -37,6 +37,8 @@ final class CoordinationInterfaceServiceProvider extends ServiceProvider
             $data = $view->getData();
             $canManage = (bool) ($data['canManage'] ?? false);
 
+            $view->with('eventRequestId', $data['eventRequestId'] ?? null);
+
             if (Route::currentRouteName() === 'coordination.show') {
                 $view->with([
                     'contextManagementUrl' => $canManage
