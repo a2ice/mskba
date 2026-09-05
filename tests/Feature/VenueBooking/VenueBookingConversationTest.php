@@ -150,12 +150,13 @@ final class VenueBookingConversationTest extends TestCase
     {
         [$owner, $ownerActor, $venue] = $this->ownedVenue();
         [$requester, $requesterActor] = $this->userAndActor();
+        $requester->forceFill(['username' => 'booking-requester'])->save();
         $booking = $this->booking($venue, $requester, $requesterActor);
         $messages = app(SendVenueBookingMessageHandler::class);
         $first = $messages->handle($booking->id, $requesterActor, (string) Str::uuid(), 'Вопрос заявителя');
         $second = $messages->handle($booking->id, $ownerActor, (string) Str::uuid(), 'Ответ площадки');
         $summary = app(GetVenueBookingConversationSummary::class);
-        $requesterLabel = $requester->username ?: 'Пользователь #'.$requester->id;
+        $requesterLabel = 'booking-requester';
 
         $this->assertSame(1, $summary->handle($booking, $requesterActor)['unread_count']);
         $this->assertSame(1, $summary->handle($booking, $ownerActor)['unread_count']);
