@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const waiting = page.querySelector('[data-ownership-waiting]');
     const messageForm = page.querySelector('[data-ownership-message-form]');
     const attachmentForm = page.querySelector('[data-ownership-attachment-form]');
+    const requestFilesButton = page.querySelector('[data-ownership-request-files]');
     const sendStatus = page.querySelector('[data-ownership-send-status]');
     const statusNode = page.querySelector('[data-ownership-status]');
     const statusLabel = page.querySelector('[data-ownership-status-label]');
@@ -49,6 +50,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const writable = payload.can_reply === true || payload.can_start === true;
         composer.hidden = !writable;
         waiting.hidden = writable;
+
+        if (attachmentForm) {
+            attachmentForm.hidden = payload.can_attach !== true;
+        }
+        if (requestFilesButton) {
+            requestFilesButton.hidden = payload.can_request_files !== true;
+        }
     };
 
     const updateStatus = (status, label) => {
@@ -91,6 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const article = document.createElement('article');
         article.className = `venue-ownership-message ${message.is_own ? 'is-own' : 'is-incoming'}`;
+        if (message.short_code) {
+            article.classList.add('is-system-action');
+            article.dataset.shortCode = message.short_code;
+        }
         if (publicId) article.dataset.messagePublicId = publicId;
         if (clientId) article.dataset.clientId = clientId;
         if (messageId) article.dataset.messageId = String(messageId);
@@ -103,6 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? ''
                 : date.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
             article.append(time);
+        }
+
+        if (message.short_code_label) {
+            const action = document.createElement('strong');
+            action.className = 'venue-ownership-message__action';
+            action.textContent = message.short_code_label;
+            article.append(action);
         }
 
         if (message.body) {
@@ -150,16 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const submitForm = async (form, url) => {
+    const submitForm = async (form, url, submitter = null) => {
         if (!form || !url) return;
         setSendStatus('Отправляем…');
-        const submitButton = form.querySelector('[type="submit"]');
-        if (submitButton) submitButton.disabled = true;
+        const submitButtons = Array.from(form.querySelectorAll('[type="submit"]'));
+        submitButtons.forEach((button) => { button.disabled = true; });
+
+        const formData = new FormData(form);
+        if (submitter?.name && submitter?.value) {
+            formData.set(submitter.name, submitter.value);
+        }
 
         try {
             const response = await fetch(url, {
                 method: 'POST',
-                body: new FormData(form),
+                body: formData,
                 headers: headers(),
                 credentials: 'same-origin',
             });
@@ -177,21 +201,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const clientInput = form.querySelector('[name="client_id"]');
             if (clientInput) clientInput.value = crypto.randomUUID();
             setSendStatus('Отправлено.');
+            await pollConversation();
         } catch (error) {
             setSendStatus(error.message || 'Не удалось отправить сообщение.', true);
         } finally {
-            if (submitButton) submitButton.disabled = false;
+            submitButtons.forEach((button) => { button.disabled = false; });
         }
     };
 
     messageForm?.addEventListener('submit', (event) => {
         event.preventDefault();
-        submitForm(messageForm, messageUrl);
+        submitForm(messageForm, messageUrl, event.submitter);
     });
 
     attachmentForm?.addEventListener('submit', (event) => {
         event.preventDefault();
-        submitForm(attachmentForm, attachmentUrl);
+        submitForm(attachmentForm, attachmentUrl, event.submitter);
     });
 
     subscribePrivate(`venue-ownership-claims.${claimId}`, '.venue.ownership.updated', (payload) => {
