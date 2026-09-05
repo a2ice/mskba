@@ -50,6 +50,9 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
+      - name: Validate production compose
+        run: docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+
       - name: Run PHP tests
         run: php artisan test
 
