@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 #[Fillable([
-    'public_id', 'venue_ownership_id', 'type', 'source_claim_document_id', 'source_claim_message_id',
+    'public_id', 'venue_ownership_id', 'type', 'source_claim_message_id',
     'added_by_user_id', 'disk', 'path', 'name', 'mime', 'size', 'note',
 ])]
 class VenueOwnershipDocument extends Model
@@ -30,11 +30,6 @@ class VenueOwnershipDocument extends Model
     public function ownership(): BelongsTo
     {
         return $this->belongsTo(VenueOwnership::class);
-    }
-
-    public function sourceClaimDocument(): BelongsTo
-    {
-        return $this->belongsTo(VenueOwnershipClaimDocument::class, 'source_claim_document_id');
     }
 
     public function sourceClaimMessage(): BelongsTo
