@@ -262,7 +262,7 @@ final class VenueOwnershipClaimConversationController extends Controller
 
         return $user !== null
             && $user->isConfirmed()
-            && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN);
+            && $user->system_role->atLeast(UserSystemRoleEnum::ADMIN);
     }
 
     /** @return array<string, mixed> */
