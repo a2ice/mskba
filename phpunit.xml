@@ -30,6 +30,7 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELEGRAM_BOT_TOKEN" value=""/>
+        <env name="TELEGRAM_BOT_USERNAME" value="MSKBABot"/>
         <env name="TELEGRAM_MAIN_CHAT_ID" value=""/>
         <env name="TELEGRAM_WEBHOOK_SECRET" value=""/>
         <env name="TELEGRAM_UPDATES_TRANSPORT" value="webhook"/>
