@@ -15,7 +15,6 @@ use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
-use App\Modules\Venue\Domain\Models\VenueOwnershipClaimDocument;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaimMessage;
 use App\Modules\Venue\Domain\Models\VenueOwnershipDocument;
 use App\Modules\Venue\Domain\Models\VenueUserRestriction;
@@ -157,33 +156,6 @@ final class AdminVenueOwnershipController extends Controller
         }
 
         return back()->with('success', 'Статус владения обновлён.');
-    }
-
-    public function attachClaimDocument(
-        Request $request,
-        VenueOwnership $venueOwnership,
-        VenueOwnershipClaimDocument $document,
-        AttachVenueOwnershipDocumentHandler $handler,
-    ): RedirectResponse {
-        $this->administrator($request);
-        $validated = $request->validate([
-            'type' => ['required', Rule::enum(VenueOwnershipDocumentTypeEnum::class)],
-            'note' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        try {
-            $handler->fromClaimDocument(
-                $venueOwnership,
-                $document,
-                VenueOwnershipDocumentTypeEnum::from($validated['type']),
-                $request->user(),
-                $validated['note'] ?? null,
-            );
-        } catch (\InvalidArgumentException $exception) {
-            return back()->with('error', $exception->getMessage());
-        }
-
-        return back()->with('success', 'Документ добавлен в основания владения.');
     }
 
     public function attachMessageDocument(
