@@ -53,32 +53,6 @@
                         <h2>Подтверждение полномочий</h2>
                         <p class="venue-ownership-evidence">{!! nl2br(e($claim->evidence)) !!}</p>
 
-                        @if($claim->documents->isNotEmpty())
-                            <div class="venue-ownership-source-documents">
-                                <h3>Документы, приложенные к заявке</h3>
-                                @foreach($claim->documents as $document)
-                                    <div class="venue-ownership-source-document">
-                                        <a href="{{ route('account.venue-ownership.documents.download', [$claim, $document]) }}">
-                                            <i class="ti ti-paperclip"></i>
-                                            <span>{{ $document->name }}</span>
-                                        </a>
-                                        @if($isReviewer && $ownership)
-                                            <form method="POST" action="{{ route('admin.venue-ownership.documents.claim', [$ownership, $document]) }}" class="venue-ownership-promote-form">
-                                                @csrf
-                                                <select name="type" class="form-select" required>
-                                                    @foreach($documentTypes as $type)
-                                                        <option value="{{ $type->value }}">{{ $type->label() }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <input class="form-control" type="text" name="note" maxlength="2000" placeholder="Комментарий (необязательно)">
-                                                <button class="btn btn--secondary btn--sm" type="submit">В основания владения</button>
-                                            </form>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
-
                         @if($claim->decision_reason)
                             <div class="venue-ownership-decision">
                                 <span>Комментарий по решению</span>
@@ -101,7 +75,7 @@
                             @endif
 
                             @if($ownership->documents->isEmpty())
-                                <p class="text-muted">Формальные документы-основания пока не отмечены. Администратор может сохранить сюда файлы из заявки или переписки.</p>
+                                <p class="text-muted">Формальные документы-основания пока не отмечены. Администратор может сохранить сюда подходящие файлы из переписки.</p>
                             @else
                                 <div class="venue-ownership-basis-list">
                                     @foreach($ownership->documents as $document)
@@ -155,7 +129,7 @@
 
                         <div class="venue-ownership-chat__waiting" data-ownership-waiting @if($claim->conversation || $isReviewer) hidden @endif>
                             <i class="ti ti-clock"></i>
-                            <span>Ожидайте сообщения подтверждающей стороны. После первого сообщения здесь появится форма ответа.</span>
+                            <span>Ожидайте сообщения подтверждающей стороны. Отправка документов откроется только после отдельного запроса администратора.</span>
                         </div>
 
                         <div class="venue-ownership-chat__composer" data-ownership-composer @if(! $claim->conversation && ! $isReviewer) hidden @endif>
@@ -166,8 +140,20 @@
                                 <textarea id="ownershipMessage" name="body" class="form-control" rows="4" maxlength="4000" required></textarea>
                                 <div class="venue-ownership-chat__actions">
                                     <button type="submit" class="btn btn--primary btn--sm">Отправить</button>
+                                    @if($isReviewer)
+                                        <button
+                                            type="submit"
+                                            class="btn btn--secondary btn--sm"
+                                            name="short_code"
+                                            value="files_requested"
+                                            data-ownership-request-files
+                                        >Запросить файлы</button>
+                                    @endif
                                     <span data-ownership-send-status></span>
                                 </div>
+                                @if($isReviewer)
+                                    <small>«Запросить файлы» отправит это сообщение со служебным признаком files_requested и откроет заявителю одно окно загрузки.</small>
+                                @endif
                             </form>
 
                             <form
@@ -176,6 +162,7 @@
                                 enctype="multipart/form-data"
                                 class="venue-ownership-attachment-form"
                                 data-ownership-attachment-form
+                                @if(! $isReviewer) hidden @endif
                             >
                                 @csrf
                                 <input type="hidden" name="client_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
@@ -184,6 +171,9 @@
                                     <input type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf,.txt" required>
                                 </label>
                                 <button type="submit" class="btn btn--secondary btn--sm">Прикрепить</button>
+                                @if($isApplicant)
+                                    <small>После успешной отправки файла разрешение закрывается. Если нужны дополнительные документы, администратор отправит новый запрос.</small>
+                                @endif
                             </form>
                         </div>
 
