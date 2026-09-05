@@ -30,27 +30,11 @@ return new class extends Migration
             $table->index(['status', 'status_changed_at']);
         });
 
-        Schema::create('venue_ownership_claim_documents', function (Blueprint $table): void {
-            $table->id();
-            $table->uuid('public_id')->unique();
-            $table->foreignId('venue_ownership_claim_id')->constrained('venue_ownership_claims')->cascadeOnDelete();
-            $table->foreignId('uploaded_by_actor_id')->constrained('actors')->restrictOnDelete();
-            $table->string('disk', 32)->default('local');
-            $table->string('path');
-            $table->string('name');
-            $table->string('mime', 128)->nullable();
-            $table->unsignedBigInteger('size')->nullable();
-            $table->timestamps();
-
-            $table->index(['venue_ownership_claim_id', 'id'], 'venue_ownership_claim_documents_page');
-        });
-
         Schema::create('venue_ownership_documents', function (Blueprint $table): void {
             $table->id();
             $table->uuid('public_id')->unique();
             $table->foreignId('venue_ownership_id')->constrained('venue_ownerships')->cascadeOnDelete();
             $table->string('type', 48);
-            $table->foreignId('source_claim_document_id')->nullable()->constrained('venue_ownership_claim_documents')->nullOnDelete();
             $table->foreignId('source_claim_message_id')->nullable()->constrained('venue_ownership_claim_messages')->nullOnDelete();
             $table->foreignId('added_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('disk', 32)->default('local');
@@ -144,7 +128,6 @@ return new class extends Migration
     {
         Schema::dropIfExists('venue_user_restrictions');
         Schema::dropIfExists('venue_ownership_documents');
-        Schema::dropIfExists('venue_ownership_claim_documents');
         Schema::dropIfExists('venue_ownerships');
     }
 };
