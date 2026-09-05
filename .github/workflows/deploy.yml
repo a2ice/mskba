@@ -66,6 +66,20 @@ jobs:
             update_env_value TELEGRAM_QUEUE_INBOUND telegram-inbound
             update_env_value TELEGRAM_QUEUE_BACKGROUND telegram-background
 
+            # Production receives Telegram updates through the existing webhook
+            # endpoint. Generate a stable per-server secret once when an older
+            # production .env does not have one yet.
+            TELEGRAM_WEBHOOK_SECRET="$(grep '^TELEGRAM_WEBHOOK_SECRET=' .env | tail -n 1 | cut -d= -f2- || true)"
+            TELEGRAM_WEBHOOK_SECRET="${TELEGRAM_WEBHOOK_SECRET%\"}"
+            TELEGRAM_WEBHOOK_SECRET="${TELEGRAM_WEBHOOK_SECRET#\"}"
+            TELEGRAM_WEBHOOK_SECRET="${TELEGRAM_WEBHOOK_SECRET%\'}"
+            TELEGRAM_WEBHOOK_SECRET="${TELEGRAM_WEBHOOK_SECRET#\'}"
+            if [ -z "$TELEGRAM_WEBHOOK_SECRET" ]; then
+              TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+              update_env_value TELEGRAM_WEBHOOK_SECRET "$TELEGRAM_WEBHOOK_SECRET"
+            fi
+            update_env_value TELEGRAM_UPDATES_TRANSPORT webhook
+
             COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
             HOST_UID="$(id -u)"
             HOST_GID="$(id -g)"
@@ -84,7 +98,7 @@ jobs:
 
             mkdir -p bootstrap/cache public/build
 
-            $COMPOSE build phpfpm queue telegram-inbound-queue telegram-background-queue reverb scheduler telegram
+            $COMPOSE build phpfpm queue telegram-inbound-queue telegram-background-queue reverb scheduler
             $COMPOSE up -d db redis
 
             $COMPOSE run -T --rm phpfpm composer install \
@@ -107,24 +121,14 @@ jobs:
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
             $COMPOSE run -T --rm phpfpm chown -R "$HOST_UID:www-data" storage bootstrap/cache </dev/null
             $COMPOSE run -T --rm phpfpm chmod -R ug+rwX storage bootstrap/cache </dev/null
-            TELEGRAM_CONFIGURED=0
-            for ATTEMPT in 1 2 3; do
-              if $COMPOSE run -T --rm phpfpm php artisan telegram:configure-updates --if-configured </dev/null; then
-                TELEGRAM_CONFIGURED=1
-                break
-              fi
 
-              echo "Telegram API connection failed (attempt $ATTEMPT/3)." >&2
-              sleep $((ATTEMPT * 5))
-            done
+            # Bring the web application and queue workers up first. The old
+            # polling container is intentionally left alive until Telegram has
+            # accepted the webhook, so failed webhook configuration cannot make
+            # inbound bot updates disappear.
+            $COMPOSE up -d --force-recreate phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb scheduler
 
-            if [ "$TELEGRAM_CONFIGURED" -ne 1 ]; then
-              echo "::warning::Telegram update configuration was skipped after three failed attempts." >&2
-            fi
-
-            $COMPOSE up -d --force-recreate phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb scheduler telegram
-
-            $COMPOSE restart phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb scheduler telegram
+            $COMPOSE restart phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb scheduler
 
             sleep 2
             RUNNING_SERVICES="$($COMPOSE ps --status running --services)"
@@ -180,3 +184,30 @@ jobs:
               $COMPOSE exec -T phpfpm php artisan about >&2 || true
               exit 1
             fi
+
+            # Switch only after the webhook endpoint is serving the new config.
+            # Preserve pending updates. If Telegram cannot accept the webhook,
+            # restore polling in .env/cache and leave the existing poller alive.
+            TELEGRAM_CONFIGURED=0
+            for ATTEMPT in 1 2 3; do
+              if $COMPOSE run -T --rm phpfpm php artisan telegram:configure-updates --if-configured </dev/null; then
+                TELEGRAM_CONFIGURED=1
+                break
+              fi
+
+              echo "Telegram webhook configuration failed (attempt $ATTEMPT/3)." >&2
+              sleep $((ATTEMPT * 5))
+            done
+
+            if [ "$TELEGRAM_CONFIGURED" -ne 1 ]; then
+              update_env_value TELEGRAM_UPDATES_TRANSPORT polling
+              $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
+              $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
+              echo "::error::Telegram webhook could not be configured; production transport was rolled back to polling." >&2
+              exit 1
+            fi
+
+            # Webhook is now authoritative. Remove the legacy long-poll process
+            # so it cannot contend for getUpdates or create misleading failures.
+            $COMPOSE stop telegram >/dev/null 2>&1 || true
+            $COMPOSE rm -f telegram >/dev/null 2>&1 || true
