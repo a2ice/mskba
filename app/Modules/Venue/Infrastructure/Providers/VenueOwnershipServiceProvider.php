@@ -2,7 +2,7 @@
 
 namespace App\Modules\Venue\Infrastructure\Providers;
 
-use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipController;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
@@ -41,10 +41,12 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
                                 ->name('account.venue-ownership.show');
                             Route::post('/cancel', [VenueOwnershipClaimController::class, 'cancel'])
                                 ->name('account.venue-ownership.cancel');
-                            Route::post('/approve', [AdminVenueOwnershipClaimsController::class, 'approve'])
+                            Route::post('/approve', [AdminVenueOwnershipController::class, 'approve'])
                                 ->name('account.venue-ownership.approve');
-                            Route::post('/reject', [AdminVenueOwnershipClaimsController::class, 'reject'])
+                            Route::post('/reject', [AdminVenueOwnershipController::class, 'reject'])
                                 ->name('account.venue-ownership.reject');
+                            Route::post('/reject-and-block', [AdminVenueOwnershipController::class, 'rejectAndBlock'])
+                                ->name('account.venue-ownership.reject-and-block');
                             Route::get('/conversation', [VenueOwnershipClaimConversationController::class, 'index'])
                                 ->name('account.venue-ownership.conversation.index');
                             Route::post('/conversation/messages', [VenueOwnershipClaimConversationController::class, 'store'])
@@ -58,9 +60,29 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
                                 ->name('account.venue-ownership.conversation.attachment');
                         });
 
-                    Route::get('/admin/venue-management-claims', [AdminVenueOwnershipClaimsController::class, 'index'])
-                        ->middleware('can:manage-users-as-superadmin')
-                        ->name('admin.venue-management-claims.index');
+                    Route::prefix('admin/venue-ownership')->group(function (): void {
+                        Route::get('/', [AdminVenueOwnershipController::class, 'index'])
+                            ->name('admin.venue-ownership.index');
+                        Route::post('/claims/{venueOwnershipClaim}/approve', [AdminVenueOwnershipController::class, 'approve'])
+                            ->name('admin.venue-ownership.claims.approve');
+                        Route::post('/claims/{venueOwnershipClaim}/reject', [AdminVenueOwnershipController::class, 'reject'])
+                            ->name('admin.venue-ownership.claims.reject');
+                        Route::post('/claims/{venueOwnershipClaim}/reject-and-block', [AdminVenueOwnershipController::class, 'rejectAndBlock'])
+                            ->name('admin.venue-ownership.claims.reject-and-block');
+                        Route::patch('/ownerships/{venueOwnership}/status', [AdminVenueOwnershipController::class, 'updateOwnershipStatus'])
+                            ->name('admin.venue-ownership.status');
+                        Route::post('/ownerships/{venueOwnership}/claim-documents/{document}', [AdminVenueOwnershipController::class, 'attachClaimDocument'])
+                            ->name('admin.venue-ownership.documents.claim');
+                        Route::post('/ownerships/{venueOwnership}/messages/{message}', [AdminVenueOwnershipController::class, 'attachMessageDocument'])
+                            ->name('admin.venue-ownership.documents.message');
+                        Route::get('/documents/{document}', [AdminVenueOwnershipController::class, 'downloadDocument'])
+                            ->name('admin.venue-ownership.documents.download');
+                        Route::post('/restrictions/{venueUserRestriction}/revoke', [AdminVenueOwnershipController::class, 'revokeRestriction'])
+                            ->name('admin.venue-ownership.restrictions.revoke');
+                    });
+
+                    Route::post('/account/venue-bookings/{venueBooking}/block-requester', [AdminVenueOwnershipController::class, 'blockRentalRequester'])
+                        ->name('account.venue-bookings.block-requester');
                 });
             });
         });
@@ -74,7 +96,7 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
             $user = $user->canonical();
 
             return $user->isSameIdentity($claim->applicant_user_id)
-                || ($user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN));
+                || ($user->isConfirmed() && $user->system_role->atLeast(UserSystemRoleEnum::ADMIN));
         });
 
         Broadcast::channel('venue-ownership-claim-conversations.{publicId}', function (User $user, string $publicId): bool {
@@ -89,7 +111,7 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
             $user = $user->canonical();
 
             return $user->isSameIdentity($conversation->claim->applicant_user_id)
-                || ($user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN));
+                || ($user->isConfirmed() && $user->system_role->atLeast(UserSystemRoleEnum::ADMIN));
         });
     }
 }
