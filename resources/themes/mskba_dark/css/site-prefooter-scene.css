@@ -26,6 +26,13 @@ body.theme-shell {
     left: 0;
 }
 
+/* Let the final homepage CTA sit over the decorative court instead of painting an opaque section above it. */
+.home-final-cta {
+    position: relative;
+    z-index: 2;
+    background: transparent;
+}
+
 /* The scene now fades into the footer itself, so a divider would reintroduce a hard seam. */
 .site-content + .site-footer {
     border-top-color: transparent;
