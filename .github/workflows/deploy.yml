@@ -109,7 +109,27 @@ jobs:
               --optimize-autoloader \
               </dev/null
 
-            $COMPOSE --profile build run -T --rm node </dev/null
+            # npm occasionally loses the VDS outbound connection with ECONNRESET.
+            # Retry the complete clean install + Vite build before treating that
+            # transient network failure as a failed production deployment.
+            NODE_BUILD_OK=0
+            for ATTEMPT in 1 2 3; do
+              if $COMPOSE --profile build run -T --rm node </dev/null; then
+                NODE_BUILD_OK=1
+                break
+              fi
+
+              echo "Frontend build failed (attempt $ATTEMPT/3)." >&2
+              if [ "$ATTEMPT" -lt 3 ]; then
+                sleep $((ATTEMPT * 5))
+              fi
+            done
+
+            if [ "$NODE_BUILD_OK" -ne 1 ]; then
+              echo "::error::Frontend build failed after 3 attempts." >&2
+              exit 1
+            fi
+
             test -f public/build/manifest.json
             $COMPOSE run -T --rm --no-deps --user 0:0 phpfpm \
               chown -R "$HOST_UID:$HOST_GID" vendor public/build </dev/null
@@ -188,7 +208,7 @@ jobs:
 
             # Switch only after the webhook endpoint is serving the new config.
             # Preserve pending updates. If Telegram cannot accept the webhook,
-            # restore polling in .env/cache and leave the existing poller alive.
+            # explicitly start polling and keep the successful website deploy.
             TELEGRAM_CONFIGURED=0
             for ATTEMPT in 1 2 3; do
               if $COMPOSE run -T --rm phpfpm php artisan telegram:configure-updates </dev/null; then
@@ -204,13 +224,23 @@ jobs:
               echo "::group::Telegram IPv4 network diagnostic" >&2
               $COMPOSE run -T --rm phpfpm php -r '$host="api.telegram.org"; $ips=gethostbynamel($host) ?: []; fwrite(STDERR, "Resolved IPv4: ".($ips === [] ? "none" : implode(",", $ips)).PHP_EOL); foreach ($ips as $ip) { $started=microtime(true); $socket=@fsockopen($ip, 443, $errno, $errstr, 5); $ms=(int) round((microtime(true)-$started)*1000); if (is_resource($socket)) { fclose($socket); fwrite(STDERR, "TCP {$ip}:443 OK {$ms}ms".PHP_EOL); } else { fwrite(STDERR, "TCP {$ip}:443 FAIL {$ms}ms errno={$errno} {$errstr}".PHP_EOL); } }' </dev/null || true
               echo "::endgroup::" >&2
+
               update_env_value TELEGRAM_UPDATES_TRANSPORT polling
               $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
               $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
-              echo "::error::Telegram webhook could not be configured; production transport was rolled back to polling." >&2
-              exit 1
-            fi
+              $COMPOSE --profile polling up -d telegram
 
-            # Webhook is now authoritative. Remove the legacy long-poll process
-            # so it cannot contend for getUpdates or create misleading failures.
-            docker rm -f mskbanew-telegram >/dev/null 2>&1 || true
+              sleep 2
+              if ! $COMPOSE --profile polling ps --status running --services | grep -qx telegram; then
+                echo "::error::Telegram webhook failed and polling fallback could not be started." >&2
+                $COMPOSE --profile polling ps >&2
+                $COMPOSE --profile polling logs --tail=100 telegram >&2
+                exit 1
+              fi
+
+              echo "::warning::Telegram webhook could not be configured; production remains available with polling fallback." >&2
+            else
+              # Webhook is now authoritative. Remove the legacy long-poll process
+              # so it cannot contend for getUpdates or create misleading failures.
+              docker rm -f mskbanew-telegram >/dev/null 2>&1 || true
+            fi
