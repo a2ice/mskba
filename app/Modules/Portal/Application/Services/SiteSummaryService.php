@@ -21,6 +21,7 @@ final class SiteSummaryService
         return new SiteSummaryDTO(
             todayEvents: $this->todayEventsCount(),
             onlineUsers: $this->presence->count(),
+            onlineVisitors: $this->presence->visitorCount(),
             totalUsers: $this->totalUsersCount(),
         );
     }
