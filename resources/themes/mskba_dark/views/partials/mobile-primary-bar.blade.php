@@ -3,7 +3,7 @@
         $today = now((string) config('app.timezone', 'Europe/Moscow'))->toDateString();
         $todayGamesUrl = route('events.index', ['type' => 'games', 'date_from' => $today, 'date_to' => $today]);
     @endphp
-    <div @class(['mobile-primary-bar__stats', 'has-online' => $siteSummary->onlineUsers > 0]) aria-label="Статистика сайта" data-mobile-summary-stats>
+    <div @class(['mobile-primary-bar__stats', 'has-online' => $siteSummary->onlineVisitors > 0]) aria-label="Статистика сайта" data-mobile-summary-stats>
         <p class="mobile-primary-bar__stat">
             <span class="mobile-primary-bar__dot" aria-hidden="true"></span>
             <a
@@ -32,9 +32,14 @@
             @endauth
         </p>
 
-        <p class="mobile-primary-bar__stat" data-online-summary @if($siteSummary->onlineUsers === 0) hidden @endif>
+        <p
+            class="mobile-primary-bar__stat"
+            data-mobile-online-summary
+            title="Авторизованные / всего онлайн"
+            @if($siteSummary->onlineVisitors === 0) hidden @endif
+        >
             <span class="mobile-primary-bar__dot mobile-primary-bar__dot--online" aria-hidden="true"></span>
-            <span><span data-online-users-count>{{ $siteSummary->onlineUsers }}</span> онлайн</span>
+            <span><span data-online-users-count>{{ $siteSummary->onlineUsers }}</span>/<span data-online-visitors-count>{{ $siteSummary->onlineVisitors }}</span> онлайн</span>
         </p>
     </div>
 

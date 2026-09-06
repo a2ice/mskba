@@ -112,13 +112,15 @@ class SiteSummaryTest extends TestCase
             ->assertSee('Игры и игровые тренировки');
     }
 
-    public function test_zero_summary_hides_online_badge_and_uses_empty_games_copy(): void
+    public function test_zero_summary_hides_authenticated_online_badge_and_uses_empty_games_copy(): void
     {
         $response = $this->get(route('welcome'));
 
         $response
             ->assertOk()
-            ->assertSee('Новая игра');
+            ->assertSee('Новая игра')
+            ->assertSee('data-online-visitors-count', false)
+            ->assertSee('data-mobile-online-summary', false);
 
         $this->assertMatchesRegularExpression(
             '/data-online-summary\s+hidden/u',
@@ -140,14 +142,16 @@ class SiteSummaryTest extends TestCase
                 'today_events_text' => 'Новая игра',
                 'online_users' => 1,
                 'total_users' => 2,
-            ]);
+            ])
+            ->assertJsonStructure(['online_visitors']);
 
         $this->postJson(route('site-summary.heartbeat'))
             ->assertOk()
             ->assertJson([
                 'online_users' => 1,
                 'total_users' => 2,
-            ]);
+            ])
+            ->assertJsonStructure(['online_visitors']);
 
         $this->actingAs($secondUser)
             ->postJson(route('site-summary.heartbeat'))
@@ -155,10 +159,11 @@ class SiteSummaryTest extends TestCase
             ->assertJson([
                 'online_users' => 2,
                 'total_users' => 2,
-            ]);
+            ])
+            ->assertJsonStructure(['online_visitors']);
     }
 
-    public function test_presence_expires_after_the_configured_activity_window(): void
+    public function test_user_and_visitor_presence_expire_after_the_configured_activity_window(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-23 12:00:00', 'Europe/Moscow'));
         config()->set('site_summary.presence_window_seconds', 120);
@@ -167,10 +172,16 @@ class SiteSummaryTest extends TestCase
         $presence = app(OnlineUserPresence::class);
 
         $presence->touch((int) $user->id);
+        $presence->touchVisitor(101);
+        $presence->touchVisitor(101);
+        $presence->touchVisitor(202);
+
         $this->assertSame(1, $presence->count());
+        $this->assertSame(2, $presence->visitorCount());
 
         Carbon::setTestNow(Carbon::parse('2026-07-23 12:02:01', 'Europe/Moscow'));
 
         $this->assertSame(0, $presence->count());
+        $this->assertSame(0, $presence->visitorCount());
     }
 }
