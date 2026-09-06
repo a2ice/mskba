@@ -36,15 +36,17 @@ function mountSharedSelector() {
 }
 
 function initInlineMap() {
-    const input = selector.querySelector('[data-venue-selector-input]');
-    const valueInput = selector.querySelector('[data-venue-selector-value]');
-    const metroSelect = selector.querySelector('[data-venue-selector-metro-filter]');
     const mapSource = source.querySelector('[data-venue-selector-map]');
     const apiKey = mapSource?.dataset.yandexMapApiKey || '';
     const searchUrl = selector.dataset.searchUrl || '';
+    const popularVenuePaths = new Set(
+        Array.from(section.querySelectorAll('.home-venue-stack .home-venue-card'))
+            .map((link) => normalizeUrlPath(link.getAttribute('href')))
+            .filter(Boolean),
+    );
 
     mapPreview.classList.add('home-venue-map-preview--live');
-    mapPreview.setAttribute('aria-label', 'Интерактивная карта площадок');
+    mapPreview.setAttribute('aria-label', 'Карта популярных площадок');
     mapPreview.replaceChildren();
 
     const canvas = document.createElement('div');
@@ -52,15 +54,15 @@ function initInlineMap() {
 
     const status = document.createElement('p');
     status.className = 'home-venue-map-preview__status';
-    status.textContent = 'Загружаем площадки…';
+    status.textContent = 'Загружаем популярные площадки…';
 
     const caption = document.createElement('div');
     caption.className = 'home-venue-map-preview__caption home-venue-map-preview__caption--live';
-    caption.innerHTML = '<i class="ti ti-map-2"></i><strong>Карта площадок</strong><small>Поиск и метро сразу обновляют точки на карте</small>';
+    caption.innerHTML = '<i class="ti ti-map-2"></i><strong>Популярные площадки</strong><small>На карте — только площадки из подборки ниже</small>';
 
     mapPreview.append(canvas, status, caption);
 
-    if (!input || !metroSelect || !apiKey || !searchUrl) {
+    if (!apiKey || !searchUrl || popularVenuePaths.size === 0) {
         status.textContent = 'Карта временно недоступна.';
         return;
     }
@@ -68,41 +70,8 @@ function initInlineMap() {
     let yandexMap = null;
     let clusterer = null;
     let controller = null;
-    let searchTimer = null;
     let initialized = false;
-    let dirty = true;
     let renderVersion = 0;
-    let lastVenues = [];
-    const placemarksByVenue = new Map();
-
-    const requestRender = () => {
-        dirty = true;
-        if (!initialized) {
-            return;
-        }
-        window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(renderMap, 280);
-    };
-
-    input.addEventListener('input', requestRender);
-    metroSelect.addEventListener('change', requestRender);
-    valueInput?.addEventListener('change', () => {
-        const selectedId = Number(valueInput.value);
-        if (!selectedId || !initialized) {
-            return;
-        }
-
-        const placemark = placemarksByVenue.get(selectedId);
-        const venue = lastVenues.find((item) => Number(item.id) === selectedId);
-        if (!placemark || !venue) {
-            requestRender();
-            return;
-        }
-
-        const coordinates = [Number(venue.latitude), Number(venue.longitude)];
-        yandexMap?.setCenter(coordinates, Math.max(yandexMap.getZoom(), 14), { duration: 250 });
-        window.setTimeout(() => placemark.balloon.open(), 260);
-    });
 
     const observer = new IntersectionObserver((entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) {
@@ -115,19 +84,18 @@ function initInlineMap() {
     observer.observe(mapPreview);
 
     async function renderMap() {
-        if (!dirty) {
+        if (!initialized) {
             return;
         }
 
-        dirty = false;
         const version = ++renderVersion;
         controller?.abort();
         controller = new AbortController();
         status.hidden = false;
-        status.textContent = 'Загружаем площадки…';
+        status.textContent = 'Загружаем популярные площадки…';
 
         try {
-            const venues = await fetchVenues(controller.signal);
+            const venues = await fetchPopularVenues(controller.signal);
             if (version !== renderVersion) {
                 return;
             }
@@ -136,11 +104,10 @@ function initInlineMap() {
                 Number.isFinite(Number(venue.latitude))
                 && Number.isFinite(Number(venue.longitude))
             ));
-            lastVenues = mapped;
 
             if (mapped.length === 0) {
                 clearGeoObjects();
-                status.textContent = 'По выбранным условиям площадки не найдены.';
+                status.textContent = 'У популярных площадок пока нет координат.';
                 return;
             }
 
@@ -169,19 +136,15 @@ function initInlineMap() {
                 gridSize: 64,
             });
 
-            const placemarks = mapped.map((venue) => {
-                const placemark = new window.ymaps.Placemark(
-                    [Number(venue.latitude), Number(venue.longitude)],
-                    {
-                        hintContent: venue.name,
-                        balloonContentHeader: escapeHtml(venue.name || 'Площадка'),
-                        balloonContentBody: buildBalloonBody(venue),
-                    },
-                    { preset: 'islands#orangeSportIcon' },
-                );
-                placemarksByVenue.set(Number(venue.id), placemark);
-                return placemark;
-            });
+            const placemarks = mapped.map((venue) => new window.ymaps.Placemark(
+                [Number(venue.latitude), Number(venue.longitude)],
+                {
+                    hintContent: venue.name,
+                    balloonContentHeader: escapeHtml(venue.name || 'Площадка'),
+                    balloonContentBody: buildBalloonBody(venue),
+                },
+                { preset: 'islands#orangeSportIcon' },
+            ));
 
             clusterer.add(placemarks);
             yandexMap.geoObjects.add(clusterer);
@@ -197,49 +160,19 @@ function initInlineMap() {
             status.hidden = true;
         } catch (error) {
             if (error.name !== 'AbortError') {
-                dirty = true;
                 status.hidden = false;
-                status.textContent = 'Не удалось загрузить площадки на карте.';
+                status.textContent = 'Не удалось загрузить популярные площадки на карте.';
             }
         }
     }
 
-    async function fetchVenues(signal) {
-        const metroIds = Array.from(metroSelect.selectedOptions)
-            .map((option) => Number(option.value))
-            .filter((value) => Number.isInteger(value) && value > 0);
-        const query = valueInput?.value ? '' : input.value.trim();
-        const requests = metroIds.length > 0
-            ? metroIds.map((metroId) => fetchVenueGroup(query, metroId, signal))
-            : [fetchVenueGroup(query, null, signal)];
-        const groups = await Promise.all(requests);
-        const unique = new Map();
-
-        groups.flat().forEach((venue) => unique.set(Number(venue.id), venue));
-        return Array.from(unique.values());
-    }
-
-    async function fetchVenueGroup(query, metroStationId, signal) {
+    async function fetchPopularVenues(signal) {
         const parameters = new URLSearchParams({
-            query,
+            query: '',
             confirmed_only: '1',
             operational_status: 'active',
             limit: '200',
         });
-
-        if (metroStationId) {
-            parameters.set('metro_station_id', String(metroStationId));
-        }
-
-        const venueType = String(selector.dataset.venueTypeFilter || '').trim();
-        if (venueType && venueType !== 'any') {
-            parameters.set('type', venueType);
-        }
-
-        const payment = String(selector.dataset.requiresPaymentFilter || '').trim();
-        if (payment === '0' || payment === '1') {
-            parameters.set('requires_payment', payment);
-        }
 
         const response = await fetch(`${searchUrl}?${parameters.toString()}`, {
             headers: { Accept: 'application/json' },
@@ -251,13 +184,26 @@ function initInlineMap() {
             throw new Error(payload.message || 'Не удалось загрузить площадки.');
         }
 
-        return Array.isArray(payload.venues) ? payload.venues : [];
+        const venues = Array.isArray(payload.venues) ? payload.venues : [];
+        return venues.filter((venue) => popularVenuePaths.has(normalizeUrlPath(venue.url)));
     }
 
     function clearGeoObjects() {
-        placemarksByVenue.clear();
         clusterer = null;
         yandexMap?.geoObjects.removeAll();
+    }
+}
+
+function normalizeUrlPath(value) {
+    if (!value) {
+        return '';
+    }
+
+    try {
+        const url = new URL(String(value), window.location.origin);
+        return url.pathname.replace(/\/+$/, '') || '/';
+    } catch {
+        return String(value).split(/[?#]/, 1)[0].replace(/\/+$/, '');
     }
 }
 
