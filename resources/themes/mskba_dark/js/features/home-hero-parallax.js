@@ -1,4 +1,4 @@
-const PARALLAX_SPEED_RATIO = 1.5;
+const PARALLAX_SPEED_RATIO = 2.25;
 const PARALLAX_COMPENSATION = 1 - (1 / PARALLAX_SPEED_RATIO);
 
 function initHomeHeroParallax() {
