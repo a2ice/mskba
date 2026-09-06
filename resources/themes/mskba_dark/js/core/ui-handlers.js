@@ -53,7 +53,7 @@ const handlers = {
     },
 
     historyBack(trigger) {
-        if (window.history.length > 1) {
+        if (canUseSameSiteHistoryBack()) {
             window.history.back();
             return;
         }
@@ -61,6 +61,19 @@ const handlers = {
         window.location.assign(resolveHistoryFallback(trigger));
     },
 };
+
+function canUseSameSiteHistoryBack() {
+    if (window.history.length <= 1 || !document.referrer) {
+        return false;
+    }
+
+    try {
+        const referrerUrl = new URL(document.referrer);
+        return referrerUrl.origin === window.location.origin;
+    } catch (error) {
+        return false;
+    }
+}
 
 function resolveHistoryFallback(trigger) {
     const explicitFallback = trigger?.getAttribute?.('data-history-fallback');
