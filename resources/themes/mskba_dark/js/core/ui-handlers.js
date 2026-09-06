@@ -53,7 +53,12 @@ const handlers = {
     },
 
     historyBack(trigger) {
-        if (canUseSameSiteHistoryBack()) {
+        if (canUseNavigationApiBack()) {
+            window.navigation.back();
+            return;
+        }
+
+        if (!supportsNavigationApi() && canUseLegacySameSiteHistoryBack()) {
             window.history.back();
             return;
         }
@@ -62,7 +67,19 @@ const handlers = {
     },
 };
 
-function canUseSameSiteHistoryBack() {
+function supportsNavigationApi() {
+    return Boolean(
+        window.navigation
+        && typeof window.navigation.back === 'function'
+        && typeof window.navigation.canGoBack === 'boolean'
+    );
+}
+
+function canUseNavigationApiBack() {
+    return supportsNavigationApi() && window.navigation.canGoBack;
+}
+
+function canUseLegacySameSiteHistoryBack() {
     if (window.history.length <= 1 || !document.referrer) {
         return false;
     }
