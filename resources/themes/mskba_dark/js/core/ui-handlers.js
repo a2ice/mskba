@@ -52,10 +52,38 @@ const handlers = {
         alert.remove();
     },
 
-    historyBack() {
-        window.history.back();
+    historyBack(trigger) {
+        if (window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+
+        window.location.assign(resolveHistoryFallback(trigger));
     },
 };
+
+function resolveHistoryFallback(trigger) {
+    const explicitFallback = trigger?.getAttribute?.('data-history-fallback');
+    if (explicitFallback) {
+        return explicitFallback;
+    }
+
+    const breadcrumbLinks = document.querySelectorAll('.page-breadcrumbs__link[href]');
+    const breadcrumbParent = breadcrumbLinks[breadcrumbLinks.length - 1]?.getAttribute('href');
+    if (breadcrumbParent) {
+        return breadcrumbParent;
+    }
+
+    const currentUrl = new URL(window.location.href);
+    const segments = currentUrl.pathname.split('/').filter(Boolean);
+
+    if (segments.length <= 1) {
+        return '/';
+    }
+
+    segments.pop();
+    return `/${segments.join('/')}`;
+}
 
 function bindActionHandlers() {
     $(document).on('click', '[data-handler]', function(e) {
