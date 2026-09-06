@@ -11,7 +11,11 @@
 /.idea
 /.nova
 /.phpunit.cache
-/.vscode
+/.playwright-mcp/
+/mcp-check-desktop.png
+/mcp-check-mobile.png
+/.vscode/*
+!/.vscode/mcp.json
 /.zed
 /auth.json
 /node_modules
