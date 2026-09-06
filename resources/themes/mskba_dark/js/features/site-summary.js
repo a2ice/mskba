@@ -7,24 +7,32 @@ const onlineSummaries = document.querySelectorAll('[data-online-summary]');
 const mobileOnlineSummaries = document.querySelectorAll('[data-mobile-online-summary]');
 const mobileStats = document.querySelectorAll('[data-mobile-summary-stats]');
 const onlineTooltipTargets = [...new Set([...onlineSummaries, ...mobileOnlineSummaries])];
+const createEventTooltipTargets = document.querySelectorAll('.home-welcome__badges .home-status-action');
+const desktopHomeBadges = document.querySelector('.home-welcome__badges');
+const heroPlayButton = document.querySelector('.home-welcome__actions .home-cta.btn--primary');
 
 const onlineTooltipText = 'Авторизованные / всего онлайн';
+const createEventTooltipText = 'Создать мероприятие';
 let activeTooltip = null;
 let activeTooltipTarget = null;
 
-const hideOnlineTooltip = () => {
+const hideSiteTooltip = () => {
+    if (activeTooltipTarget) {
+        activeTooltipTarget.removeAttribute('aria-describedby');
+    }
+
     activeTooltip?.remove();
     activeTooltip = null;
     activeTooltipTarget = null;
 };
 
-const showOnlineTooltip = (target) => {
-    hideOnlineTooltip();
+const showSiteTooltip = (target, text) => {
+    hideSiteTooltip();
 
     const tooltip = document.createElement('div');
-    tooltip.id = 'site-online-summary-tooltip';
+    tooltip.id = 'site-summary-tooltip';
     tooltip.setAttribute('role', 'tooltip');
-    tooltip.textContent = onlineTooltipText;
+    tooltip.textContent = text;
     Object.assign(tooltip.style, {
         position: 'fixed',
         zIndex: '10000',
@@ -60,25 +68,53 @@ const showOnlineTooltip = (target) => {
     activeTooltipTarget = target;
 };
 
-onlineTooltipTargets.forEach((target) => {
-    // Do not use a native title here: the UI must stay icon-free while keeping an explanatory tooltip.
+const bindSiteTooltip = (target, text, { label = false } = {}) => {
+    // Keep the tooltip custom and icon-free instead of relying on a native title.
     target.removeAttribute('title');
-    target.setAttribute('tabindex', '0');
-    target.setAttribute('aria-label', onlineTooltipText);
-    target.addEventListener('mouseenter', () => showOnlineTooltip(target));
-    target.addEventListener('mouseleave', hideOnlineTooltip);
-    target.addEventListener('focus', () => showOnlineTooltip(target));
-    target.addEventListener('blur', hideOnlineTooltip);
+
+    if (!target.matches('button, a, input, select, textarea, [tabindex]')) {
+        target.setAttribute('tabindex', '0');
+    }
+
+    if (label) {
+        target.setAttribute('aria-label', text);
+    }
+
+    target.addEventListener('mouseenter', () => showSiteTooltip(target, text));
+    target.addEventListener('mouseleave', hideSiteTooltip);
+    target.addEventListener('focus', () => showSiteTooltip(target, text));
+    target.addEventListener('blur', hideSiteTooltip);
     target.addEventListener('click', () => {
         if (window.matchMedia('(hover: none)').matches) {
             if (activeTooltipTarget === target) {
-                hideOnlineTooltip();
+                hideSiteTooltip();
             } else {
-                showOnlineTooltip(target);
+                showSiteTooltip(target, text);
             }
         }
     });
-});
+};
+
+onlineTooltipTargets.forEach((target) => bindSiteTooltip(target, onlineTooltipText, { label: true }));
+createEventTooltipTargets.forEach((target) => bindSiteTooltip(target, createEventTooltipText));
+
+if (desktopHomeBadges) {
+    const desktopBadgesMedia = window.matchMedia('(min-width: 901px)');
+    const syncDesktopBadgeGap = () => {
+        desktopHomeBadges.style.gap = desktopBadgesMedia.matches ? '36px' : '';
+    };
+
+    syncDesktopBadgeGap();
+    desktopBadgesMedia.addEventListener?.('change', syncDesktopBadgeGap);
+}
+
+if (heroPlayButton) {
+    const heroPlayIcons = heroPlayButton.querySelectorAll(':scope > i');
+
+    if (heroPlayIcons.length > 1) {
+        heroPlayIcons[heroPlayIcons.length - 1].remove();
+    }
+}
 
 if (summaryUrl && (todayEventsLinks.length || onlineTargets.length || onlineVisitorTargets.length)) {
     let requestInProgress = false;
@@ -157,6 +193,6 @@ if (summaryUrl && (todayEventsLinks.length || onlineTargets.length || onlineVisi
 
     window.addEventListener('pagehide', () => {
         window.clearInterval(intervalId);
-        hideOnlineTooltip();
+        hideSiteTooltip();
     }, { once: true });
 }
