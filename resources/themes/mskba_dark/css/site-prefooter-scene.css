@@ -8,7 +8,7 @@ body.theme-shell {
     content: '';
     display: block;
     width: 100%;
-    height: 25vh;
+    height: clamp(110px, 12vh, 150px);
     pointer-events: none;
     background:
         linear-gradient(
