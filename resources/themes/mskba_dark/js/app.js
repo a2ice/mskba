@@ -91,6 +91,7 @@ import './features/venue-selector-metro-map-sync.js';
 import './features/embedded-entity-preview.js';
 import './features/site-summary.js';
 import './features/home-flow.js';
+import './features/home-hero-parallax.js';
 import './features/home-event-venue-bridge.js';
 import './features/home-venue-flow-fixes.js';
 import './features/reactions.js';
