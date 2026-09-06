@@ -47,8 +47,12 @@
 .home-welcome__parallax-layer--court { z-index: 5; }
 
 /* Keep the original hero readability stack above every parallax image layer. */
-.home-welcome .home-welcome__overlay {
+body.main .home-welcome__overlay {
     z-index: 1;
+    background:
+        radial-gradient(circle at 77% 40%, #e1590f38, #0000 29%),
+        linear-gradient(90deg, #030403f7 0%, rgb(5 6 5 / 70%) 44%, #05050461 72%, #030303ad 100%),
+        linear-gradient(#00000014 0%, #10120f14 58%, rgb(16 18 15 / 50%) 100%);
 }
 
 .home-welcome::after {
