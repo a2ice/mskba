@@ -1,21 +1,38 @@
 const FIXED_SHOW_DELAY = 100;
-const HOME_FIXED_EXTRA_SCROLL = 200;
+const HOME_HERO_FIXED_OFFSET = 100;
 
 function initStickyHeader() {
     const header = document.querySelector('.site-header');
     const wrapper = header?.querySelector('.header-wrapper');
+    const homeHero = document.body.classList.contains('main')
+        ? document.querySelector('.home-welcome')
+        : null;
 
     if (!header || !wrapper) {
         return;
     }
 
     let headerHeight = 0;
+    let homeFixedThreshold = null;
     let revealTimer = null;
     let ticking = false;
 
-    const getFixedThreshold = () => (
-        headerHeight + (document.body.classList.contains('main') ? HOME_FIXED_EXTRA_SCROLL : 0)
-    );
+    const getFixedThreshold = () => homeFixedThreshold ?? headerHeight;
+
+    const syncFixedThreshold = () => {
+        if (!homeHero) {
+            homeFixedThreshold = null;
+            return;
+        }
+
+        const heroTop = homeHero.getBoundingClientRect().top + window.scrollY;
+        const heroHeight = homeHero.getBoundingClientRect().height || homeHero.offsetHeight || 0;
+
+        homeFixedThreshold = Math.max(
+            headerHeight,
+            Math.round(heroTop + heroHeight - HOME_HERO_FIXED_OFFSET),
+        );
+    };
 
     const syncHeaderHeight = () => {
         const measuredHeight = Math.ceil(wrapper.getBoundingClientRect().height || wrapper.offsetHeight || 0);
@@ -27,6 +44,7 @@ function initStickyHeader() {
         headerHeight = measuredHeight;
         header.style.height = `${headerHeight}px`;
         document.documentElement.style.setProperty('--site-header-height', `${headerHeight}px`);
+        syncFixedThreshold();
     };
 
     const hideFixedHeader = () => {
