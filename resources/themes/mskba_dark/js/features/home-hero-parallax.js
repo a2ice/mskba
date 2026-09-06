@@ -1,9 +1,9 @@
 const HOME_HERO_PARALLAX_LAYERS = [
-    { name: 'sky', src: '/images/home/hero-parallax/home-hero-sky.png', depth: 1 },
-    { name: 'city', src: '/images/home/hero-parallax/home-hero-city.png', depth: 0.78 },
-    { name: 'kremlin', src: '/images/home/hero-parallax/home-hero-kremlin.png', depth: 0.58 },
-    { name: 'tree-light', src: '/images/home/hero-parallax/home-hero-tree-light.png', depth: 0.35 },
-    { name: 'court', src: '/images/home/hero-parallax/home-hero-court.png', depth: 0.15 },
+    { name: 'sky', src: '/images/home/hero-parallax/home-hero-sky.png', compensation: 0.68 },
+    { name: 'city', src: '/images/home/hero-parallax/home-hero-city.png', compensation: 0.50 },
+    { name: 'kremlin', src: '/images/home/hero-parallax/home-hero-kremlin.png', compensation: 0.34 },
+    { name: 'tree-light', src: '/images/home/hero-parallax/home-hero-tree-light.png', compensation: 0.18 },
+    { name: 'court', src: '/images/home/hero-parallax/home-hero-court.png', compensation: 0.05 },
 ];
 
 function preloadLayer(image) {
@@ -47,7 +47,7 @@ function initHomeHeroParallax() {
         image.alt = '';
         image.decoding = 'async';
         image.loading = 'eager';
-        image.dataset.parallaxDepth = String(layer.depth);
+        image.dataset.parallaxCompensation = String(layer.compensation);
 
         if (index === 0 || layer.name === 'court') {
             image.fetchPriority = 'high';
@@ -78,16 +78,15 @@ function initHomeHeroParallax() {
 
         const heroRect = hero.getBoundingClientRect();
         const travelled = Math.min(Math.max(-heroRect.top, 0), heroRect.height);
-        const progress = heroRect.height > 0 ? travelled / heroRect.height : 0;
-        const mobile = window.innerWidth <= 768;
-        const maxShift = mobile
-            ? Math.min(heroRect.height * 0.12, 100)
-            : Math.min(heroRect.height * 0.18, 150);
+        const scale = window.innerWidth <= 768 ? 1.18 : 1.12;
 
         layerImages.forEach((layer) => {
-            const depth = Number.parseFloat(layer.dataset.parallaxDepth || '0');
-            const offset = progress * maxShift * depth;
-            layer.style.setProperty('--home-hero-parallax-y', `${offset.toFixed(2)}px`);
+            const compensation = Number.parseFloat(layer.dataset.parallaxCompensation || '0');
+            const offset = travelled * compensation;
+
+            // Inline transform intentionally wins over the generic hero image rule.
+            // Near layers compensate less, so they travel upward faster than distant layers.
+            layer.style.transform = `translate3d(0, ${offset.toFixed(2)}px, 0) scale(${scale})`;
         });
     };
 
