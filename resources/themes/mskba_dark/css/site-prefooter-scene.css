@@ -10,7 +10,7 @@ body.theme-shell {
     background:
         linear-gradient(
             180deg,
-            #0a0a0a 0%,
+            #111211 0%,
             #10120fe0 18%,
             #10120f57 44%,
             #0708072e 64%,
@@ -30,7 +30,7 @@ body.theme-shell {
 .home-final-cta {
     position: relative;
     z-index: 2;
-    background: transparent;
+    background: none !important;
 }
 
 /* The scene now fades into the footer itself, so a divider would reintroduce a hard seam. */
