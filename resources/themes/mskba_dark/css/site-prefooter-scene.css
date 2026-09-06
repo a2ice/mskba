@@ -1,0 +1,26 @@
+/* Decorative indoor court scene immediately above the site footer. */
+
+body.theme-shell {
+    background: var(--page);
+}
+
+.site-content::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 25vh;
+    pointer-events: none;
+    background:
+        linear-gradient(
+            180deg,
+            var(--page) 0%,
+            rgba(16, 18, 15, .92) 20%,
+            rgba(16, 18, 15, .58) 52%,
+            rgba(7, 8, 7, .24) 100%
+        ),
+        var(--site-body-bottom-bg) center center / cover no-repeat;
+}
+
+.telegram-mini-app .site-content::after {
+    display: none;
+}
