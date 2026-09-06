@@ -9,27 +9,15 @@ function initHomeHeroParallax() {
         return;
     }
 
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let heroTop = 0;
-    let heroHeight = 0;
     let frameRequested = false;
-
-    const reset = () => {
-        imageLayer.style.transform = '';
-        imageLayer.style.willChange = '';
-    };
 
     const render = () => {
         frameRequested = false;
 
-        if (reducedMotion.matches) {
-            reset();
-            return;
-        }
-
+        const heroRect = hero.getBoundingClientRect();
         const travelled = Math.min(
-            Math.max(window.scrollY - heroTop, 0),
-            heroHeight,
+            Math.max(-heroRect.top, 0),
+            heroRect.height,
         );
         const offset = travelled * PARALLAX_COMPENSATION;
 
@@ -46,32 +34,10 @@ function initHomeHeroParallax() {
         window.requestAnimationFrame(render);
     };
 
-    const measure = () => {
-        const rect = hero.getBoundingClientRect();
-        heroTop = window.scrollY + rect.top;
-        heroHeight = hero.offsetHeight;
-        requestRender();
-    };
-
     window.addEventListener('scroll', requestRender, { passive: true });
-    window.addEventListener('resize', measure, { passive: true });
+    window.addEventListener('resize', requestRender, { passive: true });
 
-    const handleMotionPreference = () => {
-        if (reducedMotion.matches) {
-            reset();
-            return;
-        }
-
-        measure();
-    };
-
-    if (typeof reducedMotion.addEventListener === 'function') {
-        reducedMotion.addEventListener('change', handleMotionPreference);
-    } else if (typeof reducedMotion.addListener === 'function') {
-        reducedMotion.addListener(handleMotionPreference);
-    }
-
-    measure();
+    requestRender();
 }
 
 if (document.readyState === 'loading') {
