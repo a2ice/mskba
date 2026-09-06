@@ -7,6 +7,7 @@ final readonly class SiteSummaryDTO
     public function __construct(
         public int $todayEvents,
         public int $onlineUsers,
+        public int $onlineVisitors,
         public int $totalUsers,
     ) {}
 
@@ -29,13 +30,14 @@ final readonly class SiteSummaryDTO
         return "{$this->todayEvents} {$noun} сегодня";
     }
 
-    /** @return array{today_events: int, today_events_text: string, online_users: int, total_users: int} */
+    /** @return array{today_events: int, today_events_text: string, online_users: int, online_visitors: int, total_users: int} */
     public function toArray(): array
     {
         return [
             'today_events' => $this->todayEvents,
             'today_events_text' => $this->todayEventsText(),
             'online_users' => $this->onlineUsers,
+            'online_visitors' => $this->onlineVisitors,
             'total_users' => $this->totalUsers,
         ];
     }
