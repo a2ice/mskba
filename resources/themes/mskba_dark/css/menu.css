@@ -5,6 +5,7 @@
 @import './pages/home-compact-cta';
 @import './header-sticky';
 @import './mobile-summary-button-fix';
+@import './site-prefooter-scene';
 
 .nav-link.active {
 }
