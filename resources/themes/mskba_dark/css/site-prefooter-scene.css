@@ -4,6 +4,23 @@ body.theme-shell {
     background: var(--page);
 }
 
+:root {
+    --site-prefooter-scene-height: clamp(110px, 20vh, 250px);
+}
+
+/*
+ * On regular pages the scene is absolutely positioned at the bottom of
+ * .site-content, so reserve an equal amount of real layout space for it.
+ * Without this padding the decorative court is painted over the final form /
+ * card / section content (most visible on long create/edit pages).
+ *
+ * The homepage is intentionally different: its final CTA is designed to sit
+ * over the court scene, so it keeps the previous overlay composition.
+ */
+body:not(.main):not(.telegram-mini-app) .site-content {
+    padding-bottom: var(--site-prefooter-scene-height);
+}
+
 .site-content::after {
     content: '';
     pointer-events: none;
@@ -19,7 +36,7 @@ body.theme-shell {
         ),
         var(--site-body-bottom-bg) center center / cover no-repeat;
     width: 100%;
-    height: clamp(110px, 20vh, 250px);
+    height: var(--site-prefooter-scene-height);
     display: block;
     position: absolute;
     bottom: 0;
