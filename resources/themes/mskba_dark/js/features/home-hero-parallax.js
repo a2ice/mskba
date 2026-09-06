@@ -1,9 +1,9 @@
 const HOME_HERO_PARALLAX_LAYERS = [
-    { name: 'sky', src: '/images/home/hero-parallax/home-hero-sky.png', compensation: 0.68 },
-    { name: 'city', src: '/images/home/hero-parallax/home-hero-city.png', compensation: 0.50 },
-    { name: 'kremlin', src: '/images/home/hero-parallax/home-hero-kremlin.png', compensation: 0.34 },
-    { name: 'tree-light', src: '/images/home/hero-parallax/home-hero-tree-light.png', compensation: 0.18 },
-    { name: 'court', src: '/images/home/hero-parallax/home-hero-court.png', compensation: 0.05 },
+    { name: 'sky', src: '/images/home/hero-parallax/home-hero-sky.png', compensation: 0.79 },
+    { name: 'city', src: '/images/home/hero-parallax/home-hero-city.png', compensation: 0.67 },
+    { name: 'kremlin', src: '/images/home/hero-parallax/home-hero-kremlin.png', compensation: 0.56 },
+    { name: 'tree-light', src: '/images/home/hero-parallax/home-hero-tree-light.png', compensation: 0.45 },
+    { name: 'court', src: '/images/home/hero-parallax/home-hero-court.png', compensation: 0.37 },
 ];
 
 function preloadLayer(image) {

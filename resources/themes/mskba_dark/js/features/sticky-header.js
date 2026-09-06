@@ -1,4 +1,5 @@
 const FIXED_SHOW_DELAY = 100;
+const HOME_FIXED_EXTRA_SCROLL = 200;
 
 function initStickyHeader() {
     const header = document.querySelector('.site-header');
@@ -11,6 +12,10 @@ function initStickyHeader() {
     let headerHeight = 0;
     let revealTimer = null;
     let ticking = false;
+
+    const getFixedThreshold = () => (
+        headerHeight + (document.body.classList.contains('main') ? HOME_FIXED_EXTRA_SCROLL : 0)
+    );
 
     const syncHeaderHeight = () => {
         const measuredHeight = Math.ceil(wrapper.getBoundingClientRect().height || wrapper.offsetHeight || 0);
@@ -44,7 +49,7 @@ function initStickyHeader() {
         revealTimer = window.setTimeout(() => {
             revealTimer = null;
 
-            if (window.scrollY > headerHeight && header.classList.contains('is-fixed')) {
+            if (window.scrollY > getFixedThreshold() && header.classList.contains('is-fixed')) {
                 header.classList.add('is-fixed-shown');
             }
         }, FIXED_SHOW_DELAY);
@@ -53,7 +58,7 @@ function initStickyHeader() {
     const syncStickyState = () => {
         ticking = false;
 
-        if (window.scrollY > headerHeight) {
+        if (window.scrollY > getFixedThreshold()) {
             showFixedHeader();
         } else {
             hideFixedHeader();
