@@ -1,0 +1,51 @@
+.home-welcome__image--parallax {
+    overflow: hidden;
+}
+
+.home-welcome__parallax-fallback {
+    transition: opacity .45s ease;
+}
+
+.home-welcome__parallax {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .45s ease;
+}
+
+.home-welcome__image--parallax.is-parallax-ready > .home-welcome__parallax-fallback {
+    opacity: 0;
+}
+
+.home-welcome__image--parallax.is-parallax-ready .home-welcome__parallax {
+    opacity: 1;
+}
+
+.home-welcome__parallax-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    user-select: none;
+    pointer-events: none;
+    backface-visibility: hidden;
+    transform-origin: center center;
+    will-change: transform;
+    transform: translate3d(0, var(--home-hero-parallax-y, 0px), 0) scale(1.1);
+}
+
+.home-welcome__parallax-layer--sky { z-index: 1; }
+.home-welcome__parallax-layer--city { z-index: 2; }
+.home-welcome__parallax-layer--kremlin { z-index: 3; }
+.home-welcome__parallax-layer--tree-light { z-index: 4; }
+.home-welcome__parallax-layer--court { z-index: 5; }
+
+@media (max-width: 768px) {
+    .home-welcome__parallax-layer {
+        transform: translate3d(0, var(--home-hero-parallax-y, 0px), 0) scale(1.16);
+    }
+}

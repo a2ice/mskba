@@ -4,6 +4,7 @@
 @import './pages/home-hero-microfix';
 @import './pages/home-compact-cta';
 @import './hero-outline-sweep';
+@import './home-hero-parallax-layers';
 @import './header-sticky';
 @import './mobile-summary-button-fix';
 @import './site-prefooter-scene';
