@@ -14,11 +14,18 @@ body.theme-shell {
         linear-gradient(
             180deg,
             var(--page) 0%,
-            rgba(16, 18, 15, .92) 20%,
-            rgba(16, 18, 15, .58) 52%,
-            rgba(7, 8, 7, .24) 100%
+            rgba(16, 18, 15, .88) 18%,
+            rgba(16, 18, 15, .34) 44%,
+            rgba(7, 8, 7, .18) 64%,
+            rgba(7, 8, 7, .62) 84%,
+            rgba(7, 8, 7, .94) 100%
         ),
         var(--site-body-bottom-bg) center center / cover no-repeat;
+}
+
+/* The scene now fades into the footer itself, so a divider would reintroduce a hard seam. */
+.site-content + .site-footer {
+    border-top-color: transparent;
 }
 
 .telegram-mini-app .site-content::after {
