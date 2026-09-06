@@ -1,5 +1,13 @@
 @php
     $trail = app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
+    $historyFallbackUrl = route('welcome');
+
+    foreach (array_reverse(array_slice($trail, 0, -1)) as $parentItem) {
+        if (! empty($parentItem['url'])) {
+            $historyFallbackUrl = $parentItem['url'];
+            break;
+        }
+    }
 @endphp
 
 @if (!request()->routeIs('home'))
@@ -40,6 +48,7 @@
             type="button"
             class="page-breadcrumbs__back js-handler"
             data-handler="historyBack"
+            data-history-fallback="{{ $historyFallbackUrl }}"
             aria-label="Вернуться на предыдущую страницу"
         >
             Назад
