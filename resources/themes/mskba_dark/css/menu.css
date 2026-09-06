@@ -3,6 +3,7 @@
 @import './pages/home-hero-cleanup';
 @import './pages/home-hero-microfix';
 @import './pages/home-compact-cta';
+@import './hero-outline-sweep';
 @import './header-sticky';
 @import './mobile-summary-button-fix';
 @import './site-prefooter-scene';
