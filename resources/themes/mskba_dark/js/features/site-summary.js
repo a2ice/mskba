@@ -6,6 +6,79 @@ const onlineVisitorTargets = document.querySelectorAll('[data-online-visitors-co
 const onlineSummaries = document.querySelectorAll('[data-online-summary]');
 const mobileOnlineSummaries = document.querySelectorAll('[data-mobile-online-summary]');
 const mobileStats = document.querySelectorAll('[data-mobile-summary-stats]');
+const onlineTooltipTargets = [...new Set([...onlineSummaries, ...mobileOnlineSummaries])];
+
+const onlineTooltipText = 'Авторизованные / всего онлайн';
+let activeTooltip = null;
+let activeTooltipTarget = null;
+
+const hideOnlineTooltip = () => {
+    activeTooltip?.remove();
+    activeTooltip = null;
+    activeTooltipTarget = null;
+};
+
+const showOnlineTooltip = (target) => {
+    hideOnlineTooltip();
+
+    const tooltip = document.createElement('div');
+    tooltip.id = 'site-online-summary-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.textContent = onlineTooltipText;
+    Object.assign(tooltip.style, {
+        position: 'fixed',
+        zIndex: '10000',
+        padding: '7px 9px',
+        border: '1px solid rgba(255, 255, 255, 0.16)',
+        borderRadius: '8px',
+        background: 'rgba(10, 12, 11, 0.98)',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.38)',
+        color: '#fff',
+        fontSize: '11px',
+        fontWeight: '600',
+        lineHeight: '1.2',
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+    });
+    document.body.appendChild(tooltip);
+
+    const targetRect = target.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportPadding = 8;
+    let left = targetRect.left + (targetRect.width / 2) - (tooltipRect.width / 2);
+    left = Math.max(viewportPadding, Math.min(left, window.innerWidth - tooltipRect.width - viewportPadding));
+    let top = targetRect.top - tooltipRect.height - 8;
+
+    if (top < viewportPadding) {
+        top = targetRect.bottom + 8;
+    }
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    target.setAttribute('aria-describedby', tooltip.id);
+    activeTooltip = tooltip;
+    activeTooltipTarget = target;
+};
+
+onlineTooltipTargets.forEach((target) => {
+    // Do not use a native title here: the UI must stay icon-free while keeping an explanatory tooltip.
+    target.removeAttribute('title');
+    target.setAttribute('tabindex', '0');
+    target.setAttribute('aria-label', onlineTooltipText);
+    target.addEventListener('mouseenter', () => showOnlineTooltip(target));
+    target.addEventListener('mouseleave', hideOnlineTooltip);
+    target.addEventListener('focus', () => showOnlineTooltip(target));
+    target.addEventListener('blur', hideOnlineTooltip);
+    target.addEventListener('click', () => {
+        if (window.matchMedia('(hover: none)').matches) {
+            if (activeTooltipTarget === target) {
+                hideOnlineTooltip();
+            } else {
+                showOnlineTooltip(target);
+            }
+        }
+    });
+});
 
 if (summaryUrl && (todayEventsLinks.length || onlineTargets.length || onlineVisitorTargets.length)) {
     let requestInProgress = false;
@@ -51,7 +124,12 @@ if (summaryUrl && (todayEventsLinks.length || onlineTargets.length || onlineVisi
                 target.textContent = onlineVisitors;
             });
             onlineSummaries.forEach((target) => {
-                target.hidden = onlineUsers === 0;
+                target.hidden = onlineVisitors === 0;
+                const valueTarget = target.lastElementChild;
+
+                if (valueTarget) {
+                    valueTarget.textContent = `${onlineUsers}/${onlineVisitors} онлайн`;
+                }
             });
             mobileOnlineSummaries.forEach((target) => {
                 target.hidden = onlineVisitors === 0;
@@ -66,6 +144,8 @@ if (summaryUrl && (todayEventsLinks.length || onlineTargets.length || onlineVisi
         }
     };
 
+    refresh();
+
     const heartbeatInterval = Number(document.body.dataset.siteSummaryHeartbeatInterval) || 45;
     const intervalId = window.setInterval(refresh, Math.max(30, heartbeatInterval) * 1000);
 
@@ -75,5 +155,8 @@ if (summaryUrl && (todayEventsLinks.length || onlineTargets.length || onlineVisi
         }
     });
 
-    window.addEventListener('pagehide', () => window.clearInterval(intervalId), { once: true });
+    window.addEventListener('pagehide', () => {
+        window.clearInterval(intervalId);
+        hideOnlineTooltip();
+    }, { once: true });
 }
