@@ -6,21 +6,24 @@ body.theme-shell {
 
 .site-content::after {
     content: '';
-    display: block;
-    width: 100%;
-    height: clamp(110px, 12vh, 150px);
     pointer-events: none;
     background:
         linear-gradient(
             180deg,
-            var(--page) 0%,
-            rgba(16, 18, 15, .88) 18%,
-            rgba(16, 18, 15, .34) 44%,
-            rgba(7, 8, 7, .18) 64%,
-            rgba(7, 8, 7, .62) 84%,
-            rgba(7, 8, 7, .94) 100%
+            #0a0a0a 0%,
+            #10120fe0 18%,
+            #10120f57 44%,
+            #0708072e 64%,
+            #0708079e 84%,
+            #070807f0 100%
         ),
         var(--site-body-bottom-bg) center center / cover no-repeat;
+    width: 100%;
+    height: clamp(110px, 20vh, 250px);
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: 0;
 }
 
 /* The scene now fades into the footer itself, so a divider would reintroduce a hard seam. */
