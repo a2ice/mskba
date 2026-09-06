@@ -12,33 +12,37 @@ body.main .home-welcome__title > span::after {
     color: transparent;
     -webkit-text-stroke: 2px rgba(255, 255, 255, .98);
     text-stroke: 2px rgba(255, 255, 255, .98);
-    filter: drop-shadow(0 0 4px rgba(255, 255, 255, .32));
+    filter:
+        drop-shadow(0 0 3px rgba(255, 255, 255, .5))
+        drop-shadow(0 0 9px rgba(255, 255, 255, .18));
 
     /* Roughly one fifth of the phrase is highlighted at any moment. */
     -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
     mask-image: linear-gradient(90deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
-    -webkit-mask-size: 31% 100%;
-    mask-size: 31% 100%;
+    -webkit-mask-size: 29% 100%;
+    mask-size: 29% 100%;
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
-    -webkit-mask-position: -45% 0;
-    mask-position: -45% 0;
+    -webkit-mask-position: -42% 0;
+    mask-position: -42% 0;
     animation: homeHeroOutlineSweep 5.2s linear infinite;
 }
 
 @keyframes homeHeroOutlineSweep {
     from {
-        -webkit-mask-position: -45% 0;
-        mask-position: -45% 0;
+        -webkit-mask-position: -42% 0;
+        mask-position: -42% 0;
     }
     to {
-        -webkit-mask-position: 145% 0;
-        mask-position: 145% 0;
+        -webkit-mask-position: 142% 0;
+        mask-position: 142% 0;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     body.main .home-welcome__title > span::after {
-        display: none;
+        animation: none;
+        -webkit-mask-position: 48% 0;
+        mask-position: 48% 0;
     }
 }
