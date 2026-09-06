@@ -1,0 +1,18 @@
+/* Compact primary CTAs on the homepage.
+ * Hero/final actions keep their explicit btn--lg sizing; secondary section actions
+ * use the same proportions as the shared btn--sm control from the design system.
+ */
+body.main .home-section-actions .btn.btn--primary,
+body.main .home-identity__copy > .btn.btn--primary {
+    min-height: 40px;
+    padding: 0 18px;
+    gap: 10px;
+    border-radius: var(--radius-control);
+    font-size: 13px;
+    line-height: 1;
+}
+
+body.main .home-section-actions .btn.btn--primary > i,
+body.main .home-identity__copy > .btn.btn--primary > i {
+    font-size: 14px;
+}
