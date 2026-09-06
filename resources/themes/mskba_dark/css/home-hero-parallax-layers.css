@@ -1,5 +1,7 @@
 .home-welcome__image--parallax {
     overflow: hidden;
+    z-index: 0;
+    isolation: isolate;
 }
 
 .home-welcome__parallax-fallback {
@@ -23,7 +25,7 @@
     opacity: 1;
 }
 
-.home-welcome__parallax-layer {
+.home-welcome__image--parallax .home-welcome__parallax-layer {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -35,7 +37,7 @@
     backface-visibility: hidden;
     transform-origin: center center;
     will-change: transform;
-    transform: translate3d(0, var(--home-hero-parallax-y, 0px), 0) scale(1.1);
+    transform: translate3d(0, 0, 0) scale(1.12);
 }
 
 .home-welcome__parallax-layer--sky { z-index: 1; }
@@ -44,8 +46,21 @@
 .home-welcome__parallax-layer--tree-light { z-index: 4; }
 .home-welcome__parallax-layer--court { z-index: 5; }
 
+/* Keep the original hero readability stack above every parallax image layer. */
+.home-welcome .home-welcome__overlay {
+    z-index: 1;
+}
+
+.home-welcome::after {
+    z-index: 2;
+}
+
+.home-welcome .home-welcome__content {
+    z-index: 3;
+}
+
 @media (max-width: 768px) {
-    .home-welcome__parallax-layer {
-        transform: translate3d(0, var(--home-hero-parallax-y, 0px), 0) scale(1.16);
+    .home-welcome__image--parallax .home-welcome__parallax-layer {
+        transform: translate3d(0, 0, 0) scale(1.18);
     }
 }
