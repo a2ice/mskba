@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: [
             __DIR__.'/../routes/web.php',
+            __DIR__.'/../routes/admin-geography.php',
             __DIR__.'/../routes/event-wizard.php',
             __DIR__.'/../routes/game-live.php',
             __DIR__.'/../routes/game-recruitment.php',
