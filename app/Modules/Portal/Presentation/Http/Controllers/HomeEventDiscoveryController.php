@@ -48,6 +48,9 @@ final class HomeEventDiscoveryController extends Controller
             'metro_station_ids.*' => ['integer', 'distinct', 'exists:metro_stations,id'],
             'street' => ['nullable', 'string', 'max:180'],
             'venue_id' => ['nullable', 'integer', 'exists:venues,id'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude,radius_km'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude,radius_km'],
+            'radius_km' => ['nullable', 'numeric', 'min:0.1', 'max:50', 'required_with:latitude,longitude'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => [
                 'nullable',
