@@ -120,4 +120,5 @@
 - [x] 140 - Переработать popup-wizard поиска мероприятий и добавить географические справочники ([описание](tasks/140/description.md))
 - [x] 141 - Закрыть production/regression замечания после Task 140 ([описание](tasks/141/description.md))
 - [x] 142 - Убрать автоматический zoom мобильной страницы при фокусе на полях ([описание](tasks/142/description.md))
-- [ ] 143 - Переработать conditional location mini-wizard и добавить поиск по радиусу ([описание](tasks/143/description.md))
+- [x] 143 - Переработать conditional location mini-wizard и добавить поиск по радиусу ([описание](tasks/143/description.md))
+- [ ] 144 - Подсветить переход «Далее» после выбора и закрывать popup кнопкой «Назад» на первом шаге ([описание](tasks/144/description.md))
