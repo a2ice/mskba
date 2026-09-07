@@ -93,3 +93,30 @@
     min-height: 100%;
     padding: 0;
 }
+
+/*
+ * iOS Safari automatically zooms the visual viewport when a focused text
+ * control uses a font smaller than 16px. Keep mobile form controls at the
+ * native readability threshold globally, including Tom Select's inner input,
+ * without disabling the user's manual pinch-to-zoom.
+ */
+@media (max-width: 767px) {
+    input:not([type]),
+    input[type='text'],
+    input[type='search'],
+    input[type='email'],
+    input[type='tel'],
+    input[type='url'],
+    input[type='password'],
+    input[type='number'],
+    input[type='date'],
+    input[type='datetime-local'],
+    input[type='month'],
+    input[type='time'],
+    input[type='week'],
+    select,
+    textarea,
+    .ts-control input {
+        font-size: 16px !important;
+    }
+}
