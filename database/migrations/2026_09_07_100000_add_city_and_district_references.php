@@ -22,7 +22,7 @@ return new class extends Migration
             $table
                 ->foreignId('city_id')
                 ->constrained('cities')
-                ->cascadeOnDelete();
+                ->restrictOnDelete();
             $table->string('name');
             $table->string('alias');
             $table->string('short_name')->nullable();
@@ -38,12 +38,12 @@ return new class extends Migration
                 ->foreignId('city_id')
                 ->nullable()
                 ->constrained('cities')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table
                 ->foreignId('district_id')
                 ->nullable()
                 ->constrained('districts')
-                ->nullOnDelete();
+                ->restrictOnDelete();
         });
     }
 
