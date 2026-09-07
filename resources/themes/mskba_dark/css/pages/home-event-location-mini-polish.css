@@ -68,3 +68,9 @@ body:has(.home-event-location-modal.is-open) .home-event-location--conditional .
     height: 1px;
     background: rgba(255, 255, 255, .08);
 }
+
+/* Task 149: expose the shared venue map action inside the detached mini-wizard. */
+.home-event-location-modal .home-event-location__venue [data-venue-map-selector-open] {
+    display: inline-flex !important;
+    align-items: center;
+}
