@@ -13,6 +13,8 @@ use App\Modules\Identity\Domain\Models\UserDuplicate;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use App\Modules\Identity\Domain\Models\UserParticipationRole;
 use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\City;
+use App\Modules\Location\Domain\Models\District;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Notification\Domain\Models\UserNotification;
@@ -60,6 +62,8 @@ return [
         ContractPermission::class,
         ContractRelation::class,
         Address::class,
+        City::class,
+        District::class,
         Location::class,
         Media::class,
         UserNotification::class,
