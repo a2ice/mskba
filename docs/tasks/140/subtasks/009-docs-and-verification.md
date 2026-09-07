@@ -6,8 +6,11 @@
 
 Обновлено:
 
+- `docs/project/homepage-event-discovery.md` — продуктовый пятишаговый сценарий поиска на главной;
+- `docs/project/events-games-tournaments.md` — ссылка и краткое место homepage discovery в общей продуктовой модели;
 - `docs/specification/location.md` — City/District, Address FK, Yandex resolver, seeding и admin geography;
-- `docs/specification/homepage-event-discovery.md` — полный пятишаговый homepage discovery flow;
+- `docs/specification/homepage-event-discovery.md` — технический контракт пятишагового homepage discovery flow;
+- `docs/specification/event-game-tournament-architecture.md` — discovery зафиксирован как read-only проекция, а не новый доменный агрегат;
 - task-документация `140/001..008`.
 
 ## Статический review
@@ -21,9 +24,14 @@
 - admin CRUD и ограничения целостности;
 - публичные homepage routes;
 - Event/Tournament discovery read model;
-- frontend import/lifecycle порядка homepage wizard.
+- frontend import/lifecycle порядка homepage wizard;
+- изоляция тестового времени в новых feature tests.
 
-Во время review найден lifecycle-дефект discovery: `home-event-discovery.js` статически инициализировался до того, как `home-flow-navigation.js` создавал footer при `modal:opened`. В результате модуль мог завершить инициализацию без финального шага. Исправлено ленивой загрузкой через `home-event-discovery-loader.js` после монтирования navigation DOM.
+Во время review найдены и исправлены три пограничных дефекта:
+
+1. discovery мог статически инициализироваться до готовности общего footer. Финальный слой теперь загружается лениво через `home-event-discovery-loader.js` после открытия popup;
+2. повторный `GeographySeeder` мог создать дубликат канонического города/района после ручного изменения его alias. Seed identity теперь ищет существующую запись по исходному alias, name или short_name и никогда не перезаписывает найденные значения;
+3. `HomeEventDiscoveryControllerTest` устанавливал глобальный Carbon test clock без явного сброса. Добавлен `tearDown`, чтобы время не протекало в последующие тесты.
 
 ## Автоматические проверки
 
@@ -36,7 +44,7 @@ CI проекта запускается на `pull_request -> main` и выпо
 5. `npm ci --ignore-scripts`;
 6. `npm run build`.
 
-На feature push CI не запускается, поэтому до создания PR executable checks отсутствуют.
+На feature push CI не запускается, а доступный GitHub-инструмент не предоставляет runtime Laravel/Vite, поэтому до создания PR executable checks отсутствуют. Пункт плана с тестами/build нельзя считать выполненным только по статическому review.
 
 ## Обязательный smoke-check после успешного CI
 
@@ -56,11 +64,14 @@ Desktop и mobile:
 - проверить loading overlay, empty-state, error-state, `Обновить`;
 - проверить `Назад` с результатов и повторный поиск;
 - закрыть popup на результатах и открыть снова — wizard должен стартовать в обычном состоянии;
-- проверить popup `Площадки`: общий footer `Назад / Далее` не должен ломать существующий поиск/добавление.
+- проверить popup `Площадки`: общий footer `Назад / Далее` не должен ломать существующий поиск/добавление;
+- открыть `/admin/geography`, проверить редактирование City/District и запрет удаления используемых записей.
 
 ## Состояние перед PR
 
 - реализация 001–008 завершена;
-- документация завершена;
+- продуктовая и техническая документация завершена;
+- статический review завершён, найденные дефекты исправлены;
 - `feature/140` не должна отставать от `main` перед созданием PR;
+- следующий необходимый шаг — PR в `main`, чтобы запустить штатный CI;
 - PR и merge выполняются только после отдельного подтверждения пользователя.
