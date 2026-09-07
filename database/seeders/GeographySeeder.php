@@ -4,35 +4,82 @@ namespace Database\Seeders;
 
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\City;
+use App\Modules\Location\Domain\Models\District;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Seeder;
 
 class GeographySeeder extends Seeder
 {
     public function run(): void
     {
+        $seededCities = [];
+
         foreach ($this->cities() as $cityData) {
             $districts = $cityData['districts'];
             unset($cityData['districts']);
 
-            $city = City::query()->firstOrCreate(
-                ['alias' => $cityData['alias']],
-                $cityData,
-            );
+            $seedAlias = $cityData['alias'];
+            $city = $this->findSeedCity($cityData)
+                ?? City::query()->create($cityData);
+            $seededCities[$seedAlias] = $city;
 
             foreach ($districts as $districtData) {
-                $city->districts()->firstOrCreate(
-                    ['alias' => $districtData['alias']],
-                    $districtData,
-                );
+                if ($this->findSeedDistrict($city, $districtData) === null) {
+                    $city->districts()->create($districtData);
+                }
             }
         }
 
-        $this->backfillAddressCities();
+        $this->backfillAddressCities($seededCities);
     }
 
-    private function backfillAddressCities(): void
+    /**
+     * Seed identity intentionally accepts any still-canonical stable field.
+     * This prevents a repeated production seed from recreating a directory row
+     * after an administrator has edited its alias, description or display name.
+     * Existing values are never overwritten by the seed.
+     *
+     * @param array{name: string, alias: string, short_name: string|null, description: string|null} $cityData
+     */
+    private function findSeedCity(array $cityData): ?City
     {
-        $moscow = City::query()->where('alias', 'moscow')->first();
+        return City::query()
+            ->where(function (Builder $query) use ($cityData): void {
+                $query
+                    ->where('alias', $cityData['alias'])
+                    ->orWhere('name', $cityData['name']);
+
+                if ($cityData['short_name'] !== null) {
+                    $query->orWhere('short_name', $cityData['short_name']);
+                }
+            })
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * @param array{name: string, alias: string, short_name: string|null, description: string|null} $districtData
+     */
+    private function findSeedDistrict(City $city, array $districtData): ?District
+    {
+        return $city->districts()
+            ->where(function (Builder $query) use ($districtData): void {
+                $query
+                    ->where('alias', $districtData['alias'])
+                    ->orWhere('name', $districtData['name']);
+
+                if ($districtData['short_name'] !== null) {
+                    $query->orWhere('short_name', $districtData['short_name']);
+                }
+            })
+            ->orderBy('id')
+            ->first();
+    }
+
+    /** @param array<string, City> $seededCities */
+    private function backfillAddressCities(array $seededCities): void
+    {
+        $moscow = $seededCities['moscow'] ?? null;
         if ($moscow !== null) {
             $this->backfillAddressCity($moscow, [
                 'москва',
@@ -42,7 +89,7 @@ class GeographySeeder extends Seeder
             ]);
         }
 
-        $khimki = City::query()->where('alias', 'khimki')->first();
+        $khimki = $seededCities['khimki'] ?? null;
         if ($khimki !== null) {
             $this->backfillAddressCity($khimki, [
                 'химки',
