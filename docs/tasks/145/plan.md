@@ -6,5 +6,5 @@
 4. [x] Сделать Москву дефолтным городом и исправить очистку city/district placeholder.
 5. [x] Ослабить активную рамку mini-wizard.
 6. [x] Перенести активный mini-wizard во вложенный modal поверх основного popup с отдельной навигацией.
-7. [ ] Обновить task registry.
+7. [x] Обновить task registry.
 8. [ ] Проверить diff, PR CI (`php artisan test` + frontend build) и при зелёном результате вмержить в `main` по заранее данному разрешению пользователя.
