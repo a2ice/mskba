@@ -74,3 +74,8 @@ body:has(.home-event-location-modal.is-open) .home-event-location--conditional .
     display: inline-flex !important;
     align-items: center;
 }
+
+/* Task 150: the venue map is a third-level modal and must sit above both wizard layers. */
+.modal:has(.venue-selector-map-modal__dialog) {
+    z-index: 360;
+}
