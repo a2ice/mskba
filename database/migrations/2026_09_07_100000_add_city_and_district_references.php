@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('cities', function (Blueprint $table): void {
             $table->id();
-            $table->string('name');
+            $table->string('name')->unique();
             $table->string('alias')->unique();
             $table->string('short_name')->nullable();
             $table->text('description')->nullable();
