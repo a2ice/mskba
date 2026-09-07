@@ -27,10 +27,12 @@
 }
 
 .home-flow-wizard-nav__back {
+    grid-column: 1;
     justify-self: start;
 }
 
 .home-flow-wizard-nav__next {
+    grid-column: 3;
     justify-self: end;
 }
 
@@ -52,6 +54,7 @@
 }
 
 .home-flow-wizard-nav__skip {
+    grid-column: 2;
     justify-self: center;
     padding: 8px 4px;
     border: 0;
