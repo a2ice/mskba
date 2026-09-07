@@ -31,16 +31,29 @@ class GeographySeederTest extends TestCase
         $this->assertNull($moscowAddress->fresh()->district_id);
     }
 
-    public function test_repeated_seed_does_not_overwrite_admin_edited_directory_values(): void
+    public function test_repeated_seed_does_not_overwrite_or_duplicate_admin_edited_directory_values(): void
     {
         $this->seed(GeographySeeder::class);
 
         $moscow = City::query()->where('alias', 'moscow')->firstOrFail();
-        $moscow->update(['description' => 'Изменено администратором']);
+        $sao = $moscow->districts()->where('alias', 'sao')->firstOrFail();
+        $moscow->update([
+            'alias' => 'moscow-admin',
+            'description' => 'Изменено администратором',
+        ]);
+        $sao->update(['alias' => 'north-admin']);
+        $newAddress = Address::factory()->create(['city' => 'Москва', 'city_id' => null]);
 
         $this->seed(GeographySeeder::class);
 
-        $this->assertSame('Изменено администратором', $moscow->fresh()->description);
+        $moscow->refresh();
+        $sao->refresh();
+
+        $this->assertSame('moscow-admin', $moscow->alias);
+        $this->assertSame('Изменено администратором', $moscow->description);
+        $this->assertSame('north-admin', $sao->alias);
         $this->assertSame(2, City::query()->count());
+        $this->assertSame(12, $moscow->districts()->count());
+        $this->assertSame((int) $moscow->id, (int) $newAddress->fresh()->city_id);
     }
 }
