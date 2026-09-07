@@ -26,6 +26,13 @@ class HomeEventDiscoveryControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_discovery_merges_public_events_and_tournaments_and_applies_location_filters(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 12:00:00', 'Europe/Moscow'));
