@@ -14,7 +14,7 @@ class GeographySeederTest extends TestCase
 
     public function test_seed_creates_initial_geography_and_backfills_known_address_cities(): void
     {
-        $moscowAddress = Address::factory()->create(['city' => 'Москва', 'city_id' => null]);
+        $moscowAddress = Address::factory()->create(['city' => '  г. Москва  ', 'city_id' => null]);
         $khimkiAddress = Address::factory()->create(['city' => 'Химки', 'city_id' => null]);
         $unknownAddress = Address::factory()->create(['city' => 'Тверь', 'city_id' => null]);
 
