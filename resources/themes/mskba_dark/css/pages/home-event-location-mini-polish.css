@@ -1,0 +1,70 @@
+/* Task 147: final UX polish for the detached location mini-wizard. */
+
+.home-event-location-modal__nav > [data-home-location-mini-back] {
+    grid-column: 1;
+}
+
+.home-event-location-modal__nav .home-flow-wizard-nav__skip {
+    grid-column: 2;
+}
+
+.home-event-location-modal__nav > [data-home-location-mini-next] {
+    grid-column: 3;
+}
+
+.home-event-location--conditional .home-event-location__geolocation {
+    display: none;
+}
+
+.home-event-location--conditional .home-event-location__geolocation:has(.home-event-location__status:not([hidden])) {
+    display: flex;
+}
+
+body:has(.home-event-location-modal.is-open) .home-event-location--conditional .home-event-location__geolocation {
+    display: none !important;
+}
+
+.home-event-location__current-inline {
+    display: grid;
+    gap: 10px;
+    padding-bottom: 2px;
+}
+
+.home-event-location__current-inline .btn {
+    width: 100%;
+    min-height: 46px;
+    justify-content: center;
+}
+
+.home-event-location__current-inline-status {
+    margin: 0;
+    color: rgba(255, 255, 255, .58);
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+.home-event-location__current-inline-status[data-state='error'] {
+    color: #ff9f9f;
+}
+
+.home-event-location__current-inline-status[data-state='loading'] {
+    color: rgba(255, 255, 255, .72);
+}
+
+.home-event-location__current-inline-separator {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    color: rgba(255, 255, 255, .34);
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.home-event-location__current-inline-separator::before,
+.home-event-location__current-inline-separator::after {
+    content: '';
+    height: 1px;
+    background: rgba(255, 255, 255, .08);
+}
