@@ -32,10 +32,16 @@ final class HomeLocationOptionsController extends Controller
             ->values()
             ->all();
 
+        $timezone = (string) config('app.timezone', 'Europe/Moscow');
+        $today = now($timezone)->startOfDay();
+
         return response()->json([
             'cities' => $cities,
             'address_suggest_url' => route('integrations.address-suggest'),
             'address_reverse_url' => route('integrations.address-reverse'),
+            'timezone' => $timezone,
+            'default_date_from' => $today->toDateString(),
+            'default_date_to' => $today->copy()->addDays(7)->toDateString(),
         ]);
     }
 }
