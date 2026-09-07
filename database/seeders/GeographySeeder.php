@@ -82,9 +82,13 @@ class GeographySeeder extends Seeder
         $moscow = $seededCities['moscow'] ?? null;
         if ($moscow !== null) {
             $this->backfillAddressCity($moscow, [
+                'Москва',
                 'москва',
+                'г. Москва',
                 'г. москва',
+                'город Москва',
                 'город москва',
+                'Moscow',
                 'moscow',
             ]);
         }
@@ -92,9 +96,13 @@ class GeographySeeder extends Seeder
         $khimki = $seededCities['khimki'] ?? null;
         if ($khimki !== null) {
             $this->backfillAddressCity($khimki, [
+                'Химки',
                 'химки',
+                'г. Химки',
                 'г. химки',
+                'город Химки',
                 'город химки',
+                'Khimki',
                 'khimki',
             ]);
         }
@@ -109,7 +117,10 @@ class GeographySeeder extends Seeder
 
         Address::query()
             ->whereNull('city_id')
-            ->whereRaw("LOWER(TRIM(city)) IN ({$placeholders})", $names)
+            // SQLite LOWER() is ASCII-only by default, so Cyrillic case folding
+            // would make the CI backfill diverge from PostgreSQL. Match the
+            // explicit known variants and keep only portable TRIM() in SQL.
+            ->whereRaw("TRIM(city) IN ({$placeholders})", $names)
             ->update(['city_id' => $city->id]);
     }
 
