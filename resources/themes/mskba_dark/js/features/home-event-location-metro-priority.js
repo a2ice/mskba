@@ -62,16 +62,17 @@ function observeMetroList(list) {
     }
 
     observedLists.add(list);
-    const observer = new MutationObserver(() => {
+
+    const sortCurrentList = () => {
         const input = list.closest('.home-event-location__metro-predictive')?.querySelector(METRO_INPUT_SELECTOR);
-        if (!input) {
-            return;
+        if (input) {
+            sortVisibleMetroResults(input);
         }
+    };
 
-        queueMicrotask(() => sortVisibleMetroResults(input));
-    });
-
+    const observer = new MutationObserver(() => queueMicrotask(sortCurrentList));
     observer.observe(list, { childList: true });
+    queueMicrotask(sortCurrentList);
 }
 
 function discoverMetroLists(root = document) {
