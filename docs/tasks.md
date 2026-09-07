@@ -121,4 +121,5 @@
 - [x] 141 - Закрыть production/regression замечания после Task 140 ([описание](tasks/141/description.md))
 - [x] 142 - Убрать автоматический zoom мобильной страницы при фокусе на полях ([описание](tasks/142/description.md))
 - [x] 143 - Переработать conditional location mini-wizard и добавить поиск по радиусу ([описание](tasks/143/description.md))
-- [ ] 144 - Подсветить переход «Далее» после выбора и закрывать popup кнопкой «Назад» на первом шаге ([описание](tasks/144/description.md))
+- [x] 144 - Подсветить переход «Далее» после выбора и закрывать popup кнопкой «Назад» на первом шаге ([описание](tasks/144/description.md))
+- [ ] 145 - Полировать conditional location mini-wizard и вынести активные шаги во вложенный popup ([описание](tasks/145/description.md))

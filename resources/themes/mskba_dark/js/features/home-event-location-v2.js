@@ -9,6 +9,7 @@ const LOCATION_SENTINEL_FILTERS = '__home_location_filters__';
 const GEOLOCATION_ERROR = 'Не удалось получить геопозицию. Попробуйте ещё раз или выберите город вручную';
 const DEFAULT_RADIUS_KM = 3;
 const RADIUS_OPTIONS = [1, 3, 5, 10];
+const MINI_MODAL_ID = 'home-event-location-mini';
 
 function normalize(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -16,6 +17,11 @@ function normalize(value) {
 
 function normalizedSearch(value) {
     return normalize(value).toLocaleLowerCase('ru');
+}
+
+function normalizeMetroColor(value) {
+    const raw = normalize(value || '#666666');
+    return /^(?:#|rgb|hsl)/i.test(raw) ? raw : `#${raw}`;
 }
 
 function initHomeEventLocation(flow) {
@@ -40,12 +46,8 @@ function initHomeEventLocation(flow) {
 
     const baseVenueSearchUrl = venueSelector.dataset.searchUrl || '/venues/search';
 
-    if (legacyMetroToggle) {
-        legacyMetroToggle.hidden = true;
-    }
-    if (legacyMetroPanel) {
-        legacyMetroPanel.hidden = true;
-    }
+    if (legacyMetroToggle) legacyMetroToggle.hidden = true;
+    if (legacyMetroPanel) legacyMetroPanel.hidden = true;
     if (legacyMetroSelect) {
         legacyMetroSelect.closest('.ts-wrapper')?.setAttribute('hidden', 'hidden');
         legacyMetroSelect.hidden = true;
@@ -87,12 +89,39 @@ function initHomeEventLocation(flow) {
     mini.append(stack);
     specific.append(geolocationRow, mini);
     root.append(modeGrid, specific);
-
     locationStage.replaceChildren(root);
+
+    const miniModal = document.createElement('div');
+    miniModal.className = 'modal home-event-location-modal';
+    miniModal.dataset.modal = MINI_MODAL_ID;
+    miniModal.hidden = true;
+    miniModal.innerHTML = `
+        <div class="modal__dialog home-event-location-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title-${MINI_MODAL_ID}">
+            <button class="modal__close" type="button" aria-label="Закрыть настройку локации" data-handler="modal" data-modal-action="close"><span></span></button>
+            <div class="home-event-location-modal__head">
+                <p class="home-flow-modal__eyebrow">Локация мероприятия</p>
+                <h2 class="modal_title" id="modal-title-${MINI_MODAL_ID}">Уточните, где искать</h2>
+                <p>Шаги зависят от выбранного города и способа поиска.</p>
+            </div>
+            <div class="home-event-location-modal__body" data-home-location-modal-body></div>
+            <div class="home-event-location-modal__nav">
+                <button type="button" class="btn btn--secondary" data-home-location-mini-back><i class="ti ti-arrow-left"></i><span>Назад</span></button>
+                <button type="button" class="home-flow-wizard-nav__skip" data-home-location-mini-skip>Пропустить</button>
+                <button type="button" class="btn btn--primary" data-home-location-mini-next><span>Далее</span><i class="ti ti-arrow-right"></i></button>
+            </div>
+        </div>
+    `;
+    document.body.append(miniModal);
+
+    const miniModalBody = miniModal.querySelector('[data-home-location-modal-body]');
+    const miniBack = miniModal.querySelector('[data-home-location-mini-back]');
+    const miniSkip = miniModal.querySelector('[data-home-location-mini-skip]');
+    const miniNext = miniModal.querySelector('[data-home-location-mini-next]');
 
     const state = {
         mode: 'any',
         miniActive: false,
+        miniDone: false,
         loaded: false,
         loading: false,
         options: null,
@@ -115,7 +144,9 @@ function initHomeEventLocation(flow) {
 
     let streetTimer = null;
     let streetRequest = 0;
+    let metroTimer = null;
     let suppressVenueChange = false;
+    let internalMiniClose = false;
 
     const modeButtons = [...modeGrid.querySelectorAll('[data-home-event-location-mode]')];
     const geolocationButton = geolocationRow.querySelector('[data-home-event-current-location]');
@@ -127,6 +158,12 @@ function initHomeEventLocation(flow) {
 
     function district() {
         return city()?.districts?.find((item) => Number(item.id) === Number(state.districtId)) || null;
+    }
+
+    function moscowId(options = state.options) {
+        const item = options?.cities?.find((candidate) => normalizedSearch(candidate.name) === 'москва'
+            || normalizedSearch(candidate.alias) === 'moscow');
+        return item ? Number(item.id) : null;
     }
 
     function isMoscow() {
@@ -192,12 +229,8 @@ function initHomeEventLocation(flow) {
     }
 
     function manualPathAfterCity() {
-        if (state.cityAny || !state.cityId) {
-            return ['city', 'final'];
-        }
-        if (isMoscow()) {
-            return ['city', 'moscow-mode'];
-        }
+        if (state.cityAny || !state.cityId) return ['city', 'final'];
+        if (isMoscow()) return ['city', 'moscow-mode'];
         return (city()?.districts || []).length > 0
             ? ['city', 'district', 'final']
             : ['city', 'final'];
@@ -208,7 +241,6 @@ function initHomeEventLocation(flow) {
             state.path = manualPathAfterCity();
             return;
         }
-
         if (state.moscowMode === 'metro') {
             state.path = state.metro
                 ? ['city', 'moscow-mode', 'metro', 'radius', 'final']
@@ -227,24 +259,12 @@ function initHomeEventLocation(flow) {
     }
 
     function stepComplete(step) {
-        if (step === 'city') {
-            return state.cityAny || Boolean(state.cityId);
-        }
-        if (step === 'moscow-mode') {
-            return ['metro', 'district', 'any'].includes(state.moscowMode);
-        }
-        if (step === 'district') {
-            return state.districtAny || Boolean(state.districtId);
-        }
-        if (step === 'metro') {
-            return Boolean(state.metro && state.anchor);
-        }
-        if (step === 'radius') {
-            return Boolean(hasRadius());
-        }
-        if (step === 'final') {
-            return true;
-        }
+        if (step === 'city') return state.cityAny || Boolean(state.cityId);
+        if (step === 'moscow-mode') return ['metro', 'district', 'any'].includes(state.moscowMode);
+        if (step === 'district') return state.districtAny || Boolean(state.districtId);
+        if (step === 'metro') return Boolean(state.metro && state.anchor);
+        if (step === 'radius') return Boolean(hasRadius());
+        if (step === 'final') return true;
         return false;
     }
 
@@ -253,28 +273,16 @@ function initHomeEventLocation(flow) {
     }
 
     function summaryFor(step) {
-        if (step === 'city') {
-            return ['Город', state.cityAny ? 'Не важно' : (city()?.name || 'Выбран')];
-        }
+        if (step === 'city') return ['Город', state.cityAny ? 'Не важно' : (city()?.name || 'Не выбран')];
         if (step === 'moscow-mode') {
-            return ['Способ поиска', {
-                metro: 'Рядом с метро',
-                district: 'По округу',
-                any: 'Без уточнения',
-            }[state.moscowMode] || 'Не выбрано'];
+            return ['Способ поиска', { metro: 'Рядом с метро', district: 'По округу', any: 'Без уточнения' }[state.moscowMode] || 'Не выбрано'];
         }
         if (step === 'district') {
             const item = district();
-            return [isMoscow() ? 'Округ' : 'Район', state.districtAny
-                ? 'Не важно'
-                : (item?.short_name || item?.name || 'Выбран')];
+            return [isMoscow() ? 'Округ' : 'Район', state.districtAny ? 'Не важно' : (item?.short_name || item?.name || 'Не выбран')];
         }
-        if (step === 'metro') {
-            return ['Метро', state.metro?.name || 'Не выбрано'];
-        }
-        if (step === 'radius') {
-            return ['Радиус', `До ${state.radiusKm} км`];
-        }
+        if (step === 'metro') return ['Метро', state.metro?.name || 'Не выбрано'];
+        if (step === 'radius') return ['Радиус', `До ${state.radiusKm} км`];
         if (step === 'final') {
             const parts = [];
             if (state.street) parts.push(state.street);
@@ -285,39 +293,23 @@ function initHomeEventLocation(flow) {
     }
 
     function locationLabel() {
-        if (state.mode === 'any') {
-            return 'Не важно';
-        }
-        if (state.venueId && state.venueLabel) {
-            return state.venueLabel;
-        }
-
+        if (state.mode === 'any') return 'Не важно';
+        if (state.venueId && state.venueLabel) return state.venueLabel;
         const parts = [];
-        if (state.source === 'current') {
-            parts.push('Текущая локация');
-        } else if (state.cityId) {
-            parts.push(city()?.name || 'Город');
-        }
+        if (state.source === 'current') parts.push('Текущая локация');
+        else if (state.cityId) parts.push(city()?.name || 'Город');
         if (state.moscowMode === 'district' && state.districtId) {
             const item = district();
             parts.push(item?.short_name || item?.name || 'Округ');
         }
-        if (state.moscowMode === 'metro' && state.metro) {
-            parts.push(`м. ${state.metro.name}`);
-        }
-        if (hasRadius()) {
-            parts.push(`до ${state.radiusKm} км`);
-        }
-        if (state.street) {
-            parts.push(state.street);
-        }
+        if (state.moscowMode === 'metro' && state.metro) parts.push(`м. ${state.metro.name}`);
+        if (hasRadius()) parts.push(`до ${state.radiusKm} км`);
+        if (state.street) parts.push(state.street);
         return parts.length ? parts.join(' · ') : 'Локация указана';
     }
 
     function radiusSearchUrl() {
-        if (!hasRadius()) {
-            return baseVenueSearchUrl;
-        }
+        if (!hasRadius()) return baseVenueSearchUrl;
         const lat = Number(state.anchor.latitude).toFixed(7);
         const lng = Number(state.anchor.longitude).toFixed(7);
         return `/home/venue-radius-search/${encodeURIComponent(lat)}/${encodeURIComponent(lng)}/${encodeURIComponent(String(state.radiusKm))}`;
@@ -328,9 +320,7 @@ function initHomeEventLocation(flow) {
             && (state.source === 'current' || state.moscowMode === 'metro');
         const administrativeMode = state.mode === 'specific' && !radiusMode;
 
-        root.dataset.homeLocationFilterMode = radiusMode
-            ? 'radius'
-            : (administrativeMode ? 'administrative' : 'none');
+        root.dataset.homeLocationFilterMode = radiusMode ? 'radius' : (administrativeMode ? 'administrative' : 'none');
         root.dataset.homeLocationCityId = administrativeMode && state.cityId ? String(state.cityId) : '';
         root.dataset.homeLocationDistrictId = administrativeMode && state.districtId ? String(state.districtId) : '';
         root.dataset.homeLocationLatitude = radiusMode ? String(state.anchor.latitude) : '';
@@ -340,33 +330,18 @@ function initHomeEventLocation(flow) {
         root.dataset.homeLocationMetroId = radiusMode && state.metro ? String(state.metro.id) : '';
 
         venueSelector.dataset.searchUrl = radiusMode ? radiusSearchUrl() : baseVenueSearchUrl;
-
-        if (administrativeMode && state.cityId && !state.cityAny) {
-            venueSelector.dataset.locationCityFilter = city()?.name || '';
-        } else {
-            delete venueSelector.dataset.locationCityFilter;
-        }
-
-        if (state.street) {
-            venueSelector.dataset.locationStreetFilter = state.street;
-        } else {
-            delete venueSelector.dataset.locationStreetFilter;
-        }
+        if (administrativeMode && state.cityId && !state.cityAny) venueSelector.dataset.locationCityFilter = city()?.name || '';
+        else delete venueSelector.dataset.locationCityFilter;
+        if (state.street) venueSelector.dataset.locationStreetFilter = state.street;
+        else delete venueSelector.dataset.locationStreetFilter;
     }
 
     function syncOuterValue() {
         syncFilterDataset();
-        if (/^\d+$/.test(String(venueValue.value || '')) && state.venueId) {
-            return;
-        }
-
-        if (state.mode === 'any') {
-            venueValue.value = LOCATION_SENTINEL_ANY;
-        } else if (state.mode === 'specific') {
-            venueValue.value = LOCATION_SENTINEL_FILTERS;
-        } else {
-            venueValue.value = '';
-        }
+        if (/^\d+$/.test(String(venueValue.value || '')) && state.venueId) return;
+        if (state.mode === 'any') venueValue.value = LOCATION_SENTINEL_ANY;
+        else if (state.mode === 'specific') venueValue.value = LOCATION_SENTINEL_FILTERS;
+        else venueValue.value = '';
     }
 
     function updateModeButtons() {
@@ -376,6 +351,25 @@ function initHomeEventLocation(flow) {
             button.setAttribute('aria-pressed', String(selected));
         });
         specific.hidden = state.mode !== 'specific';
+    }
+
+    function openMiniOverlay() {
+        if (!state.miniActive) return;
+        miniModalBody.append(mini);
+        if (!miniModal.classList.contains('is-open')) {
+            miniModal.hidden = false;
+            miniModal.classList.add('is-open');
+            document.body.classList.add('modal-open');
+            $(document).trigger('modal:opened', [$(miniModal)]);
+        }
+        syncMiniNavigation();
+    }
+
+    function closeMiniOverlay() {
+        if (!miniModal.classList.contains('is-open')) return;
+        internalMiniClose = true;
+        miniModal.querySelector('[data-modal-action="close"]')?.click();
+        window.setTimeout(() => { internalMiniClose = false; }, 0);
     }
 
     function createSummary(step, pathIndex) {
@@ -393,8 +387,10 @@ function initHomeEventLocation(flow) {
         body.append(small, strong);
         button.addEventListener('click', () => {
             state.miniActive = true;
+            state.miniDone = false;
             state.index = pathIndex;
             render();
+            openMiniOverlay();
             focusCurrent();
         });
         return button;
@@ -405,14 +401,12 @@ function initHomeEventLocation(flow) {
         const card = document.createElement('section');
         card.className = 'home-event-location__mini-active-card';
         card.dataset.homeLocationActiveStep = step || '';
-
         if (step === 'city') renderCityStep(card);
         else if (step === 'moscow-mode') renderMoscowModeStep(card);
         else if (step === 'district') renderDistrictStep(card);
         else if (step === 'metro') renderMetroStep(card);
         else if (step === 'radius') renderRadiusStep(card);
         else if (step === 'final') renderFinalStep(card);
-
         return card;
     }
 
@@ -444,14 +438,14 @@ function initHomeEventLocation(flow) {
         (state.options?.cities || []).forEach((item) => select.add(new Option(item.name, String(item.id))));
         select.value = state.cityId ? String(state.cityId) : '';
         select.addEventListener('change', () => {
-            const value = Number(select.value);
-            if (!value) return;
             state.source = 'manual';
-            state.cityId = value;
             state.cityAny = false;
+            const value = Number(select.value);
+            state.cityId = value || null;
             resetAfterCity();
-            state.path = manualPathAfterCity();
+            state.path = state.cityId ? manualPathAfterCity() : ['city'];
             state.index = 0;
+            state.miniDone = false;
             render();
         });
         label.append(select);
@@ -479,6 +473,7 @@ function initHomeEventLocation(flow) {
                 state.moscowMode = value;
                 rebuildMoscowPath();
                 state.index = 1;
+                state.miniDone = false;
                 render();
             });
             grid.append(button);
@@ -498,20 +493,43 @@ function initHomeEventLocation(flow) {
         select.dataset.homeLocationDistrict = '';
         select.append(new Option(moscow ? 'Выбрать округ' : 'Выбрать район', ''));
         (city()?.districts || []).forEach((item) => {
-            const text = item.short_name ? `${item.short_name} — ${item.name}` : item.name;
-            select.add(new Option(text, String(item.id)));
+            select.add(new Option(item.short_name ? `${item.short_name} — ${item.name}` : item.name, String(item.id)));
         });
         select.value = state.districtId ? String(state.districtId) : '';
         select.addEventListener('change', () => {
             const value = Number(select.value);
-            if (!value) return;
-            state.districtId = value;
+            state.districtId = value || null;
             state.districtAny = false;
             resetStreetAndVenue();
+            state.miniDone = false;
             render();
         });
         label.append(caption, select);
         card.append(label);
+    }
+
+    function groupedMetroMatches(query) {
+        const groups = new Map();
+        (state.options?.metro_stations || [])
+            .filter((station) => normalizedSearch(`${station.name} ${station.line_name || ''}`).includes(query))
+            .forEach((station) => {
+                const key = normalizedSearch(station.name);
+                if (!groups.has(key)) groups.set(key, { ...station, variants: [] });
+                groups.get(key).variants.push(station);
+            });
+        return [...groups.values()].slice(0, 8);
+    }
+
+    function metroAnchor(station) {
+        const variants = Array.isArray(station.variants) && station.variants.length ? station.variants : [station];
+        const valid = variants.filter((item) => Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)));
+        if (!valid.length) return null;
+        return {
+            latitude: valid.reduce((sum, item) => sum + Number(item.latitude), 0) / valid.length,
+            longitude: valid.reduce((sum, item) => sum + Number(item.longitude), 0) / valid.length,
+            label: `м. ${station.name}`,
+            source: 'metro',
+        };
     }
 
     function renderMetroStep(card) {
@@ -527,67 +545,106 @@ function initHomeEventLocation(flow) {
         input.placeholder = 'Начните вводить метро...';
         input.dataset.homeLocationMetroInput = '';
         input.value = state.metro?.name || '';
+        const control = document.createElement('button');
+        control.className = 'address-suggest__control predictive-search__control';
+        control.type = 'button';
+        control.setAttribute('aria-label', 'Очистить метро');
+        control.hidden = !input.value;
         const list = document.createElement('div');
         list.className = 'address-suggest__list predictive-search__list d-none home-event-location__metro-results';
         list.dataset.homeLocationMetroList = '';
         list.setAttribute('role', 'listbox');
-        inputWrap.append(input, list);
+        inputWrap.append(input, control, list);
         wrap.append(inputWrap);
         card.append(wrap);
+
+        const syncControl = (loading = false) => {
+            control.classList.toggle('is-loading', loading);
+            control.hidden = !loading && normalize(input.value) === '';
+            control.setAttribute('aria-label', loading ? 'Загружаем варианты метро' : 'Очистить метро');
+        };
 
         const renderMatches = () => {
             const query = normalizedSearch(input.value);
             if (query.length < 2) {
                 list.classList.add('d-none');
                 list.replaceChildren();
+                syncControl(false);
                 return;
             }
-            const matches = (state.options?.metro_stations || [])
-                .filter((station) => normalizedSearch(`${station.name} ${station.line_name || ''}`).includes(query))
-                .slice(0, 8);
+            const matches = groupedMetroMatches(query);
             list.replaceChildren();
             matches.forEach((station) => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'address-suggest__item predictive-search__item home-event-location__metro-result';
-                const dot = document.createElement('span');
-                dot.className = 'home-event-location__metro-dot';
-                if (station.line_color) dot.style.backgroundColor = station.line_color;
+
+                const dots = document.createElement('span');
+                dots.className = 'home-event-location__metro-lines';
+                const variants = Array.isArray(station.variants) ? station.variants : [station];
+                const seenColors = new Set();
+                variants.forEach((variant) => {
+                    const color = normalizeMetroColor(variant.line_color);
+                    if (seenColors.has(color)) return;
+                    seenColors.add(color);
+                    const dot = document.createElement('span');
+                    dot.className = 'home-event-location__metro-dot';
+                    dot.style.backgroundColor = color;
+                    dots.append(dot);
+                });
+
                 const name = document.createElement('strong');
                 name.textContent = station.name;
                 const meta = document.createElement('span');
-                meta.textContent = station.line_name || '';
-                button.append(dot, name, meta);
+                meta.textContent = [...new Set(variants.map((variant) => normalize(variant.line_name)).filter(Boolean))].join(' · ');
+                button.append(dots, name, meta);
                 button.addEventListener('click', () => {
                     state.metro = station;
-                    state.anchor = {
-                        latitude: Number(station.latitude),
-                        longitude: Number(station.longitude),
-                        label: `м. ${station.name}`,
-                        source: 'metro',
-                    };
+                    state.anchor = metroAnchor(station);
                     state.radiusKm = DEFAULT_RADIUS_KM;
                     resetStreetAndVenue();
                     rebuildMoscowPath();
                     state.index = Math.max(0, state.path.indexOf('metro'));
+                    state.miniDone = false;
                     render();
                 });
                 list.append(button);
             });
             list.classList.toggle('d-none', matches.length === 0);
+            syncControl(false);
         };
 
         input.addEventListener('input', () => {
+            window.clearTimeout(metroTimer);
             if (state.metro && normalizedSearch(input.value) !== normalizedSearch(state.metro.name)) {
                 state.metro = null;
                 state.anchor = null;
                 resetStreetAndVenue();
                 rebuildMoscowPath();
             }
-            renderMatches();
-            syncFooterSoon();
+            const query = normalizedSearch(input.value);
+            if (query.length < 2) {
+                renderMatches();
+            } else {
+                syncControl(true);
+                metroTimer = window.setTimeout(renderMatches, 160);
+            }
+            syncMiniNavigation();
         });
         input.addEventListener('focus', renderMatches);
+        control.addEventListener('click', () => {
+            window.clearTimeout(metroTimer);
+            input.value = '';
+            state.metro = null;
+            state.anchor = null;
+            resetStreetAndVenue();
+            rebuildMoscowPath();
+            list.replaceChildren();
+            list.classList.add('d-none');
+            syncControl(false);
+            render();
+            focusCurrent();
+        });
     }
 
     function renderRadiusStep(card) {
@@ -603,6 +660,7 @@ function initHomeEventLocation(flow) {
             button.addEventListener('click', () => {
                 state.radiusKm = radius;
                 resetVenue();
+                state.miniDone = false;
                 render();
             });
             choices.append(button);
@@ -612,7 +670,6 @@ function initHomeEventLocation(flow) {
 
     function renderFinalStep(card) {
         stepHead(card, 'Финальное уточнение', 'Улица и площадка', 'Оба поля необязательны. Можно оставить выбранные выше ограничения.');
-
         const street = document.createElement('div');
         street.className = 'home-event-location__street';
         const label = document.createElement('label');
@@ -750,12 +807,35 @@ function initHomeEventLocation(flow) {
         edit.textContent = 'Изменить';
         edit.addEventListener('click', () => {
             state.miniActive = true;
+            state.miniDone = false;
             state.index = Math.max(0, state.path.length - 1);
             render();
+            openMiniOverlay();
             focusCurrent();
         });
         complete.append(icon, body, edit);
         return complete;
+    }
+
+    function renderResume() {
+        const resume = document.createElement('div');
+        resume.className = 'home-event-location__mini-complete home-event-location__mini-resume';
+        const icon = document.createElement('i');
+        icon.className = 'ti ti-map-pin';
+        const body = document.createElement('span');
+        body.innerHTML = '<strong>Настройка локации не завершена</strong><small>Продолжите с последнего шага.</small>';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'home-text-link';
+        button.textContent = 'Продолжить';
+        button.addEventListener('click', () => {
+            state.miniActive = true;
+            render();
+            openMiniOverlay();
+            focusCurrent();
+        });
+        resume.append(icon, body, button);
+        return resume;
     }
 
     function render() {
@@ -764,8 +844,15 @@ function initHomeEventLocation(flow) {
         mini.classList.toggle('is-active', state.mode === 'specific' && state.miniActive);
 
         if (state.mode !== 'specific') {
+            if (!specific.contains(mini)) specific.append(mini);
             syncAll();
             return;
+        }
+
+        if (state.miniActive) {
+            miniModalBody.append(mini);
+        } else if (!specific.contains(mini)) {
+            specific.append(mini);
         }
 
         if (state.source === 'current') {
@@ -779,16 +866,16 @@ function initHomeEventLocation(flow) {
         for (let index = 0; index < completedUntil; index += 1) {
             const step = state.path[index];
             if (step === 'final' && state.miniActive) continue;
+            if (!state.miniActive) continue;
             stack.append(createSummary(step, index));
         }
 
-        if (state.miniActive) {
-            stack.append(activeCard());
-        } else if (state.path.length > 0) {
-            stack.append(renderCompletion());
-        }
+        if (state.miniActive) stack.append(activeCard());
+        else if (state.miniDone && state.path.length > 0) stack.append(renderCompletion());
+        else if (state.path.length > 0) stack.append(renderResume());
 
         syncAll();
+        if (state.miniActive) syncMiniNavigation();
     }
 
     function syncAll() {
@@ -810,7 +897,8 @@ function initHomeEventLocation(flow) {
     }
 
     async function loadOptions() {
-        if (state.loaded || state.loading) return state.options;
+        if (state.loaded) return state.options;
+        if (state.loading) return state.options;
         state.loading = true;
         showStatus('Загружаем справочники…', 'loading');
         try {
@@ -819,9 +907,7 @@ function initHomeEventLocation(flow) {
                 headers: { Accept: 'application/json' },
             });
             const payload = await response.json().catch(() => ({}));
-            if (!response.ok || !Array.isArray(payload.cities)) {
-                throw new Error(payload.message || 'Не удалось загрузить географию.');
-            }
+            if (!response.ok || !Array.isArray(payload.cities)) throw new Error(payload.message || 'Не удалось загрузить географию.');
             state.options = payload;
             state.loaded = true;
             hideStatus();
@@ -843,24 +929,25 @@ function initHomeEventLocation(flow) {
             return;
         }
         clearManualGeography();
-        state.path = ['city'];
+        state.cityId = moscowId(options);
+        state.path = state.cityId ? manualPathAfterCity() : ['city'];
         state.index = 0;
         state.miniActive = true;
+        state.miniDone = false;
         hideStatus();
         render();
+        openMiniOverlay();
         focusCurrent();
     }
 
     async function useCurrentLocation() {
         const options = await loadOptions();
         if (!options) return;
-
         geolocationButton.disabled = true;
         const label = geolocationButton.querySelector('span');
         const previousText = label?.textContent || 'Текущая локация';
         if (label) label.textContent = 'Определяем…';
         showStatus('Определяем местоположение…', 'loading');
-
         try {
             const coordinates = await getCurrentCoordinates();
             let suggestion = null;
@@ -873,7 +960,6 @@ function initHomeEventLocation(flow) {
             } catch (_) {
                 suggestion = null;
             }
-
             state.mode = 'specific';
             state.source = 'current';
             clearManualGeography();
@@ -887,8 +973,11 @@ function initHomeEventLocation(flow) {
             state.path = ['radius', 'final'];
             state.index = 0;
             state.miniActive = true;
+            state.miniDone = false;
             hideStatus();
             render();
+            openMiniOverlay();
+            focusCurrent();
         } catch (_) {
             showStatus(GEOLOCATION_ERROR, 'error');
         } finally {
@@ -897,24 +986,22 @@ function initHomeEventLocation(flow) {
         }
     }
 
+    function finishMini() {
+        state.miniActive = false;
+        state.miniDone = true;
+        closeMiniOverlay();
+        render();
+    }
+
     function advanceMini() {
         const step = currentStep();
         if (!step || !stepComplete(step)) return;
-
-        if (step === 'city') {
-            state.path = manualPathAfterCity();
-        } else if (step === 'moscow-mode') {
-            rebuildMoscowPath();
-        } else if (step === 'metro') {
-            rebuildMoscowPath();
-        }
-
+        if (step === 'city') state.path = manualPathAfterCity();
+        else if (step === 'moscow-mode' || step === 'metro') rebuildMoscowPath();
         if (state.index >= state.path.length - 1 || step === 'final') {
-            state.miniActive = false;
-            render();
+            finishMini();
             return;
         }
-
         state.index += 1;
         render();
         focusCurrent();
@@ -923,7 +1010,6 @@ function initHomeEventLocation(flow) {
     function skipMini() {
         const step = currentStep();
         if (!step || !canSkip(step)) return;
-
         if (step === 'city') {
             state.cityId = null;
             state.cityAny = true;
@@ -943,18 +1029,15 @@ function initHomeEventLocation(flow) {
             state.path = ['city', 'moscow-mode', 'final'];
             state.index = 1;
         } else if (step === 'final') {
-            state.miniActive = false;
-            render();
+            finishMini();
             return;
         }
-
-        if (state.index >= state.path.length - 1) {
-            state.miniActive = false;
-        } else {
+        if (state.index >= state.path.length - 1) finishMini();
+        else {
             state.index += 1;
+            render();
+            focusCurrent();
         }
-        render();
-        focusCurrent();
     }
 
     function backMini() {
@@ -964,20 +1047,32 @@ function initHomeEventLocation(flow) {
             focusCurrent();
             return;
         }
-
-        state.mode = null;
+        state.mode = 'any';
         state.miniActive = false;
+        state.miniDone = false;
         state.path = [];
         clearManualGeography();
-        syncOuterValue();
+        closeMiniOverlay();
         render();
     }
 
     function focusCurrent() {
         window.setTimeout(() => {
-            const card = stack.querySelector('.home-event-location__mini-active-card');
-            card?.querySelector('select, input, button')?.focus();
+            stack.querySelector('.home-event-location__mini-active-card')?.querySelector('select, input, button')?.focus();
         }, 0);
+    }
+
+    function syncMiniNavigation() {
+        if (!state.miniActive || !miniBack || !miniNext) return;
+        const step = currentStep();
+        miniBack.disabled = false;
+        if (miniSkip) miniSkip.hidden = !canSkip(step);
+        miniNext.disabled = !stepComplete(step);
+        miniNext.setAttribute('aria-disabled', String(miniNext.disabled));
+        const label = miniNext.querySelector('span');
+        const icon = miniNext.querySelector('i');
+        if (label) label.textContent = step === 'final' ? 'Готово' : 'Далее';
+        if (icon) icon.className = step === 'final' ? 'ti ti-check' : 'ti ti-arrow-right';
     }
 
     function footerElements() {
@@ -992,30 +1087,15 @@ function initHomeEventLocation(flow) {
 
     function syncFooter() {
         if (!visibleLocationStep.classList.contains('is-active')) return;
-        const { footer, back, skip, next } = footerElements();
-        if (!footer || !back || !next) return;
-
-        if (state.mode === 'specific' && state.miniActive) {
-            footer.dataset.homeLocationMiniActive = '1';
-            back.disabled = false;
-            back.setAttribute('aria-disabled', 'false');
-            if (skip) skip.hidden = !canSkip(currentStep());
-            next.disabled = !stepComplete(currentStep());
-            next.setAttribute('aria-disabled', String(next.disabled));
-            const nextLabel = next.querySelector('span');
-            const nextIcon = next.querySelector('i');
-            if (nextLabel) nextLabel.textContent = currentStep() === 'final' ? 'Готово' : 'Далее';
-            if (nextIcon) nextIcon.className = currentStep() === 'final' ? 'ti ti-check' : 'ti ti-arrow-right';
-            return;
-        }
-
+        const { footer, skip, next } = footerElements();
+        if (!footer || !next) return;
         delete footer.dataset.homeLocationMiniActive;
         if (skip) skip.hidden = true;
         const nextLabel = next.querySelector('span');
         const nextIcon = next.querySelector('i');
         if (nextLabel) nextLabel.textContent = 'Далее';
         if (nextIcon) nextIcon.className = 'ti ti-arrow-right';
-        const selected = state.mode === 'any' || (state.mode === 'specific' && !state.miniActive && state.path.length > 0);
+        const selected = state.mode === 'any' || (state.mode === 'specific' && state.miniDone);
         next.disabled = !selected;
         next.setAttribute('aria-disabled', String(!selected));
     }
@@ -1035,8 +1115,11 @@ function initHomeEventLocation(flow) {
     }
 
     function reset(mode = 'any') {
+        window.clearTimeout(metroTimer);
+        if (miniModal.classList.contains('is-open')) closeMiniOverlay();
         state.mode = mode;
         state.miniActive = false;
+        state.miniDone = false;
         state.path = [];
         state.index = 0;
         state.source = 'manual';
@@ -1047,23 +1130,21 @@ function initHomeEventLocation(flow) {
         venueSelector.dataset.searchUrl = baseVenueSearchUrl;
         delete venueSelector.dataset.locationCityFilter;
         delete venueSelector.dataset.locationStreetFilter;
-        if (/^\d+$/.test(String(venueValue.value || ''))) {
-            venueClear?.click();
-        }
+        if (/^\d+$/.test(String(venueValue.value || ''))) venueClear?.click();
         render();
     }
 
     modeGrid.addEventListener('click', async (event) => {
         const button = event.target.closest('[data-home-event-location-mode]');
         if (!button) return;
-        if (button.dataset.homeEventLocationMode === 'any') {
-            reset('any');
-        } else {
-            await chooseSpecific();
-        }
+        if (button.dataset.homeEventLocationMode === 'any') reset('any');
+        else await chooseSpecific();
     });
 
     geolocationButton.addEventListener('click', useCurrentLocation);
+    miniBack?.addEventListener('click', backMini);
+    miniSkip?.addEventListener('click', skipMini);
+    miniNext?.addEventListener('click', advanceMini);
 
     venueValue.addEventListener('change', () => {
         if (suppressVenueChange) return;
@@ -1071,39 +1152,22 @@ function initHomeEventLocation(flow) {
         if (/^\d+$/.test(raw)) {
             state.venueId = Number(raw);
             state.venueLabel = normalize(venueInput.value) || 'Выбранная площадка';
-            if (state.miniActive && !visibleLocationStep.classList.contains('is-active')) {
-                window.setTimeout(() => visibleLocationStep.click(), 0);
-            }
         } else if (![LOCATION_SENTINEL_ANY, LOCATION_SENTINEL_FILTERS].includes(raw)) {
             state.venueId = null;
             state.venueLabel = '';
         }
+        syncMiniNavigation();
         syncFooterSoon();
     });
 
     document.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-home-flow-wizard-back], [data-home-flow-wizard-skip], [data-home-flow-wizard-next]');
+        const button = event.target.closest('[data-home-flow-wizard-next]');
         if (!button || !panel.contains(button) || !visibleLocationStep.classList.contains('is-active')) return;
-
-        if (state.mode === 'specific' && state.miniActive) {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            if (button.matches('[data-home-flow-wizard-back]')) backMini();
-            else if (button.matches('[data-home-flow-wizard-skip]')) skipMini();
-            else advanceMini();
-            return;
-        }
-
-        if (button.matches('[data-home-flow-wizard-next]')
-            && state.mode === 'specific'
-            && !state.miniActive
-            && !/^\d+$/.test(String(venueValue.value || ''))) {
+        if (state.mode === 'specific' && state.miniDone && !/^\d+$/.test(String(venueValue.value || ''))) {
             const visible = venueInput.value;
             venueInput.value = locationLabel();
             window.setTimeout(() => {
-                if (!/^\d+$/.test(String(venueValue.value || ''))) {
-                    venueInput.value = visible;
-                }
+                if (!/^\d+$/.test(String(venueValue.value || ''))) venueInput.value = visible;
             }, 0);
         }
     }, { capture: true });
@@ -1121,8 +1185,14 @@ function initHomeEventLocation(flow) {
     stepObserver.observe(visibleLocationStep, { attributes: true, attributeFilter: ['class'] });
 
     flow.addEventListener('click', (event) => {
-        if (event.target.closest('[data-home-flow-type]')) {
-            window.setTimeout(() => reset('any'), 0);
+        if (event.target.closest('[data-home-flow-type]')) window.setTimeout(() => reset('any'), 0);
+    });
+
+    $(document).on('modal:closed.homeEventLocationMiniV2', function (_event, modal) {
+        if (modal.get(0) !== miniModal || internalMiniClose) return;
+        if (state.miniActive) {
+            state.miniActive = false;
+            render();
         }
     });
 
