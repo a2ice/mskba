@@ -6,7 +6,7 @@
 4. [x] Добавить resolver административных компонентов Yandex -> `city_id`/`district_id` и интегрировать его в address suggest/reverse/create/update flow.
 5. [x] Добавить админ-раздел `Города и районы` с CRUD и проверками целостности.
 6. [x] Выделить общий navigation/footer contract для homepage popup-wizard и применить к `Мероприятия` и `Площадки`.
-7. [ ] Пересобрать вкладку `Мероприятия -> Найти`: тип, динамические параметры, tooltip, summary badges.
+7. [x] Пересобрать вкладку `Мероприятия -> Найти`: тип, динамические параметры, tooltip, summary badges.
 8. [ ] Реализовать location mini-wizard: текущая геопозиция, город, район/округ, метро, улица, площадка и зависимости между ними.
 9. [ ] Реализовать диапазон дат по умолчанию `сегодня -> +7 дней`.
 10. [ ] Добавить единый read-only discovery endpoint/read model для Event + Tournament с новыми фильтрами.
@@ -21,7 +21,7 @@
 - `002-yandex-location-resolution` — provider/DTO/resolver/backfill — выполнено;
 - `003-admin-geography` — административный справочник — выполнено;
 - `004-shared-popup-navigation` — общий footer/navigation — выполнено;
-- `005-event-type-and-parameters` — шаги Тип/Параметры;
+- `005-event-type-and-parameters` — шаги Тип/Параметры — выполнено;
 - `006-location-mini-wizard` — Где;
 - `007-date-range` — Когда;
 - `008-discovery-results` — endpoint/read model + результаты;
