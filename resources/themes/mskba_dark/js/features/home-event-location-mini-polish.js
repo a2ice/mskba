@@ -122,20 +122,20 @@ function mirrorCurrentLocationStatus(modal) {
     const source = originalGeolocationStatus();
     const target = modal.querySelector('[data-home-location-current-inline-status]');
     const button = modal.querySelector('[data-home-location-current-inline-button]');
-    if (!source || !target) return;
+    if (!source || !target || source.hidden) return;
 
-    if (source.hidden) return;
-
-    target.textContent = source.textContent || '';
-    target.dataset.state = source.dataset.state || 'info';
-    target.hidden = false;
+    const message = source.textContent || '';
+    const state = source.dataset.state || 'info';
+    if (target.textContent !== message) target.textContent = message;
+    if (target.dataset.state !== state) target.dataset.state = state;
+    if (target.hidden) target.hidden = false;
 
     if (source.dataset.state === 'error') {
         geolocationPending = false;
         if (button) {
-            button.disabled = false;
+            if (button.disabled) button.disabled = false;
             const label = button.querySelector('span');
-            if (label) label.textContent = 'Текущая локация';
+            if (label && label.textContent !== 'Текущая локация') label.textContent = 'Текущая локация';
         }
     }
 }
