@@ -111,6 +111,15 @@ final class AdminMenu implements MenuHandler
                 'data' => ['count' => 0],
             ],
             [
+                'label' => 'Города и районы',
+                'description' => 'Города, административные округа и районы для адресов и поиска.',
+                'url' => $this->routeUrl('admin.geography'),
+                'active' => $this->isActiveRoute('admin.geography, admin.geography.*'),
+                'visible' => $isAdmin,
+                'icon' => 'ti-map-pin',
+                'data' => ['count' => 0],
+            ],
+            [
                 'label' => 'Настройки',
                 'description' => 'Базовые системные параметры.',
                 'url' => $this->routeUrl('admin.settings'),
