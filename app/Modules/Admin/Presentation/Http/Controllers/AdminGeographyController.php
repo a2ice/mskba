@@ -109,6 +109,8 @@ final class AdminGeographyController extends Controller
     /** @return array<string, mixed> */
     private function validateCity(Request $request, ?City $city = null): array
     {
+        $this->normalizeDirectoryRequest($request);
+
         $nameRule = Rule::unique('cities', 'name');
         $aliasRule = Rule::unique('cities', 'alias');
 
@@ -128,6 +130,8 @@ final class AdminGeographyController extends Controller
     /** @return array<string, mixed> */
     private function validateDistrict(Request $request, ?District $district = null): array
     {
+        $this->normalizeDirectoryRequest($request);
+
         $cityId = (int) $request->input('city_id');
         $nameRule = Rule::unique('districts', 'name')
             ->where(fn ($query) => $query->where('city_id', $cityId));
@@ -146,6 +150,13 @@ final class AdminGeographyController extends Controller
             'short_name' => ['nullable', 'string', 'max:64'],
             'description' => ['nullable', 'string', 'max:2000'],
         ]);
+    }
+
+    private function normalizeDirectoryRequest(Request $request): void
+    {
+        $request->merge($this->normalizeDirectoryData(
+            $request->only(['name', 'alias', 'short_name', 'description'])
+        ));
     }
 
     /**
