@@ -2,6 +2,14 @@ import $ from 'jquery';
 import '../../css/pages/home-flow-navigation.css';
 
 const mountedFlows = new WeakMap();
+const attentionChoiceSelector = [
+    '[data-home-flow-type]',
+    '[data-home-venue-type]',
+    '[data-home-event-parameter]',
+    '[data-home-event-location-mode]',
+    '.home-event-location__branch-choice',
+    '.home-event-location__radius-option',
+].join(', ');
 
 function activeStepIndex(progressItems) {
     const index = progressItems.findIndex((item) => item.classList.contains('is-active'));
@@ -40,6 +48,29 @@ function eventVenueSelection(flow) {
         input,
         selected: Boolean(String(input?.value || '').trim()),
     };
+}
+
+function normalizeChoiceText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function choiceIdentity(choice, index) {
+    const dataIdentity = [
+        choice.dataset.homeFlowType,
+        choice.dataset.homeVenueType,
+        choice.dataset.homeEventParameter,
+        choice.dataset.homeEventParameterValue,
+        choice.dataset.homeEventLocationMode,
+    ].filter(Boolean).join(':');
+
+    return dataIdentity || `${index}:${normalizeChoiceText(choice.textContent)}`;
+}
+
+function selectedChoiceSignature(panel) {
+    return [...panel.querySelectorAll(attentionChoiceSelector)]
+        .filter((choice) => choice.classList.contains('is-selected') || choice.getAttribute('aria-pressed') === 'true')
+        .map((choice, index) => choiceIdentity(choice, index))
+        .join('|');
 }
 
 /**
@@ -93,13 +124,21 @@ export function mountHomeFlowNavigation({
     footer.append(back, skip, next);
     panel.append(footer);
 
+    let choiceObserver = null;
+    let choiceObserverTimeout = null;
+    let attentionTimeout = null;
+
+    function closePopup() {
+        flow.closest('[data-modal]')?.querySelector('[data-modal-action="close"]')?.click();
+    }
+
     function sync() {
         const step = activeStepIndex(progressItems);
         const allowNext = canNext(step);
         const allowSkip = canSkip(step);
 
-        back.disabled = step === 0;
-        back.setAttribute('aria-disabled', String(step === 0));
+        back.disabled = false;
+        back.setAttribute('aria-disabled', 'false');
 
         skip.hidden = !allowSkip;
 
@@ -109,9 +148,63 @@ export function mountHomeFlowNavigation({
         footer.dataset.homeFlowStep = String(step);
     }
 
+    function highlightNext() {
+        sync();
+        if (next.disabled) {
+            return;
+        }
+
+        window.clearTimeout(attentionTimeout);
+        next.classList.remove('is-choice-attention');
+        void next.offsetWidth;
+        next.classList.add('is-choice-attention');
+        attentionTimeout = window.setTimeout(() => {
+            next.classList.remove('is-choice-attention');
+        }, 760);
+    }
+
+    function stopChoiceWatch() {
+        choiceObserver?.disconnect();
+        choiceObserver = null;
+        window.clearTimeout(choiceObserverTimeout);
+        choiceObserverTimeout = null;
+    }
+
+    function watchChoiceSelection() {
+        const before = selectedChoiceSignature(panel);
+        stopChoiceWatch();
+
+        choiceObserver = new MutationObserver(() => {
+            const after = selectedChoiceSignature(panel);
+            if (after === before) {
+                return;
+            }
+
+            stopChoiceWatch();
+            window.requestAnimationFrame(highlightNext);
+        });
+        choiceObserver.observe(panel, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ['class', 'aria-pressed'],
+        });
+        choiceObserverTimeout = window.setTimeout(stopChoiceWatch, 3000);
+    }
+
+    panel.addEventListener('click', (event) => {
+        const choice = event.target.closest(attentionChoiceSelector);
+        if (!choice || !panel.contains(choice)) {
+            return;
+        }
+
+        watchChoiceSelection();
+    }, true);
+
     back.addEventListener('click', () => {
         const step = activeStepIndex(progressItems);
         if (step <= 0) {
+            closePopup();
             return;
         }
 
@@ -152,6 +245,8 @@ export function mountHomeFlowNavigation({
         sync,
         destroy() {
             observer.disconnect();
+            stopChoiceWatch();
+            window.clearTimeout(attentionTimeout);
             footer.remove();
             mountedFlows.delete(flow);
         },
