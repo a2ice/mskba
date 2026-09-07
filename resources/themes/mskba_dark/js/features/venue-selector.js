@@ -194,6 +194,16 @@ function initVenueSelector(container) {
             parameters.set('operational_status', container.dataset.operationalStatus);
         }
 
+        const locationCity = String(container.dataset.locationCityFilter || '').trim();
+        if (locationCity) {
+            parameters.set('city', locationCity);
+        }
+
+        const locationStreet = String(container.dataset.locationStreetFilter || '').trim();
+        if (locationStreet) {
+            parameters.set('street', locationStreet);
+        }
+
         if (checkAvailability && startInput?.value && durationInput?.value) {
             parameters.set('starts_at', startInput.value);
             parameters.set('duration_minutes', durationInput.value);
