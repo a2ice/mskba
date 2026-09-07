@@ -92,6 +92,29 @@ class CreateLocationHandlerTest extends TestCase
         ]);
     }
 
+    public function test_recognized_city_name_is_linked_and_canonicalized_without_explicit_id(): void
+    {
+        $city = City::factory()->create([
+            'name' => 'Москва',
+            'alias' => 'moscow',
+            'short_name' => 'Мск',
+        ]);
+
+        $location = app(CreateLocationHandler::class)->handle(new CreateLocationDTO(
+            rawAddress: 'г. Москва, Тестовая улица, 2',
+            city: 'г. Москва',
+            street: 'Тестовая улица',
+            building: '2',
+        ));
+
+        $this->assertNotNull($location);
+        $this->assertDatabaseHas('addresses', [
+            'id' => $location->address_id,
+            'city_id' => $city->id,
+            'city' => 'Москва',
+        ]);
+    }
+
     public function test_district_must_belong_to_selected_city(): void
     {
         $city = City::factory()->create();

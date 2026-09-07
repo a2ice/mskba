@@ -3,6 +3,7 @@
 namespace App\Modules\Location\Application\UseCases;
 
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
+use App\Modules\Location\Application\Services\GeographyResolver;
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\District;
@@ -11,6 +12,10 @@ use InvalidArgumentException;
 
 final class CreateLocationHandler
 {
+    public function __construct(
+        private readonly GeographyResolver $geographyResolver,
+    ) {}
+
     public function handle(CreateLocationDTO $data): ?Location
     {
         if (! $data->hasData()) {
@@ -56,6 +61,8 @@ final class CreateLocationHandler
     {
         $cityId = $data->cityId;
         $districtId = $data->districtId;
+        $cityNameCandidate = $data->city
+            ?? (string) config('integrations.address.default_city', 'Москва');
         $cityModel = null;
 
         if ($cityId !== null) {
@@ -63,6 +70,9 @@ final class CreateLocationHandler
             if ($cityModel === null) {
                 throw new InvalidArgumentException('Указанный город не найден.');
             }
+        } else {
+            $cityModel = $this->geographyResolver->resolveCity($cityNameCandidate);
+            $cityId = $cityModel?->id;
         }
 
         if ($districtId !== null) {
@@ -71,7 +81,7 @@ final class CreateLocationHandler
                 throw new InvalidArgumentException('Указанный район не найден.');
             }
 
-            if ($cityId !== null && (int) $district->city_id !== $cityId) {
+            if ($cityId !== null && (int) $district->city_id !== (int) $cityId) {
                 throw new InvalidArgumentException('Выбранный район не относится к указанному городу.');
             }
 
@@ -81,9 +91,7 @@ final class CreateLocationHandler
             }
         }
 
-        $cityName = $data->city
-            ?? $cityModel?->name
-            ?? (string) config('integrations.address.default_city', 'Москва');
+        $cityName = $cityModel?->name ?? $cityNameCandidate;
 
         return [$cityId, $districtId, $cityName];
     }

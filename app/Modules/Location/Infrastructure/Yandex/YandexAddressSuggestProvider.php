@@ -178,6 +178,9 @@ final class YandexAddressSuggestProvider implements AddressSuggestProvider
             latitude: $latitude,
             longitude: $longitude,
             metroNames: $this->findComponents($components, ['metro']),
+            administrativeAreaNames: array_values(array_unique(
+                $this->findComponents($components, ['district', 'area'])
+            )),
         );
     }
 

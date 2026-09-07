@@ -13,6 +13,7 @@ final class AddressSuggestService
 {
     public function __construct(
         private readonly YandexAddressSuggestProvider $yandexProvider,
+        private readonly GeographyResolver $geographyResolver,
     ) {}
 
     /**
@@ -58,11 +59,21 @@ final class AddressSuggestService
         }
 
         [$metroStationIds, $metroStationLabels] = $this->matchMetroStations($suggestion);
+        $geography = $this->geographyResolver->resolve(
+            $suggestion->city,
+            $suggestion->administrativeAreaNames,
+        );
+        $city = $geography['city'];
+        $district = $geography['district'];
 
         return [
             'label' => $suggestion->label,
             'country' => $suggestion->country,
-            'city' => $suggestion->city,
+            'city' => $city?->name ?? $suggestion->city,
+            'city_id' => $city?->id,
+            'district' => $district?->name,
+            'district_id' => $district?->id,
+            'administrative_areas' => $suggestion->administrativeAreaNames,
             'street' => $suggestion->street,
             'building' => $suggestion->building,
             'postal_code' => $suggestion->postalCode,

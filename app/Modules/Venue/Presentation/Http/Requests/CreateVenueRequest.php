@@ -38,6 +38,8 @@ class CreateVenueRequest extends FormRequest
             'location' => ['required', 'array'],
             'location.raw_address' => ['required', 'string', 'max:1000'],
             'location.address_selected' => ['required', 'accepted'],
+            'location.city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'location.district_id' => ['nullable', 'integer', 'exists:districts,id'],
             'location.city' => ['required', 'string', 'max:255'],
             'location.street' => ['required', 'string', 'max:255'],
             'location.building' => ['required', 'string', 'max:255'],
@@ -93,6 +95,8 @@ class CreateVenueRequest extends FormRequest
     {
         return new CreateLocationDTO(
             rawAddress: $this->nullableString('location.raw_address') ?? $this->nullableString('raw_address'),
+            cityId: $this->nullableInt('location.city_id'),
+            districtId: $this->nullableInt('location.district_id'),
             city: $this->nullableString('location.city'),
             street: $this->nullableString('location.street'),
             building: $this->nullableString('location.building'),
@@ -118,6 +122,8 @@ class CreateVenueRequest extends FormRequest
             'raw_address' => 'адрес',
             'location.raw_address' => 'адрес',
             'location.address_selected' => 'адрес из подсказки',
+            'location.city_id' => 'город',
+            'location.district_id' => 'район',
             'location.city' => 'город',
             'location.street' => 'улица',
             'location.building' => 'дом',
@@ -135,6 +141,15 @@ class CreateVenueRequest extends FormRequest
 
         return is_string($value) && trim($value) !== ''
             ? trim($value)
+            : null;
+    }
+
+    private function nullableInt(string $key): ?int
+    {
+        $value = $this->validated($key);
+
+        return is_numeric($value) && (int) $value > 0
+            ? (int) $value
             : null;
     }
 

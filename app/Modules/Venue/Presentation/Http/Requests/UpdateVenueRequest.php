@@ -35,6 +35,8 @@ class UpdateVenueRequest extends FormRequest
             'location' => ['sometimes', 'required', 'array'],
             'location.raw_address' => ['required_with:location', 'string', 'max:1000'],
             'location.address_selected' => ['sometimes', 'required_with:location', 'accepted'],
+            'location.city_id' => ['nullable', 'integer', 'exists:cities,id'],
+            'location.district_id' => ['nullable', 'integer', 'exists:districts,id'],
             'location.city' => ['required_with:location', 'string', 'max:255'],
             'location.street' => ['required_with:location', 'string', 'max:255'],
             'location.building' => ['required_with:location', 'string', 'max:255'],
@@ -58,6 +60,8 @@ class UpdateVenueRequest extends FormRequest
     {
         return new CreateLocationDTO(
             rawAddress: $this->nullableString('location.raw_address') ?? $this->nullableString('raw_address'),
+            cityId: $this->nullableInt('location.city_id'),
+            districtId: $this->nullableInt('location.district_id'),
             city: $this->nullableString('location.city'),
             street: $this->nullableString('location.street'),
             building: $this->nullableString('location.building'),
@@ -78,6 +82,13 @@ class UpdateVenueRequest extends FormRequest
         $value = $this->validated($key);
 
         return is_string($value) && trim($value) !== '' ? trim($value) : null;
+    }
+
+    private function nullableInt(string $key): ?int
+    {
+        $value = $this->validated($key);
+
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
     }
 
     private function nullableFloat(string $key): ?float
