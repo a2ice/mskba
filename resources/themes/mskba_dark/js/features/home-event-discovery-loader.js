@@ -11,7 +11,7 @@ function loadDiscovery() {
     discoveryLoading = true;
 
     window.setTimeout(() => {
-        import('./home-event-discovery.js')
+        import('./home-event-discovery-v2.js')
             .then(() => {
                 discoveryLoaded = true;
             })
