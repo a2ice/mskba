@@ -4,7 +4,7 @@
 2. [x] Зафиксировать целевую UX-логику и географическую модель в `description.md`.
 3. [x] Добавить `City`/`District`, миграции, связи с `Address`, factories и idempotent initial data для Москвы/Химок.
 4. [x] Добавить resolver административных компонентов Yandex -> `city_id`/`district_id` и интегрировать его в address suggest/reverse/create/update flow.
-5. [ ] Добавить админ-раздел `Города и районы` с CRUD и проверками целостности.
+5. [x] Добавить админ-раздел `Города и районы` с CRUD и проверками целостности.
 6. [ ] Выделить общий navigation/footer contract для homepage popup-wizard и применить к `Мероприятия` и `Площадки`.
 7. [ ] Пересобрать вкладку `Мероприятия -> Найти`: тип, динамические параметры, tooltip, summary badges.
 8. [ ] Реализовать location mini-wizard: текущая геопозиция, город, район/округ, метро, улица, площадка и зависимости между ними.
@@ -19,7 +19,7 @@
 
 - `001-location-directory` — City/District + seed + Address FK — выполнено;
 - `002-yandex-location-resolution` — provider/DTO/resolver/backfill — выполнено;
-- `003-admin-geography` — административный справочник;
+- `003-admin-geography` — административный справочник — выполнено;
 - `004-shared-popup-navigation` — общий footer/navigation;
 - `005-event-type-and-parameters` — шаги Тип/Параметры;
 - `006-location-mini-wizard` — Где;
