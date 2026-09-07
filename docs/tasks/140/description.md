@@ -305,4 +305,16 @@ Frontend:
 
 ## Результат
 
-Заполняется после реализации и проверки.
+Реализация 001–008 завершена в `feature/140`.
+
+С точки зрения пользователя popup `Мероприятия -> Найти` теперь представляет единый пятишаговый wizard `Тип -> Параметры -> Где -> Когда -> Результаты`, не выполняет auto-advance после выбора option, поддерживает необязательные шаги, редактируемые выбранные значения и выдаёт Event/Tournament внутри того же popup с loading/empty/error состояниями.
+
+В `Location` добавлены канонические справочники `City`/`District`, production-safe начальные данные Москвы и Химок, связь адресов через nullable `city_id`/`district_id`, Yandex resolver и административный CRUD `Города и районы`. Строковое `Address.city` сохранено для обратной совместимости.
+
+Discovery реализован отдельным read-only endpoint `GET /home/event-discovery`; географические фильтры проходят через `Venue -> Location -> Address/MetroStation`. Для обычных мероприятий выдаются только `published + public`, для турниров — `confirmed`.
+
+В ходе итогового статического review найден и исправлен lifecycle-дефект: discovery мог инициализироваться раньше общего footer. Теперь `home-event-discovery-loader.js` лениво загружает финальный слой после `modal:opened` и монтирования navigation DOM.
+
+Техническая документация обновлена в `docs/specification/location.md`, `docs/specification/homepage-event-discovery.md` и подзадачах Task 140.
+
+Executable verification ещё не завершён: CI проекта запускается только на pull request в `main`, где выполняются `php artisan test` и `npm run build`. После отдельного согласования PR необходимо дождаться зелёного CI и выполнить desktop/mobile smoke-check по `subtasks/009-docs-and-verification.md`. Merge в `main` до этого не выполняется.
