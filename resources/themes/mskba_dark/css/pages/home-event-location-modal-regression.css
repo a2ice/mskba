@@ -1,0 +1,28 @@
+/* Task 146: keep the detached nested location mini-wizard full-width. */
+
+.home-event-location-modal__dialog {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.home-event-location-modal__body {
+    width: 100%;
+    min-width: 0;
+}
+
+.home-event-location-modal__body > .home-event-location__mini--conditional {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: none;
+}
+
+.home-event-location-modal__body .home-event-location__mini-stack,
+.home-event-location-modal__body .home-event-location__mini-active-card,
+.home-event-location-modal__body .home-event-location__branch-grid,
+.home-event-location-modal__body .home-event-location__metro-predictive,
+.home-event-location-modal__body .home-event-location__street,
+.home-event-location-modal__body .home-event-location__venue {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+}
