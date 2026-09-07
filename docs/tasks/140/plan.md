@@ -2,7 +2,7 @@
 
 1. [x] Сверить текущие homepage popup-wizard, Location/Yandex flow, event/tournament filters и существующие predictive/tooltip компоненты.
 2. [x] Зафиксировать целевую UX-логику и географическую модель в `description.md`.
-3. [ ] Добавить `City`/`District`, миграции, связи с `Address`, factories и idempotent initial data для Москвы/Химок.
+3. [x] Добавить `City`/`District`, миграции, связи с `Address`, factories и idempotent initial data для Москвы/Химок.
 4. [ ] Добавить resolver административных компонентов Yandex -> `city_id`/`district_id` и интегрировать его в address suggest/reverse/create/update flow.
 5. [ ] Добавить админ-раздел `Города и районы` с CRUD и проверками целостности.
 6. [ ] Выделить общий navigation/footer contract для homepage popup-wizard и применить к `Мероприятия` и `Площадки`.
@@ -17,7 +17,7 @@
 
 ## Рекомендуемая декомпозиция
 
-- `001-location-directory` — City/District + seed + Address FK;
+- `001-location-directory` — City/District + seed + Address FK — выполнено;
 - `002-yandex-location-resolution` — provider/DTO/resolver/backfill;
 - `003-admin-geography` — административный справочник;
 - `004-shared-popup-navigation` — общий footer/navigation;

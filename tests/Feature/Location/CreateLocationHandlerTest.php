@@ -4,8 +4,11 @@ namespace Tests\Feature\Location;
 
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Application\UseCases\CreateLocationHandler;
+use App\Modules\Location\Domain\Models\City;
+use App\Modules\Location\Domain\Models\District;
 use App\Modules\Location\Domain\Models\MetroStation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class CreateLocationHandlerTest extends TestCase
@@ -65,5 +68,43 @@ class CreateLocationHandlerTest extends TestCase
             'location_id' => $location->id,
             'metro_station_id' => $station->id,
         ]);
+    }
+
+    public function test_city_and_district_directory_references_are_saved(): void
+    {
+        $city = City::factory()->create(['name' => 'Москва', 'alias' => 'moscow-test']);
+        $district = District::factory()->for($city)->create();
+
+        $location = app(CreateLocationHandler::class)->handle(new CreateLocationDTO(
+            rawAddress: 'Москва, Тестовая улица, 1',
+            cityId: $city->id,
+            districtId: $district->id,
+            street: 'Тестовая улица',
+            building: '1',
+        ));
+
+        $this->assertNotNull($location);
+        $this->assertDatabaseHas('addresses', [
+            'id' => $location->address_id,
+            'city_id' => $city->id,
+            'district_id' => $district->id,
+            'city' => 'Москва',
+        ]);
+    }
+
+    public function test_district_must_belong_to_selected_city(): void
+    {
+        $city = City::factory()->create();
+        $otherCity = City::factory()->create();
+        $district = District::factory()->for($otherCity)->create();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Выбранный район не относится к указанному городу.');
+
+        app(CreateLocationHandler::class)->handle(new CreateLocationDTO(
+            rawAddress: 'Тестовый адрес',
+            cityId: $city->id,
+            districtId: $district->id,
+        ));
     }
 }
