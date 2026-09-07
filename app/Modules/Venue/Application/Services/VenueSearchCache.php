@@ -48,6 +48,8 @@ final class VenueSearchCache
                         'requires_booking_approval' => $venue->requires_booking_approval,
                         'short_description' => $venue->short_description,
                         'raw_address' => $venue->raw_address,
+                        'city' => mb_strtolower(trim((string) ($address?->city ?? ''))),
+                        'street' => mb_strtolower(trim((string) ($address?->street ?? ''))),
                         'latitude' => $address?->latitude === null ? null : (float) $address->latitude,
                         'longitude' => $address?->longitude === null ? null : (float) $address->longitude,
                         'metro_stations' => $metros,
