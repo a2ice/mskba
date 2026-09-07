@@ -3,11 +3,19 @@ import '../../css/pages/home-event-location-mini-polish.css';
 const FLOW_SELECTOR = '[data-home-flow="event"]';
 const MINI_MODAL_SELECTOR = '.home-event-location-modal';
 const ACTIVE_STEP_SELECTOR = '[data-home-location-active-step]';
+const VENUE_INPUT_SELECTOR = '[data-venue-selector-input]';
+const VENUE_VALUE_SELECTOR = '[data-venue-selector-value]';
+const VENUE_CLEAR_SELECTOR = '[data-venue-selector-clear]';
+const VENUE_LIST_SELECTOR = '[data-venue-selector-list]';
 
 let lastCity = '';
 let lastDistrict = '';
 let geolocationPending = false;
 let geolocationAdvanceQueued = false;
+let pendingGeolocationStreet = '';
+let geolocationStreetQueryStarted = false;
+let suppressVenueReopenUntil = 0;
+let lastVenuePrimeAt = 0;
 
 function normalize(value) {
     return String(value || '')
@@ -47,6 +55,36 @@ function compactDistrictLabel(value) {
     return separator > 0 ? normalize(text.slice(0, separator)) : text;
 }
 
+function isAddressReverseRequest(input) {
+    const raw = typeof input === 'string'
+        ? input
+        : (input instanceof Request ? input.url : String(input || ''));
+
+    try {
+        const url = new URL(raw, window.location.origin);
+        return url.pathname === '/integrations/address-reverse';
+    } catch (_) {
+        return raw.includes('/integrations/address-reverse');
+    }
+}
+
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (...args) => {
+    const response = await nativeFetch(...args);
+
+    if (geolocationPending && isAddressReverseRequest(args[0])) {
+        response.clone().json().then((payload) => {
+            pendingGeolocationStreet = normalize(payload?.suggestion?.street);
+            geolocationStreetQueryStarted = false;
+        }).catch(() => {
+            pendingGeolocationStreet = '';
+            geolocationStreetQueryStarted = false;
+        });
+    }
+
+    return response;
+};
+
 function captureSummaryContext(modal) {
     if (!modal) return;
 
@@ -69,6 +107,16 @@ function captureSummaryContext(modal) {
 
     const districtSelect = modal.querySelector('[data-home-location-district]');
     if (districtSelect?.value) lastDistrict = compactDistrictLabel(selectedOptionText(districtSelect));
+}
+
+function moveOtherTerritoriesLast(modal) {
+    const select = modal?.querySelector('[data-home-location-district]');
+    if (!select) return;
+
+    const option = [...select.options].find((item) => normalized(item.textContent) === 'другие территории');
+    if (!option || select.lastElementChild === option) return;
+
+    select.append(option);
 }
 
 function injectCurrentLocation(modal) {
@@ -98,6 +146,8 @@ function injectCurrentLocation(modal) {
         lastDistrict = '';
         geolocationPending = true;
         geolocationAdvanceQueued = false;
+        pendingGeolocationStreet = '';
+        geolocationStreetQueryStarted = false;
 
         const label = button.querySelector('span');
         button.disabled = true;
@@ -132,6 +182,8 @@ function mirrorCurrentLocationStatus(modal) {
 
     if (source.dataset.state === 'error') {
         geolocationPending = false;
+        pendingGeolocationStreet = '';
+        geolocationStreetQueryStarted = false;
         if (button) {
             if (button.disabled) button.disabled = false;
             const label = button.querySelector('span');
@@ -158,6 +210,103 @@ function advanceCurrentLocationToFinal(modal) {
         next.click();
         geolocationAdvanceQueued = false;
     });
+}
+
+function applyGeolocationStreet(modal) {
+    if (!pendingGeolocationStreet || !modal) return;
+
+    const card = modal.querySelector(`${ACTIVE_STEP_SELECTOR}[data-home-location-active-step="final"]`);
+    if (!card) return;
+
+    const input = card.querySelector('[data-home-location-street-input]');
+    const list = card.querySelector('[data-home-location-street-list]');
+    if (!input || !list) return;
+
+    if (!geolocationStreetQueryStarted) {
+        input.value = pendingGeolocationStreet;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        geolocationStreetQueryStarted = true;
+        return;
+    }
+
+    const options = [...list.querySelectorAll('button')];
+    if (!options.length) return;
+
+    const expected = normalized(pendingGeolocationStreet);
+    const match = options.find((option) => {
+        const label = normalize(option.querySelector('.address-suggest__label')?.textContent || option.textContent);
+        return normalized(label) === expected;
+    });
+
+    if (!match) return;
+
+    pendingGeolocationStreet = '';
+    geolocationStreetQueryStarted = false;
+    match.click();
+}
+
+function venueElements() {
+    const flow = eventFlow();
+    const selector = flow?.querySelector('[data-venue-selector]');
+    if (!selector) return {};
+
+    return {
+        selector,
+        input: selector.querySelector(VENUE_INPUT_SELECTOR),
+        value: selector.querySelector(VENUE_VALUE_SELECTOR),
+        clear: selector.querySelector(VENUE_CLEAR_SELECTOR),
+        list: selector.querySelector(VENUE_LIST_SELECTOR),
+    };
+}
+
+function activeStreetFilter() {
+    const flow = eventFlow();
+    const root = flow?.querySelector('.home-event-location');
+    return normalize(root?.dataset.homeLocationStreet || '');
+}
+
+function venueListVisible(list) {
+    return Boolean(list && !list.classList.contains('d-none'));
+}
+
+function canPrimeVenueFromStreet() {
+    const { input, value, list } = venueElements();
+    if (!input || !value || !list) return false;
+    if (Date.now() < suppressVenueReopenUntil) return false;
+    if (normalize(input.value)) return false;
+    if (/^\d+$/.test(String(value.value || ''))) return false;
+    if (!activeStreetFilter()) return false;
+    if (venueListVisible(list)) return false;
+    return true;
+}
+
+function primeVenueFromStreet() {
+    if (!canPrimeVenueFromStreet()) return;
+    const now = Date.now();
+    if (now - lastVenuePrimeAt < 450) return;
+
+    const { input } = venueElements();
+    const street = activeStreetFilter();
+    if (!input || !street) return;
+
+    lastVenuePrimeAt = now;
+    input.value = street;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.value = '';
+}
+
+function syncVenueClearControl() {
+    const { input, value, clear, list } = venueElements();
+    if (!input || !value || !clear || !list) return;
+    if (/^\d+$/.test(String(value.value || ''))) return;
+    if (!activeStreetFilter()) return;
+
+    if (!normalize(input.value) && venueListVisible(list)) {
+        clear.hidden = false;
+        clear.disabled = false;
+        clear.classList.remove('is-loading');
+        clear.setAttribute('aria-label', 'Скрыть варианты площадок');
+    }
 }
 
 function patchCompletionCard() {
@@ -195,11 +344,14 @@ function syncMiniPolish() {
     const modal = miniModal();
     if (modal) {
         captureSummaryContext(modal);
+        moveOtherTerritoriesLast(modal);
         injectCurrentLocation(modal);
         mirrorCurrentLocationStatus(modal);
         advanceCurrentLocationToFinal(modal);
+        applyGeolocationStreet(modal);
     }
     patchCompletionCard();
+    syncVenueClearControl();
 }
 
 const observer = new MutationObserver(() => {
@@ -225,6 +377,24 @@ document.addEventListener('change', (event) => {
     if (districtSelect) {
         lastDistrict = compactDistrictLabel(selectedOptionText(districtSelect));
     }
+});
+
+document.addEventListener('click', (event) => {
+    const clear = event.target.closest?.(VENUE_CLEAR_SELECTOR);
+    if (clear && eventFlow()?.contains(clear) && activeStreetFilter()) {
+        suppressVenueReopenUntil = Date.now() + 500;
+        return;
+    }
+
+    const input = event.target.closest?.(VENUE_INPUT_SELECTOR);
+    if (!input || !eventFlow()?.contains(input)) return;
+    window.setTimeout(primeVenueFromStreet, 0);
+});
+
+document.addEventListener('focusin', (event) => {
+    const input = event.target.closest?.(VENUE_INPUT_SELECTOR);
+    if (!input || !eventFlow()?.contains(input)) return;
+    window.setTimeout(primeVenueFromStreet, 0);
 });
 
 syncMiniPolish();
