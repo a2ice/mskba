@@ -50,6 +50,8 @@
         <span class="address-suggest__proximity-warning" role="status" data-address-proximity-warning hidden></span>
     </div>
     <input type="hidden" name="location[address_selected]" data-address-selected>
+    <input type="hidden" name="location[city_id]" data-address-city-id>
+    <input type="hidden" name="location[district_id]" data-address-district-id>
     <input type="hidden" name="location[city]" data-address-city>
     <input type="hidden" name="location[street]" data-address-street>
     <input type="hidden" name="location[building]" data-address-building>

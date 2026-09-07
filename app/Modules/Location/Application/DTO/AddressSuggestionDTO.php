@@ -8,6 +8,7 @@ final readonly class AddressSuggestionDTO
      * @param  array<int, string>  $metroNames
      * @param  array<int>  $metroStationIds
      * @param  array<int, string>  $metroStationLabels
+     * @param  array<int, string>  $administrativeAreaNames
      */
     public function __construct(
         public string $label,
@@ -21,6 +22,7 @@ final readonly class AddressSuggestionDTO
         public array $metroNames = [],
         public array $metroStationIds = [],
         public array $metroStationLabels = [],
+        public array $administrativeAreaNames = [],
     ) {}
 
     public function hasHouse(): bool

@@ -1,0 +1,107 @@
+/* Shared navigation contract for homepage popup wizards. */
+
+.home-flow-navigation__legacy-actions {
+    display: none !important;
+}
+
+.home-flow-navigation__legacy-skip {
+    display: none !important;
+}
+
+.home-flow-wizard-nav {
+    position: sticky;
+    bottom: -26px;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    margin: 24px -28px -26px;
+    padding: 14px 28px 18px;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    background:
+        linear-gradient(180deg, rgba(14, 17, 15, .92), rgba(13, 15, 13, .985));
+    box-shadow: 0 -14px 28px rgba(0, 0, 0, .22);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.home-flow-wizard-nav__back {
+    justify-self: start;
+}
+
+.home-flow-wizard-nav__next {
+    justify-self: end;
+}
+
+.home-flow-wizard-nav__back,
+.home-flow-wizard-nav__next {
+    min-width: 118px;
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.home-flow-wizard-nav__back:disabled,
+.home-flow-wizard-nav__next:disabled {
+    opacity: .38;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.home-flow-wizard-nav__skip {
+    justify-self: center;
+    padding: 8px 4px;
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, .58);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-decoration: underline;
+    text-decoration-color: rgba(255, 255, 255, .26);
+    text-underline-offset: 4px;
+    cursor: pointer;
+    transition: color .18s ease, text-decoration-color .18s ease;
+}
+
+.home-flow-wizard-nav__skip:hover,
+.home-flow-wizard-nav__skip:focus-visible {
+    color: #fff;
+    text-decoration-color: var(--accent-strong);
+    outline: none;
+}
+
+.home-flow-wizard-nav__skip[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 700px) {
+    .home-flow-wizard-nav {
+        bottom: -22px;
+        margin: 22px -20px -22px;
+        padding: 13px 20px calc(15px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+@media (max-width: 520px) {
+    .home-flow-wizard-nav {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    .home-flow-wizard-nav__back,
+    .home-flow-wizard-nav__next {
+        width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        padding-inline: 12px;
+    }
+
+    .home-flow-wizard-nav__skip {
+        font-size: 11px;
+    }
+}

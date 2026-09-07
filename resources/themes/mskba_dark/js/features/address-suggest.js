@@ -405,6 +405,8 @@ function renderSuggestions(list, suggestions) {
 }
 
 function fillStructuredFields(container, suggestion) {
+    setField(container, '[data-address-city-id]', suggestion.city_id);
+    setField(container, '[data-address-district-id]', suggestion.district_id);
     setField(container, '[data-address-city]', suggestion.city);
     setField(container, '[data-address-street]', suggestion.street);
     setField(container, '[data-address-building]', suggestion.building);
@@ -415,6 +417,8 @@ function fillStructuredFields(container, suggestion) {
 
 function clearStructuredFields(container) {
     setField(container, '[data-address-selected]', '');
+    setField(container, '[data-address-city-id]', '');
+    setField(container, '[data-address-district-id]', '');
     setField(container, '[data-address-city]', '');
     setField(container, '[data-address-street]', '');
     setField(container, '[data-address-building]', '');

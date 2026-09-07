@@ -9,6 +9,8 @@ final readonly class CreateLocationDTO
      */
     public function __construct(
         public ?string $rawAddress = null,
+        public ?int $cityId = null,
+        public ?int $districtId = null,
         public ?string $city = null,
         public ?string $street = null,
         public ?string $building = null,
@@ -21,6 +23,8 @@ final readonly class CreateLocationDTO
     public function hasData(): bool
     {
         return $this->rawAddress !== null
+            || $this->cityId !== null
+            || $this->districtId !== null
             || $this->city !== null
             || $this->street !== null
             || $this->building !== null
@@ -29,7 +33,9 @@ final readonly class CreateLocationDTO
 
     public function hasStructuredAddress(): bool
     {
-        return $this->city !== null
+        return $this->cityId !== null
+            || $this->districtId !== null
+            || $this->city !== null
             || $this->street !== null
             || $this->building !== null
             || $this->latitude !== null

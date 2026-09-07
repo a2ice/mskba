@@ -160,6 +160,8 @@
         </div>
 
         <input type="hidden" name="location[address_selected]" value="{{ old('location.address_selected', ($revisionLocation !== [] || $venueAddress !== null) ? '1' : '') }}" data-address-selected>
+        <input type="hidden" name="location[city_id]" value="{{ old('location.city_id', $revisionLocation['city_id'] ?? $venueAddress?->city_id) }}" data-address-city-id>
+        <input type="hidden" name="location[district_id]" value="{{ old('location.district_id', $revisionLocation['district_id'] ?? $venueAddress?->district_id) }}" data-address-district-id>
         <input type="hidden" name="location[city]" value="{{ old('location.city', $revisionLocation['city'] ?? $venueAddress?->city) }}" data-address-city>
         <input type="hidden" name="location[street]" value="{{ old('location.street', $revisionLocation['street'] ?? $venueAddress?->street) }}" data-address-street>
         <input type="hidden" name="location[building]" value="{{ old('location.building', $revisionLocation['building'] ?? $venueAddress?->building) }}" data-address-building>

@@ -91,6 +91,8 @@ final class VenueRevisionManager
         if ($location->hasData()) {
             $payload['location'] = [
                 'raw_address' => $location->rawAddress,
+                'city_id' => $location->cityId,
+                'district_id' => $location->districtId,
                 'city' => $location->city,
                 'street' => $location->street,
                 'building' => $location->building,
@@ -151,6 +153,8 @@ final class VenueRevisionManager
             ]),
             new CreateLocationDTO(
                 rawAddress: $this->nullableString($location['raw_address'] ?? null),
+                cityId: $this->nullableInt($location['city_id'] ?? null),
+                districtId: $this->nullableInt($location['district_id'] ?? null),
                 city: $this->nullableString($location['city'] ?? null),
                 street: $this->nullableString($location['street'] ?? null),
                 building: $this->nullableString($location['building'] ?? null),
@@ -195,6 +199,8 @@ final class VenueRevisionManager
             ],
             'location' => [
                 'raw_address' => $address?->full_address ?? $venue->raw_address,
+                'city_id' => $address?->city_id,
+                'district_id' => $address?->district_id,
                 'city' => $address?->city,
                 'street' => $address?->street,
                 'building' => $address?->building,
@@ -290,5 +296,10 @@ final class VenueRevisionManager
     private function nullableString(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' ? trim($value) : null;
+    }
+
+    private function nullableInt(mixed $value): ?int
+    {
+        return is_numeric($value) && (int) $value > 0 ? (int) $value : null;
     }
 }

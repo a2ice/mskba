@@ -60,6 +60,7 @@ class AdminAccessTest extends TestCase
             'admin.events',
             'admin.teams',
             'admin.content',
+            'admin.geography',
             'admin.settings',
         ] as $route) {
             $this

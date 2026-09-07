@@ -246,6 +246,8 @@ membership contracts со scope `tournament` и атомарными permissions
 Публичный UI показывает самостоятельную игру как одну карточку. Техническое разделение Event/Game
 не дублирует заголовки и не создаёт две конкурирующие страницы.
 
+Homepage discovery не объединяет Event и Tournament в один доменный агрегат. Это отдельная read-only проекция, которая собирает публичные Event и подтверждённые Tournament в единую выдачу для пятишагового popup. Контракт endpoint, фильтров, географии и frontend lifecycle описан в [Homepage Event Discovery](homepage-event-discovery.md).
+
 Tournament использует ID+alias URL:
 
 ```text
