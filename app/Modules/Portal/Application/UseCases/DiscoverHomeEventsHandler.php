@@ -113,6 +113,7 @@ final readonly class DiscoverHomeEventsHandler
         CarbonImmutable $to,
         string $type,
     ): Collection {
+        $fromDate = $from->toDateString();
         $query = Tournament::query()
             ->with([
                 'defaultVenue.location.address',
@@ -120,10 +121,15 @@ final readonly class DiscoverHomeEventsHandler
             ])
             ->where('status', TournamentStatusEnum::CONFIRMED->value)
             ->whereDate('starts_on', '<=', $to->toDateString())
-            ->where(function (Builder $periodQuery) use ($from): void {
+            ->where(function (Builder $periodQuery) use ($fromDate): void {
                 $periodQuery
                     ->whereNull('ends_on')
-                    ->orWhereDate('ends_on', '>=', $from->toDateString());
+                    ->orWhereDate('ends_on', '>=', $fromDate);
+            })
+            ->where(function (Builder $periodQuery) use ($fromDate): void {
+                $periodQuery
+                    ->whereNull('tournament_closed_at')
+                    ->orWhereDate('tournament_closed_at', '>=', $fromDate);
             });
 
         $this->applyVenueFilters($query, 'defaultVenue', $filters);
