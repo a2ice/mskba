@@ -96,10 +96,13 @@ final readonly class DiscoverHomeEventsHandler
             }
         }
 
+        $candidateLimit = $this->radiusFilter($filters) === null ? 100 : 500;
+
         return $query
             ->orderBy('starts_at')
-            ->limit(100)
+            ->limit($candidateLimit)
             ->get()
+            ->filter(fn (Event $event): bool => $this->venueWithinRadius($event->venue, $filters))
             ->map(fn (Event $event): array => $this->eventResult($event));
     }
 
@@ -146,10 +149,13 @@ final readonly class DiscoverHomeEventsHandler
             }
         }
 
+        $candidateLimit = $this->radiusFilter($filters) === null ? 100 : 500;
+
         return $query
             ->orderBy('starts_on')
-            ->limit(100)
+            ->limit($candidateLimit)
             ->get()
+            ->filter(fn (Tournament $tournament): bool => $this->venueWithinRadius($tournament->defaultVenue, $filters))
             ->map(fn (Tournament $tournament): array => $this->tournamentResult($tournament, $from));
     }
 
@@ -201,6 +207,86 @@ final readonly class DiscoverHomeEventsHandler
                 fn (Builder $metroQuery) => $metroQuery->whereIn('metro_stations.id', $metroIds),
             );
         }
+
+        $radius = $this->radiusFilter($filters);
+        if ($radius !== null) {
+            $latitudeDelta = $radius['radius_km'] / 111.32;
+            $longitudeScale = max(0.1, cos(deg2rad($radius['latitude'])));
+            $longitudeDelta = $radius['radius_km'] / (111.32 * $longitudeScale);
+
+            $query->whereHas(
+                $venueRelation.'.location.address',
+                fn (Builder $addressQuery) => $addressQuery
+                    ->whereNotNull('latitude')
+                    ->whereNotNull('longitude')
+                    ->whereBetween('latitude', [
+                        $radius['latitude'] - $latitudeDelta,
+                        $radius['latitude'] + $latitudeDelta,
+                    ])
+                    ->whereBetween('longitude', [
+                        $radius['longitude'] - $longitudeDelta,
+                        $radius['longitude'] + $longitudeDelta,
+                    ]),
+            );
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{latitude: float, longitude: float, radius_km: float, radius_meters: float}|null
+     */
+    private function radiusFilter(array $filters): ?array
+    {
+        if (! isset($filters['latitude'], $filters['longitude'], $filters['radius_km'])) {
+            return null;
+        }
+
+        $latitude = (float) $filters['latitude'];
+        $longitude = (float) $filters['longitude'];
+        $radiusKm = (float) $filters['radius_km'];
+
+        if ($radiusKm <= 0) {
+            return null;
+        }
+
+        return [
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'radius_km' => $radiusKm,
+            'radius_meters' => $radiusKm * 1000,
+        ];
+    }
+
+    /** @param  array<string, mixed>  $filters */
+    private function venueWithinRadius(?Venue $venue, array $filters): bool
+    {
+        $radius = $this->radiusFilter($filters);
+        if ($radius === null) {
+            return true;
+        }
+
+        $address = $venue?->location?->address;
+        if ($address?->latitude === null || $address->longitude === null) {
+            return false;
+        }
+
+        return $this->distanceMeters(
+            $radius['latitude'],
+            $radius['longitude'],
+            (float) $address->latitude,
+            (float) $address->longitude,
+        ) <= $radius['radius_meters'];
+    }
+
+    private function distanceMeters(float $latA, float $lonA, float $latB, float $lonB): int
+    {
+        $earthRadius = 6_371_000;
+        $latDelta = deg2rad($latB - $latA);
+        $lonDelta = deg2rad($lonB - $lonA);
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($latA)) * cos(deg2rad($latB)) * sin($lonDelta / 2) ** 2;
+
+        return (int) round($earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a)));
     }
 
     /** @return array<string, mixed> */

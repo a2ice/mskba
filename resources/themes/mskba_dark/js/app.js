@@ -96,7 +96,7 @@ import './features/home-event-venue-bridge.js';
 import './features/home-venue-flow-fixes.js';
 import './features/home-flow-navigation.js';
 import './features/home-event-search-parameters.js';
-import './features/home-event-location.js';
+import './features/home-event-location-v2.js';
 import './features/home-event-date-range.js';
 import './features/home-event-discovery-loader.js';
 import './features/home-event-discovery-lifecycle.js';

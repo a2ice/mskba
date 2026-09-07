@@ -120,7 +120,7 @@ final class EventCreationWizardTest extends TestCase
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
 
-        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->startOfHour();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
         $occupiedEvent = Event::factory()->create([
             'venue_id' => $venue->id,
             'organizer_actor_id' => $otherActor->id,
@@ -205,7 +205,7 @@ final class EventCreationWizardTest extends TestCase
             'requires_booking_approval' => false,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
-        $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->startOfHour();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->setTime(19, 0);
         $occupiedEvent = Event::factory()->create([
             'venue_id' => $venue->id,
             'organizer_actor_id' => $otherActor->id,
@@ -265,7 +265,7 @@ final class EventCreationWizardTest extends TestCase
             'requires_booking_approval' => false,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
-        $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->startOfHour();
+        $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->setTime(19, 0);
 
         $response = $this->actingAs($user)
             ->from(route('events.wizard'))

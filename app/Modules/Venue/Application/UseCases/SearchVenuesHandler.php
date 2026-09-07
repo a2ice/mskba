@@ -38,6 +38,9 @@ final readonly class SearchVenuesHandler
         ?int $venueId = null,
         ?string $city = null,
         ?string $street = null,
+        ?float $latitude = null,
+        ?float $longitude = null,
+        ?float $radiusKm = null,
         ?VenueTypeEnum $type = null,
         ?VenueStatusEnum $status = null,
         ?int $metroStationId = null,
@@ -55,6 +58,9 @@ final readonly class SearchVenuesHandler
             'venue_id' => $venueId,
             'city' => mb_strtolower(trim((string) $city)),
             'street' => mb_strtolower(trim((string) $street)),
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'radius_km' => $radiusKm,
             'type' => $type?->value,
             'status' => $status?->value,
             'metro_station_id' => $metroStationId,
@@ -130,6 +136,30 @@ final readonly class SearchVenuesHandler
                 fn (array $venue): bool => str_contains($venue['search_text'], $parameters['query']),
             ));
 
+        $hasRadius = $parameters['latitude'] !== null
+            && $parameters['longitude'] !== null
+            && $parameters['radius_km'] !== null;
+
+        if ($hasRadius) {
+            $latitude = (float) $parameters['latitude'];
+            $longitude = (float) $parameters['longitude'];
+            $radiusMeters = (float) $parameters['radius_km'] * 1000;
+
+            $venues = $venues
+                ->map(function (array $venue) use ($latitude, $longitude): array {
+                    $venue['distance_meters'] = $this->distanceMeters(
+                        $latitude,
+                        $longitude,
+                        isset($venue['latitude']) ? (float) $venue['latitude'] : null,
+                        isset($venue['longitude']) ? (float) $venue['longitude'] : null,
+                    );
+
+                    return $venue;
+                })
+                ->filter(fn (array $venue): bool => $venue['distance_meters'] !== null
+                    && $venue['distance_meters'] <= $radiusMeters);
+        }
+
         if ($parameters['starts_at'] !== null && $parameters['duration_minutes'] !== null) {
             $startsAt = CarbonImmutable::parse($parameters['starts_at']);
             $endsAt = $startsAt->addMinutes($parameters['duration_minutes']);
@@ -174,10 +204,32 @@ final readonly class SearchVenuesHandler
             });
         }
 
+        $venues = $hasRadius
+            ? $venues->sortBy('distance_meters')
+            : $venues->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
+
         return $venues
-            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->take($parameters['limit'])
             ->values()
             ->all();
+    }
+
+    private function distanceMeters(
+        float $latA,
+        float $lonA,
+        ?float $latB,
+        ?float $lonB,
+    ): ?int {
+        if ($latB === null || $lonB === null) {
+            return null;
+        }
+
+        $earthRadius = 6_371_000;
+        $latDelta = deg2rad($latB - $latA);
+        $lonDelta = deg2rad($lonB - $lonA);
+        $a = sin($latDelta / 2) ** 2
+            + cos(deg2rad($latA)) * cos(deg2rad($latB)) * sin($lonDelta / 2) ** 2;
+
+        return (int) round($earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a)));
     }
 }
