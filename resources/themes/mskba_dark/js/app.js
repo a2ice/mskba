@@ -95,6 +95,7 @@ import './features/home-hero-parallax.js';
 import './features/home-event-venue-bridge.js';
 import './features/home-venue-flow-fixes.js';
 import './features/home-flow-navigation.js';
+import './features/home-event-search-parameters.js';
 import './features/reactions.js';
 import './features/admin-action-modals.js';
 import './features/admin-venue-bulk-actions.js';
