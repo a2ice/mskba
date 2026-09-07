@@ -98,7 +98,7 @@ import './features/home-flow-navigation.js';
 import './features/home-event-search-parameters.js';
 import './features/home-event-location.js';
 import './features/home-event-date-range.js';
-import './features/home-event-discovery.js';
+import './features/home-event-discovery-loader.js';
 import './features/home-event-discovery-lifecycle.js';
 import './features/reactions.js';
 import './features/admin-action-modals.js';
