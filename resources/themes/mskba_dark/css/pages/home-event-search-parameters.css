@@ -71,6 +71,18 @@
     right: 10px;
     z-index: 4;
     margin: 0;
+    border-color: rgba(255, 255, 255, .16);
+    background: rgba(255, 255, 255, .035);
+    color: rgba(255, 255, 255, .56);
+}
+
+[data-home-flow="event"] .home-event-choice > .home-event-choice__help:hover,
+[data-home-flow="event"] .home-event-choice > .home-event-choice__help:focus-visible {
+    border-color: rgba(255, 255, 255, .28);
+    background: rgba(255, 255, 255, .065);
+    color: rgba(255, 255, 255, .82);
+    outline: 2px solid rgba(255, 255, 255, .12);
+    outline-offset: 2px;
 }
 
 .home-event-parameters-stage {

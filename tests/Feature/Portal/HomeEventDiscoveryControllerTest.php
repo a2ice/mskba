@@ -159,6 +159,31 @@ class HomeEventDiscoveryControllerTest extends TestCase
             ->assertJsonPath('results.0.recruitment_mode', GameRecruitmentModeEnum::INDIVIDUAL_DRAFT->value);
     }
 
+    public function test_discovery_excludes_open_ended_tournament_closed_before_requested_range(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-07 12:00:00', 'Europe/Moscow'));
+
+        $venue = Venue::factory()->create(['name' => 'Closed League Hall']);
+        Tournament::factory()->create([
+            'default_venue_id' => $venue->id,
+            'title' => 'Завершённая открытая лига',
+            'status' => TournamentStatusEnum::CONFIRMED->value,
+            'enrollment_policy' => TournamentEnrollmentPolicyEnum::CONTINUOUS->value,
+            'starts_on' => '2026-09-01',
+            'ends_on' => null,
+            'tournament_closed_at' => CarbonImmutable::parse('2026-09-08 18:00:00', 'Europe/Moscow'),
+        ]);
+
+        $this->getJson(route('home.event-discovery', [
+            'type' => 'tournament',
+            'date_from' => '2026-09-10',
+            'date_to' => '2026-09-17',
+        ]))
+            ->assertOk()
+            ->assertJsonPath('count', 0)
+            ->assertJsonCount(0, 'results');
+    }
+
     private function venueIn(City $city, ?District $district, string $street, string $name): Venue
     {
         $address = Address::factory()->create([

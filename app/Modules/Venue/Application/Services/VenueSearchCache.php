@@ -22,7 +22,7 @@ final class VenueSearchCache
             fn (): array => Venue::query()
                 ->with([
                     'tags:id,venue_id,name,slug',
-                    'location.address',
+                    'location.address.cityDirectory',
                     'location.metroStations:id,name',
                 ])
                 ->orderBy('id')
@@ -48,6 +48,8 @@ final class VenueSearchCache
                         'requires_booking_approval' => $venue->requires_booking_approval,
                         'short_description' => $venue->short_description,
                         'raw_address' => $venue->raw_address,
+                        'city' => mb_strtolower(trim((string) ($address?->cityDirectory?->name ?? $address?->city ?? ''))),
+                        'street' => mb_strtolower(trim((string) ($address?->street ?? ''))),
                         'latitude' => $address?->latitude === null ? null : (float) $address->latitude,
                         'longitude' => $address?->longitude === null ? null : (float) $address->longitude,
                         'metro_stations' => $metros,
