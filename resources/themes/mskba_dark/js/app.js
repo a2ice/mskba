@@ -99,6 +99,7 @@ import './features/home-flow-navigation.js';
 import './features/home-event-search-parameters.js';
 import './features/home-event-location-v2.js';
 import './features/home-event-location-metro-priority.js';
+import './features/home-event-location-mini-polish.js';
 import './features/home-event-date-range.js';
 import './features/home-event-discovery-loader.js';
 import './features/home-event-discovery-lifecycle.js';
