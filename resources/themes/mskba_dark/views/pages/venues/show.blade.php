@@ -235,7 +235,9 @@
                         <div>
                             <span class="venue-hero__detail-label">Занятые слоты</span>
                             @forelse($venue->occupiedSlots as $slot)
-                                @php($slotAriaLabel = $slot['label'].' · '.$slot['eventTypeLabel'].' · '.$slot['statusIcon'].' '.$slot['statusLabel'])
+                                @php
+                                    $slotAriaLabel = $slot['label'].' · '.$slot['eventTypeLabel'].' · '.$slot['statusIcon'].' '.$slot['statusLabel'];
+                                @endphp
                                 <p class="venue-hero__text venue-hero__occupied-slot" aria-label="{{ $slotAriaLabel }}">
                                     <span>{{ $slot['label'] }}</span>
                                     <span class="venue-hero__slot-meta">
