@@ -34,7 +34,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_public_event_link_is_rendered_with_type_and_booking_status_without_event_title(): void
+    public function test_public_event_link_is_rendered_with_type_and_status_icon_tooltip_without_event_title(): void
     {
         [$venue, $booking, $actorId] = $this->venueAndBooking();
         $event = Event::factory()->create([
@@ -56,13 +56,14 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('12.09.2026 19:00–20:00')
-            ->assertSee('Тренировка · ✅ Подтверждено')
+            ->assertSee('Тренировка')
+            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
             ->assertDontSee('Автогенерируемое название события 123')
             ->assertSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertSee('target="_blank"', false);
     }
 
-    public function test_private_event_keeps_type_and_status_but_is_not_linked_and_does_not_expose_title(): void
+    public function test_private_event_keeps_type_and_status_icon_but_is_not_linked_and_does_not_expose_title(): void
     {
         [$venue, $booking, $actorId] = $this->venueAndBooking();
         $event = Event::factory()->create([
@@ -81,12 +82,12 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('12.09.2026 19:00–20:00 · Тренировка · ✅ Подтверждено')
+            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
             ->assertDontSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertDontSee('Закрытая тренировка — служебное название');
     }
 
-    public function test_pending_event_shows_pending_booking_status_without_public_link(): void
+    public function test_pending_event_shows_pending_booking_status_only_in_icon_tooltip_without_public_link(): void
     {
         [$venue, $booking, $actorId] = $this->venueAndBooking(VenueBookingStatusEnum::PENDING);
         $event = Event::factory()->create([
@@ -105,19 +106,20 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Тренировка · 🕒 Ожидает подтверждения')
+            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · 🕒 Ожидает подтверждения"', false)
             ->assertDontSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertDontSee('Черновое событие');
     }
 
-    public function test_booking_without_event_still_explains_why_slot_is_occupied(): void
+    public function test_booking_without_event_still_explains_why_slot_is_occupied_via_type_and_status_tooltip(): void
     {
         [$venue] = $this->venueAndBooking(VenueBookingStatusEnum::PENDING);
 
         $this
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('Бронирование · 🕒 Ожидает подтверждения');
+            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Бронирование · 🕒 Ожидает подтверждения"', false)
+            ->assertSee('Бронирование');
     }
 
     /** @return array{0: Venue, 1: LegacyVenueBooking, 2: int} */

@@ -11,10 +11,23 @@
     gap: 4px 14px;
 }
 
-.venue-hero__slot-event-link {
+.venue-hero__slot-meta {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.venue-hero__slot-event-link,
+.venue-hero__slot-status {
     display: inline-flex;
     align-items: center;
     white-space: nowrap;
+}
+
+.venue-hero__slot-status {
+    line-height: 1;
+    text-decoration: none;
 }
 
 @media (max-width: 900px) {

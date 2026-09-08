@@ -9,7 +9,7 @@ final readonly class VenueDetailsDTO
      * @param  array<int, array{id: int, name: string, description: ?string, iconUrl: ?string}>  $amenities
      * @param  array<int, array{id: int, title: ?string, url: ?string}>  $featuredMedia
      * @param  array<int, VenueReviewDTO>  $reviews
-     * @param  array<int, array{label: string, eventTitle: ?string, eventTypeLabel: ?string, eventUrl: ?string}>  $occupiedSlots
+     * @param  array<int, array{label: string, eventTypeLabel: string, eventUrl: ?string, statusIcon: string, statusLabel: string}>  $occupiedSlots
      */
     public function __construct(
         public int $id,
