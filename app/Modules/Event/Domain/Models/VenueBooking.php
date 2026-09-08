@@ -34,6 +34,32 @@ class VenueBooking extends Model
         return $this->belongsTo(Event::class);
     }
 
+    /**
+     * During the booking-first migration an Event can be linked through
+     * events.booking_id even when an older booking row still has event_id=null.
+     * Keep the legacy relation compatible with both directions until the old
+     * projection can be retired.
+     */
+    public function getRelationValue($key)
+    {
+        $value = parent::getRelationValue($key);
+
+        if ($key !== 'event' || $value !== null || ! $this->exists) {
+            return $value;
+        }
+
+        $event = Event::query()
+            ->with('primaryGame')
+            ->where('booking_id', $this->getKey())
+            ->first();
+
+        if ($event !== null) {
+            $this->setRelation('event', $event);
+        }
+
+        return $event;
+    }
+
     public function creatorActor(): BelongsTo
     {
         return $this->belongsTo(Actor::class, 'created_by_actor_id');
