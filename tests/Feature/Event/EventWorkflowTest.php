@@ -146,7 +146,7 @@ final class EventWorkflowTest extends TestCase
             ->assertOk()
             ->assertSee('Занятые слоты')
             ->assertSee($slotStart->format('d.m.Y H:i').'–'.$slotEnd->format('H:i'))
-            ->assertSee('Вечерняя игра');
+            ->assertSee('Игровая тренировка · ✅ Подтверждено');
     }
 
     public function test_booking_that_requires_approval_without_rental_policy_does_not_create_legacy_draft(): void
