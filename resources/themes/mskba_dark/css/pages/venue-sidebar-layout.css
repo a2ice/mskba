@@ -54,7 +54,7 @@
     display: none !important;
 }
 
-@media (min-width: 769px) {
+@media (min-width: 1025px) {
     .venue-section .section-sidebar-layout__aside {
         position: sticky;
         z-index: 10;
@@ -85,21 +85,106 @@
     }
 }
 
-@media (min-width: 769px) and (max-width: 900px) {
+/* Task 155: switch the venue page to the wide-content mode before the sidebar starts squeezing content. */
+@media (max-width: 1024px) {
     .venue-section .section-sidebar-layout__grid {
-        grid-template-columns: minmax(220px, 240px) minmax(0, 1fr);
-        gap: 18px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
     }
 
-    .venue-section .section-sidebar-layout__aside > .section-sidebar-layout__panel {
-        padding: 20px;
+    .venue-section .section-sidebar-layout__grid > .section-sidebar-layout__aside {
+        display: none;
     }
-}
 
-@media (max-width: 768px) {
+    .venue-section .section-content-heading__row {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .venue-section .section-content-heading__title-group {
+        width: 100%;
+        flex: 0 0 100%;
+    }
+
+    .venue-section .section-content-heading__action {
+        width: 100%;
+        min-width: 0;
+        flex: 0 0 100%;
+        justify-content: flex-start;
+    }
+
+    .venue-section .venue-heading-actions {
+        min-width: 0;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 10px 14px;
+    }
+
+    .venue-section .venue-star-rating {
+        display: inline-flex;
+        width: auto;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+        overflow: visible;
+        font-size: 26px;
+        letter-spacing: 1px;
+    }
+
+    .venue-section .venue-star-rating__stars {
+        position: relative;
+        display: block;
+        width: 140px;
+        flex: 0 0 140px;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .venue-section .venue-star-rating__base,
+    .venue-section .venue-star-rating__fill {
+        display: block;
+    }
+
+    .venue-section .venue-star-rating__fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        overflow: hidden;
+    }
+
+    .venue-section .venue-star-rating__compact {
+        display: none;
+    }
+
+    .venue-section .venue-star-rating__value {
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 0;
+        line-height: 1;
+    }
+
+    .venue-section .venue-booking-action {
+        width: auto;
+        min-width: 0;
+        height: auto;
+        min-height: 40px;
+        padding: 0 16px;
+        border-radius: var(--radius-control);
+    }
+
+    .venue-section .venue-booking-action__icon {
+        display: none;
+    }
+
+    .venue-section .venue-booking-action__label {
+        display: inline;
+    }
+
     .venue-section .venue-show > .venue-anchor-nav {
-        position: static;
-        z-index: auto;
+        position: sticky;
+        top: var(--site-header-height, 76px);
+        z-index: 35;
         display: flex;
         flex-wrap: nowrap;
         gap: 8px;
@@ -107,8 +192,8 @@
         border: 1px solid var(--line);
         border-radius: var(--radius-control);
         padding: 8px;
-        background: rgba(21, 25, 20, 0.75);
-        box-shadow: none;
+        background: rgba(21, 25, 20, 0.96);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
         backdrop-filter: blur(12px);
         overscroll-behavior-inline: contain;
         scrollbar-width: none;
