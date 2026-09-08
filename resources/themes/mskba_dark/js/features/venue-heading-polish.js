@@ -13,7 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!fullTitle) return;
 
     const characters = Array.from(fullTitle);
-    heading.textContent = characters.length > VENUE_HEADING_LIMIT
+    const isTruncated = characters.length > VENUE_HEADING_LIMIT;
+
+    heading.textContent = isTruncated
         ? `${characters.slice(0, VENUE_HEADING_LIMIT).join('')}…`
         : fullTitle;
+
+    if (isTruncated) return;
+
+    heading.removeAttribute('title');
+    heading.removeAttribute('data-tooltip');
+    heading.removeAttribute('data-tooltip-source');
+    heading.classList.remove('ui-tooltip-source', 'ui-tooltip-source--title');
+
+    if (heading.getAttribute('tabindex') === '0') {
+        heading.removeAttribute('tabindex');
+    }
 });
