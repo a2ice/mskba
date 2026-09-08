@@ -235,17 +235,30 @@
                         <div>
                             <span class="venue-hero__detail-label">Занятые слоты</span>
                             @forelse($venue->occupiedSlots as $slot)
-                                <p class="venue-hero__text venue-hero__occupied-slot">
+                                @php($slotAriaLabel = $slot['label'].' · '.$slot['eventTypeLabel'].' · '.$slot['statusIcon'].' '.$slot['statusLabel'])
+                                <p class="venue-hero__text venue-hero__occupied-slot" aria-label="{{ $slotAriaLabel }}">
                                     <span>{{ $slot['label'] }}</span>
-                                    @if($slot['eventUrl'])
-                                        <a
-                                            class="fc-link venue-hero__slot-event-link"
-                                            href="{{ $slot['eventUrl'] }}"
-                                            target="_blank"
-                                            rel="noopener"
-                                            @if($slot['eventTitle']) title="{{ $slot['eventTitle'] }}" @endif
-                                        >{{ $slot['eventTypeLabel'] }}</a>
-                                    @endif
+                                    <span class="venue-hero__slot-meta">
+                                        <span aria-hidden="true">·</span>
+                                        @if($slot['eventUrl'])
+                                            <a
+                                                class="fc-link venue-hero__slot-event-link"
+                                                href="{{ $slot['eventUrl'] }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                            >{{ $slot['eventTypeLabel'] }}</a>
+                                        @else
+                                            <span>{{ $slot['eventTypeLabel'] }}</span>
+                                        @endif
+                                        <span aria-hidden="true">·</span>
+                                        <span
+                                            class="venue-hero__slot-status"
+                                            role="img"
+                                            aria-label="{{ $slot['statusLabel'] }}"
+                                            title="{{ $slot['statusLabel'] }}"
+                                            data-tooltip-variant="title"
+                                        >{{ $slot['statusIcon'] }}</span>
+                                    </span>
                                 </p>
                             @empty
                                 <p class="venue-hero__text">—</p>
@@ -557,7 +570,6 @@
                     </div>
                 @endif
             </section>
-
             <section id="posts" class="venue-show-section">
                 <div class="venue-show-section__heading">
                     <h2>Посты</h2>
