@@ -12,6 +12,7 @@ function loadDiscovery() {
 
     window.setTimeout(() => {
         import('./home-event-discovery-v2.js')
+            .then(() => import('./home-event-empty-create-cta.js'))
             .then(() => {
                 discoveryLoaded = true;
             })
