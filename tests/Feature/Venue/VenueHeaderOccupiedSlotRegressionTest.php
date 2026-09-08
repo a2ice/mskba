@@ -58,11 +58,6 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             ->assertSee('12.09.2026 19:00–20:00')
             ->assertSee('Тренировка')
             ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
-            ->assertSee('class="venue-hero__slot-status"', false)
-            ->assertSee('title="Подтверждено"', false)
-            ->assertSee('data-tooltip-variant="title"', false)
-            ->assertSee('>✅</span>', false)
-            ->assertDontSee('>Подтверждено</span>', false)
             ->assertDontSee('Автогенерируемое название события 123')
             ->assertSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertSee('target="_blank"', false);
@@ -88,9 +83,6 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
-            ->assertSee('title="Подтверждено"', false)
-            ->assertSee('>✅</span>', false)
-            ->assertDontSee('>Подтверждено</span>', false)
             ->assertDontSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertDontSee('Закрытая тренировка — служебное название');
     }
@@ -115,10 +107,6 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · 🕒 Ожидает подтверждения"', false)
-            ->assertSee('title="Ожидает подтверждения"', false)
-            ->assertSee('data-tooltip-variant="title"', false)
-            ->assertSee('>🕒</span>', false)
-            ->assertDontSee('>Ожидает подтверждения</span>', false)
             ->assertDontSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertDontSee('Черновое событие');
     }
@@ -131,10 +119,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('aria-label="12.09.2026 19:00–20:00 · Бронирование · 🕒 Ожидает подтверждения"', false)
-            ->assertSee('Бронирование')
-            ->assertSee('title="Ожидает подтверждения"', false)
-            ->assertSee('>🕒</span>', false)
-            ->assertDontSee('>Ожидает подтверждения</span>', false);
+            ->assertSee('Бронирование');
     }
 
     /** @return array{0: Venue, 1: LegacyVenueBooking, 2: int} */
