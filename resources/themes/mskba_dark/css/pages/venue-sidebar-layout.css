@@ -54,6 +54,50 @@
     display: none !important;
 }
 
+/* Task 155: keep the full five-star rating at every viewport and show only an integer visually. */
+.venue-section .venue-star-rating {
+    display: inline-flex;
+    width: auto;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    overflow: visible;
+    font-size: 26px;
+    letter-spacing: 1px;
+}
+
+.venue-section .venue-star-rating__stars {
+    position: relative;
+    display: block;
+    width: 140px;
+    flex: 0 0 140px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.venue-section .venue-star-rating__base,
+.venue-section .venue-star-rating__fill {
+    display: block;
+}
+
+.venue-section .venue-star-rating__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    overflow: hidden;
+}
+
+.venue-section .venue-star-rating__compact {
+    display: none;
+}
+
+.venue-section .venue-star-rating__value {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1;
+}
+
 @media (min-width: 1025px) {
     .venue-section .section-sidebar-layout__aside {
         position: sticky;
@@ -119,49 +163,6 @@
         flex-wrap: wrap;
         justify-content: flex-start;
         gap: 10px 14px;
-    }
-
-    .venue-section .venue-star-rating {
-        display: inline-flex;
-        width: auto;
-        flex: 0 0 auto;
-        align-items: center;
-        gap: 8px;
-        overflow: visible;
-        font-size: 26px;
-        letter-spacing: 1px;
-    }
-
-    .venue-section .venue-star-rating__stars {
-        position: relative;
-        display: block;
-        width: 140px;
-        flex: 0 0 140px;
-        line-height: 1;
-        white-space: nowrap;
-    }
-
-    .venue-section .venue-star-rating__base,
-    .venue-section .venue-star-rating__fill {
-        display: block;
-    }
-
-    .venue-section .venue-star-rating__fill {
-        position: absolute;
-        inset: 0 auto 0 0;
-        overflow: hidden;
-    }
-
-    .venue-section .venue-star-rating__compact {
-        display: none;
-    }
-
-    .venue-section .venue-star-rating__value {
-        color: var(--text);
-        font-size: 16px;
-        font-weight: 800;
-        letter-spacing: 0;
-        line-height: 1;
     }
 
     .venue-section .venue-booking-action {
