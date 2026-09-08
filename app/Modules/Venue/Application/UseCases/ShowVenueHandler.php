@@ -3,8 +3,10 @@
 namespace App\Modules\Venue\Application\UseCases;
 
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
+use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
@@ -126,7 +128,7 @@ final class ShowVenueHandler
         $occupiedSlots = $venue->bookings()
             ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
             ->where('ends_at', '>', now())
-            ->with('event')
+            ->with('event.primaryGame')
             ->orderBy('starts_at')
             ->limit(5)
             ->get()
@@ -141,6 +143,7 @@ final class ShowVenueHandler
                 return [
                     'label' => $startsAt->format('d.m.Y H:i').'–'.$endsAt->format('H:i'),
                     'eventTitle' => $isPublicEvent ? $event->title : null,
+                    'eventTypeLabel' => $isPublicEvent ? $this->occupiedSlotEventTypeLabel($event) : null,
                     'eventUrl' => $isPublicEvent ? route('events.show', $event->routeIdentifier()) : null,
                 ];
             })
@@ -217,7 +220,6 @@ final class ShowVenueHandler
     private function ownershipPriority(Venue $venue, ?User $user, ?Actor $actor): int
     {
         $creator = $venue->creatorActor;
-
         if ($creator === null) {
             return 0;
         }
@@ -247,6 +249,17 @@ final class ShowVenueHandler
             $address?->street,
             $address?->building,
         ) ?? '';
+    }
+
+    private function occupiedSlotEventTypeLabel(Event $event): string
+    {
+        $label = $event->type->label();
+
+        if ($event->type === EventTypeEnum::GAME && $event->primaryGame !== null) {
+            return $label.' '.$event->primaryGame->formatLabel();
+        }
+
+        return $label;
     }
 
     /**

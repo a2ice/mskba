@@ -1,0 +1,24 @@
+/* Task 151: compact venue heading and align occupied event links. */
+
+.venue-section .section-sidebar-layout__title {
+    font-size: clamp(16px, 1.667vw, 24px);
+}
+
+.venue-hero__occupied-slot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+}
+
+.venue-hero__slot-event-link {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+    .venue-section .section-sidebar-layout__title {
+        font-size: clamp(15px, 4.667vw, 20px);
+    }
+}
