@@ -54,7 +54,7 @@
     display: none !important;
 }
 
-/* Task 155: keep the full five-star rating at every viewport and show only an integer visually. */
+/* Keep the full five-star rating at every viewport. The exact numeric value lives in tooltip/aria-label only. */
 .venue-section .venue-star-rating {
     display: inline-flex;
     width: auto;
@@ -86,16 +86,9 @@
     overflow: hidden;
 }
 
-.venue-section .venue-star-rating__compact {
-    display: none;
-}
-
+.venue-section .venue-star-rating__compact,
 .venue-section .venue-star-rating__value {
-    color: var(--text);
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: 0;
-    line-height: 1;
+    display: none !important;
 }
 
 @media (min-width: 1025px) {
@@ -129,7 +122,61 @@
     }
 }
 
-/* Task 155: switch the venue page to the wide-content mode before the sidebar starts squeezing content. */
+/* Intermediate adaptive hero: keep one image row and overlay venue information on the right. */
+@media (min-width: 769px) and (max-width: 1100px) {
+    .venue-section .venue-hero {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .venue-section .venue-hero__media {
+        width: 100%;
+        min-height: 0;
+        max-height: none;
+        aspect-ratio: 16 / 9;
+    }
+
+    .venue-section .venue-hero__media img,
+    .venue-section .venue-hero__placeholder {
+        width: 100%;
+        height: 100%;
+    }
+
+    .venue-section .venue-hero__summary {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(58%, 560px);
+        justify-content: center;
+        gap: 18px;
+        border: 0;
+        border-radius: 0 var(--radius-control) var(--radius-control) 0;
+        padding: 24px 24px 24px clamp(64px, 8vw, 112px);
+        background: linear-gradient(
+            to left,
+            rgba(12, 14, 12, 0.97) 0%,
+            rgba(12, 14, 12, 0.9) 42%,
+            rgba(12, 14, 12, 0.72) 68%,
+            rgba(12, 14, 12, 0) 100%
+        );
+    }
+
+    .venue-section .venue-hero__details {
+        gap: 14px;
+    }
+
+    .venue-section .venue-hero__summary a,
+    .venue-section .venue-hero__summary button {
+        position: relative;
+        z-index: 1;
+    }
+}
+
+/* Switch the venue page to the wide-content mode before the sidebar starts squeezing content. */
 @media (max-width: 1024px) {
     .venue-section .section-sidebar-layout__grid {
         grid-template-columns: minmax(0, 1fr);
