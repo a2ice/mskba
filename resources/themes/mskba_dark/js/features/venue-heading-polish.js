@@ -53,19 +53,5 @@ function polishVenueRating() {
     }
 
     compact?.setAttribute('hidden', '');
-
-    const label = String(rating.getAttribute('aria-label') || '').trim();
-    const match = label.match(/(\d+(?:[.,]\d+)?)/u);
-    const exactValue = match ? Number(match[1].replace(',', '.')) : 0;
-    const roundedValue = Number.isFinite(exactValue) ? Math.round(exactValue) : 0;
-
-    let value = rating.querySelector('.venue-star-rating__value');
-    if (!value) {
-        value = document.createElement('span');
-        value.className = 'venue-star-rating__value';
-        value.setAttribute('aria-hidden', 'true');
-        rating.append(value);
-    }
-
-    value.textContent = String(roundedValue);
+    rating.querySelector('.venue-star-rating__value')?.remove();
 }
