@@ -26,6 +26,29 @@ class VenueBooking extends Model
 {
     use Auditable;
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $booking): void {
+            if ($booking->venue_id === null) {
+                return;
+            }
+
+            if ($booking->venue_court_id !== null && ! ($booking->isDirty('venue_id') && ! $booking->isDirty('venue_court_id'))) {
+                return;
+            }
+
+            $courtId = VenueCourt::query()
+                ->where('venue_id', $booking->venue_id)
+                ->where('is_primary', true)
+                ->value('id')
+                ?? VenueCourt::query()->where('venue_id', $booking->venue_id)->orderBy('sort_order')->orderBy('id')->value('id');
+
+            if ($courtId !== null) {
+                $booking->venue_court_id = (int) $courtId;
+            }
+        });
+    }
+
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
