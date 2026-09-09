@@ -546,6 +546,10 @@
         scroll-snap-type: inline proximity;
     }
 
+    .venue-section .venue-show > .venue-anchor-nav.is-stuck {
+        border-radius: 0 0 var(--radius-control) var(--radius-control);
+    }
+
     .venue-section .venue-show > .venue-anchor-nav::-webkit-scrollbar {
         display: none;
     }

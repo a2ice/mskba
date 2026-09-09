@@ -14,6 +14,8 @@ Follow-up after production review of the public venue page.
 - remove the standalone gallery section and its navigation item;
 - keep the URL fragment synchronized with anchor clicks and the active section while scrolling;
 - place the mobile section navigation directly below the venue heading and before the hero, while retaining the desktop sidebar navigation;
+- remove the mobile navigation's upper corner rounding only while it is stuck below the site header;
+- when scroll tracking activates an off-screen navigation item, reveal it with the preceding item visible whenever the scroll range permits;
 - keep the hero slider arrows visually quiet with transparent borders and backgrounds until hover or keyboard focus;
 - show only the metro station name; expose the line name through a tooltip on the line-coloured bullet, without a help icon or underlined trigger;
 - place the venue type and open/closed state over the photo instead of consuming space in the information card;

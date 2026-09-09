@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initVenueAnchors() {
     const links = Array.from(document.querySelectorAll('[data-venue-anchor-link]'));
     const scrollButtons = Array.from(document.querySelectorAll('[data-venue-scroll-target]'));
+    const pageNavigation = document.querySelector('[data-venue-anchor-nav]');
 
     if (links.length === 0 && scrollButtons.length === 0) {
         return;
@@ -25,29 +26,87 @@ function initVenueAnchors() {
         window.history[mode === 'push' ? 'pushState' : 'replaceState'](null, '', url);
     };
 
+    let activeSectionId = null;
+
+    const revealActiveLink = (link) => {
+        const navigation = link.closest('[data-venue-anchor-nav], [data-venue-mobile-nav]');
+        if (!navigation || navigation.getClientRects().length === 0 || navigation.scrollWidth <= navigation.clientWidth) {
+            return;
+        }
+
+        const navigationRect = navigation.getBoundingClientRect();
+        const linkRect = link.getBoundingClientRect();
+        const edgeInset = 8;
+        const isFullyVisible = linkRect.left >= navigationRect.left + edgeInset
+            && linkRect.right <= navigationRect.right - edgeInset;
+
+        if (isFullyVisible) {
+            return;
+        }
+
+        const navigationLinks = Array.from(navigation.querySelectorAll('[data-venue-anchor-link]'));
+        const activeIndex = navigationLinks.indexOf(link);
+        const leadingLink = navigationLinks[Math.max(0, activeIndex - 1)] || link;
+        const maxScrollLeft = Math.max(0, navigation.scrollWidth - navigation.clientWidth);
+        const targetLeft = Math.min(maxScrollLeft, Math.max(0, leadingLink.offsetLeft - edgeInset));
+
+        navigation.scrollTo({ left: targetLeft, behavior: 'smooth' });
+    };
+
     const setActiveSection = (id, updateUrl = true) => {
+        const sectionChanged = activeSectionId !== id;
+        const activeLinks = [];
+        activeSectionId = id;
+
         links.forEach((link) => {
             const isActive = link.getAttribute('href') === `#${id}`;
 
             link.classList.toggle('is-active', isActive);
             if (isActive) {
                 link.setAttribute('aria-current', 'location');
+                activeLinks.push(link);
             } else {
                 link.removeAttribute('aria-current');
             }
-
-            if (isActive && link.closest('[data-venue-mobile-nav]') && window.matchMedia('(max-width: 900px)').matches) {
-                const navigation = link.closest('[data-venue-mobile-nav]');
-                const targetLeft = link.offsetLeft - ((navigation.clientWidth - link.offsetWidth) / 2);
-
-                navigation.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
-            }
         });
+
+        if (sectionChanged && window.matchMedia('(max-width: 1024px)').matches) {
+            window.requestAnimationFrame(() => activeLinks.forEach(revealActiveLink));
+        }
 
         if (updateUrl && window.location.hash !== `#${id}`) {
             updateHash(id);
         }
     };
+
+    if (pageNavigation) {
+        let stickyFrame = null;
+        const updateStickyState = () => {
+            stickyFrame = null;
+
+            if (!window.matchMedia('(max-width: 1024px)').matches) {
+                pageNavigation.classList.remove('is-stuck');
+                return;
+            }
+
+            const stickyTop = Number.parseFloat(window.getComputedStyle(pageNavigation).top) || 0;
+            pageNavigation.classList.toggle(
+                'is-stuck',
+                pageNavigation.getBoundingClientRect().top <= stickyTop + 1,
+            );
+        };
+        const requestStickyUpdate = () => {
+            if (stickyFrame !== null) {
+                return;
+            }
+
+            stickyFrame = window.requestAnimationFrame(updateStickyState);
+        };
+
+        window.addEventListener('scroll', requestStickyUpdate, { passive: true });
+        window.addEventListener('resize', requestStickyUpdate, { passive: true });
+        updateStickyState();
+    }
 
     const scrollToSection = (id, pushHistory = false) => {
         const section = document.getElementById(id);
