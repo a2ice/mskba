@@ -157,6 +157,26 @@
     border-left: 1px solid rgba(255,255,255,.08);
 }
 
+.ownership-admin-card__forms {
+    display: grid;
+    align-content: start;
+    gap: 18px;
+}
+
+.ownership-admin-card__forms .ownership-admin-status-form + .ownership-admin-status-form {
+    padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.ownership-admin-form-title {
+    color: #fff;
+    font-size: .92rem;
+}
+
+.ownership-admin-maintenance-form__toggle {
+    margin: 0;
+}
+
 .ownership-admin-status-form label {
     display: grid;
     gap: 6px;

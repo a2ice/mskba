@@ -877,6 +877,15 @@ Audit фиксирует изменения доменных сущностей 
 
 Fingerprint не используется для владения или переноса доступа к площадке. Создание площадки требует аккаунт, поэтому её actor-создатель всегда связан с user. Модель и таблица `actor_claims` отсутствуют.
 
+`VenueOwnership` хранит административно управляемые признаки качества ведения:
+`maintenance_commitment_accepted` (`false` по умолчанию), `maintenance_score`
+(`0..100` с шагом 10, `0` по умолчанию) и nullable внутренний
+`maintenance_comment`. Score защищён HTTP/use-case validation и PostgreSQL CHECK.
+Менять значения может только подтверждённый admin или выше; use case повторяет
+authorization и сериализует запись через `lockForUpdate`. Модель включена в
+штатный audit whitelist, поэтому commitment, score и comment сохраняются с actor,
+old/new values и request metadata.
+
 ## Темы и представления
 
 Текущая конфигурация тем находится в `config/themes.php`.

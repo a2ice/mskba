@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
 use App\Modules\Venue\Application\UseCases\AttachVenueOwnershipDocumentHandler;
 use App\Modules\Venue\Application\UseCases\ReviewVenueOwnershipClaimHandler;
+use App\Modules\Venue\Application\UseCases\UpdateVenueOwnershipMaintenanceHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueOwnershipStatusHandler;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipDocumentTypeEnum;
@@ -174,6 +175,33 @@ final class AdminVenueOwnershipController extends Controller
         }
 
         return back()->with('success', 'Статус владения обновлён.');
+    }
+
+    public function updateOwnershipMaintenance(
+        Request $request,
+        VenueOwnership $venueOwnership,
+        UpdateVenueOwnershipMaintenanceHandler $handler,
+    ): RedirectResponse {
+        $this->administrator($request);
+        $validated = $request->validate([
+            'maintenance_commitment_accepted' => ['required', 'boolean'],
+            'maintenance_score' => ['required', 'integer', Rule::in(VenueOwnership::MAINTENANCE_SCORES)],
+            'maintenance_comment' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        try {
+            $handler->handle(
+                $venueOwnership,
+                (bool) $validated['maintenance_commitment_accepted'],
+                (int) $validated['maintenance_score'],
+                $validated['maintenance_comment'] ?? null,
+                $request->user(),
+            );
+        } catch (\InvalidArgumentException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Параметры качества ведения площадки обновлены.');
     }
 
     public function attachMessageDocument(

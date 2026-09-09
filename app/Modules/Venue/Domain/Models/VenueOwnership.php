@@ -16,10 +16,14 @@ use Illuminate\Support\Str;
     'public_id', 'venue_id', 'owner_user_id', 'source_claim_id', 'contract_membership_id',
     'status', 'status_reason', 'status_changed_by_user_id', 'status_changed_at',
     'approved_at', 'revoked_at', 'active_marker',
+    'maintenance_commitment_accepted', 'maintenance_score', 'maintenance_comment',
 ])]
 class VenueOwnership extends Model
 {
     use Auditable;
+
+    /** @var list<int> */
+    public const MAINTENANCE_SCORES = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
     protected static function booted(): void
     {
@@ -71,6 +75,8 @@ class VenueOwnership extends Model
             'approved_at' => 'datetime',
             'revoked_at' => 'datetime',
             'active_marker' => 'boolean',
+            'maintenance_commitment_accepted' => 'boolean',
+            'maintenance_score' => 'integer',
         ];
     }
 }
