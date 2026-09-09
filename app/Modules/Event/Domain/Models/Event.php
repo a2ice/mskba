@@ -57,6 +57,29 @@ class Event extends Model
         return EventFactory::new();
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $event): void {
+            if ($event->venue_id === null) {
+                return;
+            }
+
+            if ($event->venue_court_id !== null && ! ($event->isDirty('venue_id') && ! $event->isDirty('venue_court_id'))) {
+                return;
+            }
+
+            $courtId = VenueCourt::query()
+                ->where('venue_id', $event->venue_id)
+                ->where('is_primary', true)
+                ->value('id')
+                ?? VenueCourt::query()->where('venue_id', $event->venue_id)->orderBy('sort_order')->orderBy('id')->value('id');
+
+            if ($courtId !== null) {
+                $event->venue_court_id = (int) $courtId;
+            }
+        });
+    }
+
     public function routeIdentifier(): string
     {
         return $this->id.'-'.$this->alias;
