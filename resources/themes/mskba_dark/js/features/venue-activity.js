@@ -3,23 +3,27 @@ import { subscribePublic } from '../../../../js/realtime.js';
 const venuePage = document.querySelector('.venue-show');
 
 if (venuePage) {
-    const match = window.location.pathname.match(/^\/venues\/([^/]+)\/?$/);
-    const routeIdentifier = match?.[1] || '';
-    const venueId = Number(routeIdentifier.match(/^(\d+)(?:-|$)/)?.[1] || 0);
+    const routeIdentifier = venuePage.dataset.venueRouteIdentifier || '';
+    const courtIdentifier = venuePage.dataset.venueCourtIdentifier || '';
+    const venueId = Number(venuePage.dataset.venueId || 0);
+    const courtId = Number(venuePage.dataset.venueCourtId || 0);
 
-    if (venueId > 0) {
-        activateBookingAction(venueId);
-        mountVenueActivities(routeIdentifier);
+    if (venueId > 0 && routeIdentifier) {
+        activateBookingAction(venueId, courtId);
+        mountVenueActivities(routeIdentifier, courtIdentifier);
     }
 }
 
-function activateBookingAction(venueId) {
+function activateBookingAction(venueId, courtId) {
     const current = document.querySelector('.venue-booking-action');
     if (!current) return;
 
+    const params = new URLSearchParams({ venue_id: String(venueId) });
+    if (courtId > 0) params.set('venue_court_id', String(courtId));
+
     const link = document.createElement('a');
     link.className = current.className;
-    link.href = `/events/create/wizard?venue_id=${encodeURIComponent(String(venueId))}`;
+    link.href = `/events/create/wizard?${params.toString()}`;
     link.setAttribute('aria-label', 'Забронировать');
     link.innerHTML = `
         <i class="ti ti-calendar-plus venue-booking-action__icon" aria-hidden="true"></i>
@@ -28,26 +32,27 @@ function activateBookingAction(venueId) {
     current.replaceWith(link);
 }
 
-async function mountVenueActivities(routeIdentifier) {
+async function mountVenueActivities(routeIdentifier, courtIdentifier) {
     const section = venuePage.querySelector('[data-venue-activities]');
     if (!section) return;
 
-    await loadActivities(section, routeIdentifier);
+    await loadActivities(section, routeIdentifier, courtIdentifier);
 }
 
-async function loadActivities(section, routeIdentifier) {
+async function loadActivities(section, routeIdentifier, courtIdentifier = '') {
     const body = section.querySelector('[data-venue-activities-body]');
     const state = section.querySelector('[data-venue-activities-state]');
+    const query = courtIdentifier ? `?court=${encodeURIComponent(courtIdentifier)}` : '';
 
     try {
-        const response = await fetch(`/venues/${encodeURIComponent(routeIdentifier)}/activities`, {
+        const response = await fetch(`/venues/${encodeURIComponent(routeIdentifier)}/activities${query}`, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || 'Не удалось загрузить активности.');
 
-        renderActivities(body, payload, routeIdentifier);
+        renderActivities(body, payload, routeIdentifier, courtIdentifier);
         const count = (payload.current?.length || 0) + (payload.upcoming?.length || 0);
         state.textContent = count ? `${count} активност${count === 1 ? 'ь' : count < 5 ? 'и' : 'ей'}` : 'Пока пусто';
     } catch (error) {
@@ -60,16 +65,16 @@ async function loadActivities(section, routeIdentifier) {
     }
 }
 
-function renderActivities(body, payload, routeIdentifier) {
+function renderActivities(body, payload, routeIdentifier, courtIdentifier) {
     body.innerHTML = '';
     const current = Array.isArray(payload.current) ? payload.current : [];
     const upcoming = Array.isArray(payload.upcoming) ? payload.upcoming : [];
 
-    body.append(renderGroup('Сейчас', current, 'Сейчас на площадке ничего не проходит.', true));
-    body.append(renderGroup('Ближайшие', upcoming, 'Ближайших мероприятий пока нет.', false));
+    body.append(renderGroup('Сейчас', current, 'Сейчас в этом зале ничего не проходит.', true));
+    body.append(renderGroup('Ближайшие', upcoming, 'Ближайших мероприятий в этом зале пока нет.', false));
 
     current.filter((activity) => activity.is_live && activity.game_id && activity.snapshot_url)
-        .forEach((activity) => bindLiveActivity(body, activity, routeIdentifier));
+        .forEach((activity) => bindLiveActivity(body, activity, routeIdentifier, courtIdentifier));
 }
 
 function renderGroup(title, activities, emptyText, current) {
@@ -181,7 +186,7 @@ function renderScore(activity) {
     return score;
 }
 
-function bindLiveActivity(root, activity, routeIdentifier) {
+function bindLiveActivity(root, activity, routeIdentifier, courtIdentifier) {
     let stopped = false;
     let request = null;
     const gameId = Number(activity.game_id);
@@ -212,7 +217,7 @@ function bindLiveActivity(root, activity, routeIdentifier) {
                 window.clearInterval(timer);
                 unsubscribe();
                 const section = root.closest('[data-venue-activities]');
-                if (section) loadActivities(section, routeIdentifier);
+                if (section) loadActivities(section, routeIdentifier, courtIdentifier);
             }
         } catch (_) {
             // Polling and the next broadcast will retry silently.
