@@ -1044,6 +1044,7 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Identity User Profile](specification/identity-user-profile.md)
 - [Identity Account Confirmation](specification/identity-account-confirmation.md)
 - [Identity Participation Profiles](specification/identity-participation-profiles.md)
+- [Identity Tracking Retention](specification/identity-tracking-retention.md)
 - [Contact](specification/contact.md)
 - [Location](specification/location.md)
 - [Notification](specification/notification.md)
