@@ -339,21 +339,89 @@
     }
 }
 
-@media (max-width: 720px) {
+/* On phones and narrow tablets, place the summary below the photo again.
+   Its detail groups stay in one horizontal row; very narrow screens scroll that row instead of crushing the copy. */
+@media (max-width: 768px) {
+    .venue-section .venue-hero {
+        gap: 12px;
+        isolation: auto;
+    }
+
+    .venue-section .venue-hero__media {
+        grid-column: 1;
+        grid-row: 1;
+        aspect-ratio: 16 / 9;
+    }
+
+    .venue-section .venue-hero__media img,
+    .venue-section .venue-hero__placeholder {
+        height: 100%;
+    }
+
     .venue-section .venue-hero__summary {
-        width: min(82%, 520px);
-        gap: 11px;
-        padding: 18px 18px 18px clamp(34px, 8vw, 60px);
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+        min-height: 0;
+        align-self: stretch;
+        justify-self: stretch;
+        justify-content: flex-start;
+        gap: 16px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-control);
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.035);
         font-size: 13px;
     }
 
     .venue-section .venue-hero__summary::before {
-        width: 116%;
-        opacity: 0.94;
+        display: none;
     }
 
-    .venue-section .venue-hero:hover .venue-hero__summary::before,
-    .venue-section .venue-hero:focus-within .venue-hero__summary::before {
-        width: 138%;
+    .venue-section .venue-hero__summary > * {
+        position: static;
+    }
+
+    .venue-section .venue-hero__details {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+    }
+
+    .venue-section .venue-hero__details > div {
+        min-width: 0;
+        align-content: start;
+        padding-inline: 14px;
+        overflow-wrap: anywhere;
+    }
+
+    .venue-section .venue-hero__details > div:first-child {
+        padding-left: 0;
+    }
+
+    .venue-section .venue-hero__details > div + div {
+        border-left: 1px solid var(--line);
+    }
+
+    .venue-section .venue-hero__details > div:last-child {
+        padding-right: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    .venue-section .venue-hero__summary {
+        padding: 16px;
+    }
+
+    .venue-section .venue-hero__details {
+        grid-template-columns: repeat(3, minmax(156px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 6px;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: thin;
+        scroll-snap-type: inline proximity;
+    }
+
+    .venue-section .venue-hero__details > div {
+        scroll-snap-align: start;
     }
 }
