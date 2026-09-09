@@ -15,7 +15,7 @@ Follow-up after production review of the public venue page.
 - keep the URL fragment synchronized with anchor clicks and the active section while scrolling;
 - show only the metro station name; expose the line name through a tooltip on the line-coloured bullet, without a help icon or underlined trigger;
 - place the venue type and open/closed state over the photo instead of consuming space in the information card;
-- replace the occupied-slot list with a nine-day calendar starting today: confirmed occupancy is green, pending/held occupancy is orange, and free days use a light neutral surface;
+- replace the occupied-slot list with a full-width single-row nine-day calendar starting today: confirmed occupancy is green, pending/held occupancy is orange, and free days use a light neutral surface; keep a readable cell width through horizontal overflow on narrow screens;
 - open a day schedule in a modal and allow navigation through the same nine-day window, with navigation to a day before today disabled.
 
 ## Implementation notes

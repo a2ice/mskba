@@ -135,9 +135,14 @@
 
 .venue-occupancy-calendar {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(9, minmax(50px, 1fr));
     gap: 6px;
-    width: min(100%, 300px);
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
 }
 
 .venue-occupancy-calendar__day {
