@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Infrastructure\Providers;
 
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtPublicController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,11 @@ final class VenueCourtServiceProvider extends RouteServiceProvider
         parent::boot();
 
         $this->routes(function (): void {
+            Route::middleware('web')->group(function (): void {
+                Route::get('/venues/{venue}/courts/{court}', VenueCourtPublicController::class)
+                    ->name('venues.courts.show');
+            });
+
             Route::middleware(['web', 'auth'])->group(function (): void {
                 Route::get('/account/venues/{venue}/courts', [VenueCourtController::class, 'index'])
                     ->name('account.venues.courts.index');
