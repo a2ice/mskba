@@ -1,12 +1,19 @@
 import { subscribePublic } from '../../../../js/realtime.js';
 
 const venuePage = document.querySelector('.venue-show');
+const venueContext = document.querySelector('[data-venue-court-context]');
 
-if (venuePage) {
-    const routeIdentifier = venuePage.dataset.venueRouteIdentifier || '';
-    const courtIdentifier = venuePage.dataset.venueCourtIdentifier || '';
-    const venueId = Number(venuePage.dataset.venueId || 0);
-    const courtId = Number(venuePage.dataset.venueCourtId || 0);
+if (venuePage && venueContext) {
+    const routeIdentifier = venueContext.dataset.venueRouteIdentifier || '';
+    const courtIdentifier = venueContext.dataset.venueCourtIdentifier || '';
+    const venueId = Number(venueContext.dataset.venueId || 0);
+    const courtId = Number(venueContext.dataset.venueCourtId || 0);
+    const courtSelector = venueContext.querySelector('[data-venue-court-selector]');
+
+    courtSelector?.addEventListener('change', (event) => {
+        const url = event.currentTarget?.value;
+        if (url) window.location.assign(url);
+    });
 
     if (venueId > 0 && routeIdentifier) {
         activateBookingAction(venueId, courtId);
