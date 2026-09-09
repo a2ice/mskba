@@ -66,6 +66,19 @@ class Venue extends Model
         return VenueFactory::new();
     }
 
+    protected static function booted(): void
+    {
+        static::created(function (self $venue): void {
+            $venue->courts()->create([
+                'name' => 'Зал 1',
+                'alias' => 'zal-1',
+                'sort_order' => 10,
+                'is_primary' => true,
+                'supports_halves' => false,
+            ]);
+        });
+    }
+
     public function allowsDetailsEditing(): bool
     {
         return ! $this->trashed();
@@ -187,6 +200,16 @@ class Venue extends Model
     public function characteristics(): HasOne
     {
         return $this->hasOne(VenueCharacteristic::class);
+    }
+
+    public function courts(): HasMany
+    {
+        return $this->hasMany(VenueCourt::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function primaryCourt(): HasOne
+    {
+        return $this->hasOne(VenueCourt::class)->where('is_primary', true);
     }
 
     public function reviews(): HasMany
