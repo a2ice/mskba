@@ -12,6 +12,7 @@ use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -97,14 +98,17 @@ final class VenueCourtBookingIsolationTest extends TestCase
     {
         [$venue, , $courtB] = $this->venueWithTwoCourts();
         [$startsAt, $endsAt] = $this->interval();
-        VenueBooking::query()->create([
+        DB::table('venue_bookings')->insert([
             'venue_id' => $venue->id,
             'venue_court_id' => null,
+            'event_id' => null,
             'created_by_actor_id' => $venue->created_by_actor_id,
-            'status' => VenueBookingStatusEnum::CONFIRMED,
-            'scope' => VenueBookingScopeEnum::WHOLE,
+            'status' => VenueBookingStatusEnum::CONFIRMED->value,
+            'scope' => VenueBookingScopeEnum::WHOLE->value,
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $this->expectException(InvalidArgumentException::class);
