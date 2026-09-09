@@ -176,6 +176,14 @@
 @section('section-content')
     @if(!empty($venue))
         <div class="venue-show">
+            <nav class="venue-anchor-nav" aria-label="Быстрая навигация" data-venue-anchor-nav>
+                @foreach($venue->sections as $section)
+                    <a href="#{{ $section['id'] }}" @class(['venue-anchor-nav__link', 'is-muted' => ! $section['isAvailable']]) data-venue-anchor-link>
+                        {{ $section['label'] }}
+                    </a>
+                @endforeach
+            </nav>
+
             <section class="venue-hero" aria-label="Краткая информация">
                 <div class="venue-hero__media" data-venue-hero-slider>
                     @if($venue->featuredMedia !== [])
@@ -361,14 +369,6 @@
                     </section>
                 </div>
             @endif
-
-            <nav class="venue-anchor-nav" aria-label="Быстрая навигация" data-venue-anchor-nav>
-                @foreach($venue->sections as $section)
-                    <a href="#{{ $section['id'] }}" @class(['venue-anchor-nav__link', 'is-muted' => ! $section['isAvailable']]) data-venue-anchor-link>
-                        {{ $section['label'] }}
-                    </a>
-                @endforeach
-            </nav>
 
             <section id="address" class="venue-show-section">
                 <div class="venue-show-section__heading">

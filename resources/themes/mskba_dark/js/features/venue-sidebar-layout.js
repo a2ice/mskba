@@ -1,13 +1,11 @@
 function initVenueSidebarLayout() {
-    const venuePage = document.querySelector('.venue-show');
     const sidebar = document.querySelector('[data-mobile-section-sidebar]');
 
-    if (!venuePage || !sidebar) {
+    if (!sidebar) {
         return;
     }
 
     initVenueSidebarAccordion(sidebar);
-    placePageNavigationBeforeActivities(venuePage);
 }
 
 function initVenueSidebarAccordion(sidebar) {
@@ -77,38 +75,6 @@ function initVenueSidebarAccordion(sidebar) {
             setOpen(item, false);
         });
     });
-}
-
-function placePageNavigationBeforeActivities(venuePage) {
-    const navigation = venuePage.querySelector('.venue-anchor-nav');
-    if (!navigation) {
-        return;
-    }
-
-    const move = () => {
-        const activities = venuePage.querySelector('[data-venue-activities]');
-        if (!activities) {
-            return false;
-        }
-
-        if (activities.previousElementSibling !== navigation) {
-            activities.before(navigation);
-        }
-
-        return true;
-    };
-
-    if (move()) {
-        return;
-    }
-
-    const observer = new MutationObserver(() => {
-        if (move()) {
-            observer.disconnect();
-        }
-    });
-
-    observer.observe(venuePage, { childList: true });
 }
 
 initVenueSidebarLayout();

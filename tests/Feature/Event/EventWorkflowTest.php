@@ -145,7 +145,8 @@ final class EventWorkflowTest extends TestCase
         $this->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
             ->assertSee('Занятые слоты')
-            ->assertSee($slotStart->format('d.m.Y H:i').'–'.$slotEnd->format('H:i'))
+            ->assertSee('data-day-date="'.$slotStart->format('Y-m-d').'"', false)
+            ->assertSee($slotStart->format('H:i').'–'.$slotEnd->format('H:i'))
             ->assertSee('Игровая тренировка · ✅ Подтверждено');
     }
 

@@ -13,6 +13,8 @@ Follow-up after production review of the public venue page.
 - remove address details from the hero card and make `Адрес` the first content section, followed by `Игры и мероприятия`, options, schedule, posts, and reviews;
 - remove the standalone gallery section and its navigation item;
 - keep the URL fragment synchronized with anchor clicks and the active section while scrolling;
+- place the mobile section navigation directly below the venue heading and before the hero, while retaining the desktop sidebar navigation;
+- keep the hero slider arrows visually quiet with transparent borders and backgrounds until hover or keyboard focus;
 - show only the metro station name; expose the line name through a tooltip on the line-coloured bullet, without a help icon or underlined trigger;
 - place the venue type and open/closed state over the photo instead of consuming space in the information card;
 - replace the occupied-slot list with a full-width single-row nine-day calendar starting today: confirmed occupancy is green, pending/held occupancy is orange, and free days use a light neutral surface; keep a readable cell width through horizontal overflow of the calendar itself on narrow screens without widening the surrounding hero card;
