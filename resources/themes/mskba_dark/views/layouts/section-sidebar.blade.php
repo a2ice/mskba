@@ -66,10 +66,16 @@
                                             @endif
                                         >{{ $contentTitle }}</h1>
 
-                                        @hasSection('section-heading-title-suffix')
+                                        @if(! empty($headingTitleSuffixView))
                                             <div class="section-content-heading__title-suffix">
-                                                @yield('section-heading-title-suffix')
+                                                @include($headingTitleSuffixView)
                                             </div>
+                                        @else
+                                            @hasSection('section-heading-title-suffix')
+                                                <div class="section-content-heading__title-suffix">
+                                                    @yield('section-heading-title-suffix')
+                                                </div>
+                                            @endif
                                         @endif
                                     </div>
 
