@@ -75,6 +75,8 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
                             ->name('admin.venue-ownership.claims.reject-and-block');
                         Route::patch('/ownerships/{venueOwnership}/status', [AdminVenueOwnershipController::class, 'updateOwnershipStatus'])
                             ->name('admin.venue-ownership.status');
+                        Route::patch('/ownerships/{venueOwnership}/maintenance', [AdminVenueOwnershipController::class, 'updateOwnershipMaintenance'])
+                            ->name('admin.venue-ownership.maintenance');
                         Route::post('/ownerships/{venueOwnership}/messages/{message}', [AdminVenueOwnershipController::class, 'attachMessageDocument'])
                             ->name('admin.venue-ownership.documents.message');
                         Route::get('/documents/{document}', [AdminVenueOwnershipController::class, 'downloadDocument'])

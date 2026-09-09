@@ -132,23 +132,53 @@
                     </div>
 
                     @if($ownership->status !== \App\Modules\Venue\Domain\Enums\VenueOwnershipStatusEnum::REVOKED)
-                        <form method="POST" action="{{ route('admin.venue-ownership.status', $ownership) }}" class="ownership-admin-status-form">
-                            @csrf
-                            @method('PATCH')
-                            <label>
-                                <span>Новый статус</span>
-                                <select name="status" class="form-select" required>
-                                    @foreach($ownershipStatuses as $status)
-                                        <option value="{{ $status->value }}" @selected($ownership->status === $status)>{{ $status->label() }}</option>
-                                    @endforeach
-                                </select>
-                            </label>
-                            <label>
-                                <span>Причина изменения</span>
-                                <textarea name="reason" class="form-control" rows="3" required minlength="5" maxlength="3000" placeholder="Почему меняется статус владения?"></textarea>
-                            </label>
-                            <button class="btn btn--secondary btn--sm" type="submit">Сохранить статус</button>
-                        </form>
+                        <div class="ownership-admin-card__forms">
+                            <form method="POST" action="{{ route('admin.venue-ownership.maintenance', $ownership) }}" class="ownership-admin-status-form ownership-admin-maintenance-form">
+                                @csrf
+                                @method('PATCH')
+                                <strong class="ownership-admin-form-title">Качество ведения данных</strong>
+                                @include('theme::partials.forms.toggle', [
+                                    'id' => 'ownership-maintenance-commitment-'.$ownership->id,
+                                    'name' => 'maintenance_commitment_accepted',
+                                    'title' => 'Обязательство принято',
+                                    'description' => 'Представитель обязался поддерживать сведения площадки актуальными.',
+                                    'checked' => $ownership->maintenance_commitment_accepted,
+                                    'wrapperClass' => 'ownership-admin-maintenance-form__toggle',
+                                ])
+                                <label>
+                                    <span>Оценка качества</span>
+                                    <select name="maintenance_score" class="form-select" required>
+                                        @foreach(\App\Modules\Venue\Domain\Models\VenueOwnership::MAINTENANCE_SCORES as $score)
+                                            <option value="{{ $score }}" @selected($ownership->maintenance_score === $score)>{{ $score }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>Внутренний комментарий</span>
+                                    <textarea name="maintenance_comment" class="form-control" rows="3" maxlength="5000" placeholder="Наблюдения администратора">{{ $ownership->maintenance_comment }}</textarea>
+                                </label>
+                                <button class="btn btn--primary btn--sm" type="submit">Сохранить качество</button>
+                            </form>
+
+                            <form method="POST" action="{{ route('admin.venue-ownership.status', $ownership) }}" class="ownership-admin-status-form">
+                                @csrf
+                                @method('PATCH')
+                                <strong class="ownership-admin-form-title">Статус владения</strong>
+                                <label>
+                                    <span>Новый статус</span>
+                                    <select name="status" class="form-select" required>
+                                        @foreach($ownershipStatuses as $status)
+                                            <option value="{{ $status->value }}" @selected($ownership->status === $status)>{{ $status->label() }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>Причина изменения</span>
+                                    <textarea name="reason" class="form-control" rows="3" required minlength="5" maxlength="3000" placeholder="Почему меняется статус владения?"></textarea>
+                                </label>
+                                <button class="btn btn--secondary btn--sm" type="submit">Сохранить статус</button>
+                            </form>
+                        </div>
                     @else
                         <div class="ownership-admin-card__actions">
                             <span class="text-muted">Аннулированное владение хранится в истории и не восстанавливается.</span>
