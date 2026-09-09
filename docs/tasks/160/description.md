@@ -102,11 +102,13 @@ Route model binding не заменяет authorization. Use case повторн
 - [x] admin use case, route и UI;
 - [x] audit whitelist;
 - [x] tests и документация архитектуры;
-- [ ] PR, CI, merge и production smoke.
+- [x] PR и CI;
+- [ ] merge и production smoke.
 
 ## PR и deployment
 
 - Branch: `feature/160`
-- PR: ожидается
+- PR: #155
+- CI: успешно, 764 tests + frontend build
 - Merge: ожидается
 - Production deploy: ожидается
