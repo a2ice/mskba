@@ -19,14 +19,21 @@ final class UpdateEventRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'venue_id' => ['required_with:starts_at,duration_minutes', 'integer', 'exists:venues,id'],
+            'venue_id' => ['required_with:starts_at,duration_minutes,venue_court_id', 'integer', 'exists:venues,id'],
+            'venue_court_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('venue_courts', 'id')->where(fn ($query) => $query
+                    ->where('venue_id', (int) $this->input('venue_id'))
+                    ->whereNull('deleted_at')),
+            ],
             'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'title' => ['required', 'string', 'max:150'],
             'type' => ['required', Rule::enum(EventTypeEnum::class)],
             'visibility' => ['required', Rule::enum(EventVisibilityEnum::class)],
             'description' => ['nullable', 'string', 'max:5000'],
-            'starts_at' => ['required_with:venue_id,duration_minutes', 'date'],
-            'duration_minutes' => ['required_with:venue_id,starts_at', 'integer', 'min:1', 'max:1440'],
+            'starts_at' => ['required_with:venue_id,duration_minutes,venue_court_id', 'date'],
+            'duration_minutes' => ['required_with:venue_id,starts_at,venue_court_id', 'integer', 'min:1', 'max:1440'],
             'max_participants' => ['nullable', 'integer', 'min:2', 'max:500'],
         ];
     }
