@@ -10,6 +10,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 #[Fillable([
-    'public_id', 'flow', 'venue_id', 'event_id', 'created_by_actor_id',
+    'public_id', 'flow', 'venue_id', 'venue_court_id', 'event_id', 'created_by_actor_id',
     'requester_user_id', 'policy_version_id', 'quote_id', 'quote_snapshot',
     'payment_state', 'payment_window_expires_at', 'status', 'scope', 'starts_at', 'ends_at',
     'hold_expires_at', 'effective_protection_until', 'optimistic_version',
@@ -39,6 +40,11 @@ class VenueBooking extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function court(): BelongsTo
+    {
+        return $this->belongsTo(VenueCourt::class, 'venue_court_id');
     }
 
     public function event(): BelongsTo
@@ -130,6 +136,7 @@ class VenueBooking extends Model
     protected function casts(): array
     {
         return [
+            'venue_court_id' => 'integer',
             'quote_snapshot' => 'array',
             'payment_state' => VenueBookingPaymentState::class,
             'payment_window_expires_at' => 'immutable_datetime',
