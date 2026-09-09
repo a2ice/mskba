@@ -6,11 +6,13 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class RecordBrowserFingerprint
 {
@@ -66,7 +68,7 @@ final class RecordBrowserFingerprint
             ->first();
 
         if ($fingerprint === null) {
-            return UserFingerprint::query()->create([
+            $fingerprint = UserFingerprint::query()->create([
                 'fingerprint_hash' => $fingerprintHash,
                 'browser_signature_hash' => $this->browserSignatureHash($request),
                 'ip_hash' => $this->ipHash($request),
@@ -74,6 +76,14 @@ final class RecordBrowserFingerprint
                 'first_seen_at' => $now,
                 'last_seen_at' => $now,
             ]);
+
+            $this->claimActivityWrite('visit:'.$fingerprint->id);
+
+            return $fingerprint;
+        }
+
+        if (! $this->claimActivityWrite('visit:'.$fingerprint->id)) {
+            return $fingerprint;
         }
 
         $fingerprint->forceFill([
@@ -88,6 +98,10 @@ final class RecordBrowserFingerprint
 
     private function recordAuthenticatedUser(UserFingerprint $fingerprint, int $userId): void
     {
+        if (! $this->claimActivityWrite("authentication:{$fingerprint->id}:{$userId}")) {
+            return;
+        }
+
         $now = now();
 
         DB::table('user_fingerprint_user')->updateOrInsert(
@@ -114,6 +128,23 @@ final class RecordBrowserFingerprint
             ->where('user_fingerprint_id', $fingerprint->id)
             ->where('user_id', $userId)
             ->increment('authentications_count');
+    }
+
+    private function claimActivityWrite(string $key): bool
+    {
+        $interval = max(0, (int) config('identity_tracking.activity_write_interval_seconds', 600));
+
+        if ($interval === 0) {
+            return true;
+        }
+
+        try {
+            return Cache::store((string) config('identity_tracking.activity_store', 'database'))
+                ->add('identity:fingerprint-activity:'.$key, true, $interval);
+        } catch (Throwable) {
+            // Fingerprint tracking remains best effort if the throttle store is unavailable.
+            return true;
+        }
     }
 
     private function browserSignatureHash(Request $request): string

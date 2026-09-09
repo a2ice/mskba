@@ -147,6 +147,13 @@ confirmed superadmins inherit it through the existing access service; tournament
 staff with `tournament.games.manage` may inspect their match audience. Guest
 fingerprints remain aggregated and are not rendered in management UI.
 
+Detailed view sessions have an independent retention period of 90 days by
+default. The daily `privacy:prune-tracking` command removes expired sessions in
+bounded batches before pruning inactive browser fingerprints. Long-term product
+metrics should use aggregate projections rather than retaining individual
+viewing intervals indefinitely. `privacy:tracking-diagnose` exposes only counts
+and growth metrics, never viewer identifiers.
+
 After a completed or cancelled status reaches the browser, the live client
 performs terminal cleanup: it leaves the Reverb channel and stops snapshot
 fallback polling, audience heartbeat and reconnect listeners. The audience

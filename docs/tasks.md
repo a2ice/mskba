@@ -124,3 +124,4 @@
 - [x] 143 - Переработать conditional location mini-wizard и добавить поиск по радиусу ([описание](tasks/143/description.md))
 - [x] 144 - Подсветить переход «Далее» после выбора и закрывать popup кнопкой «Назад» на первом шаге ([описание](tasks/144/description.md))
 - [ ] 145 - Полировать conditional location mini-wizard и вынести активные шаги во вложенный popup ([описание](tasks/145/description.md))
+- [x] 159 - Ограничить хранение browser fingerprint и live-аналитики ([описание](tasks/159/description.md))

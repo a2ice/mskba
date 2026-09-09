@@ -6,4 +6,5 @@ return [
     'presence_window_seconds' => (int) env('GAME_LIVE_PRESENCE_WINDOW_SECONDS', 120),
     'heartbeat_interval_seconds' => (int) env('GAME_LIVE_HEARTBEAT_INTERVAL_SECONDS', 45),
     'history_session_gap_seconds' => (int) env('GAME_LIVE_HISTORY_SESSION_GAP_SECONDS', 180),
+    'history_retention_days' => (int) env('GAME_LIVE_HISTORY_RETENTION_DAYS', 90),
 ];

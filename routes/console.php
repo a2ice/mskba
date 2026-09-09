@@ -1,15 +1,19 @@
 <?php
 
+use App\Modules\Analytics\Application\Services\GameLiveViewSessionPruner;
 use App\Modules\Coordination\Application\UseCases\CloseExpiredPollsHandler;
 use App\Modules\Coordination\Application\UseCases\CloseExpiredVenueBookingAttendanceRoundsHandler;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
+use App\Modules\Identity\Application\Services\UserFingerprintPruner;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\VenueBooking\Application\Services\PaymentReconciliationDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingExpiryDispatcher;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOperationalHealth;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
+use App\Support\Privacy\TrackingDataHealth;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -63,6 +67,46 @@ Artisan::command('venue-booking:diagnose {--json}', function (VenueBookingOperat
     $this->table(['Metric', 'Value'], collect($snapshot)->map(fn ($value, $key) => [$key, $value])->values()->all());
 })->purpose('Показывает безопасные операционные метрики аренды без PII');
 
+Artisan::command('privacy:prune-tracking {--batch=} {--max-batches=}', function (
+    GameLiveViewSessionPruner $liveSessions,
+    UserFingerprintPruner $fingerprints,
+    TrackingDataHealth $health,
+) {
+    $batchSize = (int) ($this->option('batch') ?: config('identity_tracking.prune_batch_size', 1000));
+    $maxBatches = (int) ($this->option('max-batches') ?: config('identity_tracking.prune_max_batches', 100));
+
+    $sessionsDeleted = $liveSessions->prune($batchSize, $maxBatches);
+    $fingerprintsDeleted = $fingerprints->prune($batchSize, $maxBatches);
+
+    $this->info("Удалено live-сессий: {$sessionsDeleted}; fingerprint: {$fingerprintsDeleted}.");
+
+    // Keep the scheduled path on indexed retention queries; full totals are manual.
+    $expired = $health->expiredCounts();
+    $context = [
+        'live_sessions_deleted' => $sessionsDeleted,
+        'fingerprints_deleted' => $fingerprintsDeleted,
+        ...$expired,
+    ];
+
+    if ($expired['live_sessions_expired'] > 0 || $expired['fingerprints_expired'] > 0) {
+        Log::warning('Tracking retention left expired rows after reaching the batch limit.', $context);
+    } else {
+        Log::info('Tracking retention completed.', $context);
+    }
+})->purpose('Пакетно удаляет tracking-данные старше настроенного retention');
+
+Artisan::command('privacy:tracking-diagnose {--json}', function (TrackingDataHealth $health) {
+    $snapshot = $health->snapshot();
+
+    if ($this->option('json')) {
+        $this->line(json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
+
+        return;
+    }
+
+    $this->table(['Metric', 'Value'], collect($snapshot)->map(fn ($value, $key) => [$key, $value])->values()->all());
+})->purpose('Показывает объём и суточный рост tracking-данных без PII');
+
 Schedule::command('coordination:close-expired')
     ->everyMinute()
     ->withoutOverlapping();
@@ -73,6 +117,11 @@ Schedule::command('venue-booking:close-expired-attendance')
 
 Schedule::command('identity:scan-user-duplicates')
     ->dailyAt('03:15')
+    ->withoutOverlapping();
+
+Schedule::command('privacy:prune-tracking')
+    ->dailyAt('03:45')
+    ->onOneServer()
     ->withoutOverlapping();
 
 Schedule::command('venue-booking:dispatch-outbox')

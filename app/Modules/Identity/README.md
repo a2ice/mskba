@@ -57,3 +57,15 @@
 `UserPrivacyAccessService`.
 
 Технические правила: `docs/specification/identity-privacy.md`.
+
+## Retention browser fingerprint
+
+Fingerprint — псевдонимный долгоживущий идентификатор, а не источник online-
+состояния. Его SQL-активность записывается через cache throttle не чаще
+настроенного интервала (10 минут по умолчанию). Fingerprint, не встречавшийся 90
+дней, удаляется ежедневной командой `privacy:prune-tracking`; срок и размер
+пакетов настраиваются через `identity_tracking`. Связанный actor сохраняется, а
+его nullable-ссылка на удалённый fingerprint обнуляется на уровне БД.
+
+Текущий объём, суточный прирост и накопившиеся просроченные строки показывает
+команда `privacy:tracking-diagnose`.

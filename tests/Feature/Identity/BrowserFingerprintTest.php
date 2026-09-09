@@ -6,12 +6,30 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserFingerprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class BrowserFingerprintTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('identity_tracking.activity_store', 'array');
+        config()->set('identity_tracking.activity_write_interval_seconds', 600);
+        Cache::store('array')->clear();
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_guest_visit_records_anonymous_browser_fingerprint(): void
     {
@@ -54,7 +72,7 @@ class BrowserFingerprintTest extends TestCase
 
         $fingerprint->refresh();
 
-        $this->assertSame(2, $fingerprint->visits_count);
+        $this->assertSame(1, $fingerprint->visits_count);
         $this->assertTrue($user->fingerprints()->whereKey($fingerprint->id)->exists());
         $this->assertSame(1, UserFingerprint::query()->count());
         $this->assertDatabaseHas('user_fingerprint_user', [
@@ -96,7 +114,7 @@ class BrowserFingerprintTest extends TestCase
 
         $fingerprint->refresh();
 
-        $this->assertSame(2, $fingerprint->visits_count);
+        $this->assertSame(1, $fingerprint->visits_count);
         $this->assertDatabaseHas('user_fingerprint_user', [
             'user_fingerprint_id' => $fingerprint->id,
             'user_id' => $user->id,
@@ -138,7 +156,7 @@ class BrowserFingerprintTest extends TestCase
 
         $fingerprint->refresh();
 
-        $this->assertSame(3, $fingerprint->visits_count);
+        $this->assertSame(1, $fingerprint->visits_count);
         $this->assertSame(1, UserFingerprint::query()->count());
         $this->assertTrue($fingerprint->users()->whereKey($firstUser->id)->exists());
         $this->assertTrue($fingerprint->users()->whereKey($secondUser->id)->exists());
@@ -164,5 +182,23 @@ class BrowserFingerprintTest extends TestCase
 
         $this->assertSame(2, UserFingerprint::query()->count());
         $this->assertSame(2, $user->fingerprints()->count());
+    }
+
+    public function test_activity_is_written_again_after_throttle_interval(): void
+    {
+        Carbon::setTestNow('2026-09-10 12:00:00');
+
+        $response = $this->get('/')->assertOk();
+        $fingerprintId = $response->getCookie('mskba_browser_fp')->getValue();
+        $fingerprint = UserFingerprint::query()->firstOrFail();
+
+        $this->withCookie('mskba_browser_fp', $fingerprintId)->get('/')->assertOk();
+        $this->assertSame(1, $fingerprint->fresh()->visits_count);
+
+        Carbon::setTestNow('2026-09-10 12:10:01');
+
+        $this->withCookie('mskba_browser_fp', $fingerprintId)->get('/')->assertOk();
+        $this->assertSame(2, $fingerprint->fresh()->visits_count);
+        $this->assertTrue($fingerprint->fresh()->last_seen_at->equalTo(now()));
     }
 }
