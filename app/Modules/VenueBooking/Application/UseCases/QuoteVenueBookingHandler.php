@@ -6,6 +6,7 @@ use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\DTO\VenueBookingQuoteDTO;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
@@ -29,8 +30,14 @@ final readonly class QuoteVenueBookingHandler
         int $durationMinutes,
         VenueBookingScopeEnum $scope,
         ?User $user = null,
+        ?VenueCourt $court = null,
     ): VenueBookingQuoteDTO {
         $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        $court ??= $venue->primaryCourt()->first() ?? $venue->courts()->first();
+        if ($court === null || $court->venue_id !== $venue->id || $court->trashed()) {
+            throw new VenueBookingPolicyException('Выбранный зал недоступен.');
+        }
+
         $policy = VenueBookingPolicy::query()
             ->where('venue_id', $venue->id)
             ->where('active_marker', true)
@@ -62,11 +69,11 @@ final readonly class QuoteVenueBookingHandler
         }
 
         if ($scope === VenueBookingScopeEnum::WHOLE && ! $policy->allows_whole) {
-            throw new VenueBookingPolicyException('Аренда всей площадки отключена.');
+            throw new VenueBookingPolicyException('Аренда всего зала отключена.');
         }
 
         if ($scope !== VenueBookingScopeEnum::WHOLE && ! $policy->allows_halves) {
-            throw new VenueBookingPolicyException('Раздельная аренда площадки отключена.');
+            throw new VenueBookingPolicyException('Раздельная аренда зала отключена.');
         }
 
         $normalizedStart = $localStart->utc();
@@ -79,6 +86,7 @@ final readonly class QuoteVenueBookingHandler
                 $normalizedStart->setTimezone($databaseTimezone),
                 $endsAt->setTimezone($databaseTimezone),
                 scope: $scope,
+                court: $court,
             );
         } catch (InvalidArgumentException $exception) {
             throw new VenueBookingPolicyException($exception->getMessage(), previous: $exception);
@@ -93,7 +101,7 @@ final readonly class QuoteVenueBookingHandler
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
         $publicId = (string) Str::uuid();
         $snapshot = [
-            'schema_version' => 1,
+            'schema_version' => 2,
             'policy' => [
                 'id' => $policy->id,
                 'version' => $policy->version,
@@ -113,6 +121,9 @@ final readonly class QuoteVenueBookingHandler
             ],
             'request' => [
                 'venue_id' => $venue->id,
+                'venue_court_id' => $court->id,
+                'venue_court_name' => $court->name,
+                'venue_court_alias' => $court->alias,
                 'scope' => $scope->value,
                 'starts_at' => $normalizedStart->toIso8601String(),
                 'ends_at' => $endsAt->toIso8601String(),
@@ -132,11 +143,10 @@ final readonly class QuoteVenueBookingHandler
         VenueBookingQuote::query()->create([
             'public_id' => $publicId,
             'venue_id' => $venue->id,
+            'venue_court_id' => $court->id,
             'policy_version_id' => $policy->id,
             'quoted_for_user_id' => $user?->canonical()->id,
             'scope' => $scope,
-            // Timestamp columns are stored in the application's database timezone;
-            // the immutable snapshot and DTO keep the canonical UTC instant.
             'starts_at' => $normalizedStart->setTimezone($databaseTimezone),
             'ends_at' => $endsAt->setTimezone($databaseTimezone),
             'amount_minor' => $amountMinor,
