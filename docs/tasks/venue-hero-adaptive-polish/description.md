@@ -5,14 +5,14 @@ Follow-up after production review of the public venue page.
 ## Requirements
 
 - switch `.venue-hero` to one column below 1400px and keep that layout as the viewport gets narrower;
-- overlay the information summary on the hall photo without clipping or letting the content escape the hero bounds;
-- remove the old fixed-height pressure below 1024px and let the shared grid row grow from the summary content;
-- keep the hall photo covering the resulting hero height;
-- animate the dark gradient on hover/focus so it expands further to the left and becomes slightly less transparent;
+- keep the information summary in a separate card below the photo at every width below 1400px, without an intermediate overlay layout;
+- turn the hero image into the complete venue gallery slider, with compact vertical navigation controls and the existing full-screen viewer on slide click;
 - make the component heading flex-wrap based on available space, so rating stars never collide with the venue title;
 - keep the rating numeric value hidden and available only through the existing tooltip/aria-label;
-- at 768px and below, stop overlaying the summary: place it in a separate card below the photo;
-- keep address, working hours, and occupied slots in one horizontal row inside that card; on very narrow screens the row scrolls horizontally instead of compressing its content.
+- keep working hours and occupied slots in one horizontal row inside that card; on very narrow screens the row scrolls horizontally instead of compressing its content;
+- remove address details from the hero card and make `Адрес` the first content section, followed by `Игры и мероприятия`, options, schedule, posts, and reviews;
+- remove the standalone gallery section and its navigation item;
+- keep the URL fragment synchronized with anchor clicks and the active section while scrolling;
 - show only the metro station name; expose the line name through a tooltip on the line-coloured bullet, without a help icon or underlined trigger;
 - place the venue type and open/closed state over the photo instead of consuming space in the information card;
 - replace the occupied-slot list with a nine-day calendar starting today: confirmed occupancy is green, pending/held occupancy is orange, and free days use a light neutral surface;
@@ -20,8 +20,8 @@ Follow-up after production review of the public venue page.
 
 ## Implementation notes
 
-The media and summary share the same CSS Grid cell instead of using an absolutely positioned summary. This keeps the visual overlay while allowing the summary to participate in row sizing, avoiding vertical clipping at intermediate widths.
+At 1400px and above the media and summary remain two desktop columns. Below that breakpoint they occupy two explicit grid rows, which removes the overlapping intermediate layout entirely. The summary contains two horizontal information groups; below 520px the row becomes an internal horizontal scroller.
 
-At 768px and below the same grid is deliberately split back into two rows. The summary restores the standard card surface and its three detail groups use a horizontal grid; below 520px that grid becomes an internal horizontal scroller so the labels and booking data remain readable.
+The server renders the activities section shell in its final position before JavaScript loads its JSON data. This gives anchor navigation and scroll tracking a stable target, while the activity data itself remains progressively enhanced. Click navigation uses `history.pushState`; scroll-driven activation uses `replaceState` so scrolling does not create a noisy browser history.
 
 The occupancy projection is prepared server-side in one nine-day query window. A confirmed booking has priority over pending or held bookings when selecting the day colour. The modal reuses the projected data, so switching days does not generate additional requests or N+1 event lookups.

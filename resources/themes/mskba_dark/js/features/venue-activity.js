@@ -29,29 +29,8 @@ function activateBookingAction(venueId) {
 }
 
 async function mountVenueActivities(routeIdentifier) {
-    const anchor = venuePage.querySelector('.venue-anchor-nav');
-    const hero = venuePage.querySelector('.venue-hero');
-    if (!hero) return;
-
-    const section = document.createElement('section');
-    section.id = 'activities';
-    section.className = 'venue-show-section venue-activities';
-    section.dataset.venueActivities = '1';
-    section.innerHTML = `
-        <div class="venue-show-section__heading venue-activities__heading">
-            <div>
-                <span class="venue-activities__eyebrow">На этой площадке</span>
-                <h2>Игры и мероприятия</h2>
-            </div>
-            <span class="venue-section-state" data-venue-activities-state>Загрузка…</span>
-        </div>
-        <div class="venue-activities__body" data-venue-activities-body>
-            <div class="venue-activities__loading">Загружаем текущие и ближайшие активности…</div>
-        </div>
-    `;
-
-    if (anchor) anchor.before(section);
-    else hero.after(section);
+    const section = venuePage.querySelector('[data-venue-activities]');
+    if (!section) return;
 
     await loadActivities(section, routeIdentifier);
 }

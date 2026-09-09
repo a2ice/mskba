@@ -67,13 +67,15 @@ class VenueShowPageTest extends TestCase
             ->assertSee('Баскетбольный зал для тренировок и игр.')
             ->assertSee('Полное описание зала, покрытия и условий игры.')
             ->assertSee('О площадке')
-            ->assertSee('venue-hero__address-metro', false)
+            ->assertDontSee('venue-hero__address-metro', false)
             ->assertSee('href="#address"', false)
+            ->assertSee('href="#activities"', false)
+            ->assertSee('Игры и мероприятия')
             ->assertSee('data-venue-mobile-nav', false)
             ->assertSee('section-sidebar-layout__mobile-sticky-navigation', false)
             ->assertSee('venue-mobile-sticky-nav', false)
             ->assertSee('data-venue-anchor-link', false)
-            ->assertSee('На карте')
+            ->assertDontSee('На карте')
             ->assertSee('Маршрут')
             ->assertDontSee('Открыть в Яндекс Картах')
             ->assertDontSee('<dt>Индекс</dt>', false)
@@ -175,7 +177,7 @@ class VenueShowPageTest extends TestCase
         }
     }
 
-    public function test_public_venue_show_page_renders_featured_media_gallery(): void
+    public function test_public_venue_show_page_renders_featured_media_as_hero_slider_and_modal(): void
     {
         $venue = Venue::factory()->create([
             'name' => 'Площадка с фото',
@@ -204,7 +206,7 @@ class VenueShowPageTest extends TestCase
         $this
             ->get(route('venues.show', $venue->alias))
             ->assertOk()
-            ->assertSee('Галерея')
+            ->assertDontSee('<h2>Галерея</h2>', false)
             ->assertSee('/storage/venues/main-photo.jpg', false)
             ->assertSee('/storage/venues/second-photo.jpg', false)
             ->assertSee('Главное фото')
@@ -213,7 +215,26 @@ class VenueShowPageTest extends TestCase
             ->assertSee('data-venue-gallery-modal', false)
             ->assertSee('data-venue-gallery-prev', false)
             ->assertSee('data-venue-gallery-next', false)
-            ->assertSee('2 фото');
+            ->assertSee('data-venue-hero-prev', false)
+            ->assertSee('data-venue-hero-next', false)
+            ->assertDontSee('2 фото');
+    }
+
+    public function test_public_venue_sections_and_navigation_follow_the_product_order(): void
+    {
+        $venue = Venue::factory()->create([
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+
+        $html = $this
+            ->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('href="#gallery"', $html);
+        $this->assertStringContainsString('href="#activities"', $html);
+        $this->assertTrue(strpos($html, 'id="address"') < strpos($html, 'id="activities"'));
+        $this->assertTrue(strpos($html, 'id="activities"') < strpos($html, 'id="amenities"'));
     }
 
     public function test_venue_heading_is_only_shortened_after_thirty_characters(): void

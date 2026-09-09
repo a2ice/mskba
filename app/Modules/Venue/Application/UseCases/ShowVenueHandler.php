@@ -139,15 +139,12 @@ final class ShowVenueHandler
             ->all();
         $sections = [
             ['id' => 'address', 'label' => 'Адрес', 'isAvailable' => $displayAddress !== ''],
+            ['id' => 'activities', 'label' => 'Игры и мероприятия', 'isAvailable' => true],
             ['id' => 'amenities', 'label' => 'Опции', 'isAvailable' => $amenities !== []],
             ['id' => 'schedule', 'label' => 'Расписание', 'isAvailable' => $scheduleDays !== []],
             ['id' => 'posts', 'label' => 'Посты', 'isAvailable' => false],
             ['id' => 'reviews', 'label' => 'Отзывы', 'isAvailable' => $reviews !== []],
         ];
-
-        if ($featuredMedia !== []) {
-            array_unshift($sections, ['id' => 'gallery', 'label' => 'Галерея', 'isAvailable' => true]);
-        }
 
         return new VenueDetailsDTO(
             id: $venue->id,

@@ -5,10 +5,6 @@
         $displayAddress = $address?->display ?: $venue->rawAddress;
         $hasCoordinates = $address?->latitude && $address?->longitude;
         $hasMap = $hasCoordinates && $venue->about->mapApiKey;
-        $nearestMetro = $venue->metroStations[0] ?? null;
-        $nearestMetroColor = $nearestMetro?->lineColor && preg_match('/^#[0-9a-fA-F]{3,8}$/', $nearestMetro->lineColor)
-            ? $nearestMetro->lineColor
-            : '#ec7f12';
         $yandexMapUrl = $displayAddress
             ? 'https://yandex.ru/maps/?text=' . urlencode($displayAddress)
             : null;
@@ -181,13 +177,41 @@
     @if(!empty($venue))
         <div class="venue-show">
             <section class="venue-hero" aria-label="Краткая информация">
-                <div class="venue-hero__media">
+                <div class="venue-hero__media" data-venue-hero-slider>
                     @if($venue->featuredMedia !== [])
-                        <img
-                            src="{{ $venue->featuredMedia[0]['url'] }}"
-                            alt="{{ $venue->featuredMedia[0]['title'] ?: $venue->name }}"
-                            data-venue-hero-image
-                        >
+                        <div class="venue-hero-slider__track">
+                            @foreach($venue->featuredMedia as $index => $media)
+                                <button
+                                    type="button"
+                                    @class(['venue-hero-slider__slide', 'is-active' => $index === 0])
+                                    aria-label="Открыть фото {{ $index + 1 }} из {{ count($venue->featuredMedia) }}"
+                                    aria-hidden="{{ $index === 0 ? 'false' : 'true' }}"
+                                    @if($index !== 0) tabindex="-1" @endif
+                                    data-venue-hero-slide
+                                    data-venue-gallery-item
+                                    data-index="{{ $index }}"
+                                    data-url="{{ $media['url'] }}"
+                                    data-title="{{ $media['title'] ?: $venue->name }}"
+                                    data-description="{{ $media['description'] ?: '' }}"
+                                >
+                                    <img
+                                        src="{{ $media['url'] }}"
+                                        alt="{{ $media['title'] ?: $venue->name }}"
+                                        @if($index > 0) loading="lazy" @endif
+                                        data-venue-hero-image
+                                    >
+                                </button>
+                            @endforeach
+                        </div>
+
+                        @if(count($venue->featuredMedia) > 1)
+                            <button type="button" class="venue-hero-slider__nav venue-hero-slider__nav--prev" data-venue-hero-prev aria-label="Предыдущее фото">
+                                <i class="ti ti-chevron-left" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="venue-hero-slider__nav venue-hero-slider__nav--next" data-venue-hero-next aria-label="Следующее фото">
+                                <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                            </button>
+                        @endif
                     @else
                         <div class="venue-hero__placeholder">
                             <img src="{{ asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}" data-venue-hero-image>
@@ -204,36 +228,6 @@
 
                 <div class="venue-hero__summary">
                     <div class="venue-hero__details">
-                        <div>
-                            <span class="venue-hero__detail-label">Адрес</span>
-                            @if ($displayAddress)
-                                <p class="venue-hero__text">
-                                    {{ $displayAddress }}
-                                    @if($nearestMetro)
-                                        <span class="venue-hero__address-metro">
-                                            <span
-                                                class="venue-hero__metro-bullet"
-                                                style="background-color: {{ $nearestMetroColor }}"
-                                                @if($nearestMetro->lineName)
-                                                    role="img"
-                                                    aria-label="Линия метро: {{ $nearestMetro->lineName }}"
-                                                    title="{{ $nearestMetro->lineName }}"
-                                                    data-tooltip-variant="title"
-                                                    data-tooltip-icon
-                                                    tabindex="0"
-                                                @else
-                                                    aria-hidden="true"
-                                                @endif
-                                            ></span>
-                                            <span>{{ $nearestMetro->name }}</span>
-                                        </span>
-                                    @endif
-                                    <br><a href="#address" class="venue-hero__map-link fc-link">На карте</a>
-                                </p>
-                            @else
-                                <p class="venue-hero__text">Адрес пока не указан.</p>
-                            @endif
-                        </div>
                         <div>
                             <span class="venue-hero__detail-label">Часы работы</span>
                             <p class="venue-hero__text">
@@ -342,6 +336,32 @@
                 </div>
             @endcomponent
 
+            @if($venue->featuredMedia !== [])
+                <div class="venue-gallery-modal" data-venue-gallery-modal hidden>
+                    <div class="venue-gallery-modal__backdrop" data-venue-gallery-close></div>
+                    <section class="venue-gallery-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="venue-gallery-modal-title">
+                        <button type="button" class="venue-gallery-modal__close" data-venue-gallery-close aria-label="Закрыть">
+                            <i class="ti ti-x" aria-hidden="true"></i>
+                        </button>
+
+                        <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--prev" data-venue-gallery-prev aria-label="Предыдущее фото">
+                            <i class="ti ti-chevron-left" aria-hidden="true"></i>
+                        </button>
+
+                        <img src="" alt="" data-venue-gallery-image>
+
+                        <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--next" data-venue-gallery-next aria-label="Следующее фото">
+                            <i class="ti ti-chevron-right" aria-hidden="true"></i>
+                        </button>
+
+                        <div class="venue-gallery-modal__caption">
+                            <h3 id="venue-gallery-modal-title" data-venue-gallery-title></h3>
+                            <p data-venue-gallery-description></p>
+                        </div>
+                    </section>
+                </div>
+            @endif
+
             <nav class="venue-anchor-nav" aria-label="Быстрая навигация" data-venue-anchor-nav>
                 @foreach($venue->sections as $section)
                     <a href="#{{ $section['id'] }}" @class(['venue-anchor-nav__link', 'is-muted' => ! $section['isAvailable']]) data-venue-anchor-link>
@@ -349,76 +369,6 @@
                     </a>
                 @endforeach
             </nav>
-
-            @if($venue->fullDescription)
-                <section id="venue-full-description" class="venue-show-section" aria-labelledby="venue-full-description-title">
-                    <div class="venue-show-section__heading">
-                        <h2 >О площадке</h2>
-                    </div>
-                    <p>{{ $venue->fullDescription }}</p>
-                </section>
-            @endif
-
-            @if($venue->featuredMedia !== [])
-                <section id="gallery" class="venue-show-section">
-                    <div class="venue-show-section__heading">
-                        <h2>Галерея</h2>
-                        <span class="venue-section-state">{{ count($venue->featuredMedia) }} фото</span>
-                    </div>
-
-                    <div class="venue-gallery">
-                        @foreach($venue->featuredMedia as $index => $media)
-                            <figure class="venue-gallery__item">
-                                <button
-                                    type="button"
-                                    class="venue-gallery__button"
-                                    data-venue-gallery-item
-                                    data-index="{{ $index }}"
-                                    data-url="{{ $media['url'] }}"
-                                    data-title="{{ $media['title'] ?: $venue->name }}"
-                                    data-description="{{ $media['description'] ?: '' }}"
-                                >
-                                    <img src="{{ $media['url'] }}" alt="{{ $media['title'] ?: $venue->name }}">
-                                </button>
-                                @if($media['title'] || $media['description'])
-                                    <figcaption>
-                                        @if($media['title'])
-                                            <strong>{{ $media['title'] }}</strong>
-                                        @endif
-                                        @if($media['description'])
-                                            <span>{{ $media['description'] }}</span>
-                                        @endif
-                                    </figcaption>
-                                @endif
-                            </figure>
-                        @endforeach
-                    </div>
-
-                    <div class="venue-gallery-modal" data-venue-gallery-modal hidden>
-                        <div class="venue-gallery-modal__backdrop" data-venue-gallery-close></div>
-                        <section class="venue-gallery-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="venue-gallery-modal-title">
-                            <button type="button" class="venue-gallery-modal__close" data-venue-gallery-close aria-label="Закрыть">
-                                <i class="ti ti-x"></i>
-                            </button>
-
-                            <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--prev" data-venue-gallery-prev aria-label="Предыдущее фото">
-                                <i class="ti ti-chevron-left"></i>
-                            </button>
-
-                            <img src="" alt="" data-venue-gallery-image>
-
-                            <button type="button" class="venue-gallery-modal__nav venue-gallery-modal__nav--next" data-venue-gallery-next aria-label="Следующее фото">
-                                <i class="ti ti-chevron-right"></i>
-                            </button>
-
-                            <div class="venue-gallery-modal__caption">
-                                <h3 id="venue-gallery-modal-title" data-venue-gallery-title></h3>
-                                <p data-venue-gallery-description></p>
-                            </div>
-                        </section>
-                    </div>
-                </section>
-            @endif
 
             <section id="address" class="venue-show-section">
                 <div class="venue-show-section__heading">
@@ -529,6 +479,19 @@
                             </div>
                         </div>
                     </section>
+                </div>
+            </section>
+
+            <section id="activities" class="venue-show-section venue-activities" data-venue-activities>
+                <div class="venue-show-section__heading venue-activities__heading">
+                    <div>
+                        <span class="venue-activities__eyebrow">На этой площадке</span>
+                        <h2>Игры и мероприятия</h2>
+                    </div>
+                    <span class="venue-section-state" data-venue-activities-state>Загрузка…</span>
+                </div>
+                <div class="venue-activities__body" data-venue-activities-body>
+                    <div class="venue-activities__loading">Загружаем текущие и ближайшие активности…</div>
                 </div>
             </section>
 
@@ -699,6 +662,15 @@
                     </div>
                 @endif
             </section>
+
+            @if($venue->fullDescription)
+                <section id="venue-full-description" class="venue-show-section" aria-labelledby="venue-full-description-title">
+                    <div class="venue-show-section__heading">
+                        <h2 id="venue-full-description-title">О площадке</h2>
+                    </div>
+                    <p>{{ $venue->fullDescription }}</p>
+                </section>
+            @endif
         </div>
     @else
         <div class="alert alert-warning" role="alert">

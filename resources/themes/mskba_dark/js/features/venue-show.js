@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     initVenueAnchors();
+    initVenueHeroSlider();
     initVenueGalleryModal();
     initVenueDayModal();
     initVenueOccupancyModal();
@@ -14,12 +15,50 @@ function initVenueAnchors() {
         return;
     }
 
-    const scrollToSection = (id) => {
+    const updateHash = (id, mode = 'replace') => {
+        if (!id || !window.history?.replaceState) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+        url.hash = id;
+        window.history[mode === 'push' ? 'pushState' : 'replaceState'](null, '', url);
+    };
+
+    const setActiveSection = (id, updateUrl = true) => {
+        links.forEach((link) => {
+            const isActive = link.getAttribute('href') === `#${id}`;
+
+            link.classList.toggle('is-active', isActive);
+            if (isActive) {
+                link.setAttribute('aria-current', 'location');
+            } else {
+                link.removeAttribute('aria-current');
+            }
+
+            if (isActive && link.closest('[data-venue-mobile-nav]') && window.matchMedia('(max-width: 900px)').matches) {
+                const navigation = link.closest('[data-venue-mobile-nav]');
+                const targetLeft = link.offsetLeft - ((navigation.clientWidth - link.offsetWidth) / 2);
+
+                navigation.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+            }
+        });
+
+        if (updateUrl && window.location.hash !== `#${id}`) {
+            updateHash(id);
+        }
+    };
+
+    const scrollToSection = (id, pushHistory = false) => {
         const section = document.getElementById(id);
         if (!section) {
             return;
         }
 
+        if (pushHistory) {
+            updateHash(id, window.location.hash === `#${id}` ? 'replace' : 'push');
+        }
+        setActiveSection(id, false);
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
@@ -31,13 +70,13 @@ function initVenueAnchors() {
             }
 
             event.preventDefault();
-            scrollToSection(href.slice(1));
+            scrollToSection(href.slice(1), true);
         });
     });
 
     scrollButtons.forEach((button) => {
         button.addEventListener('click', () => {
-            scrollToSection(button.dataset.venueScrollTarget || '');
+            scrollToSection(button.dataset.venueScrollTarget || '', true);
         });
     });
 
@@ -45,37 +84,75 @@ function initVenueAnchors() {
         .map((link) => document.querySelector(link.getAttribute('href') || ''))
         .filter(Boolean))];
 
-    if (sections.length === 0 || !('IntersectionObserver' in window)) {
+    if (sections.length === 0) {
         return;
     }
 
-    const observer = new IntersectionObserver((entries) => {
-        const visible = entries
-            .filter((entry) => entry.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+    let frame = null;
+    const updateActiveFromScroll = () => {
+        frame = null;
+        const activationLine = Math.max(120, window.innerHeight * 0.3);
+        const active = sections
+            .filter((section) => section.getBoundingClientRect().top <= activationLine)
+            .at(-1);
 
-        if (!visible) {
+        if (active) {
+            setActiveSection(active.id);
+        }
+    };
+    const requestActiveUpdate = () => {
+        if (frame === null) {
+            frame = window.requestAnimationFrame(updateActiveFromScroll);
+        }
+    };
+
+    window.addEventListener('scroll', requestActiveUpdate, { passive: true });
+    window.addEventListener('resize', requestActiveUpdate);
+    window.addEventListener('popstate', () => {
+        const id = decodeURIComponent(window.location.hash.slice(1));
+        if (id) {
+            scrollToSection(id);
+        }
+    });
+    requestActiveUpdate();
+}
+
+function initVenueHeroSlider() {
+    const slider = document.querySelector('[data-venue-hero-slider]');
+    const slides = Array.from(slider?.querySelectorAll('[data-venue-hero-slide]') || []);
+
+    if (!slider || slides.length === 0) {
+        return;
+    }
+
+    const previousButton = slider.querySelector('[data-venue-hero-prev]');
+    const nextButton = slider.querySelector('[data-venue-hero-next]');
+    let currentIndex = 0;
+
+    const show = (requestedIndex) => {
+        currentIndex = (requestedIndex + slides.length) % slides.length;
+        slides.forEach((slide, index) => {
+            const isActive = index === currentIndex;
+
+            slide.classList.toggle('is-active', isActive);
+            slide.setAttribute('aria-hidden', String(!isActive));
+            slide.tabIndex = isActive ? 0 : -1;
+        });
+    };
+
+    previousButton?.addEventListener('click', () => show(currentIndex - 1));
+    nextButton?.addEventListener('click', () => show(currentIndex + 1));
+    slider.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
             return;
         }
 
-        links.forEach((link) => {
-            const isActive = link.getAttribute('href') === `#${visible.target.id}`;
-
-            link.classList.toggle('is-active', isActive);
-
-            if (isActive && link.closest('[data-venue-mobile-nav]') && window.matchMedia('(max-width: 900px)').matches) {
-                const navigation = link.closest('[data-venue-mobile-nav]');
-                const targetLeft = link.offsetLeft - ((navigation.clientWidth - link.offsetWidth) / 2);
-
-                navigation.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
-            }
-        });
-    }, {
-        rootMargin: '-30% 0px -55% 0px',
-        threshold: [0.1, 0.35, 0.6],
+        event.preventDefault();
+        show(currentIndex + (event.key === 'ArrowRight' ? 1 : -1));
+        slides[currentIndex].focus();
     });
 
-    sections.forEach((section) => observer.observe(section));
+    show(0);
 }
 
 function initVenueNearbyModal() {
