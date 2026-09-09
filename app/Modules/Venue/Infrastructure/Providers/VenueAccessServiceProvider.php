@@ -73,6 +73,7 @@ class VenueAccessServiceProvider extends ServiceProvider
             }
 
             $view->with('contextManagementPlacement', 'section-after-panel');
+            $view->with('headingTitleSuffixView', 'theme::partials.venues.court-selector');
 
             $hasCurrentOwnership = VenueOwnership::query()
                 ->where('venue_id', $venueModel->id)
