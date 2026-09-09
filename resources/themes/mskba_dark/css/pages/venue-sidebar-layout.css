@@ -155,8 +155,7 @@
 
     .venue-section .venue-hero__media {
         width: 100%;
-        min-height: 420px;
-        max-height: none;
+        min-height: 320px;
         align-self: stretch;
         aspect-ratio: auto;
     }
