@@ -282,7 +282,7 @@
 
     .venue-section .venue-hero__media {
         min-height: 0;
-        max-height: none;
+        /* max-height: none; */
     }
 
     .venue-section .venue-hero__summary {
