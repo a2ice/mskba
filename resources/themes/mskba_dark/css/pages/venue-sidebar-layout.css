@@ -138,6 +138,7 @@
     grid-template-columns: repeat(9, minmax(50px, 1fr));
     gap: 6px;
     width: 100%;
+    min-width: 0;
     max-width: 100%;
     overflow-x: auto;
     padding-bottom: 2px;
@@ -418,6 +419,8 @@
         grid-column: 1;
         grid-row: 2;
         width: 100%;
+        min-width: 0;
+        max-width: 100%;
         min-height: 0;
         justify-self: stretch;
         align-self: stretch;
@@ -432,6 +435,9 @@
     .venue-section .venue-hero__details {
         grid-template-columns: minmax(180px, 0.7fr) minmax(300px, 1.3fr);
         gap: 0;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
     }
 
     .venue-section .venue-hero__details > div {
@@ -560,7 +566,8 @@
     }
 
     .venue-section .venue-hero__details {
-        grid-template-columns: minmax(156px, 0.7fr) minmax(280px, 1.3fr);
+        grid-template-columns: minmax(132px, 0.7fr) minmax(0, 1.3fr);
+        overflow: hidden;
     }
 
     .venue-section .venue-hero__details > div {
@@ -589,16 +596,12 @@
     }
 
     .venue-section .venue-hero__details {
-        grid-template-columns: repeat(2, minmax(190px, 1fr));
-        overflow-x: auto;
-        padding-bottom: 6px;
-        overscroll-behavior-inline: contain;
-        scrollbar-width: thin;
-        scroll-snap-type: inline proximity;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        padding-bottom: 0;
     }
 
     .venue-section .venue-hero__details > div {
-        scroll-snap-align: start;
+        min-width: 0;
     }
 
     .venue-section .venue-hero__media-status {
