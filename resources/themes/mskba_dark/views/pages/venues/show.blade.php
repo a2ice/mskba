@@ -193,18 +193,16 @@
                             <img src="{{ asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}" data-venue-hero-image>
                         </div>
                     @endif
-
-                </div>
-
-                <div class="venue-hero__summary">
-                    <div class="venue-hero__status-row">
+                    <div class="venue-hero__media-status">
                         <span class="venue-pill">{{ $venue->type }}</span>
                         <div @class(['venue-opening-state', 'is-open' => $venue->isOpen, 'is-closed' => ! $venue->isOpen])>
                             <span class="venue-opening-state__dot" aria-hidden="true"></span>
                             <strong>{{ $venue->isOpen ? 'Открыта' : 'Закрыта' }}</strong>
                         </div>
                     </div>
+                </div>
 
+                <div class="venue-hero__summary">
                     <div class="venue-hero__details">
                         <div>
                             <span class="venue-hero__detail-label">Адрес</span>
@@ -213,8 +211,21 @@
                                     {{ $displayAddress }}
                                     @if($nearestMetro)
                                         <span class="venue-hero__address-metro">
-                                            <span class="venue-hero__metro-bullet" style="background-color: {{ $nearestMetroColor }}" aria-hidden="true"></span>
-                                            <span>{{ $nearestMetro->name }}@if($nearestMetro->lineName), {{ $nearestMetro->lineName }}@endif</span>
+                                            <span
+                                                class="venue-hero__metro-bullet"
+                                                style="background-color: {{ $nearestMetroColor }}"
+                                                @if($nearestMetro->lineName)
+                                                    role="img"
+                                                    aria-label="Линия метро: {{ $nearestMetro->lineName }}"
+                                                    title="{{ $nearestMetro->lineName }}"
+                                                    data-tooltip-variant="title"
+                                                    data-tooltip-icon
+                                                    tabindex="0"
+                                                @else
+                                                    aria-hidden="true"
+                                                @endif
+                                            ></span>
+                                            <span>{{ $nearestMetro->name }}</span>
                                         </span>
                                     @endif
                                     <br><a href="#address" class="venue-hero__map-link fc-link">На карте</a>
@@ -234,41 +245,102 @@
                         </div>
                         <div>
                             <span class="venue-hero__detail-label">Занятые слоты</span>
-                            @forelse($venue->occupiedSlots as $slot)
-                                @php
-                                    $slotAriaLabel = $slot['label'].' · '.$slot['eventTypeLabel'].' · '.$slot['statusIcon'].' '.$slot['statusLabel'];
-                                @endphp
-                                <p class="venue-hero__text venue-hero__occupied-slot" aria-label="{{ $slotAriaLabel }}">
-                                    <span>{{ $slot['label'] }}</span>
-                                    <span class="venue-hero__slot-meta">
-                                        <span aria-hidden="true">·</span>
-                                        @if($slot['eventUrl'])
-                                            <a
-                                                class="fc-link venue-hero__slot-event-link"
-                                                href="{{ $slot['eventUrl'] }}"
-                                                target="_blank"
-                                                rel="noopener"
-                                            >{{ $slot['eventTypeLabel'] }}</a>
-                                        @else
-                                            <span>{{ $slot['eventTypeLabel'] }}</span>
-                                        @endif
-                                        <span aria-hidden="true">·</span>
-                                        <span
-                                            class="venue-hero__slot-status"
-                                            role="img"
-                                            aria-label="{{ $slot['statusLabel'] }}"
-                                            title="{{ $slot['statusLabel'] }}"
-                                            data-tooltip-variant="title"
-                                        >{{ $slot['statusIcon'] }}</span>
-                                    </span>
-                                </p>
-                            @empty
-                                <p class="venue-hero__text">—</p>
-                            @endforelse
+                            <div class="venue-occupancy-calendar" aria-label="Занятость площадки на девять дней">
+                                @foreach($venue->occupancyDays as $dayIndex => $day)
+                                    @php
+                                        $slotCount = count($day['slots']);
+                                        $dayStateLabel = match ($day['state']) {
+                                            'confirmed' => 'есть подтверждённые бронирования',
+                                            'tentative' => 'есть неподтверждённые бронирования',
+                                            default => 'свободно',
+                                        };
+                                    @endphp
+                                    <button
+                                        type="button"
+                                        @class([
+                                            'venue-occupancy-calendar__day',
+                                            'is-today' => $day['isToday'],
+                                            'is-confirmed' => $day['state'] === 'confirmed',
+                                            'is-tentative' => $day['state'] === 'tentative',
+                                            'is-free' => $day['state'] === 'free',
+                                        ])
+                                        aria-label="{{ $day['label'] }}, {{ $day['weekday'] }}: {{ $dayStateLabel }}"
+                                        data-venue-occupancy-day
+                                        data-day-index="{{ $dayIndex }}"
+                                        data-day-date="{{ $day['date'] }}"
+                                        data-day-label="{{ $day['label'] }}"
+                                        data-day-weekday="{{ $day['weekday'] }}"
+                                        data-is-today="{{ $day['isToday'] ? '1' : '0' }}"
+                                        data-handler="modal"
+                                        data-modal-action="open"
+                                        data-modal-target="venue-occupancy-schedule"
+                                    >
+                                        <span>{{ $day['weekday'] }}</span>
+                                        <strong>{{ $day['label'] }}</strong>
+                                        <small>{{ $slotCount > 0 ? $slotCount : '—' }}</small>
+                                    </button>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
+
+            @component('theme::partials.modal.layout', [
+                'id' => 'venue-occupancy-schedule',
+                'dialogClass' => 'venue-occupancy-modal__dialog',
+            ])
+                <div class="venue-occupancy-modal" data-venue-occupancy-modal>
+                    <p class="venue-occupancy-modal__eyebrow">Расписание площадки</p>
+                    <h2 class="modal_title" id="modal-title-venue-occupancy-schedule" data-venue-occupancy-title>Занятые слоты</h2>
+                    <p class="venue-occupancy-modal__date" data-venue-occupancy-date></p>
+
+                    <div class="venue-occupancy-modal__days">
+                        @foreach($venue->occupancyDays as $dayIndex => $day)
+                            <section data-venue-occupancy-panel data-day-index="{{ $dayIndex }}" @if($dayIndex !== 0) hidden @endif>
+                                @forelse($day['slots'] as $slot)
+                                    @php
+                                        $slotAriaLabel = $slot['timeLabel'].' · '.$slot['eventTypeLabel'].' · '.$slot['statusIcon'].' '.$slot['statusLabel'];
+                                    @endphp
+                                    <article class="venue-occupancy-slot" aria-label="{{ $slotAriaLabel }}">
+                                        <time>{{ $slot['timeLabel'] }}</time>
+                                        <div>
+                                            @if($slot['eventUrl'])
+                                                <a
+                                                    class="fc-link venue-occupancy-slot__event"
+                                                    href="{{ $slot['eventUrl'] }}"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                >{{ $slot['eventTypeLabel'] }}</a>
+                                            @else
+                                                <strong>{{ $slot['eventTypeLabel'] }}</strong>
+                                            @endif
+                                            <span class="venue-occupancy-slot__status venue-occupancy-slot__status--{{ $slot['status'] }}">
+                                                <span aria-hidden="true"></span>{{ $slot['statusLabel'] }}
+                                            </span>
+                                        </div>
+                                    </article>
+                                @empty
+                                    <div class="venue-occupancy-modal__empty">
+                                        <i class="ti ti-calendar-check" aria-hidden="true"></i>
+                                        <strong>Свободный день</strong>
+                                        <span>Занятых слотов на эту дату нет.</span>
+                                    </div>
+                                @endforelse
+                            </section>
+                        @endforeach
+                    </div>
+
+                    <footer class="venue-occupancy-modal__footer">
+                        <button type="button" class="btn btn--secondary" data-venue-occupancy-prev disabled>
+                            <i class="ti ti-arrow-left" aria-hidden="true"></i> Пред. день
+                        </button>
+                        <button type="button" class="btn btn--primary" data-venue-occupancy-next>
+                            След. день <i class="ti ti-arrow-right" aria-hidden="true"></i>
+                        </button>
+                    </footer>
+                </div>
+            @endcomponent
 
             <nav class="venue-anchor-nav" aria-label="Быстрая навигация" data-venue-anchor-nav>
                 @foreach($venue->sections as $section)
@@ -404,11 +476,21 @@
                                         : '#ec7f12';
                                 @endphp
                                 <div class="venue-metro">
-                                    <span class="venue-metro__bullet" style="background-color: {{ $lineColor }}"></span>
+                                    <span
+                                        class="venue-metro__bullet"
+                                        style="background-color: {{ $lineColor }}"
+                                        @if($station->lineName)
+                                            role="img"
+                                            aria-label="Линия метро: {{ $station->lineName }}"
+                                            title="{{ $station->lineName }}"
+                                            data-tooltip-variant="title"
+                                            data-tooltip-icon
+                                            tabindex="0"
+                                        @else
+                                            aria-hidden="true"
+                                        @endif
+                                    ></span>
                                     <span class="venue-metro__name">{{ $station->name }}</span>
-                                    @if($station->lineName)
-                                        <span class="venue-metro__line">{{ $station->lineName }}</span>
-                                    @endif
                                 </div>
                             @empty
                                 <p class="venue-placeholder-text">Станции метро пока не привязаны к локации.</p>

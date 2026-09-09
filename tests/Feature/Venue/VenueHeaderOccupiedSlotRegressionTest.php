@@ -55,12 +55,15 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('12.09.2026 19:00–20:00')
+            ->assertSee('data-day-date="2026-09-12"', false)
+            ->assertSee('is-confirmed', false)
             ->assertSee('Тренировка')
-            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
+            ->assertSee('aria-label="19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
             ->assertDontSee('Автогенерируемое название события 123')
             ->assertSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
-            ->assertSee('target="_blank"', false);
+            ->assertSee('target="_blank"', false)
+            ->assertSee('data-venue-occupancy-prev', false)
+            ->assertSee('data-venue-occupancy-next', false);
     }
 
     public function test_private_event_keeps_type_and_status_icon_but_is_not_linked_and_does_not_expose_title(): void
@@ -82,7 +85,7 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
+            ->assertSee('aria-label="19:00–20:00 · Тренировка · ✅ Подтверждено"', false)
             ->assertDontSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertDontSee('Закрытая тренировка — служебное название');
     }
@@ -106,7 +109,8 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Тренировка · 🕒 Ожидает подтверждения"', false)
+            ->assertSee('is-tentative', false)
+            ->assertSee('aria-label="19:00–20:00 · Тренировка · 🕒 Ожидает подтверждения"', false)
             ->assertDontSee('href="'.route('events.show', $event->routeIdentifier()).'"', false)
             ->assertDontSee('Черновое событие');
     }
@@ -118,8 +122,22 @@ final class VenueHeaderOccupiedSlotRegressionTest extends TestCase
         $this
             ->get(route('venues.show', $venue->routeIdentifier()))
             ->assertOk()
-            ->assertSee('aria-label="12.09.2026 19:00–20:00 · Бронирование · 🕒 Ожидает подтверждения"', false)
+            ->assertSee('aria-label="19:00–20:00 · Бронирование · 🕒 Ожидает подтверждения"', false)
             ->assertSee('Бронирование');
+    }
+
+    public function test_occupancy_calendar_contains_exactly_nine_days_from_today(): void
+    {
+        [$venue] = $this->venueAndBooking();
+
+        $response = $this
+            ->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('data-day-date="2026-09-08"', false)
+            ->assertSee('data-day-date="2026-09-16"', false)
+            ->assertDontSee('data-day-date="2026-09-17"', false);
+
+        $this->assertSame(9, substr_count($response->getContent(), 'data-venue-occupancy-day'));
     }
 
     /** @return array{0: Venue, 1: LegacyVenueBooking, 2: int} */

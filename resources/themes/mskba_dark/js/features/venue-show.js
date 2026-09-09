@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initVenueAnchors();
     initVenueGalleryModal();
     initVenueDayModal();
+    initVenueOccupancyModal();
     initVenueNearbyModal();
 });
 
@@ -390,6 +391,62 @@ function initVenueDayModal() {
             close();
         }
     });
+}
+
+function initVenueOccupancyModal() {
+    const content = document.querySelector('[data-venue-occupancy-modal]');
+    const dayButtons = Array.from(document.querySelectorAll('[data-venue-occupancy-day]'));
+
+    if (!content || dayButtons.length === 0) {
+        return;
+    }
+
+    const modal = content.closest('[data-modal]');
+    const title = content.querySelector('[data-venue-occupancy-title]');
+    const date = content.querySelector('[data-venue-occupancy-date]');
+    const panels = Array.from(content.querySelectorAll('[data-venue-occupancy-panel]'));
+    const previousButton = content.querySelector('[data-venue-occupancy-prev]');
+    const nextButton = content.querySelector('[data-venue-occupancy-next]');
+    let currentIndex = 0;
+
+    const show = (requestedIndex) => {
+        currentIndex = Math.max(0, Math.min(dayButtons.length - 1, requestedIndex));
+        const dayButton = dayButtons[currentIndex];
+        const label = dayButton.dataset.dayLabel || '';
+        const weekday = dayButton.dataset.dayWeekday || '';
+        const isToday = dayButton.dataset.isToday === '1';
+
+        if (title) {
+            title.textContent = label ? 'Занятые слоты · ' + label : 'Занятые слоты';
+        }
+        if (date) {
+            date.textContent = [weekday, isToday ? 'Сегодня' : ''].filter(Boolean).join(' · ');
+        }
+
+        panels.forEach((panel, panelIndex) => {
+            panel.hidden = panelIndex !== currentIndex;
+        });
+
+        if (previousButton) previousButton.disabled = currentIndex === 0;
+        if (nextButton) nextButton.disabled = currentIndex === dayButtons.length - 1;
+    };
+
+    dayButtons.forEach((button, index) => {
+        button.addEventListener('click', () => show(index));
+    });
+    previousButton?.addEventListener('click', () => show(currentIndex - 1));
+    nextButton?.addEventListener('click', () => show(currentIndex + 1));
+
+    document.addEventListener('keydown', (event) => {
+        if (!modal?.classList.contains('is-open')) {
+            return;
+        }
+
+        if (event.key === 'ArrowLeft') show(currentIndex - 1);
+        if (event.key === 'ArrowRight') show(currentIndex + 1);
+    });
+
+    show(0);
 }
 
 function parseIntervals(value) {
