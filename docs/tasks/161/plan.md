@@ -6,4 +6,4 @@
 4. [x] Реализовать trust resolver и расширить endpoint.
 5. [x] Добавить warning, modal и использовать полный activity renderer без дублирования запросов.
 6. [x] Покрыть матрицу доверия и privacy, выполнить полный набор проверок.
-7. [ ] Push, PR, зелёный CI, merge, production deploy и smoke.
+7. [x] Push, PR, зелёный CI, merge, production deploy и smoke.
