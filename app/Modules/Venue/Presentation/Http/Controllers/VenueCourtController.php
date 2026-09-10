@@ -3,10 +3,14 @@
 namespace App\Modules\Venue\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,11 +28,20 @@ final class VenueCourtController extends Controller
         VenueAccessResolver $access,
     ): Response {
         $venueModel = $this->managedVenue($request, $venue, $actors, $access);
-        $venueModel->load('courts');
+        $venueModel->load(['courts', 'characteristics']);
+        $policy = $this->activePolicy($venueModel);
+        $parentHoops = (int) ($venueModel->characteristics?->hoops_count ?? 1);
+        $parentHoops = in_array($parentHoops, [1, 2], true) ? $parentHoops : 1;
 
         return ThemeResolver::page('venues.courts', [
             'venue' => $venueModel,
             'courts' => $venueModel->courts,
+            'surfaceTypes' => VenueSurfaceTypeEnum::cases(),
+            'courtDefaults' => [
+                'hoops_count' => $parentHoops,
+                'allows_whole' => $policy?->allows_whole ?? true,
+                'allows_halves' => $parentHoops >= 2 && ($policy?->allows_halves ?? false),
+            ],
         ]);
     }
 
@@ -39,14 +52,21 @@ final class VenueCourtController extends Controller
         VenueAccessResolver $access,
     ): RedirectResponse {
         $venueModel = $this->managedVenue($request, $venue, $actors, $access);
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'alias' => ['nullable', 'string', 'max:120'],
-            'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
-            'supports_halves' => ['nullable', 'boolean'],
-        ]);
+        $validated = $request->validate($this->courtRules());
+        $policy = $this->activePolicy($venueModel);
+        $parentHoops = (int) ($venueModel->characteristics()->value('hoops_count') ?? 1);
+        $hoopsCount = isset($validated['hoops_count'])
+            ? (int) $validated['hoops_count']
+            : (in_array($parentHoops, [1, 2], true) ? $parentHoops : 1);
+        $supportsHalves = $hoopsCount >= 2;
+        $allowsWhole = array_key_exists('allows_whole', $validated)
+            ? $request->boolean('allows_whole')
+            : ($policy?->allows_whole ?? true);
+        $allowsHalves = $supportsHalves && (array_key_exists('allows_halves', $validated)
+            ? $request->boolean('allows_halves')
+            : ($policy?->allows_halves ?? false));
 
-        DB::transaction(function () use ($request, $venueModel, $validated): void {
+        DB::transaction(function () use ($venueModel, $validated, $hoopsCount, $supportsHalves, $allowsWhole, $allowsHalves): void {
             Venue::query()->whereKey($venueModel->id)->lockForUpdate()->firstOrFail();
             $hasCourt = VenueCourt::query()->where('venue_id', $venueModel->id)->lockForUpdate()->exists();
             $nextOrder = (int) VenueCourt::query()->where('venue_id', $venueModel->id)->max('sort_order') + 10;
@@ -61,7 +81,11 @@ final class VenueCourtController extends Controller
                 ),
                 'sort_order' => isset($validated['sort_order']) ? (int) $validated['sort_order'] : $nextOrder,
                 'is_primary' => ! $hasCourt,
-                'supports_halves' => $request->boolean('supports_halves'),
+                'hoops_count' => $hoopsCount,
+                'surface_type' => $validated['surface_type'] ?? null,
+                'supports_halves' => $supportsHalves,
+                'allows_whole' => $allowsWhole,
+                'allows_halves' => $allowsHalves,
             ]);
         });
 
@@ -79,19 +103,15 @@ final class VenueCourtController extends Controller
     ): RedirectResponse {
         $venueModel = $this->managedVenue($request, $venue, $actors, $access);
         $courtModel = $this->courtForVenue($venueModel, $court);
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'alias' => [
-                'nullable',
-                'string',
-                'max:120',
-                Rule::unique('venue_courts', 'alias')
-                    ->where(fn ($query) => $query->where('venue_id', $venueModel->id))
-                    ->ignore($courtModel->id),
-            ],
-            'sort_order' => ['required', 'integer', 'min:0', 'max:65535'],
-            'supports_halves' => ['nullable', 'boolean'],
-        ]);
+        $rules = $this->courtRules($venueModel, $courtModel);
+        $rules['sort_order'] = ['required', 'integer', 'min:0', 'max:65535'];
+        $validated = $request->validate($rules);
+        $hoopsCount = (int) ($validated['hoops_count'] ?? $courtModel->hoops_count ?? 1);
+        $supportsHalves = $hoopsCount >= 2;
+
+        if ($courtModel->supports_halves && ! $supportsHalves) {
+            $this->assertNoFutureHalfBookings($venueModel, $courtModel);
+        }
 
         $courtModel->update([
             'name' => trim($validated['name']),
@@ -102,7 +122,11 @@ final class VenueCourtController extends Controller
                 $courtModel->id,
             ),
             'sort_order' => (int) $validated['sort_order'],
-            'supports_halves' => $request->boolean('supports_halves'),
+            'hoops_count' => $hoopsCount,
+            'surface_type' => $validated['surface_type'] ?? null,
+            'supports_halves' => $supportsHalves,
+            'allows_whole' => $request->boolean('allows_whole'),
+            'allows_halves' => $supportsHalves && $request->boolean('allows_halves'),
         ]);
 
         return redirect()
@@ -182,6 +206,27 @@ final class VenueCourtController extends Controller
             ->with('status', 'Зал удалён.');
     }
 
+    /** @return array<string, mixed> */
+    private function courtRules(?Venue $venue = null, ?VenueCourt $court = null): array
+    {
+        $aliasRules = ['nullable', 'string', 'max:120'];
+        if ($venue !== null && $court !== null) {
+            $aliasRules[] = Rule::unique('venue_courts', 'alias')
+                ->where(fn ($query) => $query->where('venue_id', $venue->id))
+                ->ignore($court->id);
+        }
+
+        return [
+            'name' => ['required', 'string', 'max:120'],
+            'alias' => $aliasRules,
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
+            'hoops_count' => ['nullable', 'integer', Rule::in([1, 2])],
+            'surface_type' => ['nullable', Rule::enum(VenueSurfaceTypeEnum::class)],
+            'allows_whole' => ['nullable', 'boolean'],
+            'allows_halves' => ['nullable', 'boolean'],
+        ];
+    }
+
     private function managedVenue(
         Request $request,
         string $identifier,
@@ -205,6 +250,31 @@ final class VenueCourtController extends Controller
             ->where('venue_id', $venue->id)
             ->whereRouteIdentifier($identifier)
             ->firstOrFail();
+    }
+
+    private function activePolicy(Venue $venue): ?VenueBookingPolicy
+    {
+        return VenueBookingPolicy::query()
+            ->where('venue_id', $venue->id)
+            ->where('active_marker', true)
+            ->first();
+    }
+
+    private function assertNoFutureHalfBookings(Venue $venue, VenueCourt $court): void
+    {
+        $hasFutureHalfBooking = DB::table('venue_bookings')
+            ->where('venue_id', $venue->id)
+            ->where('venue_court_id', $court->id)
+            ->whereIn('scope', [VenueBookingScopeEnum::HALF_A->value, VenueBookingScopeEnum::HALF_B->value])
+            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
+            ->where('ends_at', '>', now())
+            ->exists();
+
+        if ($hasFutureHalfBooking) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'hoops_count' => 'Нельзя уменьшить количество колец: у этого зала есть будущие бронирования отдельных половин.',
+            ]);
+        }
     }
 
     private function courtHasReferences(VenueCourt $court): bool

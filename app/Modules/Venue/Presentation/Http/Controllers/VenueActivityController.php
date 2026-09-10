@@ -12,21 +12,31 @@ use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Application\Services\VenueInformationTrustResolver;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 final class VenueActivityController extends Controller
 {
-    public function __invoke(string $venue, VenueInformationTrustResolver $trustResolver): JsonResponse
-    {
+    public function __invoke(
+        Request $request,
+        string $venue,
+        VenueInformationTrustResolver $trustResolver,
+    ): JsonResponse {
         $venueModel = Venue::query()
             ->whereRouteIdentifier($venue)
             ->firstOrFail();
+        $court = $this->resolveCourt($venueModel, trim((string) $request->query('court', '')));
         $timezone = (string) config('app.timezone', 'Europe/Moscow');
         $now = CarbonImmutable::now($timezone);
 
         $events = Event::query()
             ->where('venue_id', $venueModel->id)
+            ->where(function ($query) use ($court): void {
+                // Legacy NULL court remains visible as an ambiguous venue-wide activity.
+                $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
+            })
             ->where('status', EventStatusEnum::PUBLISHED->value)
             ->where('visibility', EventVisibilityEnum::PUBLIC->value)
             ->where(function ($query) use ($now): void {
@@ -42,6 +52,9 @@ final class VenueActivityController extends Controller
             ->map(fn (Event $event): array => $this->eventPayload($event, $now))
             ->all();
 
+        // A tournament can span several halls at one Venue. Keep the tournament visible at
+        // venue level, but only expose a live game if its public Event belongs to this court
+        // (or is a legacy event without a known court).
         $tournaments = Tournament::query()
             ->where('default_venue_id', $venueModel->id)
             ->where('status', TournamentStatusEnum::CONFIRMED->value)
@@ -53,7 +66,7 @@ final class VenueActivityController extends Controller
             ->orderBy('starts_on')
             ->limit(12)
             ->get()
-            ->map(fn (Tournament $tournament): array => $this->tournamentPayload($tournament, $now))
+            ->map(fn (Tournament $tournament): array => $this->tournamentPayload($tournament, $now, $court))
             ->all();
 
         $activities = collect([...$events, ...$tournaments])
@@ -63,6 +76,8 @@ final class VenueActivityController extends Controller
 
         return response()->json([
             'venue_id' => (int) $venueModel->id,
+            'venue_court_id' => (int) $court->id,
+            'venue_court_name' => $court->name,
             'operational_status' => $venueModel->operational_status->value,
             'information_trusted' => $informationTrusted,
             'information_warning' => ! $informationTrusted,
@@ -70,6 +85,18 @@ final class VenueActivityController extends Controller
             'upcoming' => $activities->where('is_current', false)->take(8)->values()->all(),
             'generated_at' => $now->toISOString(),
         ]);
+    }
+
+    private function resolveCourt(Venue $venue, string $identifier): VenueCourt
+    {
+        if ($identifier !== '') {
+            return VenueCourt::query()
+                ->where('venue_id', $venue->id)
+                ->whereRouteIdentifier($identifier)
+                ->firstOrFail();
+        }
+
+        return $venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail();
     }
 
     /** @return array<string, mixed> */
@@ -94,7 +121,7 @@ final class VenueActivityController extends Controller
             'is_live' => $isLive,
             'status_label' => $isLive
                 ? 'Идёт сейчас'
-                : ($isCurrent ? 'Сейчас на площадке' : 'Запланировано'),
+                : ($isCurrent ? 'Сейчас в зале' : 'Запланировано'),
             'starts_at' => $event->starts_at?->setTimezone($now->timezone)->toISOString(),
             'ends_at' => $event->ends_at?->setTimezone($now->timezone)->toISOString(),
             'sort_at' => ($event->starts_at ?? $now)->toISOString(),
@@ -104,14 +131,16 @@ final class VenueActivityController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function tournamentPayload(Tournament $tournament, CarbonImmutable $now): array
+    private function tournamentPayload(Tournament $tournament, CarbonImmutable $now, VenueCourt $court): array
     {
         $starts = $tournament->starts_on?->startOfDay();
         $ends = $tournament->ends_on?->endOfDay();
         $liveMatch = $tournament->matches
             ->first(fn ($match): bool => $this->isPublicEvent($match->game?->event)
                 && $match->game?->actual_started_at !== null
-                && $match->game?->actual_ended_at === null);
+                && $match->game?->actual_ended_at === null
+                && ($match->game?->event?->venue_court_id === null
+                    || (int) $match->game?->event?->venue_court_id === (int) $court->id));
         $liveGame = $liveMatch?->game;
         $isLive = $liveGame !== null;
         $isCurrent = $isLive || ($starts?->lessThanOrEqualTo($now) && $ends?->greaterThanOrEqualTo($now));

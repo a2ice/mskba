@@ -73,6 +73,7 @@ class VenueAccessServiceProvider extends ServiceProvider
             }
 
             $view->with('contextManagementPlacement', 'section-after-panel');
+            $view->with('headingTitleSuffixView', 'theme::partials.venues.court-selector');
 
             $hasCurrentOwnership = VenueOwnership::query()
                 ->where('venue_id', $venueModel->id)
@@ -90,7 +91,12 @@ class VenueAccessServiceProvider extends ServiceProvider
 
             if ($this->rentalFeatureAllows(VenueRentalFeature::RENTAL_FLOW, $venueModel)) {
                 if (VenueBookingPolicy::query()->where('venue_id', $venueModel->id)->where('active_marker', true)->where('is_enabled', true)->exists()) {
-                    $view->with('rentalUrl', route('venues.rental.show', $venueModel));
+                    $rentalUrl = route('venues.rental.show', $venueModel);
+                    $selectedCourtRoute = data_get($venue, 'selectedCourt.routeIdentifier');
+                    if (is_string($selectedCourtRoute) && $selectedCourtRoute !== '') {
+                        $rentalUrl .= '?court='.rawurlencode($selectedCourtRoute);
+                    }
+                    $view->with('rentalUrl', $rentalUrl);
                 }
 
                 if ($user !== null && app(VenueCommercialAccess::class)->allows($user, $venueModel, VenuePermissionEnum::MANAGE_MEMBERSHIPS)) {

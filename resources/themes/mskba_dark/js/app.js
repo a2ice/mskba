@@ -58,6 +58,7 @@ import './features/team-join-application.js';
 import './features/venue-show.js';
 import './features/venue-heading-polish.js';
 import './features/venue-activity.js';
+import './features/venue-court-admin.js';
 import './features/venue-sidebar-layout.js';
 import './features/venue-booking-status.js';
 import './features/venue-booking-conversation.js';

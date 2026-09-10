@@ -1,0 +1,21 @@
+# Task 164 — plan
+
+- [x] Добавить public nested URL для non-primary `VenueCourt` и canonical redirect primary court.
+- [x] Добавить selector зала в heading публичной страницы.
+- [x] Scope occupancy по выбранному court с сохранением legacy `venue_court_id = NULL`.
+- [x] Scope блока «Игры и мероприятия» по выбранному court без ослабления privacy Task 161.
+- [x] Передавать выбранный court в CTA аренды/создания мероприятия.
+- [x] Добавить карточку «Количество залов» и selector в «Характеристики площадки».
+- [x] Добавить `hoops_count`, `surface_type`, `allows_whole`, `allows_halves` в `VenueCourt`.
+- [x] Добавить enum покрытий и миграцию/backfill.
+- [x] Расширить управление залами и наследование значений от родительского Venue/booking policy.
+- [x] Динамически скрывать half-rental для зала с одним кольцом и enforce это на backend.
+- [x] Защитить уменьшение 2 → 1 кольцо при будущих half-bookings.
+- [x] Сохранить auto-suffix alias при создании залов.
+- [x] Протащить preset `venue_court_id` через Event wizard и сбрасывать его при смене Venue.
+- [x] Добавить regression tests управления и публичного court-контекста.
+- [ ] Локальный/CI PHP test suite green.
+- [ ] Frontend build green.
+- [ ] PR review/CI green.
+- [ ] Merge в `main`.
+- [ ] Production deploy green.

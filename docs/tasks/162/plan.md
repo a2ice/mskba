@@ -6,9 +6,9 @@
 - [x] Добавить account CRUD залов с текущими venue permissions.
 - [x] Добавить `supports_halves`, primary selection и защиту последнего зала.
 - [x] Добавить regression tests.
-- [ ] PR CI green.
-- [ ] Merge в `main`.
-- [ ] Production deploy green.
+- [x] PR CI green — GitHub Actions run `34448280358`.
+- [x] Merge в `main` — PR #156, merge `a7650e3f321d35630bc17146a815c95775526e5e`.
+- [x] Production deploy green — GitHub Actions run `34448434938`.
 
 Следующие независимые задачи:
 

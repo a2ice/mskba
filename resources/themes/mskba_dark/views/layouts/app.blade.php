@@ -120,7 +120,7 @@
                     </div>
                 @endif
                 @yield('content')
-                @if(Route::currentRouteName() === 'venues.show' && isset($venue))
+                @if(in_array(Route::currentRouteName(), ['venues.show', 'venues.courts.show'], true) && isset($venue))
                     @include('theme::partials.venues.characteristics-public', ['venue' => $venue])
                 @endif
             </main>

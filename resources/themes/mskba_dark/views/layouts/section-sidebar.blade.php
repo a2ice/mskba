@@ -65,6 +65,18 @@
                                                 data-tooltip-variant="title"
                                             @endif
                                         >{{ $contentTitle }}</h1>
+
+                                        @if(! empty($headingTitleSuffixView))
+                                            <div class="section-content-heading__title-suffix">
+                                                @include($headingTitleSuffixView)
+                                            </div>
+                                        @else
+                                            @hasSection('section-heading-title-suffix')
+                                                <div class="section-content-heading__title-suffix">
+                                                    @yield('section-heading-title-suffix')
+                                                </div>
+                                            @endif
+                                        @endif
                                     </div>
 
                                     @hasSection('section-heading-action')

@@ -47,6 +47,13 @@ function initWizardVenueAvailability(form) {
         return null;
     };
 
+    const selectedCourtId = () => {
+        const input = form.querySelector('input[name="venue_court_id"]');
+        if (!(input instanceof HTMLInputElement)) return null;
+        const id = Number(input.value || 0);
+        return id > 0 ? id : null;
+    };
+
     const validateExactScope = () => {
         if (!valueInput.value) return;
         scopeInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -137,6 +144,10 @@ function initWizardVenueAvailability(form) {
             booking_scope: scopeInput.value || 'whole',
             limit: '1',
         });
+        const courtId = selectedCourtId();
+        if (courtId) {
+            parameters.set('venue_court_id', String(courtId));
+        }
         if (selector.dataset.operationalStatus) {
             parameters.set('operational_status', selector.dataset.operationalStatus);
         }

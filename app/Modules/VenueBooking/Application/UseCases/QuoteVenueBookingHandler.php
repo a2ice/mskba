@@ -69,11 +69,19 @@ final readonly class QuoteVenueBookingHandler
         }
 
         if ($scope === VenueBookingScopeEnum::WHOLE && ! $policy->allows_whole) {
-            throw new VenueBookingPolicyException('Аренда всего зала отключена.');
+            throw new VenueBookingPolicyException('Аренда всего зала отключена условиями площадки.');
         }
 
         if ($scope !== VenueBookingScopeEnum::WHOLE && ! $policy->allows_halves) {
-            throw new VenueBookingPolicyException('Раздельная аренда зала отключена.');
+            throw new VenueBookingPolicyException('Раздельная аренда зала отключена условиями площадки.');
+        }
+
+        if ($scope === VenueBookingScopeEnum::WHOLE && ! $court->allows_whole) {
+            throw new VenueBookingPolicyException('Аренда всего выбранного зала отключена.');
+        }
+
+        if ($scope !== VenueBookingScopeEnum::WHOLE && (! $court->supports_halves || ! $court->allows_halves)) {
+            throw new VenueBookingPolicyException('Раздельная аренда выбранного зала отключена.');
         }
 
         $normalizedStart = $localStart->utc();
@@ -124,6 +132,10 @@ final readonly class QuoteVenueBookingHandler
                 'venue_court_id' => $court->id,
                 'venue_court_name' => $court->name,
                 'venue_court_alias' => $court->alias,
+                'court_hoops_count' => $court->hoops_count,
+                'court_surface_type' => $court->surface_type?->value,
+                'court_allows_whole' => $court->allows_whole,
+                'court_allows_halves' => $court->allows_halves,
                 'scope' => $scope->value,
                 'starts_at' => $normalizedStart->toIso8601String(),
                 'ends_at' => $endsAt->toIso8601String(),

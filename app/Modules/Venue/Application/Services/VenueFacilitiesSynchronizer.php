@@ -72,6 +72,21 @@ final class VenueFacilitiesSynchronizer
             ],
         );
 
+        // A freshly created Venue receives its primary court before characteristics are known.
+        // Fill that initial physical value once, but do not overwrite a court that was already
+        // configured independently from the parent Venue.
+        if ($hoopsCount !== null && $venue->courts()->count() === 1) {
+            $primaryCourt = $venue->primaryCourt()->first();
+            if ($primaryCourt !== null && $primaryCourt->hoops_count === null) {
+                $supportsHalves = $hoopsCount >= 2;
+                $primaryCourt->update([
+                    'hoops_count' => $hoopsCount,
+                    'supports_halves' => $supportsHalves,
+                    'allows_halves' => $supportsHalves && $primaryCourt->allows_halves,
+                ]);
+            }
+        }
+
         $venue->amenities()->sync($normalizedAmenityIds->all());
     }
 }

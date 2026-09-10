@@ -25,6 +25,7 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueReview;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -36,11 +37,17 @@ final class ShowVenueHandler
         private readonly AddressDisplayFormatter $addressFormatter,
     ) {}
 
-    public function handle(string $alias, ?User $user, ?Actor $actor = null): VenueDetailsDTO
-    {
+    public function handle(
+        string $alias,
+        ?User $user,
+        ?Actor $actor = null,
+        ?string $courtIdentifier = null,
+    ): VenueDetailsDTO {
         $venues = Venue::query()
             ->with([
                 'creatorActor',
+                'courts',
+                'characteristics',
                 'location.address',
                 'location.metroStations.line',
                 'media' => fn ($query) => $query
@@ -86,6 +93,14 @@ final class ShowVenueHandler
             throw new VenueAccessDeniedException;
         }
 
+        $courts = $venue->courts->values();
+        $selectedCourt = $this->resolveCourt($venue, $courts, $courtIdentifier);
+        $parentHoops = (int) ($venue->characteristics?->hoops_count ?? 0);
+        $parentHoops = in_array($parentHoops, [1, 2], true) ? $parentHoops : null;
+        $courtPayloads = $courts
+            ->map(fn (VenueCourt $court): array => $this->courtPayload($court, $parentHoops))
+            ->all();
+
         $address = $venue->location?->address;
         $displayAddress = $this->displayAddress($address, $venue->raw_address);
         $metroStations = ($venue->location?->metroStations ?? collect())
@@ -126,7 +141,7 @@ final class ShowVenueHandler
         $scheduleDays = $this->scheduleDays($venue);
         $openingState = $this->openingState($venue);
         $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
-        $occupancyDays = $this->occupancyDays($venue, $timezone);
+        $occupancyDays = $this->occupancyDays($venue, $selectedCourt, $timezone);
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
@@ -148,7 +163,7 @@ final class ShowVenueHandler
 
         return new VenueDetailsDTO(
             id: $venue->id,
-            name: $venue->name,
+            name: $this->publicVenueName($venue->name),
             alias: $venue->alias,
             type: $venue->type->label(),
             typeSlug: $venue->type->publicSlug(),
@@ -182,6 +197,8 @@ final class ShowVenueHandler
                 mapApiKey: config('integrations.yandex.api_key'),
             ),
             sections: $sections,
+            courts: $courtPayloads,
+            selectedCourt: $this->courtPayload($selectedCourt, $parentHoops),
             amenities: $amenities,
             featuredMedia: $featuredMedia,
             reviews: $reviews,
@@ -226,14 +243,76 @@ final class ShowVenueHandler
         ) ?? '';
     }
 
+    private function publicVenueName(string $name): string
+    {
+        $normalized = preg_replace('/\s*[-–—]\s*\d+\s+зал(?:а|ов)?\s*$/ui', '', trim($name));
+
+        return is_string($normalized) && trim($normalized) !== '' ? trim($normalized) : $name;
+    }
+
+    private function resolveCourt(Venue $venue, $courts, ?string $identifier): VenueCourt
+    {
+        if ($identifier !== null && $identifier !== '') {
+            $court = VenueCourt::query()
+                ->where('venue_id', $venue->id)
+                ->whereRouteIdentifier($identifier)
+                ->first();
+
+            if ($court === null) {
+                throw new VenueNotFoundException;
+            }
+
+            return $court;
+        }
+
+        $court = $courts->first(fn (VenueCourt $item): bool => $item->is_primary)
+            ?? $courts->first();
+
+        if (! $court instanceof VenueCourt) {
+            throw new VenueNotFoundException;
+        }
+
+        return $court;
+    }
+
+    /**
+     * @return array{id: int, name: string, alias: string, routeIdentifier: string, isPrimary: bool, supportsHalves: bool, hoopsCount: ?int, surfaceType: ?string, surfaceLabel: ?string, allowsWhole: bool, allowsHalves: bool}
+     */
+    private function courtPayload(VenueCourt $court, ?int $parentHoops): array
+    {
+        $hoopsCount = $court->hoops_count;
+        if ($hoopsCount === null) {
+            $hoopsCount = $court->is_primary && in_array($parentHoops, [1, 2], true)
+                ? $parentHoops
+                : ($court->supports_halves ? 2 : 1);
+        }
+
+        return [
+            'id' => (int) $court->id,
+            'name' => $court->name,
+            'alias' => $court->alias,
+            'routeIdentifier' => $court->routeIdentifier(),
+            'isPrimary' => (bool) $court->is_primary,
+            'supportsHalves' => (bool) $court->supports_halves,
+            'hoopsCount' => (int) $hoopsCount,
+            'surfaceType' => $court->surface_type?->value,
+            'surfaceLabel' => $court->surface_type?->label(),
+            'allowsWhole' => (bool) $court->allows_whole,
+            'allowsHalves' => (bool) $court->allows_halves,
+        ];
+    }
+
     /**
      * @return array<int, array{date: string, label: string, weekday: string, isToday: bool, state: string, slots: array<int, array{timeLabel: string, eventTypeLabel: string, eventUrl: ?string, statusIcon: string, statusLabel: string, status: string}>}>
      */
-    private function occupancyDays(Venue $venue, string $timezone): array
+    private function occupancyDays(Venue $venue, VenueCourt $court, string $timezone): array
     {
         $today = CarbonImmutable::now($timezone)->startOfDay();
         $windowEnd = $today->addDays(9);
         $bookings = $venue->bookings()
+            ->where(function ($query) use ($court): void {
+                $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
+            })
             ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
             ->where('starts_at', '<', $windowEnd)
             ->where('ends_at', '>', $today)

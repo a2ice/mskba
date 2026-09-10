@@ -4,6 +4,7 @@ namespace App\Modules\Event\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
+use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\EventTypeEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
@@ -19,6 +20,7 @@ use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Presentation\Theming\ThemeResolver;
@@ -29,6 +31,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 final class EventWizardController extends Controller
 {
@@ -151,10 +154,12 @@ final class EventWizardController extends Controller
         SearchVenuesHandler $searchVenues,
         CurrentActorResolver $actors,
         MinorAmountParser $amounts,
+        VenueEventAvailability $availability,
     ): JsonResponse {
         $validated = $request->validate([
             'query' => ['nullable', 'string', 'max:100'],
             'venue_id' => ['nullable', 'integer', 'min:1'],
+            'venue_court_id' => ['nullable', 'integer', 'min:1'],
             'discover_scopes' => ['nullable', 'boolean'],
             'confirmed_only' => ['nullable', 'boolean'],
             'operational_status' => ['nullable', Rule::enum(VenueOperationalStatusEnum::class)],
@@ -178,9 +183,13 @@ final class EventWizardController extends Controller
             $validated['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value,
         );
         $venueId = isset($validated['venue_id']) ? (int) $validated['venue_id'] : null;
+        $court = $this->requestedCourt($venueId, isset($validated['venue_court_id']) ? (int) $validated['venue_court_id'] : null);
         $discoverScopes = $request->boolean('discover_scopes');
         $limit = (int) ($validated['limit'] ?? 20);
         $hasAvailabilityWindow = $startsAt !== null && $durationMinutes !== null;
+        $courtVenue = $court === null
+            ? null
+            : Venue::query()->with(['schedule.intervals', 'schedule.exceptions.intervals'])->find($court->venue_id);
 
         // Discovery keeps a multi-zone venue when at least one physical scope is
         // free. Exact revalidation still checks only the user's selected scope.
@@ -191,6 +200,8 @@ final class EventWizardController extends Controller
         $venuesById = collect();
         $availableScopes = [];
         foreach ($scopes as $scope) {
+            // A concrete hall needs court-aware availability. Generic discovery keeps
+            // the existing venue-level search behavior and is resolved by SearchVenuesHandler.
             $results = $searchVenues->handle(
                 user: $request->user(),
                 actor: $actor,
@@ -200,11 +211,35 @@ final class EventWizardController extends Controller
                 operationalStatus: isset($validated['operational_status'])
                     ? VenueOperationalStatusEnum::from($validated['operational_status'])
                     : null,
-                startsAt: $startsAt,
-                durationMinutes: $durationMinutes,
+                startsAt: $court === null ? $startsAt : null,
+                durationMinutes: $court === null ? $durationMinutes : null,
                 bookingScope: $scope,
                 limit: $limit,
             );
+
+            if ($court !== null && $hasAvailabilityWindow) {
+                $results = collect($results)
+                    ->filter(function ($venue) use ($availability, $court, $courtVenue, $startsAt, $durationMinutes, $scope): bool {
+                        if ($courtVenue === null || (int) $venue->id !== (int) $court->venue_id) {
+                            return false;
+                        }
+
+                        try {
+                            $availability->assertAvailable(
+                                $courtVenue,
+                                $startsAt,
+                                $startsAt->addMinutes($durationMinutes),
+                                scope: $scope,
+                                court: $court,
+                            );
+
+                            return true;
+                        } catch (\InvalidArgumentException) {
+                            return false;
+                        }
+                    })
+                    ->all();
+            }
 
             foreach ($results as $venue) {
                 $venuesById->put($venue->id, $venue);
@@ -219,13 +254,15 @@ final class EventWizardController extends Controller
             ->sortBy(fn ($venue) => mb_strtolower($venue->name), SORT_NATURAL)
             ->take($limit)
             ->values();
-        $hoopsByVenue = Venue::query()
-            ->with('characteristics')
-            ->whereKey($venues->pluck('id'))
-            ->get()
-            ->mapWithKeys(fn (Venue $venue): array => [
-                $venue->id => (int) ($venue->characteristics?->hoops_count ?? 1),
-            ]);
+        $hoopsByVenue = $court !== null
+            ? collect([$court->venue_id => (int) ($court->hoops_count ?? ($court->supports_halves ? 2 : 1))])
+            : Venue::query()
+                ->with('characteristics')
+                ->whereKey($venues->pluck('id'))
+                ->get()
+                ->mapWithKeys(fn (Venue $venue): array => [
+                    $venue->id => (int) ($venue->characteristics?->hoops_count ?? 1),
+                ]);
         $rentalPolicies = VenueBookingPolicy::query()
             ->whereIn('venue_id', $venues->pluck('id'))
             ->where('active_marker', true)
@@ -234,7 +271,7 @@ final class EventWizardController extends Controller
             ->keyBy('venue_id');
 
         return response()->json([
-            'venues' => $venues->map(function ($venue) use ($amounts, $availableScopes, $durationMinutes, $hoopsByVenue, $rentalPolicies): array {
+            'venues' => $venues->map(function ($venue) use ($amounts, $availableScopes, $court, $durationMinutes, $hoopsByVenue, $rentalPolicies): array {
                 $policy = $rentalPolicies->get($venue->id);
                 $scopes = array_values(array_unique($availableScopes[$venue->id] ?? []));
                 if ($policy !== null) {
@@ -245,6 +282,17 @@ final class EventWizardController extends Controller
                         $allowedScopes = array_values(array_diff($allowedScopes, ['whole']));
                     }
                     $scopes = array_values(array_intersect($scopes, $allowedScopes));
+                }
+                if ($court !== null && (int) $court->venue_id === (int) $venue->id) {
+                    $courtScopes = [];
+                    if ($court->allows_whole) {
+                        $courtScopes[] = VenueBookingScopeEnum::WHOLE->value;
+                    }
+                    if ($court->supports_halves && $court->allows_halves) {
+                        $courtScopes[] = VenueBookingScopeEnum::HALF_A->value;
+                        $courtScopes[] = VenueBookingScopeEnum::HALF_B->value;
+                    }
+                    $scopes = array_values(array_intersect($scopes, $courtScopes));
                 }
                 $steps = $policy !== null && $durationMinutes !== null && $policy->acceptsDuration($durationMinutes)
                     ? intdiv($durationMinutes, $policy->time_step_minutes)
@@ -267,9 +315,13 @@ final class EventWizardController extends Controller
                     'tags' => $venue->tags,
                     'latitude' => $venue->latitude,
                     'longitude' => $venue->longitude,
-                    'url' => route('venues.show', $venue->routeIdentifier()),
+                    'url' => $court !== null && ! $court->is_primary
+                        ? route('venues.courts.show', [$venue->routeIdentifier(), $court->routeIdentifier()])
+                        : route('venues.show', $venue->routeIdentifier()),
                     'preview_url' => route('venues.preview', $venue->routeIdentifier()),
                     'hoops_count' => $hoopsByVenue->get($venue->id, 1),
+                    'venue_court_id' => $court !== null && (int) $court->venue_id === (int) $venue->id ? (int) $court->id : null,
+                    'venue_court_name' => $court !== null && (int) $court->venue_id === (int) $venue->id ? $court->name : null,
                     'available_scopes' => $scopes,
                     'rental_policy' => $policy === null ? null : [
                         'currency' => $policy->currency,
@@ -284,6 +336,22 @@ final class EventWizardController extends Controller
                 ];
             })->all(),
         ]);
+    }
+
+    private function requestedCourt(?int $venueId, ?int $courtId): ?VenueCourt
+    {
+        if ($courtId === null) {
+            return null;
+        }
+
+        $court = VenueCourt::query()->find($courtId);
+        if ($venueId === null || $court === null || (int) $court->venue_id !== $venueId) {
+            throw ValidationException::withMessages([
+                'venue_court_id' => 'Выбранный зал не относится к выбранной площадке.',
+            ]);
+        }
+
+        return $court;
     }
 
     /** @return Collection<int, int> */
