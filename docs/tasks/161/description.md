@@ -120,14 +120,15 @@ N+1. Только чтение — новые блокировки и риск d
 - [x] server trust resolver и API contract;
 - [x] warning/modal и использование существующего полного renderer карточек;
 - [x] privacy/regression tests;
-- [ ] PR, CI, merge и production smoke.
+- [x] PR, CI, merge и production smoke.
 
 ## PR и deployment
 
 - Branch: `feature/161`, создана от `main` после merge Task 160
 - PR: `#159`
-- Merge: ожидается
-- Production deploy: ожидается
+- CI: успешно, GitHub Actions run `34420885067`
+- Merge: `164f8374c61b87a2b437afb518932c64ebb038cf`
+- Production deploy: успешно, GitHub Actions run `34421031292`
 
 ## Проверки
 
@@ -135,3 +136,16 @@ N+1. Только чтение — новые блокировки и риск d
 - full backend: 774 tests / 5429 assertions;
 - PHP formatter: успешно;
 - frontend production build: успешно.
+
+## Production smoke
+
+- production checkout соответствует merge SHA `164f8374c61b87a2b437afb518932c64ebb038cf`;
+- migration Task 160 имеет статус `Ran`, административный PATCH-маршрут зарегистрирован;
+- публичная страница площадки и activities endpoint отвечают `200`;
+- реальная площадка без активного ownership возвращает
+  `information_trusted=false` и `information_warning=true`;
+- production HTML содержит доступный dialog, а актуальный JS bundle — warning и
+  trigger «Уточнить»;
+- trusted-границы 70/100, inactive ownership и privacy подтверждены полным suite;
+- интерактивный browser-smoke не выполнялся: в текущей сессии не был доступен ни
+  встроенный браузер, ни подключённый Chrome.
