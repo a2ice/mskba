@@ -180,7 +180,7 @@ final class UpdateEventHandler
                 'description' => $data['description'] ?? null,
                 'max_participants' => $maxParticipants,
                 'venue_id' => $targetVenue->id,
-                'venue_court_id' => $targetCourt->id,
+                'venue_court_id' => $bookingDataProvided ? $targetCourt->id : $event->venue_court_id,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'participation_confirmation_version' => $bookingChanged
