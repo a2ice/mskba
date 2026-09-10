@@ -10,6 +10,7 @@ use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueRevision;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
@@ -23,6 +24,7 @@ class MediaServiceProvider extends ServiceProvider
             'event' => Event::class,
             'game' => Game::class,
             'venue' => Venue::class,
+            'venue_court' => VenueCourt::class,
             'venue_revision' => VenueRevision::class,
             'content_item' => ContentItem::class,
             'team' => Team::class,
