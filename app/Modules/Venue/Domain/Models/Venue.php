@@ -75,6 +75,10 @@ class Venue extends Model
                 'sort_order' => 10,
                 'is_primary' => true,
                 'supports_halves' => false,
+                'hoops_count' => null,
+                'surface_type' => null,
+                'allows_whole' => true,
+                'allows_halves' => false,
             ]);
         });
     }
