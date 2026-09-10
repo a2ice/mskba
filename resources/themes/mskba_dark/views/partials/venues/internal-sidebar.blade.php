@@ -18,6 +18,12 @@
 
         @if($venue->allowsOperationalChanges())
             <a
+                href="{{ route('account.venues.courts.index', $venue->routeIdentifier()) }}"
+                @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'courts'])
+                @if(($venueSidebarActive ?? null) === 'courts') aria-current="page" @endif
+            >Залы</a>
+
+            <a
                 href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}"
                 @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'schedule'])
                 @if(($venueSidebarActive ?? null) === 'schedule') aria-current="page" @endif
