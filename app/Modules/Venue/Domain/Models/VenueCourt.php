@@ -2,11 +2,13 @@
 
 namespace App\Modules\Venue\Domain\Models;
 
+use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
@@ -28,6 +30,11 @@ final class VenueCourt extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function media(): MorphMany
+    {
+        return $this->morphMany(Media::class, 'mediable');
     }
 
     public function routeIdentifier(): string

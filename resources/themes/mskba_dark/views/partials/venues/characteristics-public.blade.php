@@ -16,6 +16,7 @@
     $courtCount = count($courts);
     $hoopsCount = $selectedCourt['hoopsCount'] ?? $characteristics?->hoops_count;
     $surfaceLabel = $selectedCourt['surfaceLabel'] ?? null;
+    $pickerId = 'venue-court-picker-'.$venue->id;
 @endphp
 
 @if($characteristics !== null || $selectedCourt !== null)
@@ -27,29 +28,25 @@
         <div class="venue-characteristics-public__grid">
             @if($selectedCourt !== null)
                 <article class="venue-characteristics-public__court-card">
-                    <i class="ti ti-building-arena" aria-hidden="true"></i>
+                    <i class="ti ti-layout-grid" aria-hidden="true"></i>
                     <span>Количество залов</span>
                     <div class="venue-characteristics-public__court-value">
                         <strong>{{ $courtCount }}</strong>
                         @if($courtCount > 1)
-                            <label class="visually-hidden" for="venue-characteristics-court-selector-{{ $venue->id }}">Выберите зал</label>
-                            <select
-                                id="venue-characteristics-court-selector-{{ $venue->id }}"
-                                class="venue-characteristics-public__court-select"
-                                data-venue-court-selector
-                                aria-label="Выберите зал. Сейчас: {{ $selectedCourt['name'] }}"
+                            <button
+                                type="button"
+                                class="venue-characteristics-public__court-trigger"
+                                aria-label="Выбрать зал. Сейчас: {{ $selectedCourt['name'] }}"
+                                title="Сейчас: {{ $selectedCourt['name'] }}"
+                                data-tooltip-variant="title"
+                                data-venue-court-picker-trigger
+                                data-handler="modal"
+                                data-modal-action="open"
+                                data-modal-target="{{ $pickerId }}"
                             >
-                                @foreach($courts as $court)
-                                    @php
-                                        $courtUrl = $court['isPrimary']
-                                            ? route('venues.show', $venue->routeIdentifier())
-                                            : route('venues.courts.show', [$venue->routeIdentifier(), $court['routeIdentifier']]);
-                                    @endphp
-                                    <option value="{{ $courtUrl }}" @selected((int) $court['id'] === (int) $selectedCourt['id'])>
-                                        {{ $court['name'] }}{{ $court['isPrimary'] ? ' · основной' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
+                                Выбрать зал
+                                <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                            </button>
                         @endif
                     </div>
                 </article>
@@ -105,8 +102,11 @@
         .venue-characteristics-public__grid strong{font-size:14px}
         .venue-characteristics-public__court-card{grid-template-rows:auto auto}
         .venue-characteristics-public__court-value{display:flex;align-items:center;gap:9px;min-width:0}
-        .venue-characteristics-public__court-select{min-width:0;max-width:220px;height:31px;padding:4px 28px 4px 9px;border:1px solid var(--line-strong);border-radius:9px;background:var(--field);color:var(--text);font:inherit;font-size:12px;font-weight:700}
-        @media(max-width:780px){.venue-characteristics-public__grid{grid-template-columns:1fr}.venue-characteristics-public__court-select{max-width:min(70vw,260px)}}
+        .venue-characteristics-public__court-trigger{display:inline-flex;align-items:center;gap:5px;border:0;padding:0;color:var(--accent-text);background:transparent;font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+        .venue-characteristics-public__court-trigger i{grid-row:auto;color:currentColor;font-size:14px}
+        .venue-characteristics-public__court-trigger:hover,.venue-characteristics-public__court-trigger:focus-visible{color:#fff;outline:none}
+        .venue-characteristics-public__court-trigger.ui-tooltip-source--title{text-decoration:none}
+        @media(max-width:780px){.venue-characteristics-public__grid{grid-template-columns:1fr}}
     </style>
 
     <script>

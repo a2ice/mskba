@@ -7,6 +7,7 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\VenueCourtGalleryManager;
 use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -26,17 +27,22 @@ final class VenueCourtController extends Controller
         string $venue,
         CurrentActorResolver $actors,
         VenueAccessResolver $access,
+        VenueCourtGalleryManager $gallery,
     ): Response {
         $venueModel = $this->managedVenue($request, $venue, $actors, $access);
         $venueModel->load(['courts', 'characteristics']);
         $policy = $this->activePolicy($venueModel);
         $parentHoops = (int) ($venueModel->characteristics?->hoops_count ?? 1);
         $parentHoops = in_array($parentHoops, [1, 2], true) ? $parentHoops : 1;
+        $courtPhotos = $venueModel->courts
+            ->mapWithKeys(fn (VenueCourt $court): array => [$court->id => $gallery->gallery($court)])
+            ->all();
 
         return ThemeResolver::page('venues.courts', [
             'venue' => $venueModel,
             'courts' => $venueModel->courts,
             'surfaceTypes' => VenueSurfaceTypeEnum::cases(),
+            'courtPhotos' => $courtPhotos,
             'courtDefaults' => [
                 'hoops_count' => $parentHoops,
                 'allows_whole' => $policy?->allows_whole ?? true,

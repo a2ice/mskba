@@ -47,6 +47,11 @@ final class ShowVenueHandler
             ->with([
                 'creatorActor',
                 'courts',
+                'courts.media' => fn ($query) => $query
+                    ->where('collection', 'gallery')
+                    ->orderByDesc('is_featured')
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
                 'characteristics',
                 'location.address',
                 'location.metroStations.line',
@@ -95,6 +100,13 @@ final class ShowVenueHandler
 
         $courts = $venue->courts->values();
         $selectedCourt = $this->resolveCourt($venue, $courts, $courtIdentifier);
+        $selectedCourt->loadMissing([
+            'media' => fn ($query) => $query
+                ->where('collection', 'gallery')
+                ->orderByDesc('is_featured')
+                ->orderBy('sort_order')
+                ->orderBy('id'),
+        ]);
         $parentHoops = (int) ($venue->characteristics?->hoops_count ?? 0);
         $parentHoops = in_array($parentHoops, [1, 2], true) ? $parentHoops : null;
         $courtPayloads = $courts
@@ -116,7 +128,8 @@ final class ShowVenueHandler
             ))
             ->values()
             ->all();
-        $featuredMedia = $venue->media
+        $mediaSource = $selectedCourt->media->isNotEmpty() ? $selectedCourt->media : $venue->media;
+        $featuredMedia = $mediaSource
             ->take(8)
             ->map(fn (Media $media) => [
                 'id' => (int) $media->id,

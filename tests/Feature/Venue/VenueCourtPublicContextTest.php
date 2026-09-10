@@ -17,7 +17,7 @@ final class VenueCourtPublicContextTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_non_primary_court_has_public_url_selector_and_own_characteristics(): void
+    public function test_non_primary_court_has_compact_picker_and_own_characteristics(): void
     {
         $venue = Venue::factory()->create([
             'name' => 'Кампус на Яхромской',
@@ -27,13 +27,14 @@ final class VenueCourtPublicContextTest extends TestCase
         $venue->characteristics()->create(['hoops_count' => 2]);
         $primary = $venue->primaryCourt()->firstOrFail();
         $primary->update([
+            'name' => 'Универсальный зал 1',
             'hoops_count' => 2,
             'supports_halves' => true,
             'surface_type' => VenueSurfaceTypeEnum::PARQUET,
         ]);
         $second = VenueCourt::query()->create([
             'venue_id' => $venue->id,
-            'name' => 'Малый зал',
+            'name' => 'Малый зал с очень длинным названием',
             'alias' => 'malyi-zal',
             'sort_order' => 20,
             'is_primary' => false,
@@ -44,15 +45,77 @@ final class VenueCourtPublicContextTest extends TestCase
             'allows_halves' => false,
         ]);
 
-        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]))
+        $response = $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]))
             ->assertOk()
             ->assertSee('Количество залов')
             ->assertSee('Количество колец')
             ->assertSee('Резиновое покрытие')
-            ->assertSee('Малый зал')
-            ->assertSee('data-venue-court-selector', false)
+            ->assertSee('2 зала')
+            ->assertSee('Выбрать зал')
+            ->assertSee('data-venue-court-picker-trigger', false)
+            ->assertSee('data-modal="venue-court-picker-'.$venue->id.'"', false)
+            ->assertSee('ti-layout-grid', false)
+            ->assertDontSee('data-venue-court-selector', false)
+            ->assertSee('Универсальный зал 1')
+            ->assertSee('Малый зал с очень длинным названием')
             ->assertSee(route('venues.show', $venue->routeIdentifier()), false)
             ->assertSee(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]), false);
+
+        $response->assertSee('Основной');
+    }
+
+    public function test_selected_court_photos_override_venue_gallery_and_empty_court_falls_back_to_venue_gallery(): void
+    {
+        $venue = Venue::factory()->create(['status' => VenueStatusEnum::CONFIRMED]);
+        $primary = $venue->primaryCourt()->firstOrFail();
+        $parentPhoto = $venue->media()->create([
+            'collection' => 'gallery',
+            'source' => 'upload',
+            'disk' => 'public',
+            'path' => 'venues/parent.webp',
+            'mime' => 'image/webp',
+            'size' => 100,
+            'is_featured' => true,
+            'sort_order' => 0,
+        ]);
+
+        $this->get(route('venues.show', $venue->routeIdentifier()))
+            ->assertOk()
+            ->assertSee($parentPhoto->publicUrl(), false);
+
+        $second = VenueCourt::query()->create([
+            'venue_id' => $venue->id,
+            'name' => 'Зал 2',
+            'alias' => 'zal-2',
+            'sort_order' => 20,
+            'is_primary' => false,
+            'hoops_count' => 2,
+            'supports_halves' => true,
+            'allows_whole' => true,
+            'allows_halves' => true,
+        ]);
+
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]))
+            ->assertOk()
+            ->assertSee($parentPhoto->publicUrl(), false);
+
+        $courtPhoto = $second->media()->create([
+            'collection' => 'gallery',
+            'source' => 'upload',
+            'disk' => 'public',
+            'path' => 'venues/'.$venue->id.'/courts/'.$second->id.'/court.webp',
+            'mime' => 'image/webp',
+            'size' => 100,
+            'is_featured' => true,
+            'sort_order' => 0,
+        ]);
+
+        $this->get(route('venues.courts.show', [$venue->routeIdentifier(), $second->routeIdentifier()]))
+            ->assertOk()
+            ->assertSee($courtPhoto->publicUrl(), false)
+            ->assertDontSee($parentPhoto->publicUrl(), false);
+
+        $this->assertNotNull($primary);
     }
 
     public function test_primary_court_nested_url_redirects_to_canonical_venue_url(): void
