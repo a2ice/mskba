@@ -33,10 +33,15 @@ final class VenueCourtServiceProvider extends RouteServiceProvider
                     ->name('account.venues.courts.destroy');
 
                 Route::post('/account/venues/{venue}/courts/{court}/photos', [VenueCourtPhotoController::class, 'store'])
+                    ->middleware('throttle:10,1')
                     ->name('account.venues.courts.photos.store');
                 Route::patch('/account/venues/{venue}/courts/{court}/photos/{photo}/activate', [VenueCourtPhotoController::class, 'activate'])
+                    ->middleware('throttle:20,1')
+                    ->whereNumber('photo')
                     ->name('account.venues.courts.photos.activate');
                 Route::delete('/account/venues/{venue}/courts/{court}/photos/{photo}', [VenueCourtPhotoController::class, 'destroy'])
+                    ->middleware('throttle:20,1')
+                    ->whereNumber('photo')
                     ->name('account.venues.courts.photos.destroy');
             });
         });
