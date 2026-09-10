@@ -14,8 +14,8 @@
 - [x] Сохранить auto-suffix alias при создании залов.
 - [x] Протащить preset `venue_court_id` через Event wizard и сбрасывать его при смене Venue.
 - [x] Добавить regression tests управления и публичного court-контекста.
-- [ ] Локальный/CI PHP test suite green.
-- [ ] Frontend build green.
-- [ ] PR review/CI green.
-- [ ] Merge в `main`.
-- [ ] Production deploy green.
+- [x] Локальный/CI PHP test suite green.
+- [x] Frontend build green.
+- [x] PR review/CI green.
+- [x] Merge в `main`.
+- [x] Production deploy green.
