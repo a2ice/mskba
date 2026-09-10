@@ -8,31 +8,105 @@ final class SafeAuthenticationRedirectResolver
 {
     public function resolve(Request $request, mixed $requestedUrl, ?string $fallbackUrl = null): string
     {
-        if (is_string($requestedUrl)) {
-            $requestedUrl = trim($requestedUrl);
+        $plannedUrl = $this->peek($request, $requestedUrl);
 
-            if (str_starts_with($requestedUrl, '/') && ! str_starts_with($requestedUrl, '//')) {
-                return url($requestedUrl);
-            }
+        if ($plannedUrl !== null) {
+            $this->forgetIntended($request);
 
-            if ($this->isSameOriginUrl($requestedUrl)) {
-                return $requestedUrl;
-            }
+            return $plannedUrl;
         }
 
-        $intendedUrl = $request->session()->pull('url.intended');
-
-        if (is_string($intendedUrl) && $this->isSameOriginUrl($intendedUrl)) {
-            return $intendedUrl;
-        }
-
-        if ($fallbackUrl !== null && $this->isSameOriginUrl($fallbackUrl)) {
+        $fallbackUrl = $this->normalizeReturnUrl($fallbackUrl);
+        if ($fallbackUrl !== null) {
             return $fallbackUrl;
         }
 
-        $redirectedFrom = url()->previous();
+        $redirectedFrom = $this->normalizeReturnUrl(url()->previous());
 
-        return $this->isSameOriginUrl($redirectedFrom) ? $redirectedFrom : url('/');
+        return $redirectedFrom ?? url('/');
+    }
+
+    public function resolvePreservingIntended(
+        Request $request,
+        mixed $requestedUrl,
+        ?string $fallbackUrl = null,
+    ): string {
+        $plannedUrl = $this->peek($request, $requestedUrl);
+
+        if ($plannedUrl !== null) {
+            return $plannedUrl;
+        }
+
+        $fallbackUrl = $this->normalizeReturnUrl($fallbackUrl);
+        if ($fallbackUrl !== null) {
+            return $fallbackUrl;
+        }
+
+        $redirectedFrom = $this->normalizeReturnUrl(url()->previous());
+
+        return $redirectedFrom ?? url('/');
+    }
+
+    public function peek(Request $request, mixed $requestedUrl = null): ?string
+    {
+        $requestedUrl = $this->normalizeReturnUrl($requestedUrl);
+        if ($requestedUrl !== null) {
+            return $requestedUrl;
+        }
+
+        return $this->normalizeReturnUrl($request->session()->get('url.intended'));
+    }
+
+    public function rememberIntended(Request $request, mixed $requestedUrl): ?string
+    {
+        $requestedUrl = $this->normalizeReturnUrl($requestedUrl);
+        if ($requestedUrl === null) {
+            return null;
+        }
+
+        $request->session()->put('url.intended', $requestedUrl);
+
+        return $requestedUrl;
+    }
+
+    public function forgetIntended(Request $request): void
+    {
+        $request->session()->forget('url.intended');
+    }
+
+    private function normalizeReturnUrl(mixed $url): ?string
+    {
+        if (! is_string($url)) {
+            return null;
+        }
+
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        if (str_starts_with($url, '/') && ! str_starts_with($url, '//')) {
+            $url = url($url);
+        }
+
+        if (! $this->isSameOriginUrl($url) || $this->isAuthenticationEntryUrl($url)) {
+            return null;
+        }
+
+        return $url;
+    }
+
+    private function isAuthenticationEntryUrl(string $url): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        if (! is_string($path) || $path === '') {
+            return false;
+        }
+
+        $path = '/'.ltrim(rtrim($path, '/'), '/');
+
+        return in_array($path, ['/login', '/register', '/logout', '/auth'], true)
+            || str_starts_with($path, '/auth/');
     }
 
     private function isSameOriginUrl(string $url): bool
