@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -24,37 +23,10 @@ return new class extends Migration
             $table->index(['venue_court_id', 'status', 'starts_at'], 'events_court_lookup');
         });
 
-        $primaryCourts = DB::table('venue_courts')
-            ->where('is_primary', true)
-            ->whereNull('deleted_at')
-            ->pluck('id', 'venue_id');
-
-        foreach ($primaryCourts as $venueId => $courtId) {
-            DB::table('venue_booking_quotes')
-                ->where('venue_id', $venueId)
-                ->whereNull('venue_court_id')
-                ->update(['venue_court_id' => $courtId]);
-            DB::table('venue_bookings')
-                ->where('venue_id', $venueId)
-                ->whereNull('venue_court_id')
-                ->update(['venue_court_id' => $courtId]);
-            DB::table('events')
-                ->where('venue_id', $venueId)
-                ->whereNull('venue_court_id')
-                ->update(['venue_court_id' => $courtId]);
-        }
-
-        DB::table('events')
-            ->whereNotNull('booking_id')
-            ->orderBy('id')
-            ->chunkById(500, function ($events): void {
-                foreach ($events as $event) {
-                    $courtId = DB::table('venue_bookings')->where('id', $event->booking_id)->value('venue_court_id');
-                    if ($courtId !== null) {
-                        DB::table('events')->where('id', $event->id)->update(['venue_court_id' => $courtId]);
-                    }
-                }
-            });
+        // Historical rows predate VenueCourt and therefore do not contain reliable
+        // physical-hall identity. Keep them NULL deliberately: application conflict
+        // resolution treats NULL as venue-wide, preventing false availability after
+        // the migration. New quote/booking/event flows always persist a concrete court.
     }
 
     public function down(): void
