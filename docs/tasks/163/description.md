@@ -16,9 +16,9 @@ Task 162 вводит `VenueCourt` как самостоятельный физ�
 - `venue_bookings`;
 - `events`.
 
-Существующие записи backfill-ятся primary court соответствующего Venue. Для событий, созданных из booking-first flow, court дополнительно синхронизируется из связанной брони.
+Исторические строки намеренно **не backfill-ятся** primary court: до появления `VenueCourt` приложение не знало, в каком физическом зале была бронь или Event, и автоматическое присваивание primary court создало бы ложную точность. Такие строки остаются `NULL` и трактуются консервативно как venue-wide.
 
-Колонки остаются nullable на уровне БД как migration bridge: старая/неоднозначная запись без court трактуется консервативно как venue-wide и конфликтует с каждым court. Новые штатные flows должны записывать court.
+Колонки остаются nullable на уровне БД как migration bridge и для неоднозначного исторического состояния. Новые штатные flows должны записывать конкретный court; Event, созданный из новой booking-first брони, наследует court из неё.
 
 ## Availability/conflicts
 
@@ -69,7 +69,7 @@ Immutable quote snapshot schema v2 фиксирует:
 ## Events
 
 - обычное создание Event использует выбранный `venue_court_id` либо primary court;
-- legacy event booking получает тот же court;
+- новая legacy-style event booking получает тот же court;
 - Event, созданный после подтверждения rental booking, наследует court из booking;
 - изменение свободного Event может менять court вместе с venue/time с повторной проверкой availability;
 - booking-backed Event нельзя произвольно переносить между courts в обход booking lifecycle.
@@ -84,6 +84,7 @@ Availability projection принимает `venue_court_id` и возвраща�
 
 - court всегда проверяется на принадлежность выбранному Venue;
 - soft-deleted court нельзя выбрать;
+- court с существующими booking/event/quote references нельзя удалить из управления залами;
 - чужой court не должен позволять обойти conflict checks;
 - существующие privacy rules Event не меняются.
 
@@ -94,6 +95,7 @@ Availability projection принимает `venue_court_id` и возвраща�
 - HALF_A/HALF_B сохраняют старую conflict matrix внутри court;
 - half запрещён, если selected court не поддерживает halves;
 - quote/request/event сохраняют один и тот же court;
-- legacy NULL court безопасно конфликтует со всеми courts;
-- старые callers без court продолжают работать через primary court;
+- исторические строки после migration остаются NULL и безопасно конфликтуют со всеми courts;
+- старые callers без court продолжают работать через primary court для новых операций;
+- referenced court нельзя удалить и тем самым осиротить booking/event history;
 - regression suite и CI зелёные.
