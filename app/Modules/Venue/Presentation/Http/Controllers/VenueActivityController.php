@@ -10,13 +10,14 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
+use App\Modules\Venue\Application\Services\VenueInformationTrustResolver;
 use App\Modules\Venue\Domain\Models\Venue;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 
 final class VenueActivityController extends Controller
 {
-    public function __invoke(string $venue): JsonResponse
+    public function __invoke(string $venue, VenueInformationTrustResolver $trustResolver): JsonResponse
     {
         $venueModel = Venue::query()
             ->whereRouteIdentifier($venue)
@@ -58,10 +59,13 @@ final class VenueActivityController extends Controller
         $activities = collect([...$events, ...$tournaments])
             ->sortBy(fn (array $activity): string => $activity['sort_at'])
             ->values();
+        $informationTrusted = $trustResolver->isTrusted($venueModel);
 
         return response()->json([
             'venue_id' => (int) $venueModel->id,
             'operational_status' => $venueModel->operational_status->value,
+            'information_trusted' => $informationTrusted,
+            'information_warning' => ! $informationTrusted,
             'current' => $activities->where('is_current', true)->values()->all(),
             'upcoming' => $activities->where('is_current', false)->take(8)->values()->all(),
             'generated_at' => $now->toISOString(),
@@ -105,7 +109,9 @@ final class VenueActivityController extends Controller
         $starts = $tournament->starts_on?->startOfDay();
         $ends = $tournament->ends_on?->endOfDay();
         $liveMatch = $tournament->matches
-            ->first(fn ($match): bool => $match->game?->actual_started_at !== null && $match->game?->actual_ended_at === null);
+            ->first(fn ($match): bool => $this->isPublicEvent($match->game?->event)
+                && $match->game?->actual_started_at !== null
+                && $match->game?->actual_ended_at === null);
         $liveGame = $liveMatch?->game;
         $isLive = $liveGame !== null;
         $isCurrent = $isLive || ($starts?->lessThanOrEqualTo($now) && $ends?->greaterThanOrEqualTo($now));
@@ -163,5 +169,11 @@ final class VenueActivityController extends Controller
                 ],
             ],
         ];
+    }
+
+    private function isPublicEvent(?Event $event): bool
+    {
+        return $event?->status === EventStatusEnum::PUBLISHED
+            && $event?->visibility === EventVisibilityEnum::PUBLIC;
     }
 }

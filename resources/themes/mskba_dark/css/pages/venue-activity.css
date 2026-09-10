@@ -21,6 +21,34 @@
     gap: 20px;
 }
 
+.venue-activities__warning {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px solid rgba(236, 127, 18, .42);
+    border-radius: var(--radius-control);
+    padding: 14px 16px;
+    background: rgba(236, 127, 18, .08);
+}
+
+.venue-activities__warning > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    color: rgba(247, 243, 234, .84);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.venue-activities__warning > div i {
+    flex: 0 0 auto;
+    color: var(--accent-text);
+    font-size: 20px;
+}
+
 .venue-activities__group {
     display: grid;
     gap: 12px;
@@ -216,6 +244,15 @@
     .venue-activities__list,
     .venue-activities__group--current .venue-activities__list {
         grid-template-columns: 1fr;
+    }
+
+    .venue-activities__warning {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .venue-activities__warning .btn {
+        width: 100%;
     }
 
     .venue-activity-card {
