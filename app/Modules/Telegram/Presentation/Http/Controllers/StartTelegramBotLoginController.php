@@ -32,7 +32,11 @@ final class StartTelegramBotLoginController extends Controller
 
         $challenge = $challenges->create(
             $browserKey,
-            $redirects->resolve($request, $validated['redirect_to'] ?? null, route('account')),
+            $redirects->resolvePreservingIntended(
+                $request,
+                $validated['redirect_to'] ?? null,
+                route('account'),
+            ),
         );
 
         return response()->json([
