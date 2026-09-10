@@ -21,6 +21,13 @@ final class TournamentMatchSchedulingController extends Controller
     {
         $data = $request->validate([
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
+            'venue_court_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('venue_courts', 'id')->where(fn ($query) => $query
+                    ->where('venue_id', (int) $request->input('venue_id'))
+                    ->whereNull('deleted_at')),
+            ],
             'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
@@ -46,6 +53,13 @@ final class TournamentMatchSchedulingController extends Controller
     {
         $data = $request->validate([
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
+            'venue_court_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('venue_courts', 'id')->where(fn ($query) => $query
+                    ->where('venue_id', (int) $request->input('venue_id'))
+                    ->whereNull('deleted_at')),
+            ],
             'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
