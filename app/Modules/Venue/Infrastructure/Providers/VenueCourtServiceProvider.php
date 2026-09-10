@@ -3,6 +3,7 @@
 namespace App\Modules\Venue\Infrastructure\Providers;
 
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtPhotoController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCourtPublicController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,13 @@ final class VenueCourtServiceProvider extends RouteServiceProvider
                     ->name('account.venues.courts.primary');
                 Route::delete('/account/venues/{venue}/courts/{court}', [VenueCourtController::class, 'destroy'])
                     ->name('account.venues.courts.destroy');
+
+                Route::post('/account/venues/{venue}/courts/{court}/photos', [VenueCourtPhotoController::class, 'store'])
+                    ->name('account.venues.courts.photos.store');
+                Route::patch('/account/venues/{venue}/courts/{court}/photos/{photo}/activate', [VenueCourtPhotoController::class, 'activate'])
+                    ->name('account.venues.courts.photos.activate');
+                Route::delete('/account/venues/{venue}/courts/{court}/photos/{photo}', [VenueCourtPhotoController::class, 'destroy'])
+                    ->name('account.venues.courts.photos.destroy');
             });
         });
     }
