@@ -148,6 +148,20 @@
     font-weight: 900;
 }
 
+.venue-section .venue-hero__media-status {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .24);
+    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.venue-section .venue-hero__media-status:hover,
+.venue-section .venue-hero__media-status:focus-within {
+    border-color: #fff;
+    background: rgba(8, 10, 8, .72);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
+}
+
 .venue-hero__media-status .venue-opening-state {
     min-width: 20px;
     min-height: 28px;
