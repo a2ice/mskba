@@ -125,7 +125,7 @@ N+1. Только чтение — новые блокировки и риск d
 ## PR и deployment
 
 - Branch: `feature/161`, создана от `main` после merge Task 160
-- PR: ожидается
+- PR: `#159`
 - Merge: ожидается
 - Production deploy: ожидается
 
