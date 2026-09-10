@@ -159,6 +159,10 @@ final class VenueCourtController extends Controller
                     throw new \DomainException('У площадки должен оставаться хотя бы один зал.');
                 }
 
+                if ($this->courtHasReferences($courtModel)) {
+                    throw new \DomainException('Нельзя удалить зал, пока с ним связаны бронирования или мероприятия.');
+                }
+
                 $wasPrimary = (bool) $courtModel->is_primary;
                 $courtModel->delete();
 
@@ -201,6 +205,13 @@ final class VenueCourtController extends Controller
             ->where('venue_id', $venue->id)
             ->whereRouteIdentifier($identifier)
             ->firstOrFail();
+    }
+
+    private function courtHasReferences(VenueCourt $court): bool
+    {
+        return DB::table('venue_booking_quotes')->where('venue_court_id', $court->id)->exists()
+            || DB::table('venue_bookings')->where('venue_court_id', $court->id)->exists()
+            || DB::table('events')->where('venue_court_id', $court->id)->exists();
     }
 
     private function uniqueAlias(
