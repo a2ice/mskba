@@ -2,6 +2,7 @@
 
 namespace App\Modules\Venue\Domain\Models;
 
+use App\Modules\Venue\Domain\Enums\VenueSurfaceTypeEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'sort_order',
     'is_primary',
     'supports_halves',
+    'hoops_count',
+    'surface_type',
+    'allows_whole',
+    'allows_halves',
 ])]
 final class VenueCourt extends Model
 {
@@ -47,12 +52,21 @@ final class VenueCourt extends Model
         return $query->where('alias', $identifier);
     }
 
+    public function allowsScope(bool $whole): bool
+    {
+        return $whole ? $this->allows_whole : ($this->supports_halves && $this->allows_halves);
+    }
+
     protected function casts(): array
     {
         return [
             'sort_order' => 'integer',
             'is_primary' => 'boolean',
             'supports_halves' => 'boolean',
+            'hoops_count' => 'integer',
+            'surface_type' => VenueSurfaceTypeEnum::class,
+            'allows_whole' => 'boolean',
+            'allows_halves' => 'boolean',
         ];
     }
 }
