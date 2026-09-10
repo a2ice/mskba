@@ -8,6 +8,7 @@ use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
@@ -18,10 +19,13 @@ final class VenueEventAvailability
         CarbonImmutable $startsAt,
         ?int $durationMinutes = null,
         ?int $excludedBookingId = null,
+        ?VenueCourt $court = null,
     ): CarbonImmutable {
+        $court = $this->resolveCourt($venue, $court);
+
         if ($durationMinutes !== null) {
             $endsAt = $startsAt->addMinutes($durationMinutes);
-            $this->assertAvailable($venue, $startsAt, $endsAt, $excludedBookingId);
+            $this->assertAvailable($venue, $startsAt, $endsAt, $excludedBookingId, court: $court);
 
             return $endsAt;
         }
@@ -65,6 +69,9 @@ final class VenueEventAvailability
 
         $nextBookingStart = VenueBooking::query()
             ->where('venue_id', $venue->id)
+            ->when($court !== null, fn ($query) => $query->where(function ($query) use ($court): void {
+                $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
+            }))
             ->when(
                 $excludedBookingId !== null,
                 fn ($query) => $query->whereKeyNot($excludedBookingId),
@@ -92,7 +99,7 @@ final class VenueEventAvailability
             throw new InvalidArgumentException('После выбранного времени нет свободного интервала.');
         }
 
-        $this->assertAvailable($venue, $startsAt, $endsAt, $excludedBookingId);
+        $this->assertAvailable($venue, $startsAt, $endsAt, $excludedBookingId, court: $court);
 
         return $endsAt;
     }
@@ -104,9 +111,18 @@ final class VenueEventAvailability
         ?int $excludedBookingId = null,
         bool $checkBookings = true,
         VenueBookingScopeEnum $scope = VenueBookingScopeEnum::WHOLE,
+        ?VenueCourt $court = null,
     ): void {
-        if ($scope !== VenueBookingScopeEnum::WHOLE && (int) $venue->characteristics()->value('hoops_count') < 2) {
-            throw new InvalidArgumentException('Выбранная площадка не поддерживает бронирование отдельных половин.');
+        $court = $this->resolveCourt($venue, $court);
+
+        if ($scope !== VenueBookingScopeEnum::WHOLE) {
+            $supportsHalves = $court !== null
+                ? $court->supports_halves
+                : (int) $venue->characteristics()->value('hoops_count') >= 2;
+
+            if (! $supportsHalves) {
+                throw new InvalidArgumentException('Выбранный зал не поддерживает бронирование отдельных половин.');
+            }
         }
 
         if ($venue->status !== VenueStatusEnum::CONFIRMED) {
@@ -169,6 +185,9 @@ final class VenueEventAvailability
 
         $hasOverlap = $checkBookings && VenueBooking::query()
             ->where('venue_id', $venue->id)
+            ->when($court !== null, fn ($query) => $query->where(function ($query) use ($court): void {
+                $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
+            }))
             ->when(
                 $excludedBookingId !== null,
                 fn ($query) => $query->whereKeyNot($excludedBookingId),
@@ -184,6 +203,19 @@ final class VenueEventAvailability
         if ($hasOverlap) {
             throw new InvalidArgumentException('Выбранное время уже занято другим мероприятием.');
         }
+    }
+
+    private function resolveCourt(Venue $venue, ?VenueCourt $court): ?VenueCourt
+    {
+        if ($court !== null) {
+            if ($court->venue_id !== $venue->id || $court->trashed()) {
+                throw new InvalidArgumentException('Выбранный зал не относится к этой площадке.');
+            }
+
+            return $court;
+        }
+
+        return $venue->primaryCourt()->first() ?? $venue->courts()->first();
     }
 
     private function normalizeTime(string $value): string

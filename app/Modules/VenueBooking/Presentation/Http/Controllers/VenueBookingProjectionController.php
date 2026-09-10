@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\Queries\GetBookingTimeline;
 use App\Modules\VenueBooking\Application\Queries\GetVenueAvailability;
 use App\Modules\VenueBooking\Application\Queries\ListOwnerBookingInbox;
@@ -24,9 +25,28 @@ final class VenueBookingProjectionController extends Controller
 {
     public function availability(Request $request, Venue $venue, GetVenueAvailability $query): JsonResponse
     {
-        $validated = $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date']]);
+        $validated = $request->validate([
+            'from' => ['required', 'date'],
+            'to' => ['required', 'date'],
+            'venue_court_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('venue_courts', 'id')->where(fn ($query) => $query
+                    ->where('venue_id', $venue->id)
+                    ->whereNull('deleted_at')),
+            ],
+        ]);
+        $court = isset($validated['venue_court_id'])
+            ? VenueCourt::query()->where('venue_id', $venue->id)->findOrFail((int) $validated['venue_court_id'])
+            : null;
+
         try {
-            return response()->json($query->handle($venue, CarbonImmutable::parse($validated['from']), CarbonImmutable::parse($validated['to'])));
+            return response()->json($query->handle(
+                $venue,
+                CarbonImmutable::parse($validated['from']),
+                CarbonImmutable::parse($validated['to']),
+                $court,
+            ));
         } catch (InvalidArgumentException $exception) {
             return response()->json(['code' => 'INVALID_AVAILABILITY_RANGE', 'message' => $exception->getMessage()], 422);
         }

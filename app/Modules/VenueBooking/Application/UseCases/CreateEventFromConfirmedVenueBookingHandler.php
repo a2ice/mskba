@@ -67,9 +67,13 @@ final readonly class CreateEventFromConfirmedVenueBookingHandler
 
             $event = Event::query()->create([
                 'venue_id' => $booking->venue_id,
+                'venue_court_id' => $booking->venue_court_id,
                 'booking_id' => $booking->id,
                 'booking_snapshot' => [
                     'booking_public_id' => $booking->public_id,
+                    'venue_court_id' => $booking->venue_court_id,
+                    'venue_court_name' => data_get($booking->quote_snapshot, 'request.venue_court_name'),
+                    'venue_court_alias' => data_get($booking->quote_snapshot, 'request.venue_court_alias'),
                     'scope' => $booking->scope?->value,
                     'starts_at' => $booking->starts_at->toIso8601String(),
                     'ends_at' => $booking->ends_at->toIso8601String(),
@@ -137,7 +141,7 @@ final readonly class CreateEventFromConfirmedVenueBookingHandler
                 event(new EventChanged($event->id));
             });
 
-            return $event->load(['sourceBooking', 'participants']);
+            return $event->load(['sourceBooking', 'participants', 'court']);
         });
     }
 }

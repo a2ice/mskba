@@ -7,12 +7,14 @@ use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'venue_id',
+    'venue_court_id',
     'event_id',
     'created_by_actor_id',
     'status',
@@ -24,9 +26,37 @@ class VenueBooking extends Model
 {
     use Auditable;
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $booking): void {
+            if ($booking->venue_id === null) {
+                return;
+            }
+
+            if ($booking->venue_court_id !== null && ! ($booking->isDirty('venue_id') && ! $booking->isDirty('venue_court_id'))) {
+                return;
+            }
+
+            $courtId = VenueCourt::query()
+                ->where('venue_id', $booking->venue_id)
+                ->where('is_primary', true)
+                ->value('id')
+                ?? VenueCourt::query()->where('venue_id', $booking->venue_id)->orderBy('sort_order')->orderBy('id')->value('id');
+
+            if ($courtId !== null) {
+                $booking->venue_court_id = (int) $courtId;
+            }
+        });
+    }
+
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function court(): BelongsTo
+    {
+        return $this->belongsTo(VenueCourt::class, 'venue_court_id');
     }
 
     public function event(): BelongsTo
@@ -68,6 +98,7 @@ class VenueBooking extends Model
     protected function casts(): array
     {
         return [
+            'venue_court_id' => 'integer',
             'status' => VenueBookingStatusEnum::class,
             'scope' => VenueBookingScopeEnum::class,
             'starts_at' => 'immutable_datetime',

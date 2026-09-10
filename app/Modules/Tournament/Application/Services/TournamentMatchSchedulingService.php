@@ -25,6 +25,7 @@ use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Tournament\Domain\Models\TournamentEntry;
 use App\Modules\Tournament\Domain\Models\TournamentMatch;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Text\CyrillicTransliterator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +47,10 @@ final class TournamentMatchSchedulingService
         $event = DB::transaction(function () use ($tournament, $match, $actor, $data): Event {
             // Общий порядок блокировок бронирований: venue -> tournament -> match.
             $venue = Venue::query()->whereKey((int) $data['venue_id'])->lockForUpdate()->firstOrFail();
+            $court = $this->resolveCourt(
+                $venue,
+                isset($data['venue_court_id']) ? (int) $data['venue_court_id'] : null,
+            );
             $lockedTournament = Tournament::query()->whereKey($tournament->id)->lockForUpdate()->firstOrFail();
             $this->access->assertAllows($lockedTournament, $actor, TournamentPermissionEnum::MANAGE_GAMES);
             $lockedMatch = $lockedTournament->matches()->whereKey($match->id)->lockForUpdate()->firstOrFail();
@@ -80,7 +85,7 @@ final class TournamentMatchSchedulingService
                 throw new InvalidArgumentException('Игра должна целиком входить в даты проведения турнира.');
             }
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope);
+            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
             $userIds = $entryARoster->pluck('user_id')->merge($entryBRoster->pluck('user_id'))->map(fn ($id): int => (int) $id);
             if ($userIds->duplicates()->isNotEmpty()) {
                 throw new InvalidArgumentException('Один игрок не может находиться на обеих сторонах матча.');
@@ -106,12 +111,26 @@ final class TournamentMatchSchedulingService
             $bookingStatus = $venue->hasFreeAccess() ? VenueBookingStatusEnum::CONFIRMED : VenueBookingStatusEnum::PENDING;
             $title = $entryA->name.' — '.$entryB->name;
             $event = Event::query()->create([
-                'venue_id' => $venue->id, 'organizer_actor_id' => $actor->id, 'title' => $title,
-                'alias' => Str::slug($this->transliterator->transliterate($title)), 'type' => EventTypeEnum::GAME,
+                'venue_id' => $venue->id,
+                'venue_court_id' => $court->id,
+                'organizer_actor_id' => $actor->id,
+                'title' => $title,
+                'alias' => Str::slug($this->transliterator->transliterate($title)),
+                'type' => EventTypeEnum::GAME,
                 'status' => $bookingStatus === VenueBookingStatusEnum::CONFIRMED ? EventStatusEnum::PUBLISHED : EventStatusEnum::DRAFT,
-                'visibility' => EventVisibilityEnum::PUBLIC, 'starts_at' => $startsAt, 'ends_at' => $endsAt,
+                'visibility' => EventVisibilityEnum::PUBLIC,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
             ]);
-            $event->booking()->create(['venue_id' => $venue->id, 'created_by_actor_id' => $actor->id, 'status' => $bookingStatus, 'scope' => $bookingScope, 'starts_at' => $startsAt, 'ends_at' => $endsAt]);
+            $event->booking()->create([
+                'venue_id' => $venue->id,
+                'venue_court_id' => $court->id,
+                'created_by_actor_id' => $actor->id,
+                'status' => $bookingStatus,
+                'scope' => $bookingScope,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+            ]);
             $participants = $userIds->unique()->values()->map(fn (int $userId): array => [
                 'user_id' => $userId,
                 'role' => $userId === $actor->user_id ? EventParticipantRoleEnum::ORGANIZER : EventParticipantRoleEnum::PARTICIPANT,
@@ -151,7 +170,7 @@ final class TournamentMatchSchedulingService
             $event->forceFill(['primary_game_id' => $game->id])->save();
             $lockedMatch->forceFill(['game_id' => $game->id])->save();
 
-            return $event->load(['booking', 'primaryGame.sides', 'primaryGame.rosterEntries']);
+            return $event->load(['court', 'booking', 'primaryGame.sides', 'primaryGame.rosterEntries']);
         });
 
         event(new EventChanged($event->id));
@@ -182,6 +201,12 @@ final class TournamentMatchSchedulingService
             if (! $venue instanceof Venue) {
                 throw new InvalidArgumentException('Выбранная площадка недоступна.');
             }
+            $requestedCourtId = array_key_exists('venue_court_id', $data)
+                ? ($data['venue_court_id'] === null ? null : (int) $data['venue_court_id'])
+                : ($venue->id === (int) $reference->venue_id && $reference->venue_court_id !== null
+                    ? (int) $reference->venue_court_id
+                    : null);
+            $court = $this->resolveCourt($venue, $requestedCourtId);
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             $startsAt = CarbonImmutable::parse($data['starts_at'], $timezone);
             $duration = (int) $data['duration_minutes'];
@@ -194,7 +219,7 @@ final class TournamentMatchSchedulingService
                 throw new InvalidArgumentException('Игра должна целиком входить в даты проведения турнира.');
             }
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt, $booking->id, scope: $bookingScope);
+            $this->availability->assertAvailable($venue, $startsAt, $endsAt, $booking->id, scope: $bookingScope, court: $court);
             $userIds = $game->rosterEntries()->pluck('user_id');
             $hasPlayerConflict = Game::query()->whereKeyNot($game->id)
                 ->whereIn('status', [GameStatusEnum::SCHEDULED->value, GameStatusEnum::IN_PROGRESS->value])
@@ -205,18 +230,41 @@ final class TournamentMatchSchedulingService
             }
             $bookingStatus = $venue->hasFreeAccess() ? VenueBookingStatusEnum::CONFIRMED : VenueBookingStatusEnum::PENDING;
             $event->forceFill([
-                'venue_id' => $venue->id, 'starts_at' => $startsAt, 'ends_at' => $endsAt,
+                'venue_id' => $venue->id,
+                'venue_court_id' => $court->id,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
                 'status' => $bookingStatus === VenueBookingStatusEnum::CONFIRMED ? EventStatusEnum::PUBLISHED : EventStatusEnum::DRAFT,
                 'participation_confirmation_version' => $event->participation_confirmation_version + 1,
             ])->save();
-            $booking->forceFill(['venue_id' => $venue->id, 'status' => $bookingStatus, 'scope' => $bookingScope, 'starts_at' => $startsAt, 'ends_at' => $endsAt])->save();
+            $booking->forceFill([
+                'venue_id' => $venue->id,
+                'venue_court_id' => $court->id,
+                'status' => $bookingStatus,
+                'scope' => $bookingScope,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+            ])->save();
             $game->forceFill(['scheduled_starts_at' => $startsAt, 'scheduled_ends_at' => $endsAt])->save();
 
-            return $event->refresh()->load(['booking', 'primaryGame']);
+            return $event->refresh()->load(['court', 'booking', 'primaryGame']);
         });
 
         event(new EventChanged($event->id));
 
         return $event;
+    }
+
+    private function resolveCourt(Venue $venue, ?int $courtId): VenueCourt
+    {
+        $court = $courtId !== null
+            ? VenueCourt::query()->where('venue_id', $venue->id)->whereKey($courtId)->first()
+            : ($venue->primaryCourt()->first() ?? $venue->courts()->first());
+
+        if ($court === null) {
+            throw new InvalidArgumentException('Выбранный зал недоступен.');
+        }
+
+        return $court;
     }
 }

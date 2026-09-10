@@ -38,6 +38,7 @@ final class EventWorkflowTest extends TestCase
     {
         [$venue, $start, $end] = $this->availableVenue();
         $venue->characteristics()->create(['hoops_count' => 2]);
+        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
         $users = User::factory()->count(4)->create(['status' => UserStatusEnum::CONFIRMED]);
 
         $this->actingAs($users[0])->post(route('events.store'), [
@@ -860,7 +861,7 @@ final class EventWorkflowTest extends TestCase
             ]))
             ->assertSessionHas(
                 'error',
-                'Площадку и время пока можно менять только для мероприятий на свободных площадках.',
+                'Площадку, зал и время пока можно менять только для мероприятий на свободных площадках.',
             );
 
         $this->assertSame($managedVenue->id, $event->refresh()->venue_id);

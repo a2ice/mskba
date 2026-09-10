@@ -13,6 +13,7 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\Services\VenueBookingConflictService;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
@@ -30,8 +31,17 @@ final readonly class RescheduleBookedEventHandler
         private FeatureFlags $features,
     ) {}
 
-    public function handle(int $bookingId, int $eventId, Actor $actor, int $venueId, CarbonImmutable $startsAt, int $durationMinutes, VenueBookingScopeEnum $scope, ?string $emergencyReason = null): Event
-    {
+    public function handle(
+        int $bookingId,
+        int $eventId,
+        Actor $actor,
+        int $venueId,
+        CarbonImmutable $startsAt,
+        int $durationMinutes,
+        VenueBookingScopeEnum $scope,
+        ?string $emergencyReason = null,
+        ?int $venueCourtId = null,
+    ): Event {
         $this->features->ensureEnabled(VenueRentalFeature::BOOKING_EVENTS);
         if ($durationMinutes < 1 || $durationMinutes > 1440 || ! $startsAt->isFuture()) {
             throw new VenueBookingTransitionException('Некорректный интервал переноса.', 'INVALID_RESCHEDULE_INTERVAL');
@@ -43,18 +53,49 @@ final readonly class RescheduleBookedEventHandler
         $bookingReference = VenueBooking::query()->findOrFail($reference->booking_id);
         $venueIds = collect([$bookingReference->venue_id, $venueId])->unique()->sort()->values();
 
-        return DB::transaction(function () use ($eventId, $bookingReference, $venueId, $venueIds, $startsAt, $durationMinutes, $scope, $actor, $emergencyReason): Event {
+        return DB::transaction(function () use ($eventId, $bookingReference, $venueId, $venueIds, $startsAt, $durationMinutes, $scope, $actor, $emergencyReason, $venueCourtId): Event {
             $venues = Venue::query()->whereKey($venueIds)->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $targetVenue = $venues->get($venueId);
             if (! $targetVenue instanceof Venue) {
                 throw new VenueBookingTransitionException('Площадка недоступна.', 'VENUE_UNAVAILABLE');
             }
+
+            $targetCourtId = $venueCourtId;
+            if ($targetCourtId === null && $venueId === (int) $bookingReference->venue_id) {
+                $targetCourtId = $bookingReference->venue_court_id === null
+                    ? null
+                    : (int) $bookingReference->venue_court_id;
+            }
+            $targetCourt = $targetCourtId !== null
+                ? VenueCourt::query()
+                    ->where('venue_id', $targetVenue->id)
+                    ->whereKey($targetCourtId)
+                    ->first()
+                : ($targetVenue->primaryCourt()->first() ?? $targetVenue->courts()->first());
+
+            if ($targetCourt === null) {
+                throw new VenueBookingTransitionException('Выбранный зал недоступен.', 'BOOKING_COURT_UNAVAILABLE');
+            }
+
             $endsAt = $startsAt->addMinutes($durationMinutes);
             $candidate = $bookingReference->replicate();
             $candidate->id = $bookingReference->id;
-            $candidate->forceFill(['venue_id' => $venueId, 'starts_at' => $startsAt, 'ends_at' => $endsAt, 'scope' => $scope]);
+            $candidate->forceFill([
+                'venue_id' => $venueId,
+                'venue_court_id' => $targetCourt->id,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'scope' => $scope,
+            ]);
             $this->conflicts->lockAndAssertAvailable($targetVenue, $candidate);
-            $this->availability->assertAvailable($targetVenue, $startsAt, $endsAt, $bookingReference->id, scope: $scope);
+            $this->availability->assertAvailable(
+                $targetVenue,
+                $startsAt,
+                $endsAt,
+                $bookingReference->id,
+                scope: $scope,
+                court: $targetCourt,
+            );
 
             $event = Event::query()->lockForUpdate()->findOrFail($eventId);
             $booking = VenueBooking::query()->lockForUpdate()->findOrFail($bookingReference->id);
@@ -71,27 +112,50 @@ final readonly class RescheduleBookedEventHandler
                 throw new VenueBookingTransitionException('Для аварийного переноса нужна причина.', 'EMERGENCY_REASON_REQUIRED');
             }
             if ($booking->venue_id === $venueId
+                && (int) $booking->venue_court_id === (int) $targetCourt->id
                 && $booking->scope === $scope
                 && $booking->starts_at->equalTo($startsAt)
                 && $booking->ends_at->equalTo($endsAt)) {
                 return $event;
             }
 
-            $previous = ['venue_id' => $booking->venue_id, 'starts_at' => $booking->starts_at->toIso8601String(), 'ends_at' => $booking->ends_at->toIso8601String(), 'scope' => $booking->scope?->value];
+            $previous = [
+                'venue_id' => $booking->venue_id,
+                'venue_court_id' => $booking->venue_court_id,
+                'starts_at' => $booking->starts_at->toIso8601String(),
+                'ends_at' => $booking->ends_at->toIso8601String(),
+                'scope' => $booking->scope?->value,
+            ];
             $nextVersion = $booking->optimistic_version + 1;
-            $booking->forceFill(['venue_id' => $venueId, 'starts_at' => $startsAt, 'ends_at' => $endsAt, 'scope' => $scope, 'optimistic_version' => $nextVersion])->save();
+            $booking->forceFill([
+                'venue_id' => $venueId,
+                'venue_court_id' => $targetCourt->id,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'scope' => $scope,
+                'optimistic_version' => $nextVersion,
+            ])->save();
             $booking->transitions()->create([
-                'from_status' => $booking->status, 'to_status' => $booking->status, 'actor_id' => $actor->id,
-                'reason' => $emergencyReason, 'metadata' => ['operation' => 'rescheduled', 'previous' => $previous],
+                'from_status' => $booking->status,
+                'to_status' => $booking->status,
+                'actor_id' => $actor->id,
+                'reason' => $emergencyReason,
+                'metadata' => ['operation' => 'rescheduled', 'previous' => $previous],
                 'booking_version' => $nextVersion,
             ]);
-            $event->forceFill(['venue_id' => $venueId, 'starts_at' => $startsAt, 'ends_at' => $endsAt, 'participation_confirmation_version' => $event->participation_confirmation_version + 1])->save();
+            $event->forceFill([
+                'venue_id' => $venueId,
+                'venue_court_id' => $targetCourt->id,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'participation_confirmation_version' => $event->participation_confirmation_version + 1,
+            ])->save();
             DB::afterCommit(static function () use ($event, $booking): void {
                 event(new BookedEventRescheduled($event->id, $booking->id));
                 event(new EventChanged($event->id));
             });
 
-            return $event->fresh(['sourceBooking', 'venue']);
+            return $event->fresh(['sourceBooking', 'venue', 'court']);
         });
     }
 }

@@ -51,6 +51,13 @@ final class VenueBookingEventController extends Controller
     {
         $data = $request->validate([
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
+            'venue_court_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('venue_courts', 'id')->where(fn ($query) => $query
+                    ->where('venue_id', (int) $request->input('venue_id'))
+                    ->whereNull('deleted_at')),
+            ],
             'starts_at' => ['required', 'date'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'scope' => ['required', Rule::enum(VenueBookingScopeEnum::class)],
@@ -60,9 +67,15 @@ final class VenueBookingEventController extends Controller
         $timezone = $venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow');
         try {
             $updated = $handler->handle(
-                $venueBooking->id, $event->id, $actors->resolveForRequest($request), (int) $data['venue_id'],
-                CarbonImmutable::parse($data['starts_at'], $timezone), (int) $data['duration_minutes'],
-                VenueBookingScopeEnum::from($data['scope']), $data['emergency_reason'] ?? null,
+                $venueBooking->id,
+                $event->id,
+                $actors->resolveForRequest($request),
+                (int) $data['venue_id'],
+                CarbonImmutable::parse($data['starts_at'], $timezone),
+                (int) $data['duration_minutes'],
+                VenueBookingScopeEnum::from($data['scope']),
+                $data['emergency_reason'] ?? null,
+                isset($data['venue_court_id']) ? (int) $data['venue_court_id'] : null,
             );
         } catch (VenueBookingTransitionException|InvalidArgumentException $exception) {
             $code = $exception instanceof VenueBookingTransitionException ? $exception->errorCode : 'EVENT_FORBIDDEN';
@@ -74,7 +87,12 @@ final class VenueBookingEventController extends Controller
         }
 
         return $request->expectsJson()
-            ? response()->json(['event_id' => $updated->id, 'starts_at' => $updated->starts_at->utc()->toIso8601String(), 'ends_at' => $updated->ends_at->utc()->toIso8601String()])
+            ? response()->json([
+                'event_id' => $updated->id,
+                'venue_court_id' => $updated->venue_court_id,
+                'starts_at' => $updated->starts_at->utc()->toIso8601String(),
+                'ends_at' => $updated->ends_at->utc()->toIso8601String(),
+            ])
             : back()->with('status', 'Бронь и мероприятие перенесены.');
     }
 }

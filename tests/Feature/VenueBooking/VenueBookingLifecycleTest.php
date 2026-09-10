@@ -336,7 +336,7 @@ final class VenueBookingLifecycleTest extends TestCase
         [$owner, $ownerActor, $venue] = $this->ownedVenue();
         [$applicant, $applicantActor] = $this->userAndActor();
         $booking = $this->request($venue, $owner, $applicant, $applicantActor, false, '2026-08-26 12:00:00', VenueBookingScopeEnum::HALF_A);
-        $venue->characteristics()->update(['hoops_count' => 1]);
+        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => false]);
 
         try {
             app(AcceptVenueBookingHandler::class)->handle($booking->id, $ownerActor);
@@ -512,6 +512,7 @@ final class VenueBookingLifecycleTest extends TestCase
             'operational_status' => VenueOperationalStatusEnum::ACTIVE,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
+        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
         $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
         $contract = Contract::query()->create([
             'family' => ContractFamilyEnum::MEMBERSHIP,

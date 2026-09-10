@@ -91,6 +91,7 @@ final readonly class RequestVenueBookingHandler
                         'public_id' => (string) Str::uuid(),
                         'flow' => 'rental',
                         'venue_id' => $quote->venue_id,
+                        'venue_court_id' => $quote->venue_court_id,
                         'event_id' => null,
                         'created_by_actor_id' => $actor->id,
                         'requester_user_id' => $user->id,
@@ -122,6 +123,6 @@ final readonly class RequestVenueBookingHandler
             $correlationId,
         );
 
-        return $booking->fresh(['transitions', 'parties']);
+        return $booking->fresh(['transitions', 'parties', 'court']);
     }
 }

@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking as RentalVenueBooking;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
     'venue_id',
+    'venue_court_id',
     'booking_id',
     'booking_snapshot',
     'organizer_actor_id',
@@ -55,6 +57,29 @@ class Event extends Model
         return EventFactory::new();
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $event): void {
+            if ($event->venue_id === null) {
+                return;
+            }
+
+            if ($event->venue_court_id !== null && ! ($event->isDirty('venue_id') && ! $event->isDirty('venue_court_id'))) {
+                return;
+            }
+
+            $courtId = VenueCourt::query()
+                ->where('venue_id', $event->venue_id)
+                ->where('is_primary', true)
+                ->value('id')
+                ?? VenueCourt::query()->where('venue_id', $event->venue_id)->orderBy('sort_order')->orderBy('id')->value('id');
+
+            if ($courtId !== null) {
+                $event->venue_court_id = (int) $courtId;
+            }
+        });
+    }
+
     public function routeIdentifier(): string
     {
         return $this->id.'-'.$this->alias;
@@ -77,6 +102,11 @@ class Event extends Model
     public function venue(): BelongsTo
     {
         return $this->belongsTo(Venue::class);
+    }
+
+    public function court(): BelongsTo
+    {
+        return $this->belongsTo(VenueCourt::class, 'venue_court_id');
     }
 
     public function organizerActor(): BelongsTo
@@ -132,6 +162,7 @@ class Event extends Model
     protected function casts(): array
     {
         return [
+            'venue_court_id' => 'integer',
             'type' => EventTypeEnum::class,
             'status' => EventStatusEnum::class,
             'visibility' => EventVisibilityEnum::class,

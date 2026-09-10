@@ -18,6 +18,7 @@ use App\Modules\Event\Domain\Models\EventResponsibilityPermission;
 use App\Modules\Event\Domain\Models\VenueBooking;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Text\CyrillicTransliterator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,8 @@ final class UpdateEventHandler
     /**
      * @param array{
      *     venue_id?: int,
+     *     venue_court_id?: int|null,
+     *     booking_scope?: string|null,
      *     title: string,
      *     type: string,
      *     visibility: string,
@@ -46,7 +49,7 @@ final class UpdateEventHandler
      */
     public function handle(string $identifier, Actor $actor, array $data): Event
     {
-        $reference = Event::query()->whereRouteIdentifier($identifier)->firstOrFail(['id', 'venue_id']);
+        $reference = Event::query()->whereRouteIdentifier($identifier)->firstOrFail(['id', 'venue_id', 'venue_court_id']);
         $requestedVenueId = (int) ($data['venue_id'] ?? $reference->venue_id);
         $venueIds = collect([$reference->venue_id, $requestedVenueId])->unique()->sort()->values();
 
@@ -61,7 +64,7 @@ final class UpdateEventHandler
 
             $event = Event::query()->whereKey($reference->id)->lockForUpdate()->firstOrFail();
 
-            if ($event->venue_id !== $reference->venue_id) {
+            if ($event->venue_id !== $reference->venue_id || $event->venue_court_id !== $reference->venue_court_id) {
                 throw new InvalidArgumentException('Мероприятие уже было перенесено. Обновите страницу и повторите действие.');
             }
 
@@ -91,11 +94,23 @@ final class UpdateEventHandler
                 throw new InvalidArgumentException('Выбранная площадка недоступна.');
             }
 
+            $requestedCourtId = array_key_exists('venue_court_id', $data)
+                ? ($data['venue_court_id'] === null ? null : (int) $data['venue_court_id'])
+                : ($targetVenue->id === $event->venue_id ? $event->venue_court_id : null);
+            $targetCourt = $requestedCourtId !== null
+                ? VenueCourt::query()
+                    ->where('venue_id', $targetVenue->id)
+                    ->whereKey($requestedCourtId)
+                    ->firstOrFail()
+                : ($targetVenue->primaryCourt()->first() ?? $targetVenue->courts()->firstOrFail());
+
             $timezone = $targetVenue->schedule()->value('timezone')
                 ?: config('app.timezone', 'Europe/Moscow');
             $bookingDataProvided = array_key_exists('venue_id', $data)
+                || array_key_exists('venue_court_id', $data)
                 || array_key_exists('starts_at', $data)
-                || array_key_exists('duration_minutes', $data);
+                || array_key_exists('duration_minutes', $data)
+                || array_key_exists('booking_scope', $data);
             $localStart = $bookingDataProvided
                 ? CarbonImmutable::parse(
                     $data['starts_at'] ?? $event->starts_at->setTimezone($timezone),
@@ -114,6 +129,7 @@ final class UpdateEventHandler
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? $booking->scope?->value ?? VenueBookingScopeEnum::WHOLE->value);
             $bookingChanged = $bookingDataProvided && (
                 $targetVenue->id !== $event->venue_id
+                || $targetCourt->id !== ($booking->venue_court_id ?? $event->venue_court_id)
                 || $bookingScope !== ($booking->scope ?? VenueBookingScopeEnum::WHOLE)
                 || $localStart->format('Y-m-d H:i') !== $event->starts_at->setTimezone($timezone)->format('Y-m-d H:i')
                 || $durationMinutes !== $currentDuration
@@ -123,11 +139,11 @@ final class UpdateEventHandler
 
             if ($bookingChanged) {
                 if ($event->booking_id !== null) {
-                    throw new InvalidArgumentException('Время и площадка связанного мероприятия меняются только через перенос брони.');
+                    throw new InvalidArgumentException('Время, площадка и зал связанного мероприятия меняются только через перенос брони.');
                 }
                 if (! $currentVenue->hasFreeAccess() || ! $targetVenue->hasFreeAccess()) {
                     throw new InvalidArgumentException(
-                        'Площадку и время пока можно менять только для мероприятий на свободных площадках.'
+                        'Площадку, зал и время пока можно менять только для мероприятий на свободных площадках.'
                     );
                 }
 
@@ -143,6 +159,7 @@ final class UpdateEventHandler
                     $endsAt,
                     $booking->id,
                     scope: $bookingScope,
+                    court: $targetCourt,
                 );
             }
 
@@ -163,6 +180,7 @@ final class UpdateEventHandler
                 'description' => $data['description'] ?? null,
                 'max_participants' => $maxParticipants,
                 'venue_id' => $targetVenue->id,
+                'venue_court_id' => $bookingDataProvided ? $targetCourt->id : $event->venue_court_id,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'participation_confirmation_version' => $bookingChanged
@@ -173,6 +191,7 @@ final class UpdateEventHandler
             if ($bookingChanged) {
                 $booking->forceFill([
                     'venue_id' => $targetVenue->id,
+                    'venue_court_id' => $targetCourt->id,
                     'status' => VenueBookingStatusEnum::CONFIRMED,
                     'scope' => $bookingScope,
                     'starts_at' => $startsAt,
@@ -198,7 +217,7 @@ final class UpdateEventHandler
                     ]);
             }
 
-            return $event->refresh()->load(['venue.schedule', 'booking']);
+            return $event->refresh()->load(['venue.schedule', 'court', 'booking']);
         });
 
         event(new EventChanged($event->id));

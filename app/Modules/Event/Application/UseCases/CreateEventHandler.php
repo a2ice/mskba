@@ -20,6 +20,7 @@ use App\Modules\Event\Domain\Events\EventChanged;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Support\Text\CyrillicTransliterator;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +46,12 @@ final class CreateEventHandler
         $event = DB::transaction(function () use ($actor, $data): Event {
             // Единый порядок блокировок для бронирований: сначала venue, затем bookings/event.
             $venue = Venue::query()->lockForUpdate()->findOrFail($data['venue_id']);
+            $court = isset($data['venue_court_id'])
+                ? VenueCourt::query()
+                    ->where('venue_id', $venue->id)
+                    ->whereKey((int) $data['venue_court_id'])
+                    ->firstOrFail()
+                : ($venue->primaryCourt()->first() ?? $venue->courts()->firstOrFail());
             $timezone = $venue->schedule()->value('timezone') ?: config('app.timezone', 'Europe/Moscow');
             $localStart = CarbonImmutable::parse($data['starts_at'], $timezone);
             $durationMinutes = (int) $data['duration_minutes'];
@@ -60,7 +67,7 @@ final class CreateEventHandler
             $endsAt = $localStart->addMinutes($durationMinutes);
 
             $bookingScope = VenueBookingScopeEnum::from($data['booking_scope'] ?? VenueBookingScopeEnum::WHOLE->value);
-            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope);
+            $this->availability->assertAvailable($venue, $startsAt, $endsAt, scope: $bookingScope, court: $court);
 
             $bookingStatus = $venue->hasFreeAccess()
                 ? VenueBookingStatusEnum::CONFIRMED
@@ -68,6 +75,7 @@ final class CreateEventHandler
 
             $event = Event::query()->create([
                 'venue_id' => $venue->id,
+                'venue_court_id' => $court->id,
                 'organizer_actor_id' => $actor->id,
                 'title' => $data['title'],
                 'alias' => Str::slug($this->transliterator->transliterate($data['title'])),
@@ -84,6 +92,7 @@ final class CreateEventHandler
 
             $event->booking()->create([
                 'venue_id' => $venue->id,
+                'venue_court_id' => $court->id,
                 'created_by_actor_id' => $actor->id,
                 'status' => $bookingStatus,
                 'scope' => $bookingScope,
@@ -124,7 +133,7 @@ final class CreateEventHandler
                 );
             }
 
-            return $event->load(['venue', 'booking', 'participants.user']);
+            return $event->load(['venue', 'court', 'booking', 'participants.user']);
         });
 
         event(new EventChanged($event->id));

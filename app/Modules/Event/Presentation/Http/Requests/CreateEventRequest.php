@@ -62,6 +62,13 @@ final class CreateEventRequest extends FormRequest
         return [
             'event_request_id' => ['required', 'uuid'],
             'venue_id' => ['required', 'integer', 'exists:venues,id'],
+            'venue_court_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('venue_courts', 'id')->where(fn ($query) => $query
+                    ->where('venue_id', (int) $this->input('venue_id'))
+                    ->whereNull('deleted_at')),
+            ],
             'booking_scope' => ['nullable', Rule::enum(VenueBookingScopeEnum::class)],
             'title' => ['required', 'string', 'max:150'],
             'type' => ['required', Rule::enum(EventTypeEnum::class)],
