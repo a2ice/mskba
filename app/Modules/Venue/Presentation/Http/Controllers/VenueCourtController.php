@@ -209,17 +209,16 @@ final class VenueCourtController extends Controller
     /** @return array<string, mixed> */
     private function courtRules(?Venue $venue = null, ?VenueCourt $court = null): array
     {
-        $aliasRule = Rule::unique('venue_courts', 'alias');
-        if ($venue !== null) {
-            $aliasRule = $aliasRule->where(fn ($query) => $query->where('venue_id', $venue->id));
-        }
-        if ($court !== null) {
-            $aliasRule = $aliasRule->ignore($court->id);
+        $aliasRules = ['nullable', 'string', 'max:120'];
+        if ($venue !== null && $court !== null) {
+            $aliasRules[] = Rule::unique('venue_courts', 'alias')
+                ->where(fn ($query) => $query->where('venue_id', $venue->id))
+                ->ignore($court->id);
         }
 
         return [
             'name' => ['required', 'string', 'max:120'],
-            'alias' => ['nullable', 'string', 'max:120', $aliasRule],
+            'alias' => $aliasRules,
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'hoops_count' => ['nullable', 'integer', Rule::in([1, 2])],
             'surface_type' => ['nullable', Rule::enum(VenueSurfaceTypeEnum::class)],
