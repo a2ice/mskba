@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initVenueGalleryModal();
     initVenueDayModal();
     initVenueOccupancyModal();
-    initVenueNearbyModal();
 });
 
 function initVenueAnchors() {
@@ -212,37 +211,6 @@ function initVenueHeroSlider() {
     });
 
     show(0);
-}
-
-function initVenueNearbyModal() {
-    const modal = document.querySelector('[data-venue-nearby-modal]');
-    const openButton = document.querySelector('[data-venue-nearby-open]');
-
-    if (!modal || !openButton) {
-        return;
-    }
-
-    const closeButtons = Array.from(modal.querySelectorAll('[data-venue-nearby-close]'));
-
-    const close = () => {
-        modal.hidden = true;
-        document.body.style.overflow = '';
-        openButton.focus();
-    };
-
-    openButton.addEventListener('click', () => {
-        modal.hidden = false;
-        document.body.style.overflow = 'hidden';
-        modal.querySelector('[data-venue-nearby-close]')?.focus();
-    });
-
-    closeButtons.forEach((button) => button.addEventListener('click', close));
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !modal.hidden) {
-            close();
-        }
-    });
 }
 
 function initVenueGalleryModal() {

@@ -269,26 +269,28 @@ final class EventWizardController extends Controller
             ->where('is_enabled', true)
             ->get()
             ->keyBy('venue_id');
+        $primaryCourts = $court !== null
+            ? collect([$court->venue_id => $court])
+            : VenueCourt::query()
+                ->whereIn('venue_id', $venues->pluck('id'))
+                ->orderByDesc('is_primary')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->groupBy('venue_id')
+                ->map(fn (Collection $courts): ?VenueCourt => $courts->first());
 
         return response()->json([
-            'venues' => $venues->map(function ($venue) use ($amounts, $availableScopes, $court, $durationMinutes, $hoopsByVenue, $rentalPolicies): array {
+            'venues' => $venues->map(function ($venue) use ($amounts, $availableScopes, $court, $durationMinutes, $hoopsByVenue, $rentalPolicies, $primaryCourts): array {
                 $policy = $rentalPolicies->get($venue->id);
                 $scopes = array_values(array_unique($availableScopes[$venue->id] ?? []));
-                if ($policy !== null) {
-                    $allowedScopes = $policy->allows_halves
-                        ? ['whole', 'half_a', 'half_b']
-                        : ['whole'];
-                    if (! $policy->allows_whole) {
-                        $allowedScopes = array_values(array_diff($allowedScopes, ['whole']));
-                    }
-                    $scopes = array_values(array_intersect($scopes, $allowedScopes));
-                }
-                if ($court !== null && (int) $court->venue_id === (int) $venue->id) {
+                $effectiveCourt = $primaryCourts->get($venue->id);
+                if ($effectiveCourt !== null) {
                     $courtScopes = [];
-                    if ($court->allows_whole) {
+                    if ($effectiveCourt->allows_whole) {
                         $courtScopes[] = VenueBookingScopeEnum::WHOLE->value;
                     }
-                    if ($court->supports_halves && $court->allows_halves) {
+                    if ($effectiveCourt->supports_halves && $effectiveCourt->allows_halves) {
                         $courtScopes[] = VenueBookingScopeEnum::HALF_A->value;
                         $courtScopes[] = VenueBookingScopeEnum::HALF_B->value;
                     }

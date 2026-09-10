@@ -119,7 +119,11 @@ final class EventCreationWizardTest extends TestCase
             'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
-        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
+        $venue->primaryCourt()->firstOrFail()->update([
+            'hoops_count' => 2,
+            'supports_halves' => true,
+            'allows_halves' => true,
+        ]);
 
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
         $occupiedEvent = Event::factory()->create([

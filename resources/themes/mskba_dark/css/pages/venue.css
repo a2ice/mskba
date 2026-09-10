@@ -308,6 +308,17 @@
     outline: none;
 }
 
+.venue-address-card__nearby[aria-pressed="true"] {
+    color: #79b8ff;
+}
+
+.venue-address-card__nearby:disabled {
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.55;
+    text-decoration: none;
+}
+
 .venue-full-description {
     display: grid;
     gap: 10px;

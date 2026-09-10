@@ -15,7 +15,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-CdKMzmmn.css",
+    "file": "assets/app-DCU9XyNB.css",
     "name": "app",
     "names": [
       "app.css"
@@ -30,7 +30,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-BNrKRmZL.css",
+    "file": "assets/app-IDJOU-VF.css",
     "name": "app",
     "names": [
       "app.css"
@@ -45,7 +45,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-D_hOf-7_.css",
+    "file": "assets/app-B_Q-r3tY.css",
     "name": "app",
     "names": [
       "app.css"
@@ -66,21 +66,41 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-CorZe5AB.js",
+    "file": "assets/app-S9eqFvpO.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
     "dynamicImports": [
       "node_modules/three/build/three.module.js",
-      "node_modules/three/examples/jsm/loaders/GLTFLoader.js"
+      "node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+      "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
+      "resources/themes/mskba_dark/js/features/home-event-empty-create-cta.js"
     ],
     "css": [
-      "assets/app-CcHaEpl8.css"
+      "assets/app-B-uvTTG3.css"
     ],
     "assets": [
       "assets/mskba-female-player-v1-C_A-jYPE.glb",
       "assets/mskba-male-player-body-posed-preview-DQ-2zDMm.glb"
     ]
+  },
+  "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js": {
+    "file": "assets/home-event-discovery-v2-DsbBDeYP.js",
+    "name": "home-event-discovery-v2",
+    "src": "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/themes/mskba_dark/js/app.js"
+    ],
+    "css": [
+      "assets/home-event-discovery-v2-018WoK0H.css"
+    ]
+  },
+  "resources/themes/mskba_dark/js/features/home-event-empty-create-cta.js": {
+    "file": "assets/home-event-empty-create-cta-KQKs3QVO.js",
+    "name": "home-event-empty-create-cta",
+    "src": "resources/themes/mskba_dark/js/features/home-event-empty-create-cta.js",
+    "isDynamicEntry": true
   },
   "resources/themes/mskba_dark/models/player-character/mskba-female-player-v1.glb": {
     "file": "assets/mskba-female-player-v1-C_A-jYPE.glb",

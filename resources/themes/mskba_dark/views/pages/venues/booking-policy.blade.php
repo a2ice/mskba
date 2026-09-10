@@ -37,13 +37,13 @@
         <form method="POST" action="{{ route('account.venues.booking-policy.update', $venue) }}" class="card venue-booking-policy-form"><div class="card-body">
             @csrf @method('PUT')
             @include('theme::partials.forms.toggle', ['name' => 'is_enabled', 'title' => 'Принимать заявки на аренду', 'description' => 'Отдельно включает приём новых заявок. Статусы площадки «активна» и «подтверждена» при этом не изменяются.', 'checked' => $fieldValue('is_enabled', false)])
-            @include('theme::partials.forms.toggle', ['name' => 'allows_whole', 'title' => 'Разрешить аренду всей площадки', 'checked' => $fieldValue('allows_whole', true)])
+            @include('theme::partials.forms.toggle', ['name' => 'allows_whole', 'title' => 'Для новых залов разрешать аренду целиком', 'description' => 'Начальное значение при добавлении зала. У каждого существующего зала настройка меняется независимо.', 'checked' => $fieldValue('allows_whole', true)])
             @include('theme::partials.forms.toggle', [
                 'name' => 'allows_halves',
-                'title' => 'Разрешить аренду половин',
+                'title' => 'Для новых залов разрешать аренду половин',
                 'description' => $canRentHalves
-                    ? 'Можно сдавать половину А и половину Б независимо друг от друга.'
-                    : 'Недоступно: в характеристиках площадки должно быть указано минимум две игровые зоны.',
+                    ? 'Начальное значение для новых залов с двумя кольцами. Настройка существующих залов независима.'
+                    : 'Начальное значение недоступно: в характеристиках площадки указано меньше двух игровых зон. Зал с двумя кольцами можно настроить отдельно.',
                 'checked' => $canRentHalves && $fieldValue('allows_halves', false),
                 'inputAttributes' => ['disabled' => ! $canRentHalves],
             ])

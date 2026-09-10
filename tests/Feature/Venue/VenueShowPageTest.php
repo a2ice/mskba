@@ -81,8 +81,7 @@ class VenueShowPageTest extends TestCase
             ->assertDontSee('<dt>Индекс</dt>', false)
             ->assertSee('Площадки рядом')
             ->assertSee('data-venue-nearby-open', false)
-            ->assertSee('data-venue-nearby-modal', false)
-            ->assertSee('data-venue-nearby-results', false)
+            ->assertDontSee('data-venue-nearby-modal', false)
             ->assertSee($location->address->full_address)
             ->assertSee('Верхние Лихоборы')
             ->assertSee('title="Серпуховско-Тимирязевская линия"', false)
@@ -131,6 +130,55 @@ class VenueShowPageTest extends TestCase
             ->assertSee('data-longitude="'.$location->address->longitude.'"', false)
             ->assertSee('data-venue-map-fallback', false)
             ->assertSee('hidden', false);
+    }
+
+    public function test_public_venue_show_page_exposes_nearest_confirmed_venues_to_the_map(): void
+    {
+        config(['integrations.yandex.api_key' => 'test-yandex-key']);
+
+        $currentLocation = Location::factory()->create();
+        $currentLocation->address->update(['latitude' => 55.7500000, 'longitude' => 37.6200000]);
+        $current = Venue::factory()->create([
+            'location_id' => $currentLocation->id,
+            'name' => 'Текущая площадка',
+            'alias' => 'current-map-venue',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
+
+        $nearby = collect([
+            ['Ближайшая 1', 'nearby-1', 55.7510000, 37.6200000],
+            ['Ближайшая 2', 'nearby-2', 55.7490000, 37.6200000],
+            ['Ближайшая 3', 'nearby-3', 55.7500000, 37.6220000],
+        ])->map(function (array $data): Venue {
+            [$name, $alias, $latitude, $longitude] = $data;
+            $location = Location::factory()->create();
+            $location->address->update(compact('latitude', 'longitude'));
+
+            return Venue::factory()->create([
+                'location_id' => $location->id,
+                'name' => $name,
+                'alias' => $alias,
+                'status' => VenueStatusEnum::CONFIRMED,
+            ]);
+        });
+
+        $hiddenLocation = Location::factory()->create();
+        $hiddenLocation->address->update(['latitude' => 55.7501000, 'longitude' => 37.6200000]);
+        $hidden = Venue::factory()->create([
+            'location_id' => $hiddenLocation->id,
+            'name' => 'Неподтверждённая рядом',
+            'alias' => 'hidden-nearby',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+
+        $response = $this->get(route('venues.show', $current->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('data-venue-nearby-points', false)
+            ->assertDontSee(str_replace('/', '\\/', route('venues.preview', $hidden->routeIdentifier())), false);
+
+        foreach ($nearby as $venue) {
+            $response->assertSee(str_replace('/', '\\/', route('venues.preview', $venue->routeIdentifier())), false);
+        }
     }
 
     public function test_unconfirmed_active_venue_is_open_without_schedule(): void

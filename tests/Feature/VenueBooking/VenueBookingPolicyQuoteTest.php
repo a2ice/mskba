@@ -8,6 +8,7 @@ use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Enums\VenueMembershipAccessLevelEnum;
 use App\Modules\Contract\Domain\Models\Contract;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -17,7 +18,9 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\VenueBooking\Application\UseCases\PublishVenueBookingPolicyHandler;
 use App\Modules\VenueBooking\Application\UseCases\QuoteVenueBookingHandler;
+use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -118,27 +121,70 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         }
     }
 
-    public function test_half_quote_requires_both_policy_permission_and_physical_zones(): void
+    public function test_half_quote_uses_independent_court_permission_and_physical_capability(): void
     {
         [$owner, $oneHoopVenue] = $this->ownedVenue(1);
         $publish = app(PublishVenueBookingPolicyHandler::class);
-
-        try {
-            $publish->handle($oneHoopVenue, $owner, $this->policyData(['allows_halves' => true]));
-            $this->fail('One-hoop venue must not publish split rental.');
-        } catch (VenueBookingPolicyException) {
-            $this->assertDatabaseCount('venue_booking_policies', 0);
-        }
-
-        [$secondOwner, $twoHoopVenue] = $this->ownedVenue(2);
-        $publish->handle($twoHoopVenue, $secondOwner, $this->policyData(['allows_halves' => false]));
+        $publish->handle($oneHoopVenue, $owner, $this->policyData(['allows_halves' => true]));
 
         $this->expectException(VenueBookingPolicyException::class);
         app(QuoteVenueBookingHandler::class)->handle(
-            $twoHoopVenue,
+            $oneHoopVenue,
             CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow'),
             60,
             VenueBookingScopeEnum::HALF_A,
+        );
+    }
+
+    public function test_court_can_allow_half_rental_when_parent_default_is_disabled(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $court->update([
+            'hoops_count' => 2,
+            'supports_halves' => true,
+            'allows_halves' => true,
+        ]);
+        app(PublishVenueBookingPolicyHandler::class)->handle(
+            $venue,
+            $owner,
+            $this->policyData(['allows_halves' => false]),
+        );
+
+        $quote = app(QuoteVenueBookingHandler::class)->handle(
+            $venue,
+            CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow'),
+            60,
+            VenueBookingScopeEnum::HALF_A,
+        );
+
+        $this->assertSame(600, $quote->amountMinor);
+    }
+
+    public function test_stale_quote_cannot_create_booking_after_court_scope_is_disabled(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        $court = $venue->primaryCourt()->firstOrFail();
+        $court->update([
+            'hoops_count' => 2,
+            'supports_halves' => true,
+            'allows_halves' => true,
+        ]);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData());
+        $quote = app(QuoteVenueBookingHandler::class)->handle(
+            $venue,
+            CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow'),
+            60,
+            VenueBookingScopeEnum::HALF_A,
+            $owner,
+            $court,
+        );
+        $court->update(['allows_halves' => false]);
+
+        $this->expectException(VenueBookingTransitionException::class);
+        app(RequestVenueBookingHandler::class)->handle(
+            app(CurrentActorResolver::class)->resolve($owner, null),
+            $quote->publicId,
         );
     }
 
@@ -198,7 +244,7 @@ final class VenueBookingPolicyQuoteTest extends TestCase
         $response = $this->actingAs($owner)
             ->get(route('account.venues.booking-policy.edit', $venue))
             ->assertOk()
-            ->assertSeeText('Недоступно: в характеристиках площадки должно быть указано минимум две игровые зоны.');
+            ->assertSeeText('Начальное значение недоступно: в характеристиках площадки указано меньше двух игровых зон. Зал с двумя кольцами можно настроить отдельно.');
 
         $this->assertMatchesRegularExpression(
             '/<input[^>]+name="allows_halves"[^>]+disabled[^>]*>/s',

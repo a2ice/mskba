@@ -216,7 +216,11 @@ final class EventWizardBookingFirstTest extends TestCase
             'requires_booking_approval' => true,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
-        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
+        $venue->primaryCourt()->firstOrFail()->update([
+            'hoops_count' => 2,
+            'supports_halves' => true,
+            'allows_halves' => true,
+        ]);
         $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
         VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
             'day_of_week' => CarbonImmutable::now('Europe/Moscow')->addDays(4)->isoWeekday(),

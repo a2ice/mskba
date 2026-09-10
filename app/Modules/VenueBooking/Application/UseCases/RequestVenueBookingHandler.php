@@ -2,11 +2,13 @@
 
 namespace App\Modules\VenueBooking\Application\UseCases;
 
+use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
 use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\Services\IdempotentVenueBookingCommand;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutbox;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPartyRole;
@@ -84,6 +86,22 @@ final readonly class RequestVenueBookingHandler
 
                     if ($quote->quoted_for_user_id !== null && $quote->quoted_for_user_id !== $user->id) {
                         throw new VenueBookingTransitionException('Расчёт принадлежит другому пользователю.', 'QUOTE_FORBIDDEN');
+                    }
+
+                    $court = VenueCourt::query()
+                        ->where('venue_id', $venue->id)
+                        ->when(
+                            $quote->venue_court_id !== null,
+                            fn ($query) => $query->whereKey($quote->venue_court_id),
+                            fn ($query) => $query->orderByDesc('is_primary')->orderBy('sort_order')->orderBy('id'),
+                        )
+                        ->lockForUpdate()
+                        ->first();
+                    if ($court === null || ! $court->allowsScope($quote->scope === VenueBookingScopeEnum::WHOLE)) {
+                        throw new VenueBookingTransitionException(
+                            'Выбранный вариант аренды этого зала больше недоступен.',
+                            'BOOKING_SCOPE_UNAVAILABLE',
+                        );
                     }
 
                     $requiresPayment = (bool) data_get($quote->snapshot, 'policy.requires_payment', false);

@@ -388,6 +388,7 @@
                                 data-address="{{ $displayAddress }}"
                                 aria-label="Карта площадки {{ $venue->name }}"
                             ></div>
+                            <script type="application/json" data-venue-nearby-points>@json($nearbyVenues ?? [])</script>
                         @endif
 
                         <div class="venue-map-placeholder" data-venue-map-fallback @if($hasMap) hidden @endif>
@@ -455,30 +456,16 @@
                             </div>
                         @endif
 
-                        <button type="button" class="venue-address-card__nearby" data-venue-nearby-open>
+                        <button
+                            type="button"
+                            class="venue-address-card__nearby"
+                            data-venue-nearby-open
+                            aria-pressed="false"
+                            @disabled(! $hasMap || empty($nearbyVenues))
+                        >
                             Площадки рядом
                         </button>
                     </div>
-                </div>
-
-                <div class="venue-day-modal" data-venue-nearby-modal hidden>
-                    <div class="venue-day-modal__backdrop" data-venue-nearby-close></div>
-                    <section class="venue-day-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="venue-nearby-modal-title">
-                        <div class="venue-day-modal__head">
-                            <div>
-                                <p class="venue-day-modal__eyebrow">Рядом с вами</p>
-                                <h3 id="venue-nearby-modal-title">Площадки рядом</h3>
-                            </div>
-                            <button type="button" class="venue-day-modal__close" data-venue-nearby-close aria-label="Закрыть">
-                                <i class="ti ti-x"></i>
-                            </button>
-                        </div>
-                        <div class="venue-day-modal__body" data-venue-nearby-results>
-                            <div class="venue-day-modal__notice">
-                                Список ближайших площадок появится после подключения AJAX-загрузки.
-                            </div>
-                        </div>
-                    </section>
                 </div>
             </section>
 

@@ -92,14 +92,6 @@ final readonly class PublishVenueBookingPolicyHandler
                 : null,
         ];
 
-        if ($normalized['is_enabled'] && ! $normalized['allows_whole'] && ! $normalized['allows_halves']) {
-            throw new VenueBookingPolicyException('Включённая политика должна разрешать хотя бы одну область аренды.');
-        }
-
-        if ($normalized['allows_halves'] && (int) ($venue->characteristics?->hoops_count ?? 0) < 2) {
-            throw new VenueBookingPolicyException('Раздельная аренда доступна только площадке минимум с двумя игровыми зонами.');
-        }
-
         if ($normalized['minimum_duration_minutes'] < 15
             || $normalized['maximum_duration_minutes'] < $normalized['minimum_duration_minutes']
             || $normalized['maximum_duration_minutes'] > 1440) {
@@ -154,7 +146,7 @@ final readonly class PublishVenueBookingPolicyHandler
                 || ($normalized['half_price_per_step_minor'] ?? 0) !== 0) {
                 throw new VenueBookingPolicyException('У бесплатной аренды цена должна быть равна нулю.');
             }
-        } elseif (($normalized['allows_whole'] && $normalized['whole_price_per_step_minor'] < 1)
+        } elseif ($normalized['whole_price_per_step_minor'] < 1
             || ($normalized['allows_halves'] && ($normalized['half_price_per_step_minor'] ?? 0) < 1)) {
             throw new VenueBookingPolicyException('Для каждой платной области должна быть задана положительная цена.');
         }

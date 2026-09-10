@@ -12,6 +12,7 @@ use App\Modules\Moderation\Domain\Enums\ModerationRequestStatusEnum;
 use App\Modules\Venue\Application\Services\VenueGalleryManager;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
+use App\Modules\Venue\Application\UseCases\FindNearbyVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ListVenuesHandler;
 use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowEditableVenueHandler;
@@ -250,6 +251,7 @@ class VenueController extends Controller
         Request $request,
         string $alias,
         ShowVenueHandler $useCase,
+        FindNearbyVenuesHandler $findNearbyVenues,
         CurrentActorResolver $actors,
         PageSeoResolver $pageSeo,
     ): Response {
@@ -262,8 +264,17 @@ class VenueController extends Controller
             ]]);
         }
 
+        $nearbyVenues = $venue->address?->latitude !== null && $venue->address?->longitude !== null
+            ? $findNearbyVenues->handle(
+                $venue->id,
+                (float) $venue->address->latitude,
+                (float) $venue->address->longitude,
+            )
+            : [];
+
         return ThemeResolver::page('venues.show', [
             'venue' => $venue,
+            'nearbyVenues' => $nearbyVenues,
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::VENUE,
                 $venue->id,

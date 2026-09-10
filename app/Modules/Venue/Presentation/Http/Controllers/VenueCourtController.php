@@ -19,6 +19,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 final class VenueCourtController extends Controller
 {
@@ -112,28 +113,36 @@ final class VenueCourtController extends Controller
         $rules = $this->courtRules($venueModel, $courtModel);
         $rules['sort_order'] = ['required', 'integer', 'min:0', 'max:65535'];
         $validated = $request->validate($rules);
-        $hoopsCount = (int) ($validated['hoops_count'] ?? $courtModel->hoops_count ?? 1);
-        $supportsHalves = $hoopsCount >= 2;
+        DB::transaction(function () use ($venueModel, $courtModel, $validated, $request): void {
+            Venue::query()->whereKey($venueModel->id)->lockForUpdate()->firstOrFail();
+            $lockedCourt = VenueCourt::query()
+                ->where('venue_id', $venueModel->id)
+                ->whereKey($courtModel->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $hoopsCount = (int) ($validated['hoops_count'] ?? $lockedCourt->hoops_count ?? 1);
+            $supportsHalves = $hoopsCount >= 2;
 
-        if ($courtModel->supports_halves && ! $supportsHalves) {
-            $this->assertNoFutureHalfBookings($venueModel, $courtModel);
-        }
+            if ($lockedCourt->supports_halves && ! $supportsHalves) {
+                $this->assertNoFutureHalfBookings($venueModel, $lockedCourt);
+            }
 
-        $courtModel->update([
-            'name' => trim($validated['name']),
-            'alias' => $this->uniqueAlias(
-                $venueModel,
-                $validated['alias'] ?? null,
-                $validated['name'],
-                $courtModel->id,
-            ),
-            'sort_order' => (int) $validated['sort_order'],
-            'hoops_count' => $hoopsCount,
-            'surface_type' => $validated['surface_type'] ?? null,
-            'supports_halves' => $supportsHalves,
-            'allows_whole' => $request->boolean('allows_whole'),
-            'allows_halves' => $supportsHalves && $request->boolean('allows_halves'),
-        ]);
+            $lockedCourt->update([
+                'name' => trim($validated['name']),
+                'alias' => $this->uniqueAlias(
+                    $venueModel,
+                    $validated['alias'] ?? null,
+                    $validated['name'],
+                    $lockedCourt->id,
+                ),
+                'sort_order' => (int) $validated['sort_order'],
+                'hoops_count' => $hoopsCount,
+                'surface_type' => $validated['surface_type'] ?? null,
+                'supports_halves' => $supportsHalves,
+                'allows_whole' => $request->boolean('allows_whole'),
+                'allows_halves' => $supportsHalves && $request->boolean('allows_halves'),
+            ]);
+        });
 
         return redirect()
             ->route('account.venues.courts.index', $venueModel->routeIdentifier())
@@ -277,7 +286,7 @@ final class VenueCourtController extends Controller
             ->exists();
 
         if ($hasFutureHalfBooking) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'hoops_count' => 'Нельзя уменьшить количество колец: у этого зала есть будущие бронирования отдельных половин.',
             ]);
         }

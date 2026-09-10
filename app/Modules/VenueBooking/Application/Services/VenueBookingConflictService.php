@@ -38,12 +38,15 @@ final readonly class VenueBookingConflictService
             );
         }
 
-        if ($candidate->scope !== VenueBookingScopeEnum::WHOLE) {
-            $supportsHalves = $court !== null
-                ? (bool) $court->supports_halves
-                : (int) $venue->characteristics()->value('hoops_count') >= 2;
+        if ($court !== null && ! $court->allowsScope($candidate->scope === VenueBookingScopeEnum::WHOLE)) {
+            throw new VenueBookingTransitionException(
+                'Выбранный вариант аренды этого зала больше недоступен.',
+                'BOOKING_SCOPE_UNAVAILABLE',
+            );
+        }
 
-            if (! $supportsHalves) {
+        if ($court === null && $candidate->scope !== VenueBookingScopeEnum::WHOLE) {
+            if ((int) $venue->characteristics()->value('hoops_count') < 2) {
                 throw new VenueBookingTransitionException(
                     'Зал больше не поддерживает аренду отдельных половин.',
                     'BOOKING_SCOPE_UNAVAILABLE',

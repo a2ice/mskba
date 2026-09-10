@@ -68,14 +68,6 @@ final readonly class QuoteVenueBookingHandler
             throw new VenueBookingPolicyException('Длительность не соответствует ограничениям политики.');
         }
 
-        if ($scope === VenueBookingScopeEnum::WHOLE && ! $policy->allows_whole) {
-            throw new VenueBookingPolicyException('Аренда всего зала отключена условиями площадки.');
-        }
-
-        if ($scope !== VenueBookingScopeEnum::WHOLE && ! $policy->allows_halves) {
-            throw new VenueBookingPolicyException('Раздельная аренда зала отключена условиями площадки.');
-        }
-
         if ($scope === VenueBookingScopeEnum::WHOLE && ! $court->allows_whole) {
             throw new VenueBookingPolicyException('Аренда всего выбранного зала отключена.');
         }
@@ -104,6 +96,9 @@ final readonly class QuoteVenueBookingHandler
         $pricePerStep = $scope === VenueBookingScopeEnum::WHOLE
             ? $policy->whole_price_per_step_minor
             : $policy->half_price_per_step_minor;
+        if ($policy->requires_payment && (int) $pricePerStep < 1) {
+            throw new VenueBookingPolicyException('Для выбранного варианта аренды не настроена цена.');
+        }
         $amountMinor = $steps * (int) $pricePerStep;
         $generatedAt = CarbonImmutable::now('UTC');
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
