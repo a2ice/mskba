@@ -9,6 +9,7 @@ if (venuePage) {
 
     if (venueId > 0) {
         activateBookingAction(venueId);
+        initInformationModal();
         mountVenueActivities(routeIdentifier);
     }
 }
@@ -65,11 +66,66 @@ function renderActivities(body, payload, routeIdentifier) {
     const current = Array.isArray(payload.current) ? payload.current : [];
     const upcoming = Array.isArray(payload.upcoming) ? payload.upcoming : [];
 
+    if (payload.information_warning === true) {
+        body.append(renderInformationWarning());
+    }
+
     body.append(renderGroup('Сейчас', current, 'Сейчас на площадке ничего не проходит.', true));
     body.append(renderGroup('Ближайшие', upcoming, 'Ближайших мероприятий пока нет.', false));
 
     current.filter((activity) => activity.is_live && activity.game_id && activity.snapshot_url)
         .forEach((activity) => bindLiveActivity(body, activity, routeIdentifier));
+}
+
+function renderInformationWarning() {
+    const warning = document.createElement('div');
+    warning.className = 'venue-activities__warning';
+
+    const content = document.createElement('div');
+    const icon = document.createElement('i');
+    icon.className = 'ti ti-alert-triangle';
+    icon.setAttribute('aria-hidden', 'true');
+    const text = document.createElement('span');
+    text.textContent = 'Данная информация может быть не актуальной';
+    content.append(icon, text);
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'btn btn--secondary btn--sm';
+    action.textContent = 'Уточнить';
+    action.dataset.venueInformationOpen = '1';
+    warning.append(content, action);
+
+    return warning;
+}
+
+function initInformationModal() {
+    const modal = venuePage.querySelector('[data-venue-information-modal]');
+    if (!modal) return;
+
+    let returnFocus = null;
+    const closeButtons = Array.from(modal.querySelectorAll('[data-venue-information-close]'));
+    const close = () => {
+        if (modal.hidden) return;
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        returnFocus?.focus();
+        returnFocus = null;
+    };
+
+    venuePage.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-venue-information-open]');
+        if (!trigger) return;
+
+        returnFocus = trigger;
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        modal.querySelector('.venue-day-modal__close')?.focus();
+    });
+    closeButtons.forEach((button) => button.addEventListener('click', close));
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.hidden) close();
+    });
 }
 
 function renderGroup(title, activities, emptyText, current) {

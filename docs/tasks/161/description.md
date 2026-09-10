@@ -117,14 +117,21 @@ N+1. Только чтение — новые блокировки и риск d
 
 - [x] восстановлено каноническое описание и выбран свободный номер;
 - [x] подтверждено наличие существующего activities endpoint/renderer;
-- [ ] server trust resolver и API contract;
-- [ ] warning/modal и улучшения карточек;
-- [ ] privacy/regression tests;
+- [x] server trust resolver и API contract;
+- [x] warning/modal и использование существующего полного renderer карточек;
+- [x] privacy/regression tests;
 - [ ] PR, CI, merge и production smoke.
 
 ## PR и deployment
 
-- Branch: будет создана от обновлённого `main` после merge Task 160
-- PR: ожидается
+- Branch: `feature/161`, создана от `main` после merge Task 160
+- PR: `#159`
 - Merge: ожидается
 - Production deploy: ожидается
+
+## Проверки
+
+- targeted: `VenueActivityFeedTest` — 6 tests / 39 assertions;
+- full backend: 774 tests / 5429 assertions;
+- PHP formatter: успешно;
+- frontend production build: успешно.

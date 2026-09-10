@@ -103,12 +103,12 @@ Route model binding не заменяет authorization. Use case повторн
 - [x] audit whitelist;
 - [x] tests и документация архитектуры;
 - [x] PR и CI;
-- [ ] merge и production smoke.
+- [x] merge и production smoke.
 
 ## PR и deployment
 
 - Branch: `feature/160`
 - PR: #155
-- CI: успешно, 764 tests + frontend build
-- Merge: ожидается
-- Production deploy: ожидается
+- CI: успешно, 770 tests / 5391 assertions + frontend build
+- Merge: `ed3312bb1458492fe28a3f3ef95fcc94c8608cd7`
+- Production deploy: успешно, GitHub Actions run `34417896494`; главная и публичная страница площадки отвечают `200`

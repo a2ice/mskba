@@ -493,6 +493,31 @@
                 <div class="venue-activities__body" data-venue-activities-body>
                     <div class="venue-activities__loading">Загружаем текущие и ближайшие активности…</div>
                 </div>
+
+                <div class="venue-day-modal" data-venue-information-modal hidden>
+                    <div class="venue-day-modal__backdrop" data-venue-information-close></div>
+                    <section
+                        class="venue-day-modal__dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="venue-information-modal-title"
+                    >
+                        <div class="venue-day-modal__head">
+                            <div>
+                                <p class="venue-day-modal__eyebrow">Информация о площадке</p>
+                                <h3 id="venue-information-modal-title">Уточнить информацию</h3>
+                            </div>
+                            <button type="button" class="venue-day-modal__close" data-venue-information-close aria-label="Закрыть">
+                                <i class="ti ti-x" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="venue-day-modal__body">
+                            <div class="venue-day-modal__notice">
+                                Возможность отправить уточнение владельцу площадки появится в одном из следующих обновлений.
+                            </div>
+                        </div>
+                    </section>
+                </div>
             </section>
 
             <section id="amenities" class="venue-show-section">
