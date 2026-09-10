@@ -32,6 +32,8 @@
                             </div>
                         @endif
 
+                        @include('theme::partials.auth.redirect-notice')
+
                         <form method="POST" action="{{ route('auth.login') }}">
                             @csrf
                             <div class="form-group field mb-3">
