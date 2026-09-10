@@ -21,8 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const openingState = document.querySelector('.venue-hero__media-status .venue-opening-state');
     const openingLabel = openingState?.querySelector('strong')?.textContent?.trim();
     if (openingState && openingLabel) {
-        openingState.setAttribute('title', openingLabel);
         openingState.setAttribute('aria-label', `Площадка ${openingLabel.toLowerCase()}`);
-        openingState.dataset.tooltipVariant = 'title';
+        openingState.setAttribute('tabindex', '0');
+        openingState.classList.add('ui-tooltip-source', 'ui-tooltip-source--title', 'ui-tooltip-source--icon');
+        openingState.dataset.tooltip = openingLabel;
     }
 });
