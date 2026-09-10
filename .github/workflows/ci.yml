@@ -53,11 +53,8 @@ jobs:
       - name: Validate production compose
         run: docker compose -f compose.yaml -f compose.prod.yaml config --quiet
 
-      - name: Run Task 162 focused tests
-        run: php artisan test tests/Feature/Venue/VenueCourtManagementTest.php --stop-on-failure
-
-      - name: Run full PHP tests (diagnostic timeout)
-        run: timeout 12m php artisan test
+      - name: Run PHP tests
+        run: php artisan test
 
       - name: Install frontend dependencies
         run: npm ci --ignore-scripts
