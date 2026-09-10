@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Venue;
 
+use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -120,6 +121,34 @@ final class VenueCourtManagementTest extends TestCase
 
         $this->assertSoftDeleted('venue_courts', ['id' => $firstCourt->id]);
         $this->assertTrue($secondCourt->fresh()->is_primary);
+    }
+
+    public function test_referenced_court_cannot_be_deleted(): void
+    {
+        $owner = User::factory()->create();
+        $venue = $this->venueFor($owner);
+        $firstCourt = $venue->courts()->firstOrFail();
+        VenueCourt::query()->create([
+            'venue_id' => $venue->id,
+            'name' => 'Зал 2',
+            'alias' => 'zal-2',
+            'sort_order' => 20,
+            'is_primary' => false,
+            'supports_halves' => false,
+        ]);
+        Event::factory()->create([
+            'venue_id' => $venue->id,
+            'venue_court_id' => $firstCourt->id,
+        ]);
+
+        $this->actingAs($owner)
+            ->delete(route('account.venues.courts.destroy', [$venue->routeIdentifier(), $firstCourt->routeIdentifier()]))
+            ->assertSessionHas('error', 'Нельзя удалить зал, пока с ним связаны бронирования или мероприятия.');
+
+        $this->assertDatabaseHas('venue_courts', [
+            'id' => $firstCourt->id,
+            'deleted_at' => null,
+        ]);
     }
 
     public function test_other_user_cannot_manage_courts(): void
