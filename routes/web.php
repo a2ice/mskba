@@ -330,6 +330,9 @@ Route::prefix('account/venue-bookings')
                 ->name('account.venue-bookings.timeline')
                 ->defaults('breadcrumb', 'История заявки');
         });
+        Route::get('/{venueBooking}/status', [VenueBookingController::class, 'status'])
+            ->middleware('throttle:5,1')
+            ->name('account.venue-bookings.status');
         Route::get('/{venueBooking}', [VenueBookingController::class, 'show'])
             ->name('account.venue-bookings.show')
             ->defaults('breadcrumb', 'Заявка на аренду');

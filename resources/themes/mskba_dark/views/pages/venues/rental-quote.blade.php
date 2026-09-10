@@ -35,9 +35,9 @@
                     <div class="col-md-2">
                         <label class="form-label" for="venue-rental-scope">Область</label>
                         <select id="venue-rental-scope" class="form-select" name="scope" data-venue-rental-scope>
-                            <option value="whole" data-scope-whole @if(!($policy->allows_whole && $court->allows_whole)) hidden disabled @endif>Весь зал</option>
-                            <option value="half_a" data-scope-half @if(!($policy->allows_halves && $court->supports_halves && $court->allows_halves)) hidden disabled @endif>Половина A</option>
-                            <option value="half_b" data-scope-half @if(!($policy->allows_halves && $court->supports_halves && $court->allows_halves)) hidden disabled @endif>Половина B</option>
+                            <option value="whole" data-scope-whole @if(!$court->allows_whole) hidden disabled @endif>Весь зал</option>
+                            <option value="half_a" data-scope-half @if(!($court->supports_halves && $court->allows_halves)) hidden disabled @endif>Половина A</option>
+                            <option value="half_b" data-scope-half @if(!($court->supports_halves && $court->allows_halves)) hidden disabled @endif>Половина B</option>
                         </select>
                     </div>
                 </div>
@@ -95,8 +95,8 @@
             const selected = courtSelect?.selectedOptions?.[0];
             const allowsWhole = selected ? selected.dataset.allowsWhole === '1' : {{ ($court->allows_whole ? 'true' : 'false') }};
             const allowsHalves = selected ? selected.dataset.allowsHalves === '1' : {{ (($court->supports_halves && $court->allows_halves) ? 'true' : 'false') }};
-            const whole = {{ $policy->allows_whole ? 'true' : 'false' }} && allowsWhole;
-            const halves = {{ $policy->allows_halves ? 'true' : 'false' }} && allowsHalves;
+            const whole = allowsWhole;
+            const halves = allowsHalves;
 
             scopeSelect.querySelectorAll('[data-scope-whole]').forEach((option) => {
                 option.hidden = !whole;

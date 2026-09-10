@@ -31,6 +31,11 @@ class UpdateVenueScheduleRequest extends FormRequest
             'exceptions.*.intervals' => ['array', 'max:3'],
             'exceptions.*.intervals.*.starts_at' => ['nullable', 'date_format:H:i'],
             'exceptions.*.intervals.*.ends_at' => ['nullable', 'date_format:H:i'],
+            'slot_prices' => ['array', 'max:1000'],
+            'slot_prices.*.day_of_week' => ['required', 'integer', 'between:1,7'],
+            'slot_prices.*.starts_at' => ['required', 'date_format:H:i'],
+            'slot_prices.*.whole_price' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
+            'slot_prices.*.half_price' => ['nullable', 'string', 'max:32', 'regex:/^\d+(?:[.,]\d{1,2})?$/'],
         ];
     }
 
@@ -151,6 +156,19 @@ class UpdateVenueScheduleRequest extends FormRequest
         }
 
         return $intervalsByDay;
+    }
+
+    /** @return array<int, array{day_of_week: int, starts_at: string, whole_price: ?string, half_price: ?string}> */
+    public function slotPrices(): array
+    {
+        return collect($this->validated('slot_prices', []))
+            ->map(fn (array $price): array => [
+                'day_of_week' => (int) $price['day_of_week'],
+                'starts_at' => $price['starts_at'],
+                'whole_price' => isset($price['whole_price']) && $price['whole_price'] !== '' ? $price['whole_price'] : null,
+                'half_price' => isset($price['half_price']) && $price['half_price'] !== '' ? $price['half_price'] : null,
+            ])
+            ->all();
     }
 
     public function timezone(): string

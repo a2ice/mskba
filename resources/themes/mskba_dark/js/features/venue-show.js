@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initVenueGalleryModal();
     initVenueDayModal();
     initVenueOccupancyModal();
+    initVenueInlineRental();
 });
 
 function initVenueAnchors() {
@@ -531,6 +532,11 @@ function initVenueOccupancyModal() {
             panel.hidden = panelIndex !== currentIndex;
         });
 
+        const activeTimeline = panels[currentIndex]?.querySelector('[data-venue-rental-timeline]');
+        window.requestAnimationFrame(() => {
+            activeTimeline?.querySelector('[data-venue-occupied-slot]')?.scrollIntoView({ block: 'center' });
+        });
+
         if (previousButton) previousButton.disabled = currentIndex === 0;
         if (nextButton) nextButton.disabled = currentIndex === dayButtons.length - 1;
     };
@@ -551,6 +557,245 @@ function initVenueOccupancyModal() {
     });
 
     show(0);
+}
+
+function initVenueInlineRental() {
+    const root = document.querySelector('[data-venue-occupancy-modal]');
+    if (!root?.dataset.venueRental) return;
+
+    let config;
+    try {
+        config = JSON.parse(root.dataset.venueRental);
+    } catch (_error) {
+        return;
+    }
+
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const authTrigger = document.querySelector('[data-venue-booking-auth]');
+    const detailsTrigger = document.querySelector('[data-venue-booking-details-trigger]');
+    const detailsModal = document.querySelector('[data-venue-booking-details-modal]');
+    let activeCell = null;
+    let activeBooking = null;
+
+    const errorMessage = (payload, fallback) => payload?.message
+        || Object.values(payload?.errors || {}).flat()[0]
+        || fallback;
+    const uuid = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    const buildForm = (cell) => {
+        const available = Number(cell.dataset.availableMinutes || 0);
+        const durations = [];
+        for (let value = config.minimumDurationMinutes; value <= Math.min(config.maximumDurationMinutes, available); value += config.timeStepMinutes) {
+            durations.push(value);
+        }
+        const scopeOptions = (config.scopes || [])
+            .map((scope) => `<option value="${escapeHtml(scope.value)}">${escapeHtml(scope.label)}</option>`)
+            .join('');
+        const durationOptions = durations
+            .map((duration) => `<option value="${duration}">${duration} мин</option>`)
+            .join('');
+
+        return `<form class="venue-rental-cell__form" data-venue-rental-form>
+            <button type="button" class="venue-rental-cell__close" data-venue-rental-close aria-label="Закрыть форму">×</button>
+            <div><strong>Бронирование ${escapeHtml(cell.dataset.start)}–${escapeHtml(cell.dataset.end)}</strong><small>Итоговая цена появится после расчёта.</small></div>
+            <label><span>Длительность</span><select class="form-select" name="duration_minutes" required>${durationOptions}</select></label>
+            <label><span>Зона</span><select class="form-select" name="scope" required>${scopeOptions}</select></label>
+            <p class="venue-rental-cell__message" data-venue-rental-message aria-live="polite"></p>
+            <button type="submit" class="btn btn--primary btn--sm">Рассчитать и отправить заявку</button>
+        </form>`;
+    };
+
+    const closeCell = (cell) => {
+        cell?.querySelector('[data-venue-rental-form]')?.remove();
+        cell?.classList.remove('is-expanded', 'is-loading');
+        if (activeCell === cell) activeCell = null;
+    };
+
+    const openCell = (cell) => {
+        if (!cell || cell.classList.contains('is-disabled')) return;
+        if (activeCell && activeCell !== cell) closeCell(activeCell);
+        if (!cell.querySelector('[data-venue-rental-form]')) cell.insertAdjacentHTML('beforeend', buildForm(cell));
+        cell.classList.add('is-expanded');
+        activeCell = cell;
+        cell.querySelector('select')?.focus();
+    };
+
+    root.addEventListener('click', (event) => {
+        const open = event.target.closest('[data-venue-rental-cell-open]');
+        if (open) openCell(open.closest('[data-venue-rental-cell]'));
+        const close = event.target.closest('[data-venue-rental-close]');
+        if (close) closeCell(close.closest('[data-venue-rental-cell]'));
+        const details = event.target.closest('[data-venue-booking-details]');
+        if (details) openBookingDetails(details.dataset);
+    });
+
+    root.addEventListener('submit', async (event) => {
+        const form = event.target.closest('[data-venue-rental-form]');
+        if (!form) return;
+        event.preventDefault();
+        const cell = form.closest('[data-venue-rental-cell]');
+        const panel = form.closest('[data-venue-occupancy-panel]');
+        const message = form.querySelector('[data-venue-rental-message]');
+        const submit = form.querySelector('[type="submit"]');
+        const formData = new FormData(form);
+
+        if (!config.authenticated) {
+            const redirect = new URL(window.location.href);
+            redirect.searchParams.set('booking_resume', '1');
+            redirect.searchParams.set('booking_date', panel.dataset.dayDate);
+            redirect.searchParams.set('booking_start', cell.dataset.start);
+            redirect.searchParams.set('booking_duration', formData.get('duration_minutes'));
+            redirect.searchParams.set('booking_scope', formData.get('scope'));
+            authTrigger?.setAttribute('data-auth-redirect-url', redirect.pathname + redirect.search + redirect.hash);
+            authTrigger?.click();
+            return;
+        }
+        if (!config.confirmedAccount) {
+            message.textContent = 'Для заявки нужен подтверждённый аккаунт.';
+            return;
+        }
+
+        cell.classList.add('is-loading');
+        submit.disabled = true;
+        message.textContent = 'Проверяем доступность и стоимость…';
+        try {
+            const quoteResponse = await fetch(config.quoteUrl, {
+                method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: new URLSearchParams({
+                    venue_court_id: config.courtId,
+                    starts_at: `${panel.dataset.dayDate}T${cell.dataset.start}`,
+                    duration_minutes: formData.get('duration_minutes'),
+                    scope: formData.get('scope'),
+                }),
+            });
+            const quote = await quoteResponse.json();
+            if (!quoteResponse.ok) throw new Error(errorMessage(quote, 'Не удалось рассчитать аренду.'));
+            message.textContent = `Стоимость: ${(quote.amount_minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 })} ${quote.currency}. Отправляем заявку…`;
+
+            const bookingResponse = await fetch(config.requestUrl, {
+                method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: new URLSearchParams({ quote_id: quote.quote_id, idempotency_key: uuid() }),
+            });
+            const booking = await bookingResponse.json();
+            if (!bookingResponse.ok) throw new Error(errorMessage(booking, 'Не удалось отправить заявку.'));
+            renderAsBooking(cell, booking, panel.dataset.dayDate, quote);
+            openBookingDetails({
+                bookingId: booking.booking_id,
+                bookingStatusUrl: booking.status_url,
+                bookingDetailsUrl: booking.details_url,
+            }, booking);
+        } catch (error) {
+            message.textContent = error.message;
+            cell.classList.remove('is-loading');
+            submit.disabled = false;
+        }
+    });
+
+    function renderAsBooking(cell, booking, _dayDate, quote) {
+        const start = cell.dataset.start;
+        const end = new Date(quote.ends_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        cell.className = 'venue-occupancy-slot is-occupied';
+        cell.dataset.venueOccupiedSlot = '';
+        cell.removeAttribute('data-venue-rental-cell');
+        cell.innerHTML = `<time>${escapeHtml(start)}–${escapeHtml(end)}</time><div>
+            <span class="venue-occupancy-slot__booking"><strong>Бронирование</strong>
+            <span class="venue-occupancy-slot__status venue-occupancy-slot__status--${escapeHtml(booking.status)}"><span aria-hidden="true"></span>
+            ${escapeHtml(booking.status_label || 'Заявка отправлена')}
+            <button type="button" class="fc-link" data-venue-booking-details data-booking-id="${escapeHtml(booking.booking_id)}" data-booking-status-url="${escapeHtml(booking.status_url)}" data-booking-details-url="${escapeHtml(booking.details_url)}">посмотреть</button>
+            </span></span></div>`;
+        activeCell = null;
+    }
+
+    function renderBookingDetails(data) {
+        if (!detailsModal || !data) return;
+        const content = detailsModal.querySelector('[data-venue-booking-details-content]');
+        const start = new Date(data.starts_at);
+        const end = new Date(data.ends_at);
+        const payment = data.payment?.amount_minor == null ? 'Не требуется' : `${(data.payment.amount_minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 })} ${data.payment.currency}`;
+        content.innerHTML = `<dl>
+            <div><dt>Статус</dt><dd data-venue-booking-status>${escapeHtml(data.status_label || data.status)}</dd></div>
+            <div><dt>Время</dt><dd>${start.toLocaleString('ru-RU')}–${end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</dd></div>
+            <div><dt>Зона</dt><dd>${escapeHtml(scopeLabel(data.scope))}</dd></div>
+            <div><dt>Стоимость</dt><dd>${escapeHtml(payment)}</dd></div>
+        </dl>`;
+    }
+
+    async function openBookingDetails(dataset, initial = null) {
+        activeBooking = {
+            id: dataset.bookingId,
+            statusUrl: dataset.bookingStatusUrl,
+            detailsUrl: dataset.bookingDetailsUrl,
+        };
+        detailsModal.querySelector('[data-venue-booking-details-page]').href = activeBooking.detailsUrl || '#';
+        detailsModal.querySelector('[data-venue-booking-details-message]').textContent = '';
+        if (initial?.starts_at) renderBookingDetails(initial);
+        else detailsModal.querySelector('[data-venue-booking-details-content]').innerHTML = '<div class="venue-booking-details-modal__loading">Загружаем заявку…</div>';
+        detailsTrigger?.click();
+        if (activeBooking.statusUrl) await refreshBookingDetails();
+    }
+
+    async function refreshBookingDetails() {
+        if (!activeBooking?.statusUrl) return;
+        const button = detailsModal.querySelector('[data-venue-booking-refresh]');
+        const message = detailsModal.querySelector('[data-venue-booking-details-message]');
+        button.disabled = true;
+        message.textContent = 'Обновляем…';
+        try {
+            const response = await fetch(activeBooking.statusUrl, { headers: { 'Accept': 'application/json' } });
+            const data = await response.json();
+            if (!response.ok) throw new Error(response.status === 429 ? 'Слишком много обновлений. Попробуйте через минуту.' : errorMessage(data, 'Не удалось обновить статус.'));
+            renderBookingDetails(data);
+            root.querySelectorAll(`[data-booking-id="${CSS.escape(activeBooking.id)}"]`).forEach((link) => {
+                const status = link.closest('.venue-occupancy-slot__status');
+                if (!status) return;
+                status.className = `venue-occupancy-slot__status venue-occupancy-slot__status--${data.status}`;
+                status.childNodes.forEach((node) => { if (node.nodeType === Node.TEXT_NODE) node.textContent = ` ${data.status_label} `; });
+            });
+            message.textContent = 'Статус обновлён.';
+        } catch (error) {
+            message.textContent = error.message;
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function openModalDay(index) {
+        document.querySelector(`[data-venue-occupancy-day][data-day-index="${index}"]`)?.click();
+    }
+
+    function intent() {
+        const date = root.dataset.bookingIntentDate;
+        const start = root.dataset.bookingIntentStart;
+        if (!date || !start) return;
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        const shouldResume = config.authenticated && params.get('booking_resume') === '1';
+        const panel = root.querySelector(`[data-venue-occupancy-panel][data-day-date="${CSS.escape(date)}"]`);
+        const cell = panel?.querySelector(`[data-venue-rental-cell][data-start="${CSS.escape(start)}"]`);
+        if (!panel || !cell) return;
+        openModalDay(panel.dataset.dayIndex);
+        window.requestAnimationFrame(() => {
+            openCell(cell);
+            const form = cell.querySelector('[data-venue-rental-form]');
+            if (params.get('booking_duration')) form.elements.duration_minutes.value = params.get('booking_duration');
+            if (params.get('booking_scope')) form.elements.scope.value = params.get('booking_scope');
+
+            if (!shouldResume) return;
+
+            ['booking_resume', 'booking_date', 'booking_start', 'booking_duration', 'booking_scope'].forEach((key) => {
+                url.searchParams.delete(key);
+            });
+            window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+            form.requestSubmit();
+        });
+    }
+
+    detailsModal?.querySelector('[data-venue-booking-refresh]')?.addEventListener('click', refreshBookingDetails);
+    window.requestAnimationFrame(intent);
+}
+
+function scopeLabel(scope) {
+    return { whole: 'Весь зал', half_a: 'Половина A', half_b: 'Половина B' }[scope] || scope || 'Не указана';
 }
 
 function parseIntervals(value) {

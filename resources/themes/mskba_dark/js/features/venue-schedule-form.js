@@ -104,6 +104,38 @@ function setupVenueScheduleForm() {
     });
 
     setupScheduleExceptions();
+    setupVenueSlotPricing();
+}
+
+function setupVenueSlotPricing() {
+    const pricing = document.querySelector('[data-venue-slot-pricing]');
+    if (!pricing) return;
+
+    let selectedRow = pricing.querySelector('[data-venue-price-row]');
+    const select = (row) => {
+        pricing.querySelectorAll('[data-venue-price-row]').forEach((item) => item.classList.toggle('is-selected', item === row));
+        selectedRow = row;
+    };
+    const values = (row) => Array.from(row?.querySelectorAll('input.form-control') || []).map((input) => input.value);
+    const apply = (rows) => {
+        if (!selectedRow) return;
+        const source = values(selectedRow);
+        rows.forEach((row) => {
+            row.querySelectorAll('input.form-control').forEach((input, index) => { input.value = source[index] || ''; });
+        });
+    };
+
+    pricing.querySelectorAll('[data-venue-price-row]').forEach((row) => {
+        row.querySelector('[data-venue-price-select]')?.addEventListener('click', () => select(row));
+        row.addEventListener('focusin', () => select(row));
+    });
+    pricing.querySelectorAll('[data-venue-price-apply-day]').forEach((button) => {
+        button.addEventListener('click', () => apply(button.closest('[data-venue-price-day]')?.querySelectorAll('[data-venue-price-row]') || []));
+    });
+    pricing.querySelector('[data-venue-price-apply-week]')?.addEventListener('click', () => {
+        apply(pricing.querySelectorAll('[data-venue-price-row]'));
+    });
+    if (selectedRow) select(selectedRow);
 }
 
 function setupScheduleExceptions() {

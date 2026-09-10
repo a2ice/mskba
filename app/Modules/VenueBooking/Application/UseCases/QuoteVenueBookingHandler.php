@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\VenueBooking\Application\DTO\VenueBookingQuoteDTO;
+use App\Modules\VenueBooking\Application\Services\VenueSlotPricing;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
@@ -22,6 +23,7 @@ final readonly class QuoteVenueBookingHandler
     public function __construct(
         private VenueEventAvailability $availability,
         private FeatureFlags $features,
+        private VenueSlotPricing $pricing,
     ) {}
 
     public function handle(
@@ -92,14 +94,15 @@ final readonly class QuoteVenueBookingHandler
             throw new VenueBookingPolicyException($exception->getMessage(), previous: $exception);
         }
 
-        $steps = intdiv($durationMinutes, $policy->time_step_minutes);
-        $pricePerStep = $scope === VenueBookingScopeEnum::WHOLE
+        $fallbackPricePerStep = $scope === VenueBookingScopeEnum::WHOLE
             ? $policy->whole_price_per_step_minor
             : $policy->half_price_per_step_minor;
-        if ($policy->requires_payment && (int) $pricePerStep < 1) {
+        if ($policy->requires_payment && (int) $fallbackPricePerStep < 1) {
             throw new VenueBookingPolicyException('Для выбранного варианта аренды не настроена цена.');
         }
-        $amountMinor = $steps * (int) $pricePerStep;
+        $price = $this->pricing->calculate($venue, $policy, $localStart, $durationMinutes, $scope);
+        $steps = count($price['prices_per_step_minor']);
+        $amountMinor = $price['amount_minor'];
         $generatedAt = CarbonImmutable::now('UTC');
         $validUntil = $generatedAt->addMinutes($policy->quote_validity_minutes);
         $publicId = (string) Str::uuid();
@@ -137,9 +140,11 @@ final readonly class QuoteVenueBookingHandler
                 'timezone' => $timezone,
             ],
             'pricing' => [
-                'formula' => 'steps * price_per_step_minor',
+                'formula' => $price['uses_custom_prices'] ? 'sum(prices_per_step_minor)' : 'steps * price_per_step_minor',
                 'steps' => $steps,
-                'price_per_step_minor' => (int) $pricePerStep,
+                'price_per_step_minor' => (int) $fallbackPricePerStep,
+                'prices_per_step_minor' => $price['prices_per_step_minor'],
+                'uses_custom_prices' => $price['uses_custom_prices'],
                 'amount_minor' => $amountMinor,
                 'currency' => $policy->currency,
             ],

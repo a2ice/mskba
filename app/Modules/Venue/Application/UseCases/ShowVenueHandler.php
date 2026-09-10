@@ -27,6 +27,7 @@ use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 use App\Modules\Venue\Domain\Models\VenueReview;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -154,7 +155,12 @@ final class ShowVenueHandler
         $scheduleDays = $this->scheduleDays($venue);
         $openingState = $this->openingState($venue);
         $timezone = (string) ($venue->schedule?->timezone ?: config('app.timezone', 'Europe/Moscow'));
-        $occupancyDays = $this->occupancyDays($venue, $selectedCourt, $timezone);
+        $rentalPolicy = VenueBookingPolicy::query()
+            ->where('venue_id', $venue->id)
+            ->where('active_marker', true)
+            ->where('is_enabled', true)
+            ->first();
+        $occupancyDays = $this->occupancyDays($venue, $selectedCourt, $timezone, $rentalPolicy, $user);
         $reviews = $venue->reviews
             ->map(fn (VenueReview $review) => new VenueReviewDTO(
                 id: (int) $review->id,
@@ -216,6 +222,22 @@ final class ShowVenueHandler
             featuredMedia: $featuredMedia,
             reviews: $reviews,
             occupancyDays: $occupancyDays,
+            rental: $rentalPolicy === null ? null : [
+                'quoteUrl' => route('venues.rental.quote', $venue),
+                'requestUrl' => route('account.venue-bookings.store'),
+                'authenticated' => $user !== null,
+                'confirmedAccount' => (bool) $user?->canonical()->isConfirmed(),
+                'minimumDurationMinutes' => (int) $rentalPolicy->minimum_duration_minutes,
+                'maximumDurationMinutes' => (int) $rentalPolicy->maximum_duration_minutes,
+                'timeStepMinutes' => (int) $rentalPolicy->time_step_minutes,
+                'currency' => $rentalPolicy->currency,
+                'courtId' => (int) $selectedCourt->id,
+                'scopes' => array_values(array_filter([
+                    $selectedCourt->allows_whole ? ['value' => 'whole', 'label' => 'Весь зал'] : null,
+                    $selectedCourt->supports_halves && $selectedCourt->allows_halves ? ['value' => 'half_a', 'label' => 'Половина A'] : null,
+                    $selectedCourt->supports_halves && $selectedCourt->allows_halves ? ['value' => 'half_b', 'label' => 'Половина B'] : null,
+                ])),
+            ],
             canEdit: $this->access->canEdit($user, $venue, $actor),
             canEditSchedule: $this->access->canEditSchedule($user, $venue, $actor),
             canRemove: $this->access->canRemove($user, $venue, $actor),
@@ -318,15 +340,31 @@ final class ShowVenueHandler
     /**
      * @return array<int, array{date: string, label: string, weekday: string, isToday: bool, state: string, slots: array<int, array{timeLabel: string, eventTypeLabel: string, eventUrl: ?string, statusIcon: string, statusLabel: string, status: string}>}>
      */
-    private function occupancyDays(Venue $venue, VenueCourt $court, string $timezone): array
-    {
+    private function occupancyDays(
+        Venue $venue,
+        VenueCourt $court,
+        string $timezone,
+        ?VenueBookingPolicy $policy,
+        ?User $user,
+    ): array {
         $today = CarbonImmutable::now($timezone)->startOfDay();
         $windowEnd = $today->addDays(9);
+        $requesterUserId = $user?->canonical()->id;
         $bookings = $venue->bookings()
             ->where(function ($query) use ($court): void {
                 $query->whereNull('venue_court_id')->orWhere('venue_court_id', $court->id);
             })
-            ->whereIn('status', VenueBookingStatusEnum::occupyingValues())
+            ->where(function ($query) use ($requesterUserId): void {
+                $query->whereIn('status', VenueBookingStatusEnum::occupyingValues());
+
+                if ($requesterUserId !== null) {
+                    $query->orWhere(function ($query) use ($requesterUserId): void {
+                        $query
+                            ->where('requester_user_id', $requesterUserId)
+                            ->where('status', VenueBookingStatusEnum::REQUESTED->value);
+                    });
+                }
+            })
             ->where('starts_at', '<', $windowEnd)
             ->where('ends_at', '>', $today)
             ->with('event.primaryGame')
@@ -367,8 +405,9 @@ final class ShowVenueHandler
                 'isToday' => $offset === 0,
                 'state' => $hasConfirmed ? 'confirmed' : ($dayBookings->isNotEmpty() ? 'tentative' : 'free'),
                 'slots' => $dayBookings
-                    ->map(fn ($booking): array => $this->occupiedSlotData($booking, $timezone))
+                    ->map(fn ($booking): array => $this->occupiedSlotData($booking, $timezone, $user))
                     ->all(),
+                'timeline' => $this->occupancyTimeline($venue, $dayStart, $dayBookings, $timezone, $policy, $user),
             ];
         }
 
@@ -378,7 +417,7 @@ final class ShowVenueHandler
     /**
      * @return array{timeLabel: string, eventTypeLabel: string, eventUrl: ?string, statusIcon: string, statusLabel: string, status: string}
      */
-    private function occupiedSlotData(VenueBooking $booking, string $timezone): array
+    private function occupiedSlotData(VenueBooking $booking, string $timezone, ?User $user = null): array
     {
         $startsAt = $booking->starts_at->setTimezone($timezone);
         $endsAt = $booking->ends_at->setTimezone($timezone);
@@ -400,7 +439,127 @@ final class ShowVenueHandler
             'statusIcon' => $statusMeta['icon'],
             'statusLabel' => $statusMeta['label'],
             'status' => $booking->status->value,
+            'bookingId' => $booking->requester_user_id === $user?->canonical()->id ? $booking->public_id : null,
+            'bookingUrl' => $booking->requester_user_id === $user?->canonical()->id
+                ? route('account.venue-bookings.show', $booking)
+                : null,
+            'statusUrl' => $booking->requester_user_id === $user?->canonical()->id
+                ? route('account.venue-bookings.status', $booking)
+                : null,
         ];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function occupancyTimeline(
+        Venue $venue,
+        CarbonImmutable $dayStart,
+        $bookings,
+        string $timezone,
+        ?VenueBookingPolicy $policy,
+        ?User $user,
+    ): array {
+        $intervals = $this->intervalsForDate($venue, $dayStart);
+        if ($intervals->isEmpty()) {
+            return $bookings->map(fn (VenueBooking $booking): array => [
+                'kind' => 'occupied',
+                'startsAt' => $booking->starts_at->setTimezone($timezone)->format('H:i'),
+                'endsAt' => $booking->ends_at->setTimezone($timezone)->format('H:i'),
+                'slots' => [$this->occupiedSlotData($booking, $timezone, $user)],
+            ])->all();
+        }
+
+        $step = max(1, (int) ($policy?->time_step_minutes ?? 30));
+        $now = CarbonImmutable::now($timezone);
+        $timeline = [];
+
+        foreach ($intervals as $interval) {
+            $openMinute = $this->timeToMinutes((string) $interval->starts_at);
+            $closeMinute = $this->timeToMinutes((string) $interval->ends_at);
+            $ranges = $bookings->map(function (VenueBooking $booking) use ($dayStart, $timezone): array {
+                $start = $booking->starts_at->setTimezone($timezone);
+                $end = $booking->ends_at->setTimezone($timezone);
+
+                return [
+                    'start' => (int) max(0, $dayStart->diffInMinutes($start, false)),
+                    'end' => (int) min(1440, $dayStart->diffInMinutes($end, false)),
+                    'booking' => $booking,
+                ];
+            })->filter(fn (array $range): bool => $range['start'] < $closeMinute && $range['end'] > $openMinute)
+                ->sortBy('start')->values();
+            $groups = [];
+            foreach ($ranges as $range) {
+                $last = array_key_last($groups);
+                if ($last !== null && $range['start'] < $groups[$last]['end']) {
+                    $groups[$last]['end'] = max($groups[$last]['end'], $range['end']);
+                    $groups[$last]['bookings'][] = $range['booking'];
+                } else {
+                    $groups[] = ['start' => $range['start'], 'end' => $range['end'], 'bookings' => [$range['booking']]];
+                }
+            }
+
+            $cursor = (int) (ceil($openMinute / $step) * $step);
+            foreach ($groups as $group) {
+                $occupiedStart = max($openMinute, $group['start']);
+                $occupiedEnd = min($closeMinute, $group['end']);
+                $this->appendFreeTimelineCells($timeline, $dayStart, $cursor, $occupiedStart, $closeMinute, $step, $policy, $now);
+                $timeline[] = [
+                    'kind' => 'occupied',
+                    'startsAt' => $this->minutesToTime($occupiedStart),
+                    'endsAt' => $this->minutesToTime($occupiedEnd),
+                    'slots' => collect($group['bookings'])
+                        ->map(fn (VenueBooking $booking): array => $this->occupiedSlotData($booking, $timezone, $user))
+                        ->all(),
+                ];
+                $cursor = max($cursor, $occupiedEnd);
+            }
+            $this->appendFreeTimelineCells($timeline, $dayStart, $cursor, $closeMinute, $closeMinute, $step, $policy, $now);
+        }
+
+        return $timeline;
+    }
+
+    /** @param array<int, array<string, mixed>> $timeline */
+    private function appendFreeTimelineCells(
+        array &$timeline,
+        CarbonImmutable $dayStart,
+        int $fromMinute,
+        int $untilMinute,
+        int $intervalEndMinute,
+        int $step,
+        ?VenueBookingPolicy $policy,
+        CarbonImmutable $now,
+    ): void {
+        for ($minute = $fromMinute; $minute + $step <= $untilMinute; $minute += $step) {
+            $startsAt = $dayStart->addMinutes($minute);
+            $availableMinutes = max(0, min($untilMinute, $intervalEndMinute) - $minute);
+            $bookable = $policy !== null
+                && $availableMinutes >= $policy->minimum_duration_minutes
+                && ! $startsAt->lessThan($now->addMinutes($policy->minimum_lead_time_minutes))
+                && ! $startsAt->greaterThan($now->addDays($policy->maximum_advance_days));
+            $timeline[] = [
+                'kind' => 'free',
+                'startsAt' => $startsAt->format('H:i'),
+                'endsAt' => $startsAt->addMinutes($step)->format('H:i'),
+                'availableMinutes' => $availableMinutes,
+                'bookable' => $bookable,
+            ];
+        }
+    }
+
+    private function timeToMinutes(string $time): int
+    {
+        [$hours, $minutes] = array_map('intval', explode(':', $time));
+
+        return ($hours * 60) + $minutes;
+    }
+
+    private function minutesToTime(int $minutes): string
+    {
+        $minutes = max(0, min(1440, $minutes));
+
+        return $minutes === 1440
+            ? '24:00'
+            : sprintf('%02d:%02d', intdiv($minutes, 60), $minutes % 60);
     }
 
     private function occupiedSlotEventTypeLabel(Event $event): string

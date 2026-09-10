@@ -292,43 +292,64 @@
                 'id' => 'venue-occupancy-schedule',
                 'dialogClass' => 'venue-occupancy-modal__dialog',
             ])
-                <div class="venue-occupancy-modal" data-venue-occupancy-modal>
+                <div
+                    class="venue-occupancy-modal"
+                    data-venue-occupancy-modal
+                    @if($venue->rental) data-venue-rental='@json($venue->rental)' @endif
+                    data-booking-intent-date="{{ request()->query('booking_date', '') }}"
+                    data-booking-intent-start="{{ request()->query('booking_start', '') }}"
+                >
                     <p class="venue-occupancy-modal__eyebrow">Расписание площадки</p>
                     <h2 class="modal_title" id="modal-title-venue-occupancy-schedule" data-venue-occupancy-title>Занятые слоты</h2>
                     <p class="venue-occupancy-modal__date" data-venue-occupancy-date></p>
 
                     <div class="venue-occupancy-modal__days">
                         @foreach($venue->occupancyDays as $dayIndex => $day)
-                            <section data-venue-occupancy-panel data-day-index="{{ $dayIndex }}" @if($dayIndex !== 0) hidden @endif>
-                                @forelse($day['slots'] as $slot)
-                                    @php
-                                        $slotAriaLabel = $slot['timeLabel'].' · '.$slot['eventTypeLabel'].' · '.$slot['statusIcon'].' '.$slot['statusLabel'];
-                                    @endphp
-                                    <article class="venue-occupancy-slot" aria-label="{{ $slotAriaLabel }}">
-                                        <time>{{ $slot['timeLabel'] }}</time>
-                                        <div>
-                                            @if($slot['eventUrl'])
-                                                <a
-                                                    class="fc-link venue-occupancy-slot__event"
-                                                    href="{{ $slot['eventUrl'] }}"
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                >{{ $slot['eventTypeLabel'] }}</a>
-                                            @else
-                                                <strong>{{ $slot['eventTypeLabel'] }}</strong>
-                                            @endif
-                                            <span class="venue-occupancy-slot__status venue-occupancy-slot__status--{{ $slot['status'] }}">
-                                                <span aria-hidden="true"></span>{{ $slot['statusLabel'] }}
-                                            </span>
-                                        </div>
-                                    </article>
+                            <section data-venue-occupancy-panel data-day-index="{{ $dayIndex }}" data-day-date="{{ $day['date'] }}" @if($dayIndex !== 0) hidden @endif>
+                                <div class="venue-rental-timeline" data-venue-rental-timeline>
+                                @forelse($day['timeline'] as $timelineItem)
+                                    @if($timelineItem['kind'] === 'occupied')
+                                        @php
+                                            $timelineAriaLabel = collect($timelineItem['slots'])
+                                                ->map(fn ($slot) => $slot['timeLabel'].' · '.$slot['eventTypeLabel'].' · '.$slot['statusIcon'].' '.$slot['statusLabel'])
+                                                ->join('; ');
+                                        @endphp
+                                        <article class="venue-occupancy-slot is-occupied" aria-label="{{ $timelineAriaLabel }}" data-venue-occupied-slot>
+                                            <time>{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] }}</time>
+                                            <div>
+                                                @foreach($timelineItem['slots'] as $slot)
+                                                    <span class="venue-occupancy-slot__booking">
+                                                        @if($slot['eventUrl'])
+                                                            <a class="fc-link venue-occupancy-slot__event" href="{{ $slot['eventUrl'] }}" target="_blank" rel="noopener">{{ $slot['eventTypeLabel'] }}</a>
+                                                        @else
+                                                            <strong>{{ $slot['eventTypeLabel'] }}</strong>
+                                                        @endif
+                                                        <span class="venue-occupancy-slot__status venue-occupancy-slot__status--{{ $slot['status'] }}">
+                                                            <span aria-hidden="true"></span>{{ $slot['statusLabel'] }}
+                                                            @if($slot['bookingId'])
+                                                                <button type="button" class="fc-link" data-venue-booking-details data-booking-id="{{ $slot['bookingId'] }}" data-booking-status-url="{{ $slot['statusUrl'] }}" data-booking-details-url="{{ $slot['bookingUrl'] }}">посмотреть</button>
+                                                            @endif
+                                                        </span>
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </article>
+                                    @else
+                                        <article @class(['venue-rental-cell', 'is-disabled' => ! $timelineItem['bookable']]) data-venue-rental-cell data-start="{{ $timelineItem['startsAt'] }}" data-end="{{ $timelineItem['endsAt'] }}" data-available-minutes="{{ $timelineItem['availableMinutes'] }}">
+                                            <button type="button" data-venue-rental-cell-open @disabled(! $timelineItem['bookable'] || ! $venue->rental)>
+                                                <time>{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] }}</time>
+                                                <span>{{ $timelineItem['bookable'] && $venue->rental ? 'Свободно · Забронировать' : 'Недоступно для бронирования' }}</span>
+                                            </button>
+                                        </article>
+                                    @endif
                                 @empty
                                     <div class="venue-occupancy-modal__empty">
                                         <i class="ti ti-calendar-check" aria-hidden="true"></i>
-                                        <strong>Свободный день</strong>
-                                        <span>Занятых слотов на эту дату нет.</span>
+                                        <strong>Расписание не задано</strong>
+                                        <span>Свяжитесь с площадкой, чтобы уточнить доступное время.</span>
                                     </div>
                                 @endforelse
+                                </div>
                             </section>
                         @endforeach
                     </div>
@@ -343,6 +364,27 @@
                     </footer>
                 </div>
             @endcomponent
+            <button type="button" class="js-handler" hidden data-venue-booking-details-trigger data-handler="modal" data-modal-action="open" data-modal-target="venue-booking-details"></button>
+
+            @component('theme::partials.modal.layout', [
+                'id' => 'venue-booking-details',
+                'dialogClass' => 'venue-booking-details-modal__dialog',
+            ])
+                <div class="venue-booking-details-modal" data-venue-booking-details-modal>
+                    <p class="venue-occupancy-modal__eyebrow">Заявка на аренду</p>
+                    <h2 class="modal_title" id="modal-title-venue-booking-details">Параметры заявки</h2>
+                    <div class="venue-booking-details-modal__content" data-venue-booking-details-content></div>
+                    <p class="venue-booking-details-modal__message" data-venue-booking-details-message aria-live="polite"></p>
+                    <footer class="venue-booking-details-modal__footer">
+                        <a class="btn btn--secondary" href="#" data-venue-booking-details-page>Открыть заявку</a>
+                        <button type="button" class="btn btn--primary" data-venue-booking-refresh>Обновить статус</button>
+                    </footer>
+                </div>
+            @endcomponent
+
+            @guest
+                <button type="button" class="js-handler" hidden data-venue-booking-auth data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic"></button>
+            @endguest
 
             @if($venue->featuredMedia !== [])
                 <div class="venue-gallery-modal" data-venue-gallery-modal hidden>

@@ -8,6 +8,7 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueAccessDeniedException;
 use App\Modules\Venue\Domain\Exceptions\VenueNotFoundException;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Domain\Models\VenueScheduleSlotPrice;
 use Illuminate\Support\Facades\DB;
 
 final class UpdateVenueScheduleHandler
@@ -19,6 +20,7 @@ final class UpdateVenueScheduleHandler
     /**
      * @param  array<int, array<int, array{starts_at: string, ends_at: string}>>  $intervalsByDay
      * @param  array<int, array{date: string, is_closed: bool, intervals: array<int, array{starts_at: string, ends_at: string}>}>  $exceptions
+     * @param  array<int, array{day_of_week: int, starts_at: string, whole_price_per_step_minor: ?int, half_price_per_step_minor: ?int}>|null  $slotPrices
      */
     public function handle(
         string $alias,
@@ -28,8 +30,9 @@ final class UpdateVenueScheduleHandler
         array $exceptions = [],
         ?VenueOperationalStatusEnum $operationalStatus = null,
         bool $force = false,
+        ?array $slotPrices = null,
     ): Venue {
-        return DB::transaction(function () use ($alias, $user, $timezone, $intervalsByDay, $exceptions, $operationalStatus, $force): Venue {
+        return DB::transaction(function () use ($alias, $user, $timezone, $intervalsByDay, $exceptions, $operationalStatus, $force, $slotPrices): Venue {
             $venue = Venue::query()
                 ->whereRouteIdentifier($alias)
                 ->lockForUpdate()
@@ -77,6 +80,23 @@ final class UpdateVenueScheduleHandler
                         'starts_at' => $interval['starts_at'],
                         'ends_at' => $interval['ends_at'],
                         'sort_order' => $sortOrder,
+                    ]);
+                }
+            }
+
+            if ($slotPrices !== null) {
+                VenueScheduleSlotPrice::query()->where('venue_id', $venue->id)->delete();
+                foreach ($slotPrices as $slotPrice) {
+                    if ($slotPrice['whole_price_per_step_minor'] === null && $slotPrice['half_price_per_step_minor'] === null) {
+                        continue;
+                    }
+
+                    VenueScheduleSlotPrice::query()->create([
+                        'venue_id' => $venue->id,
+                        'day_of_week' => $slotPrice['day_of_week'],
+                        'starts_at' => $slotPrice['starts_at'],
+                        'whole_price_per_step_minor' => $slotPrice['whole_price_per_step_minor'],
+                        'half_price_per_step_minor' => $slotPrice['half_price_per_step_minor'],
                     ]);
                 }
             }

@@ -18,6 +18,7 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Infrastructure\Database\Factories\VenueFactory;
+use App\Modules\VenueBooking\Domain\Models\VenueScheduleSlotPrice;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -199,6 +200,11 @@ class Venue extends Model
     public function schedule(): HasOne
     {
         return $this->hasOne(VenueSchedule::class);
+    }
+
+    public function scheduleSlotPrices(): HasMany
+    {
+        return $this->hasMany(VenueScheduleSlotPrice::class);
     }
 
     public function characteristics(): HasOne

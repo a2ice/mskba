@@ -624,6 +624,62 @@
     gap: 14px;
 }
 
+.account-venue-slot-pricing__days,
+.account-venue-slot-pricing-day__grid {
+    display: grid;
+    gap: 14px;
+}
+
+.account-venue-slot-pricing-day {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.account-venue-slot-pricing-day__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.account-venue-slot-pricing-day__head h3 { margin: 0; }
+
+.account-venue-slot-pricing-day__grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.account-venue-slot-price {
+    position: relative;
+    display: grid;
+    grid-template-columns: 86px minmax(0, 1fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px;
+}
+
+.account-venue-slot-price.is-selected {
+    border-color: var(--accent-text);
+    background: rgba(255, 104, 24, 0.08);
+}
+
+.account-venue-slot-price > strong { align-self: center; font-size: 12px; }
+.account-venue-slot-price label { display: grid; gap: 5px; }
+.account-venue-slot-price label span { color: var(--text-muted); font-size: 10px; font-weight: 800; }
+.account-venue-slot-price__select { position: absolute; inset: 0; z-index: 0; border: 0; background: transparent; }
+.account-venue-slot-price input { position: relative; z-index: 1; }
+
+@media (max-width: 640px) {
+    .account-venue-slot-pricing-day__head { align-items: stretch; flex-direction: column; }
+    .account-venue-slot-price { grid-template-columns: 1fr 1fr; }
+    .account-venue-slot-price > strong { grid-column: 1 / -1; }
+}
+
 .account-venue-schedule__section-head,
 .account-venue-schedule-exception__head {
     display: flex;

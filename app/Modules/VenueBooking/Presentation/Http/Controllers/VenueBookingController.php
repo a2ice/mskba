@@ -50,7 +50,13 @@ final class VenueBookingController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return response()->json(['booking_id' => $booking->public_id, 'status' => $booking->status->value], 201);
+            return response()->json([
+                'booking_id' => $booking->public_id,
+                'status' => $booking->status->value,
+                'status_label' => $booking->status->label(),
+                'details_url' => route('account.venue-bookings.show', $booking),
+                'status_url' => route('account.venue-bookings.status', $booking),
+            ], 201);
         }
 
         return redirect()->route('account.venue-bookings.show', $booking)->with('status', 'Заявка на аренду отправлена.');
@@ -153,6 +159,27 @@ final class VenueBookingController extends Controller
             'conversationUnread' => $conversationUnread,
             'contributionSummary' => $contributionSummary,
         ]);
+    }
+
+    public function status(
+        Request $request,
+        VenueBooking $venueBooking,
+        CurrentActorResolver $actors,
+        VenueBookingAuthorization $authorization,
+    ): JsonResponse {
+        $venueBooking->loadMissing(['venue', 'requester.profile.activeAvatar', 'event', 'paymentAttempt', 'extensionRequests']);
+        $actor = $actors->resolveForRequest($request);
+
+        try {
+            $authorization->assertCanView($actor, $venueBooking, $venueBooking->venue);
+
+            return response()->json($this->details->handle($venueBooking, $actor));
+        } catch (VenueBookingTransitionException $exception) {
+            return response()->json([
+                'code' => $exception->errorCode,
+                'message' => $exception->getMessage(),
+            ], $exception->errorCode === 'BOOKING_FORBIDDEN' ? 403 : 409);
+        }
     }
 
     public function accept(Request $request, VenueBooking $venueBooking, CurrentActorResolver $actors, AcceptVenueBookingHandler $handler): JsonResponse|RedirectResponse

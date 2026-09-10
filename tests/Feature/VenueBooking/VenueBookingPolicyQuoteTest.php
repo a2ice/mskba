@@ -22,6 +22,7 @@ use App\Modules\VenueBooking\Application\UseCases\RequestVenueBookingHandler;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingPolicyException;
 use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingQuote;
+use App\Modules\VenueBooking\Domain\Models\VenueScheduleSlotPrice;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -119,6 +120,65 @@ final class VenueBookingPolicyQuoteTest extends TestCase
                 $this->assertTrue(true);
             }
         }
+    }
+
+    public function test_quote_sums_time_specific_prices_and_falls_back_to_policy_price(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData([
+            'whole_price_per_step_minor' => 500,
+        ]));
+        VenueScheduleSlotPrice::query()->create([
+            'venue_id' => $venue->id,
+            'day_of_week' => 3,
+            'starts_at' => '12:00',
+            'whole_price_per_step_minor' => 900,
+        ]);
+
+        $quote = app(QuoteVenueBookingHandler::class)->handle(
+            $venue,
+            CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow'),
+            60,
+            VenueBookingScopeEnum::WHOLE,
+        );
+        $stored = VenueBookingQuote::query()->where('public_id', $quote->publicId)->firstOrFail();
+
+        $this->assertSame(1400, $quote->amountMinor);
+        $this->assertSame([900, 500], $stored->snapshot['pricing']['prices_per_step_minor']);
+        $this->assertTrue($stored->snapshot['pricing']['uses_custom_prices']);
+        $this->assertSame('sum(prices_per_step_minor)', $stored->snapshot['pricing']['formula']);
+    }
+
+    public function test_inline_booking_status_endpoint_is_limited_to_five_refreshes_per_minute(): void
+    {
+        [$owner, $venue] = $this->ownedVenue(2);
+        app(PublishVenueBookingPolicyHandler::class)->handle($venue, $owner, $this->policyData());
+        $quote = app(QuoteVenueBookingHandler::class)->handle(
+            $venue,
+            CarbonImmutable::parse('2026-08-26 12:00:00', 'Europe/Moscow'),
+            60,
+            VenueBookingScopeEnum::WHOLE,
+            $owner,
+        );
+        $actor = app(CurrentActorResolver::class)->resolve($owner, null);
+        $booking = app(RequestVenueBookingHandler::class)->handle($actor, $quote->publicId);
+        $venue->update(['alias' => 'requested-booking-venue']);
+
+        $this->actingAs($owner)
+            ->get(route('venues.show', $venue->alias))
+            ->assertOk()
+            ->assertSee('data-booking-id="'.$booking->public_id.'"', false);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->actingAs($owner)
+                ->getJson(route('account.venue-bookings.status', $booking))
+                ->assertOk()
+                ->assertJsonPath('booking_id', $booking->public_id);
+        }
+
+        $this->actingAs($owner)
+            ->getJson(route('account.venue-bookings.status', $booking))
+            ->assertTooManyRequests();
     }
 
     public function test_half_quote_uses_independent_court_permission_and_physical_capability(): void

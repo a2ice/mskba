@@ -48,9 +48,13 @@ use App\Modules\Venue\Application\UseCases\ListAccountVenuesHandler;
 use App\Modules\Venue\Application\UseCases\ShowAccountVenueScheduleHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueScheduleHandler;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Presentation\Http\Requests\UpdateVenueScheduleRequest;
+use App\Modules\VenueBooking\Application\Services\MinorAmountParser;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Modules\Vk\Domain\Models\VkAccount;
 use App\Presentation\Theming\ThemeResolver;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
@@ -668,6 +672,11 @@ class AccountController extends Controller
             'scheduleRows' => $this->venueScheduleRows($venue),
             'scheduleExceptions' => $this->venueScheduleExceptions($venue),
             'weekDays' => $this->weekDays(),
+            'bookingPolicy' => $policy = VenueBookingPolicy::query()
+                ->where('venue_id', $venue->id)
+                ->where('active_marker', true)
+                ->first(),
+            'slotPriceRows' => $this->venueSlotPriceRows($venue, $policy),
         ]);
     }
 
@@ -675,10 +684,18 @@ class AccountController extends Controller
         UpdateVenueScheduleRequest $request,
         string $alias,
         UpdateVenueScheduleHandler $updateVenueSchedule,
+        MinorAmountParser $amounts,
     ): RedirectResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
 
         try {
+            $policy = VenueBookingPolicy::query()
+                ->where('venue_id', $this->venueIdForAlias($alias))
+                ->where('active_marker', true)
+                ->first();
+            $slotPrices = $request->has('slot_prices')
+                ? $this->parseSlotPrices($request->slotPrices(), $policy, $amounts)
+                : null;
             $updateVenueSchedule->handle(
                 alias: $alias,
                 user: $user,
@@ -686,6 +703,7 @@ class AccountController extends Controller
                 intervalsByDay: $request->intervalsByDay(),
                 exceptions: $request->exceptions(),
                 operationalStatus: $request->operationalStatus(),
+                slotPrices: $slotPrices,
             );
         } catch (\Exception $e) {
             return redirect()
@@ -766,5 +784,69 @@ class AccountController extends Controller
                 'ends_at' => substr((string) $interval->ends_at, 0, 5),
             ])->values()->all(),
         ])->values()->all() ?? [];
+    }
+
+    private function venueIdForAlias(string $alias): int
+    {
+        return (int) Venue::query()
+            ->whereRouteIdentifier($alias)
+            ->value('id');
+    }
+
+    private function formatMinorAmount(?int $amount): string
+    {
+        return $amount === null ? '' : number_format($amount / 100, 2, ',', '');
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function venueSlotPriceRows($venue, ?VenueBookingPolicy $policy): array
+    {
+        if ($policy === null || $policy->time_step_minutes < 1 || $venue->schedule === null) {
+            return [];
+        }
+
+        $prices = $venue->scheduleSlotPrices()->get()
+            ->keyBy(fn ($price): string => $price->day_of_week.'|'.substr((string) $price->starts_at, 0, 5));
+        $rows = [];
+
+        foreach (array_keys($this->weekDays()) as $dayOfWeek) {
+            $seen = [];
+            foreach ($venue->schedule->intervals->where('day_of_week', $dayOfWeek) as $interval) {
+                $cursor = CarbonImmutable::createFromFormat('H:i', substr((string) $interval->starts_at, 0, 5));
+                $end = CarbonImmutable::createFromFormat('H:i', substr((string) $interval->ends_at, 0, 5));
+                while ($cursor->lessThan($end)) {
+                    $startsAt = $cursor->format('H:i');
+                    if (! isset($seen[$startsAt])) {
+                        $price = $prices->get($dayOfWeek.'|'.$startsAt);
+                        $rows[$dayOfWeek][] = [
+                            'day_of_week' => $dayOfWeek,
+                            'starts_at' => $startsAt,
+                            'ends_at' => $cursor->addMinutes($policy->time_step_minutes)->min($end)->format('H:i'),
+                            'whole_price' => $this->formatMinorAmount($price?->whole_price_per_step_minor),
+                            'half_price' => $this->formatMinorAmount($price?->half_price_per_step_minor),
+                        ];
+                        $seen[$startsAt] = true;
+                    }
+                    $cursor = $cursor->addMinutes($policy->time_step_minutes);
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /** @return array<int, array{day_of_week: int, starts_at: string, whole_price_per_step_minor: ?int, half_price_per_step_minor: ?int}> */
+    private function parseSlotPrices(array $prices, ?VenueBookingPolicy $policy, MinorAmountParser $amounts): array
+    {
+        if ($policy === null) {
+            return [];
+        }
+
+        return collect($prices)->map(fn (array $price): array => [
+            'day_of_week' => $price['day_of_week'],
+            'starts_at' => $price['starts_at'],
+            'whole_price_per_step_minor' => $price['whole_price'] === null ? null : $amounts->parse($price['whole_price'], $policy->currency),
+            'half_price_per_step_minor' => $price['half_price'] === null ? null : $amounts->parse($price['half_price'], $policy->currency),
+        ])->all();
     }
 }

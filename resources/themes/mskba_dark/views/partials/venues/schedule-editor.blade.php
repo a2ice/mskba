@@ -47,6 +47,61 @@
         @endforeach
     </div>
 
+    <section class="account-venue-schedule__pricing mt-5" data-venue-slot-pricing>
+        <div class="account-venue-schedule__section-head">
+            <div>
+                <h2>Стоимость по времени</h2>
+                @if($bookingPolicy)
+                    <p>Индивидуальная цена за один шаг {{ $bookingPolicy->time_step_minutes }} мин. Пустая ячейка использует общую стоимость из условий аренды.</p>
+                @else
+                    <p>Сначала опубликуйте условия аренды — после этого здесь появятся ценовые ячейки.</p>
+                @endif
+            </div>
+            @if($bookingPolicy && $slotPriceRows !== [])
+                <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-week>Применить выбранную цену ко всей неделе</button>
+            @endif
+        </div>
+
+        @if($bookingPolicy && $slotPriceRows !== [])
+            @php $priceInputIndex = 0; @endphp
+            <div class="account-venue-slot-pricing__days">
+                @foreach($weekDays as $dayOfWeek => $dayLabel)
+                    @if(!empty($slotPriceRows[$dayOfWeek]))
+                        <section class="account-venue-slot-pricing-day" data-venue-price-day>
+                            <div class="account-venue-slot-pricing-day__head">
+                                <h3>{{ $dayLabel }}</h3>
+                                <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-day>Применить выбранную цену ко всему дню</button>
+                            </div>
+                            <div class="account-venue-slot-pricing-day__grid">
+                                @foreach($slotPriceRows[$dayOfWeek] as $priceRow)
+                                    <div class="account-venue-slot-price" data-venue-price-row>
+                                        <strong>{{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}</strong>
+                                        <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][day_of_week]" value="{{ $dayOfWeek }}">
+                                        <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][starts_at]" value="{{ $priceRow['starts_at'] }}">
+                                        <label>
+                                            <span>Весь зал</span>
+                                            <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][whole_price]" value="{{ old("slot_prices.$priceInputIndex.whole_price", $priceRow['whole_price']) }}" placeholder="{{ number_format($bookingPolicy->whole_price_per_step_minor / 100, 2, ',', ' ') }}">
+                                        </label>
+                                        <label>
+                                            <span>Половина</span>
+                                            <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][half_price]" value="{{ old("slot_prices.$priceInputIndex.half_price", $priceRow['half_price']) }}" placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}">
+                                        </label>
+                                        <button type="button" class="account-venue-slot-price__select" data-venue-price-select aria-label="Выбрать цену {{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}"></button>
+                                    </div>
+                                    @error("slot_prices.$priceInputIndex.whole_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    @error("slot_prices.$priceInputIndex.half_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    @php $priceInputIndex++; @endphp
+                                @endforeach
+                            </div>
+                        </section>
+                    @endif
+                @endforeach
+            </div>
+        @elseif($bookingPolicy)
+            <div class="alert alert-info">Сохраните часы работы — ценовые ячейки будут построены по ним автоматически.</div>
+        @endif
+    </section>
+
     <section class="account-venue-schedule__exceptions mt-5">
         <div class="account-venue-schedule__section-head">
             <div><h2>Исключения по датам</h2><p>Праздники, закрытые дни или часы, отличающиеся от обычной недели.</p></div>

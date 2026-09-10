@@ -19,6 +19,7 @@ use App\Modules\Venue\Domain\Models\VenueReview;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleException;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -428,6 +429,46 @@ class VenueShowPageTest extends TestCase
                 ->assertOk()
                 ->assertSee('Закрыта')
                 ->assertSee('Закрыто');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_occupancy_popup_renders_bookable_rtc_cells_from_schedule(): void
+    {
+        Carbon::setTestNow('2026-09-14 08:00:00 Europe/Moscow');
+        config()->set('features.venue_rental.rental_flow', true);
+
+        try {
+            $owner = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+            $venue = Venue::factory()->create([
+                'status' => VenueStatusEnum::CONFIRMED,
+                'operational_status' => VenueOperationalStatusEnum::ACTIVE,
+            ]);
+            $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
+            VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
+                'day_of_week' => 1, 'starts_at' => '10:00', 'ends_at' => '12:00',
+            ]);
+            VenueBookingPolicy::query()->create([
+                'venue_id' => $venue->id, 'version' => 1, 'is_enabled' => true,
+                'allows_whole' => true, 'allows_halves' => false,
+                'minimum_duration_minutes' => 60, 'maximum_duration_minutes' => 180,
+                'time_step_minutes' => 30, 'minimum_lead_time_minutes' => 30,
+                'maximum_advance_days' => 90, 'currency' => 'RUB',
+                'whole_price_per_step_minor' => 50000, 'half_price_per_step_minor' => null,
+                'hold_duration_minutes' => 15, 'requires_payment' => true,
+                'payment_window_minutes' => 30, 'quote_validity_minutes' => 15,
+                'published_by_user_id' => $owner->id, 'published_at' => now(), 'active_marker' => true,
+            ]);
+
+            $this->get(route('venues.show', $venue->routeIdentifier()))
+                ->assertOk()
+                ->assertSee('data-venue-rental-timeline', false)
+                ->assertSee('data-start="10:00"', false)
+                ->assertSee('data-end="10:30"', false)
+                ->assertSee('data-available-minutes="120"', false)
+                ->assertSee('Свободно · Забронировать')
+                ->assertSee('data-venue-booking-auth', false);
         } finally {
             Carbon::setTestNow();
         }

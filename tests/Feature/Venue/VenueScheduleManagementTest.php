@@ -9,6 +9,7 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueSchedule;
 use App\Modules\Venue\Domain\Models\VenueScheduleInterval;
+use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -140,6 +141,50 @@ class VenueScheduleManagementTest extends TestCase
             'starts_at' => '15:00',
             'ends_at' => '17:00',
         ]);
+    }
+
+    public function test_owner_can_store_and_reuse_time_specific_slot_prices(): void
+    {
+        $user = User::factory()->create();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => $this->actorIdFor($user),
+            'alias' => 'schedule-pricing-venue',
+            'status' => VenueStatusEnum::UNCONFIRMED,
+        ]);
+        $schedule = VenueSchedule::factory()->for($venue)->create(['timezone' => 'Europe/Moscow']);
+        VenueScheduleInterval::factory()->for($schedule, 'schedule')->create([
+            'day_of_week' => 1, 'starts_at' => '10:00', 'ends_at' => '11:00',
+        ]);
+        VenueBookingPolicy::query()->create([
+            'venue_id' => $venue->id, 'version' => 1, 'is_enabled' => true,
+            'allows_whole' => true, 'allows_halves' => true,
+            'minimum_duration_minutes' => 30, 'maximum_duration_minutes' => 240,
+            'time_step_minutes' => 30, 'minimum_lead_time_minutes' => 0,
+            'maximum_advance_days' => 90, 'currency' => 'RUB',
+            'whole_price_per_step_minor' => 50000, 'half_price_per_step_minor' => 30000,
+            'hold_duration_minutes' => 15, 'requires_payment' => true,
+            'payment_window_minutes' => 30, 'quote_validity_minutes' => 15,
+            'published_by_user_id' => $user->id, 'published_at' => now(), 'active_marker' => true,
+        ]);
+
+        $this->actingAs($user)->put(route('account.venues.schedule.update', $venue->alias), [
+            'timezone' => 'Europe/Moscow',
+            'intervals' => [1 => [['starts_at' => '10:00', 'ends_at' => '11:00']]],
+            'slot_prices' => [[
+                'day_of_week' => 1, 'starts_at' => '10:00',
+                'whole_price' => '750,50', 'half_price' => '400',
+            ]],
+        ])->assertRedirect(route('account.venues.schedule.edit', $venue->alias));
+
+        $this->assertDatabaseHas('venue_schedule_slot_prices', [
+            'venue_id' => $venue->id, 'day_of_week' => 1, 'starts_at' => '10:00',
+            'whole_price_per_step_minor' => 75050, 'half_price_per_step_minor' => 40000,
+        ]);
+        $this->actingAs($user)->get(route('account.venues.schedule.edit', $venue->alias))
+            ->assertOk()
+            ->assertSee('Стоимость по времени')
+            ->assertSee('value="750,50"', false)
+            ->assertSee('data-venue-price-apply-week', false);
     }
 
     public function test_schedule_update_validates_interval_order(): void
