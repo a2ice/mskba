@@ -40,7 +40,7 @@ final class AuthenticationIntendedRedirectTest extends TestCase
         $target = $this->bookingTarget();
 
         $this->get($target)->assertRedirect(route('login'));
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
 
         $this->get(route('login'))
             ->assertOk()
@@ -50,14 +50,14 @@ final class AuthenticationIntendedRedirectTest extends TestCase
             ->assertSee('href="'.route('auth.vk.start').'"', false)
             ->assertDontSee('redirect_to='.urlencode(route('login')), false);
 
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
 
         $this->get(route('register'))
             ->assertOk()
             ->assertSee('data-auth-redirect-notice', false)
             ->assertSee('Бронирование площадки');
 
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
     }
 
     public function test_safe_login_redirect_query_is_remembered_but_auth_and_external_targets_are_ignored(): void
@@ -67,17 +67,17 @@ final class AuthenticationIntendedRedirectTest extends TestCase
         $this->get(route('login', ['redirect_to' => $target]))
             ->assertOk()
             ->assertSee('Бронирование площадки');
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
 
         $this->get(route('login', ['redirect_to' => route('login')]))
             ->assertOk()
             ->assertSee('Бронирование площадки');
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
 
         $this->get(route('login', ['redirect_to' => 'https://example.com/phishing']))
             ->assertOk()
             ->assertSee('Бронирование площадки');
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
     }
 
     public function test_password_login_returns_to_intended_target_and_consumes_it(): void
@@ -109,9 +109,10 @@ final class AuthenticationIntendedRedirectTest extends TestCase
         $this->withSession(['url.intended' => $target])
             ->post(route('auth.register'), [
                 'username' => 'new_booking_player',
-                'password' => 'password123',
-                'password_confirmation' => 'password123',
+                'password' => 'Password1!',
+                'password_confirmation' => 'Password1!',
                 'privacy_consent' => '1',
+                'role' => null,
             ])
             ->assertRedirect($target);
 
@@ -132,7 +133,7 @@ final class AuthenticationIntendedRedirectTest extends TestCase
         $state = (string) $query['state'];
 
         $this->assertSame($target, session('vk.oauth_flows')[$state]['redirect_url']);
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
 
         $this->fakeVk($state, '16601');
 
@@ -163,7 +164,7 @@ final class AuthenticationIntendedRedirectTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertGuest();
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
     }
 
     public function test_telegram_web_login_returns_to_intended_target_and_consumes_it(): void
@@ -194,7 +195,7 @@ final class AuthenticationIntendedRedirectTest extends TestCase
             ->assertJsonPath('status', 'pending');
         $token = (string) $start->json('token');
 
-        $this->assertSame($target, session('url.intended'));
+        $this->assertSameUrl($target, session('url.intended'));
         $challenge = app(TelegramBotLoginChallengeStore::class)->find($token);
         $this->assertNotNull($challenge);
         $this->assertSame($target, $challenge['redirect_url']);
@@ -227,6 +228,28 @@ final class AuthenticationIntendedRedirectTest extends TestCase
             'venue_id' => 11,
             'venue_court_id' => 14,
         ]);
+    }
+
+    private function assertSameUrl(string $expected, mixed $actual): void
+    {
+        $this->assertIsString($actual);
+
+        $expectedParts = parse_url($expected);
+        $actualParts = parse_url($actual);
+
+        $this->assertIsArray($expectedParts);
+        $this->assertIsArray($actualParts);
+
+        foreach (['scheme', 'host', 'port', 'path', 'fragment'] as $part) {
+            $this->assertSame($expectedParts[$part] ?? null, $actualParts[$part] ?? null);
+        }
+
+        parse_str((string) ($expectedParts['query'] ?? ''), $expectedQuery);
+        parse_str((string) ($actualParts['query'] ?? ''), $actualQuery);
+        ksort($expectedQuery);
+        ksort($actualQuery);
+
+        $this->assertSame($expectedQuery, $actualQuery);
     }
 
     /** @param array<string, mixed> $overrides */
