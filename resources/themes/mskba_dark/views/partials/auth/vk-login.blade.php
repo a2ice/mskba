@@ -6,7 +6,7 @@
 
         <a
             class="btn btn--sm auth-vk-login__button"
-            href="{{ route('auth.vk.start', ['redirect_to' => request()->fullUrl()]) }}"
+            href="{{ route('auth.vk.start') }}"
             data-vk-auth-url="{{ route('auth.vk.start', [], false) }}"
         >
             <span class="auth-vk-login__icon" aria-hidden="true">VK</span>
