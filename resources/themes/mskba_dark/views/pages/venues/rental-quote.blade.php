@@ -9,15 +9,20 @@
         @if(isset($error))<div class="alert alert-danger">{{ $error['message'] }}</div>@endif
         <div class="card mb-4"><div class="card-body">
             <p>Расчёт выполняется по версии условий №{{ $policy->version }}. Он не резервирует зал.</p>
-            <form method="POST" action="{{ route('venues.rental.quote', $venue) }}">
+            <form method="POST" action="{{ route('venues.rental.quote', $venue) }}" data-venue-rental-court-form>
                 @csrf
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label" for="venue-rental-court">Зал</label>
                         @if(($courts ?? collect())->count() > 1)
-                            <select id="venue-rental-court" class="form-select" name="venue_court_id" required>
+                            <select id="venue-rental-court" class="form-select" name="venue_court_id" required data-venue-rental-court>
                                 @foreach($courts as $courtOption)
-                                    <option value="{{ $courtOption->id }}" @selected((int) old('venue_court_id', $court->id) === (int) $courtOption->id)>{{ $courtOption->name }}</option>
+                                    <option
+                                        value="{{ $courtOption->id }}"
+                                        data-allows-whole="{{ $courtOption->allows_whole ? '1' : '0' }}"
+                                        data-allows-halves="{{ ($courtOption->supports_halves && $courtOption->allows_halves) ? '1' : '0' }}"
+                                        @selected((int) old('venue_court_id', $court->id) === (int) $courtOption->id)
+                                    >{{ $courtOption->name }}</option>
                                 @endforeach
                             </select>
                         @else
@@ -27,12 +32,17 @@
                     </div>
                     <div class="col-md-4"><label class="form-label">Начало</label><input class="form-control" type="datetime-local" name="starts_at" required value="{{ old('starts_at') }}"></div>
                     <div class="col-md-2"><label class="form-label">Длительность, мин</label><input class="form-control" type="number" name="duration_minutes" required min="{{ $policy->minimum_duration_minutes }}" max="{{ $policy->maximum_duration_minutes }}" step="{{ $policy->time_step_minutes }}" value="{{ old('duration_minutes', $policy->minimum_duration_minutes) }}"></div>
-                    <div class="col-md-2"><label class="form-label">Область</label><select class="form-select" name="scope">
-                        @if($policy->allows_whole)<option value="whole">Весь зал</option>@endif
-                        @if($policy->allows_halves && $court->supports_halves)<option value="half_a">Половина A</option><option value="half_b">Половина B</option>@endif
-                    </select></div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="venue-rental-scope">Область</label>
+                        <select id="venue-rental-scope" class="form-select" name="scope" data-venue-rental-scope>
+                            <option value="whole" data-scope-whole @if(!($policy->allows_whole && $court->allows_whole)) hidden disabled @endif>Весь зал</option>
+                            <option value="half_a" data-scope-half @if(!($policy->allows_halves && $court->supports_halves && $court->allows_halves)) hidden disabled @endif>Половина A</option>
+                            <option value="half_b" data-scope-half @if(!($policy->allows_halves && $court->supports_halves && $court->allows_halves)) hidden disabled @endif>Половина B</option>
+                        </select>
+                    </div>
                 </div>
-                <button class="btn btn--primary btn--sm mt-3" type="submit">Рассчитать</button>
+                <div class="text-muted small mt-2" data-venue-rental-scope-empty hidden>Для выбранного зала аренда сейчас отключена.</div>
+                <button class="btn btn--primary btn--sm mt-3" type="submit" data-venue-rental-submit>Рассчитать</button>
             </form>
         </div></div>
 
@@ -73,4 +83,41 @@
             </div></div>
         @endif
     </div></section>
+
+    <script>
+    (() => {
+        const form = document.querySelector('[data-venue-rental-court-form]');
+        const courtSelect = form?.querySelector('[data-venue-rental-court]');
+        const scopeSelect = form?.querySelector('[data-venue-rental-scope]');
+        if (!form || !scopeSelect) return;
+
+        const syncScopes = () => {
+            const selected = courtSelect?.selectedOptions?.[0];
+            const allowsWhole = selected ? selected.dataset.allowsWhole === '1' : {{ ($court->allows_whole ? 'true' : 'false') }};
+            const allowsHalves = selected ? selected.dataset.allowsHalves === '1' : {{ (($court->supports_halves && $court->allows_halves) ? 'true' : 'false') }};
+            const whole = {{ $policy->allows_whole ? 'true' : 'false' }} && allowsWhole;
+            const halves = {{ $policy->allows_halves ? 'true' : 'false' }} && allowsHalves;
+
+            scopeSelect.querySelectorAll('[data-scope-whole]').forEach((option) => {
+                option.hidden = !whole;
+                option.disabled = !whole;
+            });
+            scopeSelect.querySelectorAll('[data-scope-half]').forEach((option) => {
+                option.hidden = !halves;
+                option.disabled = !halves;
+            });
+
+            const firstEnabled = Array.from(scopeSelect.options).find((option) => !option.disabled);
+            if (scopeSelect.selectedOptions[0]?.disabled && firstEnabled) scopeSelect.value = firstEnabled.value;
+            const unavailable = !firstEnabled;
+            const empty = form.querySelector('[data-venue-rental-scope-empty]');
+            const submit = form.querySelector('[data-venue-rental-submit]');
+            if (empty) empty.hidden = !unavailable;
+            if (submit) submit.disabled = unavailable;
+        };
+
+        courtSelect?.addEventListener('change', syncScopes);
+        syncScopes();
+    })();
+    </script>
 @endsection
