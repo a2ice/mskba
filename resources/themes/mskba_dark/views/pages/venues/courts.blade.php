@@ -115,6 +115,11 @@
                     <button type="submit" class="btn btn--primary btn--sm mt-3">Сохранить зал</button>
                 </form>
 
+                @include('theme::partials.venues.court-gallery-editor', [
+                    'court' => $court,
+                    'photos' => $courtPhotos[$court->id] ?? [],
+                ])
+
                 @if($courts->count() > 1)
                     <form method="POST" action="{{ route('account.venues.courts.destroy', [$venue->routeIdentifier(), $court->routeIdentifier()]) }}" class="mt-3" onsubmit="return confirm('Удалить этот зал?')">
                         @csrf
