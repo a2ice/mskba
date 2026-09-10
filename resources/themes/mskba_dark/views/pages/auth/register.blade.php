@@ -28,6 +28,8 @@
                             </div>
                         @endif
 
+                        @include('theme::partials.auth.redirect-notice')
+
                         <form method="POST" action="{{ route('auth.register') }}">
                             @csrf
 
