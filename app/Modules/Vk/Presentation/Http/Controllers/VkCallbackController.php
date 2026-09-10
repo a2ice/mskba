@@ -4,6 +4,7 @@ namespace App\Modules\Vk\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\OperationalPermissionIntentResolver;
+use App\Modules\Identity\Presentation\Http\Support\SafeAuthenticationRedirectResolver;
 use App\Modules\Vk\Application\Services\VkOAuthFlowStore;
 use App\Modules\Vk\Application\UseCases\CompleteVkAuthenticationHandler;
 use App\Modules\Vk\Application\UseCases\LinkVkIdentityHandler;
@@ -24,6 +25,7 @@ final class VkCallbackController extends Controller
         CompleteVkAuthenticationHandler $authenticate,
         LinkVkIdentityHandler $link,
         OperationalPermissionIntentResolver $creationIntent,
+        SafeAuthenticationRedirectResolver $redirects,
     ): RedirectResponse {
         $failureRoute = 'login';
 
@@ -83,6 +85,7 @@ final class VkCallbackController extends Controller
 
             $result = $resolveUser->handle($identity);
             $authenticate->handle($result['user']);
+            $redirects->forgetIntended($request);
 
             return redirect()->to($flow['redirect_url'])->with('success', 'Вы вошли через VK ID.');
         } catch (InvalidArgumentException $exception) {
