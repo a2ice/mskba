@@ -4,6 +4,7 @@ namespace App\Modules\Telegram\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Presentation\Http\Support\SafeAuthenticationRedirectResolver;
 use App\Modules\Telegram\Application\Services\TelegramBotLoginChallengeStore;
 use App\Modules\Telegram\Application\UseCases\CompleteTelegramWebAuthenticationHandler;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
@@ -17,6 +18,7 @@ final class TelegramBotLoginStatusController extends Controller
         Request $request,
         TelegramBotLoginChallengeStore $challenges,
         CompleteTelegramWebAuthenticationHandler $completeAuthentication,
+        SafeAuthenticationRedirectResolver $redirects,
     ): JsonResponse {
         $validated = $request->validate([
             'token' => ['required', 'string', 'size:43'],
@@ -69,6 +71,8 @@ final class TelegramBotLoginStatusController extends Controller
                 'message' => 'Ожидаем подтверждение в Telegram…',
             ]);
         }
+
+        $redirects->forgetIntended($request);
 
         return response()->json([
             'status' => 'success',
