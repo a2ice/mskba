@@ -148,6 +148,28 @@
     font-weight: 900;
 }
 
+.venue-hero__media-status .venue-opening-state {
+    min-width: 20px;
+    min-height: 28px;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    cursor: help;
+}
+
+.venue-hero__media-status .venue-opening-state strong {
+    display: none;
+}
+
+.venue-hero__media-status .venue-opening-state.ui-tooltip-source--title {
+    text-decoration: none;
+}
+
+.venue-hero__media-status .venue-opening-state__dot {
+    width: 9px;
+    height: 9px;
+}
+
 @media (max-width: 640px) {
     .venue-court-picker__option {
         grid-template-columns: 32px minmax(0, 1fr);
