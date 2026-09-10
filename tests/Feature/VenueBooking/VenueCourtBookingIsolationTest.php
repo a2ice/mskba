@@ -10,6 +10,9 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
+use App\Modules\VenueBooking\Application\Services\VenueBookingConflictService;
+use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingConflictException;
+use App\Modules\VenueBooking\Domain\Models\VenueBooking as RentalVenueBooking;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +46,23 @@ final class VenueCourtBookingIsolationTest extends TestCase
             $endsAt,
             scope: VenueBookingScopeEnum::WHOLE,
             court: $courtA,
+        );
+    }
+
+    public function test_booking_lifecycle_conflicts_are_isolated_by_court(): void
+    {
+        [$venue, $courtA, $courtB] = $this->venueWithTwoCourts();
+        [$startsAt, $endsAt] = $this->interval();
+        $this->booking($venue, $courtA, VenueBookingScopeEnum::WHOLE, $startsAt, $endsAt);
+
+        $otherCourtCandidate = $this->rentalCandidate($venue, $courtB, $startsAt, $endsAt);
+        app(VenueBookingConflictService::class)->lockAndAssertAvailable($venue, $otherCourtCandidate);
+        $this->addToAssertionCount(1);
+
+        $this->expectException(VenueBookingConflictException::class);
+        app(VenueBookingConflictService::class)->lockAndAssertAvailable(
+            $venue,
+            $this->rentalCandidate($venue, $courtA, $startsAt, $endsAt),
         );
     }
 
@@ -166,5 +186,24 @@ final class VenueCourtBookingIsolationTest extends TestCase
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
         ]);
+    }
+
+    private function rentalCandidate(
+        Venue $venue,
+        VenueCourt $court,
+        CarbonImmutable $startsAt,
+        CarbonImmutable $endsAt,
+    ): RentalVenueBooking {
+        $candidate = new RentalVenueBooking();
+        $candidate->forceFill([
+            'venue_id' => $venue->id,
+            'venue_court_id' => $court->id,
+            'scope' => VenueBookingScopeEnum::WHOLE,
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+            'quote_snapshot' => ['policy' => ['time_step_minutes' => 1]],
+        ]);
+
+        return $candidate;
     }
 }
