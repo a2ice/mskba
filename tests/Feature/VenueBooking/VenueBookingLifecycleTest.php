@@ -512,7 +512,12 @@ final class VenueBookingLifecycleTest extends TestCase
             'operational_status' => VenueOperationalStatusEnum::ACTIVE,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
-        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
+        $venue->primaryCourt()->firstOrFail()->update([
+            'hoops_count' => 2,
+            'supports_halves' => true,
+            'allows_whole' => true,
+            'allows_halves' => true,
+        ]);
         $venue->schedule()->create(['timezone' => 'Europe/Moscow']);
         $contract = Contract::query()->create([
             'family' => ContractFamilyEnum::MEMBERSHIP,
