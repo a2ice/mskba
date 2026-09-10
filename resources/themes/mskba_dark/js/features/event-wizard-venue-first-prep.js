@@ -4,11 +4,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const parameters = new URLSearchParams(window.location.search);
         const presetVenueId = Number(parameters.get('venue_id') || 0);
+        const presetCourtId = Number(parameters.get('venue_court_id') || 0);
         const venueSelector = form.querySelector('[data-venue-selector]');
         const venueValue = venueSelector?.querySelector('[data-venue-selector-value]');
         if (presetVenueId > 0 && venueValue instanceof HTMLInputElement && !venueValue.value) {
             venueValue.value = String(presetVenueId);
             form.dataset.presetVenueId = String(presetVenueId);
+        }
+
+        if (venueValue instanceof HTMLInputElement) {
+            const syncPresetCourt = () => {
+                let courtValue = form.querySelector('input[name="venue_court_id"]');
+                const shouldKeepCourt = presetVenueId > 0
+                    && presetCourtId > 0
+                    && Number(venueValue.value || 0) === presetVenueId;
+
+                if (!shouldKeepCourt) {
+                    courtValue?.remove();
+                    return;
+                }
+
+                if (!(courtValue instanceof HTMLInputElement)) {
+                    courtValue = document.createElement('input');
+                    courtValue.type = 'hidden';
+                    courtValue.name = 'venue_court_id';
+                    form.append(courtValue);
+                }
+                courtValue.value = String(presetCourtId);
+            };
+
+            syncPresetCourt();
+            venueValue.addEventListener('change', syncPresetCourt);
+            venueValue.addEventListener('input', syncPresetCourt);
         }
 
         if (venueSelector && venueValue instanceof HTMLInputElement) {
