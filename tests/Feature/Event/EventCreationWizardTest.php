@@ -119,6 +119,7 @@ final class EventCreationWizardTest extends TestCase
             'operational_status' => VenueOperationalStatusEnum::ACTIVE->value,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
+        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
 
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(2)->setTime(19, 0);
         $occupiedEvent = Event::factory()->create([
@@ -205,6 +206,7 @@ final class EventCreationWizardTest extends TestCase
             'requires_booking_approval' => false,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
+        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->setTime(19, 0);
         $occupiedEvent = Event::factory()->create([
             'venue_id' => $venue->id,
@@ -265,6 +267,7 @@ final class EventCreationWizardTest extends TestCase
             'requires_booking_approval' => false,
         ]);
         $venue->characteristics()->create(['hoops_count' => 2]);
+        $venue->primaryCourt()->firstOrFail()->update(['supports_halves' => true]);
         $start = CarbonImmutable::now('Europe/Moscow')->addDays(3)->setTime(19, 0);
 
         $response = $this->actingAs($user)

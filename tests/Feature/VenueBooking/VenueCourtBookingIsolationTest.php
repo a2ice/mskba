@@ -6,6 +6,8 @@ use App\Modules\Event\Application\Services\VenueEventAvailability;
 use App\Modules\Event\Domain\Enums\VenueBookingScopeEnum;
 use App\Modules\Event\Domain\Enums\VenueBookingStatusEnum;
 use App\Modules\Event\Domain\Models\VenueBooking;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -144,7 +146,10 @@ final class VenueCourtBookingIsolationTest extends TestCase
     /** @return array{Venue, VenueCourt, VenueCourt} */
     private function venueWithTwoCourts(bool $supportsHalves = true): array
     {
+        $user = User::factory()->create();
+        $actor = app(CurrentActorResolver::class)->resolve($user, null);
         $venue = Venue::factory()->create([
+            'created_by_actor_id' => $actor->id,
             'status' => VenueStatusEnum::CONFIRMED,
             'operational_status' => VenueOperationalStatusEnum::ACTIVE,
         ]);
