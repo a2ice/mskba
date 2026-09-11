@@ -2,12 +2,16 @@
 
 namespace App\Modules\Venue\Application\UseCases;
 
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Location\Application\Services\AddressDisplayFormatter;
 use App\Modules\Venue\Application\Builders\ListVenuesBuilder;
 use App\Modules\Venue\Application\DTO\VenueListItemDTO;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\Venue\Application\Services\VenueMembershipAccess;
+use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
 
 final class ListAccountVenuesHandler
 {
@@ -15,6 +19,8 @@ final class ListAccountVenuesHandler
         private readonly VenueAccessResolver $accessResolver,
         private readonly ListVenuesBuilder $listVenuesBuilder,
         private readonly AddressDisplayFormatter $addressFormatter,
+        private readonly CountActionableVenueBookingRequests $bookingRequests,
+        private readonly VenueMembershipAccess $memberships,
     ) {}
 
     public function handle(?User $user): array
@@ -24,6 +30,10 @@ final class ListAccountVenuesHandler
         $contractEditableVenueIds = $this->accessResolver->contractEditableVenueIdsFor($user);
         $contractScheduleEditableVenueIds = $this->accessResolver->contractScheduleEditableVenueIdsFor($user);
         $bootstrapOwnedVenueIds = $this->accessResolver->bootstrapOwnedVenueIdsFor($user);
+        $bookingRequestCounts = $user === null ? [] : $this->bookingRequests->byVenueFor($user);
+        $decidableVenueIds = $user === null ? [] : $this->memberships
+            ->allowedVenueIdsFor($user, VenuePermissionEnum::DECIDE_BOOKING_REQUESTS);
+        $isSuperadmin = $user?->canonical()->hasSystemRole(UserSystemRoleEnum::SUPERADMIN) ?? false;
 
         return $this->listVenuesBuilder->build(function ($query) use ($contractedVenueIds, $bootstrapOwnedVenueIds): void {
             $query
@@ -31,7 +41,7 @@ final class ListAccountVenuesHandler
                 ->orWhereIn('id', $bootstrapOwnedVenueIds);
         })
             ->get()
-            ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds) {
+            ->map(function (Venue $venue) use ($contractViewableVenueIds, $contractEditableVenueIds, $contractScheduleEditableVenueIds, $bootstrapOwnedVenueIds, $bookingRequestCounts, $decidableVenueIds, $isSuperadmin) {
                 $isBootstrapOwned = in_array($venue->id, $bootstrapOwnedVenueIds, true);
 
                 return new VenueListItemDTO(
@@ -61,6 +71,8 @@ final class ListAccountVenuesHandler
                     canEdit: $venue->allowsDetailsEditing() && ($isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true)),
                     canEditSchedule: $venue->allowsOperationalChanges() && ($isBootstrapOwned || in_array($venue->id, $contractScheduleEditableVenueIds, true)),
                     canRemove: $isBootstrapOwned || in_array($venue->id, $contractEditableVenueIds, true),
+                    canDecideBookingRequests: $isSuperadmin || in_array($venue->id, $decidableVenueIds, true),
+                    actionableBookingRequestsCount: $bookingRequestCounts[$venue->id] ?? 0,
                 );
             })
             ->all();

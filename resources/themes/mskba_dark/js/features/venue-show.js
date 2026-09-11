@@ -582,11 +582,10 @@ function initVenueInlineRental() {
         || fallback;
     const uuid = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const money = new Intl.NumberFormat('ru-RU', {
-        style: 'currency',
-        currency: config.currency || 'RUB',
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
     });
+    const currencyLabel = (currency) => String(currency || 'RUB').toUpperCase() === 'RUB' ? 'руб.' : String(currency).toUpperCase();
 
     const updatePrice = (form) => {
         const price = form?.querySelector('[data-venue-rental-price]');
@@ -612,7 +611,7 @@ function initVenueInlineRental() {
             const custom = config.priceOverrides?.[`${dayOfWeek}|${startsAt}`]?.[isWhole ? 'whole' : 'half'];
             amountMinor += Number(custom ?? fallback);
         }
-        price.textContent = amountMinor === 0 ? 'Бесплатно' : money.format(amountMinor / 100);
+        price.textContent = amountMinor === 0 ? 'Бесплатно' : `${money.format(amountMinor / 100)} ${currencyLabel(config.currency)}`;
     };
 
     const buildForm = (cell) => {
@@ -722,7 +721,7 @@ function initVenueInlineRental() {
             });
             const quote = await quoteResponse.json();
             if (!quoteResponse.ok) throw new Error(errorMessage(quote, 'Не удалось рассчитать аренду.'));
-            message.textContent = `Стоимость: ${(quote.amount_minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 })} ${quote.currency}. Отправляем заявку…`;
+            message.textContent = `Стоимость: ${(quote.amount_minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 })} ${currencyLabel(quote.currency)}. Отправляем заявку…`;
 
             const bookingResponse = await fetch(config.requestUrl, {
                 method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
@@ -763,7 +762,7 @@ function initVenueInlineRental() {
         const content = detailsModal.querySelector('[data-venue-booking-details-content]');
         const start = new Date(data.starts_at);
         const end = new Date(data.ends_at);
-        const payment = data.payment?.amount_minor == null ? 'Не требуется' : `${(data.payment.amount_minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 })} ${data.payment.currency}`;
+        const payment = data.payment?.amount_minor == null ? 'Не требуется' : `${(data.payment.amount_minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 })} ${currencyLabel(data.payment.currency)}`;
         content.innerHTML = `<dl>
             <div><dt>Статус</dt><dd data-venue-booking-status>${escapeHtml(data.status_label || data.status)}</dd></div>
             <div><dt>Время</dt><dd>${start.toLocaleString('ru-RU')}–${end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</dd></div>

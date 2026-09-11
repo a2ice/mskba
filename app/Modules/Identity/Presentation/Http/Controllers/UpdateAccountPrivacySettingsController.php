@@ -20,6 +20,7 @@ final class UpdateAccountPrivacySettingsController extends Controller
             $user,
             $request->settings(),
             $request->messengerNotifications(),
+            $request->emailNotifications(),
         );
 
         return redirect()

@@ -59,4 +59,9 @@ final class MinorAmountParser
 
         return $fraction === '' ? (string) $whole : $whole.'.'.$fraction;
     }
+
+    public function currencyLabel(string $currency): string
+    {
+        return strtoupper($currency) === 'RUB' ? 'руб.' : strtoupper($currency);
+    }
 }

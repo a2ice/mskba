@@ -24,6 +24,7 @@ use App\Modules\Venue\Infrastructure\Listeners\CreateVenueOwnershipStatusNotific
 use App\Modules\Venue\Infrastructure\Listeners\CreateVenueUserRestrictionNotification;
 use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipAdministrators;
 use App\Modules\Venue\Infrastructure\Listeners\NotifyVenueOwnershipClaimMessageRecipients;
+use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingPolicy;
 use App\Support\Features\FeatureFlags;
 use App\Support\Features\VenueRentalFeature;
@@ -132,6 +133,7 @@ class VenueAccessServiceProvider extends ServiceProvider
             if ($access->allows($user, $venue, VenuePermissionEnum::VIEW_BOOKING_REQUESTS)
                 && $this->rentalFeatureAllows(VenueRentalFeature::PORTAL, $venue)) {
                 $view->with('venueBookingInboxUrl', route('account.venue-bookings.inbox', ['venue_id' => $venue->id]));
+                $view->with('venueBookingRequestCount', app(CountActionableVenueBookingRequests::class)->byVenueFor($user)[$venue->id] ?? 0);
             }
 
             if (VenueBookingPolicy::query()

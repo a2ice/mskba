@@ -7,12 +7,21 @@
     <h1 class="section-title mb-4">{{ $title }}</h1>
     <div aria-live="polite">
         @forelse($projection['data'] as $booking)
+            @php
+                $startsAt = \Carbon\CarbonImmutable::parse($booking['starts_at'])->setTimezone(config('app.timezone'));
+                $endsAt = \Carbon\CarbonImmutable::parse($booking['ends_at'])->setTimezone(config('app.timezone'));
+                $durationMinutes = (int) $startsAt->diffInMinutes($endsAt);
+                $durationParts = array_filter([
+                    intdiv($durationMinutes, 60) > 0 ? intdiv($durationMinutes, 60).' ч' : null,
+                    $durationMinutes % 60 > 0 ? ($durationMinutes % 60).' мин' : null,
+                ]);
+            @endphp
             <article class="card mb-3"><div class="card-body">
                 <div class="d-flex flex-wrap justify-content-between gap-2">
                     <h2 class="h5">{{ $booking['venue']['name'] }}</h2>
                     <span class="badge">{{ $booking['status_label'] }}</span>
                 </div>
-                <p>{{ \Carbon\CarbonImmutable::parse($booking['starts_at'])->setTimezone(config('app.timezone'))->format('d.m.Y H:i') }}</p>
+                <p>{{ $startsAt->format('d.m.Y H:i') }}–{{ $endsAt->format('H:i') }} ({{ implode(' ', $durationParts) }})</p>
                 <p class="text-muted">Версия {{ $booking['version'] }}</p>
                 <a class="btn btn--primary btn--sm" href="{{ route('account.venue-bookings.show', $booking['booking_id']) }}">Открыть заявку</a>
             </div></article>

@@ -47,7 +47,12 @@
         @endif
 
         @if($venueBookingInboxUrl ?? null)
-            <a href="{{ $venueBookingInboxUrl }}" class="venue-side-nav__link">Заявки на аренду</a>
+            <a href="{{ $venueBookingInboxUrl }}" class="venue-side-nav__link">
+                <span>Заявки на аренду</span>
+                @if(($venueBookingRequestCount ?? 0) > 0)
+                    <span class="sidebar__notification-badge" data-venue-booking-request-count data-venue-id="{{ $venue->id }}">{{ $venueBookingRequestCount }}</span>
+                @endif
+            </a>
         @endif
 
         <a

@@ -26,6 +26,8 @@ final readonly class VenueListItemDTO
         public bool $canEdit,
         public bool $canEditSchedule,
         public bool $canRemove,
+        public bool $canDecideBookingRequests = false,
+        public int $actionableBookingRequestsCount = 0,
     ) {}
 
     public function hasFreeAccess(): bool

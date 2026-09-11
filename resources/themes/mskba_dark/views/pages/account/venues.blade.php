@@ -63,6 +63,14 @@
                             @if ($venue->canEditSchedule)
                                 <a href="{{ route('account.venues.schedule.edit', $venue->routeIdentifier()) }}" class="btn btn--secondary btn--sm">Расписание</a>
                             @endif
+                            @if ($venue->canDecideBookingRequests)
+                                <a href="{{ route('account.venue-bookings.inbox', ['venue_id' => $venue->id]) }}" class="btn btn--secondary btn--sm">
+                                    Заявки
+                                    @if($venue->actionableBookingRequestsCount > 0)
+                                        <span class="sidebar__notification-badge" data-venue-booking-request-count data-venue-id="{{ $venue->id }}">{{ $venue->actionableBookingRequestsCount }}</span>
+                                    @endif
+                                </a>
+                            @endif
                         </div>
                     </article>
                 @endforeach

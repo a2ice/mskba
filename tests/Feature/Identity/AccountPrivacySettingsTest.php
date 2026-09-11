@@ -160,6 +160,7 @@ final class AccountPrivacySettingsTest extends TestCase
                 ])
                 ->all(),
             'messenger_notifications' => UserMessengerNotificationPreferenceEnum::ALL->value,
+            'email_notifications' => UserMessengerNotificationPreferenceEnum::ALL->value,
         ];
     }
 }

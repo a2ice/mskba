@@ -51,18 +51,18 @@
         <div class="account-venue-schedule__section-head">
             <div>
                 <h2>Стоимость по времени</h2>
-                @if($bookingPolicy)
+                @if($bookingPolicy ?? null)
                     <p>Индивидуальная цена за один шаг {{ $bookingPolicy->time_step_minutes }} мин. Пустая ячейка использует общую стоимость из условий аренды.</p>
                 @else
                     <p>Сначала опубликуйте условия аренды — после этого здесь появятся ценовые ячейки.</p>
                 @endif
             </div>
-            @if($bookingPolicy && $slotPriceRows !== [])
+            @if(($bookingPolicy ?? null) && ($slotPriceRows ?? []) !== [])
                 <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-week>Применить выбранную цену ко всей неделе</button>
             @endif
         </div>
 
-        @if($bookingPolicy && $slotPriceRows !== [])
+        @if(($bookingPolicy ?? null) && ($slotPriceRows ?? []) !== [])
             @php $priceInputIndex = 0; @endphp
             <div class="account-venue-slot-pricing__days">
                 @foreach($weekDays as $dayOfWeek => $dayLabel)
@@ -97,7 +97,7 @@
                     @endif
                 @endforeach
             </div>
-        @elseif($bookingPolicy)
+        @elseif($bookingPolicy ?? null)
             <div class="alert alert-info">Сохраните часы работы — ценовые ячейки будут построены по ним автоматически.</div>
         @endif
     </section>

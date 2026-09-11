@@ -197,7 +197,7 @@
                     </form>
                 @elseif($booking->paymentAttempt)
                     @php $payment = $booking->paymentAttempt; @endphp
-                    <p>{{ number_format($payment->amount_minor / 100, 2, ',', ' ') }} {{ $payment->currency }}, способ: {{ $payment->method }}</p>
+                    <p>{{ number_format($payment->amount_minor / 100, 2, ',', ' ') }} {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($payment->currency) }}, способ: {{ $payment->method }}</p>
                     <p class="text-muted">Источник: {{ $payment->provider }}@if($payment->provider_reference), reference ***{{ substr($payment->provider_reference, -4) }}@endif</p>
                     <p>{{ $payment->payment_instructions }}</p>
                     <p class="text-muted">Оплатить и сообщить до {{ $payment->window_expires_at->format('d.m.Y H:i') }}. Заявление об оплате само по себе не подтверждает бронь.</p>
@@ -230,20 +230,21 @@
                     return $whole.','.str_pad((string) ($minor % $contributionDivisor), $contributionExponent, '0', STR_PAD_LEFT);
                 };
                 $ownContribution = $contributionSummary['own_commitment'];
+                $contributionCurrencyLabel = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($contributionSummary['currency']);
             @endphp
             <section class="card mb-4" aria-labelledby="booking-contributions-title"><div class="card-body">
                 <h2 class="h4" id="booking-contributions-title">Обещания участников</h2>
                 <p class="text-muted">Это добровольное обещание покрыть часть аренды, а не списание денег и не подтверждение оплаты.</p>
                 <dl class="row">
-                    <dt class="col-sm-4">Цель</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['target_minor']) }} {{ $contributionSummary['currency'] }}</dd>
-                    <dt class="col-sm-4">Обещано</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['committed_minor']) }} {{ $contributionSummary['currency'] }}</dd>
-                    <dt class="col-sm-4">Фактически подтверждено внешней оплатой</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['confirmed_minor']) }} {{ $contributionSummary['currency'] }}</dd>
+                    <dt class="col-sm-4">Цель</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['target_minor']) }} {{ $contributionCurrencyLabel }}</dd>
+                    <dt class="col-sm-4">Обещано</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['committed_minor']) }} {{ $contributionCurrencyLabel }}</dd>
+                    <dt class="col-sm-4">Фактически подтверждено внешней оплатой</dt><dd class="col-sm-8">{{ $formatContribution($contributionSummary['confirmed_minor']) }} {{ $contributionCurrencyLabel }}</dd>
                 </dl>
                 @if($contributionSummary['is_open'])
                     <form method="POST" action="{{ route('account.venue-bookings.contributions.store', $booking) }}" class="row g-3">
                         @csrf
                         <div class="col-md-4">
-                            <label class="form-label" for="contribution-amount">Моё обещание, {{ $contributionSummary['currency'] }}</label>
+                            <label class="form-label" for="contribution-amount">Моё обещание, {{ $contributionCurrencyLabel }}</label>
                             <input class="form-control" id="contribution-amount" name="amount" inputmode="decimal" value="{{ old('amount', $ownContribution ? $formatContribution($ownContribution['amount_minor']) : '') }}" required>
                         </div>
                         <div class="col-md-5 align-self-end">
@@ -255,7 +256,7 @@
                     <p class="text-muted">Сбор закрыт: новые обещания не принимаются.</p>
                 @endif
                 @if($ownContribution)
-                    <p class="mt-3">Ваша текущая сумма: <strong>{{ $formatContribution($ownContribution['amount_minor']) }} {{ $ownContribution['currency'] }}</strong>.</p>
+                    <p class="mt-3">Ваша текущая сумма: <strong>{{ $formatContribution($ownContribution['amount_minor']) }} {{ app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class)->currencyLabel($ownContribution['currency']) }}</strong>.</p>
                     <form method="POST" action="{{ route('account.venue-bookings.contributions.destroy', $booking) }}">
                         @csrf
                         @method('DELETE')

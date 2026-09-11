@@ -18,9 +18,8 @@ use App\Modules\VenueBooking\Domain\Events\VenueBookingHeld;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingRejected;
 use App\Modules\VenueBooking\Domain\Events\VenueBookingRequested;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
-use Illuminate\Contracts\Queue\ShouldQueue;
 
-final readonly class NotifyVenueBookingLifecycleRecipients implements ShouldQueue
+final readonly class NotifyVenueBookingLifecycleRecipients
 {
     public function __construct(
         private CreateUserNotificationHandler $notifications,

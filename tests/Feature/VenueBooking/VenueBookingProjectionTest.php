@@ -12,13 +12,14 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
 use App\Modules\VenueBooking\Application\Queries\ListOwnerBookingInbox;
 use App\Modules\VenueBooking\Domain\Enums\VenueBookingPaymentState;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingTransition;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -107,9 +108,29 @@ final class VenueBookingProjectionTest extends TestCase
         $this->assertSame('accept', $projection['data'][0]['primary_action']);
     }
 
+    public function test_owner_inbox_shows_complete_interval_and_only_requested_bookings_are_actionable(): void
+    {
+        $superadmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        [$requester, $requesterActor] = $this->userAndActor();
+        $venue = $this->venue();
+        $this->booking($venue, $requester, $requesterActor, VenueBookingStatusEnum::REQUESTED);
+        $this->booking($venue, $requester, $requesterActor, VenueBookingStatusEnum::HELD, CarbonImmutable::now()->addDays(2));
+
+        $this->assertSame(1, app(CountActionableVenueBookingRequests::class)->totalFor($superadmin));
+        $this->assertSame(1, app(CountActionableVenueBookingRequests::class)->byVenueFor($superadmin)[$venue->id]);
+
+        $this->actingAs($superadmin)
+            ->get(route('account.venue-bookings.inbox'))
+            ->assertOk()
+            ->assertSee('27.08.2026 10:00–11:00 (1 ч)');
+    }
+
     private function booking(Venue $venue, User $user, Actor $actor, VenueBookingStatusEnum $status, ?CarbonImmutable $startsAt = null): VenueBooking
     {
-        $startsAt ??= now()->addDay();
+        $startsAt ??= CarbonImmutable::now()->addDay();
 
         return VenueBooking::query()->create([
             'public_id' => (string) Str::uuid(), 'flow' => 'rental', 'venue_id' => $venue->id,

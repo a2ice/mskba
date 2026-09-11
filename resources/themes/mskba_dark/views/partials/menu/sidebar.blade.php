@@ -19,7 +19,7 @@
                     <a href="{{ $item['url'] }}" class="nav-link text-nowrap {{ $item['active'] ? 'active' : '' }}">
                         {{ $item['label'] }}
                         @if(($item['badge'] ?? 0) > 0)
-                            <span class="badge sidebar__notification-badge text-dark ms-2" data-notification-count>{{ $item['badge'] }}</span>
+                            <span class="badge sidebar__notification-badge text-dark ms-2" {{ $item['badgeAttribute'] ?? 'data-notification-count' }}>{{ $item['badge'] }}</span>
                         @endif
                     </a>
                 </li>

@@ -66,7 +66,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-DpKCjoV_.js",
+    "file": "assets/app-Cl3ZzBcg.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
@@ -85,7 +85,7 @@
     ]
   },
   "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js": {
-    "file": "assets/home-event-discovery-v2-Ne0adK-t.js",
+    "file": "assets/home-event-discovery-v2-Dg86ydSC.js",
     "name": "home-event-discovery-v2",
     "src": "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
     "isDynamicEntry": true,

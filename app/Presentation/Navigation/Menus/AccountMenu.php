@@ -4,6 +4,7 @@ namespace App\Presentation\Navigation\Menus;
 
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
+use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
 use App\Presentation\Navigation\MenuHandler;
 
 final class AccountMenu implements MenuHandler
@@ -44,11 +45,14 @@ final class AccountMenu implements MenuHandler
                 $this->venueAccessResolver->bootstrapOwnedVenueIdsFor($user) !== []
                 || $this->venueAccessResolver->contractedVenueIdsFor($user) !== []
             ) {
+                $bookingRequestsCount = app(CountActionableVenueBookingRequests::class)->totalFor($user);
                 $items[] = [
                     'label' => 'Мои площадки',
                     'url' => $this->routeUrl('account.venues'),
-                    'active' => $this->isActiveRoute('account.venues, account.venues.*'),
+                    'active' => $this->isActiveRoute('account.venues, account.venues.*, account.venue-bookings.inbox'),
                     'visible' => true,
+                    'badge' => $bookingRequestsCount,
+                    'badgeAttribute' => 'data-venue-booking-request-count',
                 ];
             }
 

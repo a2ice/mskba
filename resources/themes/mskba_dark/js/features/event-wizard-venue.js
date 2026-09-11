@@ -68,11 +68,7 @@ function initWizardVenueAvailability(form) {
                 : policy.half_amount_minor;
             const divisor = 10 ** Number(policy.currency_exponent || 0);
             const price = Number.isFinite(Number(amountMinor))
-                ? new Intl.NumberFormat('ru-RU', {
-                    style: 'currency',
-                    currency: policy.currency || 'RUB',
-                    maximumFractionDigits: 2,
-                }).format(Number(amountMinor) / divisor)
+                ? `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(amountMinor) / divisor)} ${String(policy.currency || 'RUB').toUpperCase() === 'RUB' ? 'руб.' : String(policy.currency).toUpperCase()}`
                 : null;
             rentalNote.textContent = `Будет создана заявка на аренду${price ? ` на сумму ${price}` : ''}. Мероприятие опубликуется автоматически после подтверждения брони.`;
             submitButton.textContent = 'Отправить заявку на аренду';

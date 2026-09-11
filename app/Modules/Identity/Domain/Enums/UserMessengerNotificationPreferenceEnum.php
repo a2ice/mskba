@@ -2,6 +2,8 @@
 
 namespace App\Modules\Identity\Domain\Enums;
 
+use App\Modules\Notification\Domain\Enums\UserNotificationDeliveryCategoryEnum;
+
 enum UserMessengerNotificationPreferenceEnum: string
 {
     case ALL = 'all';
@@ -18,6 +20,20 @@ enum UserMessengerNotificationPreferenceEnum: string
             self::SYSTEM_ONLY => 'Только системные',
             self::REQUESTS_ONLY => 'Только запросы',
             self::NONE => 'Не отправлять',
+        };
+    }
+
+    public function allows(UserNotificationDeliveryCategoryEnum $category): bool
+    {
+        return match ($this) {
+            self::ALL => true,
+            self::SYSTEM_AND_REQUESTS => in_array($category, [
+                UserNotificationDeliveryCategoryEnum::SYSTEM,
+                UserNotificationDeliveryCategoryEnum::REQUEST,
+            ], true),
+            self::SYSTEM_ONLY => $category === UserNotificationDeliveryCategoryEnum::SYSTEM,
+            self::REQUESTS_ONLY => $category === UserNotificationDeliveryCategoryEnum::REQUEST,
+            self::NONE => false,
         };
     }
 }

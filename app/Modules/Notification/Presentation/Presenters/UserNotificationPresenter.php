@@ -26,6 +26,8 @@ final class UserNotificationPresenter
                 'tournament_id' => $notification->payload['tournament_id'] ?? null,
                 'tournament_admission_id' => $notification->payload['tournament_admission_id'] ?? null,
                 'tournament_admission_status' => $notification->payload['tournament_admission_status'] ?? null,
+                'booking_id' => $notification->payload['booking_id'] ?? null,
+                'venue_id' => $notification->payload['venue_id'] ?? null,
             ], static fn ($value): bool => $value !== null),
             'actions' => $this->actions($notification),
         ];

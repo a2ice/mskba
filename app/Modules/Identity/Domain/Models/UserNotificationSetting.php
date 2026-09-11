@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'messenger_notifications'])]
+#[Fillable(['user_id', 'messenger_notifications', 'email_notifications'])]
 final class UserNotificationSetting extends Model
 {
     use Auditable;
@@ -17,6 +17,7 @@ final class UserNotificationSetting extends Model
     {
         return [
             'messenger_notifications' => UserMessengerNotificationPreferenceEnum::class,
+            'email_notifications' => UserMessengerNotificationPreferenceEnum::class,
         ];
     }
 

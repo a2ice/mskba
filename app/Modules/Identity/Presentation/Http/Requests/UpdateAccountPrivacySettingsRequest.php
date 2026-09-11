@@ -32,6 +32,7 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
                 Rule::notIn([(int) $this->user()?->getKey()]),
             ],
             'messenger_notifications' => ['nullable', Rule::enum(UserMessengerNotificationPreferenceEnum::class)],
+            'email_notifications' => ['nullable', Rule::enum(UserMessengerNotificationPreferenceEnum::class)],
         ];
     }
 
@@ -87,6 +88,15 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
     public function messengerNotifications(): UserMessengerNotificationPreferenceEnum
     {
         $value = $this->validated('messenger_notifications');
+
+        return is_string($value)
+            ? UserMessengerNotificationPreferenceEnum::from($value)
+            : UserMessengerNotificationPreferenceEnum::ALL;
+    }
+
+    public function emailNotifications(): UserMessengerNotificationPreferenceEnum
+    {
+        $value = $this->validated('email_notifications');
 
         return is_string($value)
             ? UserMessengerNotificationPreferenceEnum::from($value)

@@ -136,6 +136,7 @@
                 @endforeach
 
                 @include('theme::pages.account.partials.messenger-notifications-setting', ['user' => $user])
+                @include('theme::pages.account.partials.email-notifications-setting', ['user' => $user])
 
                 <button type="submit" class="btn btn--primary btn--sm">Сохранить настройки</button>
             </form>

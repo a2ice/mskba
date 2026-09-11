@@ -2,7 +2,7 @@
     $title = 'Условия аренды · '.$venue->name;
     $fieldValue = static fn(string $key, mixed $default = null): mixed => old($key, $policy?->{$key} ?? $default);
     $currency = strtoupper((string) $fieldValue('currency', 'RUB'));
-    $currencyLabel = $currency === 'RUB' ? '₽' : $currency;
+    $currencyLabel = $currency === 'RUB' ? 'руб.' : $currency;
     $amounts = app(\App\Modules\VenueBooking\Application\Services\MinorAmountParser::class);
     $canRentHalves = (int) ($venue->characteristics?->hoops_count ?? 0) >= 2;
     $priceValue = static function (string $input, string $policyField, ?int $default = null) use ($policy, $amounts, $currency): string {

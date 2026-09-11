@@ -19,8 +19,9 @@ final class UpdateUserPrivacySettingsHandler
         User $user,
         array $settings,
         UserMessengerNotificationPreferenceEnum $messengerNotifications,
+        UserMessengerNotificationPreferenceEnum $emailNotifications,
     ): void {
-        DB::transaction(function () use ($user, $settings, $messengerNotifications): void {
+        DB::transaction(function () use ($user, $settings, $messengerNotifications, $emailNotifications): void {
             User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
 
             foreach (UserPrivacySettingTypeEnum::cases() as $type) {
@@ -41,7 +42,10 @@ final class UpdateUserPrivacySettingsHandler
 
             UserNotificationSetting::query()->updateOrCreate(
                 ['user_id' => $user->getKey()],
-                ['messenger_notifications' => $messengerNotifications->value],
+                [
+                    'messenger_notifications' => $messengerNotifications->value,
+                    'email_notifications' => $emailNotifications->value,
+                ],
             );
         }, 3);
     }

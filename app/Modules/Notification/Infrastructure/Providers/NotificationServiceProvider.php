@@ -8,6 +8,7 @@ use App\Modules\Notification\Domain\Events\UserNotificationCreated;
 use App\Modules\Notification\Infrastructure\Listeners\BroadcastUserNotificationCreated;
 use App\Modules\Notification\Infrastructure\Listeners\CreateContactConfirmedNotification;
 use App\Modules\Notification\Infrastructure\Listeners\CreateWelcomeNotification;
+use App\Modules\Notification\Infrastructure\Listeners\QueueUserNotificationEmailDelivery;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,5 +19,6 @@ class NotificationServiceProvider extends ServiceProvider
         Event::listen(UserFirstLogin::class, CreateWelcomeNotification::class);
         Event::listen(UserContactConfirmed::class, CreateContactConfirmedNotification::class);
         Event::listen(UserNotificationCreated::class, BroadcastUserNotificationCreated::class);
+        Event::listen(UserNotificationCreated::class, QueueUserNotificationEmailDelivery::class);
     }
 }
