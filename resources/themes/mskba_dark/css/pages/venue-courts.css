@@ -296,15 +296,13 @@
     display: none;
 }
 
-.venue-section .venue-hero__summary {
-    container-type: inline-size;
+.venue-section .venue-occupancy-calendar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow-x: visible;
 }
 
-@container (max-width: 450px) {
-    .venue-section .venue-occupancy-calendar {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        overflow-x: visible;
-    }
+.venue-section .venue-occupancy-calendar__day.is-free > small {
+    visibility: hidden;
 }
 
 @media (max-width: 640px) {
