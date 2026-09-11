@@ -107,7 +107,7 @@
                                         <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][half_price]" value="{{ old("slot_prices.$priceInputIndex.half_price", $priceRow['half_price']) }}" placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}">
                                     </label>
                                     <div class="account-venue-slot-price__actions">
-                                        <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-all>Применить ко всем</button>
+                                        <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-all data-venue-price-apply-week>Применить ко всем</button>
                                         <button type="button" class="btn btn--secondary btn--sm" data-venue-price-reset-row>Сбросить</button>
                                     </div>
                                     @error("slot_prices.$priceInputIndex.whole_price")<div class="invalid-feedback d-block account-venue-slot-price__error">{{ $message }}</div>@enderror
