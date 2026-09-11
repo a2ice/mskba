@@ -74,7 +74,7 @@
             <div class="account-venue-price-dialog__panel">
                 <div class="account-venue-price-dialog__head">
                     <div>
-                        <div class="account-venue-price-dialog__eyebrow">Стоимость аренды</div>
+                        <div class="account-venue-price-dialog__eyebrow">Стоимость по времени</div>
                         <h2 data-venue-price-dialog-title>Цены</h2>
                         <p>
                             Цена указана за один шаг {{ $bookingPolicy->time_step_minutes }} мин.
