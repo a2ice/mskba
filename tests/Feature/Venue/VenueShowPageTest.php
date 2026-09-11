@@ -467,7 +467,9 @@ class VenueShowPageTest extends TestCase
                 ->assertSee('data-start="10:00"', false)
                 ->assertSee('data-end="10:30"', false)
                 ->assertSee('data-available-minutes="120"', false)
-                ->assertSee('Свободно · Забронировать')
+                ->assertSee('Забронировать')
+                ->assertDontSee('Свободно · Забронировать')
+                ->assertSee('"wholePricePerStepMinor":50000', false)
                 ->assertSee('data-venue-booking-auth', false);
         } finally {
             Carbon::setTestNow();

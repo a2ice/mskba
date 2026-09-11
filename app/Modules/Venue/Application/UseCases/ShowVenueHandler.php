@@ -67,6 +67,7 @@ final class ShowVenueHandler
                     ->orderBy('name'),
                 'schedule.intervals',
                 'schedule.exceptions.intervals',
+                'scheduleSlotPrices',
                 'reviews' => fn ($query) => $query
                     ->where('is_published', true)
                     ->with('user.profile')
@@ -231,6 +232,16 @@ final class ShowVenueHandler
                 'maximumDurationMinutes' => (int) $rentalPolicy->maximum_duration_minutes,
                 'timeStepMinutes' => (int) $rentalPolicy->time_step_minutes,
                 'currency' => $rentalPolicy->currency,
+                'wholePricePerStepMinor' => $rentalPolicy->whole_price_per_step_minor,
+                'halfPricePerStepMinor' => $rentalPolicy->half_price_per_step_minor,
+                'priceOverrides' => $venue->scheduleSlotPrices
+                    ->mapWithKeys(fn ($price): array => [
+                        $price->day_of_week.'|'.substr((string) $price->starts_at, 0, 5) => [
+                            'whole' => $price->whole_price_per_step_minor,
+                            'half' => $price->half_price_per_step_minor,
+                        ],
+                    ])
+                    ->all(),
                 'courtId' => (int) $selectedCourt->id,
                 'scopes' => array_values(array_filter([
                     $selectedCourt->allows_whole ? ['value' => 'whole', 'label' => 'Весь зал'] : null,

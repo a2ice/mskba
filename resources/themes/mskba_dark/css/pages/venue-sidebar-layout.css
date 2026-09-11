@@ -261,6 +261,8 @@
 
 .venue-rental-timeline {
     display: grid;
+    grid-auto-rows: max-content;
+    align-content: start;
     max-height: min(54dvh, 540px);
     overflow-y: auto;
     gap: 8px;
@@ -269,6 +271,8 @@
 }
 
 .venue-rental-cell {
+    min-height: 48px;
+    align-self: start;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
@@ -279,39 +283,84 @@
 .venue-rental-cell > button {
     display: flex;
     width: 100%;
+    min-height: 46px;
     align-items: center;
     justify-content: space-between;
     gap: 14px;
     border: 0;
-    padding: 12px 16px;
+    padding: 0 16px;
     color: inherit;
     background: transparent;
     text-align: left;
+    cursor: pointer;
+}
+
+.venue-rental-cell > button time,
+.venue-rental-cell > button span {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    line-height: 1.2;
 }
 
 .venue-rental-cell > button time { color: #fff; font-weight: 900; }
-.venue-rental-cell > button span { color: #3ac67a; font-size: 12px; font-weight: 800; }
-.venue-rental-cell:not(.is-disabled):hover { border-color: rgba(58, 198, 122, .58); background: rgba(58, 198, 122, .07); }
+.venue-rental-cell > button span { color: var(--accent-text); font-size: 12px; font-weight: 800; }
+.venue-rental-cell:not(.is-disabled):hover { border-color: rgba(255, 116, 23, .72); background: rgba(255, 116, 23, .08); }
 .venue-rental-cell.is-disabled { opacity: .48; }
+.venue-rental-cell.is-disabled > button { opacity: 1; cursor: default; }
 .venue-rental-cell.is-loading { opacity: .72; pointer-events: none; }
+.venue-rental-cell.is-expanded {
+    border-color: rgba(255, 116, 23, .68);
+    background: rgba(255, 116, 23, .07);
+}
+.venue-rental-cell.is-expanded > button { display: none; }
 
 .venue-rental-cell__form {
-    position: relative;
     display: grid;
-    grid-template-columns: minmax(150px, 1fr) repeat(2, minmax(120px, .7fr)) auto;
-    align-items: end;
-    gap: 12px;
-    border-top: 1px solid var(--line);
-    padding: 16px;
-    background: rgba(255, 104, 24, .06);
+    gap: 14px;
+    padding: 18px;
+    background: linear-gradient(135deg, rgba(255, 116, 23, .12), rgba(255, 255, 255, .025));
 }
 
-.venue-rental-cell__form > div { display: grid; gap: 4px; }
-.venue-rental-cell__form small { color: var(--text-muted); }
+.venue-rental-cell__form-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
 .venue-rental-cell__form label { display: grid; gap: 5px; }
 .venue-rental-cell__form label > span { color: var(--text-muted); font-size: 11px; font-weight: 800; }
-.venue-rental-cell__close { position: absolute; top: 5px; right: 8px; border: 0; color: var(--text-muted); background: transparent; font-size: 22px; }
-.venue-rental-cell__message { grid-column: 1 / -1; margin: 0; color: var(--accent-text); font-size: 12px; font-weight: 800; }
+.venue-rental-cell__price {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.venue-rental-cell__price > span { color: var(--text-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.venue-rental-cell__price > strong { color: #fff; font-size: 20px; }
+.venue-rental-cell__price .ui-tooltip-trigger { flex: 0 0 auto; }
+.venue-rental-cell__controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+    align-items: end;
+    gap: 12px;
+}
+.venue-rental-cell__controls .btn { min-height: 44px; white-space: nowrap; }
+.venue-rental-cell__close {
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, .035);
+    font-size: 20px;
+}
+.venue-rental-cell__close:hover { border-color: var(--accent); color: #fff; }
+.venue-rental-cell__message { min-height: 18px; margin: 0; color: var(--accent-text); font-size: 12px; font-weight: 800; }
 
 .venue-occupancy-slot__booking { display: flex; min-width: 0; flex: 1 1 190px; align-items: center; justify-content: space-between; gap: 10px; }
 .venue-occupancy-slot__status .fc-link { border: 0; padding: 0; color: var(--accent-text); background: transparent; font-size: inherit; }
@@ -692,15 +741,7 @@
         gap: 8px;
     }
 
-    .venue-rental-cell__form {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .venue-rental-cell__form > div,
-    .venue-rental-cell__form > .btn,
-    .venue-rental-cell__message {
-        grid-column: 1 / -1;
-    }
+    .venue-rental-cell__controls { grid-template-columns: 1fr; }
 
     .venue-booking-details-modal__content dl > div {
         grid-template-columns: 90px 1fr;

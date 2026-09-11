@@ -581,6 +581,39 @@ function initVenueInlineRental() {
         || Object.values(payload?.errors || {}).flat()[0]
         || fallback;
     const uuid = () => window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const money = new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: config.currency || 'RUB',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+    });
+
+    const updatePrice = (form) => {
+        const price = form?.querySelector('[data-venue-rental-price]');
+        const cell = form?.closest('[data-venue-rental-cell]');
+        const panel = form?.closest('[data-venue-occupancy-panel]');
+        if (!price || !cell || !panel) return;
+
+        const duration = Number(form.elements.duration_minutes.value || 0);
+        const scope = form.elements.scope.value;
+        const isWhole = scope === 'whole';
+        const fallback = isWhole ? config.wholePricePerStepMinor : config.halfPricePerStepMinor;
+        if (fallback == null || duration < 1) {
+            price.textContent = 'Цена не указана';
+            return;
+        }
+
+        const stepDate = new Date(`${panel.dataset.dayDate}T${cell.dataset.start}:00Z`);
+        let amountMinor = 0;
+        for (let offset = 0; offset < duration; offset += config.timeStepMinutes) {
+            const current = new Date(stepDate.getTime() + offset * 60000);
+            const dayOfWeek = current.getUTCDay() || 7;
+            const startsAt = `${String(current.getUTCHours()).padStart(2, '0')}:${String(current.getUTCMinutes()).padStart(2, '0')}`;
+            const custom = config.priceOverrides?.[`${dayOfWeek}|${startsAt}`]?.[isWhole ? 'whole' : 'half'];
+            amountMinor += Number(custom ?? fallback);
+        }
+        price.textContent = amountMinor === 0 ? 'Бесплатно' : money.format(amountMinor / 100);
+    };
 
     const buildForm = (cell) => {
         const available = Number(cell.dataset.availableMinutes || 0);
@@ -596,18 +629,27 @@ function initVenueInlineRental() {
             .join('');
 
         return `<form class="venue-rental-cell__form" data-venue-rental-form>
-            <button type="button" class="venue-rental-cell__close" data-venue-rental-close aria-label="Закрыть форму">×</button>
-            <div><strong>Бронирование ${escapeHtml(cell.dataset.start)}–${escapeHtml(cell.dataset.end)}</strong><small>Итоговая цена появится после расчёта.</small></div>
-            <label><span>Длительность</span><select class="form-select" name="duration_minutes" required>${durationOptions}</select></label>
-            <label><span>Зона</span><select class="form-select" name="scope" required>${scopeOptions}</select></label>
+            <header class="venue-rental-cell__form-top">
+                <div class="venue-rental-cell__price">
+                    <span>Стоимость</span>
+                    <strong data-venue-rental-price>Рассчитываем…</strong>
+                    <button type="button" class="ui-tooltip-trigger" aria-label="Подсказка: цена может быть скорректирована в процессе отправки заявки" data-tooltip="Цена может быть скорректирована в процессе отправки заявки.">?</button>
+                </div>
+                <button type="button" class="venue-rental-cell__close" data-venue-rental-close aria-label="Закрыть форму"><i class="ti ti-x" aria-hidden="true"></i></button>
+            </header>
+            <div class="venue-rental-cell__controls">
+                <label><span>Длительность</span><select class="form-select" name="duration_minutes" required>${durationOptions}</select></label>
+                <label><span>Зона</span><select class="form-select" name="scope" required>${scopeOptions}</select></label>
+                <button type="submit" class="btn btn--primary">Подать заявку</button>
+            </div>
             <p class="venue-rental-cell__message" data-venue-rental-message aria-live="polite"></p>
-            <button type="submit" class="btn btn--primary btn--sm">Рассчитать и отправить заявку</button>
         </form>`;
     };
 
     const closeCell = (cell) => {
         cell?.querySelector('[data-venue-rental-form]')?.remove();
         cell?.classList.remove('is-expanded', 'is-loading');
+        cell?.querySelector('[data-venue-rental-cell-open]')?.setAttribute('aria-expanded', 'false');
         if (activeCell === cell) activeCell = null;
     };
 
@@ -616,8 +658,13 @@ function initVenueInlineRental() {
         if (activeCell && activeCell !== cell) closeCell(activeCell);
         if (!cell.querySelector('[data-venue-rental-form]')) cell.insertAdjacentHTML('beforeend', buildForm(cell));
         cell.classList.add('is-expanded');
+        cell.querySelector('[data-venue-rental-cell-open]')?.setAttribute('aria-expanded', 'true');
         activeCell = cell;
-        cell.querySelector('select')?.focus();
+        updatePrice(cell.querySelector('[data-venue-rental-form]'));
+        window.requestAnimationFrame(() => {
+            cell.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            cell.querySelector('select')?.focus({ preventScroll: true });
+        });
     };
 
     root.addEventListener('click', (event) => {
@@ -627,6 +674,11 @@ function initVenueInlineRental() {
         if (close) closeCell(close.closest('[data-venue-rental-cell]'));
         const details = event.target.closest('[data-venue-booking-details]');
         if (details) openBookingDetails(details.dataset);
+    });
+
+    root.addEventListener('change', (event) => {
+        const form = event.target.closest('[data-venue-rental-form]');
+        if (form) updatePrice(form);
     });
 
     root.addEventListener('submit', async (event) => {
@@ -779,6 +831,7 @@ function initVenueInlineRental() {
             const form = cell.querySelector('[data-venue-rental-form]');
             if (params.get('booking_duration')) form.elements.duration_minutes.value = params.get('booking_duration');
             if (params.get('booking_scope')) form.elements.scope.value = params.get('booking_scope');
+            updatePrice(form);
 
             if (!shouldResume) return;
 

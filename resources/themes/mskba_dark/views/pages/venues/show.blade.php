@@ -336,9 +336,9 @@
                                         </article>
                                     @else
                                         <article @class(['venue-rental-cell', 'is-disabled' => ! $timelineItem['bookable']]) data-venue-rental-cell data-start="{{ $timelineItem['startsAt'] }}" data-end="{{ $timelineItem['endsAt'] }}" data-available-minutes="{{ $timelineItem['availableMinutes'] }}">
-                                            <button type="button" data-venue-rental-cell-open @disabled(! $timelineItem['bookable'] || ! $venue->rental)>
+                                            <button type="button" data-venue-rental-cell-open aria-expanded="false" @disabled(! $timelineItem['bookable'] || ! $venue->rental)>
                                                 <time>{{ $timelineItem['startsAt'] }}–{{ $timelineItem['endsAt'] }}</time>
-                                                <span>{{ $timelineItem['bookable'] && $venue->rental ? 'Свободно · Забронировать' : 'Недоступно для бронирования' }}</span>
+                                                <span>{{ $timelineItem['bookable'] && $venue->rental ? 'Забронировать' : 'Недоступно' }}</span>
                                             </button>
                                         </article>
                                     @endif
