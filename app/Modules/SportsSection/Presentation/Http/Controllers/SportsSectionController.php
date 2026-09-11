@@ -28,14 +28,14 @@ final class SportsSectionController extends Controller
 
         $search = trim((string) $request->query('q', ''));
         if ($search !== '') {
-            $needle = '%'.mb_strtolower($search).'%';
+            $needle = '%'.$search.'%';
             $query->where(fn ($builder) => $builder
-                ->whereRaw('LOWER(name) LIKE ?', [$needle])
-                ->orWhereRaw("LOWER(COALESCE(description, '')) LIKE ?", [$needle]));
+                ->where('name', 'like', $needle)
+                ->orWhere('description', 'like', $needle));
         }
 
         $trainingMode = (string) $request->query('training_mode', '');
-        if (in_array($trainingMode, array_column(TrainingModeEnum::cases(), 'value'), true)) {
+        if (in_array($trainingMode, array_map(static fn (TrainingModeEnum $item): string => $item->value, TrainingModeEnum::cases()), true)) {
             $query->where('training_mode', $trainingMode);
         }
 
@@ -50,7 +50,7 @@ final class SportsSectionController extends Controller
         }
 
         $pricingType = (string) $request->query('pricing_type', '');
-        if (in_array($pricingType, array_column(SectionPricingTypeEnum::cases(), 'value'), true)) {
+        if (in_array($pricingType, array_map(static fn (SectionPricingTypeEnum $item): string => $item->value, SectionPricingTypeEnum::cases()), true)) {
             $query->where('pricing_type', $pricingType);
         }
 
