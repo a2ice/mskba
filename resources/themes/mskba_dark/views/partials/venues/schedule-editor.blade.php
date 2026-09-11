@@ -21,9 +21,15 @@
         <button type="button" class="btn btn--secondary btn--sm" data-venue-schedule-reset-all>Сбросить у всех</button>
     </div>
 
+    @unless($bookingPolicy ?? null)
+        <div class="account-venue-schedule__pricing-hint mb-4">
+            Чтобы задавать разные цены по времени, сначала опубликуйте условия аренды.
+        </div>
+    @endunless
+
     <div class="account-venue-schedule__days">
         @foreach($weekDays as $dayOfWeek => $dayLabel)
-            <section class="account-venue-schedule-day" data-venue-schedule-day>
+            <section class="account-venue-schedule-day" data-venue-schedule-day data-day-of-week="{{ $dayOfWeek }}" data-day-label="{{ $dayLabel }}">
                 <div class="account-venue-schedule-day__head"><h2>{{ $dayLabel }}</h2><span data-venue-schedule-day-state>Выходной</span></div>
                 <div class="account-venue-schedule-day__intervals">
                     @foreach($scheduleRows[$dayOfWeek] as $index => $interval)
@@ -36,7 +42,15 @@
                             <div class="account-venue-schedule-interval__label">Интервал {{ $index + 1 }}</div>
                             <label><span>Начало</span><input type="time" name="intervals[{{ $dayOfWeek }}][{{ $index }}][starts_at]" class="form-control" value="{{ $startsAtValue }}"></label>
                             <label><span>Конец</span><input type="time" name="intervals[{{ $dayOfWeek }}][{{ $index }}][ends_at]" class="form-control" value="{{ $endsAtValue }}"></label>
-                            <button type="button" class="btn btn--secondary btn--sm account-venue-schedule-interval__remove" data-venue-schedule-remove-interval>Удалить</button>
+                            <div class="account-venue-schedule-interval__actions">
+                                <button type="button" class="btn btn--secondary btn--sm account-venue-schedule-interval__remove" data-venue-schedule-remove-interval>Удалить</button>
+                                <button
+                                    type="button"
+                                    class="btn btn--secondary btn--sm account-venue-schedule-interval__prices"
+                                    data-venue-prices-open
+                                    @unless($bookingPolicy ?? null) disabled title="Сначала опубликуйте условия аренды" @endunless
+                                >Цены</button>
+                            </div>
                         </div>
                         @error("intervals.$dayOfWeek.$index.starts_at")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         @error("intervals.$dayOfWeek.$index.ends_at")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -47,60 +61,76 @@
         @endforeach
     </div>
 
-    <section class="account-venue-schedule__pricing mt-5" data-venue-slot-pricing>
-        <div class="account-venue-schedule__section-head">
-            <div>
-                <h2>Стоимость по времени</h2>
-                @if($bookingPolicy ?? null)
-                    <p>Индивидуальная цена за один шаг {{ $bookingPolicy->time_step_minutes }} мин. Пустая ячейка использует общую стоимость из условий аренды.</p>
-                @else
-                    <p>Сначала опубликуйте условия аренды — после этого здесь появятся ценовые ячейки.</p>
-                @endif
-            </div>
-            @if(($bookingPolicy ?? null) && ($slotPriceRows ?? []) !== [])
-                <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-week>Применить выбранную цену ко всей неделе</button>
-            @endif
-        </div>
+    @if($bookingPolicy ?? null)
+        @php $priceInputIndex = 0; @endphp
+        <dialog
+            class="account-venue-price-dialog"
+            data-venue-price-dialog
+            data-time-step="{{ $bookingPolicy->time_step_minutes }}"
+            data-next-index="{{ collect($slotPriceRows ?? [])->flatten(1)->count() }}"
+            data-whole-placeholder="{{ number_format($bookingPolicy->whole_price_per_step_minor / 100, 2, ',', ' ') }}"
+            data-half-placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}"
+        >
+            <div class="account-venue-price-dialog__panel">
+                <div class="account-venue-price-dialog__head">
+                    <div>
+                        <div class="account-venue-price-dialog__eyebrow">Стоимость по времени</div>
+                        <h2 data-venue-price-dialog-title>Цены</h2>
+                        <p>
+                            Цена указана за один шаг {{ $bookingPolicy->time_step_minutes }} мин.
+                            Пустое поле использует базовую стоимость из условий аренды.
+                        </p>
+                    </div>
+                    <button type="button" class="account-venue-price-dialog__close" data-venue-price-dialog-close aria-label="Закрыть">×</button>
+                </div>
 
-        @if(($bookingPolicy ?? null) && ($slotPriceRows ?? []) !== [])
-            @php $priceInputIndex = 0; @endphp
-            <div class="account-venue-slot-pricing__days">
-                @foreach($weekDays as $dayOfWeek => $dayLabel)
-                    @if(!empty($slotPriceRows[$dayOfWeek]))
-                        <section class="account-venue-slot-pricing-day" data-venue-price-day>
-                            <div class="account-venue-slot-pricing-day__head">
-                                <h3>{{ $dayLabel }}</h3>
-                                <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-day>Применить выбранную цену ко всему дню</button>
+                <div class="account-venue-price-dialog__toolbar">
+                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-interval>Применить к интервалу</button>
+                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-day>Применить ко дню</button>
+                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-week>Применить к неделе</button>
+                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-reset-interval>Сбросить интервал</button>
+                </div>
+
+                <div class="account-venue-price-dialog__grid" data-venue-price-list>
+                    @foreach($slotPriceRows ?? [] as $dayOfWeek => $rows)
+                        @foreach($rows as $priceRow)
+                            <div
+                                class="account-venue-slot-price"
+                                data-venue-price-row
+                                data-day-of-week="{{ $dayOfWeek }}"
+                                data-starts-at="{{ $priceRow['starts_at'] }}"
+                                hidden
+                            >
+                                <strong>{{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}</strong>
+                                <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][day_of_week]" value="{{ $dayOfWeek }}">
+                                <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][starts_at]" value="{{ $priceRow['starts_at'] }}">
+                                <label>
+                                    <span>Весь зал</span>
+                                    <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][whole_price]" value="{{ old("slot_prices.$priceInputIndex.whole_price", $priceRow['whole_price']) }}" placeholder="{{ number_format($bookingPolicy->whole_price_per_step_minor / 100, 2, ',', ' ') }}">
+                                </label>
+                                <label>
+                                    <span>Половина</span>
+                                    <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][half_price]" value="{{ old("slot_prices.$priceInputIndex.half_price", $priceRow['half_price']) }}" placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}">
+                                </label>
+                                <button type="button" class="account-venue-slot-price__select" data-venue-price-select aria-label="Выбрать цену {{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}"></button>
+                                @error("slot_prices.$priceInputIndex.whole_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                @error("slot_prices.$priceInputIndex.half_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
-                            <div class="account-venue-slot-pricing-day__grid">
-                                @foreach($slotPriceRows[$dayOfWeek] as $priceRow)
-                                    <div class="account-venue-slot-price" data-venue-price-row>
-                                        <strong>{{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}</strong>
-                                        <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][day_of_week]" value="{{ $dayOfWeek }}">
-                                        <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][starts_at]" value="{{ $priceRow['starts_at'] }}">
-                                        <label>
-                                            <span>Весь зал</span>
-                                            <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][whole_price]" value="{{ old("slot_prices.$priceInputIndex.whole_price", $priceRow['whole_price']) }}" placeholder="{{ number_format($bookingPolicy->whole_price_per_step_minor / 100, 2, ',', ' ') }}">
-                                        </label>
-                                        <label>
-                                            <span>Половина</span>
-                                            <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][half_price]" value="{{ old("slot_prices.$priceInputIndex.half_price", $priceRow['half_price']) }}" placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}">
-                                        </label>
-                                        <button type="button" class="account-venue-slot-price__select" data-venue-price-select aria-label="Выбрать цену {{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}"></button>
-                                    </div>
-                                    @error("slot_prices.$priceInputIndex.whole_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    @error("slot_prices.$priceInputIndex.half_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    @php $priceInputIndex++; @endphp
-                                @endforeach
-                            </div>
-                        </section>
-                    @endif
-                @endforeach
+                            @php $priceInputIndex++; @endphp
+                        @endforeach
+                    @endforeach
+                </div>
+
+                <div class="account-venue-price-dialog__empty" data-venue-price-empty hidden>
+                    Для этого интервала пока нет ценовых шагов. Проверьте время начала и конца.
+                </div>
+
+                <div class="account-venue-price-dialog__footer">
+                    <button type="button" class="btn btn--primary btn--sm" data-venue-price-dialog-close>Готово</button>
+                </div>
             </div>
-        @elseif($bookingPolicy ?? null)
-            <div class="alert alert-info">Сохраните часы работы — ценовые ячейки будут построены по ним автоматически.</div>
-        @endif
-    </section>
+        </dialog>
+    @endif
 
     <section class="account-venue-schedule__exceptions mt-5">
         <div class="account-venue-schedule__section-head">

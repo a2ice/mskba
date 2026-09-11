@@ -16,6 +16,7 @@ import '../css/pages/venue-booking-status.css';
 import '../css/pages/venue-ownership.css';
 import '../css/pages/venue-ownership-admin.css';
 import '../css/pages/venue-booking-policy.css';
+import '../css/pages/venue-schedule-pricing-modal.css';
 import '../css/pages/player-character.css';
 import '../css/pages/home-event-location-modal-regression.css';
 
