@@ -184,6 +184,21 @@
     height: 9px;
 }
 
+/* Match the hero metadata cluster to the slider arrows: transparent at rest, blurred glass, dark fill on interaction. */
+.venue-section .venue-hero__media-status {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .24);
+    backdrop-filter: blur(8px);
+    transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.venue-section .venue-hero__media-status:hover,
+.venue-section .venue-hero__media-status:focus-within {
+    border-color: #fff;
+    background: rgba(8, 10, 8, .72);
+}
+
 @media (max-width: 640px) {
     .venue-court-picker__option {
         grid-template-columns: 32px minmax(0, 1fr);
