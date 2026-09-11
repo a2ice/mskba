@@ -89,11 +89,15 @@
                         @error('roles')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                     </fieldset>
                     @guest
-                        <label class="privacy-consent mb-4">
+                        <label class="privacy-consent mb-2">
                             <input class="privacy-consent__input" type="checkbox" name="privacy_consent" value="1" required @checked(old('privacy_consent'))>
                             <span class="privacy-consent__control" aria-hidden="true"></span>
-                            <span class="privacy-consent__text">Я принимаю условия <a href="{{ route('privacy.policy') }}" target="_blank" rel="noopener">Политики обработки персональных данных</a>.</span>
+                            <span class="privacy-consent__text">Я даю <a href="{{ route('personal-data.consent') }}" target="_blank" rel="noopener">согласие на обработку персональных данных</a>.</span>
                         </label>
+                        <p class="form-text mb-4">
+                            <a href="{{ route('privacy.policy') }}" target="_blank" rel="noopener">Политика обработки персональных данных</a>
+                            описывает порядок и условия обработки и не является согласием.
+                        </p>
                     @endguest
                     <button class="btn btn--primary" type="submit" data-check-in-submit @guest disabled @endguest>Отправить заявку</button>
                 </form>

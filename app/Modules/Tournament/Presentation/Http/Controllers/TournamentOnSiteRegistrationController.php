@@ -89,7 +89,7 @@ final class TournamentOnSiteRegistrationController extends Controller
         try {
             if ($request->user() === null) {
                 $result = $service->registerAndApply($item, (string) $data['username'], $roles, new PrivacyConsentDTO(
-                    documentVersion: (string) config('legal.privacy_policy_version'), acceptedAt: CarbonImmutable::now(),
+                    documentVersion: (string) config('legal.personal_data_consent_version'), acceptedAt: CarbonImmutable::now(),
                     source: 'tournament_on_site_registration', ipAddress: $request->ip(), userAgent: $request->userAgent(),
                 ));
                 Auth::login($result['user']);

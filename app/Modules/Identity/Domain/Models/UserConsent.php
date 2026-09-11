@@ -18,7 +18,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class UserConsent extends Model
 {
-    public const TYPE_PRIVACY_POLICY = 'privacy_policy';
+    public const TYPE_PERSONAL_DATA_PROCESSING = 'personal_data_processing';
+
+    /**
+     * @deprecated Historical constant name kept so existing registration callers
+     * write the standalone personal-data consent type without a breaking refactor.
+     */
+    public const TYPE_PRIVACY_POLICY = self::TYPE_PERSONAL_DATA_PROCESSING;
+
+    /** Value used by consent records created before the standalone consent document. */
+    public const TYPE_PRIVACY_POLICY_LEGACY = 'privacy_policy';
 
     protected function casts(): array
     {
