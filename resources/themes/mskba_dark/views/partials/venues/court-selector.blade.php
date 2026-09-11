@@ -38,6 +38,8 @@
                         role="img"
                         aria-label="Площадка {{ mb_strtolower($courtStatusLabel) }}"
                         title="{{ $courtStatusLabel }}"
+                        data-tooltip-variant="title"
+                        data-tooltip-icon
                     ></span>
                     <span class="venue-court-picker-trigger__label">{{ $selectedCourtShortName }}</span>
                     <i class="ti ti-chevron-down venue-court-picker-trigger__chevron" aria-hidden="true"></i>
@@ -94,6 +96,8 @@
                     role="img"
                     aria-label="Площадка {{ mb_strtolower($courtStatusLabel) }}"
                     title="{{ $courtStatusLabel }}"
+                    data-tooltip-variant="title"
+                    data-tooltip-icon
                 ></span>
                 <span class="venue-court-picker-trigger__label">{{ $selectedCourtShortName }}</span>
             </span>
