@@ -1,0 +1,24 @@
+.account-venue-price-dialog__reset-all {
+    margin-left: auto;
+    border: 0;
+    padding: 8px 2px;
+    color: var(--accent-text);
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.account-venue-price-dialog__reset-all:hover,
+.account-venue-price-dialog__reset-all:focus-visible {
+    color: #fff;
+    outline: none;
+}
+
+@media (max-width: 560px) {
+    .account-venue-price-dialog__reset-all {
+        margin-left: 0;
+    }
+}

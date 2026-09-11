@@ -17,6 +17,7 @@ import '../css/pages/venue-ownership.css';
 import '../css/pages/venue-ownership-admin.css';
 import '../css/pages/venue-booking-policy.css';
 import '../css/pages/venue-schedule-pricing-modal.css';
+import '../css/pages/venue-pricing-reset-all.css';
 import '../css/pages/player-character.css';
 import '../css/pages/home-event-location-modal-regression.css';
 
@@ -67,6 +68,7 @@ import './features/venue-booking-conversation.js';
 import './features/venue-booking-requester-restriction.js';
 import './features/venue-ownership-claim.js';
 import './features/venue-schedule-form.js';
+import './features/venue-pricing-reset-all.js';
 import './features/event-create-form.js';
 import './features/event-create-entrypoints.js';
 import './features/event-wizard-state-restore.js';
