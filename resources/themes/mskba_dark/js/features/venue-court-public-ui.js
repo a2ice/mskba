@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    document.querySelectorAll('.venue-occupancy-calendar__day.is-free > small').forEach((count) => {
+        count.textContent = '';
+    });
+
     document.querySelectorAll('[data-venue-court-picker-modal]').forEach((picker) => {
         const modal = picker.closest('[data-modal]');
         if (modal && modal.parentElement !== document.body) {
