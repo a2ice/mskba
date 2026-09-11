@@ -122,23 +122,18 @@ function setupVenueSlotPricing() {
     if (!form || !dialog) return;
 
     const list = dialog.querySelector('[data-venue-price-list]');
+    const body = dialog.querySelector('.account-venue-price-dialog__body');
     const title = dialog.querySelector('[data-venue-price-dialog-title]');
     const empty = dialog.querySelector('[data-venue-price-empty]');
     const stepMinutes = Number(dialog.dataset.timeStep || 0);
     const wholePlaceholder = dialog.dataset.wholePlaceholder || '';
     const halfPlaceholder = dialog.dataset.halfPlaceholder || '';
     let nextIndex = Number(dialog.dataset.nextIndex || 0);
-    let selectedRow = null;
     let currentContext = null;
 
     const rows = () => Array.from(dialog.querySelectorAll('[data-venue-price-row]'));
     const rowValues = (row) => Array.from(row?.querySelectorAll('input.form-control') || []).map((input) => input.value);
     const hasCustomValue = (row) => rowValues(row).some((value) => value !== '');
-
-    const select = (row) => {
-        rows().forEach((item) => item.classList.toggle('is-selected', item === row));
-        selectedRow = row || null;
-    };
 
     const parseTime = (value) => {
         if (!/^\d{2}:\d{2}$/.test(value || '')) return null;
@@ -156,12 +151,48 @@ function setupVenueSlotPricing() {
         row.dataset.dayOfWeek === String(dayOfWeek) && row.dataset.startsAt === startsAt
     ));
 
+    const currentRows = () => {
+        if (!currentContext) return [];
+        const start = parseTime(currentContext.startsAt);
+        const end = parseTime(currentContext.endsAt);
+        if (start === null || end === null || end <= start) return [];
+
+        return rows().filter((row) => {
+            const rowStart = parseTime(row.dataset.startsAt);
+            return row.dataset.dayOfWeek === String(currentContext.dayOfWeek)
+                && rowStart !== null
+                && rowStart >= start
+                && rowStart < end;
+        });
+    };
+
+    const resetRow = (row) => {
+        row.querySelectorAll('input.form-control').forEach((input) => {
+            input.value = '';
+        });
+        syncPriceButtons();
+    };
+
+    const applyRowToCurrentInterval = (sourceRow) => {
+        const source = rowValues(sourceRow);
+        currentRows().forEach((row) => {
+            row.querySelectorAll('input.form-control').forEach((input, index) => {
+                input.value = source[index] || '';
+            });
+        });
+        syncPriceButtons();
+    };
+
     const bindRow = (row) => {
-        row.querySelector('[data-venue-price-select]')?.addEventListener('click', () => select(row));
-        row.addEventListener('focusin', () => select(row));
         row.querySelectorAll('input.form-control').forEach((input) => {
             input.addEventListener('input', syncPriceButtons);
             input.addEventListener('change', syncPriceButtons);
+        });
+        row.querySelector('[data-venue-price-apply-all]')?.addEventListener('click', () => {
+            applyRowToCurrentInterval(row);
+        });
+        row.querySelector('[data-venue-price-reset-row]')?.addEventListener('click', () => {
+            resetRow(row);
         });
     };
 
@@ -174,12 +205,15 @@ function setupVenueSlotPricing() {
         row.dataset.dayOfWeek = String(dayOfWeek);
         row.dataset.startsAt = startsAt;
         row.innerHTML = `
-            <strong></strong>
+            <strong class="account-venue-slot-price__time"></strong>
             <input type="hidden" name="slot_prices[${nextIndex}][day_of_week]">
             <input type="hidden" name="slot_prices[${nextIndex}][starts_at]">
             <label><span>Весь зал</span><input class="form-control" inputmode="decimal" name="slot_prices[${nextIndex}][whole_price]"></label>
             <label><span>Половина</span><input class="form-control" inputmode="decimal" name="slot_prices[${nextIndex}][half_price]"></label>
-            <button type="button" class="account-venue-slot-price__select" data-venue-price-select></button>
+            <div class="account-venue-slot-price__actions">
+                <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-all>Применить ко всем</button>
+                <button type="button" class="btn btn--secondary btn--sm" data-venue-price-reset-row>Сбросить</button>
+            </div>
         `;
         nextIndex += 1;
 
@@ -190,7 +224,6 @@ function setupVenueSlotPricing() {
         const controls = row.querySelectorAll('input.form-control');
         controls[0].placeholder = wholePlaceholder;
         controls[1].placeholder = halfPlaceholder;
-        row.querySelector('[data-venue-price-select]').setAttribute('aria-label', `Выбрать цену ${startsAt}–${endsAt}`);
         row.hidden = true;
         list.append(row);
         bindRow(row);
@@ -228,14 +261,6 @@ function setupVenueSlotPricing() {
         };
     };
 
-    const ensureAllCurrentRows = () => {
-        document.querySelectorAll('[data-venue-schedule-interval]').forEach((interval) => {
-            if (interval.hidden) return;
-            const context = intervalContext(interval);
-            ensureRows(context.dayOfWeek, context.startsAt, context.endsAt);
-        });
-    };
-
     const showContext = (context) => {
         currentContext = context;
         rows().forEach((row) => { row.hidden = true; });
@@ -248,7 +273,7 @@ function setupVenueSlotPricing() {
                 ? ''
                 : 'Сначала укажите корректное время начала и конца интервала.';
         }
-        select(visibleRows[0] || null);
+        if (body) body.scrollTop = 0;
         return visibleRows;
     };
 
@@ -264,23 +289,6 @@ function setupVenueSlotPricing() {
         syncPriceButtons();
     };
 
-    const applySelected = (targetRows) => {
-        if (!selectedRow) return;
-        const source = rowValues(selectedRow);
-        targetRows.forEach((row) => {
-            row.querySelectorAll('input.form-control').forEach((input, index) => {
-                input.value = source[index] || '';
-            });
-        });
-        syncPriceButtons();
-    };
-
-    const currentRows = () => currentContext
-        ? rows().filter((row) => row.dataset.dayOfWeek === String(currentContext.dayOfWeek)
-            && parseTime(row.dataset.startsAt) >= parseTime(currentContext.startsAt)
-            && parseTime(row.dataset.startsAt) < parseTime(currentContext.endsAt))
-        : [];
-
     function syncPriceButtons() {
         document.querySelectorAll('[data-venue-prices-open]').forEach((button) => {
             const interval = button.closest('[data-venue-schedule-interval]');
@@ -291,12 +299,14 @@ function setupVenueSlotPricing() {
             button.disabled = !valid;
             button.title = valid ? '' : 'Сначала укажите начало и конец интервала';
 
-            const configured = valid && rows().some((row) => (
-                row.dataset.dayOfWeek === String(context.dayOfWeek)
-                && parseTime(row.dataset.startsAt) >= start
-                && parseTime(row.dataset.startsAt) < end
-                && hasCustomValue(row)
-            ));
+            const configured = valid && rows().some((row) => {
+                const rowStart = parseTime(row.dataset.startsAt);
+                return row.dataset.dayOfWeek === String(context.dayOfWeek)
+                    && rowStart !== null
+                    && rowStart >= start
+                    && rowStart < end
+                    && hasCustomValue(row);
+            });
             button.classList.toggle('is-configured', Boolean(configured));
         });
     }
@@ -316,25 +326,7 @@ function setupVenueSlotPricing() {
     dialog.addEventListener('click', (event) => {
         if (event.target === dialog) closeDialog();
     });
-
-    dialog.querySelector('[data-venue-price-apply-interval]')?.addEventListener('click', () => {
-        applySelected(currentRows());
-    });
-    dialog.querySelector('[data-venue-price-apply-day]')?.addEventListener('click', () => {
-        if (!currentContext) return;
-        ensureAllCurrentRows();
-        applySelected(rows().filter((row) => row.dataset.dayOfWeek === String(currentContext.dayOfWeek)));
-        showContext(currentContext);
-    });
-    dialog.querySelector('[data-venue-price-apply-week]')?.addEventListener('click', () => {
-        ensureAllCurrentRows();
-        applySelected(rows());
-        if (currentContext) showContext(currentContext);
-    });
-    dialog.querySelector('[data-venue-price-reset-interval]')?.addEventListener('click', () => {
-        currentRows().forEach((row) => row.querySelectorAll('input.form-control').forEach((input) => { input.value = ''; }));
-        syncPriceButtons();
-    });
+    dialog.addEventListener('close', syncPriceButtons);
 
     document.addEventListener('venue-schedule:changed', syncPriceButtons);
 
@@ -361,7 +353,7 @@ function setupVenueSlotPricing() {
             const values = intervalValues(candidate);
             const start = parseTime(values.startsAt);
             const end = parseTime(values.endsAt);
-            return !candidate.hidden && start !== null && end !== null && rowStart >= start && rowStart < end;
+            return !candidate.hidden && start !== null && end !== null && rowStart !== null && rowStart >= start && rowStart < end;
         });
         if (interval) openDialog(intervalContext(interval));
     }
