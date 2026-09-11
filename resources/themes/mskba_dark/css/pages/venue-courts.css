@@ -52,7 +52,8 @@
     background: rgba(8, 10, 8, .9);
 }
 
-.venue-court-picker-trigger.ui-tooltip-source--title {
+.venue-court-picker-trigger.ui-tooltip-source--title,
+.venue-court-picker-trigger__status.ui-tooltip-source--title {
     text-decoration: none;
 }
 
@@ -105,15 +106,15 @@
 
 .venue-court-dropdown__menu {
     position: absolute;
-    z-index: 25;
-    top: calc(100% + 8px);
+    z-index: 30;
+    top: calc(100% + 6px);
     left: 0;
     display: grid;
-    width: min(360px, calc(100vw - 40px));
-    gap: 6px;
+    width: min(300px, calc(100vw - 40px));
+    gap: 4px;
     border: 1px solid rgba(255, 255, 255, .14);
-    border-radius: 14px;
-    padding: 8px;
+    border-radius: 12px;
+    padding: 5px;
     background: rgba(12, 15, 12, .96);
     box-shadow: 0 18px 44px rgba(0, 0, 0, .42);
     backdrop-filter: blur(16px);
@@ -123,10 +124,10 @@
     display: grid;
     grid-template-columns: 9px minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     border: 1px solid transparent;
-    border-radius: 10px;
-    padding: 10px 11px;
+    border-radius: 8px;
+    padding: 7px 8px;
     color: var(--text);
     background: rgba(255, 255, 255, .025);
     text-decoration: none;
@@ -144,7 +145,7 @@
 .venue-court-dropdown__copy {
     display: grid;
     min-width: 0;
-    gap: 3px;
+    gap: 2px;
 }
 
 .venue-court-dropdown__copy strong,
@@ -156,12 +157,12 @@
 
 .venue-court-dropdown__copy strong {
     color: #fff;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .venue-court-dropdown__copy small {
     color: var(--muted);
-    font-size: 10px;
+    font-size: 9px;
 }
 
 .venue-court-picker__dialog {
@@ -251,14 +252,25 @@
 
 .venue-court-picker__primary {
     border-radius: 999px;
-    padding: 4px 8px;
+    padding: 3px 6px;
     color: #8ee0ac;
     background: rgba(58, 198, 122, .13);
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 900;
 }
 
+.venue-section .venue-hero__media {
+    overflow: visible;
+}
+
+.venue-section .venue-hero-slider__track,
+.venue-section .venue-hero__placeholder {
+    overflow: hidden;
+    border-radius: inherit;
+}
+
 .venue-section .venue-hero__media-status {
+    z-index: 10;
     border-color: transparent;
     background: transparent;
     box-shadow: 0 6px 18px rgba(0, 0, 0, .24);
