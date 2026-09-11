@@ -1,13 +1,19 @@
 @php
     $headCoach = $section->headCoachMembership?->user;
     $headCoachName = trim(($headCoach?->profile?->first_name ?? '').' '.($headCoach?->profile?->last_name ?? '')) ?: ($headCoach?->username ?? 'Не указан');
+    $canContact = $contacts->isNotEmpty() || filled($section->contact_notes);
 @endphp
 @extends('theme::layouts.app', ['title' => $section->name])
 
 @section('content')
 <section class="sports-section-show first-screen"><div class="inner">
     <header class="sports-section-show__hero">
-        <div><span class="text-accent">Секция · {{ $section->game_format->label() }}</span><h1>{{ $section->name }}</h1><p>{{ $section->description }}</p></div>
+        <div>
+            <span class="text-accent">Секция · {{ $section->game_format->label() }}</span>
+            <h1>{{ $section->name }}</h1>
+            <p>{{ $section->description }}</p>
+            @if($canContact)<div class="sports-section-show__hero-actions"><a class="btn btn--primary" href="#section-contacts">Записаться / связаться</a></div>@endif
+        </div>
         @if($section->featuredMedia)<img src="{{ $section->featuredMedia->publicUrl() }}" alt="{{ $section->name }}">@endif
     </header>
     <div class="sports-section-show__facts">
@@ -25,14 +31,15 @@
     <section class="sports-section-show__block"><h2>Ближайшие занятия</h2><div class="sports-section-show__list">
         @forelse($section->trainingSessions as $session)
             <article><strong>{{ $session->starts_at->timezone(config('app.timezone'))->format('d.m.Y, H:i') }}–{{ $session->ends_at->timezone(config('app.timezone'))->format('H:i') }}</strong><span>{{ $session->venue?->name ?? 'Место уточняется' }}</span>
-                @if($session->event)<a href="{{ route('events.show', $session->event) }}">Открыть в календаре</a>@endif
+                @if($session->event)<a class="btn btn--secondary btn--sm" href="{{ route('events.show', $session->event) }}">Подробнее о занятии</a>@elseif($canContact)<a href="#section-contacts">Уточнить участие</a>@endif
             </article>
         @empty
             <p class="text-muted">Публичных занятий пока нет.</p>
         @endforelse
     </div></section>
-    @if($contacts->isNotEmpty() || $section->contact_notes)
-        <section class="sports-section-show__block"><h2>Контакты</h2>
+    @if($canContact)
+        <section class="sports-section-show__block" id="section-contacts"><h2>Запись и контакты</h2>
+            <p class="text-muted">Свяжитесь с секцией или главным тренером, чтобы уточнить свободные места и ближайшее занятие.</p>
             @foreach($contacts as $contact)<p><strong>{{ $contact->type->label() }}:</strong> {{ $contact->displayValue() }}</p>@endforeach
             @if($section->contact_notes)<p class="text-muted">{{ $section->contact_notes }}</p>@endif
         </section>

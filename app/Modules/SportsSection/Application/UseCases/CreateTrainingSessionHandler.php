@@ -33,8 +33,11 @@ final readonly class CreateTrainingSessionHandler
 
         return DB::transaction(function () use ($section, $actor, $data, $startsAt, $endsAt): TrainingSession {
             $section = SportsSection::query()->lockForUpdate()->findOrFail($section->id);
-            $venueId = isset($data['venue_id']) ? (int) $data['venue_id'] : $section->primary_venue_id;
-            $courtId = isset($data['venue_court_id']) ? (int) $data['venue_court_id'] : $section->primary_venue_court_id;
+            $venueOverridden = isset($data['venue_id']);
+            $venueId = $venueOverridden ? (int) $data['venue_id'] : $section->primary_venue_id;
+            $courtId = isset($data['venue_court_id'])
+                ? (int) $data['venue_court_id']
+                : ($venueOverridden ? null : $section->primary_venue_court_id);
             $this->rules->assertVenueCourt($venueId, $courtId);
             $session = $section->trainingSessions()->create([
                 'created_by_actor_id' => $actor->id,
