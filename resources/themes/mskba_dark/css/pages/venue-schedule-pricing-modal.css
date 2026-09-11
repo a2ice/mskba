@@ -34,9 +34,11 @@
 }
 
 .account-venue-price-dialog {
-    width: min(940px, calc(100vw - 32px));
-    max-height: min(82vh, 860px);
+    width: min(1040px, calc(100vw - 32px));
+    max-width: 1040px;
+    max-height: calc(100dvh - 32px);
     margin: auto;
+    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.18);
     border-radius: 20px;
     padding: 0;
@@ -52,10 +54,11 @@
 
 .account-venue-price-dialog__panel {
     display: grid;
-    gap: 18px;
-    max-height: min(82vh, 860px);
-    padding: 22px;
-    overflow: auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: 100%;
+    height: min(82dvh, 780px);
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
 }
 
 .account-venue-price-dialog__head {
@@ -63,6 +66,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 18px;
+    padding: 22px 22px 18px;
 }
 
 .account-venue-price-dialog__eyebrow {
@@ -85,7 +89,7 @@
 }
 
 .account-venue-price-dialog__head p {
-    max-width: 690px;
+    max-width: 760px;
     margin-top: 8px;
     color: var(--text-muted);
     font-size: 13px;
@@ -107,21 +111,82 @@
     cursor: pointer;
 }
 
-.account-venue-price-dialog__toolbar,
-.account-venue-price-dialog__footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+.account-venue-price-dialog__body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 22px 20px;
+    scrollbar-color: rgba(247, 243, 234, 0.35) transparent;
+    scrollbar-width: thin;
 }
 
 .account-venue-price-dialog__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.account-venue-price-dialog .account-venue-slot-price {
+    position: relative;
+    display: grid;
+    grid-template-columns: 120px minmax(150px, 180px) minmax(150px, 180px) minmax(270px, 1fr);
+    align-items: end;
     gap: 12px;
+    min-height: 72px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.account-venue-price-dialog .account-venue-slot-price:focus-within {
+    border-color: rgba(255, 116, 23, 0.72);
+    background: rgba(255, 116, 23, 0.055);
 }
 
 .account-venue-price-dialog .account-venue-slot-price[hidden] {
     display: none;
+}
+
+.account-venue-slot-price__time {
+    align-self: center !important;
+    color: #fff;
+    font-size: 15px !important;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.account-venue-price-dialog .account-venue-slot-price label {
+    display: grid;
+    gap: 5px;
+    margin: 0;
+}
+
+.account-venue-price-dialog .account-venue-slot-price label span {
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-venue-price-dialog .account-venue-slot-price input.form-control {
+    min-height: 40px;
+}
+
+.account-venue-slot-price__actions {
+    display: flex;
+    align-items: end;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.account-venue-slot-price__actions .btn {
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+.account-venue-slot-price__error {
+    grid-column: 2 / -1;
 }
 
 .account-venue-price-dialog__empty {
@@ -137,8 +202,20 @@
 }
 
 .account-venue-price-dialog__footer {
-    justify-content: flex-end;
-    padding-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-top: 1px solid var(--line);
+    padding: 16px 22px 18px;
+    background: #111511;
+}
+
+.account-venue-price-dialog__footer > span {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
 }
 
 @media (max-width: 900px) {
@@ -148,6 +225,19 @@
 
     .account-venue-schedule-interval__actions {
         grid-column: 2 / -1;
+        justify-content: flex-start;
+    }
+
+    .account-venue-price-dialog .account-venue-slot-price {
+        grid-template-columns: 105px minmax(130px, 1fr) minmax(130px, 1fr);
+    }
+
+    .account-venue-slot-price__actions,
+    .account-venue-slot-price__error {
+        grid-column: 2 / -1;
+    }
+
+    .account-venue-slot-price__actions {
         justify-content: flex-start;
     }
 }
@@ -160,20 +250,47 @@
 
     .account-venue-price-dialog {
         width: calc(100vw - 16px);
-        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
         border-radius: 16px;
     }
 
     .account-venue-price-dialog__panel {
-        max-height: calc(100vh - 16px);
-        padding: 16px;
+        height: calc(100dvh - 16px);
+        max-height: calc(100dvh - 16px);
     }
 
-    .account-venue-price-dialog__toolbar .btn {
-        flex: 1 1 calc(50% - 5px);
+    .account-venue-price-dialog__head {
+        padding: 16px 16px 14px;
     }
 
-    .account-venue-price-dialog__grid {
-        grid-template-columns: 1fr;
+    .account-venue-price-dialog__body {
+        padding: 0 16px 16px;
+    }
+
+    .account-venue-price-dialog .account-venue-slot-price {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .account-venue-slot-price__time,
+    .account-venue-slot-price__actions,
+    .account-venue-slot-price__error {
+        grid-column: 1 / -1;
+    }
+
+    .account-venue-slot-price__actions {
+        justify-content: stretch;
+    }
+
+    .account-venue-slot-price__actions .btn {
+        flex: 1 1 0;
+    }
+
+    .account-venue-price-dialog__footer {
+        padding: 14px 16px;
+    }
+
+    .account-venue-price-dialog__footer > span {
+        flex: 1 1 100%;
     }
 }

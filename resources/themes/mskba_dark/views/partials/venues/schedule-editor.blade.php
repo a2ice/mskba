@@ -72,7 +72,7 @@
             data-half-placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}"
         >
             <div class="account-venue-price-dialog__panel">
-                <div class="account-venue-price-dialog__head">
+                <header class="account-venue-price-dialog__head">
                     <div>
                         <div class="account-venue-price-dialog__eyebrow">Стоимость по времени</div>
                         <h2 data-venue-price-dialog-title>Цены</h2>
@@ -82,52 +82,51 @@
                         </p>
                     </div>
                     <button type="button" class="account-venue-price-dialog__close" data-venue-price-dialog-close aria-label="Закрыть">×</button>
-                </div>
+                </header>
 
-                <div class="account-venue-price-dialog__toolbar">
-                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-interval>Применить к интервалу</button>
-                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-day>Применить ко дню</button>
-                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-week>Применить к неделе</button>
-                    <button type="button" class="btn btn--secondary btn--sm" data-venue-price-reset-interval>Сбросить интервал</button>
-                </div>
-
-                <div class="account-venue-price-dialog__grid" data-venue-price-list>
-                    @foreach($slotPriceRows ?? [] as $dayOfWeek => $rows)
-                        @foreach($rows as $priceRow)
-                            <div
-                                class="account-venue-slot-price"
-                                data-venue-price-row
-                                data-day-of-week="{{ $dayOfWeek }}"
-                                data-starts-at="{{ $priceRow['starts_at'] }}"
-                                hidden
-                            >
-                                <strong>{{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}</strong>
-                                <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][day_of_week]" value="{{ $dayOfWeek }}">
-                                <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][starts_at]" value="{{ $priceRow['starts_at'] }}">
-                                <label>
-                                    <span>Весь зал</span>
-                                    <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][whole_price]" value="{{ old("slot_prices.$priceInputIndex.whole_price", $priceRow['whole_price']) }}" placeholder="{{ number_format($bookingPolicy->whole_price_per_step_minor / 100, 2, ',', ' ') }}">
-                                </label>
-                                <label>
-                                    <span>Половина</span>
-                                    <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][half_price]" value="{{ old("slot_prices.$priceInputIndex.half_price", $priceRow['half_price']) }}" placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}">
-                                </label>
-                                <button type="button" class="account-venue-slot-price__select" data-venue-price-select aria-label="Выбрать цену {{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}"></button>
-                                @error("slot_prices.$priceInputIndex.whole_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                @error("slot_prices.$priceInputIndex.half_price")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                            </div>
-                            @php $priceInputIndex++; @endphp
+                <div class="account-venue-price-dialog__body">
+                    <div class="account-venue-price-dialog__grid" data-venue-price-list>
+                        @foreach($slotPriceRows ?? [] as $dayOfWeek => $rows)
+                            @foreach($rows as $priceRow)
+                                <div
+                                    class="account-venue-slot-price"
+                                    data-venue-price-row
+                                    data-day-of-week="{{ $dayOfWeek }}"
+                                    data-starts-at="{{ $priceRow['starts_at'] }}"
+                                    hidden
+                                >
+                                    <strong class="account-venue-slot-price__time">{{ $priceRow['starts_at'] }}–{{ $priceRow['ends_at'] }}</strong>
+                                    <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][day_of_week]" value="{{ $dayOfWeek }}">
+                                    <input type="hidden" name="slot_prices[{{ $priceInputIndex }}][starts_at]" value="{{ $priceRow['starts_at'] }}">
+                                    <label>
+                                        <span>Весь зал</span>
+                                        <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][whole_price]" value="{{ old("slot_prices.$priceInputIndex.whole_price", $priceRow['whole_price']) }}" placeholder="{{ number_format($bookingPolicy->whole_price_per_step_minor / 100, 2, ',', ' ') }}">
+                                    </label>
+                                    <label>
+                                        <span>Половина</span>
+                                        <input class="form-control" inputmode="decimal" name="slot_prices[{{ $priceInputIndex }}][half_price]" value="{{ old("slot_prices.$priceInputIndex.half_price", $priceRow['half_price']) }}" placeholder="{{ $bookingPolicy->half_price_per_step_minor === null ? '—' : number_format($bookingPolicy->half_price_per_step_minor / 100, 2, ',', ' ') }}">
+                                    </label>
+                                    <div class="account-venue-slot-price__actions">
+                                        <button type="button" class="btn btn--secondary btn--sm" data-venue-price-apply-all data-venue-price-apply-week>Применить ко всем</button>
+                                        <button type="button" class="btn btn--secondary btn--sm" data-venue-price-reset-row>Сбросить</button>
+                                    </div>
+                                    @error("slot_prices.$priceInputIndex.whole_price")<div class="invalid-feedback d-block account-venue-slot-price__error">{{ $message }}</div>@enderror
+                                    @error("slot_prices.$priceInputIndex.half_price")<div class="invalid-feedback d-block account-venue-slot-price__error">{{ $message }}</div>@enderror
+                                </div>
+                                @php $priceInputIndex++; @endphp
+                            @endforeach
                         @endforeach
-                    @endforeach
+                    </div>
+
+                    <div class="account-venue-price-dialog__empty" data-venue-price-empty hidden>
+                        Для этого интервала пока нет ценовых шагов. Проверьте время начала и конца.
+                    </div>
                 </div>
 
-                <div class="account-venue-price-dialog__empty" data-venue-price-empty hidden>
-                    Для этого интервала пока нет ценовых шагов. Проверьте время начала и конца.
-                </div>
-
-                <div class="account-venue-price-dialog__footer">
+                <footer class="account-venue-price-dialog__footer">
+                    <span>Изменения сохранятся вместе с расписанием.</span>
                     <button type="button" class="btn btn--primary btn--sm" data-venue-price-dialog-close>Готово</button>
-                </div>
+                </footer>
             </div>
         </dialog>
     @endif
