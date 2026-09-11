@@ -763,8 +763,10 @@ function initVenueInlineRental() {
         const start = new Date(data.starts_at);
         const end = new Date(data.ends_at);
         const payment = data.payment?.amount_minor == null ? 'Не требуется' : `${(data.payment.amount_minor / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 })} ${currencyLabel(data.payment.currency)}`;
+        const reason = data.status_reason ? `<div><dt>Причина</dt><dd>${escapeHtml(data.status_reason)}</dd></div>` : '';
         content.innerHTML = `<dl>
             <div><dt>Статус</dt><dd data-venue-booking-status>${escapeHtml(data.status_label || data.status)}</dd></div>
+            ${reason}
             <div><dt>Время</dt><dd>${start.toLocaleString('ru-RU')}–${end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</dd></div>
             <div><dt>Зона</dt><dd>${escapeHtml(scopeLabel(data.scope))}</dd></div>
             <div><dt>Стоимость</dt><dd>${escapeHtml(payment)}</dd></div>

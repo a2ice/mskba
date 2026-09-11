@@ -38,6 +38,7 @@ final readonly class CancelVenueBookingHandler
     public function handle(int $bookingId, Actor $actor, ?string $reason = null, ?int $expectedVersion = null, ?string $idempotencyKey = null, ?string $correlationId = null): VenueBooking
     {
         $this->features->ensureEnabled(VenueRentalFeature::RENTAL_FLOW);
+        $reason = trim((string) $reason) ?: null;
 
         return $this->commands->execute('venue_booking.cancel', $actor, [
             'booking_id' => $bookingId, 'reason' => $reason, 'expected_version' => $expectedVersion,

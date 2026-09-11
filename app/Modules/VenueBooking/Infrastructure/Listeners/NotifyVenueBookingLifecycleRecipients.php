@@ -30,7 +30,7 @@ final readonly class NotifyVenueBookingLifecycleRecipients
         VenueBookingRequested|VenueBookingHeld|VenueBookingConfirmed|VenueBookingRejected|VenueBookingCancelled|VenueBookingExpired $event,
     ): void {
         $booking = VenueBooking::query()
-            ->with(['venue', 'requester', 'parties'])
+            ->with(['venue', 'requester', 'parties', 'latestTransition'])
             ->find($event->bookingId);
 
         if ($booking === null || $booking->venue === null) {
@@ -69,6 +69,11 @@ final readonly class NotifyVenueBookingLifecycleRecipients
                 "Срок действия заявки на аренду площадки «{$booking->venue->name}» истёк.",
             ],
         };
+
+        if (in_array($event::class, [VenueBookingRejected::class, VenueBookingCancelled::class], true)
+            && filled($booking->latestTransition?->reason)) {
+            $body .= ' Причина: '.$booking->latestTransition->reason;
+        }
 
         foreach ($this->recipientIds($booking, $event) as $userId) {
             $this->notifications->handle(new CreateUserNotificationDTO(

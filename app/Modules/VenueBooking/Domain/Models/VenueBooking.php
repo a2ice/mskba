@@ -87,6 +87,11 @@ class VenueBooking extends Model
         return $this->hasMany(VenueBookingTransition::class)->orderBy('booking_version');
     }
 
+    public function latestTransition(): HasOne
+    {
+        return $this->hasOne(VenueBookingTransition::class)->latestOfMany('booking_version');
+    }
+
     public function attendanceRounds(): HasMany
     {
         return $this->hasMany(VenueBookingAttendanceRound::class, 'venue_booking_id');

@@ -24,7 +24,7 @@ final readonly class GetBookingDetails
     /** @return array<string, mixed> */
     public function handle(VenueBooking $booking, Actor $actor): array
     {
-        $booking->loadMissing(['venue', 'requester.profile.activeAvatar', 'event', 'paymentAttempt', 'extensionRequests']);
+        $booking->loadMissing(['venue', 'requester.profile.activeAvatar', 'event', 'paymentAttempt', 'extensionRequests', 'latestTransition']);
         $this->authorization->assertCanView($actor, $booking, $booking->venue);
         $actions = $this->actionState->for($booking, $actor);
         $isRequester = $actor->user_id === $booking->requester_user_id;
@@ -49,6 +49,7 @@ final readonly class GetBookingDetails
             'version' => $booking->optimistic_version,
             'status' => $booking->status->value,
             'status_label' => $booking->status->label(),
+            'status_reason' => $booking->latestTransition?->reason,
             'venue' => ['id' => $booking->venue_id, 'name' => $booking->venue->name],
             'requester' => $this->requester($booking),
             'scope' => $booking->scope?->value,

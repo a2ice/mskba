@@ -11,6 +11,17 @@
     box-shadow: none;
 }
 
+.venue-booking-page > .inner {
+    max-width: 1280px;
+}
+
+.venue-booking-status-reason {
+    max-width: 760px;
+    padding: 10px 14px;
+    border-left: 3px solid var(--accent-color, #ff651b);
+    background: rgba(255, 101, 27, .08);
+}
+
 .venue-booking-summary__header,
 .venue-booking-actions,
 .venue-booking-applicant__button,
@@ -81,6 +92,43 @@
 
 .venue-booking-actions form {
     margin: 0;
+}
+
+.venue-booking-decision {
+    flex: 0 1 520px;
+}
+
+.venue-booking-decision > summary {
+    width: max-content;
+    list-style: none;
+}
+
+.venue-booking-decision > summary::-webkit-details-marker {
+    display: none;
+}
+
+.venue-booking-decision form,
+.venue-booking-restriction-form {
+    display: grid;
+    gap: 10px;
+    max-width: 560px;
+    margin-top: 12px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .035);
+}
+
+.venue-booking-decision form .form-label,
+.venue-booking-restriction-form .form-label {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.venue-booking-decision form .btn,
+.venue-booking-restriction-form .btn {
+    justify-self: start;
 }
 
 .venue-booking-message-notice {
@@ -214,5 +262,12 @@
 
     .venue-booking-actions form {
         flex: 1 1 160px;
+    }
+
+    .venue-booking-decision,
+    .venue-booking-decision form,
+    .venue-booking-restriction-form {
+        width: 100%;
+        max-width: none;
     }
 }

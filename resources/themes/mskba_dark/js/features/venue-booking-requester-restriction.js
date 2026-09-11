@@ -31,7 +31,7 @@ function renderRestrictionControls(page, payload, csrfToken) {
     if (!summary || page.querySelector('[data-rental-requester-restriction]')) return;
 
     const card = document.createElement('div');
-    card.className = 'card mb-4';
+    card.className = 'card mb-4 venue-booking-section';
     card.dataset.rentalRequesterRestriction = '';
 
     const body = document.createElement('div');
@@ -98,6 +98,7 @@ function renderRestrictionControls(page, payload, csrfToken) {
 
 function formFor(action, csrfToken) {
     const form = document.createElement('form');
+    form.className = 'venue-booking-restriction-form';
     form.method = 'POST';
     form.action = action;
     const csrf = document.createElement('input');

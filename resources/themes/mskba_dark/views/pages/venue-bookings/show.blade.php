@@ -15,10 +15,15 @@
         @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
         @if(session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
 
+        @php
+            $statusReason = $booking->status->isTerminal() ? $booking->transitions->last()?->reason : null;
+        @endphp
+
         <div class="card mb-4 venue-booking-summary"><div class="card-body">
             <div class="venue-booking-summary__header">
                 <div>
                     <p><strong>Статус:</strong> {{ $booking->status->label() }}</p>
+                    @if($statusReason)<p class="venue-booking-status-reason"><strong>Причина:</strong> {{ $statusReason }}</p>@endif
                     <p>{{ $booking->starts_at->format('d.m.Y H:i') }}–{{ $booking->ends_at->format('d.m.Y H:i') }}</p>
                 </div>
                 @if(!$isRequester)
@@ -48,7 +53,7 @@
             <p class="text-muted">Версия состояния: {{ $booking->optimistic_version }}</p>
 
             <div class="venue-booking-actions">
-                @foreach(['accept' => 'Принять', 'confirm' => 'Подтвердить', 'reject' => 'Отклонить', 'cancel' => 'Отменить'] as $action => $label)
+                @foreach(['accept' => 'Принять', 'confirm' => 'Подтвердить'] as $action => $label)
                     @if($actions[$action]['allowed'])
                         <form method="POST" action="{{ route('account.venue-bookings.'.$action, $booking) }}">
                             @csrf
@@ -56,6 +61,21 @@
                             <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                             <button class="btn {{ in_array($action, ['accept', 'confirm'], true) ? 'btn--primary' : 'btn--secondary' }} btn--sm" type="submit">{{ $label }}</button>
                         </form>
+                    @endif
+                @endforeach
+                @foreach(['reject' => ['Отклонить', 'Подтвердить отклонение'], 'cancel' => ['Отменить', 'Подтвердить отмену']] as $action => [$label, $confirmLabel])
+                    @if($actions[$action]['allowed'])
+                        <details class="venue-booking-decision">
+                            <summary class="btn btn--secondary btn--sm">{{ $label }}</summary>
+                            <form method="POST" action="{{ route('account.venue-bookings.'.$action, $booking) }}">
+                                @csrf
+                                <input type="hidden" name="version" value="{{ $booking->optimistic_version }}">
+                                <input type="hidden" name="idempotency_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                                <label class="form-label" for="booking-{{ $action }}-reason">Причина (необязательно)</label>
+                                <textarea class="form-control" id="booking-{{ $action }}-reason" name="reason" maxlength="2000" rows="3"></textarea>
+                                <button class="btn btn--secondary btn--sm" type="submit">{{ $confirmLabel }}</button>
+                            </form>
+                        </details>
                     @endif
                 @endforeach
             </div>
@@ -77,11 +97,18 @@
         @endif
 
         @if($booking->eventIntent && !$booking->event)
-            <div class="alert alert-info mb-4">
-                <strong>Мероприятие «{{ $booking->eventIntent->event_payload['title'] }}» ожидает подтверждения брони.</strong>
+            <div class="alert {{ $booking->status->isTerminal() ? 'alert-warning' : 'alert-info' }} mb-4">
                 @if($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CONFIRMED)
+                    <strong>Бронь для мероприятия «{{ $booking->eventIntent->event_payload['title'] }}» подтверждена.</strong>
                     Страница мероприятия создаётся автоматически. Обновите страницу через несколько секунд.
+                @elseif($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::REJECTED)
+                    <strong>Мероприятие «{{ $booking->eventIntent->event_payload['title'] }}» не создано: заявка на аренду отклонена.</strong>
+                @elseif($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::CANCELLED)
+                    <strong>Мероприятие «{{ $booking->eventIntent->event_payload['title'] }}» не создано: заявка на аренду отменена.</strong>
+                @elseif($booking->status === \App\Modules\Event\Domain\Enums\VenueBookingStatusEnum::EXPIRED)
+                    <strong>Мероприятие «{{ $booking->eventIntent->event_payload['title'] }}» не создано: срок заявки истёк.</strong>
                 @else
+                    <strong>Мероприятие «{{ $booking->eventIntent->event_payload['title'] }}» ожидает подтверждения брони.</strong>
                     До подтверждения отдельный черновик не создаётся и публикация в каталоге и Telegram не выполняется.
                 @endif
             </div>

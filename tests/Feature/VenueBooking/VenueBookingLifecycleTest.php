@@ -20,6 +20,7 @@ use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenuePermissionEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\VenueBooking\Application\Queries\GetBookingDetails;
 use App\Modules\VenueBooking\Application\Services\VenueBookingEventConsumer;
 use App\Modules\VenueBooking\Application\Services\VenueBookingOutboxDispatcher;
 use App\Modules\VenueBooking\Application\UseCases\AcceptVenueBookingHandler;
@@ -37,8 +38,8 @@ use App\Modules\VenueBooking\Domain\Exceptions\VenueBookingTransitionException;
 use App\Modules\VenueBooking\Domain\Models\VenueBooking;
 use App\Modules\VenueBooking\Domain\Models\VenueBookingOutboxMessage;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event as EventFacade;
 use LogicException;
@@ -132,11 +133,14 @@ final class VenueBookingLifecycleTest extends TestCase
         [$firstApplicant, $firstActor] = $this->userAndActor();
         $rejected = $this->request($venue, $owner, $firstApplicant, $firstActor, false);
         app(RejectVenueBookingHandler::class)->handle($rejected->id, $ownerActor, 'Нет доступа');
+        $this->assertSame('Нет доступа', $rejected->fresh('transitions')->transitions->last()->reason);
+        $this->assertSame('Нет доступа', app(GetBookingDetails::class)->handle($rejected->fresh(), $firstActor)['status_reason']);
         $this->assertInvalidTransitionLeavesHistory($rejected, fn () => app(AcceptVenueBookingHandler::class)->handle($rejected->id, $ownerActor));
 
         [$secondApplicant, $secondActor] = $this->userAndActor();
         $cancelled = $this->request($venue, $owner, $secondApplicant, $secondActor, false, '2026-08-26 15:00:00');
         app(CancelVenueBookingHandler::class)->handle($cancelled->id, $secondActor, 'Передумал');
+        $this->assertSame('Передумал', $cancelled->fresh('transitions')->transitions->last()->reason);
         $this->assertInvalidTransitionLeavesHistory($cancelled, fn () => app(RejectVenueBookingHandler::class)->handle($cancelled->id, $ownerActor));
 
         [$thirdApplicant, $thirdActor] = $this->userAndActor();
