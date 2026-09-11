@@ -72,11 +72,18 @@ function setupVenueScheduleForm() {
                 clearInterval(interval);
                 normalizeIntervals();
                 updateState();
+                document.dispatchEvent(new CustomEvent('venue-schedule:changed'));
             });
         });
 
-        day.addEventListener('input', updateState);
-        day.addEventListener('change', updateState);
+        day.addEventListener('input', () => {
+            updateState();
+            document.dispatchEvent(new CustomEvent('venue-schedule:changed'));
+        });
+        day.addEventListener('change', () => {
+            updateState();
+            document.dispatchEvent(new CustomEvent('venue-schedule:changed'));
+        });
         day.venueScheduleApi = {
             intervals,
             normalizeIntervals,
@@ -95,12 +102,14 @@ function setupVenueScheduleForm() {
         days.forEach((day) => {
             applyValuesToDay(day, sourceValues);
         });
+        document.dispatchEvent(new CustomEvent('venue-schedule:changed'));
     });
 
     resetAllButton?.addEventListener('click', () => {
         days.forEach((day) => {
             applyValuesToDay(day, []);
         });
+        document.dispatchEvent(new CustomEvent('venue-schedule:changed'));
     });
 
     setupScheduleExceptions();
@@ -108,34 +117,256 @@ function setupVenueScheduleForm() {
 }
 
 function setupVenueSlotPricing() {
-    const pricing = document.querySelector('[data-venue-slot-pricing]');
-    if (!pricing) return;
+    const form = document.querySelector('[data-venue-schedule-form]');
+    const dialog = document.querySelector('[data-venue-price-dialog]');
+    if (!form || !dialog) return;
 
-    let selectedRow = pricing.querySelector('[data-venue-price-row]');
+    const list = dialog.querySelector('[data-venue-price-list]');
+    const title = dialog.querySelector('[data-venue-price-dialog-title]');
+    const empty = dialog.querySelector('[data-venue-price-empty]');
+    const stepMinutes = Number(dialog.dataset.timeStep || 0);
+    const wholePlaceholder = dialog.dataset.wholePlaceholder || '';
+    const halfPlaceholder = dialog.dataset.halfPlaceholder || '';
+    let nextIndex = Number(dialog.dataset.nextIndex || 0);
+    let selectedRow = null;
+    let currentContext = null;
+
+    const rows = () => Array.from(dialog.querySelectorAll('[data-venue-price-row]'));
+    const rowValues = (row) => Array.from(row?.querySelectorAll('input.form-control') || []).map((input) => input.value);
+    const hasCustomValue = (row) => rowValues(row).some((value) => value !== '');
+
     const select = (row) => {
-        pricing.querySelectorAll('[data-venue-price-row]').forEach((item) => item.classList.toggle('is-selected', item === row));
-        selectedRow = row;
+        rows().forEach((item) => item.classList.toggle('is-selected', item === row));
+        selectedRow = row || null;
     };
-    const values = (row) => Array.from(row?.querySelectorAll('input.form-control') || []).map((input) => input.value);
-    const apply = (rows) => {
-        if (!selectedRow) return;
-        const source = values(selectedRow);
-        rows.forEach((row) => {
-            row.querySelectorAll('input.form-control').forEach((input, index) => { input.value = source[index] || ''; });
+
+    const parseTime = (value) => {
+        if (!/^\d{2}:\d{2}$/.test(value || '')) return null;
+        const [hours, minutes] = value.split(':').map(Number);
+        if (hours > 23 || minutes > 59) return null;
+        return (hours * 60) + minutes;
+    };
+
+    const formatTime = (minutes) => {
+        const normalized = Math.max(0, Math.min(minutes, (24 * 60) - 1));
+        return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(normalized % 60).padStart(2, '0')}`;
+    };
+
+    const findRow = (dayOfWeek, startsAt) => rows().find((row) => (
+        row.dataset.dayOfWeek === String(dayOfWeek) && row.dataset.startsAt === startsAt
+    ));
+
+    const bindRow = (row) => {
+        row.querySelector('[data-venue-price-select]')?.addEventListener('click', () => select(row));
+        row.addEventListener('focusin', () => select(row));
+        row.querySelectorAll('input.form-control').forEach((input) => {
+            input.addEventListener('input', syncPriceButtons);
+            input.addEventListener('change', syncPriceButtons);
         });
     };
 
-    pricing.querySelectorAll('[data-venue-price-row]').forEach((row) => {
-        row.querySelector('[data-venue-price-select]')?.addEventListener('click', () => select(row));
-        row.addEventListener('focusin', () => select(row));
+    const createRow = (dayOfWeek, startsAt, endsAt) => {
+        if (!list) return null;
+
+        const row = document.createElement('div');
+        row.className = 'account-venue-slot-price';
+        row.dataset.venuePriceRow = '';
+        row.dataset.dayOfWeek = String(dayOfWeek);
+        row.dataset.startsAt = startsAt;
+        row.innerHTML = `
+            <strong></strong>
+            <input type="hidden" name="slot_prices[${nextIndex}][day_of_week]">
+            <input type="hidden" name="slot_prices[${nextIndex}][starts_at]">
+            <label><span>Весь зал</span><input class="form-control" inputmode="decimal" name="slot_prices[${nextIndex}][whole_price]"></label>
+            <label><span>Половина</span><input class="form-control" inputmode="decimal" name="slot_prices[${nextIndex}][half_price]"></label>
+            <button type="button" class="account-venue-slot-price__select" data-venue-price-select></button>
+        `;
+        nextIndex += 1;
+
+        row.querySelector('strong').textContent = `${startsAt}–${endsAt}`;
+        const hidden = row.querySelectorAll('input[type="hidden"]');
+        hidden[0].value = String(dayOfWeek);
+        hidden[1].value = startsAt;
+        const controls = row.querySelectorAll('input.form-control');
+        controls[0].placeholder = wholePlaceholder;
+        controls[1].placeholder = halfPlaceholder;
+        row.querySelector('[data-venue-price-select]').setAttribute('aria-label', `Выбрать цену ${startsAt}–${endsAt}`);
+        row.hidden = true;
+        list.append(row);
+        bindRow(row);
+        return row;
+    };
+
+    const ensureRows = (dayOfWeek, startsAt, endsAt) => {
+        const start = parseTime(startsAt);
+        const end = parseTime(endsAt);
+        if (start === null || end === null || end <= start || stepMinutes < 1) return [];
+
+        const result = [];
+        for (let cursor = start; cursor < end; cursor += stepMinutes) {
+            const rowStart = formatTime(cursor);
+            const rowEnd = formatTime(Math.min(cursor + stepMinutes, end));
+            let row = findRow(dayOfWeek, rowStart);
+            if (!row) row = createRow(dayOfWeek, rowStart, rowEnd);
+            if (!row) continue;
+            row.querySelector('strong').textContent = `${rowStart}–${rowEnd}`;
+            result.push(row);
+        }
+        return result;
+    };
+
+    const intervalContext = (interval) => {
+        const day = interval?.closest('[data-venue-schedule-day]');
+        const values = interval ? intervalValues(interval) : { startsAt: '', endsAt: '' };
+        return {
+            interval,
+            day,
+            dayOfWeek: day?.dataset.dayOfWeek || '',
+            dayLabel: day?.dataset.dayLabel || '',
+            startsAt: values.startsAt,
+            endsAt: values.endsAt,
+        };
+    };
+
+    const ensureAllCurrentRows = () => {
+        document.querySelectorAll('[data-venue-schedule-interval]').forEach((interval) => {
+            if (interval.hidden) return;
+            const context = intervalContext(interval);
+            ensureRows(context.dayOfWeek, context.startsAt, context.endsAt);
+        });
+    };
+
+    const showContext = (context) => {
+        currentContext = context;
+        rows().forEach((row) => { row.hidden = true; });
+        const visibleRows = ensureRows(context.dayOfWeek, context.startsAt, context.endsAt);
+        visibleRows.forEach((row) => { row.hidden = false; });
+        if (title) title.textContent = `${context.dayLabel} · ${context.startsAt || '—'}–${context.endsAt || '—'}`;
+        if (empty) {
+            empty.hidden = visibleRows.length > 0;
+            empty.textContent = visibleRows.length > 0
+                ? ''
+                : 'Сначала укажите корректное время начала и конца интервала.';
+        }
+        select(visibleRows[0] || null);
+        return visibleRows;
+    };
+
+    const openDialog = (context) => {
+        showContext(context);
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+    };
+
+    const closeDialog = () => {
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+        syncPriceButtons();
+    };
+
+    const applySelected = (targetRows) => {
+        if (!selectedRow) return;
+        const source = rowValues(selectedRow);
+        targetRows.forEach((row) => {
+            row.querySelectorAll('input.form-control').forEach((input, index) => {
+                input.value = source[index] || '';
+            });
+        });
+        syncPriceButtons();
+    };
+
+    const currentRows = () => currentContext
+        ? rows().filter((row) => row.dataset.dayOfWeek === String(currentContext.dayOfWeek)
+            && parseTime(row.dataset.startsAt) >= parseTime(currentContext.startsAt)
+            && parseTime(row.dataset.startsAt) < parseTime(currentContext.endsAt))
+        : [];
+
+    function syncPriceButtons() {
+        document.querySelectorAll('[data-venue-prices-open]').forEach((button) => {
+            const interval = button.closest('[data-venue-schedule-interval]');
+            const context = intervalContext(interval);
+            const start = parseTime(context.startsAt);
+            const end = parseTime(context.endsAt);
+            const valid = start !== null && end !== null && end > start;
+            button.disabled = !valid;
+            button.title = valid ? '' : 'Сначала укажите начало и конец интервала';
+
+            const configured = valid && rows().some((row) => (
+                row.dataset.dayOfWeek === String(context.dayOfWeek)
+                && parseTime(row.dataset.startsAt) >= start
+                && parseTime(row.dataset.startsAt) < end
+                && hasCustomValue(row)
+            ));
+            button.classList.toggle('is-configured', Boolean(configured));
+        });
+    }
+
+    rows().forEach(bindRow);
+
+    document.querySelectorAll('[data-venue-prices-open]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const interval = button.closest('[data-venue-schedule-interval]');
+            if (interval) openDialog(intervalContext(interval));
+        });
     });
-    pricing.querySelectorAll('[data-venue-price-apply-day]').forEach((button) => {
-        button.addEventListener('click', () => apply(button.closest('[data-venue-price-day]')?.querySelectorAll('[data-venue-price-row]') || []));
+
+    dialog.querySelectorAll('[data-venue-price-dialog-close]').forEach((button) => {
+        button.addEventListener('click', closeDialog);
     });
-    pricing.querySelector('[data-venue-price-apply-week]')?.addEventListener('click', () => {
-        apply(pricing.querySelectorAll('[data-venue-price-row]'));
+    dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) closeDialog();
     });
-    if (selectedRow) select(selectedRow);
+
+    dialog.querySelector('[data-venue-price-apply-interval]')?.addEventListener('click', () => {
+        applySelected(currentRows());
+    });
+    dialog.querySelector('[data-venue-price-apply-day]')?.addEventListener('click', () => {
+        if (!currentContext) return;
+        ensureAllCurrentRows();
+        applySelected(rows().filter((row) => row.dataset.dayOfWeek === String(currentContext.dayOfWeek)));
+        showContext(currentContext);
+    });
+    dialog.querySelector('[data-venue-price-apply-week]')?.addEventListener('click', () => {
+        ensureAllCurrentRows();
+        applySelected(rows());
+        if (currentContext) showContext(currentContext);
+    });
+    dialog.querySelector('[data-venue-price-reset-interval]')?.addEventListener('click', () => {
+        currentRows().forEach((row) => row.querySelectorAll('input.form-control').forEach((input) => { input.value = ''; }));
+        syncPriceButtons();
+    });
+
+    document.addEventListener('venue-schedule:changed', syncPriceButtons);
+
+    form.addEventListener('submit', () => {
+        rows().forEach((row) => {
+            const day = document.querySelector(`[data-venue-schedule-day][data-day-of-week="${row.dataset.dayOfWeek}"]`);
+            const rowStart = parseTime(row.dataset.startsAt);
+            const belongs = Array.from(day?.querySelectorAll('[data-venue-schedule-interval]') || []).some((interval) => {
+                if (interval.hidden) return false;
+                const values = intervalValues(interval);
+                const start = parseTime(values.startsAt);
+                const end = parseTime(values.endsAt);
+                return start !== null && end !== null && rowStart !== null && rowStart >= start && rowStart < end;
+            });
+            if (!belongs) row.remove();
+        });
+    });
+
+    const errorRow = rows().find((row) => row.querySelector('.invalid-feedback'));
+    if (errorRow) {
+        const day = document.querySelector(`[data-venue-schedule-day][data-day-of-week="${errorRow.dataset.dayOfWeek}"]`);
+        const rowStart = parseTime(errorRow.dataset.startsAt);
+        const interval = Array.from(day?.querySelectorAll('[data-venue-schedule-interval]') || []).find((candidate) => {
+            const values = intervalValues(candidate);
+            const start = parseTime(values.startsAt);
+            const end = parseTime(values.endsAt);
+            return !candidate.hidden && start !== null && end !== null && rowStart >= start && rowStart < end;
+        });
+        if (interval) openDialog(intervalContext(interval));
+    }
+
+    syncPriceButtons();
 }
 
 function setupScheduleExceptions() {
