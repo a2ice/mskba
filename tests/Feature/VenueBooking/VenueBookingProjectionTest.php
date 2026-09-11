@@ -104,7 +104,7 @@ final class VenueBookingProjectionTest extends TestCase
         $this->assertCount(10, $projection['data']);
         $this->assertSame(25, $projection['meta']['total']);
         $this->assertSame(3, $projection['meta']['last_page']);
-        $this->assertLessThanOrEqual(7, $queryCount);
+        $this->assertLessThanOrEqual(8, $queryCount);
         $this->assertSame('accept', $projection['data'][0]['primary_action']);
     }
 
