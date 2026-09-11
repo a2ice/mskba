@@ -4,12 +4,11 @@ namespace App\Modules\SportsSection\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Contract\Domain\Models\ContractMembership;
-use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\UseCases\CreateTrainingSessionHandler;
-use App\Modules\SportsSection\Application\UseCases\LinkTrainingSessionEventHandler;
 use App\Modules\SportsSection\Application\UseCases\ManageTrainingSessionSnapshotHandler;
+use App\Modules\SportsSection\Application\UseCases\PublishTrainingSessionEventHandler;
 use App\Modules\SportsSection\Application\UseCases\TransitionTrainingSessionHandler;
 use App\Modules\SportsSection\Application\UseCases\UpdateTrainingSessionHandler;
 use App\Modules\SportsSection\Domain\Enums\TrainingSessionStatusEnum;
@@ -49,13 +48,12 @@ final class TrainingSessionController extends Controller
         return $this->execute(fn () => $handler->handle($sportsSection, $session, $actor, TrainingSessionStatusEnum::from($data['status']), $data['reason'] ?? null), 'Статус занятия обновлён.');
     }
 
-    public function linkEvent(Request $request, SportsSection $sportsSection, TrainingSession $session, CurrentActorResolver $actors, LinkTrainingSessionEventHandler $handler): RedirectResponse
+    public function linkEvent(Request $request, SportsSection $sportsSection, TrainingSession $session, CurrentActorResolver $actors, PublishTrainingSessionEventHandler $handler): RedirectResponse
     {
-        $data = $request->validate(['event_id' => ['required', 'integer', 'exists:events,id']]);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor === null, 403);
 
-        return $this->execute(fn () => $handler->handle($sportsSection, $session, Event::findOrFail($data['event_id']), $actor), 'Занятие связано с Event-проекцией.');
+        return $this->execute(fn () => $handler->handle($sportsSection, $session, $actor), 'Занятие опубликовано на MSKBA.');
     }
 
     public function addParticipant(Request $request, SportsSection $sportsSection, TrainingSession $session, ManageTrainingSessionSnapshotHandler $handler): RedirectResponse
