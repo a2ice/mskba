@@ -63,6 +63,15 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
 
+            if (config('features.sports_sections.enabled')) {
+                $items[] = [
+                    'label' => 'Мои секции',
+                    'url' => $this->routeUrl('account.sports-sections.index'),
+                    'active' => $this->isActiveRoute('account.sports-sections.*'),
+                    'visible' => true,
+                ];
+            }
+
             $items[] = [
                 'label' => 'Уведомления',
                 'url' => $this->routeUrl('account.notifications'),

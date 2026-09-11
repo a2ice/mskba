@@ -5,6 +5,7 @@ namespace App\Modules\Contact\Infrastructure\Providers;
 use App\Modules\Contact\Application\Services\ContactVerificationStrategyResolver;
 use App\Modules\Contact\Application\Strategies\EmailContactVerificationStrategy;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
@@ -25,6 +26,7 @@ class ContactServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'user' => User::class,
             'venue' => Venue::class,
+            'sports_section' => SportsSection::class,
         ]);
     }
 }

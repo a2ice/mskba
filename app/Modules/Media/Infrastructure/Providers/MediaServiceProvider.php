@@ -6,6 +6,7 @@ use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Event\Domain\Models\Game;
 use App\Modules\Identity\Domain\Models\Profile;
+use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Tournament\Domain\Models\TournamentEntry;
@@ -30,6 +31,7 @@ class MediaServiceProvider extends ServiceProvider
             'team' => Team::class,
             'tournament' => Tournament::class,
             'tournament_entry' => TournamentEntry::class,
+            'sports_section' => SportsSection::class,
         ]);
     }
 }

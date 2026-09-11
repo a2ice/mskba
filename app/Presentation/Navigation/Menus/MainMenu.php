@@ -17,6 +17,12 @@ final class MainMenu implements MenuHandler
 
         $moreItems = [
             [
+                'label' => 'Секции',
+                'url' => $this->routeUrl('sports-sections.index'),
+                'active' => $this->isActiveRoute('sports-sections.*'),
+                'visible' => (bool) config('features.sports_sections.enabled'),
+            ],
+            [
                 'label' => 'Опросы',
                 'url' => $this->routeUrl('coordination.index'),
                 'active' => $this->isActiveRoute('coordination.*'),

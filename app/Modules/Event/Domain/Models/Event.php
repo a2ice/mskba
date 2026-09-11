@@ -9,6 +9,7 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Infrastructure\Database\Factories\EventFactory;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\SportsSection\Domain\Models\TrainingSession;
 use App\Modules\Telegram\Domain\Models\TelegramEventPublication;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -117,6 +118,11 @@ class Event extends Model
     public function participants(): HasMany
     {
         return $this->hasMany(EventParticipant::class);
+    }
+
+    public function trainingSession(): HasOne
+    {
+        return $this->hasOne(TrainingSession::class);
     }
 
     public function booking(): HasOne

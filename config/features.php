@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'sports_sections' => [
+        'enabled' => (bool) env('FEATURE_SPORTS_SECTIONS', true),
+    ],
     'venue_rental' => [
         'rental_flow' => (bool) env('FEATURE_VENUE_RENTAL_FLOW', false),
         'coordination' => (bool) env('FEATURE_VENUE_RENTAL_COORDINATION', false),

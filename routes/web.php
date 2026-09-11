@@ -33,6 +33,12 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileContro
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
+use App\Modules\SportsSection\Presentation\Http\Controllers\AccountSportsSectionController;
+use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionCandidateController;
+use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionController;
+use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionPeopleController;
+use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionResourceController;
+use App\Modules\SportsSection\Presentation\Http\Controllers\TrainingSessionController;
 use App\Modules\Team\Presentation\Http\Controllers\AccountTeamsController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamController;
 use App\Modules\Team\Presentation\Http\Controllers\TeamHiringController;
@@ -107,6 +113,11 @@ Route::prefix('news')->group(function () {
         ->defaults('breadcrumb', 'Новости');
     Route::get('/{contentItem:alias}', [NewsController::class, 'show'])
         ->name('news.show');
+});
+
+Route::prefix('sections')->group(function () {
+    Route::get('/', [SportsSectionController::class, 'index'])->name('sports-sections.index')->defaults('breadcrumb', 'Секции');
+    Route::get('/{sportsSection}', [SportsSectionController::class, 'show'])->name('sports-sections.show');
 });
 
 Route::prefix('auth')->group(function () {
@@ -681,6 +692,38 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/contracts', [AccountController::class, 'contracts'])->name('account.contracts');
         Route::get('/contracts/{number}', [AccountController::class, 'contract'])->name('account.contracts.show');
         Route::get('/teams', AccountTeamsController::class)->name('account.teams')->defaults('breadcrumb', 'Мои команды');
+        Route::prefix('sections')->group(function () {
+            Route::get('/', [AccountSportsSectionController::class, 'index'])->name('account.sports-sections.index')->defaults('breadcrumb', 'Мои секции');
+            Route::get('/create', [AccountSportsSectionController::class, 'create'])->name('account.sports-sections.create');
+            Route::post('/', [AccountSportsSectionController::class, 'store'])->name('account.sports-sections.store');
+            Route::get('/{sportsSection}/edit', [AccountSportsSectionController::class, 'edit'])->name('account.sports-sections.edit');
+            Route::put('/{sportsSection}', [AccountSportsSectionController::class, 'update'])->name('account.sports-sections.update');
+            Route::get('/{sportsSection}/candidates', SportsSectionCandidateController::class)->middleware('throttle:60,1')->name('account.sports-sections.candidates');
+
+            Route::post('/{sportsSection}/coaches', [SportsSectionPeopleController::class, 'addCoach'])->name('account.sports-sections.coaches.store');
+            Route::put('/{sportsSection}/coaches/{membership}/permissions', [SportsSectionPeopleController::class, 'permissions'])->whereNumber('membership')->name('account.sports-sections.coaches.permissions');
+            Route::patch('/{sportsSection}/coaches/{membership}/head-coach', [SportsSectionPeopleController::class, 'headCoach'])->whereNumber('membership')->name('account.sports-sections.coaches.head-coach');
+            Route::delete('/{sportsSection}/coaches/{membership}', [SportsSectionPeopleController::class, 'removeCoach'])->whereNumber('membership')->name('account.sports-sections.coaches.destroy');
+            Route::post('/{sportsSection}/trainees', [SportsSectionPeopleController::class, 'addTrainee'])->name('account.sports-sections.trainees.store');
+            Route::patch('/{sportsSection}/trainees/{membership}/deactivate', [SportsSectionPeopleController::class, 'deactivateTrainee'])->whereNumber('membership')->name('account.sports-sections.trainees.deactivate');
+
+            Route::post('/{sportsSection}/plans', [SportsSectionResourceController::class, 'addPlan'])->name('account.sports-sections.plans.store');
+            Route::patch('/{sportsSection}/plans/{plan}', [SportsSectionResourceController::class, 'togglePlan'])->whereNumber('plan')->name('account.sports-sections.plans.toggle');
+            Route::post('/{sportsSection}/contacts', [SportsSectionResourceController::class, 'addContact'])->name('account.sports-sections.contacts.store');
+            Route::delete('/{sportsSection}/contacts/{contact}', [SportsSectionResourceController::class, 'deleteContact'])->whereNumber('contact')->name('account.sports-sections.contacts.destroy');
+            Route::post('/{sportsSection}/photos', [SportsSectionResourceController::class, 'addPhoto'])->name('account.sports-sections.photos.store');
+            Route::patch('/{sportsSection}/photos/{photo}/featured', [SportsSectionResourceController::class, 'featurePhoto'])->whereNumber('photo')->name('account.sports-sections.photos.feature');
+            Route::delete('/{sportsSection}/photos/{photo}', [SportsSectionResourceController::class, 'deletePhoto'])->whereNumber('photo')->name('account.sports-sections.photos.destroy');
+
+            Route::post('/{sportsSection}/sessions', [TrainingSessionController::class, 'store'])->name('account.sports-sections.sessions.store');
+            Route::put('/{sportsSection}/sessions/{session}', [TrainingSessionController::class, 'update'])->whereNumber('session')->name('account.sports-sections.sessions.update');
+            Route::patch('/{sportsSection}/sessions/{session}/status', [TrainingSessionController::class, 'transition'])->whereNumber('session')->name('account.sports-sections.sessions.transition');
+            Route::post('/{sportsSection}/sessions/{session}/event', [TrainingSessionController::class, 'linkEvent'])->whereNumber('session')->name('account.sports-sections.sessions.event');
+            Route::post('/{sportsSection}/sessions/{session}/participants', [TrainingSessionController::class, 'addParticipant'])->whereNumber('session')->name('account.sports-sections.sessions.participants.store');
+            Route::delete('/{sportsSection}/sessions/{session}/participants/{participant}', [TrainingSessionController::class, 'removeParticipant'])->whereNumber('session')->whereNumber('participant')->name('account.sports-sections.sessions.participants.destroy');
+            Route::post('/{sportsSection}/sessions/{session}/coaches', [TrainingSessionController::class, 'addCoach'])->whereNumber('session')->name('account.sports-sections.sessions.coaches.store');
+            Route::delete('/{sportsSection}/sessions/{session}/coaches/{coach}', [TrainingSessionController::class, 'removeCoach'])->whereNumber('session')->whereNumber('coach')->name('account.sports-sections.sessions.coaches.destroy');
+        });
         Route::get('/venues', [AccountController::class, 'venues'])
             ->name('account.venues')
             ->defaults('breadcrumb', 'Мои площадки');

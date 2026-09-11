@@ -25,6 +25,10 @@ final class CompleteEventHandler
                 : EventResponsibilityPermissionEnum::MANAGE_RESULT;
             $this->access->assertAllows($event, $actor, $permission);
 
+            if ($event->trainingSession()->exists()) {
+                throw new InvalidArgumentException('Связанное с секцией мероприятие завершается через занятие.');
+            }
+
             if ($event->status === EventStatusEnum::CANCELLED || $event->status === EventStatusEnum::DRAFT) {
                 throw new InvalidArgumentException('Это мероприятие нельзя отметить состоявшимся.');
             }

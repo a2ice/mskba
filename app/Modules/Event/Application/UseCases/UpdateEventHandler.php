@@ -69,6 +69,9 @@ final class UpdateEventHandler
             }
 
             $this->access->assertAllows($event, $actor, EventResponsibilityPermissionEnum::UPDATE_EVENT);
+            if ($event->trainingSession()->exists()) {
+                throw new InvalidArgumentException('Связанное с секцией мероприятие редактируется через занятие.');
+            }
             $requestedType = EventTypeEnum::from($data['type']);
 
             if ($requestedType !== $event->type
