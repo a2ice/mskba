@@ -18,12 +18,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    const openingState = document.querySelector('.venue-hero__media-status .venue-opening-state');
-    const openingLabel = openingState?.querySelector('strong')?.textContent?.trim();
-    if (openingState && openingLabel) {
-        openingState.setAttribute('aria-label', `Площадка ${openingLabel.toLowerCase()}`);
-        openingState.setAttribute('tabindex', '0');
-        openingState.classList.add('ui-tooltip-source', 'ui-tooltip-source--title', 'ui-tooltip-source--icon');
-        openingState.dataset.tooltip = openingLabel;
-    }
+    const dropdowns = Array.from(document.querySelectorAll('[data-venue-court-dropdown]'));
+
+    dropdowns.forEach((dropdown) => {
+        dropdown.addEventListener('toggle', () => {
+            if (!dropdown.open) return;
+
+            dropdowns.forEach((otherDropdown) => {
+                if (otherDropdown !== dropdown) otherDropdown.removeAttribute('open');
+            });
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        dropdowns.forEach((dropdown) => {
+            if (dropdown.open && !dropdown.contains(event.target)) {
+                dropdown.removeAttribute('open');
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+
+        dropdowns.forEach((dropdown) => dropdown.removeAttribute('open'));
+    });
 });
