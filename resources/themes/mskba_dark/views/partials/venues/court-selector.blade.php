@@ -7,7 +7,7 @@
     $pickerId = 'venue-court-picker-'.$venue->id;
     $selectedCourtName = $selectedCourt['name'] ?? '';
     $selectedCourtShortName = mb_strlen($selectedCourtName) > 10
-        ? mb_substr($selectedCourtName, 0, 10).'...'
+        ? rtrim(mb_substr($selectedCourtName, 0, 10)).'...'
         : $selectedCourtName;
     $courtStatusLabel = $venue->isOpen ? 'Открыта' : 'Закрыта';
 @endphp
