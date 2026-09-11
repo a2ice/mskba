@@ -132,7 +132,7 @@
             </footer>
         </div>
 
-        @if(Route::currentRouteName() === 'welcome')
+        @if($isMainPage)
             <div class="home-event-venue-selector-source" data-home-event-venue-selector-source>
                 @include('theme::partials.venues.predictive-selector', [
                     'id' => 'homeEventVenue',
