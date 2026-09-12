@@ -1,3 +1,5 @@
+import './default-category.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const redirected = applyEventCatalogDefaults();
 
