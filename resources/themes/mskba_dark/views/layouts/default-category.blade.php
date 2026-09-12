@@ -5,7 +5,6 @@
     $currentView = $currentView ?? 'cards';
     $hasMap = (bool) ($hasMap ?? false);
     $mobileFilterModalId = $mobileFilterModalId ?? $categoryId.'-filters';
-    $isVenueCatalog = $categoryId === 'venues';
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -16,7 +15,6 @@
         class="default-category {{ $categoryClass }} first-screen"
         data-default-category
         data-default-category-view="{{ $currentView }}"
-        @if($isVenueCatalog) data-venue-catalog @endif
     >
         <div class="inner default-category__inner">
             <header class="default-category__header">
@@ -42,7 +40,7 @@
                 </aside>
 
                 <main class="default-category__main">
-                    <div @class(['default-category-toolbar', 'catalog-toolbar' => $isVenueCatalog, 'venues-catalog-toolbar' => $isVenueCatalog]) data-default-category-toolbar>
+                    <div class="default-category-toolbar" data-default-category-toolbar>
                         <div class="default-category-toolbar__search">
                             @yield('category-search')
                         </div>
@@ -53,7 +51,6 @@
                                     class="default-category-view__button"
                                     type="button"
                                     data-default-category-view-menu-toggle
-                                    @if($isVenueCatalog) data-venue-view="list" @endif
                                     aria-haspopup="menu"
                                     aria-expanded="false"
                                     aria-label="Вид результатов"
@@ -61,7 +58,6 @@
                                     data-tooltip-variant="title"
                                 >
                                     <i class="ti {{ $currentView === 'list' ? 'ti-list' : 'ti-layout-grid' }}" data-default-category-view-icon aria-hidden="true"></i>
-                                    @if($isVenueCatalog)<span class="catalog-toolbar__button-text default-category__compat-label">Список</span>@endif
                                 </button>
                                 <div class="default-category-view__dropdown" role="menu" data-default-category-view-menu hidden>
                                     <button @class(['is-active' => $currentView === 'cards']) type="button" role="menuitem" data-default-category-view-option="cards">
@@ -78,7 +74,6 @@
                                     @class(['default-category-view__button', 'is-active' => $currentView === 'map'])
                                     type="button"
                                     data-default-category-view-option="map"
-                                    @if($isVenueCatalog) data-venue-view="map" @endif
                                     aria-label="На карте"
                                     title="На карте"
                                     data-tooltip-variant="title"
@@ -91,7 +86,6 @@
                         <button
                             class="default-category-toolbar__mobile-filter js-handler"
                             type="button"
-                            @if($isVenueCatalog) data-venue-filter-toggle @endif
                             data-handler="modal"
                             data-modal-action="open"
                             data-modal-target="{{ $mobileFilterModalId }}"
