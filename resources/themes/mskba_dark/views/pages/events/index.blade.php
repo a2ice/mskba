@@ -1,8 +1,6 @@
 @php
-    use App\Modules\Event\Domain\Enums\EventStatusEnum;
-    use App\Modules\Event\Domain\Enums\EventTypeEnum;
-
     $title = 'Мероприятия';
+    $currentView = in_array(request('view'), ['list', 'map'], true) ? request('view') : 'cards';
     $activeFilterCount = collect([
         $period === 'past',
         filled($typeFilter),
@@ -13,142 +11,129 @@
         filled($venueId),
         $hasMiniGames,
     ])->filter()->count();
-    $createUrl = route('events.create', array_filter(['type' => $selectedType?->value]));
-    $pastToggleQuery = request()->query();
-    if ($period === 'past') {
-        unset($pastToggleQuery['period'], $pastToggleQuery['outcome']);
-    } else {
-        $pastToggleQuery['period'] = 'past';
-    }
+    $createQuery = array_filter(['type' => $selectedType?->value]);
+    $createUrl = route('events.create', $createQuery);
+    $createRedirectUrl = route('events.create', $createQuery, false);
+    $mapEvents = collect($events->items())
+        ->filter(fn ($event) => $event->venue->location?->address?->latitude !== null && $event->venue->location?->address?->longitude !== null)
+        ->map(function ($event) {
+            $timezone = $event->venue->schedule?->timezone ?: config('app.timezone');
+            $startsAt = $event->starts_at->setTimezone($timezone);
+            $address = $event->venue->raw_address ?: $event->venue->location?->address?->full_address;
+
+            return [
+                'latitude' => (float) $event->venue->location->address->latitude,
+                'longitude' => (float) $event->venue->location->address->longitude,
+                'venue_name' => $event->venue->name,
+                'address' => $address,
+                'event' => [
+                    'title' => $event->title,
+                    'type' => $event->type->label(),
+                    'starts_at' => $startsAt->format('d.m.Y · H:i'),
+                    'url' => route('events.show', $event->routeIdentifier()),
+                ],
+            ];
+        })->values();
 @endphp
 
-@extends('theme::layouts.app', ['title' => $title])
+@extends('theme::layouts.default-category', [
+    'title' => $title,
+    'categoryId' => 'events',
+    'categoryClass' => 'events-category-catalog',
+    'currentView' => $currentView,
+    'hasMap' => true,
+    'mobileFilterModalId' => 'event-catalog-filters',
+])
 
-@section('content')
-    <section class="events-catalog first-screen">
-        <div class="inner events-catalog__inner">
-            @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
+@section('category-navigation')
+    @include('theme::pages.events.partials.catalog-navigation')
+@endsection
 
-            <header class="events-catalog__header">
-                <h1>{{ $title }}</h1>
-                <button class="page-breadcrumbs__back events-catalog__back js-handler" type="button" data-handler="historyBack">
-                    <i class="ti ti-arrow-left" aria-hidden="true"></i><span>Назад</span>
-                </button>
-            </header>
+@section('category-filters-desktop')
+    @include('theme::pages.events.partials.catalog-filters', [
+        'formId' => 'event-catalog-filter-form-desktop',
+        'scope' => 'desktop',
+        'currentView' => $currentView,
+    ])
+@endsection
 
-            <div class="catalog-toolbar events-catalog-filters__toolbar is-filters-collapsed">
-                    <label class="catalog-toolbar__search" aria-label="Поиск мероприятий"><i class="ti ti-search" aria-hidden="true"></i><input type="search" name="q" value="{{ $search }}" placeholder="Название, описание или площадка" form="event-catalog-filter-form"></label>
-                    <button class="btn btn--secondary catalog-toolbar__filter-button events-catalog__options" type="button" data-event-filter-toggle aria-label="Расширенные фильтры мероприятий" aria-expanded="false">
-                        <i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><span class="catalog-toolbar__button-text">Фильтры</span><i class="ti ti-chevron-down catalog-toolbar__chevron" data-event-filter-toggle-icon aria-hidden="true"></i>
-                        @if($activeFilterCount > 0)<b>{{ $activeFilterCount }}</b>@endif
-                    </button>
-                    @auth
-                        <a class="btn btn--primary" href="{{ $createUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title" data-tooltip-icon><i class="ti ti-plus"></i><span class="catalog-toolbar__button-text">Создать</span></a>
-                    @else
-                        <button type="button" class="btn btn--primary js-handler" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title" data-tooltip-icon data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('events.create', absolute: false) }}"><i class="ti ti-plus"></i><span class="catalog-toolbar__button-text">Создать</span></button>
-                    @endauth
-            </div>
-            <form id="event-catalog-filter-form" method="GET" action="{{ route('events.index') }}" class="catalog-toolbar__filters events-catalog-filters" data-event-filter-form data-event-filters data-event-filter-body hidden>
-                <div class="events-catalog-filters__quick">
-                    <a @class(['events-filter-chip', 'is-active' => $period === 'past']) href="{{ route('events.index', $pastToggleQuery) }}">
-                        <i class="ti {{ $period === 'past' ? 'ti-square-check' : 'ti-square' }}" aria-hidden="true"></i><span>Показывать прошедшие</span>
-                    </a>
-                    <label @class(['events-filter-chip', 'is-active' => $statusFilter !== 'not_cancelled'])>
-                        <i class="ti ti-list-check" aria-hidden="true"></i>
-                        <span>Статус</span>
-                        <select name="status" aria-label="Статус мероприятия" onchange="this.form.submit()">
-                            <option value="all" @selected($statusFilter === 'all')>Все</option>
-                            <option value="not_cancelled" @selected($statusFilter === 'not_cancelled')>Не отменённые</option>
-                            <option value="cancelled" @selected($statusFilter === 'cancelled')>Отменённые</option>
-                        </select>
-                    </label>
-                    <label class="events-filter-chip">
-                        <i class="ti ti-calendar-event" aria-hidden="true"></i>
-                        <input type="date" name="date_from" value="{{ $dateFrom }}" aria-label="Дата мероприятия" onchange="this.form.submit()">
-                    </label>
-                    <label class="events-filter-chip events-filter-chip--toggle">
-                        <input type="checkbox" name="has_mini_games" value="1" @checked($hasMiniGames) onchange="this.form.submit()">
-                        <span><i class="ti ti-device-gamepad-2" aria-hidden="true"></i>Есть мини-игры</span>
-                    </label>
-                    <button class="events-filter-chip js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="events-nearby-development">
-                        <i class="ti ti-navigation" aria-hidden="true"></i>Только рядом
-                    </button>
-                </div>
+@section('category-search')
+    <form id="event-catalog-filter-form" method="GET" action="{{ route('events.index') }}">
+        <label class="catalog-toolbar__search" aria-label="Поиск мероприятий">
+            <i class="ti ti-search" aria-hidden="true"></i>
+            <input type="search" name="q" value="{{ $search }}" placeholder="Название, описание или площадка" form="event-catalog-filter-form" data-default-category-search>
+        </label>
+        @if(filled($typeFilter))<input type="hidden" name="type" value="{{ $typeFilter }}">@endif
+        @if($period === 'past')<input type="hidden" name="period" value="past">@endif
+        @if(filled($dateFrom))<input type="hidden" name="date_from" value="{{ $dateFrom }}">@endif
+        @if(filled($dateTo))<input type="hidden" name="date_to" value="{{ $dateTo }}">@endif
+        @if(filled($outcome))<input type="hidden" name="outcome" value="{{ $outcome }}">@endif
+        @if($statusFilter !== 'not_cancelled')<input type="hidden" name="status" value="{{ $statusFilter }}">@endif
+        @if(filled($venueId))<input type="hidden" name="venue_id" value="{{ $venueId }}">@endif
+        @if($hasMiniGames)<input type="hidden" name="has_mini_games" value="1">@endif
+        <input type="hidden" name="view" value="{{ $currentView === 'cards' ? '' : $currentView }}" data-default-category-view-input @disabled($currentView === 'cards')>
+    </form>
+    <span class="catalog-toolbar events-catalog-filters__toolbar catalog-card event-catalog-card catalog-card__title default-category__compat-label" aria-hidden="true"></span>
+@endsection
 
-                <div class="events-catalog-filters__advanced" data-event-filter-panel>
-                    <label class="field"><span class="form-label">Тип мероприятия</span><select class="form-select" name="type"><option value="">Все типы</option><option value="games" @selected($typeFilter === 'games')>Игры и игровые тренировки</option>@foreach($types as $type)<option value="{{ $type->value }}" @selected($selectedType === $type)>{{ $type->label() }}</option>@endforeach</select></label>
-                    <label class="field"><span class="form-label">Площадка</span><select class="form-select" name="venue_id"><option value="">Все площадки</option>@foreach($filterVenues as $venue)<option value="{{ $venue->id }}" @selected($venueId === $venue->id)>{{ $venue->name }}</option>@endforeach</select></label>
-                    <label class="field"><span class="form-label">Дата по</span><input class="form-control" type="date" name="date_to" value="{{ $dateTo }}"></label>
-                    @if($period === 'past')
-                        <label class="field"><span class="form-label">Итог</span><select class="form-select" name="outcome"><option value="">Все итоги</option><option value="completed" @selected($outcome === 'completed')>Состоялось</option><option value="unmarked" @selected($outcome === 'unmarked')>Итог не указан</option></select></label>
-                    @endif
-                    <div class="events-catalog-filters__actions"><button class="btn btn--primary btn--sm">Применить</button><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить</a></div>
-                </div>
-                @error('date_to') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-            </form>
+@section('category-active-filter-count')
+    @if($activeFilterCount > 0){{ $activeFilterCount }}@endif
+@endsection
 
-            @if($events->isEmpty())
-                <div class="events-catalog__empty"><i class="ti ti-ball-basketball"></i><strong>Подходящих мероприятий пока нет</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить параметры</a></div>
-            @else
-                <div class="events-catalog-list">
-                    @foreach($events as $event)
-                        @php
-                            $timezone = $event->venue->schedule?->timezone ?: config('app.timezone');
-                            $startsAt = $event->starts_at->setTimezone($timezone);
-                            $endsAt = $event->ends_at->setTimezone($timezone);
-                            $photo = $event->venue->media->first();
-                            $isPast = $event->ends_at->isPast();
-                            $isGame = $event->type->value === 'game';
-                            $pastOutcome = match($event->status) {
-                                EventStatusEnum::COMPLETED => 'Состоялось',
-                                EventStatusEnum::CANCELLED => 'Отменено',
-                                default => 'Итог не указан',
-                            };
-                            $address = $event->venue->raw_address ?: $event->venue->location?->address?->full_address;
-                            $structuredShortAddress = implode(', ', array_filter([
-                                $event->venue->location?->address?->street,
-                                $event->venue->location?->address?->building,
-                            ]));
-                            $addressParts = array_values(array_filter(array_map('trim', explode(',', (string) $address))));
-                            $shortAddress = $structuredShortAddress ?: implode(', ', array_slice($addressParts, -2));
-                            $latitude = $event->venue->location?->address?->latitude;
-                            $longitude = $event->venue->location?->address?->longitude;
-                        @endphp
-                        <article @class(['catalog-card', 'event-catalog-card', 'is-past' => $isPast])>
-                            <a class="catalog-card__image event-catalog-card__image" href="{{ route('events.show', $event->routeIdentifier()) }}">
-                                <img src="{{ $photo?->publicUrl() ?: asset('images/venue-placeholder.png') }}" alt="">
-                            </a>
-                            <div class="catalog-card__body event-catalog-card__content">
-                                <div class="catalog-card__badges event-catalog-card__badges"><span class="catalog-card__badge event-type-badge event-type-badge--{{ $event->type->value }}">{{ $event->type->label() }}</span>@if($isPast)<span class="catalog-card__badge event-type-badge is-muted">{{ $pastOutcome }}</span>@endif</div>
-                                <h2 class="catalog-card__title"><a href="{{ route('events.show', $event->routeIdentifier()) }}">{{ $event->title }}</a></h2>
-                            </div>
-                            <div class="event-catalog-card__meta">
-                                @if($latitude !== null && $longitude !== null)
-                                    <button class="event-catalog-card__location js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="events-catalog-map" data-catalog-map-open data-latitude="{{ $latitude }}" data-longitude="{{ $longitude }}" data-title="{{ $event->venue->name }}" data-address="{{ $address }}"><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($shortAddress), {{ $shortAddress }}@endif</span></button>
-                                @else
-                                    <p><i class="ti ti-map-pin"></i><span>{{ $event->venue->name }}@if($shortAddress), {{ $shortAddress }}@endif</span></p>
-                                @endif
-                                <p><i class="ti ti-clock"></i><span>{{ $startsAt->format('d.m.Y · H:i') }}–{{ $endsAt->format('H:i') }}</span></p>
-                                <p><i class="ti ti-users"></i><span>{{ $event->participants_count }}{{ $event->max_participants ? ' / '.$event->max_participants : ' / ∞' }} участников</span></p>
-                            </div>
-                            <aside @class(['catalog-card__actions', 'event-catalog-card__games', 'has-mini-games' => $event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty()])>
-                                @if($event->type !== EventTypeEnum::GAME && $event->games->isNotEmpty())
-                                    <strong><i class="ti ti-device-gamepad-2"></i>Мини-игры: {{ $event->games->count() }}</strong>
-                                    @foreach($event->games->take(2) as $game)<span>{{ $game->title ?: 'Игра #'.$game->id }}</span>@endforeach
-                                    @if($event->games->count() > 2)<small>И еще {{ $event->games->count() - 2 }}…</small>@endif
-                                @endif
-                                <a class="btn btn--secondary btn--sm" href="{{ route('events.show', $event->routeIdentifier()) }}">Подробнее<i class="ti ti-arrow-right"></i></a>
-                            </aside>
-                        </article>
-                    @endforeach
-                </div>
-                <div class="events-catalog__pagination">{{ $events->links('theme::partials.pagination') }}</div>
-            @endif
-        </div>
+@section('category-toolbar-actions')
+    @auth
+        <a class="btn btn--primary default-category-toolbar__action-button" href="{{ $createUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title">
+            <i class="ti ti-plus" aria-hidden="true"></i>
+        </a>
+    @else
+        <button type="button" class="btn btn--primary default-category-toolbar__action-button js-handler" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ $createRedirectUrl }}">
+            <i class="ti ti-plus" aria-hidden="true"></i>
+        </button>
+    @endauth
+@endsection
+
+@section('category-results-cards')
+    <div class="default-category-results--cards event-category-results event-category-results--cards">
+        @forelse($events as $event)
+            @include('theme::pages.events.partials.catalog-item', ['event' => $event, 'mode' => 'card'])
+        @empty
+            <div class="default-category__empty event-category-catalog__empty"><i class="ti ti-ball-basketball" aria-hidden="true"></i><strong>Подходящих мероприятий пока нет</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить параметры</a></div>
+        @endforelse
+    </div>
+@endsection
+
+@section('category-results-list')
+    <div class="default-category-results--list event-category-results event-category-results--list">
+        @forelse($events as $event)
+            @include('theme::pages.events.partials.catalog-item', ['event' => $event, 'mode' => 'list'])
+        @empty
+            <div class="default-category__empty event-category-catalog__empty"><i class="ti ti-ball-basketball" aria-hidden="true"></i><strong>Подходящих мероприятий пока нет</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить параметры</a></div>
+        @endforelse
+    </div>
+@endsection
+
+@section('category-results-map')
+    <section class="event-category-map" data-event-category-map-frame>
+        @if($mapEvents->isNotEmpty())
+            <p class="event-category-map__status" data-event-category-map-status>Загружаем карту…</p>
+            <div class="event-category-map__canvas" data-event-category-map data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"></div>
+            <script type="application/json" data-event-category-map-points>@json($mapEvents)</script>
+        @else
+            <div class="default-category__empty event-category-catalog__empty"><i class="ti ti-map-pin-off" aria-hidden="true"></i><strong>Нет мероприятий с доступными координатами</strong><span>Попробуйте изменить условия поиска</span><a class="btn btn--secondary btn--sm" href="{{ route('events.index') }}">Сбросить параметры</a></div>
+        @endif
     </section>
+@endsection
 
-    @component('theme::partials.modal.layout', ['id' => 'events-nearby-development'])
-        <div class="events-nearby-modal"><i class="ti ti-navigation"></i><h2 class="modal_title" id="modal-title-events-nearby-development">Функция в разработке</h2><p>Скоро здесь появится поиск мероприятий рядом с вашим текущим местоположением.</p></div>
+@section('category-pagination')
+    @if($events->hasPages())
+        <div class="event-category-catalog__pagination">{{ $events->links('theme::partials.pagination') }}</div>
+    @endif
+@endsection
+
+@section('category-mobile-filters')
+    @component('theme::partials.modal.layout', ['id' => 'event-catalog-filters', 'dialogClass' => 'default-category-mobile-filters__dialog'])
+        <h2 class="modal_title" id="modal-title-event-catalog-filters">Фильтры мероприятий</h2>
+        @include('theme::pages.events.partials.catalog-filters', ['formId' => 'event-catalog-filter-form-mobile', 'scope' => 'mobile', 'currentView' => $currentView])
     @endcomponent
 
     @component('theme::partials.modal.layout', ['id' => 'events-catalog-map', 'dialogClass' => 'venue-selector-map-modal__dialog event-venue-map-modal__dialog'])
