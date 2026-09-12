@@ -7,6 +7,7 @@ const QUESTION_VARIANT = 'question';
 const FLOATING_TOOLTIP_ID = 'ui-tooltip-floating';
 const FLOATING_TOOLTIP_OFFSET = 10;
 const FLOATING_TOOLTIP_VIEWPORT_GAP = 8;
+const BASE_MODAL_Z_INDEX = 320;
 
 let floatingTooltip = null;
 let activeTooltipElement = null;
@@ -123,6 +124,8 @@ $(function() {
 });
 
 $(document).on('modal:opened', function(_event, modal) {
+    // A tooltip opened from the background must never survive above a modal.
+    hideActiveFloatingTooltip();
     initTooltips(modal);
 });
 
@@ -149,10 +152,18 @@ function showFloatingTooltip(element) {
         return;
     }
 
+    const topModal = getTopVisibleModal();
+
+    if (topModal && !topModal.contains(element)) {
+        hideActiveFloatingTooltip();
+        return;
+    }
+
     activeTooltipElement = element;
     floatingTooltip = floatingTooltip || createFloatingTooltip();
     floatingTooltip
         .text(tooltipText)
+        .css('z-index', topModal ? modalTooltipZIndex(topModal) : '')
         .removeAttr('hidden');
 
     positionFloatingTooltip(element);
@@ -163,10 +174,16 @@ function hideFloatingTooltip(element) {
         return;
     }
 
+    hideActiveFloatingTooltip();
+}
+
+function hideActiveFloatingTooltip() {
     activeTooltipElement = null;
 
     if (floatingTooltip) {
-        floatingTooltip.attr('hidden', true);
+        floatingTooltip
+            .attr('hidden', true)
+            .css('z-index', '');
     }
 }
 
@@ -187,6 +204,42 @@ function createFloatingTooltip() {
     $('body').append(tooltip);
 
     return tooltip;
+}
+
+function getTopVisibleModal() {
+    const modals = Array.from(document.querySelectorAll('.modal:not([hidden])'))
+        .filter((modal) => modal.getClientRects().length > 0);
+
+    if (modals.length === 0) {
+        return null;
+    }
+
+    return modals.reduce((top, candidate) => {
+        if (!top) return candidate;
+
+        const topZ = modalZIndex(top);
+        const candidateZ = modalZIndex(candidate);
+
+        if (candidateZ > topZ) {
+            return candidate;
+        }
+
+        if (candidateZ === topZ && (top.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+            return candidate;
+        }
+
+        return top;
+    }, null);
+}
+
+function modalZIndex(modal) {
+    const parsed = Number.parseInt(window.getComputedStyle(modal).zIndex, 10);
+
+    return Number.isFinite(parsed) ? parsed : BASE_MODAL_Z_INDEX;
+}
+
+function modalTooltipZIndex(modal) {
+    return String(modalZIndex(modal) + 20);
 }
 
 function positionFloatingTooltip(element) {
