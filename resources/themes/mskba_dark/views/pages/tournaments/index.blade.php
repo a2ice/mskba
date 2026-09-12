@@ -5,6 +5,7 @@
         filled($dateFrom),
         filled($dateTo),
     ])->filter()->count();
+    $tournaments->getCollection()->loadMissing(['defaultVenue.location.address']);
     $mapTournaments = collect($tournaments->items())
         ->filter(fn ($tournament) => $tournament->defaultVenue?->location?->address?->latitude !== null && $tournament->defaultVenue?->location?->address?->longitude !== null)
         ->map(function ($tournament) {
@@ -18,7 +19,7 @@
                 'address' => $address,
                 'tournament' => [
                     'title' => $tournament->title,
-                    'phase' => $tournament->phase()->label(),
+                    'phase' => $tournament->status->label(),
                     'dates' => $tournament->starts_on->format('d.m.Y').($tournament->ends_on ? ' — '.$tournament->ends_on->format('d.m.Y') : ''),
                     'url' => route('tournaments.show', $tournament->routeIdentifier()),
                 ],
