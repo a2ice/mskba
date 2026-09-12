@@ -3,6 +3,10 @@
     $scope = $scope ?? 'desktop';
     $searchValue = $filters['search'] ?? '';
     $currentView = $currentView ?? ($filters['view'] ?? 'cards');
+    $resetQuery = array_filter([
+        'search' => filled($searchValue) ? $searchValue : null,
+        'view' => $currentView === 'cards' ? null : $currentView,
+    ]);
 @endphp
 
 <form
@@ -53,6 +57,6 @@
 
     <div class="default-category-filter__actions">
         <button class="btn btn--primary btn--sm" type="submit">Применить</button>
-        <a class="btn btn--secondary btn--sm" href="{{ route('venues') }}">Сбросить</a>
+        <a class="btn btn--secondary btn--sm" href="{{ route('venues', $resetQuery) }}">Сбросить</a>
     </div>
 </form>
