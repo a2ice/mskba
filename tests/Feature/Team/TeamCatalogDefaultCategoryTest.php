@@ -12,6 +12,7 @@ use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Database\Seeders\GameLifecycleDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 final class TeamCatalogDefaultCategoryTest extends TestCase
@@ -44,7 +45,7 @@ final class TeamCatalogDefaultCategoryTest extends TestCase
         $this->seed(GameLifecycleDemoSeeder::class);
 
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
-        $creator = User::query()->firstOrFail();
+        $creator = User::query()->where('username', GameLifecycleDemoSeeder::ORGANIZER_USERNAME)->firstOrFail();
         $desiredVenue = $this->venueAt('Только желаемая площадка', 55.7510, 37.6170);
         $confirmedVenueA = $this->venueAt('Подтверждённая площадка А', 55.7520, 37.6180);
         $confirmedVenueB = $this->venueAt('Подтверждённая площадка Б', 55.7530, 37.6190);
@@ -64,14 +65,36 @@ final class TeamCatalogDefaultCategoryTest extends TestCase
             ]);
         }
 
-        $this->get(route('teams.index', ['view' => 'map']))
+        $response = $this->get(route('teams.index', ['view' => 'map']));
+        $response
             ->assertOk()
             ->assertSee('data-team-category-map', false)
-            ->assertSee('data-yandex-map-api-key="test-yandex-key"', false)
-            ->assertSee('Подтверждённая площадка А')
-            ->assertSee('Подтверждённая площадка Б')
-            ->assertDontSee('Только желаемая площадка')
-            ->assertSee('точек: 2');
+            ->assertSee('data-yandex-map-api-key="test-yandex-key"', false);
+
+        $points = collect($this->mapPoints($response));
+        $venueNames = $points->pluck('venue_name');
+
+        $this->assertTrue($venueNames->contains('Подтверждённая площадка А'));
+        $this->assertTrue($venueNames->contains('Подтверждённая площадка Б'));
+        $this->assertFalse($venueNames->contains('Только желаемая площадка'));
+        $this->assertSame(2, $venueNames->filter(
+            fn (string $name): bool => in_array($name, ['Подтверждённая площадка А', 'Подтверждённая площадка Б'], true),
+        )->count());
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function mapPoints(TestResponse $response): array
+    {
+        $matches = [];
+        $matched = preg_match(
+            '/<script type="application\/json" data-team-category-map-points>(.*?)<\/script>/s',
+            $response->getContent(),
+            $matches,
+        );
+
+        $this->assertSame(1, $matched, 'Team catalog map points JSON was not rendered.');
+
+        return json_decode($matches[1], true, 512, JSON_THROW_ON_ERROR);
     }
 
     private function venueAt(string $name, float $latitude, float $longitude): Venue
