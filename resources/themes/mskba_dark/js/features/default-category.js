@@ -105,7 +105,7 @@ function setView(root, view, viewOptions, viewIcon) {
     });
 
     if (viewIcon) {
-        viewIcon.classList.toggle('ti-layout-grid', view === 'cards');
+        viewIcon.classList.toggle('ti-layout-grid', view !== 'list');
         viewIcon.classList.toggle('ti-list', view === 'list');
     }
 
