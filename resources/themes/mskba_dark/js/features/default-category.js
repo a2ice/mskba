@@ -94,6 +94,7 @@ function initSidebarAccordion(root) {
 }
 
 function setView(root, view, viewOptions, viewIcon) {
+    const previousView = root.dataset.defaultCategoryView || 'cards';
     root.dataset.defaultCategoryView = view;
 
     root.querySelectorAll('[data-default-category-results]').forEach((result) => {
@@ -126,4 +127,34 @@ function setView(root, view, viewOptions, viewIcon) {
         bubbles: true,
         detail: { view },
     }));
+
+    if (view === 'map' && previousView !== 'map') {
+        keepMapResultInView(root);
+    }
+}
+
+function keepMapResultInView(root) {
+    const mapResult = root.querySelector('[data-default-category-results="map"]');
+    if (!mapResult) return;
+
+    window.requestAnimationFrame(() => {
+        const rect = mapResult.getBoundingClientRect();
+        const toolbar = root.querySelector('[data-default-category-toolbar]');
+        const toolbarBottom = toolbar?.getBoundingClientRect().bottom ?? 0;
+        const safeTop = Math.max(12, toolbarBottom + 12);
+        const isOutsideUsefulViewport = rect.top < safeTop
+            || rect.top > window.innerHeight - 120;
+
+        if (!isOutsideUsefulViewport) {
+            return;
+        }
+
+        const targetTop = Math.max(0, window.scrollY + rect.top - safeTop);
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+
+        window.scrollTo({
+            top: targetTop,
+            behavior: reduceMotion ? 'auto' : 'smooth',
+        });
+    });
 }
