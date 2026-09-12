@@ -3,6 +3,8 @@
 namespace Tests\Feature\Team;
 
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Team\Domain\Enums\TeamVenueRelationTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Team\Domain\Models\TeamVenueRelation;
@@ -43,18 +45,9 @@ final class TeamCatalogDefaultCategoryTest extends TestCase
 
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
         $creator = User::query()->firstOrFail();
-        $desiredVenue = Venue::factory()->create([
-            'name' => 'Только желаемая площадка',
-            'status' => VenueStatusEnum::CONFIRMED,
-        ]);
-        $confirmedVenueA = Venue::factory()->create([
-            'name' => 'Подтверждённая площадка А',
-            'status' => VenueStatusEnum::CONFIRMED,
-        ]);
-        $confirmedVenueB = Venue::factory()->create([
-            'name' => 'Подтверждённая площадка Б',
-            'status' => VenueStatusEnum::CONFIRMED,
-        ]);
+        $desiredVenue = $this->venueAt('Только желаемая площадка', 55.7510, 37.6170);
+        $confirmedVenueA = $this->venueAt('Подтверждённая площадка А', 55.7520, 37.6180);
+        $confirmedVenueB = $this->venueAt('Подтверждённая площадка Б', 55.7530, 37.6190);
 
         TeamVenueRelation::query()->create([
             'team_id' => $team->id,
@@ -79,5 +72,25 @@ final class TeamCatalogDefaultCategoryTest extends TestCase
             ->assertSee('Подтверждённая площадка Б')
             ->assertDontSee('Только желаемая площадка')
             ->assertSee('точек: 2');
+    }
+
+    private function venueAt(string $name, float $latitude, float $longitude): Venue
+    {
+        $address = Address::factory()->create([
+            'city' => 'Москва',
+            'street' => 'Тестовая улица',
+            'building' => '1',
+            'full_address' => "Москва, {$name}",
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+        ]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
+
+        return Venue::factory()->create([
+            'name' => $name,
+            'status' => VenueStatusEnum::CONFIRMED,
+            'location_id' => $location->id,
+            'raw_address' => $address->full_address,
+        ]);
     }
 }
