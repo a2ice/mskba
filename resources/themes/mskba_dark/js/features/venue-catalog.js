@@ -7,61 +7,17 @@ const MOSCOW_METRO_AREA_BOUNDS = [
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
-    const catalog = document.querySelector('[data-venue-catalog]');
+    const catalog = document.querySelector('[data-default-category].venues-catalog');
     if (!catalog) return;
 
-    const filters = catalog.querySelector('[data-venue-filters]');
-    const filterToggle = catalog.querySelector('[data-venue-filter-toggle]');
-    const filterIcon = catalog.querySelector('[data-venue-filter-toggle-icon]');
-    const list = catalog.querySelector('[data-venue-list]');
-    const mapFrame = catalog.querySelector('[data-venue-catalog-map-frame]');
-    const viewInput = catalog.querySelector('[data-venue-view-input]');
-    const viewButtons = Array.from(catalog.querySelectorAll('[data-venue-view]'));
-    const searchInput = catalog.querySelector('input[name="search"][form="venue-catalog-filter-form"]');
-    const filterForm = document.getElementById('venue-catalog-filter-form');
     let mapPromise = null;
-    let searchTimer = null;
+    const initMap = () => initCatalogMap(catalog, () => mapPromise, (promise) => { mapPromise = promise; });
 
-    searchInput?.addEventListener('input', () => {
-        window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(() => {
-            filterForm?.requestSubmit();
-        }, 450);
+    catalog.addEventListener('default-category:viewchange', (event) => {
+        if (event.detail?.view === 'map') initMap();
     });
 
-    searchInput?.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            window.clearTimeout(searchTimer);
-        }
-    });
-
-    filterToggle?.addEventListener('click', () => {
-        const open = filters.hidden;
-        filters.hidden = !open;
-        filterToggle.setAttribute('aria-expanded', String(open));
-        filterToggle.closest('.venues-catalog-toolbar')?.classList.toggle('is-filters-collapsed', !open);
-        filterIcon?.classList.toggle('ti-chevron-up', open);
-        filterIcon?.classList.toggle('ti-chevron-down', !open);
-    });
-
-    viewButtons.forEach((button) => button.addEventListener('click', () => {
-        const view = button.dataset.venueView;
-        const showMap = view === 'map';
-        list.hidden = showMap;
-        mapFrame.hidden = !showMap;
-        if (viewInput) viewInput.value = view;
-        viewButtons.forEach((item) => {
-            const active = item === button;
-            item.classList.toggle('is-active', active);
-            item.setAttribute('aria-pressed', String(active));
-        });
-        const url = new URL(window.location.href);
-        url.searchParams.set('view', view);
-        window.history.replaceState({}, '', url);
-        if (showMap) initCatalogMap(catalog, () => mapPromise, (promise) => { mapPromise = promise; });
-    }));
-
-    if (!mapFrame?.hidden) initCatalogMap(catalog, () => mapPromise, (promise) => { mapPromise = promise; });
+    if (catalog.dataset.defaultCategoryView === 'map') initMap();
 });
 
 function initCatalogMap(catalog, getPromise, setPromise) {
@@ -79,34 +35,40 @@ function initCatalogMap(catalog, getPromise, setPromise) {
         return;
     }
 
-    const promise = loadYandexMaps(apiKey).then(() => new Promise((resolve) => window.ymaps.ready(resolve))).then(() => {
-        const map = new window.ymaps.Map(canvas, {
-            bounds: MOSCOW_METRO_AREA_BOUNDS,
-            controls: ['zoomControl', 'fullscreenControl', 'geolocationControl'],
+    const promise = loadYandexMaps(apiKey)
+        .then(() => new Promise((resolve) => window.ymaps.ready(resolve)))
+        .then(() => {
+            const map = new window.ymaps.Map(canvas, {
+                bounds: MOSCOW_METRO_AREA_BOUNDS,
+                controls: ['zoomControl', 'fullscreenControl', 'geolocationControl'],
+            });
+            const placemarks = points.map((point) => {
+                const coordinates = [point.latitude, point.longitude];
+                return new window.ymaps.Placemark(coordinates, {
+                    hintContent: point.name,
+                    balloonContentHeader: point.name,
+                    balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>`,
+                }, { preset: 'islands#orangeSportIcon' });
+            });
+            const clusterer = new window.ymaps.Clusterer({
+                preset: 'islands#invertedOrangeClusterIcons',
+                groupByCoordinates: false,
+                gridSize: 64,
+                clusterDisableClickZoom: false,
+                clusterOpenBalloonOnClick: false,
+                clusterHideIconOnBalloonOpen: false,
+                geoObjectHideIconOnBalloonOpen: false,
+            });
+            clusterer.add(placemarks);
+            map.geoObjects.add(clusterer);
+            map.setBounds(MOSCOW_METRO_AREA_BOUNDS, { checkZoomRange: true, zoomMargin: 18 });
+            if (status) status.hidden = true;
+            window.setTimeout(() => map.container.fitToViewport(), 0);
+        })
+        .catch(() => {
+            if (status) status.textContent = 'Не удалось загрузить карту.';
         });
-        const placemarks = points.map((point) => {
-            const coordinates = [point.latitude, point.longitude];
-            return new window.ymaps.Placemark(coordinates, {
-                hintContent: point.name,
-                balloonContentHeader: point.name,
-                balloonContentBody: `${escapeHtml(point.address || '')}<br><a href="${escapeHtml(point.url)}">Открыть площадку</a>`,
-            }, { preset: 'islands#orangeSportIcon' });
-        });
-        const clusterer = new window.ymaps.Clusterer({
-            preset: 'islands#invertedOrangeClusterIcons',
-            groupByCoordinates: false,
-            gridSize: 64,
-            clusterDisableClickZoom: false,
-            clusterOpenBalloonOnClick: false,
-            clusterHideIconOnBalloonOpen: false,
-            geoObjectHideIconOnBalloonOpen: false,
-        });
-        clusterer.add(placemarks);
-        map.geoObjects.add(clusterer);
-        map.setBounds(MOSCOW_METRO_AREA_BOUNDS, { checkZoomRange: true, zoomMargin: 18 });
-        if (status) status.hidden = true;
-        window.setTimeout(() => map.container.fitToViewport(), 0);
-    }).catch(() => { if (status) status.textContent = 'Не удалось загрузить карту.'; });
+
     setPromise(promise);
 }
 
