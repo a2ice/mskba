@@ -26,8 +26,6 @@
 @endphp
 
 <article @class([
-    'catalog-card',
-    'event-catalog-card',
     'event-category-item',
     'event-category-item--'.$mode,
     'is-past' => $isPast,
@@ -44,7 +42,7 @@
             @endif
         </div>
 
-        <h2 class="catalog-card__title event-category-item__title"><a href="{{ $eventUrl }}">{{ $event->title }}</a></h2>
+        <h2 class="event-category-item__title"><a href="{{ $eventUrl }}">{{ $event->title }}</a></h2>
 
         <div class="event-category-item__meta">
             @if($latitude !== null && $longitude !== null)
