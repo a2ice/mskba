@@ -40,4 +40,4 @@ Task 171.
 
 ## Статус
 
-Выполнено, ожидает merge в `main` и production smoke.
+Выполнено.
