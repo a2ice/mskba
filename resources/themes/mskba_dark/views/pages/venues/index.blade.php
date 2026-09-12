@@ -29,7 +29,6 @@
 @endsection
 
 @section('category-filters-desktop')
-    <h2 class="default-category-sidebar__title">Фильтры</h2>
     @include('theme::pages.venues.partials.catalog-filters', [
         'formId' => 'venue-catalog-filter-form-desktop',
         'scope' => 'desktop',
@@ -58,12 +57,12 @@
 
 @section('category-toolbar-actions')
     @auth
-        <a class="btn btn--primary" href="{{ route('venues.create') }}" aria-label="Добавить площадку" title="Добавить площадку" data-tooltip-variant="title">
-            <i class="ti ti-plus" aria-hidden="true"></i><span class="catalog-toolbar__button-text">Добавить</span>
+        <a class="btn btn--primary default-category-toolbar__action-button" href="{{ route('venues.create') }}" aria-label="Добавить площадку" title="Добавить площадку" data-tooltip-variant="title">
+            <i class="ti ti-plus" aria-hidden="true"></i>
         </a>
     @else
-        <button type="button" class="btn btn--primary js-handler" aria-label="Добавить площадку" title="Добавить площадку" data-tooltip-variant="title" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('venues.create', [], false) }}">
-            <i class="ti ti-plus" aria-hidden="true"></i><span class="catalog-toolbar__button-text">Добавить</span>
+        <button type="button" class="btn btn--primary default-category-toolbar__action-button js-handler" aria-label="Добавить площадку" title="Добавить площадку" data-tooltip-variant="title" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ route('venues.create', [], false) }}">
+            <i class="ti ti-plus" aria-hidden="true"></i>
         </button>
     @endauth
 @endsection
