@@ -42,7 +42,7 @@ final class TeamCatalogDefaultCategoryTest extends TestCase
         $this->seed(GameLifecycleDemoSeeder::class);
 
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
-        $creator = User::query()->where('username', GameLifecycleDemoSeeder::ORGANIZER_USERNAME)->firstOrFail();
+        $creator = User::query()->firstOrFail();
         $desiredVenue = Venue::factory()->create([
             'name' => 'Только желаемая площадка',
             'status' => VenueStatusEnum::CONFIRMED,
