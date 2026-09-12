@@ -10,13 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     prepareEventCatalogFilters();
 
     collapseFilters({
-        bodySelector: '[data-venue-filters]',
-        toggleSelector: '[data-venue-filter-toggle]',
-        iconSelector: '[data-venue-filter-toggle-icon]',
-        toolbarSelector: '.venues-catalog-toolbar',
-    });
-
-    collapseFilters({
         bodySelector: '[data-event-filter-body]',
         toggleSelector: '[data-event-filter-toggle]',
         iconSelector: '[data-event-filter-toggle-icon]',
