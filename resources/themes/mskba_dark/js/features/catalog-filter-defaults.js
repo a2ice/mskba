@@ -1,5 +1,6 @@
 import './default-category.js';
 import './event-catalog.js';
+import './tournament-catalog.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     applyEventCatalogDefaults();
