@@ -223,24 +223,63 @@
     }
 
     .venue-catalog-item--list {
-        grid-template-columns: 112px minmax(0, 1fr);
+        grid-template-columns: 108px minmax(0, 1fr);
         gap: 10px;
-        min-height: 112px;
+        min-height: 0;
     }
 
     .venue-catalog-item--list .venue-catalog-item__image {
-        min-height: 112px;
-        height: 112px;
+        min-height: 108px;
+        height: 108px;
+    }
+
+    .venue-catalog-item--list .venue-catalog-item__body {
+        align-self: start;
+        min-width: 0;
+    }
+
+    .venue-catalog-item--list .catalog-card__badges {
+        gap: 4px;
+        margin-bottom: 6px;
+    }
+
+    .venue-catalog-item--list .catalog-card__badge {
+        padding: 3px 5px;
+        font-size: 8px;
+        line-height: 1.15;
     }
 
     .venue-catalog-item--list .catalog-card__title {
+        margin-bottom: 6px;
         font-size: 14px;
+        line-height: 1.2;
     }
 
-    .venue-catalog-item--list .venue-catalog-item__address,
+    .venue-catalog-item--list .venue-catalog-item__address {
+        gap: 5px;
+        margin-bottom: 6px;
+        font-size: 10px;
+        line-height: 1.25;
+    }
+
+    .venue-catalog-item--list .venue-catalog-item__address span {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .venue-catalog-item--list .venue-catalog-item__access {
+        gap: 4px 8px;
+        font-size: 10px;
+        line-height: 1.2;
+    }
+
+    .venue-catalog-item--list .venue-catalog-item__access > span {
+        gap: 4px;
+    }
+
     .venue-catalog-item--list .venue-catalog-item__description,
-    .venue-catalog-item--list .venue-catalog-item__access,
-    .venue-catalog-item--list .catalog-card__badges,
     .venue-catalog-item--list .venue-catalog-item__edit {
         display: none;
     }
