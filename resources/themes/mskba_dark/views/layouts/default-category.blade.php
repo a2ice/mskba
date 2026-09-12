@@ -64,10 +64,10 @@
                                     @if($isVenueCatalog)<span class="catalog-toolbar__button-text default-category__compat-label">Список</span>@endif
                                 </button>
                                 <div class="default-category-view__dropdown" role="menu" data-default-category-view-menu hidden>
-                                    <button type="button" role="menuitem" data-default-category-view-option="cards" @class(['is-active' => $currentView === 'cards'])>
+                                    <button @class(['is-active' => $currentView === 'cards']) type="button" role="menuitem" data-default-category-view-option="cards">
                                         <i class="ti ti-layout-grid" aria-hidden="true"></i><span>Карточками</span>
                                     </button>
-                                    <button type="button" role="menuitem" data-default-category-view-option="list" @class(['is-active' => $currentView === 'list'])>
+                                    <button @class(['is-active' => $currentView === 'list']) type="button" role="menuitem" data-default-category-view-option="list">
                                         <i class="ti ti-list" aria-hidden="true"></i><span>Списком</span>
                                     </button>
                                 </div>
@@ -75,11 +75,10 @@
 
                             @if($hasMap)
                                 <button
-                                    class="default-category-view__button"
+                                    @class(['default-category-view__button', 'is-active' => $currentView === 'map'])
                                     type="button"
                                     data-default-category-view-option="map"
                                     @if($isVenueCatalog) data-venue-view="map" @endif
-                                    @class(['is-active' => $currentView === 'map'])
                                     aria-label="На карте"
                                     title="На карте"
                                     data-tooltip-variant="title"
