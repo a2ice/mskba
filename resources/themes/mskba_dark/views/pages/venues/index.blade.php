@@ -38,10 +38,10 @@
 @endsection
 
 @section('category-search')
-    <form id="venue-catalog-search-form" method="GET" action="{{ route('venues') }}">
+    <form id="venue-catalog-filter-form" method="GET" action="{{ route('venues') }}">
         <label class="catalog-toolbar__search" aria-label="Поиск площадок">
             <i class="ti ti-search" aria-hidden="true"></i>
-            <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" data-default-category-search>
+            <input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Название, адрес или описание" form="venue-catalog-filter-form" data-default-category-search>
         </label>
         @foreach(['type', 'operational_status', 'access'] as $filterKey)
             @if(filled($filters[$filterKey] ?? null))
