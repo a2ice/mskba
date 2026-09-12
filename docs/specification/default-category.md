@@ -10,14 +10,15 @@
 
 Композиция desktop:
 
-1. заголовок категории + `Назад`;
+1. breadcrumbs с общей кнопкой `Назад`, затем компактный заголовок категории;
 2. общий `inner` без дополнительного локального ограничения ширины;
 3. двухколоночный grid `sidebar + main`;
 4. sticky sidebar под header;
-5. sticky toolbar над результатами;
-6. область результатов с режимами `cards`, `list` и опционально `map`.
+5. sidebar визуально является одной панелью и состоит из accordion-секций: первая — навигация категории, вторая — фильтры; по умолчанию раскрыта навигация, раскрытие одной секции закрывает другую;
+6. sticky toolbar над результатами;
+7. область результатов с режимами `cards`, `list` и опционально `map`.
 
-На ширине `<= 768px` навигационная часть sidebar переезжает в существующую mobile section navigation, desktop-фильтры скрываются, а в toolbar появляется icon-action `Фильтры`, открывающий modal с теми же условиями.
+На ширине `<= 768px` навигационная часть sidebar переезжает в существующую mobile section navigation, desktop-фильтры скрываются, а в toolbar появляется icon-action `Фильтры`, открывающий modal с теми же условиями. Desktop accordion целиком в мобильную навигацию не переносится.
 
 ## Контракт layout
 
@@ -28,12 +29,13 @@
 - `categoryClass` — page-specific class;
 - `currentView` — `cards|list|map`, по умолчанию `cards`;
 - `hasMap` — поддерживает ли каталог карту;
-- `mobileFilterModalId` — id popup фильтров.
+- `mobileFilterModalId` — id popup фильтров;
+- опционально `sidebarNavigationTitle` и `sidebarFiltersTitle` — подписи accordion-секций sidebar.
 
 Используемые sections/slots:
 
-- `category-navigation` — навигация раздела, без фильтров;
-- `category-filters-desktop` — доменные фильтры desktop;
+- `category-navigation` — навигация раздела, без собственного заголовка и без фильтров;
+- `category-filters-desktop` — доменные фильтры desktop, без собственного заголовка accordion-секции;
 - `category-search` — search control/form;
 - `category-active-filter-count` — счётчик активных фильтров для mobile action;
 - `category-toolbar-actions` — `Создать`, `Добавить` и другие контекстные действия;
@@ -45,7 +47,7 @@
 
 Неиспользуемые capabilities не должны имитироваться пустой доменной логикой. Например, каталог без географического смысла передаёт `hasMap=false` и не рендерит map slot/action.
 
-## View switcher
+## View switcher и toolbar actions
 
 Общий переключатель реализован в `resources/themes/mskba_dark/js/features/default-category.js`.
 
@@ -56,6 +58,7 @@
 - `map` — query `view=map`, только для map-capable consumer;
 - основная кнопка списка icon-only и раскрывает dropdown `Карточками / Списком`;
 - карта — отдельная icon-only action;
+- компактные create/add actions в toolbar также icon-only и имеют ту же высоту, что view/filter controls;
 - icon-actions используют `aria-label`, `title` и обычный tooltip без helper-question-mark и underline;
 - при переключении view состояние синхронизируется с hidden inputs desktop/mobile filter forms и URL через `history.replaceState`;
 - consumer может слушать custom event `default-category:viewchange` и лениво инициализировать тяжёлую доменную функциональность, например карту.
@@ -66,7 +69,7 @@ Search остаётся в toolbar и задаётся consumer-ом, включ
 
 Desktop (`>768px`):
 
-- доменные фильтры находятся в sidebar;
+- доменные фильтры находятся во второй accordion-секции sidebar;
 - sidebar и toolbar sticky;
 - фильтры не дублируются отдельной раскрывающейся полосой под toolbar.
 
@@ -78,11 +81,17 @@ Mobile (`<=768px`):
 - `Применить` и `Сбросить` обязаны сохранять search и текущий view;
 - boolean controls должны использовать фирменный `form-toggle`, а не произвольные browser-checkbox.
 
+## Card/list contract
+
+`cards` может использовать более крупную визуальную композицию, но `list` не должен на mobile превращаться в «только картинка + название». Даже в компактном списке сохраняются ключевые доменные признаки, необходимые для выбора сущности. Для `/venues` это как минимум тип/состояние, адрес и условия доступа/подтверждения; длинное текстовое описание допускается скрывать ради компактности.
+
 ## Разделение shared и domain-specific кода
 
 Shared слой отвечает за:
 
+- breadcrumbs/header shell;
 - shell/grid/responsive;
+- accordion sidebar;
 - sticky sidebar/toolbar;
 - view switcher;
 - mobile filter entrypoint;
@@ -103,7 +112,7 @@ Consumer отвечает за:
 
 Общий JS подключается через существующий frontend entrypoint и инициализируется только при наличии `[data-default-category]`.
 
-Тяжёлые entity-specific возможности должны иметь собственный root/data-hook и запускаться только на соответствующей странице. На первом consumer `/venues` `venue-catalog.js` оставляет только map-specific поведение; общий search/view UX вынесен из него.
+Тяжёлые entity-specific возможности должны иметь собственный root/data-hook и запускаться только на соответствующей странице. На первом consumer `/venues` `venue-catalog.js` оставляет только map-specific поведение; общий search/view/sidebar UX вынесен из него.
 
 ## Первый consumer: `/venues`
 
