@@ -14,6 +14,8 @@ function initDefaultCategory(root) {
     const viewOptions = Array.from(root.querySelectorAll('[data-default-category-view-option]'));
     let searchTimer = null;
 
+    initSidebarAccordion(root);
+
     search?.addEventListener('input', () => {
         window.clearTimeout(searchTimer);
         searchTimer = window.setTimeout(() => search.form?.requestSubmit(), SEARCH_DEBOUNCE_MS);
@@ -54,6 +56,40 @@ function initDefaultCategory(root) {
         viewMenu.hidden = true;
         viewMenuToggle?.setAttribute('aria-expanded', 'false');
         viewMenuToggle?.focus();
+    });
+}
+
+function initSidebarAccordion(root) {
+    const accordion = root.querySelector('[data-default-category-sidebar-accordion]');
+    if (!accordion) return;
+
+    const items = Array.from(accordion.querySelectorAll('[data-default-category-sidebar-item]'))
+        .map((item) => ({
+            item,
+            trigger: item.querySelector('[data-default-category-sidebar-trigger]'),
+            content: item.querySelector('[data-default-category-sidebar-content]'),
+        }))
+        .filter(({ trigger, content }) => trigger && content);
+
+    const setOpen = (candidate, open) => {
+        candidate.trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+        candidate.content.hidden = !open;
+        candidate.item.classList.toggle('is-open', open);
+    };
+
+    items.forEach((candidate, index) => setOpen(candidate, index === 0));
+
+    items.forEach((candidate) => {
+        candidate.trigger.addEventListener('click', () => {
+            const willOpen = candidate.trigger.getAttribute('aria-expanded') !== 'true';
+
+            if (willOpen) {
+                items.forEach((item) => setOpen(item, item === candidate));
+                return;
+            }
+
+            setOpen(candidate, false);
+        });
     });
 }
 
