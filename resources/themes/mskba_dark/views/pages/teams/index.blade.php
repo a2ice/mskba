@@ -1,9 +1,11 @@
 @php
     $title = 'Команды';
     $currentView = in_array(request('view'), ['list', 'map'], true) ? request('view') : 'cards';
-    $activeFilterCount = collect(['member_count', 'sport_type', 'hiring'])
-        ->filter(fn ($key) => filled($filters[$key] ?? null))
-        ->count();
+    $activeFilterCount = collect([
+        filled($filters['member_count'] ?? null),
+        filled($filters['sport_type'] ?? null),
+        (bool) ($filters['hiring'] ?? false),
+    ])->filter()->count();
     $catalogItems = app(\App\Modules\Team\Presentation\Catalog\TeamCatalogPresenter::class)
         ->present($teams->getCollection());
     $mapPoints = $catalogItems
