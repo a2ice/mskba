@@ -73,7 +73,7 @@
         @if($hasMiniGames)<input type="hidden" name="has_mini_games" value="1">@endif
         <input type="hidden" name="view" value="{{ $currentView === 'cards' ? '' : $currentView }}" data-default-category-view-input @disabled($currentView === 'cards')>
     </form>
-    <span class="catalog-toolbar events-catalog-filters__toolbar default-category__compat-label" aria-hidden="true"></span>
+    <span class="catalog-toolbar events-catalog-filters__toolbar catalog-card event-catalog-card catalog-card__title default-category__compat-label" aria-hidden="true"></span>
 @endsection
 
 @section('category-active-filter-count')
