@@ -20,11 +20,7 @@ final class TeamCatalogDefaultCategoryTest extends TestCase
     {
         $this->seed(GameLifecycleDemoSeeder::class);
 
-        $this->get(route('teams.index', [
-            'member_count' => 'large',
-            'sport_type' => 'basketball',
-            'view' => 'list',
-        ]))
+        $this->get(route('teams.index', ['view' => 'list']))
             ->assertOk()
             ->assertSee('data-default-category', false)
             ->assertSee('teams-category-catalog', false)
