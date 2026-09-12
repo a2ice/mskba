@@ -74,7 +74,7 @@ function configureCooperativeInteractions(map, container) {
     // remains available with Ctrl/Cmd + wheel and through the map's own controls.
     map.behaviors.disable('scrollZoom');
 
-    if (hasTouchPointer()) {
+    if (hasTouchPrimaryPointer()) {
         // One-finger gestures are reserved for scrolling the page. Yandex multiTouch
         // stays enabled, so a deliberate two-finger gesture can still move/zoom the map.
         map.behaviors.disable('drag');
@@ -101,7 +101,7 @@ function configureCooperativeInteractions(map, container) {
     };
 
     element.addEventListener('wheel', onWheel, { passive: false });
-    element.dataset.mapCooperativeInteraction = hasTouchPointer() ? 'two-finger' : 'modifier-wheel';
+    element.dataset.mapCooperativeInteraction = hasTouchPrimaryPointer() ? 'two-finger' : 'modifier-wheel';
 
     const cleanup = () => {
         element.removeEventListener('wheel', onWheel);
@@ -124,7 +124,10 @@ function resolveMapContainer(container) {
     return null;
 }
 
-function hasTouchPointer() {
-    return navigator.maxTouchPoints > 0
-        || window.matchMedia?.('(any-pointer: coarse)').matches === true;
+function hasTouchPrimaryPointer() {
+    if (typeof window.matchMedia === 'function') {
+        return window.matchMedia('(pointer: coarse)').matches;
+    }
+
+    return navigator.maxTouchPoints > 0;
 }
