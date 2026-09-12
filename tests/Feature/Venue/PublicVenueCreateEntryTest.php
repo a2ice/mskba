@@ -30,16 +30,21 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertDontSee('data-modal-target="create-game"', false);
     }
 
-    public function test_guest_sees_auth_gate_for_create_action_on_public_venues_page(): void
+    public function test_guest_sees_auth_gate_and_default_category_controls_on_public_venues_page(): void
     {
         $this
             ->get(route('venues'))
             ->assertOk()
             ->assertSee('data-mobile-primary-bar', false)
-            ->assertSee('data-venue-catalog', false)
-            ->assertSee('data-venue-filter-toggle', false)
-            ->assertSee('data-venue-view="list"', false)
-            ->assertSee('data-venue-view="map"', false)
+            ->assertSee('data-default-category', false)
+            ->assertSee('data-default-category-view="cards"', false)
+            ->assertSee('data-default-category-view-menu-toggle', false)
+            ->assertSee('data-default-category-view-option="cards"', false)
+            ->assertSee('data-default-category-view-option="list"', false)
+            ->assertSee('data-default-category-view-option="map"', false)
+            ->assertSee('data-modal-target="venue-catalog-filters"', false)
+            ->assertSee('Карточками')
+            ->assertSee('Списком')
             ->assertSee('Новая игра')
             ->assertSee('Добавить')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
@@ -81,18 +86,25 @@ class PublicVenueCreateEntryTest extends TestCase
         ]))
             ->assertOk()
             ->assertSee('Бесплатная улица')
-            ->assertSee('catalog-toolbar venues-catalog-toolbar', false)
+            ->assertSee('default-category-toolbar', false)
             ->assertSee('name="search"', false)
             ->assertSee('form="venue-catalog-filter-form"', false)
-            ->assertSee('catalog-toolbar__button-text">Список', false)
+            ->assertSee('Карточками')
+            ->assertSee('Списком')
             ->assertSee('Москва, Тестовая улица, 1')
             ->assertDontSee('Россия, Москва')
             ->assertDontSee('Платный зал')
-            ->assertSee('catalog-card venue-catalog-card', false)
+            ->assertSee('catalog-card venue-catalog-item venue-catalog-item--card', false)
             ->assertSee('catalog-card__title', false)
+            ->assertSee('data-default-category-results="map"', false)
             ->assertSee('data-venue-catalog-map', false)
             ->assertSee('55.751244', false)
             ->assertSee('37.618423', false);
+
+        $this->get(route('venues', ['view' => 'list']))
+            ->assertOk()
+            ->assertSee('data-default-category-view="list"', false)
+            ->assertSee('venue-catalog-item--list', false);
 
         $this->get(route('venues', ['search' => 'несуществующая площадка']))
             ->assertOk()
