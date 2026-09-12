@@ -1,129 +1,91 @@
 # 171 — Ввести стандарт `default_category` и перевести на него каталог площадок
 
-## Исходная задача
-
-Зафиксировать единый вид публичных страниц-каталогов (`Площадки`, `Мероприятия`, `Турниры`, `Команды`, `Секции`) под именем `default_category`. За визуальную отправную точку взять текущий `/venues`, но не копировать его буквально: сначала довести базовый шаблон до нужной архитектуры и UX, после чего мигрировать остальные каталоги отдельными задачами.
-
-## Что обнаружено в текущем `main`
-
-- общий `inner` имеет ширину до `1390px`, но каталог площадок дополнительно ограничен `.venues-catalog__inner { max-width: 1240px; }`, из-за чего он визуально уже остальных страниц;
-- для площадок, мероприятий и команд уже существуют общие примитивы `catalog-toolbar` и `catalog-card`, однако сами страницы продолжают дублировать shell, фильтры и page-specific JS;
-- `venue-catalog.js` и `team-catalog.js` статически импортируются из общего `app.js`, то есть page-specific поведение попадает в общий bundle;
-- существующий `section-sidebar` уже решает часть desktop/mobile поведения для detail-страниц, но каталогам нужен отдельный shell: sidebar навигации + фильтры на desktop и отдельный filter popup на mobile.
-
 ## Цель
 
-Создать устойчивый presentation-стандарт `default_category`, который определяет только общий каркас каталога, а доменная логика и набор фильтров остаются у конкретного раздела.
+Зафиксировать единый presentation-pattern для однотипных публичных каталогов MSKBA (`Площадки`, `Мероприятия`, `Турниры`, `Команды`, `Секции`) и первым consumer перевести на него `/venues`.
 
-Не создавать «универсальный контроллер» или mega-component, который знает обо всех сущностях. Унифицируется presentation-shell, а не домены.
+`default_category` унифицирует только оболочку страницы. Доменные фильтры, карточки, карта, права и business-flow остаются у конкретного bounded context.
 
-## Архитектура `default_category`
+## Реализовано
 
-Базовый shell должен поддерживать:
+В Task 171 сделано:
 
-1. Заголовок раздела и кнопку `Назад`.
-2. Desktop layout `sidebar + content` на всю ширину стандартного `inner`.
-3. Sidebar из независимых контекстных partial/slots:
-   - навигация по разделу;
-   - фильтры;
-   - при необходимости дополнительные контекстные блоки.
-4. Основной content:
-   - sticky filter bar;
-   - область результатов;
-   - pagination/empty state.
-5. Режимы отображения через query-параметр `view`:
-   - `cards` — значение по умолчанию;
-   - `list`;
-   - `map` — только когда конкретный каталог действительно имеет географический смысл и данные.
-6. Контекстные возможности передаются явно: placeholder поиска, create action, map capability, partial карточки/строки, filter partial, sidebar items. Неиспользуемые блоки не должны рендериться.
+- добавлен общий layout `theme::layouts.default-category`;
+- каталог использует полную ширину стандартного `inner` без прежнего локального ограничения `1240px`;
+- desktop layout построен как `sidebar + content`;
+- sidebar и toolbar фиксируются под header при прокрутке;
+- desktop-фильтры площадок перенесены в sidebar;
+- на `<=768px` desktop-фильтры скрываются, а в toolbar появляется icon-action `Фильтры`, открывающий modal;
+- поиск остаётся первым элементом toolbar;
+- реализованы режимы `cards|list|map`;
+- `cards` является режимом по умолчанию;
+- основной view-switcher icon-only, а варианты `Карточками / Списком` показываются текстом внутри dropdown;
+- карта остаётся отдельной icon-action;
+- search/filter/view query-state сохраняется между действиями;
+- Venue-specific карта и Yandex Maps не перенесены в shared shell;
+- карточка/строка, filters и navigation площадок вынесены в отдельные partials;
+- добавлена официальная спецификация `docs/specification/default-category.md`.
 
-### View switcher
+## Утверждённый базовый sidebar `/venues`
 
-В filter bar:
+Навигация:
 
-- текстовые подписи `Список` / `Карта` у самих кнопок убрать;
-- оставить иконки с обычным tooltip без знака вопроса и без подчёркивания;
-- вариант списка сделать dropdown: `Списком` и `Карточками`;
-- в dropdown текстовые названия показываются;
-- `Карточками` — default;
-- карта остаётся отдельной icon-action и скрывается в каталогах без map capability;
-- выбранный view сохраняется при поиске/фильтрации и в pagination.
+- `Все площадки`;
+- `Мои площадки` — только для авторизованного пользователя;
+- `Добавить площадку` — напрямую для авторизованного пользователя, через auth-entry для гостя.
 
-### Фильтры и responsive
+Ниже отдельным блоком располагаются фильтры:
 
-Для ширины больше `768px`:
+- тип площадки;
+- состояние;
+- доступ.
 
-- доменные фильтры находятся в sidebar;
-- sidebar sticky под header;
-- filter bar также sticky под header;
-- sticky-слои не должны перекрывать друг друга или breadcrumbs/header.
+`Популярные` и `Рядом со мной` в базовую версию не добавляются до появления отдельной корректной продуктовой логики. Состояние и условия доступа остаются фильтрами, а не навигационными пунктами.
 
-Для `768px` и меньше:
+## Архитектурные правила
 
-- навигационная часть sidebar переезжает в существующую мобильную навигационную систему по аналогии со страницей площадки;
-- desktop filter block не переносится туда;
-- в filter bar появляется icon-button `Фильтры`;
-- кнопка открывает popup с тем же набором фильтров и текущими выбранными значениями;
-- apply/reset должны сохранять search и view.
+Shared `default_category` отвечает за:
 
-Все boolean controls используют единый фирменный toggle-компонент, а не произвольные browser-checkbox. Остальные controls должны использовать существующие общие form-компоненты/стили.
+- shell/grid/responsive;
+- sticky sidebar/toolbar;
+- slots для навигации, фильтров, поиска, actions и результатов;
+- общий view switcher;
+- mobile filter entrypoint;
+- синхронизацию view-state.
 
-### Поиск
+Consumer отвечает за:
 
-Search остаётся первым элементом filter bar. Placeholder задаётся каталогом. Текущий вариант площадок `Название, адрес или описание` считать базовым, но не навязывать разделам, где `адрес` не имеет смысла.
+- набор и backend-валидацию фильтров;
+- card/list partials;
+- map data/rendering;
+- create/edit permissions;
+- domain-specific badges/meta/empty states.
 
-### Assets
+Не допускается превращать `default_category` в mega-component, который знает одновременно про Venue, Event, Tournament, Team и SportsSection.
 
-Не раздувать глобальные `app.css` / `app.js` логикой всех каталогов.
+## Проверки
 
-- общий shell, toolbar, view switcher и filter-popup могут иметь один shared module;
-- entity-specific map/result behavior подключается только при наличии соответствующего root/data-hook;
-- предпочтительно использовать conditional/dynamic module loading либо отдельные page assets через layout slots;
-- общий код не должен содержать копии `venue/team/event toggle filters` с разными data-атрибутами.
+Перед merge PR #176 GitHub Actions успешно выполнил:
 
-Решение должно оставить одну точку инициализации `default_category`, а доменные расширения — небольшими отдельными модулями.
+- PHP tests;
+- production compose validation;
+- frontend dependencies installation;
+- `npm run build`.
 
-## Первый consumer: `/venues`
-
-В этой же задаче перевести `/venues` на новый foundation:
-
-- убрать локальный `max-width: 1240px` и использовать полную ширину `inner`;
-- добавить sidebar;
-- вынести текущие фильтры площадок в desktop sidebar;
-- добавить mobile filter popup;
-- реализовать `cards|list|map`, default `cards`;
-- сохранить текущий поиск, create-flow, права, map points и query-параметры;
-- не потерять текущие badges, access/approval данные, edit action и empty states.
-
-### Sidebar площадок — обязательная точка продуктового согласования
-
-Механизм sidebar реализовать сразу, но окончательный список пунктов не придумывать молча. Перед финальной фиксацией меню остановиться и согласовать его содержимое. Архитектура должна позволять без переделки shell задавать, например, `Все`, `Популярные`, `Рядом`, `Мои площадки`, `Создать площадку`, но конкретный набор утверждается в процессе Task 171.
-
-## Критерии приёмки
-
-- `/venues` использует полный стандартный `inner` и визуально совпадает по горизонтальным границам с header/content сайта;
-- desktop: sidebar и toolbar корректно sticky;
-- mobile/tablet `<=768`: sidebar navigation доступна через мобильную навигацию, фильтры — через popup;
-- default view — `cards`; `list` и `map` переключаются без потери фильтров;
-- у icon-actions корректные tooltip без helper-question-mark/underline;
-- фильтры и view сохраняются при pagination;
-- page-specific JS не дублирует общий filter-toggle/view-switcher;
-- тесты существующего venue flow не регрессируют, добавлены проверки новых query/view сценариев;
-- `npm run build`, профильные PHP tests, `git diff --check`;
-- ручной smoke: desktop, 768px, mobile и Telegram Mini App.
-
-## Документация
-
-После реализации зафиксировать `default_category` как официальный presentation-pattern проекта в `docs/project.md`/`docs/specification.md` с описанием slots/capabilities и правил для новых каталогов.
+Production smoke-check выполняется после автодеплоя: desktop, `768px`, mobile и Telegram Mini App.
 
 ## Зависимости
 
-Нет. Это фундамент для Tasks 172–174 и 178.
+Нет. Task 171 является foundation для Tasks 172–174 и 178.
 
 ## Ветка
 
 `feature/171`
 
+## Merge
+
+PR #176 → `main`.
+
 ## Статус
 
-Запланировано.
+Выполнено и вмержено в `main` 12.09.2026.
