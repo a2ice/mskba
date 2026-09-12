@@ -1,6 +1,6 @@
 @php
-    $upcomingQuery = request()->except(['page', 'period', 'outcome']);
-    $pastQuery = request()->except(['page', 'period', 'outcome']);
+    $upcomingQuery = request()->except(['page', 'period', 'outcome', 'date_from', 'date_to']);
+    $pastQuery = request()->except(['page', 'period', 'outcome', 'date_from', 'date_to']);
     $pastQuery['period'] = 'past';
     $createQuery = array_filter(['type' => $selectedType?->value]);
     $createUrl = route('events.create', $createQuery);
