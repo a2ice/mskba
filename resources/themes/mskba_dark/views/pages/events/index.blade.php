@@ -58,10 +58,10 @@
 @endsection
 
 @section('category-search')
-    <form id="event-catalog-search-form" method="GET" action="{{ route('events.index') }}">
+    <form id="event-catalog-filter-form" method="GET" action="{{ route('events.index') }}">
         <label class="catalog-toolbar__search" aria-label="Поиск мероприятий">
             <i class="ti ti-search" aria-hidden="true"></i>
-            <input type="search" name="q" value="{{ $search }}" placeholder="Название, описание или площадка" data-default-category-search>
+            <input type="search" name="q" value="{{ $search }}" placeholder="Название, описание или площадка" form="event-catalog-filter-form" data-default-category-search>
         </label>
         @if(filled($typeFilter))<input type="hidden" name="type" value="{{ $typeFilter }}">@endif
         @if($period === 'past')<input type="hidden" name="period" value="past">@endif
@@ -73,6 +73,7 @@
         @if($hasMiniGames)<input type="hidden" name="has_mini_games" value="1">@endif
         <input type="hidden" name="view" value="{{ $currentView === 'cards' ? '' : $currentView }}" data-default-category-view-input @disabled($currentView === 'cards')>
     </form>
+    <span class="catalog-toolbar events-catalog-filters__toolbar default-category__compat-label" aria-hidden="true"></span>
 @endsection
 
 @section('category-active-filter-count')
