@@ -4,7 +4,7 @@
     $venueUrl = route('venues.show', $venue->routeIdentifier());
 @endphp
 
-<article class="catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}">
+<article class="catalog-card venue-catalog-card venue-catalog-item venue-catalog-item--{{ $mode }}">
     <a class="catalog-card__image venue-catalog-item__image" href="{{ $venueUrl }}">
         <img src="{{ $venue->imageUrl ?: asset('images/venue-placeholder.png') }}" alt="Фото площадки {{ $venue->name }}">
     </a>
