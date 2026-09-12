@@ -17,12 +17,6 @@ final class MainMenu implements MenuHandler
 
         $moreItems = [
             [
-                'label' => 'Секции',
-                'url' => $this->routeUrl('sports-sections.index'),
-                'active' => $this->isActiveRoute('sports-sections.*'),
-                'visible' => (bool) config('features.sports_sections.enabled'),
-            ],
-            [
                 'label' => 'Опросы',
                 'url' => $this->routeUrl('coordination.index'),
                 'active' => $this->isActiveRoute('coordination.*'),
@@ -79,6 +73,12 @@ final class MainMenu implements MenuHandler
                 'visible' => true,
             ],
             [
+                'label' => 'Секции',
+                'url' => $this->routeUrl('sports-sections.index'),
+                'active' => $this->isActiveRoute('sports-sections.*'),
+                'visible' => (bool) config('features.sports_sections.enabled'),
+            ],
+            [
                 'label' => 'Турниры',
                 'url' => $this->routeUrl('tournaments.index'),
                 'active' => $this->isActiveRoute('tournaments.*'),
@@ -96,7 +96,7 @@ final class MainMenu implements MenuHandler
             [
                 'label' => 'Мероприятия',
                 'url' => $this->routeUrl('events.index'),
-                'active' => $this->isActiveRoute('events.*, tournaments.*'),
+                'active' => $this->isActiveRoute('events.*, tournaments.*, sports-sections.*'),
                 'visible' => true,
                 'children' => $moreGames,
             ],
