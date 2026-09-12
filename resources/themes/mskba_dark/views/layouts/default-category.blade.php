@@ -5,6 +5,8 @@
     $currentView = $currentView ?? 'cards';
     $hasMap = (bool) ($hasMap ?? false);
     $mobileFilterModalId = $mobileFilterModalId ?? $categoryId.'-filters';
+    $sidebarNavigationTitle = $sidebarNavigationTitle ?? $title;
+    $sidebarFiltersTitle = $sidebarFiltersTitle ?? 'Фильтры';
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -17,25 +19,65 @@
         data-default-category-view="{{ $currentView }}"
     >
         <div class="inner default-category__inner">
+            <div class="default-category__breadcrumbs">
+                @include('theme::partials.breadcrumbs')
+            </div>
+
             <header class="default-category__header">
                 <h1>{{ $title }}</h1>
-                <button class="page-breadcrumbs__back default-category__back js-handler" type="button" data-handler="historyBack">
-                    <i class="ti ti-arrow-left" aria-hidden="true"></i><span>Назад</span>
-                </button>
             </header>
 
             <div class="default-category__grid">
                 <aside class="default-category__sidebar" aria-label="Навигация и фильтры раздела">
-                    <div
-                        class="default-category__navigation"
-                        data-mobile-section-sidebar
-                        data-mobile-section-sidebar-title="{{ $title }}"
-                    >
-                        @yield('category-navigation')
-                    </div>
+                    <div class="default-category__sidebar-panel" data-default-category-sidebar-accordion>
+                        <section class="default-category-sidebar-accordion__item is-open" data-default-category-sidebar-item>
+                            <button
+                                class="default-category-sidebar-accordion__trigger"
+                                type="button"
+                                aria-expanded="true"
+                                aria-controls="{{ $categoryId }}-sidebar-navigation"
+                                data-default-category-sidebar-trigger
+                            >
+                                <span>{{ $sidebarNavigationTitle }}</span>
+                                <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                            </button>
+                            <div
+                                id="{{ $categoryId }}-sidebar-navigation"
+                                class="default-category-sidebar-accordion__content"
+                                data-default-category-sidebar-content
+                            >
+                                <div
+                                    class="default-category__navigation"
+                                    data-mobile-section-sidebar
+                                    data-mobile-section-sidebar-title="{{ $title }}"
+                                >
+                                    @yield('category-navigation')
+                                </div>
+                            </div>
+                        </section>
 
-                    <div class="default-category__desktop-filters">
-                        @yield('category-filters-desktop')
+                        <section class="default-category-sidebar-accordion__item" data-default-category-sidebar-item>
+                            <button
+                                class="default-category-sidebar-accordion__trigger"
+                                type="button"
+                                aria-expanded="false"
+                                aria-controls="{{ $categoryId }}-sidebar-filters"
+                                data-default-category-sidebar-trigger
+                            >
+                                <span>{{ $sidebarFiltersTitle }}</span>
+                                <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                            </button>
+                            <div
+                                id="{{ $categoryId }}-sidebar-filters"
+                                class="default-category-sidebar-accordion__content"
+                                data-default-category-sidebar-content
+                                hidden
+                            >
+                                <div class="default-category__desktop-filters">
+                                    @yield('category-filters-desktop')
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 </aside>
 
