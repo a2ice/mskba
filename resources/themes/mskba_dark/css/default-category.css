@@ -167,6 +167,10 @@
     background: rgba(255, 111, 38, .16);
 }
 
+.default-category__compat-label {
+    display: none !important;
+}
+
 .default-category-view__dropdown {
     position: absolute;
     z-index: 60;
