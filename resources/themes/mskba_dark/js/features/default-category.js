@@ -73,7 +73,7 @@ function setView(root, view, viewOptions, viewIcon) {
         viewIcon.classList.toggle('ti-list', view === 'list');
     }
 
-    root.querySelectorAll('[data-default-category-view-input]').forEach((input) => {
+    document.querySelectorAll('[data-default-category-view-input]').forEach((input) => {
         input.value = view === 'cards' ? '' : view;
         input.disabled = view === 'cards';
     });
