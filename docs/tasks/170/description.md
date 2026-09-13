@@ -45,9 +45,8 @@ Event остаются разными понятиями: первый фикс�
 
 - `name`, nullable `description`, alias, creator actor;
 - status `draft|active|paused|archived`;
-- training mode `individual|small_group|team`;
-- существующий `GameFormatEnum`, допустимы только `basketball_5x5`,
-  `streetball_3x3`, `streetball_1x1`, default `basketball_5x5`;
+- training mode `individual|group`;
+- собственный `SportsSectionFormatEnum` для укрупнённого игрового направления: `basketball|streetball|other`, default `basketball`; это поле не использует `Event\Domain\Enums\GameFormatEnum`, который остаётся форматом конкретной игры;
 - nullable primary Venue и VenueCourt с серверной проверкой принадлежности;
 - pricing type `free|paid`, nullable `single_session_price_minor`, ISO currency;
 - contact source `head_coach|section` и nullable `contact_notes`;
@@ -157,3 +156,5 @@ session/section`, чтобы не создать обратный порядок
 ## Статус
 
 Реализовано и включено в `main` 11.09.2026. После первичной реализации проведён UX/product-pass: ручной ввод `Event ID` заменён публикацией Event-проекции из занятия, добавлены фильтры публичного каталога, зависимый выбор площадки/зала, редактирование занятий и более понятное управление составом. Профильные проверки дополнены тестами этих сценариев.
+
+13.09.2026 Task 175 нормализовал долгоживущие характеристики секции: `training_mode` теперь `individual|group`, а игровое направление — собственный `SportsSectionFormatEnum` (`basketball|streetball|other`). Legacy `small_group|team` и конкретные игровые `5×5/3×3/1×1` мигрируются детерминированно; формат конкретной игры по-прежнему остаётся ответственностью Event/Game bounded context.
