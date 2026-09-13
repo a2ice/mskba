@@ -12,6 +12,7 @@ use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
+use App\Modules\Team\Infrastructure\Http\Middleware\EnsureTeamAcceptsJoinRequests;
 use App\Modules\Team\Infrastructure\Http\Middleware\EnsureTeamMemberRemovalHierarchy;
 use App\Modules\Team\Infrastructure\Http\Middleware\EnsureTeamUserContext;
 use App\Modules\Team\Infrastructure\Observers\OwnerTeamMembershipObserver;
@@ -44,7 +45,7 @@ final class TeamSportsServiceProvider extends ServiceProvider
             Route::get('/teams/{team}/join-requests', [TeamJoinRequestController::class, 'index'])
                 ->name('teams.join-requests.index');
             Route::post('/teams/{team}/join-requests', [TeamJoinRequestController::class, 'store'])
-                ->middleware('throttle:5,1')
+                ->middleware([EnsureTeamAcceptsJoinRequests::class, 'throttle:5,1'])
                 ->name('teams.join-requests.store');
             Route::patch('/teams/{team}/join-requests/{joinRequest}', [TeamJoinRequestController::class, 'respond'])
                 ->whereNumber('joinRequest')
@@ -101,6 +102,7 @@ final class TeamSportsServiceProvider extends ServiceProvider
                 'currentJoinRequest' => $currentJoinRequest,
                 'isActiveTeamMember' => $isActiveMember,
                 'canApplyToTeam' => auth()->check()
+                    && $team->accepts_join_requests
                     && ! $isActiveMember
                     && ($currentJoinRequest?->status !== TeamJoinRequestStatusEnum::BLOCKED),
             ]);
