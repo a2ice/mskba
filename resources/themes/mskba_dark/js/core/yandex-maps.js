@@ -83,6 +83,42 @@ function configureCooperativeInteractions(map, container) {
 
     configuredMapContainers.get(element)?.cleanup();
 
+    let viewportFrame = null;
+    const refreshViewport = () => {
+        if (!element.isConnected || element.offsetWidth <= 0 || element.offsetHeight <= 0) {
+            return;
+        }
+
+        if (viewportFrame !== null) {
+            window.cancelAnimationFrame(viewportFrame);
+        }
+
+        viewportFrame = window.requestAnimationFrame(() => {
+            viewportFrame = null;
+
+            if (!element.isConnected || element.offsetWidth <= 0 || element.offsetHeight <= 0) {
+                return;
+            }
+
+            map.container?.fitToViewport?.();
+        });
+    };
+
+    // Catalog maps are intentionally hidden when another view is active. Yandex Maps
+    // keeps the old canvas size while an ancestor is display:none, which can leave a
+    // blank/stale map after switching back until the user touches it. Refresh every time
+    // the real container becomes measurable again, not only during initial construction.
+    const resizeObserver = typeof window.ResizeObserver === 'function'
+        ? new window.ResizeObserver((entries) => {
+            if (entries.some((entry) => entry.contentRect.width > 0 && entry.contentRect.height > 0)) {
+                refreshViewport();
+            }
+        })
+        : null;
+
+    resizeObserver?.observe(element);
+    refreshViewport();
+
     const onWheel = (event) => {
         if (!event.ctrlKey && !event.metaKey) {
             return;
@@ -105,6 +141,10 @@ function configureCooperativeInteractions(map, container) {
 
     const cleanup = () => {
         element.removeEventListener('wheel', onWheel);
+        resizeObserver?.disconnect();
+        if (viewportFrame !== null) {
+            window.cancelAnimationFrame(viewportFrame);
+        }
         configuredMapContainers.delete(element);
     };
 
