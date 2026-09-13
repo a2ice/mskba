@@ -34,8 +34,10 @@ final class TeamHiringTest extends TestCase
                 'gender' => UserGenderEnum::FEMALE->value,
                 'description' => 'Ищем игрока на вечерние тренировки.',
             ])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHas('status');
 
+        $this->assertTrue($team->fresh()->accepts_join_requests);
         $vacancy = TeamHiringPosition::query()->sole();
         $this->assertSame(TeamHiringStatusEnum::ACTIVE, $vacancy->status);
         $this->assertSame([PlayerPositionEnum::CENTER->value, PlayerPositionEnum::POWER_FORWARD->value], $vacancy->positions);
@@ -101,17 +103,15 @@ final class TeamHiringTest extends TestCase
                 'team_hiring_position_id' => $vacancy->id,
             ])
             ->assertUnprocessable();
-        $this->actingAs($secondCandidate)
-            ->post(route('teams.join-requests.store', $team->routeIdentifier()))
-            ->assertUnprocessable();
     }
 
-    public function test_manager_updates_reopens_and_closes_hiring_while_stranger_cannot_manage_it(): void
+    public function test_active_hiring_requires_global_application_gate_and_reopen_restores_it(): void
     {
         $this->seed(GameLifecycleDemoSeeder::class);
         $creator = User::query()->where('username', GameLifecycleDemoSeeder::ORGANIZER_USERNAME)->firstOrFail();
         $stranger = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
+        $team->update(['accepts_join_requests' => true]);
 
         $this->actingAs($stranger)
             ->post(route('teams.hiring.store', $team->routeIdentifier()), ['spots_total' => 1])
@@ -119,33 +119,57 @@ final class TeamHiringTest extends TestCase
 
         $vacancy = TeamHiringPosition::query()->create([
             'team_id' => $team->id,
-            'status' => TeamHiringStatusEnum::CLOSED,
-            'spots_total' => 1,
-            'spots_filled' => 1,
+            'status' => TeamHiringStatusEnum::ACTIVE,
+            'spots_total' => 2,
+            'spots_filled' => 0,
             'created_by_user_id' => $creator->id,
-            'closed_at' => now(),
         ]);
-        $this->actingAs($creator)
-            ->patch(route('teams.hiring.status', [$team->routeIdentifier(), $vacancy->id]), ['action' => 'reopen'])
-            ->assertUnprocessable();
 
         $this->actingAs($creator)
-            ->put(route('teams.hiring.update', [$team->routeIdentifier(), $vacancy->id]), [
-                'spots_total' => 2,
-                'minimum_experience_years' => 0,
+            ->patch(route('teams.settings.applications.update', $team->routeIdentifier()), [
+                'accepts_join_requests' => 0,
             ])
-            ->assertRedirect();
-        $this->actingAs($creator)
-            ->patch(route('teams.hiring.status', [$team->routeIdentifier(), $vacancy->id]), ['action' => 'reopen'])
-            ->assertRedirect();
-
-        $vacancy->refresh();
-        $this->assertSame(TeamHiringStatusEnum::ACTIVE, $vacancy->status);
-        $this->assertSame(1, $vacancy->remainingSpots());
+            ->assertUnprocessable();
+        $this->assertTrue($team->fresh()->accepts_join_requests);
 
         $this->actingAs($creator)
             ->patch(route('teams.hiring.status', [$team->routeIdentifier(), $vacancy->id]), ['action' => 'close'])
             ->assertRedirect();
-        $this->assertSame(TeamHiringStatusEnum::CLOSED, $vacancy->fresh()->status);
+        $this->actingAs($creator)
+            ->patch(route('teams.settings.applications.update', $team->routeIdentifier()), [
+                'accepts_join_requests' => 0,
+            ])
+            ->assertRedirect();
+        $this->assertFalse($team->fresh()->accepts_join_requests);
+
+        $this->actingAs($creator)
+            ->patch(route('teams.hiring.status', [$team->routeIdentifier(), $vacancy->id]), ['action' => 'reopen'])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+        $this->assertTrue($team->fresh()->accepts_join_requests);
+        $this->assertSame(TeamHiringStatusEnum::ACTIVE, $vacancy->fresh()->status);
+    }
+
+    public function test_targeted_application_cannot_bypass_closed_global_gate_even_with_active_vacancy(): void
+    {
+        $this->seed(GameLifecycleDemoSeeder::class);
+        $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
+        $creator = User::query()->where('username', GameLifecycleDemoSeeder::ORGANIZER_USERNAME)->firstOrFail();
+        $vacancy = TeamHiringPosition::query()->create([
+            'team_id' => $team->id,
+            'status' => TeamHiringStatusEnum::ACTIVE,
+            'spots_total' => 2,
+            'spots_filled' => 0,
+            'created_by_user_id' => $creator->id,
+        ]);
+        $team->update(['accepts_join_requests' => false]);
+        $candidate = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        $this->actingAs($candidate)
+            ->post(route('teams.join-requests.store', $team->routeIdentifier()), [
+                'team_hiring_position_id' => $vacancy->id,
+            ])
+            ->assertUnprocessable();
+        $this->assertDatabaseCount('team_join_requests', 0);
     }
 }
