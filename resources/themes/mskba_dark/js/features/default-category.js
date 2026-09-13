@@ -123,38 +123,63 @@ function setView(root, view, viewOptions, viewIcon) {
     }
     window.history.replaceState({}, '', url);
 
-    root.dispatchEvent(new CustomEvent('default-category:viewchange', {
-        bubbles: true,
-        detail: { view },
-    }));
+    const dispatchViewChange = () => {
+        root.dispatchEvent(new CustomEvent('default-category:viewchange', {
+            bubbles: true,
+            detail: { view },
+        }));
+    };
 
     if (view === 'map' && previousView !== 'map') {
-        keepMapResultInView(root);
+        // On touch devices an animated programmatic scroll can be deferred by Safari
+        // until the next gesture. Move to the map immediately, let the browser paint
+        // the newly visible container, and only then let consumers initialize/reuse it.
+        keepMapResultInView(root).then(dispatchViewChange);
+        return;
     }
+
+    dispatchViewChange();
 }
 
 function keepMapResultInView(root) {
     const mapResult = root.querySelector('[data-default-category-results="map"]');
-    if (!mapResult) return;
+    if (!mapResult) return Promise.resolve();
 
-    window.requestAnimationFrame(() => {
-        const rect = mapResult.getBoundingClientRect();
-        const toolbar = root.querySelector('[data-default-category-toolbar]');
-        const toolbarBottom = toolbar?.getBoundingClientRect().bottom ?? 0;
-        const safeTop = Math.max(12, toolbarBottom + 12);
-        const isOutsideUsefulViewport = rect.top < safeTop
-            || rect.top > window.innerHeight - 120;
+    return new Promise((resolve) => {
+        window.requestAnimationFrame(() => {
+            const rect = mapResult.getBoundingClientRect();
+            const toolbar = root.querySelector('[data-default-category-toolbar]');
+            const toolbarBottom = toolbar?.getBoundingClientRect().bottom ?? 0;
+            const safeTop = Math.max(12, toolbarBottom + 12);
+            const isOutsideUsefulViewport = rect.top < safeTop
+                || rect.top > window.innerHeight - 120;
 
-        if (!isOutsideUsefulViewport) {
-            return;
-        }
+            if (isOutsideUsefulViewport) {
+                const targetTop = Math.max(0, window.scrollY + rect.top - safeTop);
+                const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+                const touchPrimaryPointer = hasTouchPrimaryPointer();
 
-        const targetTop = Math.max(0, window.scrollY + rect.top - safeTop);
-        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+                window.scrollTo({
+                    top: targetTop,
+                    behavior: reduceMotion || touchPrimaryPointer ? 'auto' : 'smooth',
+                });
+            }
 
-        window.scrollTo({
-            top: targetTop,
-            behavior: reduceMotion ? 'auto' : 'smooth',
+            waitForStableMapPaint(resolve);
         });
     });
+}
+
+function waitForStableMapPaint(callback) {
+    window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(callback);
+    });
+}
+
+function hasTouchPrimaryPointer() {
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches) {
+        return true;
+    }
+
+    return navigator.maxTouchPoints > 0;
 }
