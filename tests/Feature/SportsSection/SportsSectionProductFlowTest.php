@@ -15,6 +15,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\CreateTrainingSessionHandler;
 use App\Modules\SportsSection\Application\UseCases\PublishTrainingSessionEventHandler;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
+use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueCourt;
@@ -114,6 +116,7 @@ final class SportsSectionProductFlowTest extends TestCase
         $alpha = app(CreateSportsSectionHandler::class)->handle($actor, $this->sectionData([
             'name' => 'Север Баскет',
             'pricing_type' => 'free',
+            'game_format' => 'basketball',
         ]));
         $alpha->update(['status' => 'active']);
 
@@ -121,13 +124,50 @@ final class SportsSectionProductFlowTest extends TestCase
             'name' => 'Юг Академия',
             'pricing_type' => 'paid',
             'single_session_price_minor' => 150000,
+            'game_format' => 'streetball',
         ]));
         $beta->update(['status' => 'active']);
 
-        $this->get(route('sports-sections.index', ['q' => 'Север', 'pricing_type' => 'free']))
+        $this->get(route('sports-sections.index', ['q' => 'Север', 'pricing_type' => 'free', 'game_format' => 'basketball']))
             ->assertOk()
             ->assertSee('Север Баскет')
             ->assertDontSee('Юг Академия');
+    }
+
+    public function test_section_modes_and_directions_are_domain_specific_and_legacy_values_are_rejected(): void
+    {
+        [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $section = app(CreateSportsSectionHandler::class)->handle($actor, $this->sectionData([
+            'training_mode' => TrainingModeEnum::GROUP->value,
+            'game_format' => SportsSectionFormatEnum::STREETBALL->value,
+        ]));
+
+        $this->assertSame(TrainingModeEnum::GROUP, $section->training_mode);
+        $this->assertSame(SportsSectionFormatEnum::STREETBALL, $section->game_format);
+
+        $this->actingAs($owner)
+            ->get(route('account.sports-sections.create'))
+            ->assertOk()
+            ->assertSee('Индивидуально')
+            ->assertSee('Групповой')
+            ->assertSee('Баскетбол')
+            ->assertSee('Стритбол')
+            ->assertSee('Другое')
+            ->assertDontSee('Малая группа')
+            ->assertDontSee('5×5')
+            ->assertDontSee('3×3')
+            ->assertDontSee('1×1');
+
+        $this->actingAs($owner)
+            ->post(route('account.sports-sections.store'), [
+                'name' => 'Legacy section',
+                'training_mode' => 'small_group',
+                'game_format' => 'basketball_5x5',
+                'pricing_type' => 'free',
+                'currency' => 'RUB',
+                'contact_source' => 'head_coach',
+            ])
+            ->assertSessionHasErrors(['training_mode', 'game_format']);
     }
 
     /** @return array{User, Actor} */
@@ -152,8 +192,8 @@ final class SportsSectionProductFlowTest extends TestCase
         return array_replace([
             'name' => 'Секция '.fake()->unique()->numberBetween(1, 999999),
             'description' => 'Регулярные тренировки по баскетболу.',
-            'training_mode' => 'small_group',
-            'game_format' => 'basketball_5x5',
+            'training_mode' => 'group',
+            'game_format' => 'basketball',
             'pricing_type' => 'free',
             'single_session_price_minor' => null,
             'currency' => 'RUB',
