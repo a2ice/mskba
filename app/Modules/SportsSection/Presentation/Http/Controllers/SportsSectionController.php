@@ -3,10 +3,13 @@
 namespace App\Modules\SportsSection\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionJoinRequestStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
+use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingSessionStatusEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
@@ -53,6 +56,12 @@ final class SportsSectionController extends Controller
         if ($venueId > 0) {
             $query->where('primary_venue_id', $venueId);
         }
+        if ($request->boolean('accepts_requests')) {
+            $query->where('accepts_trainee_requests', true);
+        }
+        if ($request->boolean('recruiting')) {
+            $query->where('is_recruiting', true);
+        }
 
         $sections = $query->orderBy('name')->paginate(18)->withQueryString();
         $venues = Venue::query()
@@ -72,7 +81,7 @@ final class SportsSectionController extends Controller
         ]);
     }
 
-    public function show(SportsSection $sportsSection): Response
+    public function show(Request $request, SportsSection $sportsSection): Response
     {
         $this->guardFeature();
         abort_unless($sportsSection->status === SportsSectionStatusEnum::ACTIVE, 404);
@@ -89,7 +98,33 @@ final class SportsSectionController extends Controller
             ? $sportsSection->headCoachMembership?->user?->contacts?->where('is_public', true) ?? collect()
             : $sportsSection->contacts;
 
-        return ThemeResolver::page('sports-sections.show', ['section' => $sportsSection, 'contacts' => $contacts]);
+        $user = $request->user()?->canonical();
+        $identityIds = $user?->identityIds() ?? [];
+        $currentJoinRequest = $identityIds === [] ? null : $sportsSection->joinRequests()
+            ->whereIn('user_id', $identityIds)
+            ->where('status', SportsSectionJoinRequestStatusEnum::PENDING->value)
+            ->latest('id')
+            ->first();
+        $isActiveTrainee = $identityIds !== [] && $sportsSection->traineeMemberships()
+            ->whereIn('user_id', $identityIds)
+            ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)
+            ->exists();
+        $canApply = $user !== null
+            && ! $isActiveTrainee
+            && $currentJoinRequest === null
+            && $sportsSection->accepts_trainee_requests
+            && $user->isConfirmed()
+            && ! $user->isBlocked()
+            && ! $user->trashed()
+            && $user->hasActiveRole(UserParticipationRoleEnum::PLAYER->value);
+
+        return ThemeResolver::page('sports-sections.show', [
+            'section' => $sportsSection,
+            'contacts' => $contacts,
+            'currentJoinRequest' => $currentJoinRequest,
+            'isActiveTrainee' => $isActiveTrainee,
+            'canApply' => $canApply,
+        ]);
     }
 
     private function guardFeature(): void
