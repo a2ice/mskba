@@ -1,8 +1,8 @@
 <?php
 
-use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('status', array_column(SportsSectionStatusEnum::cases(), 'value'))->default(SportsSectionStatusEnum::DRAFT->value);
             $table->enum('training_mode', array_column(TrainingModeEnum::cases(), 'value'));
-            $table->enum('game_format', [GameFormatEnum::BASKETBALL_5X5->value, GameFormatEnum::STREETBALL_3X3->value, GameFormatEnum::STREETBALL_1X1->value])->default(GameFormatEnum::BASKETBALL_5X5->value);
+            $table->enum('game_format', array_column(SportsSectionFormatEnum::cases(), 'value'))->default(SportsSectionFormatEnum::BASKETBALL->value);
             $table->foreignId('primary_venue_id')->nullable()->constrained('venues')->nullOnDelete();
             $table->foreignId('primary_venue_court_id')->nullable()->constrained('venue_courts')->nullOnDelete();
             $table->enum('pricing_type', array_column(SectionPricingTypeEnum::cases(), 'value'))->default(SectionPricingTypeEnum::FREE->value);

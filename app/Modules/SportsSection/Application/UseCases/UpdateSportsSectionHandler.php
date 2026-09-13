@@ -2,12 +2,12 @@
 
 namespace App\Modules\SportsSection\Application\UseCases;
 
-use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
 use App\Modules\SportsSection\Application\Services\SportsSectionRules;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
@@ -28,12 +28,13 @@ final readonly class UpdateSportsSectionHandler
                 throw new SportsSectionException('Недостаточно прав для редактирования секции.');
             }
 
-            $format = GameFormatEnum::from($data['game_format']);
+            $trainingMode = TrainingModeEnum::from($data['training_mode']);
+            $format = SportsSectionFormatEnum::from($data['game_format']);
             $pricing = SectionPricingTypeEnum::from($data['pricing_type']);
             $amount = isset($data['single_session_price_minor']) ? (int) $data['single_session_price_minor'] : null;
             $venueId = isset($data['primary_venue_id']) ? (int) $data['primary_venue_id'] : null;
             $courtId = isset($data['primary_venue_court_id']) ? (int) $data['primary_venue_court_id'] : null;
-            $this->rules->assertGameFormat($format);
+            $this->rules->assertSectionFormat($format);
             $this->rules->assertVenueCourt($venueId, $courtId);
             $this->rules->assertPricing($pricing, $amount);
 
@@ -41,7 +42,7 @@ final readonly class UpdateSportsSectionHandler
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
                 'status' => SportsSectionStatusEnum::from($data['status']),
-                'training_mode' => TrainingModeEnum::from($data['training_mode']),
+                'training_mode' => $trainingMode,
                 'game_format' => $format,
                 'primary_venue_id' => $venueId,
                 'primary_venue_court_id' => $courtId,

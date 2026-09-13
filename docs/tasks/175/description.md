@@ -55,6 +55,17 @@ Task 170 ввёл секции с `training_mode = individual|small_group|team` 
 - Event/Game format не регрессирует;
 - профильные tests и `git diff --check`.
 
+## Реализация
+
+- `TrainingModeEnum` сокращён до `individual|group`;
+- добавлен локальный для bounded context enum `SportsSectionFormatEnum` со значениями `basketball|streetball|other`;
+- `SportsSection` больше не импортирует и не использует `Event\Domain\Enums\GameFormatEnum` в casts, handlers, validation, rules или фильтрах;
+- добавлена production data migration: `small_group|team → group`, `basketball_5x5 → basketball`, `streetball_3x3|streetball_1x1 → streetball`, неизвестные/legacy custom-значения → `other`;
+- базовая миграция Task 170 также обновлена для чистой установки проекта, чтобы свежая БД сразу создавалась с новой моделью;
+- create/edit UI и публичный каталог используют термин «Игровое направление» и новые значения;
+- factory и профильные tests переведены на новую модель; отдельный regression-test проверяет enum casts, новые варианты UI и отклонение legacy input;
+- форматы `Game`/`Event` не изменялись.
+
 ## Зависимости
 
 Task 170.
@@ -65,4 +76,4 @@ Task 170.
 
 ## Статус
 
-Запланировано.
+Выполнено 13.09.2026. Первый полный CI после реализации прошёл PHP tests и frontend build; перед merge выполняется финальный прогон после синхронизации документации.

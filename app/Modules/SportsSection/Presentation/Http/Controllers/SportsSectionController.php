@@ -3,9 +3,9 @@
 namespace App\Modules\SportsSection\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingSessionStatusEnum;
@@ -40,12 +40,7 @@ final class SportsSectionController extends Controller
         }
 
         $gameFormat = (string) $request->query('game_format', '');
-        $allowedFormats = [
-            GameFormatEnum::BASKETBALL_5X5,
-            GameFormatEnum::STREETBALL_3X3,
-            GameFormatEnum::STREETBALL_1X1,
-        ];
-        if (in_array($gameFormat, array_map(static fn (GameFormatEnum $item): string => $item->value, $allowedFormats), true)) {
+        if (in_array($gameFormat, array_map(static fn (SportsSectionFormatEnum $item): string => $item->value, SportsSectionFormatEnum::cases()), true)) {
             $query->where('game_format', $gameFormat);
         }
 
@@ -71,7 +66,7 @@ final class SportsSectionController extends Controller
         return ThemeResolver::page('sports-sections.index', [
             'sections' => $sections,
             'trainingModes' => TrainingModeEnum::cases(),
-            'formats' => $allowedFormats,
+            'formats' => SportsSectionFormatEnum::cases(),
             'pricingTypes' => SectionPricingTypeEnum::cases(),
             'venues' => $venues,
         ]);

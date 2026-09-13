@@ -176,7 +176,6 @@ final class SportsSectionDomainTest extends TestCase
         app(ManageSportsSectionContactHandler::class)->store($section, $owner, ['type' => 'phone', 'value' => '+79990000000']);
         $owner->contacts()->create(['type' => 'telegram', 'value' => '@sectioncoach', 'is_public' => true]);
         $section->update(['status' => 'active', 'contact_source' => 'section']);
-
         $this->get(route('sports-sections.show', $section))->assertOk()->assertSee('+79990000000');
         $section->update(['contact_source' => 'head_coach']);
         $this->get(route('sports-sections.show', $section))->assertOk()->assertSee('@sectioncoach');
@@ -237,7 +236,7 @@ final class SportsSectionDomainTest extends TestCase
     {
         return array_replace([
             'name' => 'Секция '.fake()->unique()->numberBetween(1, 999999),
-            'training_mode' => 'small_group', 'game_format' => 'basketball_5x5',
+            'training_mode' => 'group', 'game_format' => 'basketball',
             'pricing_type' => 'free', 'single_session_price_minor' => null,
             'currency' => 'RUB', 'contact_source' => 'head_coach',
         ], $overrides);

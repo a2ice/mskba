@@ -6,11 +6,11 @@ use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Contact\Domain\Models\Contact;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
-use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Infrastructure\Database\Factories\SportsSectionFactory;
@@ -109,7 +109,7 @@ class SportsSection extends Model
         return [
             'status' => SportsSectionStatusEnum::class,
             'training_mode' => TrainingModeEnum::class,
-            'game_format' => GameFormatEnum::class,
+            'game_format' => SportsSectionFormatEnum::class,
             'pricing_type' => SectionPricingTypeEnum::class,
             'contact_source' => SectionContactSourceEnum::class,
             'single_session_price_minor' => 'integer',

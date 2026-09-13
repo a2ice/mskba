@@ -5,6 +5,7 @@ namespace App\Modules\SportsSection\Infrastructure\Database\Factories;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
@@ -26,8 +27,8 @@ final class SportsSectionFactory extends Factory
             'name' => ucfirst($name),
             'alias' => Str::slug($name).'-'.fake()->unique()->numberBetween(1000, 9999),
             'status' => SportsSectionStatusEnum::DRAFT,
-            'training_mode' => TrainingModeEnum::SMALL_GROUP,
-            'game_format' => 'basketball_5x5',
+            'training_mode' => TrainingModeEnum::GROUP,
+            'game_format' => SportsSectionFormatEnum::BASKETBALL,
             'pricing_type' => SectionPricingTypeEnum::FREE,
             'currency' => 'RUB',
             'contact_source' => SectionContactSourceEnum::HEAD_COACH,
