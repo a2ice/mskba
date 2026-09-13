@@ -2,10 +2,10 @@
 
 namespace App\Modules\SportsSection\Application\Services;
 
-use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Exceptions\SportsSectionException;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 
@@ -53,10 +53,10 @@ final class SportsSectionRules
         }
     }
 
-    public function assertGameFormat(GameFormatEnum $format): void
+    public function assertSectionFormat(SportsSectionFormatEnum $format): void
     {
-        if (! in_array($format, [GameFormatEnum::BASKETBALL_5X5, GameFormatEnum::STREETBALL_3X3, GameFormatEnum::STREETBALL_1X1], true)) {
-            throw new SportsSectionException('Этот игровой формат недоступен для секции.');
+        if (! in_array($format, SportsSectionFormatEnum::cases(), true)) {
+            throw new SportsSectionException('Это игровое направление недоступно для секции.');
         }
     }
 }
