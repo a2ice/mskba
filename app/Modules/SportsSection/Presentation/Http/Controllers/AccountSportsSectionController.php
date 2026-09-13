@@ -7,13 +7,13 @@ use App\Modules\Contract\Domain\Enums\ContractFamilyEnum;
 use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
-use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\UpdateSportsSectionHandler;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Exceptions\SportsSectionException;
@@ -104,7 +104,7 @@ final class AccountSportsSectionController extends Controller
             'description' => ['nullable', 'string', 'max:5000'],
             'status' => ['sometimes', Rule::enum(SportsSectionStatusEnum::class)],
             'training_mode' => ['required', Rule::enum(TrainingModeEnum::class)],
-            'game_format' => ['required', Rule::in([GameFormatEnum::BASKETBALL_5X5->value, GameFormatEnum::STREETBALL_3X3->value, GameFormatEnum::STREETBALL_1X1->value])],
+            'game_format' => ['required', Rule::enum(SportsSectionFormatEnum::class)],
             'primary_venue_id' => ['nullable', 'integer', 'exists:venues,id'],
             'primary_venue_court_id' => ['nullable', 'integer', 'exists:venue_courts,id'],
             'pricing_type' => ['required', Rule::enum(SectionPricingTypeEnum::class)],
@@ -129,7 +129,7 @@ final class AccountSportsSectionController extends Controller
             'section' => $section,
             'statuses' => SportsSectionStatusEnum::cases(),
             'trainingModes' => TrainingModeEnum::cases(),
-            'formats' => [GameFormatEnum::BASKETBALL_5X5, GameFormatEnum::STREETBALL_3X3, GameFormatEnum::STREETBALL_1X1],
+            'formats' => SportsSectionFormatEnum::cases(),
             'pricingTypes' => SectionPricingTypeEnum::cases(),
             'contactSources' => SectionContactSourceEnum::cases(),
             'venues' => Venue::query()->with('courts')->orderBy('name')->get(),
