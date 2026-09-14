@@ -37,21 +37,42 @@ final class SportsSectionApplicationController extends Controller
     public function updateSettings(Request $request, SportsSection $sportsSection, SportsSectionAccess $access): RedirectResponse
     {
         $this->guardFeature();
-        $data = $request->validate([
+        $currentYear = (int) now()->year;
+        $rules = [
             'accepts_trainee_requests' => ['required', 'boolean'],
             'is_recruiting' => ['required', 'boolean'],
-        ]);
+            'audience_mode' => ['sometimes', Rule::in(['none', 'exact', 'range'])],
+        ];
+
+        if ($request->has('audience_mode')) {
+            $rules['target_year'] = ['nullable', 'integer', 'between:1900,'.$currentYear, 'required_if:audience_mode,exact', 'prohibited_unless:audience_mode,exact'];
+            $rules['target_year_from'] = ['nullable', 'integer', 'between:1900,'.$currentYear, 'required_if:audience_mode,range', 'prohibited_unless:audience_mode,range'];
+            $rules['target_year_to'] = ['nullable', 'integer', 'between:1900,'.$currentYear, 'required_if:audience_mode,range', 'prohibited_unless:audience_mode,range', 'gte:target_year_from'];
+        }
+
+        $data = $request->validate($rules);
         $accepts = (bool) $data['accepts_trainee_requests'];
         $recruiting = (bool) $data['is_recruiting'];
         $autoEnabled = $recruiting && ! $accepts;
+        $targetYears = null;
 
-        DB::transaction(function () use ($sportsSection, $request, $access, $accepts, $recruiting): void {
+        if (array_key_exists('audience_mode', $data)) {
+            $mode = (string) $data['audience_mode'];
+            $targetYears = [
+                'target_year' => $mode === 'exact' ? (int) $data['target_year'] : null,
+                'target_year_from' => $mode === 'range' ? (int) $data['target_year_from'] : null,
+                'target_year_to' => $mode === 'range' ? (int) $data['target_year_to'] : null,
+            ];
+        }
+
+        DB::transaction(function () use ($sportsSection, $request, $access, $accepts, $recruiting, $targetYears): void {
             $section = SportsSection::query()->lockForUpdate()->findOrFail($sportsSection->id);
             abort_unless($access->allows($request->user()->canonical(), $section, SportsSectionPermissionEnum::MANAGE_TRAINEES), 403);
-            $section->update([
+            $section->forceFill([
                 'accepts_trainee_requests' => $recruiting || $accepts,
                 'is_recruiting' => $recruiting,
-            ]);
+                ...($targetYears ?? []),
+            ])->save();
         });
 
         return back()->with('status', $autoEnabled
