@@ -7,19 +7,19 @@
 
     <div class="sports-section-category-item__body">
         <div class="catalog-card__badges sports-section-category-item__badges">
-            <span class="catalog-card__badge" title="{{ $item['training_mode']['label'] }}" data-tooltip-variant="title">
+            <span class="catalog-card__badge">
                 {{ $item['training_mode']['label'] }}
             </span>
-            <span class="catalog-card__badge is-sport" title="{{ $item['format']['label'] }}" data-tooltip-variant="title">
+            <span class="catalog-card__badge is-sport">
                 {{ $item['format']['label'] }}
             </span>
             @if($item['recruiting'])
-                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--recruiting" title="Секция активно ведёт набор" data-tooltip-variant="title">
+                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--recruiting">
                     Идёт набор
                 </span>
             @endif
             @if($item['accepts_requests'])
-                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--applications" title="Секция принимает заявки" data-tooltip-variant="title">
+                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--applications">
                     Принимает заявки
                 </span>
             @endif

@@ -19,8 +19,8 @@
 <div class="sports-section-applications">
     <section class="sports-section-editor__panel">
         <h2>Публичный набор</h2>
-        <p class="text-muted">«Принимает заявки» открывает обычную подачу заявок. «Идёт набор» усиливает этот статус в каталоге и всегда требует включённого приёма заявок.</p>
-        <form method="POST" action="{{ route('account.sports-sections.applications.settings', $section) }}">
+        <p class="text-muted">Сначала включается приём заявок. Активный набор — зависимый режим: он доступен только при открытом приёме заявок и усиливает секцию в каталоге.</p>
+        <form method="POST" action="{{ route('account.sports-sections.applications.settings', $section) }}" data-sports-section-recruitment-settings>
             @csrf @method('PATCH')
             @include('theme::partials.forms.toggle', [
                 'id' => 'section-accepts-trainee-requests',
@@ -28,14 +28,18 @@
                 'title' => 'Принимать заявки в секцию',
                 'description' => 'Игроки смогут отправлять заявку с публичной страницы секции.',
                 'checked' => old('accepts_trainee_requests', $section->accepts_trainee_requests),
+                'inputAttributes' => ['data-section-accepts-requests' => true],
             ])
-            @include('theme::partials.forms.toggle', [
-                'id' => 'section-is-recruiting',
-                'name' => 'is_recruiting',
-                'title' => 'Идёт активный набор',
-                'description' => 'Секция будет сильнее отмечена в каталоге. Если приём заявок выключен, он включится автоматически.',
-                'checked' => old('is_recruiting', $section->is_recruiting),
-            ])
+            <div class="sports-section-recruitment-settings__dependent" data-section-recruiting-dependent>
+                @include('theme::partials.forms.toggle', [
+                    'id' => 'section-is-recruiting',
+                    'name' => 'is_recruiting',
+                    'title' => 'Идёт активный набор',
+                    'description' => 'Дополнительно выделяет секцию в каталоге и показывает, что набор сейчас приоритетный.',
+                    'checked' => old('is_recruiting', $section->is_recruiting),
+                    'inputAttributes' => ['data-section-recruiting' => true],
+                ])
+            </div>
             <button class="btn btn--primary" type="submit">Сохранить настройки</button>
         </form>
     </section>
