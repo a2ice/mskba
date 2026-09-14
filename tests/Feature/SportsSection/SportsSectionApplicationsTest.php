@@ -12,6 +12,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\ManageSectionCoachHandler;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionJoinRequestStatusEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\SportsSection\Domain\Models\SportsSectionJoinRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -133,6 +134,7 @@ final class SportsSectionApplicationsTest extends TestCase
             ->assertSee('Секция активного набора')
             ->assertDontSee('Закрытая секция');
 
+        $this->app['auth']->guard()->logout();
         $this->get(route('sports-sections.show', $recruiting))
             ->assertOk()
             ->assertSee('Идёт набор')
@@ -146,7 +148,7 @@ final class SportsSectionApplicationsTest extends TestCase
         [$manager] = $this->roleUser(UserParticipationRoleEnum::COACH);
         [$player] = $this->roleUser(UserParticipationRoleEnum::PLAYER);
         $section = $this->activeSection($actor, ['accepts_trainee_requests' => true]);
-        app(ManageSectionCoachHandler::class)->add($section, $manager, $owner, []);
+        app(ManageSectionCoachHandler::class)->add($section, $manager, $owner, [SportsSectionPermissionEnum::MANAGE]);
 
         $this->actingAs($player)->post(route('sports-sections.applications.store', $section))->assertRedirect();
         $application = SportsSectionJoinRequest::query()->sole();
