@@ -51,6 +51,12 @@
                 ])
             </div>
 
+            <label class="form-field mt-3">
+                <span>Количество мест в секции</span>
+                <input class="form-control" type="number" min="1" max="10000" name="max_trainees" value="{{ old('max_trainees', $section->max_trainees) }}" placeholder="Без ограничения">
+                <small class="form-text">Необязательно. Счётчик показывает подтверждённых участников относительно лимита, например 1/15.</small>
+            </label>
+
             <fieldset class="sports-section-age-fieldset">
                 <legend>Год рождения</legend>
                 <p class="text-muted mb-0">Необязательно. Можно указать один год рождения или полный диапазон.</p>
