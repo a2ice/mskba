@@ -61,7 +61,27 @@ final class SportsSectionCatalogPresenter
             'pricing_text' => $this->pricingText($section),
             'accepts_requests' => (bool) $section->accepts_trainee_requests,
             'recruiting' => (bool) $section->is_recruiting,
+            'recruitment' => $this->recruitmentState($section, $participantCount),
         ];
+    }
+
+    /** @return array{label: string, kind: string}|null */
+    private function recruitmentState(SportsSection $section, int $participantCount): ?array
+    {
+        $capacity = $section->max_trainees;
+        $counter = $capacity === null ? '' : " {$participantCount}/{$capacity}";
+
+        if ($capacity !== null && $participantCount >= $capacity) {
+            return ['label' => 'Мест нет'.$counter, 'kind' => 'full'];
+        }
+        if ($section->is_recruiting) {
+            return ['label' => 'Идёт набор'.$counter, 'kind' => 'recruiting'];
+        }
+        if ($section->accepts_trainee_requests) {
+            return ['label' => 'Принимает заявки'.$counter, 'kind' => 'applications'];
+        }
+
+        return null;
     }
 
     private function pricingText(SportsSection $section): string
