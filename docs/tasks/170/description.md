@@ -84,6 +84,14 @@ status `active|inactive`, nullable status reason/notes, `joined_at` и nullable
 не удаляется при деактивации и может быть восстановлена; модель и сервисы не
 мешают в будущем добавить append-only историю статусов.
 
+Task 176 добавляет публичный application-flow поверх этого состава. У активной секции есть
+отдельные признаки `accepts_trainee_requests` и `is_recruiting`; действует инвариант
+`is_recruiting => accepts_trainee_requests`. Заявка живёт отдельно от trainee membership
+в lifecycle `pending|accepted|rejected|cancelled`; повторная pending-заявка canonical user
+и заявка уже активного тренируемого запрещены. Только owner/manager с
+`section.trainees.manage` может просматривать и обрабатывать заявки. Accept атомарно
+создаёт или реактивирует `SectionTraineeMembership`, после чего заявка становится accepted.
+
 ### Тарифы и деньги
 
 `SectionPricingPlan` хранит название, `amount_minor`, ISO currency, nullable
@@ -125,6 +133,11 @@ alias `sports_section`. Отдельная SectionContacts не создаётс
 фотографиями и занятиями. Новый контур закрывается feature flag до завершения
 этапов и включается после профильных проверок.
 
+Task 176 расширяет публичный и account UI: show/catalog отображают «Принимает заявки»
+и усиленный статус «Идёт набор», каталог умеет фильтровать оба состояния, guest CTA
+ведёт через общий auth-entry, а account UI получает фирменные toggle controls и журнал
+заявок с действиями accept/reject для пользователей с `section.trainees.manage`.
+
 ### Безопасность и конкурентность
 
 Все mutating handlers повторно проверяют confirmed account, coach/player role,
@@ -134,6 +147,10 @@ scope и permission, принадлежность VenueCourt, тип Event и ID
 session/section`, чтобы не создать обратный порядок относительно booking/event
 контуров. Для cancelled обязательна непустая причина.
 
+Application-flow Task 176 дополнительно использует canonical identity для duplicate/ownership
+проверок, повторно проверяет `section.trainees.manage` на сервере, валидирует принадлежность
+join request выбранной секции и выполняет accept внутри транзакции под блокировками.
+
 ### Проверки
 
 Профильные domain/feature-тесты защищают перечисленные в B041 бизнес-инварианты:
@@ -142,6 +159,9 @@ session/section`, чтобы не создать обратный порядок
 наследование/override/snapshot цены и места; допустимый Event; причина отмены;
 разрешение контактов; Media flow. Косметическая HTML/CSS-разметка PHPUnit-тестами
 не фиксируется.
+
+Task 176 добавляет проверки lifecycle заявок, canonical identity, IDOR/permissions,
+фильтров/статусов набора и атомарного перевода принятой заявки в trainee membership.
 
 ## Декомпозиция
 
@@ -158,3 +178,5 @@ session/section`, чтобы не создать обратный порядок
 Реализовано и включено в `main` 11.09.2026. После первичной реализации проведён UX/product-pass: ручной ввод `Event ID` заменён публикацией Event-проекции из занятия, добавлены фильтры публичного каталога, зависимый выбор площадки/зала, редактирование занятий и более понятное управление составом. Профильные проверки дополнены тестами этих сценариев.
 
 13.09.2026 Task 175 нормализовал долгоживущие характеристики секции: `training_mode` теперь `individual|group`, а игровое направление — собственный `SportsSectionFormatEnum` (`basketball|streetball|other`). Legacy `small_group|team` и конкретные игровые `5×5/3×3/1×1` мигрируются детерминированно; формат конкретной игры по-прежнему остаётся ответственностью Event/Game bounded context.
+
+14.09.2026 Task 176 добавил пользовательские заявки и активный набор поверх состава Task 170 без изменения границы `SportsSection → TraineeMembership`: заявка остаётся отдельной сущностью до accept, а управление защищено существующим `section.trainees.manage`.
