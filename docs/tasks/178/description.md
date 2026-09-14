@@ -100,7 +100,7 @@ Team-filter реализован через итоговую M:N relation Task 1
 - отсутствие legacy labels;
 - guest create → общий auth-entry redirect.
 
-Первый полный CI после реализации: PHP test suite — success, frontend production build — success.
+Финальный CI #191 прошёл полностью: PHP test suite и frontend production build — success.
 
 ## Основные файлы
 
@@ -122,4 +122,4 @@ Tasks 171, 175, 176, 177.
 
 ## Статус
 
-Реализовано в `feature/178`. Основной CI на реализации зелёный; после документационного закрытия требуется финальный зелёный CI, merge в `main` и production deploy.
+Реализовано и вмержено в `main` 14.09.2026 через PR #191. Merge commit `b6df8dd8fa8c0f4f63fbd7cdef8563ec39cb232c`; финальный CI #191 зелёный, production deploy #707 завершён успешно.
