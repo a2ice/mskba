@@ -122,6 +122,10 @@ final class SportsSectionController extends Controller
         $this->guardFeature();
         abort_unless($sportsSection->status === SportsSectionStatusEnum::ACTIVE, 404);
 
+        $activeCoachMembershipIds = $access->activeMemberships($sportsSection)
+            ->whereJsonContains('sport_roles', 'coach')
+            ->pluck('id');
+
         $sportsSection->load([
             'featuredMedia',
             'media' => fn ($query) => $query
@@ -130,7 +134,9 @@ final class SportsSectionController extends Controller
                 ->orderBy('sort_order'),
             'headCoachMembership.user.profile',
             'headCoachMembership.user.contacts',
-            'coachMemberships.user.profile',
+            'coachMemberships' => fn ($query) => $query
+                ->whereIn('id', $activeCoachMembershipIds)
+                ->with('user.profile'),
             'contacts' => fn ($query) => $query->where('is_public', true),
             'primaryVenue.location.address',
             'primaryVenueCourt',
