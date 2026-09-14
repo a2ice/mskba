@@ -11,6 +11,7 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\ManageSectionCoachHandler;
+use App\Modules\SportsSection\Application\UseCases\ManageSectionTraineeHandler;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionJoinRequestStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
@@ -104,7 +105,7 @@ final class SportsSectionApplicationsTest extends TestCase
         $this->assertSame(SportsSectionJoinRequestStatusEnum::CANCELLED, $application->fresh()->status);
     }
 
-    public function test_recruiting_auto_enables_applications_and_catalog_filters_and_badges_match_state(): void
+    public function test_recruiting_auto_enables_applications_and_catalog_shows_single_recruitment_badge(): void
     {
         [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
         $recruiting = $this->activeSection($actor, ['name' => 'Секция активного набора']);
@@ -127,7 +128,7 @@ final class SportsSectionApplicationsTest extends TestCase
             ->assertSee('Секция активного набора')
             ->assertDontSee('Закрытая секция')
             ->assertSee('Идёт набор')
-            ->assertSee('Принимает заявки');
+            ->assertDontSee('Принимает заявки');
 
         $this->get(route('sports-sections.index', ['accepts_requests' => 1]))
             ->assertOk()
@@ -138,8 +139,28 @@ final class SportsSectionApplicationsTest extends TestCase
         $this->get(route('sports-sections.show', $recruiting))
             ->assertOk()
             ->assertSee('Идёт набор')
-            ->assertSee('Принимает заявки')
+            ->assertDontSee('Принимает заявки')
             ->assertSee('data-modal-target="auth-entry-classic"', false);
+    }
+
+    public function test_capacity_stops_new_application_and_acceptance_when_last_place_is_taken(): void
+    {
+        [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        [$first] = $this->roleUser(UserParticipationRoleEnum::PLAYER);
+        [$second] = $this->roleUser(UserParticipationRoleEnum::PLAYER);
+        $section = $this->activeSection($actor, [
+            'accepts_trainee_requests' => true,
+            'max_trainees' => 1,
+        ]);
+
+        app(ManageSectionTraineeHandler::class)->activate($section, $first, $owner);
+
+        $this->actingAs($second)
+            ->post(route('sports-sections.applications.store', $section))
+            ->assertRedirect()
+            ->assertSessionHasErrors('section');
+
+        $this->assertDatabaseCount('sports_section_join_requests', 0);
     }
 
     public function test_coach_without_trainee_permission_cannot_manage_or_process_applications(): void
@@ -210,6 +231,7 @@ final class SportsSectionApplicationsTest extends TestCase
             'status' => 'active',
             'accepts_trainee_requests' => (bool) ($overrides['accepts_trainee_requests'] ?? false),
             'is_recruiting' => (bool) ($overrides['is_recruiting'] ?? false),
+            'max_trainees' => $overrides['max_trainees'] ?? null,
         ]);
 
         return $section->refresh();
