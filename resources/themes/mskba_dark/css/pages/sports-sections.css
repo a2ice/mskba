@@ -138,6 +138,19 @@
 .sports-section-editor__snapshot form { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
 
 .sports-section-applications { display: grid; gap: 24px; }
+.sports-section-recruitment-settings__dependent {
+    margin: -2px 0 18px 22px;
+    padding-left: 18px;
+    border-left: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+    transition: opacity 160ms ease, border-color 160ms ease;
+}
+.sports-section-recruitment-settings__dependent.is-disabled {
+    opacity: .46;
+    border-left-color: color-mix(in srgb, var(--line) 45%, transparent);
+}
+.sports-section-recruitment-settings__dependent.is-disabled .form-toggle {
+    cursor: not-allowed;
+}
 .sports-section-application-card__reject { flex-wrap: wrap; }
 .sports-section-application-card__reject .form-control { min-width: min(260px, 100%); }
 
