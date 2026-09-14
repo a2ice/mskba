@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
+use App\Modules\SportsSection\Application\UseCases\ManageSectionCoachHandler;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ final class SportsSectionPublicPageTest extends TestCase
         config()->set('features.sports_sections.enabled', true);
     }
 
-    public function test_public_page_uses_section_sidebar_and_shows_age_group_and_clear_guest_cta(): void
+    public function test_public_page_shows_age_group_recruitment_states_and_clear_guest_cta(): void
     {
         [, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
         $section = $this->activeSection($actor, [
@@ -40,9 +41,9 @@ final class SportsSectionPublicPageTest extends TestCase
 
         $this->get(route('sports-sections.show', $section))
             ->assertOk()
-            ->assertSee('sports-section-public section-sidebar-layout', false)
             ->assertSee('2010–2012 г.р.')
             ->assertSee('Идёт набор')
+            ->assertSee('Принимает заявки')
             ->assertSee('Записаться')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
             ->assertSee('Ближайшие подтверждённые занятия')
@@ -73,6 +74,27 @@ final class SportsSectionPublicPageTest extends TestCase
             ->assertOk()
             ->assertSee('Набор закрыт')
             ->assertSee('Секция сейчас не принимает новые заявки.');
+    }
+
+    public function test_inactive_coach_membership_is_not_shown_on_public_page(): void
+    {
+        [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $section = $this->activeSection($actor);
+        [$coach] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $coach->forceFill(['username' => 'former-section-coach'])->save();
+
+        $handler = app(ManageSectionCoachHandler::class);
+        $membership = $handler->add($section, $coach, $owner);
+
+        $this->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertSee('former-section-coach');
+
+        $handler->remove($section, $membership, $owner);
+
+        $this->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertDontSee('former-section-coach');
     }
 
     public function test_recruitment_settings_persist_exact_or_range_target_years_exclusively(): void
