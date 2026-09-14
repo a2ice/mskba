@@ -9,5 +9,5 @@
 - [x] Account management page added.
 - [x] Feature tests cover relation cardinality, permissions, IDOR and permanent-team gate.
 - [x] Task 170 documentation updated.
-- [ ] Full CI green.
-- [ ] Merged to main.
+- [x] Full CI green (CI #186).
+- [x] Merged to main via PR #189.
