@@ -59,7 +59,7 @@ final class SportsSectionCatalogDefaultCategoryTest extends TestCase
             ->assertSee('Секция без карты')
             ->assertSee('Команда секции')
             ->assertSee('Идёт набор')
-            ->assertSee('Принимает заявки')
+            ->assertDontSee('Принимает заявки')
             ->assertSee('1 500 ₽ / занятие')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
             ->assertSee('href="'.route('account.sports-sections.create').'"', false)
