@@ -4,10 +4,12 @@ namespace App\Modules\SportsSection\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionJoinRequestStatusEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
@@ -115,19 +117,39 @@ final class SportsSectionController extends Controller
         ]);
     }
 
-    public function show(Request $request, SportsSection $sportsSection): Response
+    public function show(Request $request, SportsSection $sportsSection, SportsSectionAccess $access): Response
     {
         $this->guardFeature();
         abort_unless($sportsSection->status === SportsSectionStatusEnum::ACTIVE, 404);
+
         $sportsSection->load([
-            'media' => fn ($query) => $query->where('collection', 'sports_section_gallery')->orderByDesc('is_featured')->orderBy('sort_order'),
-            'headCoachMembership.user.profile', 'headCoachMembership.user.contacts',
+            'featuredMedia',
+            'media' => fn ($query) => $query
+                ->where('collection', 'sports_section_gallery')
+                ->orderByDesc('is_featured')
+                ->orderBy('sort_order'),
+            'headCoachMembership.user.profile',
+            'headCoachMembership.user.contacts',
+            'coachMemberships.user.profile',
             'contacts' => fn ($query) => $query->where('is_public', true),
-            'primaryVenue', 'primaryVenueCourt',
+            'primaryVenue.location.address',
+            'primaryVenueCourt',
             'pricingPlans' => fn ($query) => $query->where('is_active', true)->orderBy('amount_minor'),
-            'trainingSessions' => fn ($query) => $query->where('status', TrainingSessionStatusEnum::CONFIRMED->value)
-                ->where('ends_at', '>=', now())->orderBy('starts_at')->limit(20),
+            'teams' => fn ($query) => $query
+                ->whereNull('temporary_for_event_id')
+                ->where('status', TeamStatusEnum::ACTIVE->value)
+                ->orderBy('name'),
+            'trainingSessions' => fn ($query) => $query
+                ->with(['venue', 'venueCourt', 'event'])
+                ->where('status', TrainingSessionStatusEnum::CONFIRMED->value)
+                ->where('ends_at', '>=', now())
+                ->orderBy('starts_at')
+                ->limit(20),
+        ])->loadCount([
+            'traineeMemberships as active_trainees_count' => fn ($query) => $query
+                ->where('status', TraineeMembershipStatusEnum::ACTIVE->value),
         ]);
+
         $contacts = $sportsSection->contact_source === SectionContactSourceEnum::HEAD_COACH
             ? $sportsSection->headCoachMembership?->user?->contacts?->where('is_public', true) ?? collect()
             : $sportsSection->contacts;
@@ -152,12 +174,19 @@ final class SportsSectionController extends Controller
             && ! $user->trashed()
             && $user->hasActiveRole(UserParticipationRoleEnum::PLAYER->value);
 
+        $canManageSection = $user !== null && $access->allows($user, $sportsSection, SportsSectionPermissionEnum::MANAGE);
+        $canManageTrainees = $user !== null && $access->allows($user, $sportsSection, SportsSectionPermissionEnum::MANAGE_TRAINEES);
+        $canManageSessions = $user !== null && $access->allows($user, $sportsSection, SportsSectionPermissionEnum::MANAGE_SESSIONS);
+
         return ThemeResolver::page('sports-sections.show', [
             'section' => $sportsSection,
             'contacts' => $contacts,
             'currentJoinRequest' => $currentJoinRequest,
             'isActiveTrainee' => $isActiveTrainee,
             'canApply' => $canApply,
+            'canManageSection' => $canManageSection,
+            'canManageTrainees' => $canManageTrainees,
+            'canManageSessions' => $canManageSessions,
         ]);
     }
 
