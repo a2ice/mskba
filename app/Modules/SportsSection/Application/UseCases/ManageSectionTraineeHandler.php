@@ -25,6 +25,11 @@ final readonly class ManageSectionTraineeHandler
             $this->authorize($issuer, $section);
             $membership = SectionTraineeMembership::query()->where('sports_section_id', $section->id)
                 ->whereIn('user_id', $target->identityIds())->lockForUpdate()->first();
+            $this->rules->assertTraineeCapacity(
+                $section,
+                $membership?->status === TraineeMembershipStatusEnum::ACTIVE,
+            );
+
             if ($membership === null) {
                 return SectionTraineeMembership::query()->create([
                     'sports_section_id' => $section->id, 'user_id' => $target->id,
