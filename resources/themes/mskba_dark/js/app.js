@@ -55,6 +55,7 @@ import './features/venue-catalog.js';
 import './features/team-catalog.js';
 import './features/sports-section-catalog.js';
 import './features/sports-section-recruitment-settings.js';
+import './features/sports-section-public.js';
 import './features/team-name-suggestion.js';
 import './features/team-pending-invitations.js';
 import './features/team-management.js';
