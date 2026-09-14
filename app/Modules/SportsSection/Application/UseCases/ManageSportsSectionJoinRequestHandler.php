@@ -50,6 +50,8 @@ final readonly class ManageSportsSectionJoinRequestHandler
                 throw new SportsSectionException('Ваша заявка уже ожидает решения.');
             }
 
+            $this->rules->assertTraineeCapacity($section);
+
             return SportsSectionJoinRequest::query()->create([
                 'sports_section_id' => $section->id,
                 'user_id' => $user->id,
