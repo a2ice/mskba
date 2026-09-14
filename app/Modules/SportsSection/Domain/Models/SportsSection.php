@@ -31,7 +31,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'created_by_actor_id', 'name', 'alias', 'description', 'status', 'training_mode',
     'game_format', 'primary_venue_id', 'primary_venue_court_id', 'pricing_type',
     'single_session_price_minor', 'currency', 'contact_source', 'contact_notes',
-    'head_coach_membership_id', 'accepts_trainee_requests', 'is_recruiting',
+    'head_coach_membership_id', 'accepts_trainee_requests', 'is_recruiting', 'max_trainees',
 ])]
 class SportsSection extends Model
 {
@@ -127,6 +127,7 @@ class SportsSection extends Model
             'single_session_price_minor' => 'integer',
             'accepts_trainee_requests' => 'boolean',
             'is_recruiting' => 'boolean',
+            'max_trainees' => 'integer',
         ];
     }
 }
