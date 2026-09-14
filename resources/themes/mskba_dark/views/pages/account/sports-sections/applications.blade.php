@@ -1,3 +1,12 @@
+@php
+    $targetYear = $section->getAttribute('target_year');
+    $targetYearFrom = $section->getAttribute('target_year_from');
+    $targetYearTo = $section->getAttribute('target_year_to');
+    $audienceMode = old('audience_mode');
+    if ($audienceMode === null) {
+        $audienceMode = $targetYear !== null ? 'exact' : (($targetYearFrom !== null || $targetYearTo !== null) ? 'range' : 'none');
+    }
+@endphp
 @extends('theme::layouts.section-sidebar', [
     'title' => 'Заявки · '.$section->name,
     'sectionId' => 'account',
@@ -9,18 +18,19 @@
 ])
 
 @section('section-heading-action')
-    <a class="btn btn--secondary btn--sm" href="{{ route('account.sports-sections.edit', $section) }}">К управлению секцией</a>
+    <a class="btn btn--secondary btn--sm" href="{{ route('sports-sections.show', $section) }}">Открыть секцию</a>
+    <a class="btn btn--secondary btn--sm" href="{{ route('account.sports-sections.edit', $section) }}">К управлению</a>
 @endsection
 
 @section('section-content')
 @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
-@if($errors->has('section'))<div class="alert alert-danger">{{ $errors->first('section') }}</div>@endif
+@if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
 
 <div class="sports-section-applications">
     <section class="sports-section-editor__panel">
         <h2>Публичный набор</h2>
         <p class="text-muted">Сначала включается приём заявок. Активный набор — зависимый режим: он доступен только при открытом приёме заявок и усиливает секцию в каталоге.</p>
-        <form method="POST" action="{{ route('account.sports-sections.applications.settings', $section) }}" data-sports-section-recruitment-settings>
+        <form method="POST" action="{{ route('account.sports-sections.applications.settings', $section) }}" data-sports-section-recruitment-settings data-sports-section-audience>
             @csrf @method('PATCH')
             @include('theme::partials.forms.toggle', [
                 'id' => 'section-accepts-trainee-requests',
@@ -40,7 +50,25 @@
                     'inputAttributes' => ['data-section-recruiting' => true],
                 ])
             </div>
-            <button class="btn btn--primary" type="submit">Сохранить настройки</button>
+
+            <fieldset class="sports-section-age-fieldset">
+                <legend>Год рождения</legend>
+                <p class="text-muted mb-0">Необязательно. Можно указать один год рождения или полный диапазон.</p>
+                <div class="sports-section-age-fieldset__modes">
+                    <label><input type="radio" name="audience_mode" value="none" @checked($audienceMode === 'none') data-section-audience-mode> Без ограничения</label>
+                    <label><input type="radio" name="audience_mode" value="exact" @checked($audienceMode === 'exact') data-section-audience-mode> Точный год</label>
+                    <label><input type="radio" name="audience_mode" value="range" @checked($audienceMode === 'range') data-section-audience-mode> Диапазон</label>
+                </div>
+                <div class="sports-section-age-fieldset__values" data-section-audience-exact>
+                    <label class="form-field"><span>Год рождения</span><input class="form-control" type="number" min="1900" max="{{ now()->year }}" name="target_year" value="{{ old('target_year', $targetYear) }}"></label>
+                </div>
+                <div class="sports-section-age-fieldset__values" data-section-audience-range>
+                    <label class="form-field"><span>От</span><input class="form-control" type="number" min="1900" max="{{ now()->year }}" name="target_year_from" value="{{ old('target_year_from', $targetYearFrom) }}"></label>
+                    <label class="form-field"><span>До</span><input class="form-control" type="number" min="1900" max="{{ now()->year }}" name="target_year_to" value="{{ old('target_year_to', $targetYearTo) }}"></label>
+                </div>
+            </fieldset>
+
+            <button class="btn btn--primary mt-3" type="submit">Сохранить настройки</button>
         </form>
     </section>
 
