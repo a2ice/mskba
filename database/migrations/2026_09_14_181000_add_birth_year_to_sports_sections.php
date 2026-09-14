@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('sports_sections', function (Blueprint $table): void {
-            $table->unsignedSmallInteger('birth_year')->nullable();
-            $table->unsignedSmallInteger('birth_year_from')->nullable();
-            $table->unsignedSmallInteger('birth_year_to')->nullable();
+            $table->unsignedSmallInteger('target_year')->nullable();
+            $table->unsignedSmallInteger('target_year_from')->nullable();
+            $table->unsignedSmallInteger('target_year_to')->nullable();
         });
     }
 
