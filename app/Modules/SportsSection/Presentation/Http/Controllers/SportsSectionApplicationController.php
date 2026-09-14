@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
 use App\Modules\SportsSection\Application\UseCases\ManageSportsSectionJoinRequestHandler;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
+use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Exceptions\SportsSectionException;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\SportsSection\Domain\Models\SportsSectionJoinRequest;
@@ -38,10 +39,24 @@ final class SportsSectionApplicationController extends Controller
     {
         $this->guardFeature();
         $currentYear = (int) now()->year;
+        $activeTrainees = $sportsSection->traineeMemberships()
+            ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)
+            ->count();
         $rules = [
             'accepts_trainee_requests' => ['required', 'boolean'],
             'is_recruiting' => ['required', 'boolean'],
             'audience_mode' => ['sometimes', Rule::in(['none', 'exact', 'range'])],
+            'max_trainees' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:10000',
+                static function (string $attribute, mixed $value, \Closure $fail) use ($activeTrainees): void {
+                    if ($value !== null && $value !== '' && (int) $value < $activeTrainees) {
+                        $fail('Количество мест не может быть меньше числа уже подтверждённых участников.');
+                    }
+                },
+            ],
         ];
 
         if ($request->has('audience_mode')) {
@@ -55,6 +70,9 @@ final class SportsSectionApplicationController extends Controller
         $recruiting = (bool) $data['is_recruiting'];
         $autoEnabled = $recruiting && ! $accepts;
         $targetYears = null;
+        $capacity = $request->exists('max_trainees')
+            ? ['max_trainees' => filled($data['max_trainees'] ?? null) ? (int) $data['max_trainees'] : null]
+            : [];
 
         if (array_key_exists('audience_mode', $data)) {
             $mode = (string) $data['audience_mode'];
@@ -65,13 +83,14 @@ final class SportsSectionApplicationController extends Controller
             ];
         }
 
-        DB::transaction(function () use ($sportsSection, $request, $access, $accepts, $recruiting, $targetYears): void {
+        DB::transaction(function () use ($sportsSection, $request, $access, $accepts, $recruiting, $targetYears, $capacity): void {
             $section = SportsSection::query()->lockForUpdate()->findOrFail($sportsSection->id);
             abort_unless($access->allows($request->user()->canonical(), $section, SportsSectionPermissionEnum::MANAGE_TRAINEES), 403);
             $section->forceFill([
                 'accepts_trainee_requests' => $recruiting || $accepts,
                 'is_recruiting' => $recruiting,
                 ...($targetYears ?? []),
+                ...$capacity,
             ])->save();
         });
 
