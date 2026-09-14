@@ -13,14 +13,16 @@
             <span class="catalog-card__badge is-sport">
                 {{ $item['format']['label'] }}
             </span>
-            @if($item['recruiting'])
-                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--recruiting">
-                    Идёт набор
-                </span>
-            @endif
-            @if($item['accepts_requests'])
-                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--applications">
-                    Принимает заявки
+            @if($item['recruitment'])
+                <span @class([
+                    'catalog-card__badge',
+                    'sports-section-category-item__badge',
+                    'sports-section-category-item__badge--recruiting' => $item['recruitment']['kind'] === 'recruiting',
+                    'sports-section-category-item__badge--applications' => $item['recruitment']['kind'] === 'applications',
+                    'sports-section-category-item__badge--full' => $item['recruitment']['kind'] === 'full',
+                    'sports-section-recruitment-badge--pulse' => $item['recruitment']['kind'] === 'recruiting',
+                ])>
+                    {{ $item['recruitment']['label'] }}
                 </span>
             @endif
         </div>
