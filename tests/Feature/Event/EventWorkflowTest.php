@@ -639,7 +639,9 @@ final class EventWorkflowTest extends TestCase
 
     public function test_guest_cannot_create_event(): void
     {
-        $this->get(route('events.create'))->assertRedirect(route('login'));
+        $this->get(route('events.create'))->assertOk()->assertSee('name="login"', false);
+        $this->post(route('events.store'), [])->assertRedirect(route('login'));
+        $this->assertDatabaseCount('events', 0);
     }
 
     public function test_organizer_cancels_event_and_releases_booking(): void

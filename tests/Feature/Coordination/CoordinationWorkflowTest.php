@@ -32,13 +32,14 @@ final class CoordinationWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_create_button_opens_auth_flow_with_create_page_redirect(): void
+    public function test_guest_create_button_links_to_creation_page(): void
     {
         $this->get(route('coordination.index'))
             ->assertOk()
             ->assertSee('Создать опрос')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
-            ->assertSee('data-auth-redirect-url="'.route('coordination.create', [], false).'"', false);
+            ->assertSee('href="'.route('coordination.create').'"', false)
+            ->assertDontSee('data-auth-redirect-url="'.route('coordination.create', [], false).'"', false);
     }
 
     public function test_create_form_defaults_to_attendance_and_explains_all_scenarios(): void
