@@ -23,7 +23,7 @@ window.mskbaTelegramLogin = function(telegramUser) {
     const modal = container.closest('[data-modal]');
     const redirectUrl = modal.length
         ? String(modal.data('authRedirectUrl') || '').trim()
-        : '';
+        : String(container.data('telegramRedirectUrl') || '').trim();
 
     setTelegramLoginState(container, true, 'Проверяем данные Telegram…', 'info');
 
@@ -76,7 +76,7 @@ $(document).on('click', '[data-telegram-bot-login]', function(event) {
     const modal = container.closest('[data-modal]');
     const redirectUrl = modal.length
         ? String(modal.data('authRedirectUrl') || '').trim()
-        : '';
+        : String(container.data('telegramRedirectUrl') || '').trim();
     const telegramWindow = window.open('', 'mskba-telegram-login');
 
     if (telegramWindow) {

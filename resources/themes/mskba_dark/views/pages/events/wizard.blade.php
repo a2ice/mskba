@@ -20,6 +20,8 @@
             <p>Несколько понятных решений вместо одной длинной формы. Текущий способ создания пока остаётся доступным.</p>
         </header>
 
+        @include('theme::partials.creation-guide')
+
         @if(session('error'))
             <div class="alert alert-danger mb-3">{{ session('error') }}</div>
         @endif

@@ -6,6 +6,7 @@
     <div
         class="auth-telegram-login"
         data-telegram-login
+        data-telegram-redirect-url="{{ $authRedirectTo ?? '' }}"
         data-telegram-login-url="{{ route('auth.telegram', [], false) }}"
         data-telegram-bot-start-url="{{ route('auth.telegram.bot.start', [], false) }}"
         data-telegram-bot-status-url="{{ route('auth.telegram.bot.status', [], false) }}"

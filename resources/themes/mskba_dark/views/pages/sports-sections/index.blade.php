@@ -4,7 +4,7 @@
 <section class="sports-sections first-screen"><div class="inner">
     <header class="sports-sections__heading">
         <div><span class="text-accent">Регулярные тренировки</span><h1>Секции</h1><p>Найди постоянную группу, тренера и подходящий формат.</p></div>
-        @auth <a class="btn btn--primary" href="{{ route('account.sports-sections.create') }}">Создать секцию</a> @endauth
+        <a class="btn btn--primary" href="{{ route('account.sports-sections.create') }}">Создать секцию</a>
     </header>
 
     <form method="GET" action="{{ route('sports-sections.index') }}" class="sports-sections__filters">

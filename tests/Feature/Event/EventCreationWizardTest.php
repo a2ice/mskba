@@ -24,10 +24,10 @@ final class EventCreationWizardTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_wizard_requires_authentication(): void
+    public function test_wizard_shows_inline_authentication_to_guest(): void
     {
         $this->get(route('events.wizard'))
-            ->assertRedirect(route('login'));
+            ->assertOk()->assertSee('name="login"', false)->assertDontSee('data-event-wizard', false);
     }
 
     public function test_wizard_renders_selected_entry_type_without_replacing_legacy_create_form(): void

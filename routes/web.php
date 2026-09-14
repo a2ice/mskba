@@ -102,6 +102,12 @@ Route::prefix('faq')->group(function () use ($themeResolver) {
     Route::get('/', fn () => $themeResolver->page('faq.index'))
         ->name('faq.index')
         ->defaults('breadcrumb', 'FAQ');
+    Route::get('/creation/{topic}', function (string $topic) use ($themeResolver) {
+        $guide = config('creation-guides.'.$topic);
+        abort_unless(is_array($guide), 404);
+
+        return $themeResolver->page('faq.creation', compact('guide'));
+    })->where('topic', 'venues|events|teams|tournaments|coordination|sections')->name('faq.creation');
     Route::get('/welcome', fn () => $themeResolver->page('faq.welcome'))
         ->name('faq.welcome')
         ->defaults('breadcrumb', 'Первые шаги');
@@ -286,7 +292,7 @@ Route::prefix('venues')->group(function () {
         ->name('venues.proximity-check');
     Route::middleware('auth')->group(function () {
         Route::get('/create', [VenueController::class, 'create'])
-            ->name('venues.create')
+            ->withoutMiddleware('auth')->name('venues.create')
             ->defaults('breadcrumb', 'Добавить площадку');
         Route::post('/', [VenueController::class, 'store'])
             ->name('venues.store');
@@ -428,7 +434,7 @@ Route::prefix('events')->group(function () {
 
     Route::middleware('auth')->group(function () {
         Route::get('/create', [EventController::class, 'create'])
-            ->name('events.create')
+            ->withoutMiddleware('auth')->name('events.create')
             ->defaults('breadcrumb', 'Новое мероприятие');
         Route::post('/', [EventController::class, 'store'])->name('events.store');
         Route::get('/{event}/edit', [EventController::class, 'edit'])
@@ -498,7 +504,7 @@ Route::prefix('tournaments')->group(function () {
     Route::get('/{tournament}/check-in/username', [TournamentOnSiteRegistrationController::class, 'username'])->middleware('throttle:30,1')->name('tournaments.on-site.username');
     Route::post('/{tournament}/check-in', [TournamentOnSiteRegistrationController::class, 'store'])->middleware('throttle:10,1')->name('tournaments.on-site.store');
     Route::middleware('auth')->group(function () {
-        Route::get('/create', [TournamentController::class, 'create'])->name('tournaments.create')->defaults('breadcrumb', 'Новый турнир');
+        Route::get('/create', [TournamentController::class, 'create'])->withoutMiddleware('auth')->name('tournaments.create')->defaults('breadcrumb', 'Новый турнир');
         Route::post('/', [TournamentController::class, 'store'])->name('tournaments.store');
         Route::get('/{tournament}/manage', [TournamentController::class, 'manage'])->name('tournaments.manage');
         Route::put('/{tournament}', [TournamentController::class, 'update'])->name('tournaments.update');
@@ -535,7 +541,7 @@ Route::prefix('tournaments')->group(function () {
 Route::prefix('teams')->group(function () {
     Route::get('/', [TeamController::class, 'index'])->name('teams.index')->defaults('breadcrumb', 'Команды');
     Route::middleware('auth')->group(function () {
-        Route::get('/create', [TeamController::class, 'create'])->middleware('can:team-create')->name('teams.create')->defaults('breadcrumb', 'Новая команда');
+        Route::get('/create', [TeamController::class, 'create'])->withoutMiddleware('auth')->name('teams.create')->defaults('breadcrumb', 'Новая команда');
         Route::get('/name-suggestion', [TeamController::class, 'suggestName'])->middleware(['can:team-create', 'throttle:60,1'])->name('teams.name-suggestion');
         Route::post('/', [TeamController::class, 'store'])->middleware('can:team-create')->name('teams.store');
         Route::get('/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit')->defaults('breadcrumb', 'Управление командой');
@@ -571,8 +577,7 @@ Route::prefix('coordination')->group(function () {
 
     Route::middleware('auth')->group(function () {
         Route::get('/create', [CoordinationController::class, 'create'])
-            ->middleware('can:coordination-create')
-            ->name('coordination.create')
+            ->withoutMiddleware('auth')->name('coordination.create')
             ->defaults('breadcrumb', 'Новый опрос');
         Route::post('/', [CoordinationController::class, 'store'])
             ->middleware('can:coordination-create')
@@ -694,7 +699,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/teams', AccountTeamsController::class)->name('account.teams')->defaults('breadcrumb', 'Мои команды');
         Route::prefix('sections')->group(function () {
             Route::get('/', [AccountSportsSectionController::class, 'index'])->name('account.sports-sections.index')->defaults('breadcrumb', 'Мои секции');
-            Route::get('/create', [AccountSportsSectionController::class, 'create'])->name('account.sports-sections.create');
+            Route::get('/create', [AccountSportsSectionController::class, 'create'])->withoutMiddleware('auth')->name('account.sports-sections.create');
             Route::post('/', [AccountSportsSectionController::class, 'store'])->name('account.sports-sections.store');
             Route::get('/{sportsSection}/edit', [AccountSportsSectionController::class, 'edit'])->name('account.sports-sections.edit');
             Route::put('/{sportsSection}', [AccountSportsSectionController::class, 'update'])->name('account.sports-sections.update');

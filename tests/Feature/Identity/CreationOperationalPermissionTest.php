@@ -31,35 +31,14 @@ final class CreationOperationalPermissionTest extends TestCase
         $this->assertTrue($checker->allows($user, UserOperationalPermissionEnum::CREATE_TEAM));
     }
 
-    public function test_creation_entrypoints_redirect_unverified_user_to_contact_confirmation(): void
+    public function test_creation_entrypoints_explain_missing_contact_without_redirecting(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
-
-        $this->actingAs($user)
-            ->get(route('events.wizard', ['type' => 'game']))
-            ->assertRedirect(route('account.confirmation'))
-            ->assertSessionHas('operational_permission_intent.permission', UserOperationalPermissionEnum::CREATE_EVENT->value)
-            ->assertSessionHas('operational_permission_intent.return_url', route('events.wizard', ['type' => 'game'], false))
-            ->assertSessionHas('info');
-
-        $this->actingAs($user)
-            ->get(route('tournaments.create'))
-            ->assertRedirect(route('account.confirmation'))
-            ->assertSessionHas('operational_permission_intent.permission', UserOperationalPermissionEnum::CREATE_TOURNAMENT->value)
-            ->assertSessionHas('operational_permission_intent.return_url', route('tournaments.create', absolute: false))
-            ->assertSessionHas('info');
-    }
-
-    public function test_confirmed_user_without_verified_contact_is_sent_directly_to_contacts(): void
-    {
-        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-
-        $this->actingAs($user)
-            ->get(route('events.wizard', ['type' => 'training']))
-            ->assertRedirect(route('account.contacts'))
-            ->assertSessionHas('operational_permission_intent.permission', UserOperationalPermissionEnum::CREATE_EVENT->value)
-            ->assertSessionHas('operational_permission_intent.return_url', route('events.wizard', ['type' => 'training'], false))
-            ->assertSessionHas('info');
+        foreach (['events.wizard', 'tournaments.create'] as $route) {
+            $this->actingAs($user)->get(route($route))->assertOk()
+                ->assertSee('Подтвердить контакт')->assertSee('target="_blank"', false)
+                ->assertSessionMissing('operational_permission_intent');
+        }
     }
 
     public function test_store_endpoints_are_also_protected_server_side(): void
@@ -148,8 +127,9 @@ final class CreationOperationalPermissionTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('events.wizard', ['type' => 'game']))
-            ->assertRedirect(route('account.contacts'))
-            ->assertSessionHas('error')
+            ->assertOk()
+            ->assertSee('Создание отключено для вашего аккаунта администратором.')
+            ->assertDontSee('Подтвердить контакт')
             ->assertSessionMissing('operational_permission_intent');
 
         $this->assertDatabaseHas('user_operational_permissions', [
@@ -170,8 +150,8 @@ final class CreationOperationalPermissionTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('tournaments.create'))
-            ->assertRedirect(route('account.confirmation'))
-            ->assertSessionHas('error')
+            ->assertOk()
+            ->assertSee('Создание отключено для вашего аккаунта администратором.')
             ->assertSessionMissing('info')
             ->assertSessionMissing('operational_permission_intent');
     }
@@ -182,7 +162,7 @@ final class CreationOperationalPermissionTest extends TestCase
         $user->createProfile([]);
 
         $this->actingAs($user)
-            ->get(route('events.wizard', ['type' => 'game']))
+            ->post(route('events.store'), ['type' => 'game'])
             ->assertRedirect(route('account.confirmation'));
 
         $contact = $user->contacts()->create([

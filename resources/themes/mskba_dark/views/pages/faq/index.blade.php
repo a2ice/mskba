@@ -17,6 +17,13 @@
             </div>
 
             <div class="section-content">
+                @foreach(config('creation-guides') as $topic => $guide)
+                    <div class="card mb-4"><div class="card-body">
+                        <h2 class="h4 mb-3">{{ $guide['heading'] }}</h2>
+                        <p>{{ $guide['intro'] }}</p>
+                        <a href="{{ route('faq.creation', ['topic' => $topic]) }}" class="btn btn--primary btn--sm">Открыть</a>
+                    </div></div>
+                @endforeach
                 <div class="card mb-4">
                     <div class="card-body">
                         <h2 class="h4 mb-3">Первые шаги</h2>

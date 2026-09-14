@@ -39,7 +39,7 @@ final class AuthenticationIntendedRedirectTest extends TestCase
     {
         $target = $this->bookingTarget();
 
-        $this->get($target)->assertRedirect(route('login'));
+        $this->get($target)->assertOk()->assertSee('name="login"', false);
         $this->assertSameUrl($target, session('url.intended'));
 
         $this->get(route('login'))

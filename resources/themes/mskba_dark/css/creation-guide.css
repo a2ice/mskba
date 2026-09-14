@@ -1,0 +1,9 @@
+.creation-guide { border: 1px solid var(--border-color, rgba(255,255,255,.16)); border-radius: 12px; background: rgba(255,255,255,.025); }
+.creation-guide summary { display: flex; align-items: center; gap: .75rem; padding: 1rem; cursor: pointer; list-style: none; font-weight: 600; }
+.creation-guide summary::-webkit-details-marker { display: none; }
+.creation-guide summary:focus-visible { outline: 2px solid var(--color-primary, #eaaa34); outline-offset: 3px; border-radius: 12px; }
+.creation-guide__arrow { margin-left: auto; }
+.creation-guide[open] .creation-guide__arrow { transform: rotate(180deg); }
+.creation-guide__body { padding: 0 1rem 1rem; }
+.creation-access .auth-form-wrapper { width: 100%; }
+.creation-access [hidden] { display: none !important; }

@@ -16,22 +16,5 @@
         <span>Прошедшие</span>
         <i class="ti ti-history" aria-hidden="true"></i>
     </a>
-    @auth
-        <a href="{{ $createUrl }}">
-            <span>Создать мероприятие</span>
-            <i class="ti ti-plus" aria-hidden="true"></i>
-        </a>
-    @else
-        <button
-            class="js-handler"
-            type="button"
-            data-handler="modal"
-            data-modal-action="open"
-            data-modal-target="auth-entry-classic"
-            data-auth-redirect-url="{{ $createRedirectUrl }}"
-        >
-            <span>Создать мероприятие</span>
-            <i class="ti ti-plus" aria-hidden="true"></i>
-        </button>
-    @endauth
+    <a href="{{ $createUrl }}"><span>Создать мероприятие</span><i class="ti ti-plus" aria-hidden="true"></i></a>
 </nav>

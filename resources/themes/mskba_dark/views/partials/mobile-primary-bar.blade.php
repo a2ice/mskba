@@ -11,25 +11,7 @@
                 data-today-events-link
                 @if($siteSummary->todayEvents === 0) hidden @endif
             >{{ $siteSummary->todayEventsText() }}</a>
-            @auth
-                <a
-                    class="site-summary-empty-action"
-                    href="{{ route('events.create', ['type' => 'game']) }}"
-                    data-today-events-empty
-                    @if($siteSummary->todayEvents > 0) hidden @endif
-                >Новая игра</a>
-            @else
-                <button
-                    class="site-summary-empty-action js-handler"
-                    type="button"
-                    data-handler="modal"
-                    data-modal-action="open"
-                    data-modal-target="auth-entry-classic"
-                    data-auth-redirect-url="{{ route('events.create', ['type' => 'game'], false) }}"
-                    data-today-events-empty
-                    @if($siteSummary->todayEvents > 0) hidden @endif
-                >Новая игра</button>
-            @endauth
+            <a class="site-summary-empty-action" href="{{ route('events.create', ['type' => 'game']) }}" data-today-events-empty @if($siteSummary->todayEvents > 0) hidden @endif>Новая игра</a>
         </p>
 
         <p

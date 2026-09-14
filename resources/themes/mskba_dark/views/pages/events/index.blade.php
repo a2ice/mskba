@@ -81,15 +81,7 @@
 @endsection
 
 @section('category-toolbar-actions')
-    @auth
-        <a class="btn btn--primary default-category-toolbar__action-button" href="{{ $createUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title">
-            <i class="ti ti-plus" aria-hidden="true"></i>
-        </a>
-    @else
-        <button type="button" class="btn btn--primary default-category-toolbar__action-button js-handler" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title" data-handler="modal" data-modal-action="open" data-modal-target="auth-entry-classic" data-auth-redirect-url="{{ $createRedirectUrl }}">
-            <i class="ti ti-plus" aria-hidden="true"></i>
-        </button>
-    @endauth
+    <a class="btn btn--primary default-category-toolbar__action-button" href="{{ $createRedirectUrl }}" aria-label="Создать мероприятие" title="Создать мероприятие" data-tooltip-variant="title"><i class="ti ti-plus" aria-hidden="true"></i></a>
 @endsection
 
 @section('category-results-cards')
