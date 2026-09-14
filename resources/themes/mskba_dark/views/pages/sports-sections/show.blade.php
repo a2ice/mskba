@@ -16,14 +16,25 @@
         : (($targetYearFrom !== null && $targetYearTo !== null) ? $targetYearFrom.'–'.$targetYearTo.' г.р.' : 'Без ограничения');
     $venueAddress = $section->primaryVenue?->raw_address
         ?: $section->primaryVenue?->location?->address?->full_address;
+    $venueLatitude = $section->primaryVenue?->location?->address?->latitude;
+    $venueLongitude = $section->primaryVenue?->location?->address?->longitude;
     $pricingLabel = $section->pricing_type->value === 'free'
         ? 'Бесплатно'
         : ($section->single_session_price_minor !== null
             ? number_format($section->single_session_price_minor / 100, 0, ',', ' ').' ₽ / занятие'
             : 'Платно');
-    $recruitmentLabel = $section->is_recruiting
-        ? 'Идёт набор'
-        : ($section->accepts_trainee_requests ? 'Принимает заявки' : 'Набор закрыт');
+    $participantCount = (int) $section->active_trainees_count;
+    $capacity = $section->max_trainees;
+    $capacitySuffix = $capacity === null ? '' : ' '.$participantCount.'/'.$capacity;
+    $recruitmentKind = ! $hasCapacity && $capacity !== null
+        ? 'full'
+        : ($section->is_recruiting ? 'recruiting' : ($section->accepts_trainee_requests ? 'applications' : 'closed'));
+    $recruitmentLabel = match ($recruitmentKind) {
+        'full' => 'Мест нет'.$capacitySuffix,
+        'recruiting' => 'Идёт набор'.$capacitySuffix,
+        'applications' => 'Принимает заявки'.$capacitySuffix,
+        default => 'Набор закрыт',
+    };
     $breadcrumbs = [
         ['label' => 'Секции', 'url' => route('sports-sections.index')],
         ['label' => $section->name],
@@ -60,7 +71,7 @@
             <div><dt>Направление</dt><dd>{{ $section->game_format->label() }}</dd></div>
             <div><dt>Формат</dt><dd>{{ $section->training_mode->label() }}</dd></div>
             <div><dt>Год рождения</dt><dd>{{ $targetYearLabel }}</dd></div>
-            <div><dt>Занимаются</dt><dd>{{ (int) $section->active_trainees_count }}</dd></div>
+            <div><dt>Занимаются</dt><dd>{{ $capacity === null ? $participantCount : $participantCount.'/'.$capacity }}</dd></div>
             <div><dt>Запись</dt><dd>{{ $recruitmentLabel }}</dd></div>
         </dl>
     </div>
@@ -102,6 +113,8 @@
             <span class="btn btn--secondary btn--sm" aria-disabled="true">Вы уже занимаетесь</span>
         @elseif($currentJoinRequest)
             <span class="btn btn--secondary btn--sm" aria-disabled="true">Заявка на рассмотрении</span>
+        @elseif(! $hasCapacity)
+            <span class="btn btn--secondary btn--sm" aria-disabled="true">Мест нет</span>
         @elseif($section->accepts_trainee_requests)
             @auth
                 @if($canApply)
@@ -135,11 +148,13 @@
             <div class="sports-section-public__media-badges">
                 <span class="sports-section-badge">{{ $section->game_format->label() }}</span>
                 <span class="sports-section-badge">{{ $section->training_mode->label() }}</span>
-                @if($section->is_recruiting)
-                    <span class="sports-section-badge sports-section-badge--recruiting">Идёт набор</span>
-                @endif
-                @if($section->accepts_trainee_requests)
-                    <span class="sports-section-badge">Принимает заявки</span>
+                @if($recruitmentKind !== 'closed')
+                    <span @class([
+                        'sports-section-badge',
+                        'sports-section-badge--recruiting' => $recruitmentKind === 'recruiting',
+                        'sports-section-badge--full' => $recruitmentKind === 'full',
+                        'sports-section-recruitment-badge--pulse' => $recruitmentKind === 'recruiting',
+                    ])>{{ $recruitmentLabel }}</span>
                 @endif
             </div>
         </div>
@@ -150,7 +165,14 @@
 
             <div class="sports-section-public__quick-facts">
                 <div><span>Ближайшее занятие</span><strong>{{ $nextSession ? $nextSession->starts_at->timezone(config('app.timezone'))->format('d.m, H:i') : 'Пока не назначено' }}</strong></div>
-                <div><span>Площадка</span><strong>{{ $section->primaryVenue?->name ?? 'Уточняется' }}</strong></div>
+                <div>
+                    <span title="Занятия могут проводиться и на других площадках">Основная площадка</span>
+                    @if($section->primaryVenue)
+                        <button class="sports-section-public__venue-trigger js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="section-primary-venue-map">{{ $section->primaryVenue->name }}</button>
+                    @else
+                        <strong>Уточняется</strong>
+                    @endif
+                </div>
                 <div><span>Стоимость</span><strong>{{ $pricingLabel }}</strong></div>
                 <div><span>Год рождения</span><strong>{{ $targetYearLabel }}</strong></div>
             </div>
@@ -160,6 +182,8 @@
                     <form method="POST" action="{{ route('sports-sections.applications.cancel', [$section, $currentJoinRequest]) }}">@csrf @method('PATCH')
                         <button class="btn btn--secondary" type="submit">Отменить заявку</button>
                     </form>
+                @elseif(! $hasCapacity)
+                    <span class="sports-section-show__application-hint">Все места в секции сейчас заняты.</span>
                 @elseif($section->accepts_trainee_requests && auth()->check() && ! $canApply && ! $isActiveTrainee)
                     <span class="sports-section-show__application-hint">Для записи нужен подтверждённый активный профиль игрока.</span>
                 @elseif(! $section->accepts_trainee_requests)
@@ -193,12 +217,42 @@
             <div class="sports-section-public__section-heading"><div><span>Команда секции</span><h2>Тренеры</h2></div></div>
             <div class="sports-section-public__cards sports-section-public__cards--people">
                 @foreach($publicCoaches as $membership)
-                    @php($coach = $membership->user)
-                    @php($coachName = trim(($coach?->profile?->first_name ?? '').' '.($coach?->profile?->last_name ?? '')) ?: ($coach?->username ?? 'Тренер'))
+                    @php
+                        $coach = $membership->user;
+                        $coachName = trim(($coach?->profile?->first_name ?? '').' '.($coach?->profile?->last_name ?? '')) ?: ($coach?->username ?? 'Тренер');
+                        $coachAvatar = $coach?->profile?->avatarUrl();
+                        $coachRole = $membership->id === $section->head_coach_membership_id ? 'Главный тренер' : 'Тренер';
+                        $coachModalId = 'section-coach-preview-'.$coach->id;
+                    @endphp
                     <article class="sports-section-public__person-card">
-                        <div class="sports-section-public__person-avatar"><i class="ti ti-user" aria-hidden="true"></i></div>
-                        <div><strong>{{ $coachName }}</strong><span>{{ $membership->id === $section->head_coach_membership_id ? 'Главный тренер' : 'Тренер' }}</span></div>
+                        <button class="sports-section-public__person-avatar sports-section-public__person-trigger js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="{{ $coachModalId }}" aria-label="Открыть информацию о тренере {{ $coachName }}">
+                            @if($coachAvatar)<img src="{{ $coachAvatar }}" alt="{{ $coachName }}">@else<i class="ti ti-user" aria-hidden="true"></i>@endif
+                        </button>
+                        <div>
+                            <button class="sports-section-public__person-name js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="{{ $coachModalId }}">{{ $coachName }}</button>
+                            <span>{{ $coachRole }}</span>
+                        </div>
                     </article>
+
+                    @component('theme::partials.modal.layout', [
+                        'id' => $coachModalId,
+                        'dialogClass' => 'sports-section-coach-preview-modal__dialog',
+                    ])
+                        <article class="sports-section-coach-preview">
+                            <div class="sports-section-coach-preview__identity">
+                                <div class="sports-section-coach-preview__avatar">
+                                    @if($coachAvatar)<img src="{{ $coachAvatar }}" alt="{{ $coachName }}">@else<i class="ti ti-user" aria-hidden="true"></i>@endif
+                                </div>
+                                <div>
+                                    <p class="sports-section-public__eyebrow">{{ $coachRole }}</p>
+                                    <h2 class="modal_title" id="modal-title-{{ $coachModalId }}">{{ $coachName }}</h2>
+                                    @if($coach->username)<p class="text-muted">@@{{ $coach->username }}</p>@endif
+                                </div>
+                            </div>
+                            <p>Ответственный тренер публичной секции «{{ $section->name }}». Для этой публичной роли имя, роль и аватар доступны посетителям секции независимо от настройки видимости в поиске; остальные приватные данные не раскрываются.</p>
+                            <a class="btn btn--secondary" href="#public-user-{{ $coach->id }}-coach" aria-disabled="true" data-public-user-role-placeholder="coach">Открыть публичный профиль тренера · скоро</a>
+                        </article>
+                    @endcomponent
                 @endforeach
             </div>
         </section>
@@ -206,16 +260,31 @@
 
     @if($section->primaryVenue)
         <section class="sports-section-public__section" id="section-venue">
-            <div class="sports-section-public__section-heading"><div><span>Где проходят тренировки</span><h2>Площадка</h2></div></div>
+            <div class="sports-section-public__section-heading"><div><span>Где проходят тренировки</span><h2>Основная площадка</h2></div></div>
             <article class="sports-section-public__venue-card">
                 <div>
-                    <strong>{{ $section->primaryVenue->name }}</strong>
+                    <button class="sports-section-public__venue-trigger sports-section-public__venue-trigger--large js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="section-primary-venue-map">{{ $section->primaryVenue->name }}</button>
                     @if($section->primaryVenueCourt)<span>{{ $section->primaryVenueCourt->name }}</span>@endif
                     @if($venueAddress)<span>{{ $venueAddress }}</span>@endif
+                    <small class="text-muted">Занятия могут проводиться и на других площадках.</small>
                 </div>
                 <a class="btn btn--secondary btn--sm" href="{{ route('venues.show', $section->primaryVenue->routeIdentifier()) }}">Открыть площадку</a>
             </article>
         </section>
+
+        @component('theme::partials.modal.layout', [
+            'id' => 'section-primary-venue-map',
+            'dialogClass' => 'sports-section-venue-map-modal__dialog',
+        ])
+            <h2 class="modal_title" id="modal-title-section-primary-venue-map">{{ $section->primaryVenue->name }}</h2>
+            @if($venueAddress)<p class="text-muted">{{ $venueAddress }}</p>@endif
+            @if($venueLatitude !== null && $venueLongitude !== null)
+                <div class="sports-section-venue-map" data-section-venue-map data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}" data-latitude="{{ $venueLatitude }}" data-longitude="{{ $venueLongitude }}" data-title="{{ $section->primaryVenue->name }}"></div>
+            @else
+                <div class="alert alert-info">Для этой площадки пока не указаны координаты.</div>
+            @endif
+            <a class="btn btn--secondary" href="{{ route('venues.show', $section->primaryVenue->routeIdentifier()) }}">Открыть страницу площадки</a>
+        @endcomponent
     @endif
 
     <section class="sports-section-public__section" id="section-pricing">
