@@ -137,7 +137,8 @@
                 <span class="sports-section-badge">{{ $section->training_mode->label() }}</span>
                 @if($section->is_recruiting)
                     <span class="sports-section-badge sports-section-badge--recruiting">Идёт набор</span>
-                @elseif($section->accepts_trainee_requests)
+                @endif
+                @if($section->accepts_trainee_requests)
                     <span class="sports-section-badge">Принимает заявки</span>
                 @endif
             </div>
