@@ -20,6 +20,7 @@ import '../css/pages/venue-schedule-pricing-modal.css';
 import '../css/pages/venue-pricing-reset-all.css';
 import '../css/pages/player-character.css';
 import '../css/pages/home-event-location-modal-regression.css';
+import '../css/pages/sports-section-public.css';
 
 window.$ = $;
 window.jQuery = $;
