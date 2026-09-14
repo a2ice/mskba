@@ -17,5 +17,8 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::table('sports_sections', function (Blueprint $table): void {
+            $table->dropColumn(['target_year', 'target_year_from', 'target_year_to']);
+        });
     }
 };
