@@ -70,27 +70,7 @@
 @endsection
 
 @section('category-toolbar-actions')
-    @auth
-        @can('team-create')
-            <a class="btn btn--primary default-category-toolbar__action-button" href="{{ route('teams.create') }}" aria-label="Создать команду" title="Создать команду" data-tooltip-variant="title">
-                <i class="ti ti-plus" aria-hidden="true"></i>
-            </a>
-        @endcan
-    @else
-        <button
-            type="button"
-            class="btn btn--primary default-category-toolbar__action-button js-handler"
-            aria-label="Создать команду"
-            title="Создать команду"
-            data-tooltip-variant="title"
-            data-handler="modal"
-            data-modal-action="open"
-            data-modal-target="auth-entry-classic"
-            data-auth-redirect-url="{{ route('teams.create', [], false) }}"
-        >
-            <i class="ti ti-plus" aria-hidden="true"></i>
-        </button>
-    @endauth
+    <a class="btn btn--primary default-category-toolbar__action-button" href="{{ route('teams.create') }}" aria-label="Создать команду" title="Создать команду" data-tooltip-variant="title"><i class="ti ti-plus" aria-hidden="true"></i></a>
 @endsection
 
 @section('category-results-cards')

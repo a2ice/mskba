@@ -6,6 +6,7 @@ use App\Modules\Identity\Application\Services\OperationalPermissionIntentResolve
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Application\Services\VerifiedContactOperationalPermissionGranter;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
+use App\Presentation\Creation\CreationPages;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,6 +23,11 @@ final class EnforceCreationOperationalPermissions
     public function handle(Request $request, Closure $next): Response
     {
         $routeName = $request->route()?->getName();
+        // GET creation pages have already passed the explanatory presentation gate.
+        if ($request->isMethodSafe() && isset(CreationPages::TOPICS[$routeName])) {
+            return $next($request);
+        }
+
         $permission = match ($routeName) {
             'events.create',
             'events.store',

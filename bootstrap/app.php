@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ShowCreationPageAccess;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameRosterContainsPlayers;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnforceCreationOperationalPermissions;
 use App\Modules\Identity\Infrastructure\Http\Middleware\RecordBrowserFingerprint;
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->appendToGroup('web', [
             ResolveCanonicalUserSession::class,
+            ShowCreationPageAccess::class,
             EnforceCreationOperationalPermissions::class,
             RecordBrowserFingerprint::class,
             RecordOnlineUserPresence::class,

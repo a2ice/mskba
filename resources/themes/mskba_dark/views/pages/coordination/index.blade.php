@@ -10,22 +10,7 @@
 ])
 
 @section('section-heading-action')
-    @can('coordination-create')
-        <a class="btn btn--primary btn--sm" href="{{ route('coordination.create') }}">Создать опрос</a>
-    @else
-        @guest
-            <button
-                type="button"
-                class="btn btn--primary btn--sm js-handler"
-                data-handler="modal"
-                data-modal-action="open"
-                data-modal-target="auth-entry-classic"
-                data-auth-redirect-url="{{ route('coordination.create', [], false) }}"
-            >
-                Создать опрос
-            </button>
-        @endguest
-    @endcan
+    <a class="btn btn--primary btn--sm" href="{{ route('coordination.create') }}">Создать опрос</a>
 @endsection
 
 @section('section-sidebar')

@@ -62,7 +62,8 @@ final class SportsSectionCatalogDefaultCategoryTest extends TestCase
             ->assertSee('Принимает заявки')
             ->assertSee('1 500 ₽ / занятие')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
-            ->assertSee('data-auth-redirect-url="/account/sections/create"', false);
+            ->assertSee('href="'.route('account.sports-sections.create').'"', false)
+            ->assertDontSee('data-auth-redirect-url="/account/sections/create"', false);
 
         $html = $response->getContent();
         preg_match('/<script type="application\/json" data-sports-section-category-map-points>(.*?)<\/script>/s', $html, $matches);

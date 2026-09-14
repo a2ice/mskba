@@ -12,6 +12,7 @@ Route::prefix('events/create/wizard')
     ])
     ->group(function () {
         Route::get('/', [EventWizardController::class, 'show'])
+            ->withoutMiddleware(['auth', EnsureOperationalPermission::class.':'.UserOperationalPermissionEnum::CREATE_EVENT->value])
             ->name('events.wizard')
             ->defaults('breadcrumb', 'Новое мероприятие');
         Route::get('/teams', [EventWizardController::class, 'teams'])

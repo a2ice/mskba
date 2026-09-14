@@ -23,7 +23,7 @@ final class CreationOperationalPermissionResumeTest extends TestCase
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
 
         $this->actingAs($user)
-            ->get(route('events.wizard', ['type' => 'training']))
+            ->post(route('events.store'), ['type' => 'training'])
             ->assertRedirect(route('account.contacts'))
             ->assertSessionHas('operational_permission_intent.return_url', route('events.wizard', ['type' => 'training'], false));
 

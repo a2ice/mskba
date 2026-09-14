@@ -30,7 +30,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertDontSee('data-modal-target="create-game"', false);
     }
 
-    public function test_guest_sees_auth_gate_and_default_category_controls_on_public_venues_page(): void
+    public function test_guest_sees_creation_link_and_default_category_controls_on_public_venues_page(): void
     {
         $this
             ->get(route('venues'))
@@ -48,7 +48,7 @@ class PublicVenueCreateEntryTest extends TestCase
             ->assertSee('Новая игра')
             ->assertSee('Добавить')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
-            ->assertSee('data-auth-redirect-url="'.route('venues.create', [], false).'"', false)
+            ->assertDontSee('data-auth-redirect-url="'.route('venues.create', [], false).'"', false)
             ->assertSee(route('venues.create', [], false));
     }
 
@@ -171,7 +171,7 @@ class PublicVenueCreateEntryTest extends TestCase
 
         $this
             ->get(route('venues.create'))
-            ->assertRedirect(route('login'));
+            ->assertOk()->assertSee('name="login"', false)->assertDontSee('data-address-clear', false);
 
         $this
             ->actingAs($unconfirmedUser)

@@ -19,22 +19,7 @@
     </a>
 
     @auth
-        <a href="{{ route('account.sports-sections.index') }}">
-            <span>Мои секции</span><i class="ti ti-user-shield" aria-hidden="true"></i>
-        </a>
-        <a href="{{ route('account.sports-sections.create') }}">
-            <span>Создать секцию</span><i class="ti ti-plus" aria-hidden="true"></i>
-        </a>
-    @else
-        <button
-            type="button"
-            class="js-handler"
-            data-handler="modal"
-            data-modal-action="open"
-            data-modal-target="auth-entry-classic"
-            data-auth-redirect-url="{{ route('account.sports-sections.create', [], false) }}"
-        >
-            <span>Создать секцию</span><i class="ti ti-plus" aria-hidden="true"></i>
-        </button>
+        <a href="{{ route('account.sports-sections.index') }}"><span>Мои секции</span><i class="ti ti-user-shield" aria-hidden="true"></i></a>
     @endauth
+    <a href="{{ route('account.sports-sections.create') }}"><span>Создать секцию</span><i class="ti ti-plus" aria-hidden="true"></i></a>
 </nav>

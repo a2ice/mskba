@@ -91,6 +91,7 @@
                                 @endif
                             </div>
 
+                            @include('theme::partials.creation-guide')
                             @yield('section-content')
                         </div>
                     </div>

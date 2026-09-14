@@ -208,3 +208,5 @@ function updateHeaderBackground() {
 
 $(window).on('load resize', updateHeaderBackground);
 $(window).on('scroll', updateHeaderBackground);
+
+import './features/creation-access';

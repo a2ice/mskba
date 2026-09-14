@@ -80,25 +80,7 @@
 @endsection
 
 @section('category-toolbar-actions')
-    @auth
-        <a class="btn btn--primary default-category-toolbar__action-button" href="{{ route('account.sports-sections.create') }}" aria-label="Создать секцию" title="Создать секцию" data-tooltip-variant="title">
-            <i class="ti ti-plus" aria-hidden="true"></i>
-        </a>
-    @else
-        <button
-            type="button"
-            class="btn btn--primary default-category-toolbar__action-button js-handler"
-            aria-label="Создать секцию"
-            title="Создать секцию"
-            data-tooltip-variant="title"
-            data-handler="modal"
-            data-modal-action="open"
-            data-modal-target="auth-entry-classic"
-            data-auth-redirect-url="{{ route('account.sports-sections.create', [], false) }}"
-        >
-            <i class="ti ti-plus" aria-hidden="true"></i>
-        </button>
-    @endauth
+    <a class="btn btn--primary default-category-toolbar__action-button" href="{{ route('account.sports-sections.create') }}" aria-label="Создать секцию" title="Создать секцию" data-tooltip-variant="title"><i class="ti ti-plus" aria-hidden="true"></i></a>
 @endsection
 
 @section('category-results-cards')

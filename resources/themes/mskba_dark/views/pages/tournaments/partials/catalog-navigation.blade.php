@@ -22,10 +22,10 @@
         </a>
     @endforeach
 
-    @if(auth()->user()?->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED)
+
         <a href="{{ route('tournaments.create') }}">
             <span>Создать турнир</span>
             <i class="ti ti-plus" aria-hidden="true"></i>
         </a>
-    @endif
+
 </nav>

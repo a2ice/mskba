@@ -17,6 +17,13 @@ class FaqPageTest extends TestCase
         $response->assertSee('FAQ');
         $response->assertSee('Первые шаги');
         $response->assertSee(route('faq.welcome'), false);
+
+        foreach (config('creation-guides') as $topic => $guide) {
+            $url = route('faq.creation', ['topic' => $topic]);
+            $response->assertSee($url, false);
+            $this->get($url)->assertOk()->assertSee($guide['intro']);
+        }
+        $this->get('/faq/creation/unknown')->assertNotFound();
     }
 
     public function test_welcome_faq_page_is_available(): void

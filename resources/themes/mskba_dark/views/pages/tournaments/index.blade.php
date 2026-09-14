@@ -67,11 +67,11 @@
 @endsection
 
 @section('category-toolbar-actions')
-    @if(auth()->user()?->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED)
+
         <a class="btn btn--primary default-category-toolbar__action-button" href="{{ route('tournaments.create') }}" aria-label="Создать турнир" title="Создать турнир" data-tooltip-variant="title">
             <i class="ti ti-plus" aria-hidden="true"></i>
         </a>
-    @endif
+
 @endsection
 
 @section('category-results-cards')
