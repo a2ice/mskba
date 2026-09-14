@@ -2,77 +2,115 @@
 
 ## Цель
 
-После стабилизации доменной модели SportsSection перевести публичный `/sections` на общий presentation-pattern `default_category` из Task 171.
+После стабилизации доменной модели SportsSection в Tasks 175–177 перевести публичный `/sections` на общий presentation-pattern `default_category` из Task 171 без отдельного каталожного shell.
 
-Эта задача выполняется после Tasks 175–177, чтобы не переделывать карточки и фильтры несколько раз вслед за изменениями форматов, recruitment и связи с Team.
+## Реализовано
 
-## Требования
+Публичный каталог секций переведён на `theme::layouts.default-category` и теперь использует тот же UX-контракт, что площадки, мероприятия, турниры и команды:
 
-- использовать общий shell `sidebar + content`, полный `inner`, sticky toolbar, desktop sidebar filters и mobile filter popup;
+- полный `inner`, breadcrumbs, компактный заголовок;
+- desktop `sidebar + content`;
+- accordion `Навигация / Фильтры` в sidebar;
+- sticky sidebar и sticky toolbar;
+- на `<= 768px` навигация уходит в общий mobile section navigation, а фильтры открываются в modal;
+- поиск находится в toolbar с фактическим placeholder `Название или описание`;
 - режимы `cards|list|map`, default `cards`;
-- сохранить feature flag SportsSection;
-- create action должен вести в существующий account flow и корректно продолжаться после авторизации, если это требуется общей auth-механикой проекта;
-- поиск находится в toolbar; placeholder выбрать по фактическим searchable fields секции;
-- pagination/query state сохраняют `view`, search и filters.
+- search/forms/pagination сохраняют query state и `view`.
 
 ## Фильтры
 
-Каталог должен поддерживать актуальную модель после Tasks 175–177:
+Каталог использует итоговую модель после Tasks 175–177:
 
 - формат тренировок: `Групповой|Индивидуально`;
 - направление: `Баскетбол|Стритбол|Другое`;
-- стоимость;
-- площадка;
-- связанная команда;
-- принимает заявки;
-- активно ведёт набор.
+- стоимость: `Бесплатно|Платно`;
+- primary площадка;
+- связанная постоянная активная команда через M:N relation Task 177;
+- `Принимает заявки`;
+- `Активно ведёт набор`.
 
-Не выводить legacy `small_group|team` или игровые `5×5|3×3|1×1` как свойства SportsSection.
+Boolean-фильтры набора используют общий `form-toggle`. Legacy `small_group|team` и игровые `5×5|3×3|1×1` в SportsSection catalog не возвращены.
 
-## Представления
+## Навигация
 
-### Cards
+Sidebar содержит:
 
-Основной default view. Карточка должна компактно показывать:
+- `Все секции`;
+- `Принимают заявки`;
+- `Идёт набор`;
+- для авторизованного пользователя — `Мои секции` и `Создать секцию`;
+- для гостя `Создать секцию` открывает общий `auth-entry-classic` и передаёт redirect в существующий `/account/sections/create` flow.
 
-- изображение;
-- название;
+Toolbar также содержит compact create action с тем же auth/redirect поведением.
+
+## Cards и List
+
+Добавлен entity-specific presenter `SportsSectionCatalogPresenter`. Он формирует presentation data без переноса SportsSection-логики в shared `default_category`.
+
+Карточка и строка показывают:
+
+- featured image с fallback;
+- название и описание;
 - training mode и направление;
-- площадку, если задана;
-- связанную Team, если задана и доступна для публичного показа;
-- количество активных участников;
-- стоимость/тип оплаты в понятной форме;
+- primary площадку;
+- только публично пригодные связанные Team: постоянные и `active`;
+- количество активных занимающихся;
+- понятную стоимость (`Бесплатно`, `Платно` или фактическая цена за занятие);
 - badges `Принимает заявки` и усиленный `Идёт набор`;
-- переход в публичную страницу секции.
+- переход на публичную страницу секции.
 
-### List
+List на mobile сохраняет ключевые metadata и статусы, а не сворачивается до картинки и названия.
 
-Более плотное строковое представление тех же сущностей без потери ключевых статусов.
+## Map
 
-### Map
+Добавлен lazy map renderer `sports-section-catalog.js`.
 
-Карта строится только для секций с primary Venue и валидными координатами.
+Инварианты:
 
-- отсутствие Venue/координат не скрывает секцию из `cards/list`;
-- несколько секций на одной площадке должны быть доступны из одной точки/popup/cluster;
-- карта не должна создавать отдельный источник location: используется существующая primary Venue.
+- источник географии — только `SportsSection.primaryVenue`;
+- координаты берутся из `primaryVenue.location.address`;
+- отсутствие primary Venue или координат не скрывает секцию из cards/list;
+- несколько секций на одной площадке группируются в одной координате и доступны из balloon;
+- несколько различных точек fit-ятся по фактическому viewport с ограничением auto zoom;
+- карта использует общий `loadYandexMaps`, поэтому наследует cooperative interactions: обычный page scroll не перехватывается случайным zoom/drag и hidden→visible viewport синхронизируется общим wrapper;
+- переключение `cards/list → map` использует общий Task 171 view-switcher и viewport behavior.
 
-## Sidebar
+## Backend и производительность
 
-Точный набор навигационных пунктов согласовать в ходе задачи. Возможные направления: все секции, открытые для заявок, идёт набор, мои секции, создать секцию.
+`SportsSectionController@index` теперь заранее загружает:
 
-Механизм должен использовать общий `default_category`, без отдельной архитектуры только для SportsSection.
+- featured media;
+- primary Venue + Address;
+- связанные активные постоянные Team;
+- count активных trainee memberships.
 
-## Критерии приёмки
+Team-filter реализован через итоговую M:N relation Task 177. Dropdown команд содержит только активные постоянные Team, реально связанные хотя бы с одной активной SportsSection. Presentation не создаёт N+1.
 
-- `/sections` визуально и адаптивно совпадает с принятым `default_category`;
-- filters соответствуют итоговой доменной модели;
-- `cards|list|map` работают без потери query state;
-- recruitment/team badges отражают серверные данные и права;
-- map использует только primary Venue;
-- профильные SportsSection tests, `npm run build`, `git diff --check`;
-- ручной smoke: desktop, 768px, mobile и Telegram Mini App;
-- после merge — production-проверка перед переходом к следующему контуру.
+## Проверки
+
+Добавлен `SportsSectionCatalogDefaultCategoryTest`, который проверяет:
+
+- hooks общего `default_category`;
+- `view=map/list` state;
+- карту только по primary Venue coordinates;
+- присутствие секций без координат в обычных представлениях;
+- recruitment badges;
+- отображение связанной активной Team и исключение архивной;
+- normalized section filters и team relation filter;
+- отсутствие legacy labels;
+- guest create → общий auth-entry redirect.
+
+Первый полный CI после реализации: PHP test suite — success, frontend production build — success.
+
+## Основные файлы
+
+- `app/Modules/SportsSection/Presentation/Catalog/SportsSectionCatalogPresenter.php`;
+- `app/Modules/SportsSection/Presentation/Http/Controllers/SportsSectionController.php`;
+- `resources/themes/mskba_dark/views/pages/sports-sections/index.blade.php`;
+- `resources/themes/mskba_dark/views/pages/sports-sections/partials/catalog-*.blade.php`;
+- `resources/themes/mskba_dark/css/pages/sports-section-catalog.css`;
+- `resources/themes/mskba_dark/js/features/sports-section-catalog.js`;
+- `tests/Feature/SportsSection/SportsSectionCatalogDefaultCategoryTest.php`.
 
 ## Зависимости
 
@@ -84,4 +122,4 @@ Tasks 171, 175, 176, 177.
 
 ## Статус
 
-Запланировано.
+Реализовано в `feature/178`. Основной CI на реализации зелёный; после документационного закрытия требуется финальный зелёный CI, merge в `main` и production deploy.
