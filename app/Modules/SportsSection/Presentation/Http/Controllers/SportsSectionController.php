@@ -132,11 +132,11 @@ final class SportsSectionController extends Controller
                 ->where('collection', 'sports_section_gallery')
                 ->orderByDesc('is_featured')
                 ->orderBy('sort_order'),
-            'headCoachMembership.user.profile',
+            'headCoachMembership.user.profile.activeAvatar',
             'headCoachMembership.user.contacts',
             'coachMemberships' => fn ($query) => $query
                 ->whereIn('id', $activeCoachMembershipIds)
-                ->with('user.profile'),
+                ->with('user.profile.activeAvatar'),
             'contacts' => fn ($query) => $query->where('is_public', true),
             'primaryVenue.location.address',
             'primaryVenueCourt',
@@ -171,10 +171,13 @@ final class SportsSectionController extends Controller
             ->whereIn('user_id', $identityIds)
             ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)
             ->exists();
+        $hasCapacity = $sportsSection->max_trainees === null
+            || (int) $sportsSection->active_trainees_count < $sportsSection->max_trainees;
         $canApply = $user !== null
             && ! $isActiveTrainee
             && $currentJoinRequest === null
             && $sportsSection->accepts_trainee_requests
+            && $hasCapacity
             && $user->isConfirmed()
             && ! $user->isBlocked()
             && ! $user->trashed()
@@ -190,6 +193,7 @@ final class SportsSectionController extends Controller
             'currentJoinRequest' => $currentJoinRequest,
             'isActiveTrainee' => $isActiveTrainee,
             'canApply' => $canApply,
+            'hasCapacity' => $hasCapacity,
             'canManageSection' => $canManageSection,
             'canManageTrainees' => $canManageTrainees,
             'canManageSessions' => $canManageSessions,
