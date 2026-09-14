@@ -8,11 +8,13 @@ use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Media\Domain\Models\Media;
+use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -98,6 +100,11 @@ class Team extends Model
     public function hiringPositions(): HasMany
     {
         return $this->hasMany(TeamHiringPosition::class);
+    }
+
+    public function sportsSections(): BelongsToMany
+    {
+        return $this->belongsToMany(SportsSection::class, 'sports_section_team')->withTimestamps();
     }
 
     public function media(): MorphMany

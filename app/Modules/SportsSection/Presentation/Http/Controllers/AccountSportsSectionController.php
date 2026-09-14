@@ -46,10 +46,13 @@ final class AccountSportsSectionController extends Controller
         $applicationSectionIds = $membershipQuery()
             ->whereHas('contract.permissions', fn ($query) => $query->where('permission', SportsSectionPermissionEnum::MANAGE_TRAINEES->value))
             ->pluck('scope_id');
+        $teamRelationSectionIds = $membershipQuery()
+            ->whereHas('contract.permissions', fn ($query) => $query->where('permission', SportsSectionPermissionEnum::MANAGE->value))
+            ->pluck('scope_id');
         $sections = SportsSection::query()->whereKey($sectionIds)
             ->with(['featuredMedia', 'headCoachMembership.user.profile'])->orderBy('name')->paginate(20);
 
-        return ThemeResolver::page('account.sports-sections.index', compact('sections', 'applicationSectionIds'));
+        return ThemeResolver::page('account.sports-sections.index', compact('sections', 'applicationSectionIds', 'teamRelationSectionIds'));
     }
 
     public function create(): Response
