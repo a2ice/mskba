@@ -6,7 +6,9 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
+use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Exceptions\SportsSectionException;
+use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Venue\Domain\Models\VenueCourt;
 
 final class SportsSectionRules
@@ -57,6 +59,21 @@ final class SportsSectionRules
     {
         if (! in_array($format, SportsSectionFormatEnum::cases(), true)) {
             throw new SportsSectionException('Это игровое направление недоступно для секции.');
+        }
+    }
+
+    public function assertTraineeCapacity(SportsSection $section, bool $alreadyActive = false): void
+    {
+        if ($alreadyActive || $section->max_trainees === null) {
+            return;
+        }
+
+        $activeCount = $section->traineeMemberships()
+            ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)
+            ->count();
+
+        if ($activeCount >= $section->max_trainees) {
+            throw new SportsSectionException('В секции сейчас нет свободных мест.');
         }
     }
 }
