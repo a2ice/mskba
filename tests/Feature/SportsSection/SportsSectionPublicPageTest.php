@@ -6,11 +6,15 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Media\Domain\Models\Media;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\ManageSectionCoachHandler;
+use App\Modules\SportsSection\Application\UseCases\ManageSectionTraineeHandler;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -26,14 +30,17 @@ final class SportsSectionPublicPageTest extends TestCase
         config()->set('features.sports_sections.enabled', true);
     }
 
-    public function test_public_page_shows_age_group_recruitment_states_and_clear_guest_cta(): void
+    public function test_public_page_shows_age_group_single_recruitment_badge_capacity_and_clear_guest_cta(): void
     {
-        [, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        [$player] = $this->roleUser(UserParticipationRoleEnum::PLAYER);
         $section = $this->activeSection($actor, [
             'name' => 'Школа броска',
             'accepts_trainee_requests' => true,
             'is_recruiting' => true,
+            'max_trainees' => 15,
         ]);
+        app(ManageSectionTraineeHandler::class)->activate($section, $player, $owner);
         DB::table('sports_sections')->where('id', $section->id)->update([
             'target_year_from' => 2010,
             'target_year_to' => 2012,
@@ -42,8 +49,8 @@ final class SportsSectionPublicPageTest extends TestCase
         $this->get(route('sports-sections.show', $section))
             ->assertOk()
             ->assertSee('2010–2012 г.р.')
-            ->assertSee('Идёт набор')
-            ->assertSee('Принимает заявки')
+            ->assertSee('Идёт набор 1/15')
+            ->assertDontSee('Принимает заявки 1/15')
             ->assertSee('Записаться')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
             ->assertSee('Ближайшие подтверждённые занятия')
@@ -97,6 +104,34 @@ final class SportsSectionPublicPageTest extends TestCase
             ->assertDontSee('former-section-coach');
     }
 
+    public function test_public_responsible_coach_exposes_minimum_identity_avatar_and_preview_even_when_not_discoverable(): void
+    {
+        [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $section = $this->activeSection($actor);
+        [$coach] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $coach->forceFill(['username' => 'private-coach'])->save();
+        $profile = $coach->createProfile(['first_name' => 'Иван', 'last_name' => 'Тренеров']);
+        $avatar = Media::factory()->for($profile, 'mediable')->create([
+            'collection' => 'avatar',
+            'path' => 'avatars/section-coach.jpg',
+            'is_featured' => true,
+        ]);
+        $coach->privacySettings()->updateOrCreate([
+            'type' => UserPrivacySettingTypeEnum::DISCOVERABILITY,
+        ], [
+            'visibility' => UserPrivacyVisibilityEnum::NOBODY,
+        ]);
+        app(ManageSectionCoachHandler::class)->add($section, $coach, $owner);
+
+        $this->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertSee('Иван Тренеров')
+            ->assertSee($avatar->publicUrl(), false)
+            ->assertSee('data-modal-target="section-coach-preview-'.$coach->id.'"', false)
+            ->assertSee('data-public-user-role-placeholder="coach"', false)
+            ->assertSee('независимо от настройки видимости в поиске');
+    }
+
     public function test_recruitment_settings_persist_exact_or_range_target_years_exclusively(): void
     {
         [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
@@ -133,6 +168,30 @@ final class SportsSectionPublicPageTest extends TestCase
             'target_year_from' => 2009,
             'target_year_to' => 2012,
         ]);
+    }
+
+    public function test_capacity_setting_is_optional_and_cannot_be_lower_than_active_roster(): void
+    {
+        [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        [$player] = $this->roleUser(UserParticipationRoleEnum::PLAYER);
+        $section = $this->activeSection($actor);
+        app(ManageSectionTraineeHandler::class)->activate($section, $player, $owner);
+
+        $this->actingAs($owner)
+            ->patch(route('account.sports-sections.applications.settings', $section), [
+                'accepts_trainee_requests' => 1,
+                'is_recruiting' => 0,
+                'max_trainees' => 15,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+        $this->assertSame(15, $section->fresh()->max_trainees);
+
+        $this->patch(route('account.sports-sections.applications.settings', $section), [
+            'accepts_trainee_requests' => 1,
+            'is_recruiting' => 0,
+            'max_trainees' => 0,
+        ])->assertSessionHasErrors('max_trainees');
     }
 
     public function test_target_year_range_rejects_inverted_boundaries(): void
@@ -184,6 +243,7 @@ final class SportsSectionPublicPageTest extends TestCase
             'status' => 'active',
             'accepts_trainee_requests' => (bool) ($overrides['accepts_trainee_requests'] ?? false),
             'is_recruiting' => (bool) ($overrides['is_recruiting'] ?? false),
+            'max_trainees' => $overrides['max_trainees'] ?? null,
         ])->save();
 
         return $section->refresh();
