@@ -54,14 +54,19 @@ final class TeamHiringController extends Controller
         abort_if($item->isTemporary(), 422, 'Временная команда не может открывать вакансии.');
         abort_if($item->status !== TeamStatusEnum::ACTIVE, 422, 'Открывать вакансии может только активная команда.');
         $data = $this->validatedData($request, 'createHiring');
+        $applicationsAutoEnabled = false;
 
-        DB::transaction(function () use ($item, $actor, $data): void {
+        DB::transaction(function () use ($item, $actor, $data, &$applicationsAutoEnabled): void {
             $lockedTeam = Team::query()->lockForUpdate()->findOrFail($item->id);
             abort_if(
                 $lockedTeam->hiringPositions()->available()->count() >= self::ACTIVE_LIMIT,
                 422,
                 'Можно одновременно открыть не более 20 вакансий.',
             );
+            if (! $lockedTeam->accepts_join_requests) {
+                $lockedTeam->update(['accepts_join_requests' => true]);
+                $applicationsAutoEnabled = true;
+            }
             $lockedTeam->hiringPositions()->create([
                 ...$data,
                 'status' => TeamHiringStatusEnum::ACTIVE,
@@ -70,7 +75,9 @@ final class TeamHiringController extends Controller
             ]);
         });
 
-        return back()->with('status', 'Вакансия открыта.');
+        return back()->with('status', $applicationsAutoEnabled
+            ? 'Вакансия открыта. Приём заявок в команду включён автоматически.'
+            : 'Вакансия открыта.');
     }
 
     public function update(
@@ -114,8 +121,9 @@ final class TeamHiringController extends Controller
     ): RedirectResponse {
         [$item] = $this->authorizedTeam($team, $request, $actors, $access);
         $data = $request->validate(['action' => ['required', Rule::in(['close', 'reopen'])]]);
+        $applicationsAutoEnabled = false;
 
-        DB::transaction(function () use ($item, $hiringPosition, $data): void {
+        DB::transaction(function () use ($item, $hiringPosition, $data, &$applicationsAutoEnabled): void {
             $lockedTeam = Team::query()->lockForUpdate()->findOrFail($item->id);
             $position = TeamHiringPosition::query()
                 ->where('team_id', $item->id)
@@ -126,6 +134,10 @@ final class TeamHiringController extends Controller
             if ($data['action'] === 'reopen') {
                 abort_if($lockedTeam->status !== TeamStatusEnum::ACTIVE, 422, 'Повторно открыть вакансию может только активная команда.');
                 abort_if($position->remainingSpots() === 0, 422, 'Увеличьте количество мест перед повторным открытием.');
+                if (! $lockedTeam->accepts_join_requests) {
+                    $lockedTeam->update(['accepts_join_requests' => true]);
+                    $applicationsAutoEnabled = true;
+                }
                 $position->update(['status' => TeamHiringStatusEnum::ACTIVE, 'closed_at' => null]);
 
                 return;
@@ -134,7 +146,13 @@ final class TeamHiringController extends Controller
             $position->update(['status' => TeamHiringStatusEnum::CLOSED, 'closed_at' => now()]);
         });
 
-        return back()->with('status', $data['action'] === 'reopen' ? 'Вакансия снова открыта.' : 'Вакансия закрыта.');
+        if ($data['action'] === 'reopen') {
+            return back()->with('status', $applicationsAutoEnabled
+                ? 'Вакансия снова открыта. Приём заявок в команду включён автоматически.'
+                : 'Вакансия снова открыта.');
+        }
+
+        return back()->with('status', 'Вакансия закрыта.');
     }
 
     /** @return array{0: Team, 1: Actor} */

@@ -9,6 +9,7 @@ use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
 use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class TeamSettingsController extends Controller
 {
@@ -33,11 +34,22 @@ final class TeamSettingsController extends Controller
             'accepts_join_requests' => ['required', 'boolean'],
             'accepts_competition_invitations' => ['sometimes', 'boolean'],
         ]);
-        $updates = ['accepts_join_requests' => (bool) $data['accepts_join_requests']];
-        if (array_key_exists('accepts_competition_invitations', $data)) {
-            $updates['accepts_competition_invitations'] = (bool) $data['accepts_competition_invitations'];
-        }
-        $item->update($updates);
+        $acceptsJoinRequests = (bool) $data['accepts_join_requests'];
+
+        DB::transaction(function () use ($item, $data, $acceptsJoinRequests): void {
+            $team = Team::query()->lockForUpdate()->findOrFail($item->id);
+            abort_if(
+                ! $acceptsJoinRequests && $team->hiringPositions()->available()->exists(),
+                422,
+                'Сначала закройте активные вакансии команды, затем отключайте приём заявок.',
+            );
+
+            $updates = ['accepts_join_requests' => $acceptsJoinRequests];
+            if (array_key_exists('accepts_competition_invitations', $data)) {
+                $updates['accepts_competition_invitations'] = (bool) $data['accepts_competition_invitations'];
+            }
+            $team->update($updates);
+        });
 
         return back()->with('status', 'Настройки команды обновлены.');
     }

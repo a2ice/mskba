@@ -51,6 +51,44 @@
 
 Важно: для Team `is_hiring` не добавляется отдельной колонкой — это вычисляемое состояние по наличию активных вакансий. Для SportsSection на первом этапе допустим простой boolean `is_hiring`, пока не появятся детализированные вакансии/направления набора.
 
+## Реализация
+
+### SportsSection
+
+- добавлены `sports_sections.accepts_trainee_requests` и `sports_sections.is_recruiting`;
+- server-side переход в `is_recruiting = true` автоматически включает `accepts_trainee_requests`, поэтому невозможное состояние не сохраняется;
+- добавлена отдельная `SportsSectionJoinRequest` с lifecycle `pending|accepted|rejected|cancelled`;
+- submit доступен только подтверждённому active player и проверяет canonical identity;
+- повторная pending-заявка и новая заявка уже активного тренируемого блокируются;
+- пользователь может отменить только собственную pending-заявку, в том числе через canonical alias;
+- review/accept/reject доступны только membership с точным permission `section.trainees.manage`;
+- accept выполняется транзакционно и создаёт/реактивирует `SectionTraineeMembership` до перевода заявки в accepted;
+- public show/catalog отображают «Принимает заявки» и «Идёт набор», каталог фильтрует оба состояния;
+- guest CTA «Подать заявку» использует общий `auth-entry-classic` и возвращает на страницу секции после авторизации;
+- account UI получил shared toggle controls и отдельный экран заявок/набора.
+
+### Team
+
+- создание или reopening активной `TeamHiringPosition` автоматически включает `accepts_join_requests`;
+- общий приём заявок нельзя выключить, пока существует активная вакансия;
+- targeted join request на vacancy также проверяет глобальный `accepts_join_requests` gate;
+- migration нормализует legacy-команды с активными вакансиями, включая им приём заявок;
+- тесты Task 135 обновлены под новый invariant.
+
+## Проверки
+
+Покрыты:
+
+- lifecycle SportsSection-заявки и атомарный accept;
+- canonical duplicate/ownership checks;
+- IDOR и точный `section.trainees.manage` permission;
+- запрет заявки не-player пользователя;
+- server invariant `is_recruiting => accepts_trainee_requests`;
+- catalog filters/badges и guest auth CTA;
+- Team vacancy/global-gate invariant, включая targeted join request.
+
+Полный CI должен пройти PHP test suite и frontend production build перед merge PR #188.
+
 ## Критерии приёмки
 
 - секция имеет рабочий публичный flow подачи и обработки заявки;
@@ -71,4 +109,4 @@ Task 170. Желательно выполнять после Task 175, чтоб�
 
 ## Статус
 
-Запланировано.
+Реализовано в PR #188. Ожидает финального зелёного CI и merge в `main`.

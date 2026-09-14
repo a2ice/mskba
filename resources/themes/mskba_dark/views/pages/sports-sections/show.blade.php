@@ -7,12 +7,51 @@
 
 @section('content')
 <section class="sports-section-show first-screen"><div class="inner">
+    @if(session('status'))<div class="alert alert-success">{{ session('status') }}</div>@endif
+    @if($errors->has('section'))<div class="alert alert-danger">{{ $errors->first('section') }}</div>@endif
     <header class="sports-section-show__hero">
         <div>
             <span class="text-accent">Секция · {{ $section->game_format->label() }}</span>
             <h1>{{ $section->name }}</h1>
+            @if($section->is_recruiting || $section->accepts_trainee_requests)
+                <div class="sports-section-card__badges sports-section-show__badges">
+                    @if($section->is_recruiting)<span class="sports-section-badge sports-section-badge--recruiting">Идёт набор</span>@endif
+                    @if($section->accepts_trainee_requests)<span class="sports-section-badge">Принимает заявки</span>@endif
+                </div>
+            @endif
             <p>{{ $section->description }}</p>
-            @if($canContact)<div class="sports-section-show__hero-actions"><a class="btn btn--primary" href="#section-contacts">Записаться / связаться</a></div>@endif
+            <div class="sports-section-show__hero-actions">
+                @if($isActiveTrainee)
+                    <span class="btn btn--secondary" aria-disabled="true">Вы уже занимаетесь в секции</span>
+                @elseif($currentJoinRequest)
+                    <span class="btn btn--secondary" aria-disabled="true">Заявка на рассмотрении</span>
+                    <form method="POST" action="{{ route('sports-sections.applications.cancel', [$section, $currentJoinRequest]) }}">
+                        @csrf @method('PATCH')
+                        <button class="btn btn--secondary" type="submit">Отменить заявку</button>
+                    </form>
+                @elseif($section->accepts_trainee_requests)
+                    @auth
+                        @if($canApply)
+                            <form method="POST" action="{{ route('sports-sections.applications.store', $section) }}">
+                                @csrf
+                                <button class="btn btn--primary" type="submit">Подать заявку</button>
+                            </form>
+                        @else
+                            <span class="sports-section-show__application-hint">Для заявки нужен подтверждённый активный профиль игрока.</span>
+                        @endif
+                    @else
+                        <button
+                            class="btn btn--primary"
+                            type="button"
+                            data-handler="modal"
+                            data-modal-action="open"
+                            data-modal-target="auth-entry-classic"
+                            data-auth-redirect-url="{{ route('sports-sections.show', $section, false) }}"
+                        >Подать заявку</button>
+                    @endauth
+                @endif
+                @if($canContact)<a class="btn btn--secondary" href="#section-contacts">Записаться / связаться</a>@endif
+            </div>
         </div>
         @if($section->featuredMedia)<img src="{{ $section->featuredMedia->publicUrl() }}" alt="{{ $section->name }}">@endif
     </header>

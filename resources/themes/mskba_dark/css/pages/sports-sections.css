@@ -60,10 +60,28 @@
 .sports-section-card > a img { aspect-ratio: 16 / 10; object-fit: cover; width: 100%; }
 .sports-section-card > div { padding: 20px; }
 .sports-section-card h2 { margin: 8px 0 12px; }
+.sports-section-card__badges { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.sports-section-badge {
+    background: color-mix(in srgb, var(--surface, #151914) 78%, white 4%);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 6px 9px;
+}
+.sports-section-badge--recruiting {
+    border-color: color-mix(in srgb, var(--accent, #c7ff30) 55%, var(--line));
+    color: var(--accent, #c7ff30);
+}
 
 .sports-section-show__hero > div { flex: 1; }
 .sports-section-show__hero > img { border-radius: var(--radius-card); max-height: 440px; object-fit: cover; width: min(52%, 720px); }
-.sports-section-show__hero-actions { display: flex; gap: 10px; margin-top: 20px; }
+.sports-section-show__hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.sports-section-show__hero-actions form { margin: 0; }
+.sports-section-show__badges { margin: 8px 0 2px; }
+.sports-section-show__application-hint { color: var(--text-muted); font-size: 14px; max-width: 420px; }
 .sports-section-show__facts { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
 .sports-section-show__facts article,
 .sports-section-show__block,
@@ -119,6 +137,10 @@
 .sports-section-editor__snapshot { display: grid; gap: 8px; margin-top: 12px; }
 .sports-section-editor__snapshot form { align-items: center; display: flex; gap: 8px; justify-content: space-between; }
 
+.sports-section-applications { display: grid; gap: 24px; }
+.sports-section-application-card__reject { flex-wrap: wrap; }
+.sports-section-application-card__reject .form-control { min-width: min(260px, 100%); }
+
 .sports-section-session-form { border-top: 1px solid var(--line); padding-top: 18px; }
 .sports-section-session-card { display: block !important; padding: 18px !important; }
 .sports-section-session-card__header { align-items: start; display: flex; gap: 12px; justify-content: space-between; width: 100%; }
@@ -163,4 +185,9 @@
     .sports-sections__filter-actions > * { flex: 1; }
     .sports-section-editor__nav { margin-inline: -8px; top: 56px; }
     .sports-section-session-card__header { flex-direction: column; }
+    .sports-section-show__hero-actions > *,
+    .sports-section-show__hero-actions form,
+    .sports-section-show__hero-actions form .btn { width: 100%; }
+    .sports-section-application-card__reject { width: 100%; }
+    .sports-section-application-card__reject .form-control { width: 100%; }
 }

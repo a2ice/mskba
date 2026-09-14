@@ -6,6 +6,7 @@ use App\Modules\Event\Infrastructure\Providers\EventLifecycleServiceProvider;
 use App\Modules\Identity\Infrastructure\Providers\IdentityCanonicalizationServiceProvider;
 use App\Modules\Media\Infrastructure\Providers\MediaServiceProvider;
 use App\Modules\Notification\Infrastructure\Providers\NotificationServiceProvider;
+use App\Modules\SportsSection\Infrastructure\Providers\SportsSectionServiceProvider;
 use App\Modules\Team\Infrastructure\Providers\TeamSportsServiceProvider;
 use App\Modules\Telegram\Infrastructure\Providers\TelegramServiceProvider;
 use App\Modules\Venue\Infrastructure\Providers\VenueAccessServiceProvider;
@@ -25,6 +26,7 @@ return [
     IdentityCanonicalizationServiceProvider::class,
     MediaServiceProvider::class,
     NotificationServiceProvider::class,
+    SportsSectionServiceProvider::class,
     TeamSportsServiceProvider::class,
     TelegramServiceProvider::class,
     VenueAccessServiceProvider::class,

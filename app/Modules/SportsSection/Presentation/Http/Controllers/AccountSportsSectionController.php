@@ -14,6 +14,7 @@ use App\Modules\SportsSection\Application\UseCases\UpdateSportsSectionHandler;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
 use App\Modules\SportsSection\Domain\Enums\SectionPricingTypeEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionFormatEnum;
+use App\Modules\SportsSection\Domain\Enums\SportsSectionPermissionEnum;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Exceptions\SportsSectionException;
@@ -31,20 +32,24 @@ final class AccountSportsSectionController extends Controller
     public function index(Request $request): Response
     {
         $this->guardFeature();
-        // Account listing queries the shared membership table because no concrete section is selected yet.
-        $sectionIds = ContractMembership::query()
+        $identityIds = $request->user()->canonical()->identityIds();
+        $membershipQuery = fn () => ContractMembership::query()
             ->where('scope_type', ContractMembershipScopeTypeEnum::SPORTS_SECTION->value)
-            ->whereIn('user_id', $request->user()->canonical()->identityIds())
+            ->whereIn('user_id', $identityIds)
             ->whereHas('contract', fn ($query) => $query
                 ->where('family', ContractFamilyEnum::MEMBERSHIP->value)
                 ->where('status', ContractStatusEnum::ACTIVE->value)
                 ->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', now()))
-                ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now())))
+                ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now())));
+
+        $sectionIds = $membershipQuery()->pluck('scope_id');
+        $applicationSectionIds = $membershipQuery()
+            ->whereHas('contract.permissions', fn ($query) => $query->where('permission', SportsSectionPermissionEnum::MANAGE_TRAINEES->value))
             ->pluck('scope_id');
         $sections = SportsSection::query()->whereKey($sectionIds)
             ->with(['featuredMedia', 'headCoachMembership.user.profile'])->orderBy('name')->paginate(20);
 
-        return ThemeResolver::page('account.sports-sections.index', compact('sections'));
+        return ThemeResolver::page('account.sports-sections.index', compact('sections', 'applicationSectionIds'));
     }
 
     public function create(): Response
