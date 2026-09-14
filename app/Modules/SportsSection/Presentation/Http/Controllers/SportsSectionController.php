@@ -13,6 +13,8 @@ use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingModeEnum;
 use App\Modules\SportsSection\Domain\Enums\TrainingSessionStatusEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
+use App\Modules\Team\Domain\Enums\TeamStatusEnum;
+use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
@@ -24,42 +26,56 @@ final class SportsSectionController extends Controller
     {
         $this->guardFeature();
 
+        $search = trim((string) $request->query('q', ''));
+        $trainingMode = $this->enumFilter((string) $request->query('training_mode', ''), TrainingModeEnum::cases());
+        $gameFormat = $this->enumFilter((string) $request->query('game_format', ''), SportsSectionFormatEnum::cases());
+        $pricingType = $this->enumFilter((string) $request->query('pricing_type', ''), SectionPricingTypeEnum::cases());
+        $venueId = max(0, $request->integer('venue_id'));
+        $teamId = max(0, $request->integer('team_id'));
+        $acceptsRequests = $request->boolean('accepts_requests');
+        $recruiting = $request->boolean('recruiting');
+
         $query = SportsSection::query()
             ->where('status', SportsSectionStatusEnum::ACTIVE->value)
-            ->with(['featuredMedia', 'headCoachMembership.user.profile', 'primaryVenue'])
-            ->withCount(['traineeMemberships as active_trainees_count' => fn ($query) => $query->where('status', 'active')]);
+            ->with([
+                'featuredMedia',
+                'primaryVenue.location.address',
+                'teams' => fn ($teams) => $teams
+                    ->whereNull('temporary_for_event_id')
+                    ->where('status', TeamStatusEnum::ACTIVE->value)
+                    ->orderBy('name'),
+            ])
+            ->withCount(['traineeMemberships as active_trainees_count' => fn ($query) => $query
+                ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)]);
 
-        $search = trim((string) $request->query('q', ''));
         if ($search !== '') {
             $needle = '%'.$search.'%';
             $query->where(fn ($builder) => $builder
                 ->where('name', 'like', $needle)
                 ->orWhere('description', 'like', $needle));
         }
-
-        $trainingMode = (string) $request->query('training_mode', '');
-        if (in_array($trainingMode, array_map(static fn (TrainingModeEnum $item): string => $item->value, TrainingModeEnum::cases()), true)) {
+        if ($trainingMode !== '') {
             $query->where('training_mode', $trainingMode);
         }
-
-        $gameFormat = (string) $request->query('game_format', '');
-        if (in_array($gameFormat, array_map(static fn (SportsSectionFormatEnum $item): string => $item->value, SportsSectionFormatEnum::cases()), true)) {
+        if ($gameFormat !== '') {
             $query->where('game_format', $gameFormat);
         }
-
-        $pricingType = (string) $request->query('pricing_type', '');
-        if (in_array($pricingType, array_map(static fn (SectionPricingTypeEnum $item): string => $item->value, SectionPricingTypeEnum::cases()), true)) {
+        if ($pricingType !== '') {
             $query->where('pricing_type', $pricingType);
         }
-
-        $venueId = $request->integer('venue_id');
         if ($venueId > 0) {
             $query->where('primary_venue_id', $venueId);
         }
-        if ($request->boolean('accepts_requests')) {
+        if ($teamId > 0) {
+            $query->whereHas('teams', fn ($teams) => $teams
+                ->whereKey($teamId)
+                ->whereNull('temporary_for_event_id')
+                ->where('status', TeamStatusEnum::ACTIVE->value));
+        }
+        if ($acceptsRequests) {
             $query->where('accepts_trainee_requests', true);
         }
-        if ($request->boolean('recruiting')) {
+        if ($recruiting) {
             $query->where('is_recruiting', true);
         }
 
@@ -71,6 +87,13 @@ final class SportsSectionController extends Controller
                 ->select('primary_venue_id'))
             ->orderBy('name')
             ->get(['id', 'name']);
+        $teams = Team::query()
+            ->whereNull('temporary_for_event_id')
+            ->where('status', TeamStatusEnum::ACTIVE->value)
+            ->whereHas('sportsSections', fn ($sections) => $sections
+                ->where('sports_sections.status', SportsSectionStatusEnum::ACTIVE->value))
+            ->orderBy('name')
+            ->get(['teams.id', 'teams.name']);
 
         return ThemeResolver::page('sports-sections.index', [
             'sections' => $sections,
@@ -78,6 +101,17 @@ final class SportsSectionController extends Controller
             'formats' => SportsSectionFormatEnum::cases(),
             'pricingTypes' => SectionPricingTypeEnum::cases(),
             'venues' => $venues,
+            'teams' => $teams,
+            'filters' => [
+                'q' => $search,
+                'training_mode' => $trainingMode,
+                'game_format' => $gameFormat,
+                'pricing_type' => $pricingType,
+                'venue_id' => $venueId > 0 ? $venueId : null,
+                'team_id' => $teamId > 0 ? $teamId : null,
+                'accepts_requests' => $acceptsRequests,
+                'recruiting' => $recruiting,
+            ],
         ]);
     }
 
@@ -125,6 +159,14 @@ final class SportsSectionController extends Controller
             'isActiveTrainee' => $isActiveTrainee,
             'canApply' => $canApply,
         ]);
+    }
+
+    /** @param array<int, \BackedEnum> $cases */
+    private function enumFilter(string $value, array $cases): string
+    {
+        $allowed = array_map(static fn (\BackedEnum $item): string => (string) $item->value, $cases);
+
+        return in_array($value, $allowed, true) ? $value : '';
     }
 
     private function guardFeature(): void
