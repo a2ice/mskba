@@ -42,6 +42,7 @@ import './features/auth.js';
 import './features/countdown.js';
 import './features/account-confirmation-wizard.js';
 import './features/account-privacy.js';
+import './features/account-nickname.js';
 import './features/account-telegram-link.js';
 import './features/score-range.js';
 import './features/player-character-stage.js';
