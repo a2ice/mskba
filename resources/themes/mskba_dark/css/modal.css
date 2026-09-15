@@ -422,8 +422,7 @@ body.content-modal-open .site-content {
 		--telegram-modal-safe-bottom: max(
 			12px,
 			env(safe-area-inset-bottom, 0px),
-			var(--tg-content-safe-area-inset-bottom, 0px),
-			var(--telegram-content-bottom, 0px)
+			var(--tg-content-safe-area-inset-bottom, 0px)
 		);
 		--telegram-modal-safe-left: max(
 			12px,
