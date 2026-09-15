@@ -111,8 +111,9 @@ Visit хранит:
 - landing path и referrer;
 - результат геопроверки;
 - distance/accuracy;
-- visited/linked timestamps;
-- HMAC-хеш IP и user agent.
+- visited/linked timestamps.
+
+IP-адрес и user-agent специально не сохраняются: для связи перехода с последующей регистрацией достаточно server-side session, а лишний fingerprint не даёт продуктовой ценности для этой задачи.
 
 В session хранится ID текущего visit. До авторизации `user_id = null`; после обычного login, Telegram/VK login или регистрации visit связывается с canonical user на `/join/success`.
 
@@ -153,7 +154,7 @@ php artisan acquisition:campaign school-1794-a4 "Листовка у школы 
 
 - внешний QR использует `public_code`, а не DB id;
 - campaign code ограничен `A-Za-z0-9_-`, 2–64 символа;
-- IP не сохраняется в открытом виде, только HMAC hash;
+- IP и user-agent не сохраняются в acquisition history;
 - сырые координаты пользователя не сохраняются;
 - геопроверка добровольна;
 - attribution не выдаёт permissions и не меняет system role;
