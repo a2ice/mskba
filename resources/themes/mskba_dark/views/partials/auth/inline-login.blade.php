@@ -1,4 +1,4 @@
-<div class="auth-form-wrapper" style="max-width: 400px;">
+<div class="auth-form-wrapper">
     @if(session('error'))
         <div class="alert alert-danger mb-3">{{ session('error') }}</div>
     @endif
@@ -29,7 +29,7 @@
             <input type="checkbox" class="form-check-input" id="rememberMe" name="remember">
             <label class="form-check-label" for="rememberMe">Запомнить меня</label>
         </div>
-        <button type="submit" class="btn btn--secondary-bordered btn--sm">Войти</button>
+        <button type="submit" class="btn btn--primary btn--sm">Войти</button>
     </form>
 
     @include('theme::partials.auth.telegram-login')
