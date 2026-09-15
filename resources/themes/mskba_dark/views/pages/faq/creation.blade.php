@@ -4,6 +4,9 @@
 @endsection
 @section('section-content')
     <p class="lead">{{ $guide['intro'] }}</p>
+
+    @include('theme::partials.creation-requirements', ['requirements' => $guide['requirements'] ?? []])
+
     <ol class="mt-4">
         @foreach($guide['steps'] as $step)
             <li class="mb-3">{{ $step }}</li>
