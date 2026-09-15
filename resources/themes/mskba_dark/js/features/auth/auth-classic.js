@@ -6,6 +6,8 @@ const DEFAULT_SECTION = 'login';
 const TELEGRAM_LOGIN_DEFAULT_LABEL = 'Войти через Telegram-бота';
 const TELEGRAM_LOGIN_RETRY_LABEL = 'Повторить вход через Telegram-бота';
 const TELEGRAM_LOGIN_POLL_INTERVAL_MS = 2000;
+const TELEGRAM_WIDGET_BORROW_RETRY_MS = 250;
+const TELEGRAM_WIDGET_BORROW_MAX_ATTEMPTS = 4;
 
 window.mskbaTelegramLogin = function(telegramUser) {
     const container = getActiveTelegramLoginContainer();
@@ -195,6 +197,7 @@ $(document).on('modal:opened', function(_event, modal) {
     }
 
     resetClassicModalState(modal);
+    borrowTelegramLoginWidget(modal);
     const redirectUrl = String(modal.data('authRedirectUrl') || '').trim();
     modal.find('[data-auth-redirect-input]').val(redirectUrl);
     updateVkAuthenticationUrl(modal, redirectUrl);
@@ -220,6 +223,7 @@ $(document).on('modal:closed', function(_event, modal) {
         return;
     }
 
+    restoreBorrowedTelegramLoginWidget(modal);
     resetClassicModalState(modal);
     modal.removeData('authRedirectUrl');
 });
@@ -232,6 +236,47 @@ function getInitialSection(modal) {
     const initialSection = String(modal.data('modalInitialSection') || '').trim();
 
     return initialSection || DEFAULT_SECTION;
+}
+
+function borrowTelegramLoginWidget(modal, attempt = 0) {
+    const targetWidget = modal.find('.auth-telegram-login__widget').first();
+
+    if (!targetWidget.length || targetWidget.find('iframe').length) {
+        return;
+    }
+
+    const sourceWidget = $('.auth-telegram-login__widget')
+        .filter(function() {
+            return !$(this).closest('[data-modal]').is(modal) && $(this).find('iframe').length > 0;
+        })
+        .first();
+
+    if (!sourceWidget.length) {
+        if (attempt < TELEGRAM_WIDGET_BORROW_MAX_ATTEMPTS) {
+            window.setTimeout(function() {
+                if (modal.is(':visible')) {
+                    borrowTelegramLoginWidget(modal, attempt + 1);
+                }
+            }, TELEGRAM_WIDGET_BORROW_RETRY_MS);
+        }
+
+        return;
+    }
+
+    targetWidget.data('telegramWidgetSource', sourceWidget.get(0));
+    targetWidget.find('script[src*="telegram-widget.js"]').remove();
+    sourceWidget.find('iframe').first().appendTo(targetWidget);
+}
+
+function restoreBorrowedTelegramLoginWidget(modal) {
+    const targetWidget = modal.find('.auth-telegram-login__widget').first();
+    const sourceWidget = targetWidget.data('telegramWidgetSource');
+
+    if (sourceWidget && document.documentElement.contains(sourceWidget)) {
+        targetWidget.find('iframe').first().appendTo(sourceWidget);
+    }
+
+    targetWidget.removeData('telegramWidgetSource');
 }
 
 function resetClassicModalState(modal) {
