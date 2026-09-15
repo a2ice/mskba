@@ -12,11 +12,17 @@ final class PublicUserProfileController
     public function show(Request $request, string $user, PublicUserProfileService $profiles)
     {
         $role = $request->route('role');
+        $requestedIdentifier = $user;
         $user = $this->resolve($user, (bool) $request->route('by_id'));
         $canonical = $user->canonical();
         abort_if($user->isBlocked() || $canonical->isBlocked() || $canonical->trashed(), 404);
         $data = $profiles->page($canonical, $request->user(), $role);
-        if ($canonical->id !== $user->id || ($request->route('by_id') && $canonical->username)) {
+        $canonicalIdentifier = $canonical->nickname ?: $canonical->username;
+        if (
+            $canonical->id !== $user->id
+            || ($request->route('by_id') && $canonicalIdentifier)
+            || (! $request->route('by_id') && $canonicalIdentifier && strcasecmp($requestedIdentifier, $canonicalIdentifier) !== 0)
+        ) {
             return redirect($profiles->url($canonical, $role), 301);
         }
 
@@ -33,8 +39,13 @@ final class PublicUserProfileController
 
     private function resolve(string $identifier, bool $byId): User
     {
-        return $byId
-            ? User::query()->findOrFail($identifier)
-            : User::query()->where('username', $identifier)->firstOrFail();
+        if ($byId) {
+            return User::query()->findOrFail($identifier);
+        }
+
+        $normalized = strtolower($identifier);
+
+        return User::query()->whereRaw('LOWER(nickname) = ?', [$normalized])->first()
+            ?? User::query()->whereRaw('LOWER(username) = ?', [$normalized])->firstOrFail();
     }
 }

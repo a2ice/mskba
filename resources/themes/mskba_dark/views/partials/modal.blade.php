@@ -43,6 +43,8 @@ $modals = [
     <p class="venue-selector-preview__message" data-entity-preview-message>Загружаем информацию…</p>
     <article class="public-user-profile" data-user-preview-content hidden>
         <img class="public-user-profile__avatar" src="" alt="" data-user-preview-avatar hidden>
+        <div class="public-user-profile__avatar public-user-profile__avatar--placeholder" data-user-preview-avatar-placeholder hidden><i class="ti ti-user" aria-hidden="true"></i></div>
+        <div class="public-user-profile__avatar public-user-profile__avatar--placeholder" title="Отображение аватара запрещено в настройках профиля" data-tooltip-variant="title" data-user-preview-avatar-restricted hidden><i class="ti ti-user" aria-hidden="true"></i></div>
         <p data-user-preview-role></p>
         <ul data-user-preview-sections></ul>
         <a class="btn" href="#" target="_blank" rel="noopener noreferrer" data-user-preview-page>Открыть профиль</a>

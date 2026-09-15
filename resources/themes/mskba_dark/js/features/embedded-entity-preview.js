@@ -64,9 +64,14 @@ function renderUser(user) {
     modal.querySelector('[data-entity-preview-title]').textContent = user.name || 'Пользователь';
     modal.querySelector('[data-user-preview-role]').textContent = user.public_coach ? 'Тренер открытой секции' : (user.role_label || 'Пользователь');
     const avatar = modal.querySelector('[data-user-preview-avatar]');
-    avatar.hidden = !user.avatar_url;
+    const placeholder = modal.querySelector('[data-user-preview-avatar-placeholder]');
+    const restrictedPlaceholder = modal.querySelector('[data-user-preview-avatar-restricted]');
+    const hasAvatar = Boolean(user.avatar_url);
+    avatar.hidden = !hasAvatar;
+    placeholder.hidden = hasAvatar || Boolean(user.avatar_restricted);
+    restrictedPlaceholder.hidden = hasAvatar || !user.avatar_restricted;
     avatar.alt = user.name || '';
-    if (user.avatar_url) avatar.src = user.avatar_url;
+    if (hasAvatar) avatar.src = user.avatar_url;
     else avatar.removeAttribute('src');
     modal.querySelector('[data-user-preview-page]').href = user.url;
     const sections = modal.querySelector('[data-user-preview-sections]');
