@@ -1,0 +1,19 @@
+.venue-create-wizard__step {
+    min-width: 0;
+    margin: 0 0 22px;
+    padding: clamp(18px, 3vw, 28px);
+    border: 1px solid var(--wizard-border);
+    border-radius: 20px;
+    background: var(--wizard-soft);
+}
+
+.venue-create-wizard .event-wizard-choice input:focus-visible + .event-wizard-choice__surface {
+    outline: 2px solid var(--wizard-orange);
+    outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+    .venue-create-wizard .event-wizard-choice-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -5,6 +5,7 @@
     $method = $method ?? 'POST';
     $submitLabel = $submitLabel ?? 'Добавить';
     $compactCreate = $compactCreate ?? false;
+    $createWizard = ($createWizard ?? false) && $compactCreate;
     $venue = $venue ?? null;
     $venueRevision = $venueRevision ?? null;
     $readOnly = $readOnly ?? false;
@@ -21,13 +22,48 @@
         ->all();
 @endphp
 
-<form method="POST" action="{{ $action }}" @if($readOnly) aria-describedby="venue-form-read-only-message" @endif>
+<form method="POST" action="{{ $action }}" @if($createWizard) class="event-wizard venue-create-wizard" data-venue-create-wizard data-initial-step="{{ ($errors->any() || session('error')) && ! $errors->has('creation_role') ? 'details' : 'role' }}" @endif @if($readOnly) aria-describedby="venue-form-read-only-message" @endif>
     @csrf
     @if(strtoupper($method) !== 'POST')
         @method($method)
     @endif
 
-    <fieldset class="venue-form__fieldset" @disabled($readOnly)>
+    @if($createWizard)
+        <div class="event-wizard__progress" data-venue-wizard-progress hidden aria-label="Прогресс добавления площадки">
+            <div class="event-wizard__progress-copy" aria-live="polite">
+                <strong data-venue-wizard-title>Как добавляете площадку?</strong>
+                <span data-venue-wizard-count>1 из 2</span>
+            </div>
+            <div class="event-wizard__progress-track" aria-hidden="true"><span data-venue-wizard-bar></span></div>
+        </div>
+        <section class="event-wizard-step venue-create-wizard__step" data-venue-wizard-step="role">
+            <div class="event-wizard-step__heading">
+                <span class="event-wizard-step__number">01</span>
+                <div><h2 tabindex="-1">Как добавляете площадку?</h2><p>Поделиться местом или подтвердить, что вы его представляете.</p></div>
+            </div>
+            <div class="event-wizard-choice-grid event-wizard-choice-grid--formats">
+                @foreach(\App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum::cases() as $role)
+                    <label class="event-wizard-choice">
+                        <input type="radio" name="creation_role" value="{{ $role->value }}" required @checked(old('creation_role', 'contributor') === $role->value)>
+                        <span class="event-wizard-choice__surface">
+                            <i class="ti {{ $role->value === 'representative' ? 'ti-id' : 'ti-map-pin' }}" aria-hidden="true"></i>
+                            <strong>{{ $role->label() }}</strong><small>{{ $role->description() }}</small>
+                        </span>
+                    </label>
+                @endforeach
+            </div>
+            @error('creation_role')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        </section>
+    @endif
+
+    <fieldset class="venue-form__fieldset {{ $createWizard ? 'event-wizard-step venue-create-wizard__step' : '' }}" @if($createWizard) data-venue-wizard-step="details" @endif @disabled($readOnly)>
+    @if($createWizard)
+        <div class="event-wizard-step__heading">
+            <span class="event-wizard-step__number">02</span>
+            <div><h2 tabindex="-1">Основные данные</h2><p>После добавления сможете загрузить фото, дополнить описание и отправить площадку на модерацию.</p></div>
+        </div>
+        <p class="form-hint" data-venue-wizard-role-note></p>
+    @endif
     <div class="mb-3">
         <label for="venueName" class="form-label">Название</label>
         <input
@@ -36,7 +72,7 @@
             name="name"
             class="form-control @error('name') is-invalid @enderror"
             value="{{ old('name', $revisionDetails['name'] ?? $venue?->name) }}"
-            autofocus
+            @unless($createWizard) autofocus @endunless
             required
         >
         @error('name')
@@ -232,7 +268,11 @@
     </fieldset>
 
     <div class="d-flex flex-wrap align-items-center gap-3">
-        <button type="submit" class="btn btn--primary btn--sm" @disabled($readOnly)>{{ $submitLabel }}</button>
+        @if($createWizard)
+            <button type="button" class="btn btn--secondary btn--sm" data-venue-wizard-back hidden>Назад</button>
+            <button type="button" class="btn btn--primary btn--sm" data-venue-wizard-next hidden>Далее</button>
+        @endif
+        <button type="submit" class="btn btn--primary btn--sm" @if($createWizard) data-venue-wizard-submit @endif @disabled($readOnly)>{{ $submitLabel }}</button>
         <a href="{{ $cancelUrl }}" class="btn btn--secondary btn--sm">Отмена</a>
         @if($readOnly)
             <span id="venue-form-read-only-message" class="venue-form__read-only-message">{{ $readOnlyMessage }}</span>

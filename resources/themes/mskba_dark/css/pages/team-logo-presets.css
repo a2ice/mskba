@@ -1,0 +1,49 @@
+.team-logo-presets__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 10px;
+}
+
+.team-logo-presets__option {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.team-logo-presets__option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.team-logo-presets__surface {
+    display: flex;
+    min-height: 100px;
+    height: 100%;
+    padding: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 12px;
+    font-size: 12px;
+    text-align: center;
+}
+
+.team-logo-presets__surface img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+.team-logo-presets__option input:checked + .team-logo-presets__surface {
+    border-color: #ff6a1a;
+    background: rgba(255, 106, 26, .12);
+}
+
+.team-logo-presets__option input:focus-visible + .team-logo-presets__surface {
+    outline: 2px solid #ff6a1a;
+    outline-offset: 3px;
+}

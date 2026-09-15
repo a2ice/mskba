@@ -8,7 +8,7 @@
     'sectionId' => 'venues',
     'sectionClass' => 'venues-section',
     'contentTitle' => $title,
-    'contentSubtitle' => 'Укажите основные данные. Описание, теги и другие сведения можно добавить на следующем шаге.',
+    'contentSubtitle' => 'Выберите, как добавляете площадку, затем укажите основные данные.',
     'sidebarLabel' => 'Навигация площадок',
 ])
 
@@ -30,5 +30,7 @@
         'action' => route('venues.store'),
         'cancelUrl' => route('venues'),
         'compactCreate' => true,
+        'createWizard' => true,
+        'submitLabel' => 'Добавить площадку',
     ])
 @endsection

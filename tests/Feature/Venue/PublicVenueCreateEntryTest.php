@@ -391,6 +391,38 @@ class PublicVenueCreateEntryTest extends TestCase
     }
 
     /** @return array<string, mixed> */
+    public function test_representative_scenario_preserves_unconfirmed_status_and_offers_existing_verification_flow(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $response = $this->actingAs($user)->post(route('venues.store'), [
+            'name' => 'Площадка представителя',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'creation_role' => 'representative',
+            'location' => $this->locationPayload('Москва, Улица представителя, 1'),
+        ]);
+
+        $venue = Venue::query()->where('name', 'Площадка представителя')->firstOrFail();
+        $response->assertRedirect(route('account.venues.edit', $venue->routeIdentifier()))
+            ->assertSessionHas('venue_creation_representative_id', $venue->id);
+        $this->assertSame(VenueStatusEnum::UNCONFIRMED, $venue->status);
+        $this->assertDatabaseMissing('venue_ownerships', ['venue_id' => $venue->id]);
+        $this->get(route('account.venues.edit', $venue->routeIdentifier()))->assertOk()
+            ->assertSee(route('venues.management', $venue));
+    }
+
+    public function test_unknown_creation_scenario_cannot_create_a_venue(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($user)->post(route('venues.store'), [
+            'name' => 'Площадка с неверным сценарием',
+            'type' => VenueTypeEnum::STREET_COURT->value,
+            'creation_role' => 'owner',
+            'location' => $this->locationPayload('Москва, Улица представителя, 1'),
+        ])->assertSessionHasErrors('creation_role');
+
+        $this->assertDatabaseMissing('venues', ['name' => 'Площадка с неверным сценарием']);
+    }
+
     private function locationPayload(string $rawAddress): array
     {
         $offset = (abs(crc32($rawAddress)) % 10_000) / 1_000_000;

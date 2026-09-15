@@ -15,7 +15,9 @@ use App\Modules\Event\Domain\Models\GameSide;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Team\Application\Services\TeamLogoManager;
+use App\Modules\Team\Application\Services\TeamLogoPresets;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Application\Services\TeamMembershipHierarchy;
 use App\Modules\Team\Application\Services\TeamNameAllocator;
@@ -35,10 +37,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use Throwable;
 
 final class TeamController extends Controller
 {
@@ -95,9 +99,12 @@ final class TeamController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(TeamLogoPresets $presets): Response
     {
-        return ThemeResolver::page('teams.create', ['sportTypes' => TeamSportTypeEnum::cases()]);
+        return ThemeResolver::page('teams.create', [
+            'sportTypes' => TeamSportTypeEnum::cases(),
+            'logoPresets' => $presets->options(),
+        ]);
     }
 
     public function store(
@@ -105,15 +112,19 @@ final class TeamController extends Controller
         CurrentActorResolver $actors,
         CyrillicTransliterator $transliterator,
         TeamNameAllocator $names,
+        TeamLogoPresets $presets,
+        TeamLogoManager $logos,
     ): RedirectResponse {
         $data = $request->validate([
+            'logo_preset' => ['nullable', 'string', Rule::in(TeamLogoPresets::ids())],
             'name' => ['required', 'string', 'max:140'],
             'description' => ['nullable', 'string', 'max:5000'],
             'sport_types' => ['nullable', 'array', 'min:1'],
             'sport_types.*' => ['required', 'distinct', Rule::enum(TeamSportTypeEnum::class)],
         ]);
         $sportTypes = $data['sport_types'] ?? [TeamSportTypeEnum::BASKETBALL->value];
-        unset($data['sport_types']);
+        $logoPreset = $data['logo_preset'] ?? null;
+        unset($data['sport_types'], $data['logo_preset']);
         $actor = $actors->resolveForRequest($request);
         abort_if($actor?->user_id === null, 403);
         $identityIds = $actor->user?->canonical()->identityIds() ?? [];
@@ -129,9 +140,11 @@ final class TeamController extends Controller
             );
         }
 
+        $logoContents = $logoPreset === null ? null : $presets->contents($logoPreset);
+        $createdLogo = null;
         $hadDuplicate = false;
         try {
-            $team = DB::transaction(function () use ($data, $sportTypes, $actor, $transliterator, $names, &$hadDuplicate): Team {
+            $team = DB::transaction(function () use ($data, $sportTypes, $actor, $transliterator, $names, $logos, $logoContents, &$createdLogo, &$hadDuplicate): Team {
                 $allocatedName = $names->allocate($data['name'], $actor->user_id);
                 $hadDuplicate = $allocatedName['has_duplicate'];
                 $base = Str::slug($transliterator->transliterate($allocatedName['name'])) ?: 'team';
@@ -166,10 +179,22 @@ final class TeamController extends Controller
                     'invitation_status' => TeamInvitationStatusEnum::ACCEPTED,
                 ]);
 
+                if ($logoContents !== null) {
+                    $createdLogo = $logos->store($team, $actor, $logoContents, 'preset');
+                }
+
                 return $team;
             });
-        } catch (InvalidArgumentException $exception) {
-            throw ValidationException::withMessages(['name' => $exception->getMessage()]);
+        } catch (Throwable $exception) {
+            // The logo manager cleans its own failures; also clean a file if the outer commit fails.
+            if ($createdLogo instanceof Media) {
+                Storage::disk($createdLogo->disk)->delete($createdLogo->path);
+            }
+            if ($exception instanceof InvalidArgumentException) {
+                throw ValidationException::withMessages(['name' => $exception->getMessage()]);
+            }
+
+            throw $exception;
         }
 
         $message = $hadDuplicate
@@ -400,7 +425,7 @@ final class TeamController extends Controller
                 throw new InvalidArgumentException('Не удалось прочитать выбранный файл.');
             }
             $logos->store($item, $actor, $contents);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             return back()->with('error', $exception->getMessage());
         }
 
