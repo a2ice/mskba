@@ -33,7 +33,8 @@ final class AccountNicknameTest extends TestCase
     public function test_nickname_validation_and_url_collisions_are_rejected(): void
     {
         $user = User::factory()->create(['username' => 'owner_login']);
-        User::factory()->create(['username' => 'busy_login', 'nickname' => 'busy_nick']);
+        $busyUser = User::factory()->create(['username' => 'busy_login']);
+        $busyUser->forceFill(['nickname' => 'busy_nick'])->save();
 
         foreach (['_bad', 'ab', 'яигрок', 'bad-name'] as $invalid) {
             $this->actingAs($user)->patchJson(route('account.nickname.update'), ['nickname' => $invalid])
@@ -48,7 +49,8 @@ final class AccountNicknameTest extends TestCase
 
     public function test_nickname_becomes_canonical_public_profile_identifier(): void
     {
-        $user = User::factory()->create(['username' => 'legacy_login', 'nickname' => 'street_guard']);
+        $user = User::factory()->create(['username' => 'legacy_login']);
+        $user->forceFill(['nickname' => 'street_guard'])->save();
 
         $this->get('/users/legacy_login')->assertMovedPermanently()->assertRedirect('/users/street_guard');
         $this->get('/users/street_guard')->assertOk();
