@@ -1,4 +1,5 @@
 @php $title = 'Профиль'; @endphp
+@inject('nicknameSuggestions', 'App\Modules\Identity\Application\Services\NicknameSuggestionService')
 
 @extends('theme::layouts.section-sidebar', [
     'title' => $title,
@@ -45,7 +46,7 @@
                         pattern="[A-Za-z][A-Za-z0-9_]{2,29}"
                         autocomplete="off"
                         spellcheck="false"
-                        placeholder="например, dmitry_olsen"
+                        placeholder="например, {{ $nicknameSuggestions->suggest($user) }}"
                         aria-describedby="account-nickname-help account-nickname-status"
                     >
                     <button type="submit" class="btn btn--secondary btn--xs" data-account-nickname-submit>Сохранить</button>
