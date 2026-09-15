@@ -10,12 +10,13 @@ final readonly class ContentBodyRenderer
 {
     public function __construct(
         private ContentBodySanitizer $sanitizer,
-        private EmbeddedEntityShortcodeRenderer $shortcodes,
+        private ContentShortcodeRenderer $shortcodes,
+        private EmbeddedEntityShortcodeRenderer $entityShortcodes,
     ) {}
 
     public function render(ContentItem $content): string
     {
-        $source = $this->shortcodes->extract($content->full_description);
+        $source = $this->shortcodes->extract($content, $content->full_description);
 
         if ($content->content_format === ContentFormatEnum::SAFE_HTML) {
             return $this->shortcodes->restore($this->sanitizer->sanitize($source));
@@ -29,8 +30,8 @@ final readonly class ContentBodyRenderer
 
     public function renderPlainText(?string $text): string
     {
-        $source = $this->shortcodes->extract((string) $text);
+        $source = $this->entityShortcodes->extract((string) $text);
 
-        return $this->shortcodes->restore(nl2br(e($source)));
+        return $this->entityShortcodes->restore(nl2br(e($source)));
     }
 }

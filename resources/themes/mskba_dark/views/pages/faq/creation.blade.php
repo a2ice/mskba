@@ -3,6 +3,8 @@
     <a class="nav-link" href="{{ route('faq.index') }}">Все инструкции FAQ</a>
 @endsection
 @section('section-content')
+    @include('theme::pages.faq.search')
+
     <p class="lead">{{ $guide['intro'] }}</p>
 
     @include('theme::partials.creation-requirements', ['requirements' => $guide['requirements'] ?? []])

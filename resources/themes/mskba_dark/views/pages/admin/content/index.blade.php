@@ -2,7 +2,7 @@
 
 @extends('theme::partials.admin.list-shell', [
     'title' => $title,
-    'subtitle' => 'Материалы новостной ленты и публикации в Telegram.',
+    'subtitle' => 'Материалы, FAQ, новостная лента и публикации в Telegram.',
 ])
 
 @section('section-heading-action')
@@ -16,35 +16,35 @@
     @if(session('status')) <div class="alert alert-success mb-3">{{ session('status') }}</div> @endif
 
     <form class="admin-filter mb-4" method="GET" action="{{ route('admin.content') }}">
-            <label class="admin-filter__field" for="contentFilterQuery">
-                <span class="admin-filter__label">Поиск</span>
-                <input id="contentFilterQuery" class="form-control" name="q" value="{{ request('q') }}" placeholder="Название, alias, описание">
-            </label>
-            <label class="admin-filter__field" for="contentFilterType">
-                <span class="admin-filter__label">Тип</span>
-                <select id="contentFilterType" class="form-select" name="type">
-                    <option value="">Все</option>
-                    @foreach($types as $type)
-                        <option value="{{ $type->value }}" @selected(request('type') === $type->value)>{{ $type->label() }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label class="admin-filter__field" for="contentFilterFeed">
-                <span class="admin-filter__label">Лента</span>
-                <select id="contentFilterFeed" class="form-select" name="feed">
-                    <option value="">Все</option>
-                    <option value="published" @selected(request('feed') === 'published')>Опубликован</option>
-                    <option value="hidden" @selected(request('feed') === 'hidden')>Не опубликован</option>
-                </select>
-            </label>
-            <label class="admin-filter__field" for="contentFilterTelegram">
-                <span class="admin-filter__label">Telegram</span>
-                <select id="contentFilterTelegram" class="form-select" name="telegram">
-                    <option value="">Все</option>
-                    <option value="published" @selected(request('telegram') === 'published')>Включён</option>
-                    <option value="hidden" @selected(request('telegram') === 'hidden')>Выключен</option>
-                </select>
-            </label>
+        <label class="admin-filter__field" for="contentFilterQuery">
+            <span class="admin-filter__label">Поиск</span>
+            <input id="contentFilterQuery" class="form-control" name="q" value="{{ request('q') }}" placeholder="Название, alias, описание или тег">
+        </label>
+        <label class="admin-filter__field" for="contentFilterType">
+            <span class="admin-filter__label">Тип</span>
+            <select id="contentFilterType" class="form-select" name="type">
+                <option value="">Все</option>
+                @foreach($types as $type)
+                    <option value="{{ $type->value }}" @selected(request('type') === $type->value)>{{ $type->label() }}</option>
+                @endforeach
+            </select>
+        </label>
+        <label class="admin-filter__field" for="contentFilterFeed">
+            <span class="admin-filter__label">Лента</span>
+            <select id="contentFilterFeed" class="form-select" name="feed">
+                <option value="">Все</option>
+                <option value="published" @selected(request('feed') === 'published')>Опубликован</option>
+                <option value="hidden" @selected(request('feed') === 'hidden')>Не опубликован</option>
+            </select>
+        </label>
+        <label class="admin-filter__field" for="contentFilterTelegram">
+            <span class="admin-filter__label">Telegram</span>
+            <select id="contentFilterTelegram" class="form-select" name="telegram">
+                <option value="">Все</option>
+                <option value="published" @selected(request('telegram') === 'published')>Включён</option>
+                <option value="hidden" @selected(request('telegram') === 'hidden')>Выключен</option>
+            </select>
+        </label>
         <div class="admin-filter__actions">
             <button class="btn btn--primary btn--sm" type="submit">Фильтр</button>
             <a class="btn btn--secondary btn--sm" href="{{ route('admin.content') }}">Сброс</a>
@@ -76,21 +76,31 @@
                                 ?: '—';
                             $telegramPublished = $contentItem->telegramPublications->where('status', 'published')->count();
                             $telegramFailed = $contentItem->telegramPublications->where('status', 'failed')->count();
+                            $isFaq = $contentItem->type === \App\Modules\Content\Domain\Enums\ContentTypeEnum::FAQ;
                         @endphp
                         <tr>
                             <td>{{ $contentItem->id }}</td>
                             <td>
                                 <strong>{{ $contentItem->title }}</strong>
                                 <div class="admin-table__muted">{{ $contentItem->alias }}</div>
+                                @if($contentItem->tags->isNotEmpty())
+                                    <div class="admin-table__muted">{{ $contentItem->tags->pluck('name')->implode(', ') }}</div>
+                                @endif
                             </td>
                             <td>{{ $contentItem->type->label() }}</td>
                             <td>
-                                <span class="admin-badge {{ $contentItem->publish_in_feed ? 'admin-badge--success' : '' }}">
-                                    {{ $contentItem->publish_in_feed ? 'Опубликован' : 'Не опубликован' }}
-                                </span>
+                                @if($isFaq)
+                                    —
+                                @else
+                                    <span class="admin-badge {{ $contentItem->publish_in_feed ? 'admin-badge--success' : '' }}">
+                                        {{ $contentItem->publish_in_feed ? 'Опубликован' : 'Не опубликован' }}
+                                    </span>
+                                @endif
                             </td>
                             <td>
-                                @if($contentItem->publish_in_telegram)
+                                @if($isFaq)
+                                    —
+                                @elseif($contentItem->publish_in_telegram)
                                     <span class="admin-badge {{ $telegramFailed > 0 ? 'admin-badge--danger' : 'admin-badge--success' }}">
                                         {{ $telegramPublished }} опубликовано{{ $telegramFailed ? ', '.$telegramFailed.' с ошибкой' : '' }}
                                     </span>
@@ -103,8 +113,8 @@
                             <td>
                                 <div class="content-admin-actions">
                                     <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.edit', $contentItem->alias) }}">Редактировать</a>
-                                    @if($contentItem->publish_in_feed)
-                                        <a class="btn btn--secondary btn--sm" href="{{ route('news.show', $contentItem->alias) }}" target="_blank" rel="noopener">Просмотр</a>
+                                    @if($isFaq || $contentItem->publish_in_feed)
+                                        <a class="btn btn--secondary btn--sm" href="{{ $contentItem->publicUrl() }}" target="_blank" rel="noopener">Просмотр</a>
                                     @endif
                                 </div>
                             </td>

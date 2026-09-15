@@ -8,6 +8,7 @@ enum ContentTypeEnum: string
     case EVENT = 'event';
     case VENUE = 'venue';
     case USER = 'user';
+    case FAQ = 'faq';
 
     public function label(): string
     {
@@ -16,19 +17,23 @@ enum ContentTypeEnum: string
             self::EVENT => 'О мероприятии',
             self::VENUE => 'О площадке',
             self::USER => 'Для пользователей',
+            self::FAQ => 'FAQ',
         };
     }
 
     public function supportsRelatedEntity(): bool
     {
-        return $this !== self::MATERIAL;
+        return match ($this) {
+            self::EVENT, self::VENUE, self::USER => true,
+            self::MATERIAL, self::FAQ => false,
+        };
     }
 
     public function requiresRelatedEntity(): bool
     {
         return match ($this) {
             self::EVENT, self::VENUE => true,
-            self::MATERIAL, self::USER => false,
+            self::MATERIAL, self::USER, self::FAQ => false,
         };
     }
 }

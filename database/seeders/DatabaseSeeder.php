@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         DB::transaction(function (): void {
             $this->seedSuperadmin();
             $this->call(GeographySeeder::class);
+            $this->call(FaqContentSeeder::class);
             $this->seedMoscowMetro();
         });
     }

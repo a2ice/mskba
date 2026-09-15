@@ -34,6 +34,7 @@ final class SaveContentItemRequest extends FormRequest
             'content_format' => ['required', Rule::enum(ContentFormatEnum::class)],
             'type' => ['required', Rule::enum(ContentTypeEnum::class)],
             'related_id' => ['nullable', 'integer', 'min:1'],
+            'tags' => ['nullable', 'string', 'max:3000'],
             'link_url' => ['nullable', 'string', 'max:2048'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:320'],
@@ -64,7 +65,9 @@ final class SaveContentItemRequest extends FormRequest
                     $validator->errors()->add('link_url', 'Укажите внутренний путь или полный URL.');
                 }
 
-                if ($this->boolean('publish_in_telegram') && count((array) $this->input('telegram_chat_ids', [])) === 0) {
+                if ($type !== ContentTypeEnum::FAQ
+                    && $this->boolean('publish_in_telegram')
+                    && count((array) $this->input('telegram_chat_ids', [])) === 0) {
                     $validator->errors()->add('telegram_chat_ids', 'Выберите хотя бы один Telegram-чат.');
                 }
             },

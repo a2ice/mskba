@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -23,6 +24,7 @@ use Illuminate\Support\Str;
     'type',
     'title',
     'alias',
+    'system_key',
     'short_description',
     'full_description',
     'content_format',
@@ -60,6 +62,19 @@ final class ContentItem extends Model
         return $this->media()->where('collection', 'content_cover')->orderByDesc('is_featured');
     }
 
+    public function inlineImages(): MorphMany
+    {
+        return $this->media()
+            ->where('collection', 'content_inline')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(ContentTag::class, 'content_item_tag');
+    }
+
     public function telegramPublications(): HasMany
     {
         return $this->hasMany(TelegramContentPublication::class);
@@ -76,6 +91,20 @@ final class ContentItem extends Model
 
     public function publicUrl(): string
     {
+        if ($this->type === ContentTypeEnum::FAQ) {
+            if ($this->system_key === 'faq.welcome') {
+                return route('faq.welcome');
+            }
+
+            if (is_string($this->system_key) && Str::startsWith($this->system_key, 'faq.creation.')) {
+                return route('faq.creation', [
+                    'topic' => Str::after($this->system_key, 'faq.creation.'),
+                ]);
+            }
+
+            return route('faq.show', $this->alias);
+        }
+
         return route('news.show', $this->alias);
     }
 

@@ -16,6 +16,8 @@
                 <p class="lead">Короткий маршрут после создания аккаунта и пояснения к условиям доступа.</p>
             </div>
 
+            @include('theme::pages.faq.search')
+
             <div class="section-content">
                 <div class="card mb-4" id="contact-confirmation">
                     <div class="card-body">
