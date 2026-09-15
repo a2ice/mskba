@@ -147,7 +147,8 @@ final class TelegramWebLoginTest extends TestCase
             ->assertSee('data-telegram-login="MSKBABot"', false)
             ->assertSee('data-onauth="mskbaTelegramLogin(user)"', false)
             ->assertSee('auth-telegram-login__widget', false)
-            ->assertSee('Быстрый вход')
+            ->assertSee('или быстрый вход через')
+            ->assertSee('auth-social-login__button--telegram', false)
             ->assertDontSee('data-telegram-bot-login', false)
             ->assertDontSee('Войти через Telegram-бота');
 
