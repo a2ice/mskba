@@ -10,16 +10,16 @@ enum VenueCreationRoleEnum: string
     public function label(): string
     {
         return match ($this) {
-            self::REPRESENTATIVE => 'Я представитель площадки',
-            self::CONTRIBUTOR => 'Хочу добавить площадку в каталог',
+            self::REPRESENTATIVE => 'Как представитель площадки',
+            self::CONTRIBUTOR => 'Просто хочу добавить площадку',
         };
     }
 
     public function description(): string
     {
         return match ($this) {
-            self::REPRESENTATIVE => 'Я владелец или уполномоченный представитель. Для подтверждения управления понадобится скан документа о полномочиях. Его можно прикрепить после добавления площадки.',
-            self::CONTRIBUTOR => 'Знаю место для баскетбола и хочу поделиться им. Представлять площадку и подтверждать права документами не нужно.',
+            self::REPRESENTATIVE => 'Смогу предоставить документы для подтверждения права управления площадкой (скан или оригинал).',
+            self::CONTRIBUTOR => '',
         };
     }
 }

@@ -61,6 +61,7 @@ use App\Modules\Tournament\Presentation\Http\Controllers\TournamentOnSiteRegistr
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentScheduleController;
 use App\Modules\Tournament\Presentation\Http\Controllers\TournamentStaffCandidateSearchController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueCommercialMembershipController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueConditionsController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenuePhotoController;
@@ -752,6 +753,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         });
         Route::get('/venues/{alias}', [AccountController::class, 'showVenue'])->name('account.venues.show');
         Route::get('/venues/{alias}/edit', [VenueController::class, 'edit'])->name('account.venues.edit');
+        Route::get('/venues/{alias}/conditions', [VenueConditionsController::class, 'edit'])->name('account.venues.conditions.edit')->defaults('breadcrumb', 'Условия');
+        Route::put('/venues/{alias}/conditions', [VenueConditionsController::class, 'update'])->name('account.venues.conditions.update');
         Route::put('/venues/{alias}', [VenueController::class, 'update'])->name('account.venues.update');
         Route::get('/venues/{alias}/status', [VenueController::class, 'status'])
             ->name('account.venues.status')

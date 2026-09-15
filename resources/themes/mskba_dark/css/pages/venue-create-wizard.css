@@ -12,6 +12,20 @@
     outline-offset: 3px;
 }
 
+.venue-create-wizard .event-wizard-choice {
+    height: 100%;
+}
+
+.venue-create-wizard .event-wizard-choice-grid {
+    grid-auto-rows: 1fr;
+}
+
+.venue-create-wizard .event-wizard-choice__surface {
+    height: 100%;
+    min-height: 200px;
+    justify-content: flex-start;
+}
+
 @media (max-width: 640px) {
     .venue-create-wizard .event-wizard-choice-grid {
         grid-template-columns: 1fr;
