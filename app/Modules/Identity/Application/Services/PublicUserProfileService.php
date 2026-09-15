@@ -24,7 +24,14 @@ final class PublicUserProfileService
 
     public function url(User $user, ?string $role = null, bool $preview = false): string
     {
-        return route('users.'.($user->username ? '' : 'id.').($preview ? 'preview' : ($role === null ? 'show' : 'role')), ['user' => $user->username ?: $user->id, 'role' => $role]);
+        $user = $user->canonical();
+        $identifier = $user->nickname ?: $user->username;
+        $byId = $identifier === null;
+
+        return route(
+            'users.'.($byId ? 'id.' : '').($preview ? 'preview' : ($role === null ? 'show' : 'role')),
+            ['user' => $identifier ?: $user->id, 'role' => $role],
+        );
     }
 
     public function canListPlayer(User $subject, ?User $viewer): bool
@@ -57,10 +64,12 @@ final class PublicUserProfileService
         $publicCoach = $sections->isNotEmpty();
         abort_unless($publicCoach || $this->privacy->allows($subject, $viewer, Privacy::PROFILE), 404);
         $subject->loadMissing(['profile.activeAvatar', 'telegramAccount', 'vkAccount']);
+        $avatarAllowed = $this->privacy->allows($subject, $viewer, Privacy::AVATAR);
 
         return [
-            'name' => trim(($subject->profile?->first_name ?? '').' '.($subject->profile?->last_name ?? '')) ?: ($subject->username ?: 'Пользователь'),
-            'avatar_url' => $publicCoach || $this->privacy->allows($subject, $viewer, Privacy::AVATAR) ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url) : null,
+            'name' => trim(($subject->profile?->first_name ?? '').' '.($subject->profile?->last_name ?? '')) ?: ($subject->nickname ?: $subject->username ?: 'Пользователь'),
+            'avatar_url' => $avatarAllowed ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url) : null,
+            'avatar_restricted' => ! $avatarAllowed,
             'url' => $this->url($subject),
             'public_coach' => $publicCoach,
             'role_label' => $publicCoach ? 'Тренер' : ($subject->hasActiveRole('player') && $this->privacy->allows($subject, $viewer, Privacy::ROLE_PLAYER) ? 'Игрок' : 'Пользователь'),
@@ -73,6 +82,7 @@ final class PublicUserProfileService
         $subject = $subject->canonical();
         $data = $this->preview($subject, $viewer);
         $profileAllowed = $this->privacy->allows($subject, $viewer, Privacy::PROFILE);
+        $subject->loadMissing('playerProfile');
         $roles = collect(UserParticipationRoleEnum::cases())->filter(function ($candidate) use ($subject, $viewer, $data, $profileAllowed) {
             return $subject->hasActiveRole($candidate->value) && (
                 ($candidate === UserParticipationRoleEnum::COACH && $data['public_coach']) ||
@@ -80,7 +90,12 @@ final class PublicUserProfileService
             );
         });
         abort_if($role !== null && ! $roles->contains(fn ($candidate) => $candidate->value === $role), 404);
-        $data['roles'] = $roles->map(fn ($candidate) => ['value' => $candidate->value, 'name' => $candidate->label(), 'description' => $candidate->description(), 'url' => $this->url($subject, $candidate->value)])->values()->all();
+        $data['roles'] = $roles->map(fn ($candidate) => [
+            'value' => $candidate->value,
+            'name' => $candidate->label(),
+            'description' => $this->roleDescription($subject, $candidate),
+            'url' => $this->url($subject, $candidate->value),
+        ])->values()->all();
         $data['role'] = $role;
         $data['blocks'] = [];
 
@@ -105,6 +120,18 @@ final class PublicUserProfileService
         }
 
         return $data;
+    }
+
+    private function roleDescription(User $subject, UserParticipationRoleEnum $role): string
+    {
+        if ($role === UserParticipationRoleEnum::PLAYER) {
+            $custom = trim((string) ($subject->playerProfile?->comment ?? ''));
+            if ($custom !== '') {
+                return $custom;
+            }
+        }
+
+        return $role->description();
     }
 
     private function memberships(User $user, string $scope, string $role): Builder

@@ -8,6 +8,7 @@ use App\Modules\Identity\Application\Listeners\GrantOperationalPermissionsAfterC
 use App\Modules\Identity\Application\Listeners\ScanUserDuplicatesAfterContactConfirmed;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\Profile;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountNicknameController;
 use App\Modules\Identity\Presentation\Http\Controllers\UserDuplicateController;
 use App\Modules\Telegram\Presentation\Http\Controllers\LinkTelegramIdentityController;
 use Illuminate\Support\Facades\Event;
@@ -32,6 +33,10 @@ final class IdentityCanonicalizationServiceProvider extends ServiceProvider
         Route::middleware(['web', 'auth'])
             ->prefix('account')
             ->group(function (): void {
+                Route::patch('/nickname', UpdateAccountNicknameController::class)
+                    ->middleware('throttle:20,1')
+                    ->name('account.nickname.update');
+
                 Route::get('/telegram', fn () => redirect()->route('account.contacts'))
                     ->name('account.telegram')
                     ->defaults('breadcrumb', 'Telegram');

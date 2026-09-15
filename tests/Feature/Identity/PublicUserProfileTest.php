@@ -35,7 +35,7 @@ final class PublicUserProfileTest extends TestCase
     public function test_player_blocks_are_independent_and_api_only_returns_basic_information(): void
     {
         $user = $this->user('player');
-        $user->playerProfile()->create(['height_cm' => 198, 'comment' => 'PRIVATE COMMENT', 'extra' => ['secret' => 'PRIVATE EXTRA']]);
+        $user->playerProfile()->create(['height_cm' => 198, 'comment' => 'Люблю быстрый баскетбол.', 'extra' => ['secret' => 'PRIVATE EXTRA']]);
         $this->privacy($user, 'role_player', 'everyone');
         $this->privacy($user, 'avatar', 'nobody');
         $service = app(PublicUserProfileService::class);
@@ -47,9 +47,10 @@ final class PublicUserProfileTest extends TestCase
         $data = $service->page($user->fresh(), null, 'player');
         $this->assertCount(5, $data['blocks']);
         $this->assertStringContainsString('198', json_encode($data));
-        $this->assertStringNotContainsString('PRIVATE', json_encode($data));
-        $response = $this->getJson('/users/'.$user->username.'/preview')->assertOk()->assertJsonPath('user.avatar_url', null);
-        $this->assertSame(['name', 'avatar_url', 'url', 'public_coach', 'role_label', 'sections'], array_keys($response->json('user')));
+        $this->assertSame('Люблю быстрый баскетбол.', $data['roles'][0]['description']);
+        $this->assertStringNotContainsString('PRIVATE EXTRA', json_encode($data));
+        $response = $this->getJson('/users/'.$user->username.'/preview')->assertOk()->assertJsonPath('user.avatar_url', null)->assertJsonPath('user.avatar_restricted', true);
+        $this->assertSame(['name', 'avatar_url', 'avatar_restricted', 'url', 'public_coach', 'role_label', 'sections'], array_keys($response->json('user')));
         $this->assertStringNotContainsString($user->password, $response->getContent());
         $this->get('/users/'.$user->username.'/player')->assertOk();
     }
@@ -73,8 +74,14 @@ final class PublicUserProfileTest extends TestCase
             $this->privacy($user, $type, 'nobody');
         }
         $this->getJson('/users/'.$user->username.'/preview')->assertOk()
-            ->assertJsonPath('user.public_coach', true)->assertJsonPath('user.sections.0.name', $section->name);
-        $this->get('/users/'.$user->username.'/coach')->assertOk()->assertSee($section->name)->assertDontSee($user->password);
+            ->assertJsonPath('user.public_coach', true)
+            ->assertJsonPath('user.avatar_url', null)
+            ->assertJsonPath('user.avatar_restricted', true)
+            ->assertJsonPath('user.sections.0.name', $section->name);
+        $this->get('/users/'.$user->username.'/coach')->assertOk()
+            ->assertSee($section->name)
+            ->assertSee('Отображение аватара запрещено в настройках профиля')
+            ->assertDontSee($user->password);
         $section->forceFill(['status' => 'paused'])->save();
         $this->getJson('/users/'.$user->username.'/preview')->assertNotFound();
     }
@@ -136,7 +143,7 @@ final class PublicUserProfileTest extends TestCase
         $this->get(route('sports-sections.show', $section))->assertOk()->assertViewHas('publicPlayers', fn ($members) => $members->count() === 1);
         $this->getJson('/users/'.$player->username.'/preview')->assertOk()->assertJsonPath('user.avatar_url', '/storage/avatars/player.webp');
         $this->privacy($player, 'avatar', 'nobody');
-        $this->getJson('/users/'.$player->username.'/preview')->assertOk()->assertJsonPath('user.avatar_url', null);
+        $this->getJson('/users/'.$player->username.'/preview')->assertOk()->assertJsonPath('user.avatar_url', null)->assertJsonPath('user.avatar_restricted', true);
         $this->privacy($player, 'profile', 'nobody');
         $this->get(route('sports-sections.show', $section))->assertOk()->assertViewHas('publicPlayers', fn ($members) => $members->isEmpty());
     }

@@ -1,6 +1,7 @@
 .public-user-profile { display: grid; gap: 24px; }
 .public-user-profile section { border: 1px solid var(--line); border-radius: var(--radius-control); padding: 24px; }
 .public-user-profile__avatar { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; }
+.public-user-profile__avatar--placeholder { display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); background: var(--surface-soft, rgba(255,255,255,.04)); font-size: 42px; }
 .public-user-profile ul { display: grid; gap: 12px; padding-left: 20px; }
 .sports-section-public__person-card { width: 100%; text-align: left; color: var(--text); background: transparent; font: inherit; cursor: pointer; }
 .sports-section-public__person-card:hover { border-color: var(--accent-text); }

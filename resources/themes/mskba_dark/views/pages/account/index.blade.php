@@ -28,6 +28,31 @@
                 Логин:
                 <span class="fw-bold">{{ $user->username }}</span>
             </li>
+            <li class="list-unstyled mb-3">
+                <form method="POST" action="{{ route('account.nickname.update') }}" data-account-nickname-form class="d-flex align-items-center gap-2 flex-wrap">
+                    @csrf
+                    @method('PATCH')
+                    <label for="account-nickname" class="mb-0">Никнейм:</label>
+                    <input
+                        id="account-nickname"
+                        class="form-control"
+                        style="max-width: 260px"
+                        type="text"
+                        name="nickname"
+                        value="{{ $user->nickname }}"
+                        minlength="3"
+                        maxlength="30"
+                        pattern="[A-Za-z][A-Za-z0-9_]{2,29}"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="например, dmitry_olsen"
+                        aria-describedby="account-nickname-help account-nickname-status"
+                    >
+                    <button type="submit" class="btn btn--secondary btn--xs" data-account-nickname-submit>Сохранить</button>
+                    <span id="account-nickname-status" class="small" data-account-nickname-status aria-live="polite"></span>
+                </form>
+                <small id="account-nickname-help" class="text-muted d-block mt-1">3–30 символов: латинская буква в начале, далее латинские буквы, цифры и _.</small>
+            </li>
             <li class="list-unstyled mb-2">
                 Статус:
                 <span class="fw-bold">{{ $user->status->label() }}</span>

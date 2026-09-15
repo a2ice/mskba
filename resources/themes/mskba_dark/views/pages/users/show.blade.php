@@ -13,6 +13,11 @@
     <article class="public-user-profile">
         @if($publicProfile['avatar_url'])
             <img class="public-user-profile__avatar" src="{{ $publicProfile['avatar_url'] }}" alt="{{ $publicProfile['name'] }}">
+        @else
+            <div
+                class="public-user-profile__avatar public-user-profile__avatar--placeholder"
+                @if($publicProfile['avatar_restricted']) title="Отображение аватара запрещено в настройках профиля" data-tooltip-variant="title" @endif
+            ><i class="ti ti-user" aria-hidden="true"></i></div>
         @endif
         @foreach($publicProfile['roles'] as $role)
             @if($publicProfile['role'] === null || $publicProfile['role'] === $role['value'])
