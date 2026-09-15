@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 final class CreateAcquisitionCampaignCommand extends Command
 {
     protected $signature = 'acquisition:campaign
-        {code : Публичный код для /join/{code}}
+        {code : Публичный код для ссылки /join/...}
         {name : Понятное название кампании}
         {--channel=qr : qr|context_ads|social|partner|referral|direct|other}
         {--venue= : ID или alias площадки для геопроверки}
