@@ -66,7 +66,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-CRF7kMyw.js",
+    "file": "assets/app-FHjUFdG5.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
@@ -77,7 +77,7 @@
       "resources/themes/mskba_dark/js/features/home-event-empty-create-cta.js"
     ],
     "css": [
-      "assets/app-D-W5MGDX.css"
+      "assets/app-DZLtvr27.css"
     ],
     "assets": [
       "assets/mskba-female-player-v1-C_A-jYPE.glb",
@@ -85,7 +85,7 @@
     ]
   },
   "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js": {
-    "file": "assets/home-event-discovery-v2-DrDy6egq.js",
+    "file": "assets/home-event-discovery-v2-DdEUhwtp.js",
     "name": "home-event-discovery-v2",
     "src": "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
     "isDynamicEntry": true,

@@ -43,11 +43,14 @@
             </div>
             <div class="event-wizard-choice-grid event-wizard-choice-grid--formats">
                 @foreach(\App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum::cases() as $role)
-                    <label class="event-wizard-choice">
-                        <input type="radio" name="creation_role" value="{{ $role->value }}" required @checked(old('creation_role', 'contributor') === $role->value)>
+                    <label class="event-wizard-choice" data-venue-wizard-choice>
+                        <input type="radio" name="creation_role" value="{{ $role->value }}" required @checked(old('creation_role') === $role->value)>
                         <span class="event-wizard-choice__surface">
                             <i class="ti {{ $role->value === 'representative' ? 'ti-id' : 'ti-map-pin' }}" aria-hidden="true"></i>
-                            <strong>{{ $role->label() }}</strong><small>{{ $role->description() }}</small>
+                            <strong>{{ $role->label() }}</strong>
+                            @if($role->description())
+                                <small>{{ $role->description() }} <span class="ui-tooltip-trigger" role="button" tabindex="0" aria-label="Когда предоставить документы" data-tooltip="Это можно сделать и позже." data-venue-role-tooltip>?</span></small>
+                            @endif
                         </span>
                     </label>
                 @endforeach
@@ -56,13 +59,12 @@
         </section>
     @endif
 
-    <fieldset class="venue-form__fieldset {{ $createWizard ? 'event-wizard-step venue-create-wizard__step' : '' }}" @if($createWizard) data-venue-wizard-step="details" @endif @disabled($readOnly)>
+    <fieldset @class(['venue-form__fieldset', 'event-wizard-step venue-create-wizard__step' => $createWizard]) @disabled($readOnly) @if($createWizard) data-venue-wizard-step="details" @endif>
     @if($createWizard)
         <div class="event-wizard-step__heading">
             <span class="event-wizard-step__number">02</span>
             <div><h2 tabindex="-1">Основные данные</h2><p>После добавления сможете загрузить фото, дополнить описание и отправить площадку на модерацию.</p></div>
         </div>
-        <p class="form-hint" data-venue-wizard-role-note></p>
     @endif
     <div class="mb-3">
         <label for="venueName" class="form-label">Название</label>
@@ -78,32 +80,6 @@
         @error('name')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
-    </div>
-
-    @php
-        $savedAccessType = $revisionDetails['access_type']
-            ?? ($venue?->requires_payment === null ? 'unknown' : ($venue->requires_payment ? 'paid' : 'free'));
-        $bookingApproval = old('requires_booking_approval', $revisionDetails['requires_booking_approval'] ?? $venue?->requires_booking_approval ?? false);
-    @endphp
-    <div class="mb-3">
-        <label for="venueAccessType" class="form-label">Условия оплаты</label>
-        <select id="venueAccessType" name="access_type" class="form-select @error('access_type') is-invalid @enderror" required>
-            <option value="unknown" @selected(old('access_type', $savedAccessType) === 'unknown')>Не указано</option>
-            <option value="free" @selected(old('access_type', $savedAccessType) === 'free')>Бесплатно</option>
-            <option value="paid" @selected(old('access_type', $savedAccessType) === 'paid')>Платно</option>
-        </select>
-        <div class="form-text">«Не указано» не считается бесплатным доступом и не подтверждает бронь автоматически.</div>
-        @error('access_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    </div>
-
-    <div class="mb-3">
-        @include('theme::partials.forms.toggle', [
-            'name' => 'requires_booking_approval',
-            'id' => 'venueRequiresBookingApproval',
-            'checked' => (bool) $bookingApproval,
-            'title' => 'Требуется подтверждение бронирования',
-            'description' => 'Заявка на бронь должна быть подтверждена ответственным за площадку.',
-        ])
     </div>
 
     <div class="mb-3">
@@ -270,10 +246,10 @@
     <div class="d-flex flex-wrap align-items-center gap-3">
         @if($createWizard)
             <button type="button" class="btn btn--secondary btn--sm" data-venue-wizard-back hidden>Назад</button>
-            <button type="button" class="btn btn--primary btn--sm" data-venue-wizard-next hidden>Далее</button>
+            <a href="{{ $cancelUrl }}" class="btn btn--secondary btn--sm" data-venue-wizard-fallback-back>Назад</a>
         @endif
         <button type="submit" class="btn btn--primary btn--sm" @if($createWizard) data-venue-wizard-submit @endif @disabled($readOnly)>{{ $submitLabel }}</button>
-        <a href="{{ $cancelUrl }}" class="btn btn--secondary btn--sm">Отмена</a>
+        @unless($createWizard)<a href="{{ $cancelUrl }}" class="btn btn--secondary btn--sm">Отмена</a>@endunless
         @if($readOnly)
             <span id="venue-form-read-only-message" class="venue-form__read-only-message">{{ $readOnlyMessage }}</span>
         @endif
