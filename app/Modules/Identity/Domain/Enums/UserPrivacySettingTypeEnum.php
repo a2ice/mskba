@@ -16,6 +16,7 @@ enum UserPrivacySettingTypeEnum: string
     case ROLE_STATISTICIAN = 'role_statistician';
     case ROLE_MEDIA = 'role_media';
     case ROLE_VENUE_RELATED = 'role_venue_related';
+    case ROLE_ORGANIZER = 'role_organizer';
     case PLAYER_CHARACTERISTICS = 'player_characteristics';
     case PLAYER_TEAMS = 'player_teams';
     case PLAYER_SECTIONS = 'player_sections';
@@ -42,6 +43,7 @@ enum UserPrivacySettingTypeEnum: string
             self::ROLE_STATISTICIAN => 'Страница статиста',
             self::ROLE_MEDIA => 'Страница медиа',
             self::ROLE_VENUE_RELATED => 'Страница представителя площадки',
+            self::ROLE_ORGANIZER => 'Страница организатора мероприятий',
             self::PLAYER_CHARACTERISTICS => 'Игровые характеристики',
             self::PLAYER_TEAMS => 'Команды игрока',
             self::PLAYER_SECTIONS => 'Участие игрока в секциях',
