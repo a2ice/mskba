@@ -24,7 +24,7 @@ final class TeamLogoManager
         private readonly TeamManagementAccess $access,
     ) {}
 
-    public function store(Team $team, Actor $actor, string $contents): Media
+    public function store(Team $team, Actor $actor, string $contents, string $source = 'upload'): Media
     {
         $image = $this->normalizer->normalize($contents, self::MAX_OUTPUT_DIMENSION);
         $disk = 'public';
@@ -35,7 +35,7 @@ final class TeamLogoManager
         }
 
         try {
-            return DB::transaction(function () use ($team, $actor, $disk, $path, $image): Media {
+            return DB::transaction(function () use ($team, $actor, $disk, $path, $image, $source): Media {
                 $lockedTeam = Team::query()->whereKey($team->id)->lockForUpdate()->firstOrFail();
                 abort_unless($this->access->canManage($lockedTeam, $actor), 403);
                 $previous = $lockedTeam->media()
@@ -45,7 +45,7 @@ final class TeamLogoManager
 
                 $logo = $lockedTeam->media()->create([
                     'collection' => self::COLLECTION,
-                    'source' => 'upload',
+                    'source' => $source,
                     'disk' => $disk,
                     'path' => $path,
                     'mime' => $image['mime'],

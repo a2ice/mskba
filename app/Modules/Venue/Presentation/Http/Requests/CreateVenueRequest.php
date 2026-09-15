@@ -5,6 +5,7 @@ namespace App\Modules\Venue\Presentation\Http\Requests;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Venue\Application\Services\VenueProximityService;
+use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Presentation\Http\Requests\Concerns\InteractsWithVenueTags;
@@ -26,6 +27,7 @@ class CreateVenueRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'creation_role' => ['sometimes', Rule::enum(VenueCreationRoleEnum::class)],
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'type' => ['required', Rule::enum(VenueTypeEnum::class)],

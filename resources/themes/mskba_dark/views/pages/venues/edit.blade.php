@@ -50,6 +50,13 @@
     @endif
 
     @if($venue !== null)
+        @if((int) session('venue_creation_representative_id') === $venue->id)
+            <section class="section-card mb-4" aria-labelledby="venue-representative-heading">
+                <h2 id="venue-representative-heading">Подтвердите управление площадкой</h2>
+                <p>Для подтверждения полномочий понадобится скан документа. Подайте заявку на управление и прикрепите документ в переписке по заявке. Это можно сделать позже через раздел «Управление» на странице площадки.</p>
+                <a href="{{ route('venues.management', $venue) }}" class="btn btn--secondary btn--sm">Подтвердить управление</a>
+            </section>
+        @endif
         @if($hasPendingModeration)
             <div class="alert alert-warning">
                 Площадка находится на модерации. Данные ниже доступны для просмотра, но изменить их можно будет после решения модератора.
