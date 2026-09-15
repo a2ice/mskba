@@ -32,7 +32,7 @@
         player: 'player',
         coach: 'coach',
         venue: 'venue_related',
-        organizer: '',
+        organizer: 'organizer',
         explore: '',
     };
 
