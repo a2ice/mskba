@@ -49,7 +49,12 @@
                             <i class="ti {{ $role->value === 'representative' ? 'ti-id' : 'ti-map-pin' }}" aria-hidden="true"></i>
                             <strong>{{ $role->label() }}</strong>
                             @if($role->description())
-                                <small>{{ $role->description() }} <span class="ui-tooltip-trigger" role="button" tabindex="0" aria-label="Когда предоставить документы" data-tooltip="Это можно сделать и позже." data-venue-role-tooltip>?</span></small>
+                                <small>
+                                    {{ $role->description() }}
+                                    @if($role === \App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum::REPRESENTATIVE)
+                                        <span class="ui-tooltip-trigger" role="button" tabindex="0" aria-label="Когда предоставить документы" data-tooltip="Это можно сделать и позже." data-venue-role-tooltip>?</span>
+                                    @endif
+                                </small>
                             @endif
                         </span>
                     </label>
