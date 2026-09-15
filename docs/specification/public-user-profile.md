@@ -6,6 +6,8 @@ GET `/users/{identifier}`, `/users/{identifier}/{role}`, `/users/{identifier}/pr
 
 `users.nickname` — nullable varchar(30) с unique index. PATCH `/account/nickname` находится под `web`, `auth` и throttle, нормализует строку в lower-case и проверяет regex `^[a-z][a-z0-9_]*$`, длину 3–30 и отсутствие коллизии как с nickname, так и с username другой identity. Пустое значение удаляет nickname. JSON-ответ содержит сохранённое значение и новый public URL; UI `/account` выполняет запрос через `account-nickname.js`.
 
+Placeholder никнейма на `/account` не является общим статическим примером. `NicknameSuggestionService` строит персональную подсказку из имени и фамилии через латинскую slug-транслитерацию и показывает её только при отсутствии коллизии с nickname/username другой identity. Если персональный вариант занят или не строится, используется первый свободный нейтральный вариант: `court_king`, затем цифровые варианты `court_king1...`, при необходимости `court_king_1000...`. Подсказка не резервирует значение: PATCH всегда повторно проверяет фактическую доступность.
+
 `PublicUserProfileService` формирует явный набор полей. API попапа отдаёт только имя, URL/состояние аватара и страницы, публичную подпись роли, признак публичного тренера и открытые секции. Модели User/Profile/Contact целиком не сериализуются. Ответы страниц/API используют `Cache-Control: private, no-store`, поскольку зависят от посетителя.
 
 Приватность проверяется `UserPrivacyAccessService` с каноническими identity. Новые enum-типы не требуют миграции: type хранится строкой, отсутствующие строки используют defaults. Старые клиенты могут отправить четыре прежние настройки; пропущенные новые настройки сохраняются. Форма перечисляет все enum cases.
@@ -32,4 +34,4 @@ GET `/users/{identifier}`, `/users/{identifier}/{role}`, `/users/{identifier}/pr
 
 Организатор не видит CTA записи; ManageSportsSectionJoinRequestHandler повторяет запрет внутри транзакции после блокировки секции. Публичное чтение новых lock-порядков не вводит.
 
-Проверки: AccountNicknameTest, PublicUserProfileTest, AccountPrivacySettingsTest, AccountAvatarTest, SportsSection suite, production build и GitHub CI. [Продуктовые правила](../project/public-user-profile.md).
+Проверки: AccountNicknameTest, NicknameSuggestionTest, PublicUserProfileTest, AccountPrivacySettingsTest, AccountAvatarTest, SportsSection suite, production build и GitHub CI. [Продуктовые правила](../project/public-user-profile.md).

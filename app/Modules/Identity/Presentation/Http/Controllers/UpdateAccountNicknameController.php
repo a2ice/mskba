@@ -2,16 +2,19 @@
 
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
+use App\Modules\Identity\Application\Services\NicknameSuggestionService;
 use App\Modules\Identity\Application\Services\PublicUserProfileService;
-use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 final class UpdateAccountNicknameController
 {
-    public function __invoke(Request $request, PublicUserProfileService $profiles): JsonResponse
-    {
+    public function __invoke(
+        Request $request,
+        PublicUserProfileService $profiles,
+        NicknameSuggestionService $nicknames,
+    ): JsonResponse {
         $user = $request->user()?->canonical();
         abort_unless($user, 401);
 
@@ -39,22 +42,11 @@ final class UpdateAccountNicknameController
             ], 422);
         }
 
-        if ($nickname !== null) {
-            $identityIds = $user->identityIds();
-            $conflictExists = User::withTrashed()
-                ->whereNotIn('id', $identityIds)
-                ->where(function ($query) use ($nickname): void {
-                    $query->whereRaw('LOWER(nickname) = ?', [$nickname])
-                        ->orWhereRaw('LOWER(username) = ?', [$nickname]);
-                })
-                ->exists();
-
-            if ($conflictExists) {
-                return response()->json([
-                    'message' => 'Этот никнейм уже занят.',
-                    'errors' => ['nickname' => ['Этот никнейм уже занят.']],
-                ], 422);
-            }
+        if ($nickname !== null && ! $nicknames->isAvailableFor($user, $nickname)) {
+            return response()->json([
+                'message' => 'Этот никнейм уже занят.',
+                'errors' => ['nickname' => ['Этот никнейм уже занят.']],
+            ], 422);
         }
 
         $user->forceFill(['nickname' => $nickname])->save();
