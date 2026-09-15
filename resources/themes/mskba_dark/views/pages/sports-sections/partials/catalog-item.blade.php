@@ -7,20 +7,15 @@
 
     <div class="sports-section-category-item__body">
         <div class="catalog-card__badges sports-section-category-item__badges">
-            <span class="catalog-card__badge">
-                {{ $item['training_mode']['label'] }}
-            </span>
-            <span class="catalog-card__badge is-sport">
-                {{ $item['format']['label'] }}
-            </span>
+            <span class="catalog-card__badge">{{ $item['training_mode']['label'] }}</span>
+            <span class="catalog-card__badge is-sport">{{ $item['format']['label'] }}</span>
             @if($item['recruiting'])
-                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--recruiting">
-                    Идёт набор
+                <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--recruiting sports-section-category-item__badge--pulse">
+                    {{ $item['recruitment_text'] }}
                 </span>
-            @endif
-            @if($item['accepts_requests'])
+            @elseif($item['accepts_requests'])
                 <span class="catalog-card__badge sports-section-category-item__badge sports-section-category-item__badge--applications">
-                    Принимает заявки
+                    {{ $item['recruitment_text'] }}
                 </span>
             @endif
         </div>
@@ -49,7 +44,7 @@
                 </span>
             </p>
             <p>
-                <i class="ti ti-users" aria-hidden="true"></i><span>{{ $item['participant_count_text'] }}</span>
+                <i class="ti ti-users" aria-hidden="true"></i><span>{{ $item['capacity'] !== null ? $item['participant_count'].'/'.$item['capacity'] : $item['participant_count_text'] }}</span>
             </p>
             <p>
                 <i class="ti ti-cash" aria-hidden="true"></i><span>{{ $item['pricing_text'] }}</span>
