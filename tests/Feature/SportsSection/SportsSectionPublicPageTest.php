@@ -14,6 +14,7 @@ use App\Modules\SportsSection\Application\UseCases\ManageSectionCoachHandler;
 use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
 use App\Modules\SportsSection\Domain\Models\SectionTraineeMembership;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
+use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -82,7 +83,10 @@ final class SportsSectionPublicPageTest extends TestCase
     public function test_primary_venue_is_labeled_as_default_and_opens_existing_preview_modal(): void
     {
         [, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
-        $venue = Venue::factory()->create(['name' => 'Школа №1794']);
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'status' => VenueStatusEnum::CONFIRMED,
+        ]);
         $section = $this->activeSection($actor);
         $section->forceFill(['primary_venue_id' => $venue->id])->save();
 
