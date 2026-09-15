@@ -26,6 +26,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRoles
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
+use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
@@ -408,6 +409,14 @@ Route::prefix('rental-interest')
                 ->name('venue-rental-coordinations.convert');
         });
     });
+
+Route::get('/users/{user:username}/preview', [PublicUserProfileController::class, 'preview'])->name('users.preview');
+Route::get('/users/id/{user}/preview', [PublicUserProfileController::class, 'preview'])->whereNumber('user')->defaults('by_id', true)->name('users.id.preview');
+Route::get('/users/id/{user}', [PublicUserProfileController::class, 'show'])->whereNumber('user')->defaults('by_id', true)->name('users.id.show');
+Route::get('/users/id/{user}/{role}', [PublicUserProfileController::class, 'show'])->whereNumber('user')->where('role', 'player|coach|referee|statistician|media|venue_related')->defaults('by_id', true)->name('users.id.role');
+Route::get('/users/{user:username}', [PublicUserProfileController::class, 'show'])->name('users.show');
+Route::get('/users/{user:username}/{role}', [PublicUserProfileController::class, 'show'])
+    ->where('role', 'player|coach|referee|statistician|media|venue_related')->name('users.role');
 
 Route::prefix('events')->group(function () {
     Route::get('/', [EventController::class, 'index'])

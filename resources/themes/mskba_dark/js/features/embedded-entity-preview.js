@@ -17,24 +17,36 @@ document.addEventListener('click', (event) => {
 async function loadVenue(url, trigger) {
     const message = modal.querySelector('[data-entity-preview-message]');
     const content = modal.querySelector('[data-entity-preview-content]');
+    const userContent = modal.querySelector('[data-user-preview-content]');
 
     requestController?.abort();
     requestController = new AbortController();
+    const controller = requestController;
+    modal.querySelector('[data-entity-preview-title]').textContent = trigger.dataset.entityType === 'user' ? 'Профиль' : 'Площадка';
     message.textContent = 'Загружаем информацию…';
     message.hidden = false;
     content.hidden = true;
+    userContent.hidden = true;
     resetMap();
 
     try {
         const response = await fetch(url, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
-            signal: requestController.signal,
+            signal: controller.signal,
         });
         const payload = await response.json().catch(() => ({}));
+        if (controller !== requestController || controller.signal.aborted) return;
 
-        if (!response.ok || !payload.venue) {
-            throw new Error(payload.message || 'Не удалось загрузить информацию о площадке.');
+        if (!response.ok || (!payload.venue && !payload.user)) {
+            throw new Error(payload.message || 'Информация недоступна.');
+        }
+
+        if (payload.user) {
+            renderUser(payload.user);
+            message.hidden = true;
+            userContent.hidden = false;
+            return;
         }
 
         renderVenue(payload.venue);
@@ -42,10 +54,32 @@ async function loadVenue(url, trigger) {
         content.hidden = false;
         renderVenueMap(payload.venue, trigger);
     } catch (error) {
-        if (error.name !== 'AbortError') {
+        if (error.name !== 'AbortError' && controller === requestController) {
             message.textContent = error.message || 'Не удалось загрузить информацию о площадке.';
         }
     }
+}
+
+function renderUser(user) {
+    modal.querySelector('[data-entity-preview-title]').textContent = user.name || 'Пользователь';
+    modal.querySelector('[data-user-preview-role]').textContent = user.public_coach ? 'Тренер открытой секции' : (user.role_label || 'Пользователь');
+    const avatar = modal.querySelector('[data-user-preview-avatar]');
+    avatar.hidden = !user.avatar_url;
+    avatar.alt = user.name || '';
+    if (user.avatar_url) avatar.src = user.avatar_url;
+    else avatar.removeAttribute('src');
+    modal.querySelector('[data-user-preview-page]').href = user.url;
+    const sections = modal.querySelector('[data-user-preview-sections]');
+    sections.replaceChildren();
+    for (const section of user.sections || []) {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = section.url;
+        link.textContent = section.name;
+        item.append(link);
+        sections.append(item);
+    }
+    sections.hidden = sections.childElementCount === 0;
 }
 
 function renderVenue(venue) {

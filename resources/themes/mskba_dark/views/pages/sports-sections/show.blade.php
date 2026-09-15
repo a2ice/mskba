@@ -105,7 +105,8 @@
 
 @section('section-heading-action')
     <div class="sports-section-heading-actions">
-        @if($isActiveTrainee)
+        @if($canManageSection)
+        @elseif($isActiveTrainee)
             <span class="btn btn--secondary btn--sm" aria-disabled="true">Вы уже занимаетесь</span>
         @elseif($currentJoinRequest)
             <span class="btn btn--secondary btn--sm" aria-disabled="true">Заявка на рассмотрении</span>
@@ -185,7 +186,7 @@
                     <form method="POST" action="{{ route('sports-sections.applications.cancel', [$section, $currentJoinRequest]) }}">@csrf @method('PATCH')
                         <button class="btn btn--secondary" type="submit">Отменить заявку</button>
                     </form>
-                @elseif($section->accepts_trainee_requests && auth()->check() && ! $canApply && ! $isActiveTrainee)
+                @elseif($section->accepts_trainee_requests && auth()->check() && ! $canApply && ! $isActiveTrainee && ! $canManageSection)
                     <span class="sports-section-show__application-hint">Для записи нужен подтверждённый активный профиль игрока.</span>
                 @elseif(! $section->accepts_trainee_requests)
                     <span class="sports-section-show__application-hint">Секция сейчас не принимает новые заявки.</span>
@@ -218,12 +219,23 @@
             <div class="sports-section-public__section-heading"><div><span>Команда секции</span><h2>Тренеры</h2></div></div>
             <div class="sports-section-public__cards sports-section-public__cards--people">
                 @foreach($publicCoaches as $membership)
-                    @php($coach = $membership->user)
-                    @php($coachName = trim(($coach?->profile?->first_name ?? '').' '.($coach?->profile?->last_name ?? '')) ?: ($coach?->username ?? 'Тренер'))
-                    <article class="sports-section-public__person-card">
-                        <div class="sports-section-public__person-avatar"><i class="ti ti-user" aria-hidden="true"></i></div>
-                        <div><strong>{{ $coachName }}</strong><span>{{ $membership->id === $section->head_coach_membership_id ? 'Главный тренер' : 'Тренер' }}</span></div>
-                    </article>
+                    @php
+                        $coach = $membership->user;
+                    @endphp
+                    @if(! $coach->canonical()->isBlocked() && ! $coach->canonical()->trashed() && $coach->canonical()->hasActiveRole('coach'))
+                        @include('theme::pages.users.person-card', ['person' => $coach->canonical(), 'personLabel' => $membership->id === $section->head_coach_membership_id ? 'Главный тренер' : 'Тренер'])
+                    @endif
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    @if($publicPlayers->isNotEmpty())
+        <section class="sports-section-public__section" id="section-players">
+            <div class="sports-section-public__section-heading"><div><span>Участники секции</span><h2>Игроки</h2></div></div>
+            <div class="sports-section-public__cards sports-section-public__cards--people">
+                @foreach($publicPlayers as $membership)
+                    @include('theme::pages.users.person-card', ['person' => $membership->user->canonical(), 'personLabel' => 'Участник секции'])
                 @endforeach
             </div>
         </section>

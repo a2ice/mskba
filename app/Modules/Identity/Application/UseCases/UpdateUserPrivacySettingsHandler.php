@@ -25,6 +25,9 @@ final class UpdateUserPrivacySettingsHandler
             User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
 
             foreach (UserPrivacySettingTypeEnum::cases() as $type) {
+                if (! array_key_exists($type->value, $settings)) {
+                    continue;
+                }
                 $data = $settings[$type->value];
                 $visibility = UserPrivacyVisibilityEnum::from($data['visibility']);
 

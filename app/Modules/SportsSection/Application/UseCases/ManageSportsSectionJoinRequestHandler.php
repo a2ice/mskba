@@ -29,6 +29,9 @@ final readonly class ManageSportsSectionJoinRequestHandler
 
         return DB::transaction(function () use ($section, $user): SportsSectionJoinRequest {
             $section = SportsSection::query()->lockForUpdate()->findOrFail($section->id);
+            if ($this->access->allows($user, $section, SportsSectionPermissionEnum::MANAGE)) {
+                throw new SportsSectionException('Организатору секции не нужно подавать заявку на запись.');
+            }
             if ($section->status !== SportsSectionStatusEnum::ACTIVE || ! $section->accepts_trainee_requests) {
                 throw new SportsSectionException('Секция сейчас не принимает заявки.');
             }

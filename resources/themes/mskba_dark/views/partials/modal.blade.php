@@ -41,6 +41,12 @@ $modals = [
 ])
     <h2 class="modal_title" id="modal-title-embedded-entity-preview" data-entity-preview-title>Площадка</h2>
     <p class="venue-selector-preview__message" data-entity-preview-message>Загружаем информацию…</p>
+    <article class="public-user-profile" data-user-preview-content hidden>
+        <img class="public-user-profile__avatar" src="" alt="" data-user-preview-avatar hidden>
+        <p data-user-preview-role></p>
+        <ul data-user-preview-sections></ul>
+        <a class="btn" href="#" target="_blank" rel="noopener noreferrer" data-user-preview-page>Открыть профиль</a>
+    </article>
     <article class="venue-selector-preview" data-entity-preview-content hidden>
         <div class="venue-selector-preview__image-wrap" data-entity-preview-image-wrap hidden>
             <img class="venue-selector-preview__image" src="" alt="" data-entity-preview-image>

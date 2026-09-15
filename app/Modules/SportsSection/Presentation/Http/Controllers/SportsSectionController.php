@@ -3,6 +3,7 @@
 namespace App\Modules\SportsSection\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Identity\Application\Services\PublicUserProfileService;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
 use App\Modules\SportsSection\Domain\Enums\SectionContactSourceEnum;
@@ -136,7 +137,8 @@ final class SportsSectionController extends Controller
             'headCoachMembership.user.contacts',
             'coachMemberships' => fn ($query) => $query
                 ->whereIn('id', $activeCoachMembershipIds)
-                ->with('user.profile'),
+                ->with('user.profile.activeAvatar'),
+            'traineeMemberships' => fn ($query) => $query->where('status', TraineeMembershipStatusEnum::ACTIVE->value)->with('user.profile.activeAvatar'),
             'contacts' => fn ($query) => $query->where('is_public', true),
             'primaryVenue.location.address',
             'primaryVenueCourt',
@@ -172,6 +174,7 @@ final class SportsSectionController extends Controller
             ->where('status', TraineeMembershipStatusEnum::ACTIVE->value)
             ->exists();
         $canApply = $user !== null
+            && ! $access->allows($user, $sportsSection, SportsSectionPermissionEnum::MANAGE)
             && ! $isActiveTrainee
             && $currentJoinRequest === null
             && $sportsSection->accepts_trainee_requests
@@ -191,6 +194,7 @@ final class SportsSectionController extends Controller
             'isActiveTrainee' => $isActiveTrainee,
             'canApply' => $canApply,
             'canManageSection' => $canManageSection,
+            'publicPlayers' => $sportsSection->traineeMemberships->filter(fn ($membership) => $membership->user && app(PublicUserProfileService::class)->canListPlayer($membership->user, $user)),
             'canManageTrainees' => $canManageTrainees,
             'canManageSessions' => $canManageSessions,
         ]);

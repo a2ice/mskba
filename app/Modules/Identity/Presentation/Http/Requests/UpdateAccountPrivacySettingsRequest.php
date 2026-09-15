@@ -43,6 +43,9 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
                 $privacy = $this->input('privacy', []);
 
                 foreach (UserPrivacySettingTypeEnum::cases() as $type) {
+                    if (! array_key_exists($type->value, $privacy) && ! in_array($type, [UserPrivacySettingTypeEnum::DISCOVERABILITY, UserPrivacySettingTypeEnum::CONTACTS, UserPrivacySettingTypeEnum::MESSAGES, UserPrivacySettingTypeEnum::GROUP_INVITATIONS], true)) {
+                        continue;
+                    }
                     $setting = $privacy[$type->value] ?? null;
 
                     if (! is_array($setting)) {

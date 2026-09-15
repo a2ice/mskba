@@ -19,6 +19,7 @@
     @endif
 
     @if ($user)
+        <p><a class="btn btn--secondary" href="{{ app(\App\Modules\Identity\Application\Services\PublicUserProfileService::class)->url($user) }}">Открыть публичный профиль</a></p>
 
         @if(session('status'))
             <div class="alert alert-success">
