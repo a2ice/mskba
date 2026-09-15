@@ -137,11 +137,10 @@ function renderBalloon(group) {
         const name = escapeMarkup(section.name || 'Секция');
         const url = escapeMarkup(section.url || '#');
         const meta = escapeMarkup([section.format, section.training_mode, section.pricing].filter(Boolean).join(' · '));
-        const badges = [
-            section.recruiting ? '<span class="sports-section-category-map-balloon__badge">Идёт набор</span>' : '',
-            section.accepts_requests ? '<span class="sports-section-category-map-balloon__badge sports-section-category-map-balloon__badge--applications">Принимает заявки</span>' : '',
-        ].filter(Boolean).join('');
-        const badgesHtml = badges ? `<div class="sports-section-category-map-balloon__badges">${badges}</div>` : '';
+        const recruitment = section.recruitment_text
+            ? `<span class="sports-section-category-map-balloon__badge${section.recruiting ? '' : ' sports-section-category-map-balloon__badge--applications'}">${escapeMarkup(section.recruitment_text)}</span>`
+            : '';
+        const badgesHtml = recruitment ? `<div class="sports-section-category-map-balloon__badges">${recruitment}</div>` : '';
 
         return `<div class="sports-section-category-map-balloon__item"><a href="${url}">${name}</a><small>${meta}</small>${badgesHtml}</div>`;
     }).join('');
