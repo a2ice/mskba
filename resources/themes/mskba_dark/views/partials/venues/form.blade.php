@@ -22,7 +22,7 @@
         ->all();
 @endphp
 
-<form method="POST" action="{{ $action }}" @if($createWizard) class="event-wizard venue-create-wizard" data-venue-create-wizard data-initial-step="{{ ($errors->any() || session('error')) && ! $errors->has('creation_role') ? 'details' : 'role' }}" @endif @if($readOnly) aria-describedby="venue-form-read-only-message" @endif>
+<form method="POST" action="{{ $action }}" @if($createWizard) enctype="multipart/form-data" class="event-wizard venue-create-wizard" data-venue-create-wizard data-initial-step="{{ ($errors->any() || session('error')) && ! $errors->has('creation_role') ? 'details' : 'role' }}" @endif @if($readOnly) aria-describedby="venue-form-read-only-message" @endif>
     @csrf
     @if(strtoupper($method) !== 'POST')
         @method($method)
@@ -246,6 +246,13 @@
     </div>
     @endunless
 
+        @if($createWizard)
+            <section data-venue-representative-fields>
+                <h3>Заявка на управление</h3>
+                <p class="form-text">Для представителя сохраним черновик заявки. Его можно дополнить и отправить на проверку позже.</p>
+                @include('theme::partials.venues.ownership-draft-fields', ['claim' => null])
+            </section>
+        @endif
     </fieldset>
 
     <div class="d-flex flex-wrap align-items-center gap-3">

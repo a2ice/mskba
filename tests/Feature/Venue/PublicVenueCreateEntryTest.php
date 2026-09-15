@@ -9,9 +9,11 @@ use App\Modules\Location\Application\DTO\CreateLocationDTO;
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Venue\Application\UseCases\CreateAccountVenueHandler;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use Tests\TestCase;
@@ -402,12 +404,14 @@ class PublicVenueCreateEntryTest extends TestCase
         ]);
 
         $venue = Venue::query()->where('name', 'Площадка представителя')->firstOrFail();
-        $response->assertRedirect(route('account.venues.edit', $venue->routeIdentifier()))
-            ->assertSessionHas('venue_creation_representative_id', $venue->id);
+        $response->assertRedirect(route('account.venues.edit', $venue->routeIdentifier()));
+        $claim = VenueOwnershipClaim::query()->where('venue_id', $venue->id)->sole();
+        $this->assertSame(VenueOwnershipClaimStatusEnum::DRAFT, $claim->status);
+        $this->assertNull($claim->submitted_at);
         $this->assertSame(VenueStatusEnum::UNCONFIRMED, $venue->status);
         $this->assertDatabaseMissing('venue_ownerships', ['venue_id' => $venue->id]);
         $this->get(route('account.venues.edit', $venue->routeIdentifier()))->assertOk()
-            ->assertSee(route('venues.management', $venue));
+            ->assertSee(route('account.venue-ownership.show', $claim));
     }
 
     public function test_unknown_creation_scenario_cannot_create_a_venue(): void

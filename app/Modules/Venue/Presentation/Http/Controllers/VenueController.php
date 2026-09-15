@@ -20,11 +20,12 @@ use App\Modules\Venue\Application\UseCases\ShowManageableVenueHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
-use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use App\Modules\Venue\Domain\Models\VenueOwnershipClaim;
 use App\Modules\Venue\Domain\Models\VenueRevision;
 use App\Modules\Venue\Presentation\Http\Requests\CreateVenueRequest;
 use App\Modules\Venue\Presentation\Http\Requests\SubmitModerationRequest;
@@ -36,6 +37,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class VenueController extends Controller
 {
@@ -225,6 +227,8 @@ class VenueController extends Controller
                 $request->locationData(),
                 $request->tagNames(),
             );
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 422);
@@ -237,18 +241,20 @@ class VenueController extends Controller
         }
 
         if ($request->expectsJson()) {
+            $claim = VenueOwnershipClaim::query()->where('venue_id', $venue->id)
+                ->where('applicant_user_id', $request->user()->canonical()->id)
+                ->where('status', VenueOwnershipClaimStatusEnum::DRAFT)->first();
+
             return response()->json([
                 'message' => 'Площадка создана. Проверьте данные и отправьте её на модерацию.',
                 'venue' => $this->venuePayload($venue),
-                'management_url' => $request->validated('creation_role') === VenueCreationRoleEnum::REPRESENTATIVE->value
-                    ? route('venues.management', $venue)
-                    : null,
+                'management_url' => $claim ? route('account.venue-ownership.show', $claim) : null,
+                'ownership_claim' => $claim ? ['id' => $claim->public_id, 'status' => $claim->status->value] : null,
             ], 201);
         }
 
         return redirect()
             ->route('account.venues.edit', $venue->routeIdentifier())
-            ->with('venue_creation_representative_id', $request->validated('creation_role') === VenueCreationRoleEnum::REPRESENTATIVE->value ? $venue->id : null)
             ->with('status', 'Площадка создана. Проверьте и дополните данные.');
     }
 
@@ -309,6 +315,9 @@ class VenueController extends Controller
 
         return ThemeResolver::page('venues.edit', [
             'venue' => $venue,
+            'ownershipDraft' => VenueOwnershipClaim::query()->where('venue_id', $venue->id)
+                ->whereIn('applicant_user_id', $request->user()->canonical()->identityIds())
+                ->where('status', VenueOwnershipClaimStatusEnum::DRAFT)->withCount('documents')->first(),
             'venueRevision' => $venue->draftRevision,
             'venuePhotos' => $gallery->editableGallery($venue),
             'types' => VenueTypeEnum::cases(),

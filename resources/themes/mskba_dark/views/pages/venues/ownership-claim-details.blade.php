@@ -6,6 +6,7 @@
         $claim->applicant?->profile?->last_name,
     ]))) ?: $claim->applicant?->username;
     $ownership = $claim->ownership;
+    $isDraft = $claim->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::DRAFT;
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -13,7 +14,7 @@
 @section('content')
     <section
         class="first-screen venue-ownership-page"
-        data-venue-ownership-claim-page
+        @unless($isDraft) data-venue-ownership-claim-page @endunless
         data-claim-id="{{ $claim->public_id }}"
         data-conversation-url="{{ route('account.venue-ownership.conversation.index', $claim) }}"
         data-message-url="{{ route('account.venue-ownership.conversation.store', $claim) }}"
@@ -48,7 +49,7 @@
                         <div class="venue-ownership-card__meta">
                             <span>Заявитель</span>
                             <strong>{{ $applicantName ?: 'Пользователь MSKBA' }}</strong>
-                            <span>Отправлена {{ $claim->submitted_at->format('d.m.Y H:i') }}</span>
+                            <span>{{ $claim->submitted_at ? 'Отправлена '.$claim->submitted_at->format('d.m.Y H:i') : 'Черновик · не отправлена' }}</span>
                         </div>
                         <h2>Подтверждение полномочий</h2>
                         <p class="venue-ownership-evidence">{!! nl2br(e($claim->evidence)) !!}</p>
@@ -60,6 +61,39 @@
                             </div>
                         @endif
                     </article>
+
+                    @if($isDraft && $isApplicant)
+                        <section class="venue-ownership-card venue-ownership-card--compact">
+                            <h2>Продолжить заявку</h2>
+                            <p>Черновик доступен только вам. Права владельца появятся после проверки и одобрения. Для отправки подтвердите аккаунт или основной контакт.</p>
+                            @if(! $claim->applicant->isConfirmed() && ! $claim->applicant->hasVerifiedPrimaryContact())
+                                <a href="{{ route('venues.management.verify', $claim->venue) }}" class="btn btn--secondary btn--sm">Подтвердить аккаунт или контакт</a>
+                            @endif
+                            <form method="POST" action="{{ route('account.venue-ownership.draft.save', $claim) }}" enctype="multipart/form-data">
+                                @csrf
+                                @include('theme::partials.venues.ownership-draft-fields', ['claim' => $claim])
+                                <button class="btn btn--secondary btn--sm" name="intent" value="save">Сохранить черновик</button>
+                                <button class="btn btn--primary btn--sm" name="intent" value="submit">Отправить на проверку</button>
+                            </form>
+                        </section>
+                    @endif
+
+                    @if($claim->documents->isNotEmpty())
+                        <section class="venue-ownership-card venue-ownership-card--compact">
+                            <h2>Документы заявки</h2>
+                            @foreach($claim->documents as $document)
+                                <div class="venue-ownership-basis-item">
+                                    <a href="{{ route('account.venue-ownership.documents.download', [$claim, $document]) }}"><i class="ti ti-file-certificate" aria-hidden="true"></i> {{ $document->name }}</a>
+                                    @if($isDraft && $isApplicant)
+                                        <form method="POST" action="{{ route('account.venue-ownership.documents.destroy', [$claim, $document]) }}">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn--secondary btn--sm">Удалить</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </section>
+                    @endif
 
                     @if($ownership)
                         <section class="venue-ownership-card venue-ownership-card--compact venue-ownership-result-card">
@@ -106,6 +140,7 @@
                         </section>
                     @endif
 
+                    @unless($isDraft)
                     <section class="venue-ownership-chat" id="ownership-conversation" aria-labelledby="ownership-chat-title">
                         <div class="venue-ownership-chat__head">
                             <div>
@@ -204,6 +239,7 @@
                             @endif
                         @endif
                     </section>
+                    @endunless
                 </main>
 
                 <aside class="venue-ownership-claim-side">
@@ -239,7 +275,7 @@
                         </section>
                     @endif
 
-                    @if($isApplicant && $claim->status === \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::PENDING)
+                    @if($isApplicant && in_array($claim->status, [\App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::DRAFT, \App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum::PENDING], true))
                         <section class="venue-ownership-review-card venue-ownership-review-card--muted">
                             <h2>Заявка на рассмотрении</h2>
                             <p>Вы можете отменить её, пока решение ещё не принято.</p>

@@ -9,6 +9,7 @@ use App\Modules\Venue\Application\Services\VenueUserRestrictionService;
 use App\Modules\Venue\Application\UseCases\CancelVenueOwnershipClaimHandler;
 use App\Modules\Venue\Application\UseCases\SubmitVenueOwnershipClaimHandler;
 use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
+use App\Modules\Venue\Domain\Enums\VenueOwnershipDocumentTypeEnum;
 use App\Modules\Venue\Domain\Enums\VenueUserRestrictionTypeEnum;
 use App\Modules\Venue\Domain\Exceptions\VenueOwnershipClaimException;
 use App\Modules\Venue\Domain\Models\Venue;
@@ -36,6 +37,7 @@ final class VenueOwnershipClaimController extends Controller
         $owner = $currentOwnership?->owner ?? $memberships->activeOwner($venue);
         $user = $request->user()?->canonical();
         $pendingClaim = null;
+        $draftClaim = null;
         $claimHistory = collect();
         $restriction = null;
 
@@ -47,6 +49,7 @@ final class VenueOwnershipClaimController extends Controller
                 ->get();
             $pendingClaim = $claimHistory
                 ->first(fn (VenueOwnershipClaim $claim): bool => $claim->status === VenueOwnershipClaimStatusEnum::PENDING);
+            $draftClaim = $claimHistory->first(fn (VenueOwnershipClaim $claim): bool => $claim->status === VenueOwnershipClaimStatusEnum::DRAFT);
             $restriction = $restrictions->active($venue, $user, VenueUserRestrictionTypeEnum::OWNERSHIP_CLAIM);
         }
 
@@ -59,6 +62,7 @@ final class VenueOwnershipClaimController extends Controller
             'currentOwnership' => $currentOwnership,
             'currentUser' => $user,
             'pendingClaim' => $pendingClaim,
+            'draftClaim' => $draftClaim,
             'claimHistory' => $claimHistory,
             'restriction' => $restriction,
             'canSubmitClaim' => $currentOwnership === null
@@ -127,10 +131,11 @@ final class VenueOwnershipClaimController extends Controller
         $isReviewer = $user->isConfirmed() && $user->system_role->atLeast(UserSystemRoleEnum::ADMIN);
         $isApplicant = $user->isSameIdentity($venueOwnershipClaim->applicant_user_id);
 
-        abort_unless($isApplicant || $isReviewer, 403);
+        abort_unless($isApplicant || ($isReviewer && $venueOwnershipClaim->submitted_at !== null), 403);
 
         $claim = $venueOwnershipClaim->load([
             'venue',
+            'documents',
             'reviewer.profile',
             'applicant.profile',
             'conversation.messages.conversation',
@@ -141,7 +146,7 @@ final class VenueOwnershipClaimController extends Controller
             'claim' => $claim,
             'isReviewer' => $isReviewer,
             'isApplicant' => $isApplicant,
-            'documentTypes' => \App\Modules\Venue\Domain\Enums\VenueOwnershipDocumentTypeEnum::cases(),
+            'documentTypes' => VenueOwnershipDocumentTypeEnum::cases(),
         ]);
     }
 

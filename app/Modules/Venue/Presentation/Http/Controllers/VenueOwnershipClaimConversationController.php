@@ -25,6 +25,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final class VenueOwnershipClaimConversationController extends Controller
 {
     private const MAX_ATTACHMENTS_PER_CLAIM = 10;
+
     private const MAX_ATTACHMENT_BYTES_PER_CLAIM = 52_428_800;
 
     public function index(
@@ -296,12 +297,12 @@ final class VenueOwnershipClaimConversationController extends Controller
             ->where('type', 'attachment');
 
         abort_if(
-            (clone $attachments)->count() >= self::MAX_ATTACHMENTS_PER_CLAIM,
+            (clone $attachments)->count() + $conversation->claim->documents()->count() >= self::MAX_ATTACHMENTS_PER_CLAIM,
             422,
             'Достигнут лимит вложений по заявке.',
         );
 
-        $usedBytes = (int) (clone $attachments)->sum('attachment_size');
+        $usedBytes = (int) (clone $attachments)->sum('attachment_size') + (int) $conversation->claim->documents()->sum('size');
         abort_if(
             $usedBytes + $incomingBytes > self::MAX_ATTACHMENT_BYTES_PER_CLAIM,
             422,
@@ -344,7 +345,7 @@ final class VenueOwnershipClaimConversationController extends Controller
         $user = $request->user()?->canonical();
         abort_unless($user !== null, 401);
         abort_unless(
-            $user->isSameIdentity($claim->applicant_user_id) || $this->isReviewer($request),
+            $user->isSameIdentity($claim->applicant_user_id) || ($claim->submitted_at !== null && $this->isReviewer($request)),
             403,
         );
 

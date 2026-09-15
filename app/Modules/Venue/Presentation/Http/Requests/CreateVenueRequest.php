@@ -4,6 +4,7 @@ namespace App\Modules\Venue\Presentation\Http\Requests;
 
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Location\Application\DTO\CreateLocationDTO;
+use App\Modules\Venue\Application\Services\VenueOwnershipClaimDraftManager;
 use App\Modules\Venue\Application\Services\VenueProximityService;
 use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
@@ -27,6 +28,7 @@ class CreateVenueRequest extends FormRequest
     public function rules(): array
     {
         return [
+            ...VenueOwnershipClaimDraftManager::uploadRules(),
             'creation_role' => ['sometimes', Rule::enum(VenueCreationRoleEnum::class)],
             'telegram_flow' => ['sometimes', 'accepted'],
             'name' => ['required', 'string', 'min:3', 'max:255'],
@@ -58,6 +60,10 @@ class CreateVenueRequest extends FormRequest
         $this->addVenueTagValidation($validator);
 
         $validator->after(function ($validator): void {
+            if ($this->input('creation_role') !== VenueCreationRoleEnum::REPRESENTATIVE->value
+                && ($this->hasFile('ownership_documents') || $this->filled('ownership_evidence'))) {
+                $validator->errors()->add('creation_role', 'Документы и подтверждение полномочий доступны только представителю площадки.');
+            }
             $proximity = app(VenueProximityService::class);
             $type = VenueTypeEnum::tryFrom((string) $this->input('type'));
             $latitude = $this->input('location.latitude');

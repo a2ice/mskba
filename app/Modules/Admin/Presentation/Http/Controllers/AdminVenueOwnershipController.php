@@ -42,6 +42,7 @@ final class AdminVenueOwnershipController extends Controller
             ?? VenueOwnershipStatusEnum::ACTIVE;
 
         $claims = VenueOwnershipClaim::query()
+            ->whereNotNull('submitted_at')
             ->with(['venue', 'applicant.profile', 'reviewer.profile', 'conversation'])
             ->when($queue === 'new', fn ($query) => $query
                 ->where('status', VenueOwnershipClaimStatusEnum::PENDING->value)

@@ -23,16 +23,18 @@ final class AdminVenueOwnershipClaimsController extends Controller
 
         $status = VenueOwnershipClaimStatusEnum::tryFrom($validated['status'] ?? '')
             ?? VenueOwnershipClaimStatusEnum::PENDING;
+        abort_if($status === VenueOwnershipClaimStatusEnum::DRAFT, 403);
 
         return ThemeResolver::page('admin.venue-ownership-claims', [
             'claims' => VenueOwnershipClaim::query()
+                ->whereNotNull('submitted_at')
                 ->with(['venue', 'applicant.profile', 'reviewer'])
                 ->where('status', $status->value)
                 ->oldest('submitted_at')
                 ->paginate(30)
                 ->withQueryString(),
             'selectedStatus' => $status,
-            'statuses' => VenueOwnershipClaimStatusEnum::cases(),
+            'statuses' => array_filter(VenueOwnershipClaimStatusEnum::cases(), fn ($case) => $case !== VenueOwnershipClaimStatusEnum::DRAFT),
         ]);
     }
 

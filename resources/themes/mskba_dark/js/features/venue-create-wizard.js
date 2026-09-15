@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let active = form.dataset.initialStep === 'details' ? 1 : 0;
 
         const showStep = (index, focus = true) => {
+            const representative = form.querySelector('[name="creation_role"]:checked')?.value === 'representative';
+            const fields = form.querySelector('[data-venue-representative-fields]');
+            fields.hidden = !representative;
+            fields.querySelectorAll('input, textarea').forEach((input) => { input.disabled = !representative; });
             active = index;
             steps.forEach((step, position) => { step.hidden = position !== active; });
             submit.hidden = active === 0;

@@ -60,14 +60,19 @@ final readonly class SubmitVenueOwnershipClaimHandler
                 throw new VenueOwnershipClaimException('Ваша заявка на эту площадку уже находится на рассмотрении.');
             }
 
-            $claim = VenueOwnershipClaim::query()->create([
+            $claim = VenueOwnershipClaim::query()
+                ->where('venue_id', $lockedVenue->id)
+                ->whereIn('applicant_user_id', $applicant->identityIds())
+                ->where('status', VenueOwnershipClaimStatusEnum::DRAFT)
+                ->lockForUpdate()->first() ?? new VenueOwnershipClaim;
+            $claim->forceFill([
                 'venue_id' => $lockedVenue->id,
                 'applicant_user_id' => $applicant->id,
                 'status' => VenueOwnershipClaimStatusEnum::PENDING,
                 'evidence' => trim($evidence),
                 'active_marker' => true,
                 'submitted_at' => now(),
-            ]);
+            ])->save();
 
             DB::afterCommit(static fn () => event(new VenueOwnershipClaimSubmitted($claim->id)));
 

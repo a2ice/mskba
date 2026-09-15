@@ -50,11 +50,11 @@
     @endif
 
     @if($venue !== null)
-        @if((int) session('venue_creation_representative_id') === $venue->id)
+        @if($ownershipDraft ?? null)
             <section class="section-card mb-4" aria-labelledby="venue-representative-heading">
                 <h2 id="venue-representative-heading">Подтвердите управление площадкой</h2>
-                <p>Для подтверждения полномочий понадобится скан документа. Подайте заявку на управление и прикрепите документ в переписке по заявке. Это можно сделать позже через раздел «Управление» на странице площадки.</p>
-                <a href="{{ route('venues.management', $venue) }}" class="btn btn--secondary btn--sm">Подтвердить управление</a>
+                <p>Черновик заявки сохранён. Документов: {{ $ownershipDraft->documents_count }}. Дополните заявку и отправьте её на проверку, когда будете готовы.</p>
+                <a href="{{ route('account.venue-ownership.show', $ownershipDraft) }}" class="btn btn--secondary btn--sm">Продолжить заявку</a>
             </section>
         @endif
         @if($hasPendingModeration)

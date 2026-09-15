@@ -11,6 +11,7 @@ use App\Modules\Venue\Domain\Models\VenueOwnershipClaimConversation;
 use App\Modules\Venue\Infrastructure\Http\Middleware\VenueOwnershipIntendedRedirect;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimController;
 use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimConversationController;
+use App\Modules\Venue\Presentation\Http\Controllers\VenueOwnershipClaimDraftController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Broadcast;
@@ -43,6 +44,12 @@ final class VenueOwnershipServiceProvider extends RouteServiceProvider
                         ->group(function (): void {
                             Route::get('/', [VenueOwnershipClaimController::class, 'show'])
                                 ->name('account.venue-ownership.show');
+                            Route::post('/draft', [VenueOwnershipClaimDraftController::class, 'save'])
+                                ->middleware('throttle:10,1')->name('account.venue-ownership.draft.save');
+                            Route::get('/documents/{document}', [VenueOwnershipClaimDraftController::class, 'download'])
+                                ->name('account.venue-ownership.documents.download');
+                            Route::delete('/documents/{document}', [VenueOwnershipClaimDraftController::class, 'destroy'])
+                                ->name('account.venue-ownership.documents.destroy');
                             Route::post('/cancel', [VenueOwnershipClaimController::class, 'cancel'])
                                 ->name('account.venue-ownership.cancel');
                             Route::post('/approve', [AdminVenueOwnershipController::class, 'approve'])

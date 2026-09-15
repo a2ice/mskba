@@ -9,6 +9,7 @@ use App\Modules\Venue\Domain\Enums\VenueOwnershipClaimStatusEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
@@ -65,6 +66,11 @@ class VenueOwnershipClaim extends Model
     public function conversation(): HasOne
     {
         return $this->hasOne(VenueOwnershipClaimConversation::class, 'venue_ownership_claim_id');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(VenueOwnershipClaimDocument::class)->orderBy('id');
     }
 
     public function ownership(): HasOne

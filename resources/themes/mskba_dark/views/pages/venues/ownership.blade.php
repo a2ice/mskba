@@ -108,6 +108,8 @@
                                     Открыть заявку
                                 </a>
                             </div>
+                        @elseif($draftClaim ?? null)
+                            <a class="btn btn--primary btn--sm" href="{{ route('account.venue-ownership.show', $draftClaim) }}">Продолжить черновик заявки</a>
                         @elseif($needsAccountConfirmation)
                             <div class="venue-ownership-inline-state">
                                 <div>
@@ -166,7 +168,7 @@
                         <div class="venue-ownership-history__list">
                             @foreach($claimHistory as $claim)
                                 <a href="{{ route('account.venue-ownership.show', $claim) }}" class="venue-ownership-history__item">
-                                    <span>{{ $claim->submitted_at->format('d.m.Y H:i') }}</span>
+                                    <span>{{ $claim->submitted_at?->format('d.m.Y H:i') ?? 'Не отправлена' }}</span>
                                     <strong>{{ $claim->status->label() }}</strong>
                                     <i class="ti ti-arrow-right"></i>
                                 </a>

@@ -24,7 +24,7 @@ final readonly class CancelVenueOwnershipClaimHandler
                 throw new VenueOwnershipClaimException('Отменить заявку может только её автор.');
             }
 
-            if ($claim->status !== VenueOwnershipClaimStatusEnum::PENDING) {
+            if (! in_array($claim->status, [VenueOwnershipClaimStatusEnum::DRAFT, VenueOwnershipClaimStatusEnum::PENDING], true)) {
                 throw new VenueOwnershipClaimException('Завершённую заявку нельзя отменить.');
             }
 
