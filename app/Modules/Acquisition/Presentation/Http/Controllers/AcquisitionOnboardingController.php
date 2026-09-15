@@ -65,7 +65,7 @@ final class AcquisitionOnboardingController extends Controller
             accuracy: isset($validated['accuracy']) ? (float) $validated['accuracy'] : null,
         );
 
-        return response()->json(['status' => 'success'] + $result);
+        return response()->json($result);
     }
 
     public function success(Request $request, AcquisitionTracker $tracker): Response|RedirectResponse
