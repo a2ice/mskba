@@ -25,7 +25,7 @@ return new class extends Migration
         Schema::create('acquisition_visits', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('campaign_id')->nullable()->constrained('acquisition_campaigns')->nullOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete()->index();
+            $table->foreignId('user_id')->nullable()->index()->constrained('users')->nullOnDelete();
             $table->string('channel', 40)->index();
             $table->string('source', 100)->nullable()->index();
             $table->string('medium', 100)->nullable();
@@ -41,8 +41,6 @@ return new class extends Migration
             $table->timestamp('location_verified_at')->nullable();
             $table->timestamp('visited_at')->index();
             $table->timestamp('linked_at')->nullable();
-            $table->char('ip_hash', 64)->nullable();
-            $table->string('user_agent', 500)->nullable();
             $table->timestamps();
 
             $table->index(['campaign_id', 'visited_at']);
