@@ -41,6 +41,7 @@ final class SportsSectionApplicationController extends Controller
         $rules = [
             'accepts_trainee_requests' => ['required', 'boolean'],
             'is_recruiting' => ['required', 'boolean'],
+            'trainee_capacity' => ['nullable', 'integer', 'min:1', 'max:1000'],
             'audience_mode' => ['sometimes', Rule::in(['none', 'exact', 'range'])],
         ];
 
@@ -65,12 +66,13 @@ final class SportsSectionApplicationController extends Controller
             ];
         }
 
-        DB::transaction(function () use ($sportsSection, $request, $access, $accepts, $recruiting, $targetYears): void {
+        DB::transaction(function () use ($sportsSection, $request, $access, $accepts, $recruiting, $targetYears, $data): void {
             $section = SportsSection::query()->lockForUpdate()->findOrFail($sportsSection->id);
             abort_unless($access->allows($request->user()->canonical(), $section, SportsSectionPermissionEnum::MANAGE_TRAINEES), 403);
             $section->forceFill([
                 'accepts_trainee_requests' => $recruiting || $accepts,
                 'is_recruiting' => $recruiting,
+                'trainee_capacity' => isset($data['trainee_capacity']) ? (int) $data['trainee_capacity'] : null,
                 ...($targetYears ?? []),
             ])->save();
         });

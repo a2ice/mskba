@@ -29,6 +29,11 @@ final class SportsSectionCatalogPresenter
             ->filter(fn ($team): bool => ! $team->isTemporary() && $team->status === TeamStatusEnum::ACTIVE)
             ->values();
         $participantCount = (int) ($section->active_trainees_count ?? 0);
+        $capacity = $section->trainee_capacity;
+        $capacitySuffix = $capacity !== null ? ' '.$participantCount.'/'.$capacity : '';
+        $recruitmentText = $section->is_recruiting
+            ? 'Идёт набор'.$capacitySuffix
+            : ($section->accepts_trainee_requests ? 'Принимает заявки'.$capacitySuffix : null);
 
         return [
             'id' => $section->id,
@@ -58,6 +63,8 @@ final class SportsSectionCatalogPresenter
             ])->all(),
             'participant_count' => $participantCount,
             'participant_count_text' => $this->participantCountText($participantCount),
+            'capacity' => $capacity,
+            'recruitment_text' => $recruitmentText,
             'pricing_text' => $this->pricingText($section),
             'accepts_requests' => (bool) $section->accepts_trainee_requests,
             'recruiting' => (bool) $section->is_recruiting,

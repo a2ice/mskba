@@ -1,5 +1,8 @@
+import { loadYandexMaps } from '../core/yandex-maps.js';
+
 const modal = document.querySelector('[data-modal="embedded-entity-preview"]');
 let requestController = null;
+let previewMap = null;
 
 document.addEventListener('click', (event) => {
     const trigger = event.target.closest('[data-entity-preview-trigger]');
@@ -8,10 +11,10 @@ document.addEventListener('click', (event) => {
         return;
     }
 
-    loadVenue(trigger.dataset.entityPreviewUrl || '');
+    loadVenue(trigger.dataset.entityPreviewUrl || '', trigger);
 });
 
-async function loadVenue(url) {
+async function loadVenue(url, trigger) {
     const message = modal.querySelector('[data-entity-preview-message]');
     const content = modal.querySelector('[data-entity-preview-content]');
 
@@ -20,6 +23,7 @@ async function loadVenue(url) {
     message.textContent = 'Загружаем информацию…';
     message.hidden = false;
     content.hidden = true;
+    resetMap();
 
     try {
         const response = await fetch(url, {
@@ -36,6 +40,7 @@ async function loadVenue(url) {
         renderVenue(payload.venue);
         message.hidden = true;
         content.hidden = false;
+        renderVenueMap(payload.venue, trigger);
     } catch (error) {
         if (error.name !== 'AbortError') {
             message.textContent = error.message || 'Не удалось загрузить информацию о площадке.';
@@ -79,4 +84,56 @@ function renderVenue(venue) {
     }
 
     modal.querySelector('[data-entity-preview-page]').href = venue.url || '#';
+}
+
+function renderVenueMap(venue, trigger) {
+    const canvas = modal.querySelector('[data-entity-preview-map]');
+    if (!canvas) return;
+
+    const latitude = Number.parseFloat(trigger?.dataset.entityPreviewLatitude || '');
+    const longitude = Number.parseFloat(trigger?.dataset.entityPreviewLongitude || '');
+    const apiKey = trigger?.dataset.yandexMapApiKey || '';
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !apiKey) {
+        canvas.hidden = true;
+        return;
+    }
+
+    canvas.hidden = false;
+    const center = [latitude, longitude];
+
+    loadYandexMaps(apiKey)
+        .then(() => new Promise((resolve) => window.ymaps.ready(resolve)))
+        .then(() => {
+            if (canvas.hidden) return;
+
+            previewMap?.destroy();
+            previewMap = new window.ymaps.Map(canvas, {
+                center,
+                zoom: 15,
+                controls: ['zoomControl', 'fullscreenControl'],
+            });
+            previewMap.geoObjects.add(new window.ymaps.Placemark(center, {
+                hintContent: venue.name || 'Площадка',
+                balloonContentHeader: venue.name || 'Площадка',
+                balloonContentBody: venue.address || '',
+            }, {
+                preset: 'islands#orangeSportIcon',
+            }));
+
+            window.requestAnimationFrame(() => previewMap?.container.fitToViewport());
+        })
+        .catch(() => {
+            canvas.hidden = true;
+        });
+}
+
+function resetMap() {
+    const canvas = modal?.querySelector('[data-entity-preview-map]');
+    previewMap?.destroy();
+    previewMap = null;
+    if (canvas) {
+        canvas.hidden = true;
+        canvas.innerHTML = '';
+    }
 }

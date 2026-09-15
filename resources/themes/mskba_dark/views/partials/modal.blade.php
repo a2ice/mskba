@@ -53,6 +53,7 @@ $modals = [
         <p class="venue-selector-preview__metro" data-entity-preview-metro hidden></p>
         <p class="venue-selector-preview__hours" data-entity-preview-hours></p>
         <p class="venue-selector-preview__description" data-entity-preview-description hidden></p>
+        <div class="venue-selector-preview__map" data-entity-preview-map hidden aria-label="Карта площадки"></div>
         <a class="btn" href="#" data-entity-preview-page>Открыть площадку</a>
     </article>
 @endcomponent

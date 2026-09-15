@@ -21,9 +21,16 @@
         : ($section->single_session_price_minor !== null
             ? number_format($section->single_session_price_minor / 100, 0, ',', ' ').' ₽ / занятие'
             : 'Платно');
+    $activeTraineesCount = (int) $section->active_trainees_count;
+    $capacity = $section->trainee_capacity;
+    $capacitySuffix = $capacity !== null ? ' '.$activeTraineesCount.'/'.$capacity : '';
     $recruitmentLabel = $section->is_recruiting
-        ? 'Идёт набор'
-        : ($section->accepts_trainee_requests ? 'Принимает заявки' : 'Набор закрыт');
+        ? 'Идёт набор'.$capacitySuffix
+        : ($section->accepts_trainee_requests ? 'Принимает заявки'.$capacitySuffix : 'Набор закрыт');
+    $primaryVenueCoordinates = $section->primaryVenue?->location?->address;
+    $primaryVenuePreviewUrl = $section->primaryVenue
+        ? route('venues.preview', $section->primaryVenue->routeIdentifier(), false)
+        : null;
     $breadcrumbs = [
         ['label' => 'Секции', 'url' => route('sports-sections.index')],
         ['label' => $section->name],
@@ -46,7 +53,7 @@
             <a href="#section-overview">Обзор</a>
             <a href="#section-sessions">Занятия</a>
             @if($publicCoaches->isNotEmpty())<a href="#section-coaches">Тренеры</a>@endif
-            @if($section->primaryVenue)<a href="#section-venue">Площадка</a>@endif
+            @if($section->primaryVenue)<a href="#section-venue">Основная площадка</a>@endif
             <a href="#section-pricing">Стоимость</a>
             @if($section->teams->isNotEmpty())<a href="#section-teams">Команды</a>@endif
             @if($section->media->isNotEmpty())<a href="#section-photos">Фото</a>@endif
@@ -60,7 +67,7 @@
             <div><dt>Направление</dt><dd>{{ $section->game_format->label() }}</dd></div>
             <div><dt>Формат</dt><dd>{{ $section->training_mode->label() }}</dd></div>
             <div><dt>Год рождения</dt><dd>{{ $targetYearLabel }}</dd></div>
-            <div><dt>Занимаются</dt><dd>{{ (int) $section->active_trainees_count }}</dd></div>
+            <div><dt>Занимаются</dt><dd>{{ $capacity !== null ? $activeTraineesCount.'/'.$capacity : $activeTraineesCount }}</dd></div>
             <div><dt>Запись</dt><dd>{{ $recruitmentLabel }}</dd></div>
         </dl>
     </div>
@@ -136,10 +143,9 @@
                 <span class="sports-section-badge">{{ $section->game_format->label() }}</span>
                 <span class="sports-section-badge">{{ $section->training_mode->label() }}</span>
                 @if($section->is_recruiting)
-                    <span class="sports-section-badge sports-section-badge--recruiting">Идёт набор</span>
-                @endif
-                @if($section->accepts_trainee_requests)
-                    <span class="sports-section-badge">Принимает заявки</span>
+                    <span class="sports-section-badge sports-section-badge--recruiting sports-section-badge--pulse">{{ $recruitmentLabel }}</span>
+                @elseif($section->accepts_trainee_requests)
+                    <span class="sports-section-badge sports-section-badge--applications">{{ $recruitmentLabel }}</span>
                 @endif
             </div>
         </div>
@@ -150,7 +156,26 @@
 
             <div class="sports-section-public__quick-facts">
                 <div><span>Ближайшее занятие</span><strong>{{ $nextSession ? $nextSession->starts_at->timezone(config('app.timezone'))->format('d.m, H:i') : 'Пока не назначено' }}</strong></div>
-                <div><span>Площадка</span><strong>{{ $section->primaryVenue?->name ?? 'Уточняется' }}</strong></div>
+                <div>
+                    <span class="sports-section-public__fact-label">Основная площадка <i class="ti ti-info-circle" aria-hidden="true" title="Занятия могут проводиться и на других площадках"></i></span>
+                    @if($section->primaryVenue)
+                        <button
+                            type="button"
+                            class="sports-section-public__venue-trigger js-handler"
+                            data-handler="modal"
+                            data-modal-action="open"
+                            data-modal-target="embedded-entity-preview"
+                            data-entity-preview-trigger
+                            data-entity-type="venue"
+                            data-entity-preview-url="{{ $primaryVenuePreviewUrl }}"
+                            data-entity-preview-latitude="{{ $primaryVenueCoordinates?->latitude }}"
+                            data-entity-preview-longitude="{{ $primaryVenueCoordinates?->longitude }}"
+                            data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"
+                        >{{ $section->primaryVenue->name }}</button>
+                    @else
+                        <strong>Уточняется</strong>
+                    @endif
+                </div>
                 <div><span>Стоимость</span><strong>{{ $pricingLabel }}</strong></div>
                 <div><span>Год рождения</span><strong>{{ $targetYearLabel }}</strong></div>
             </div>
@@ -206,10 +231,27 @@
 
     @if($section->primaryVenue)
         <section class="sports-section-public__section" id="section-venue">
-            <div class="sports-section-public__section-heading"><div><span>Где проходят тренировки</span><h2>Площадка</h2></div></div>
+            <div class="sports-section-public__section-heading">
+                <div>
+                    <span>Где проходят тренировки</span>
+                    <h2>Основная площадка <i class="ti ti-info-circle sports-section-public__heading-info" aria-hidden="true" title="Занятия могут проводиться и на других площадках"></i></h2>
+                </div>
+            </div>
             <article class="sports-section-public__venue-card">
                 <div>
-                    <strong>{{ $section->primaryVenue->name }}</strong>
+                    <button
+                        type="button"
+                        class="sports-section-public__venue-trigger sports-section-public__venue-trigger--large js-handler"
+                        data-handler="modal"
+                        data-modal-action="open"
+                        data-modal-target="embedded-entity-preview"
+                        data-entity-preview-trigger
+                        data-entity-type="venue"
+                        data-entity-preview-url="{{ $primaryVenuePreviewUrl }}"
+                        data-entity-preview-latitude="{{ $primaryVenueCoordinates?->latitude }}"
+                        data-entity-preview-longitude="{{ $primaryVenueCoordinates?->longitude }}"
+                        data-yandex-map-api-key="{{ config('integrations.yandex.api_key') }}"
+                    >{{ $section->primaryVenue->name }}</button>
                     @if($section->primaryVenueCourt)<span>{{ $section->primaryVenueCourt->name }}</span>@endif
                     @if($venueAddress)<span>{{ $venueAddress }}</span>@endif
                 </div>

@@ -30,6 +30,7 @@
                 'pricing' => $item['pricing_text'],
                 'recruiting' => $item['recruiting'],
                 'accepts_requests' => $item['accepts_requests'],
+                'recruitment_text' => $item['recruitment_text'],
             ],
         ])
         ->values();
