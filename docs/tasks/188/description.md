@@ -14,7 +14,7 @@ B043: публичный профиль /users/{username}, ролевые стр
 
 ## Статус
 
-Реализация завершена в feature/188, ожидает полного GitHub CI и включения в main.
+Завершена и включена в main. PR [#202](https://github.com/a2ice/mskba/pull/202), код `c7975ba6`, полный GitHub CI [34975574056](https://github.com/a2ice/mskba/actions/runs/34975574056) прошёл, включая PHP suite и production build.
 
 ## Проверки
 
