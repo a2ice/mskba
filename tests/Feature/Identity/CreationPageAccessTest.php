@@ -23,6 +23,7 @@ final class CreationPageAccessTest extends TestCase
         config(['features.sports_sections.enabled' => true]);
         foreach (['venues', 'events', 'teams', 'tournaments', 'coordination', 'account.sports-sections'] as $resource) {
             $this->get(route($resource.'.create'))->assertOk()
+                ->assertSee('Условия создания')
                 ->assertSee('name="login"', false)
                 ->assertDontSee('action="'.route($resource.'.store').'"', false);
             $this->postJson(route($resource.'.store'), [])->assertUnauthorized();
@@ -47,7 +48,9 @@ final class CreationPageAccessTest extends TestCase
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
         $target = route('events.wizard', ['type' => 'training', 'venue_id' => 12, 'venue_court_id' => 34]);
         $this->actingAs($user)->get($target)->assertOk()
-            ->assertSee('Подтвердить контакт')->assertDontSee('data-event-wizard', false)
+            ->assertSee('Подтвердить контакт')
+            ->assertSee(route('faq.welcome').'#contact-confirmation', false)
+            ->assertDontSee('data-event-wizard', false)
             ->assertSessionMissing('operational_permission_intent');
         $user->contacts()->create(['type' => ContactTypeEnum::EMAIL, 'value' => 'creation-recheck@example.test', 'verified_at' => now()]);
         $this->get($target)->assertOk()->assertSee('data-event-wizard', false)
@@ -59,11 +62,15 @@ final class CreationPageAccessTest extends TestCase
         config(['features.sports_sections.enabled' => true]);
         $user = User::factory()->create(['status' => UserStatusEnum::UNCONFIRMED]);
         $this->actingAs($user)->get(route('teams.create'))->assertOk()
-            ->assertSee('Подтвердить аккаунт')->assertDontSee('data-team-name-form', false);
+            ->assertSee('Подтвердить аккаунт')
+            ->assertSee(route('faq.welcome').'#account-confirmation', false)
+            ->assertDontSee('data-team-name-form', false);
         $user->update(['status' => UserStatusEnum::CONFIRMED]);
         $this->get(route('teams.create'))->assertOk()->assertSee('data-team-name-form', false);
         $this->get(route('account.sports-sections.create'))->assertOk()
-            ->assertSee('Выбрать роль тренера')->assertDontSee('action="'.route('account.sports-sections.store').'"', false);
+            ->assertSee('Выбрать роль тренера')
+            ->assertSee(route('faq.welcome').'#participation-role', false)
+            ->assertDontSee('action="'.route('account.sports-sections.store').'"', false);
         $user->participationRoles(false)->create([
             'role' => UserParticipationRoleEnum::COACH,
             'status' => UserParticipationRoleStatusEnum::ACTIVE,
