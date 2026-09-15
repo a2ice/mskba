@@ -29,7 +29,8 @@ enum AcquisitionPersonaEnum: string
             self::PLAYER => UserParticipationRoleEnum::PLAYER,
             self::COACH => UserParticipationRoleEnum::COACH,
             self::VENUE => UserParticipationRoleEnum::VENUE_RELATED,
-            self::ORGANIZER, self::EXPLORE => null,
+            self::ORGANIZER => UserParticipationRoleEnum::ORGANIZER,
+            self::EXPLORE => null,
         };
     }
 
