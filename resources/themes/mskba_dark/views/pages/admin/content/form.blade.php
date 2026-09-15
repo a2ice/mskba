@@ -159,6 +159,19 @@
             </div>
         </section>
 
+        <section class="content-admin-section">
+            <div class="form-group field">
+                <label class="form-label" for="contentStatus">Статус материала</label>
+                <select id="contentStatus" class="form-select @error('status') is-invalid @enderror" name="status">
+                    @foreach(\App\Modules\Content\Domain\Enums\ContentStatusEnum::cases() as $status)
+                        <option value="{{ $status->value }}" @selected(old('status', $contentItem->status?->value ?? 'draft') === $status->value)>{{ $status->label() }}</option>
+                    @endforeach
+                </select>
+                <small class="form-text">Черновик и архив скрыты от посетителей. Каналы публикации доступны для опубликованного материала; FAQ публикуется только в разделе FAQ.</small>
+                @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+        </section>
+
         <section class="content-admin-section" data-content-publication-section @if($selectedType === 'faq') hidden @endif>
             <h2 class="content-admin-section__title">Публикация</h2>
             <div class="content-publication-options">
@@ -263,6 +276,7 @@
             if (!form) return;
 
             const type = form.querySelector('[data-content-type]');
+            const status = form.querySelector('[name="status"]');
             const field = form.querySelector('[data-content-related-field]');
             const select = form.querySelector('[data-content-related]');
             const help = form.querySelector('[data-content-related-help]');
@@ -295,7 +309,7 @@
 
             const syncPublication = () => {
                 const isFaq = type.value === 'faq';
-                publication.hidden = isFaq;
+                publication.hidden = isFaq || status.value !== 'published';
                 faqPublicationNote.hidden = !isFaq;
                 if (isFaq) {
                     if (feedToggle) feedToggle.checked = false;
@@ -309,6 +323,7 @@
                 syncPublication();
             });
             telegramToggle?.addEventListener('change', syncPublication);
+            status.addEventListener('change', syncPublication);
             renderRelated();
             syncPublication();
 

@@ -32,7 +32,7 @@ final class FaqContentSeeder extends Seeder
                 continue;
             }
 
-            $content = ContentItem::query()->firstOrCreate(
+            $content = ContentItem::withTrashed()->firstOrCreate(
                 ['system_key' => 'faq.creation.'.$topic],
                 [
                     'created_by_user_id' => $owner->id,
@@ -53,7 +53,7 @@ final class FaqContentSeeder extends Seeder
             }
         }
 
-        $welcome = ContentItem::query()->firstOrCreate(
+        $welcome = ContentItem::withTrashed()->firstOrCreate(
             ['system_key' => 'faq.welcome'],
             [
                 'created_by_user_id' => $owner->id,

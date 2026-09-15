@@ -99,21 +99,6 @@ Route::get('/privacy', function () use ($themeResolver) {
     return $themeResolver->page('legal.privacy');
 })->name('privacy.policy')->defaults('breadcrumb', 'Персональные данные');
 
-Route::prefix('faq')->group(function () use ($themeResolver) {
-    Route::get('/', fn () => $themeResolver->page('faq.index'))
-        ->name('faq.index')
-        ->defaults('breadcrumb', 'FAQ');
-    Route::get('/creation/{topic}', function (string $topic) use ($themeResolver) {
-        $guide = config('creation-guides.'.$topic);
-        abort_unless(is_array($guide), 404);
-
-        return $themeResolver->page('faq.creation', compact('guide'));
-    })->where('topic', 'venues|events|teams|tournaments|coordination|sections')->name('faq.creation');
-    Route::get('/welcome', fn () => $themeResolver->page('faq.welcome'))
-        ->name('faq.welcome')
-        ->defaults('breadcrumb', 'Первые шаги');
-});
-
 Route::prefix('news')->group(function () {
     Route::get('/', [NewsController::class, 'index'])
         ->name('news.index')

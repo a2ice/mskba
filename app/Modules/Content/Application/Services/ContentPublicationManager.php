@@ -2,6 +2,8 @@
 
 namespace App\Modules\Content\Application\Services;
 
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
+use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Telegram\Domain\Models\TelegramContentPublication;
 use App\Modules\Telegram\Infrastructure\Jobs\SyncTelegramContentPublicationJob;
@@ -12,7 +14,8 @@ final class ContentPublicationManager
     /** @param list<int> $chatIds */
     public function syncTelegramChats(ContentItem $content, array $chatIds): void
     {
-        $selected = $content->publish_in_telegram
+        $selected = $content->status === ContentStatusEnum::PUBLISHED
+            && $content->type !== ContentTypeEnum::FAQ && $content->publish_in_telegram
             ? array_values(array_unique(array_map('intval', $chatIds)))
             : [];
 

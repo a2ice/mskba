@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Content\Domain\Models\ContentTag;
@@ -17,6 +18,7 @@ final class FaqController extends Controller
     public function index(): Response
     {
         $contentItems = ContentItem::query()
+            ->published()
             ->where('type', ContentTypeEnum::FAQ)
             ->with('tags')
             ->orderByRaw('system_key is null')
@@ -34,6 +36,8 @@ final class FaqController extends Controller
             ->first();
 
         if ($contentItem) {
+            abort_unless($contentItem->status === ContentStatusEnum::PUBLISHED, 404);
+
             return $this->render($contentItem);
         }
 
@@ -51,6 +55,8 @@ final class FaqController extends Controller
             ->first();
 
         if ($contentItem) {
+            abort_unless($contentItem->status === ContentStatusEnum::PUBLISHED, 404);
+
             return $this->render($contentItem);
         }
 
@@ -59,7 +65,7 @@ final class FaqController extends Controller
 
     public function show(ContentItem $contentItem): Response
     {
-        abort_unless($contentItem->type === ContentTypeEnum::FAQ, 404);
+        abort_unless($contentItem->type === ContentTypeEnum::FAQ && $contentItem->status === ContentStatusEnum::PUBLISHED, 404);
 
         return $this->render($contentItem);
     }
@@ -73,14 +79,15 @@ final class FaqController extends Controller
         }
 
         $tags = ContentTag::query()
-            ->whereHas('contentItems', fn ($query) => $query->where('type', ContentTypeEnum::FAQ))
+            ->whereHas('contentItems', fn ($query) => $query->published()->where('type', ContentTypeEnum::FAQ))
             ->where(function ($query) use ($terms): void {
                 foreach ($terms as $term) {
-                    $query->orWhere('normalized_name', 'ilike', '%'.$term.'%');
+                    $query->orWhere('normalized_name', 'like', '%'.$term.'%');
                 }
             })
             ->with(['contentItems' => function ($query): void {
                 $query
+                    ->published()
                     ->where('type', ContentTypeEnum::FAQ)
                     ->orderBy('title');
             }])

@@ -9,6 +9,7 @@ use App\Modules\Content\Application\Services\ContentInlineImageManager;
 use App\Modules\Content\Application\Services\ContentPublicationManager;
 use App\Modules\Content\Application\Services\ContentTagManager;
 use App\Modules\Content\Domain\Enums\ContentFormatEnum;
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Content\Presentation\Http\Requests\SaveContentItemRequest;
@@ -38,15 +39,19 @@ final class AdminContentController extends Controller
         if ($search = trim($request->string('q')->toString())) {
             $query->where(function ($query) use ($search): void {
                 $query
-                    ->where('title', 'ilike', '%'.$search.'%')
-                    ->orWhere('alias', 'ilike', '%'.$search.'%')
-                    ->orWhere('short_description', 'ilike', '%'.$search.'%')
-                    ->orWhereHas('tags', fn ($tags) => $tags->where('normalized_name', 'ilike', '%'.Str::lower($search).'%'));
+                    ->whereLike('title', '%'.$search.'%')
+                    ->orWhereLike('alias', '%'.$search.'%')
+                    ->orWhereLike('short_description', '%'.$search.'%')
+                    ->orWhereHas('tags', fn ($tags) => $tags->where('normalized_name', 'like', '%'.Str::lower($search).'%'));
             });
         }
 
         if ($type = ContentTypeEnum::tryFrom($request->string('type')->toString())) {
             $query->where('type', $type);
+        }
+
+        if ($status = ContentStatusEnum::tryFrom($request->string('status')->toString())) {
+            $query->where('status', $status);
         }
 
         if ($request->string('feed')->toString() === 'published') {
@@ -74,7 +79,7 @@ final class AdminContentController extends Controller
     {
         return ThemeResolver::page('admin.content.form', [
             ...$this->formData(),
-            'contentItem' => new ContentItem(['type' => ContentTypeEnum::MATERIAL]),
+            'contentItem' => new ContentItem(['type' => ContentTypeEnum::MATERIAL, 'status' => ContentStatusEnum::DRAFT]),
             'selectedChatIds' => [],
         ]);
     }
@@ -91,10 +96,11 @@ final class AdminContentController extends Controller
             $content = DB::transaction(function () use ($request, $transliterator, $bodySanitizer, $tags): ContentItem {
                 $type = ContentTypeEnum::from($request->string('type')->toString());
                 $this->assertRelatedEntityExists($type, $request->integer('related_id') ?: null);
-                $publishInFeed = $type !== ContentTypeEnum::FAQ && $request->boolean('publish_in_feed');
+                $attributes = $this->attributes($request, $type, $bodySanitizer);
+                $publishInFeed = $attributes['publish_in_feed'];
 
                 $content = ContentItem::query()->create([
-                    ...$this->attributes($request, $type, $bodySanitizer),
+                    ...$attributes,
                     'created_by_user_id' => $request->user()->id,
                     'updated_by_user_id' => $request->user()->id,
                     'alias' => $this->uniqueAlias($request->string('title')->toString(), $transliterator),
@@ -154,10 +160,11 @@ final class AdminContentController extends Controller
                 $type = ContentTypeEnum::from($request->string('type')->toString());
                 $this->assertRelatedEntityExists($type, $request->integer('related_id') ?: null);
                 $wasPublished = $contentItem->feed_published_at;
-                $publishInFeed = $type !== ContentTypeEnum::FAQ && $request->boolean('publish_in_feed');
+                $attributes = $this->attributes($request, $type, $bodySanitizer, $contentItem);
+                $publishInFeed = $attributes['publish_in_feed'];
 
                 $contentItem->update([
-                    ...$this->attributes($request, $type, $bodySanitizer),
+                    ...$attributes,
                     'updated_by_user_id' => $request->user()->id,
                     'feed_published_at' => $publishInFeed ? ($wasPublished ?? now()) : null,
                 ]);
@@ -264,13 +271,17 @@ final class AdminContentController extends Controller
         SaveContentItemRequest $request,
         ContentTypeEnum $type,
         ContentBodySanitizer $bodySanitizer,
+        ?ContentItem $content = null,
     ): array {
         $format = ContentFormatEnum::from($request->string('content_format')->toString());
         $body = trim($request->string('full_description')->toString());
         $isFaq = $type === ContentTypeEnum::FAQ;
+        $status = ContentStatusEnum::from($request->input('status', $content?->status?->value ?? 'published'));
+        $published = $status === ContentStatusEnum::PUBLISHED;
 
         return [
             'type' => $type,
+            'status' => $status,
             'title' => trim($request->string('title')->toString()),
             'short_description' => trim($request->string('short_description')->toString()),
             'full_description' => $format === ContentFormatEnum::SAFE_HTML
@@ -289,8 +300,8 @@ final class AdminContentController extends Controller
             'related_id' => ! $isFaq && $type->supportsRelatedEntity() && $request->filled('related_id')
                 ? $request->integer('related_id')
                 : null,
-            'publish_in_feed' => ! $isFaq && $request->boolean('publish_in_feed'),
-            'publish_in_telegram' => ! $isFaq && $request->boolean('publish_in_telegram'),
+            'publish_in_feed' => $published && ! $isFaq && $request->boolean('publish_in_feed'),
+            'publish_in_telegram' => $published && ! $isFaq && $request->boolean('publish_in_telegram'),
         ];
     }
 

@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Presentation\Http\Requests;
 
 use App\Modules\Content\Domain\Enums\ContentFormatEnum;
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -33,6 +34,7 @@ final class SaveContentItemRequest extends FormRequest
             'full_description' => ['required', 'string', 'max:50000'],
             'content_format' => ['required', Rule::enum(ContentFormatEnum::class)],
             'type' => ['required', Rule::enum(ContentTypeEnum::class)],
+            'status' => ['sometimes', 'required', Rule::enum(ContentStatusEnum::class)],
             'related_id' => ['nullable', 'integer', 'min:1'],
             'tags' => ['nullable', 'string', 'max:3000'],
             'link_url' => ['nullable', 'string', 'max:2048'],
@@ -55,6 +57,11 @@ final class SaveContentItemRequest extends FormRequest
         return [
             function (Validator $validator): void {
                 $type = ContentTypeEnum::tryFrom((string) $this->input('type'));
+
+                $content = $this->route('contentItem');
+                if ($content?->system_key && $type !== ContentTypeEnum::FAQ) {
+                    $validator->errors()->add('type', 'Системная инструкция должна оставаться материалом FAQ.');
+                }
 
                 if ($type?->requiresRelatedEntity() && ! $this->filled('related_id')) {
                     $validator->errors()->add('related_id', 'Выберите связанную сущность.');

@@ -29,6 +29,15 @@
                 @endforeach
             </select>
         </label>
+        <label class="admin-filter__field" for="contentFilterStatus">
+            <span class="admin-filter__label">Статус</span>
+            <select id="contentFilterStatus" class="form-select" name="status">
+                <option value="">Все</option>
+                @foreach(\App\Modules\Content\Domain\Enums\ContentStatusEnum::cases() as $status)
+                    <option value="{{ $status->value }}" @selected(request('status') === $status->value)>{{ $status->label() }}</option>
+                @endforeach
+            </select>
+        </label>
         <label class="admin-filter__field" for="contentFilterFeed">
             <span class="admin-filter__label">Лента</span>
             <select id="contentFilterFeed" class="form-select" name="feed">
@@ -61,6 +70,7 @@
                         <th>ID</th>
                         <th>Название</th>
                         <th>Тип</th>
+                        <th>Статус</th>
                         <th>Лента</th>
                         <th>Telegram</th>
                         <th>Автор</th>
@@ -88,6 +98,7 @@
                                 @endif
                             </td>
                             <td>{{ $contentItem->type->label() }}</td>
+                            <td>{{ $contentItem->status->label() }}</td>
                             <td>
                                 @if($isFaq)
                                     —
@@ -113,7 +124,7 @@
                             <td>
                                 <div class="content-admin-actions">
                                     <a class="btn btn--secondary btn--sm" href="{{ route('admin.content.edit', $contentItem->alias) }}">Редактировать</a>
-                                    @if($isFaq || $contentItem->publish_in_feed)
+                                    @if($contentItem->status === \App\Modules\Content\Domain\Enums\ContentStatusEnum::PUBLISHED && ($isFaq || $contentItem->publish_in_feed))
                                         <a class="btn btn--secondary btn--sm" href="{{ $contentItem->publicUrl() }}" target="_blank" rel="noopener">Просмотр</a>
                                     @endif
                                 </div>

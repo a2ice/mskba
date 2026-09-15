@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Faq;
 
+use App\Modules\Content\Application\Services\ContentBodyRenderer;
 use App\Modules\Content\Domain\Enums\ContentFormatEnum;
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -139,6 +141,54 @@ final class FaqContentTest extends TestCase
             ->assertSee('/storage/'.$media->path, false)
             ->assertSee('alt="Экран подтверждения"', false)
             ->assertSee('Пример экрана в личном кабинете');
+
+        $other = $content->replicate(['alias', 'system_key']);
+        $other->alias = 'faq-other-image';
+        $other->save();
+        $this->assertStringNotContainsString($media->path, app(ContentBodyRenderer::class)->render($other));
+
+        $this->delete(route('admin.content.images.destroy', [$other->alias, $media->id]))->assertNotFound();
+        Storage::disk('public')->assertExists($media->path);
+        $this->delete(route('admin.content.images.destroy', [$content->alias, $media->id]))->assertRedirect();
+        $this->assertSoftDeleted('media', ['id' => $media->id]);
+        $this->assertStringNotContainsString($media->path, app(ContentBodyRenderer::class)->render($content));
+    }
+
+    public function test_faq_draft_can_be_saved_published_and_archived_without_leaking_into_public_search(): void
+    {
+        $this->actingAs($this->editor());
+        $data = [
+            'title' => 'Скрытая инструкция',
+            'short_description' => 'Черновик инструкции.',
+            'full_description' => '<p>Содержимое черновика.</p>',
+            'content_format' => ContentFormatEnum::SAFE_HTML->value,
+            'type' => ContentTypeEnum::FAQ->value,
+            'status' => ContentStatusEnum::DRAFT->value,
+            'tags' => 'секретныйтег',
+            'publish_in_feed' => '1',
+            'publish_in_telegram' => '1',
+        ];
+        $this->post(route('admin.content.store'), $data)->assertRedirect();
+        $content = ContentItem::query()->sole();
+        $this->assertSame(ContentStatusEnum::DRAFT, $content->status);
+        $this->assertFalse($content->publish_in_feed);
+        $this->assertFalse($content->publish_in_telegram);
+        $this->assertDatabaseCount('telegram_content_publications', 0);
+
+        $this->get(route('faq.show', $content->alias))->assertNotFound();
+        $this->get(route('faq.index'))->assertDontSee($content->title);
+        $this->getJson(route('faq.search', ['q' => 'секретныйтег']))->assertExactJson(['results' => []]);
+
+        $data['status'] = ContentStatusEnum::PUBLISHED->value;
+        $this->put(route('admin.content.update', $content->alias), $data)->assertRedirect();
+        $this->get(route('faq.show', $content->alias))->assertOk();
+        $this->getJson(route('faq.search', ['q' => 'СЕКРЕТНЫЙТЕГ']))->assertJsonFragment(['title' => $content->title]);
+        $this->get(route('news.show', $content->alias))->assertNotFound();
+
+        $data['status'] = ContentStatusEnum::ARCHIVED->value;
+        $this->put(route('admin.content.update', $content->alias), $data)->assertRedirect();
+        $this->get(route('faq.show', $content->alias))->assertNotFound();
+        $this->getJson(route('faq.search', ['q' => 'секретныйтег']))->assertExactJson(['results' => []]);
     }
 
     public function test_faq_seeder_is_idempotent_and_does_not_overwrite_editor_changes(): void
@@ -159,6 +209,19 @@ final class FaqContentTest extends TestCase
             $content->fresh()->title,
         );
         $this->assertSame(7, ContentItem::query()->where('type', ContentTypeEnum::FAQ)->count());
+
+        $this->actingAs(User::query()->where('system_role', UserSystemRoleEnum::SUPERADMIN)->first());
+        $this->put(route('admin.content.update', $content->alias), [
+            'title' => $content->title,
+            'short_description' => $content->short_description,
+            'full_description' => $content->full_description,
+            'type' => ContentTypeEnum::MATERIAL->value,
+        ])->assertSessionHasErrors('type');
+
+        $content->delete();
+        $this->seed(FaqContentSeeder::class);
+        $this->assertSame(7, ContentItem::withTrashed()->where('type', ContentTypeEnum::FAQ)->count());
+        $this->get(route('faq.creation', ['topic' => 'venues']))->assertOk();
     }
 
     private function editor(UserSystemRoleEnum $role = UserSystemRoleEnum::EDITOR): User

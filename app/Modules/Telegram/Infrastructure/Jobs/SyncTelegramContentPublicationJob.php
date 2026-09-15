@@ -2,6 +2,8 @@
 
 namespace App\Modules\Telegram\Infrastructure\Jobs;
 
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
+use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Reaction\Application\Services\ReactionAggregateService;
 use App\Modules\Reaction\Domain\Enums\ReactionSourceEnum;
@@ -61,6 +63,8 @@ final class SyncTelegramContentPublicationJob implements ShouldQueue
 
         $content = $publication->contentItem;
         $shouldPublish = $content !== null
+            && $content->status === ContentStatusEnum::PUBLISHED
+            && $content->type !== ContentTypeEnum::FAQ
             && $publication->is_enabled
             && $content->publish_in_telegram
             && $publication->chat?->is_active;

@@ -1,5 +1,6 @@
 <?php
 
+use Database\Seeders\FaqContentSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,6 +11,7 @@ return new class extends Migration
     {
         Schema::table('content_items', function (Blueprint $table): void {
             $table->string('system_key', 160)->nullable()->unique()->after('alias');
+            $table->string('status', 16)->default('published');
         });
 
         Schema::create('content_tags', function (Blueprint $table): void {
@@ -28,7 +30,7 @@ return new class extends Migration
 
         // Production already has users when this migration runs. Fresh installs
         // bootstrap the same FAQ records later through DatabaseSeeder.
-        app(\Database\Seeders\FaqContentSeeder::class)->run();
+        app(FaqContentSeeder::class)->run();
     }
 
     public function down(): void
@@ -39,6 +41,7 @@ return new class extends Migration
         Schema::table('content_items', function (Blueprint $table): void {
             $table->dropUnique(['system_key']);
             $table->dropColumn('system_key');
+            $table->dropColumn('status');
         });
     }
 };

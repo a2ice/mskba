@@ -77,7 +77,7 @@ final class ContentShortcodeRenderer
     {
         $media = Media::query()
             ->whereKey($mediaId)
-            ->where('mediable_type', ContentItem::class)
+            ->where('mediable_type', $content->getMorphClass())
             ->where('mediable_id', $content->id)
             ->where('collection', ContentInlineImageManager::COLLECTION)
             ->first();

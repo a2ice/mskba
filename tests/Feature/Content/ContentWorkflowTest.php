@@ -3,6 +3,7 @@
 namespace Tests\Feature\Content;
 
 use App\Modules\Content\Domain\Enums\ContentFormatEnum;
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -342,6 +343,28 @@ HTML,
         Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/sendPhoto')
             && $this->multipartPart($request->data(), 'photo')['filename'] === "content-{$content->id}.jpg"
             && str_contains($this->multipartPart($request->data(), 'caption')['contents'], '<b>Материал с обложкой</b>'));
+    }
+
+    public function test_delayed_job_removes_archived_material_instead_of_republishing_it(): void
+    {
+        $this->configureTelegram();
+        Http::fake(['https://api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
+        [$content, $publication] = $this->contentPublication(['message_id' => 401, 'status' => 'published']);
+        $content->update([
+            'status' => ContentStatusEnum::ARCHIVED,
+            'publish_in_feed' => true,
+            'feed_published_at' => now(),
+        ]);
+
+        $this->get(route('news.show', $content->alias))->assertNotFound();
+        $this->assertFalse(ContentItem::query()->publishedInFeed()->whereKey($content->id)->exists());
+        app()->call([new SyncTelegramContentPublicationJob($publication->id), 'handle']);
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/deleteMessage') && $request['message_id'] === 401);
+        $this->assertDatabaseHas('telegram_content_publications', [
+            'id' => $publication->id, 'message_id' => null, 'status' => 'closed',
+        ]);
     }
 
     public function test_existing_text_publication_is_replaced_when_cover_is_added(): void

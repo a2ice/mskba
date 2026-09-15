@@ -56,7 +56,7 @@ final class ContentInlineImageManager
 
     public function delete(ContentItem $content, Media $media): void
     {
-        if ($media->mediable_type !== ContentItem::class
+        if ($media->mediable_type !== $content->getMorphClass()
             || (int) $media->mediable_id !== (int) $content->id
             || $media->collection !== self::COLLECTION) {
             abort(404);

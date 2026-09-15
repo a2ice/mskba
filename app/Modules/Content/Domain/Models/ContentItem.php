@@ -4,6 +4,7 @@ namespace App\Modules\Content\Domain\Models;
 
 use App\Modules\Audit\Domain\Traits\Auditable;
 use App\Modules\Content\Domain\Enums\ContentFormatEnum;
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Media\Domain\Models\Media;
@@ -25,6 +26,7 @@ use Illuminate\Support\Str;
     'title',
     'alias',
     'system_key',
+    'status',
     'short_description',
     'full_description',
     'content_format',
@@ -41,6 +43,8 @@ use Illuminate\Support\Str;
 final class ContentItem extends Model
 {
     use Auditable, SoftDeletes;
+
+    protected $attributes = ['status' => 'published'];
 
     public function createdBy(): BelongsTo
     {
@@ -84,9 +88,15 @@ final class ContentItem extends Model
     public function scopePublishedInFeed(Builder $query): Builder
     {
         return $query
+            ->published()
             ->where('publish_in_feed', true)
             ->whereNotNull('feed_published_at')
             ->where('feed_published_at', '<=', now());
+    }
+
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('status', ContentStatusEnum::PUBLISHED);
     }
 
     public function publicUrl(): string
@@ -123,6 +133,7 @@ final class ContentItem extends Model
     {
         return [
             'type' => ContentTypeEnum::class,
+            'status' => ContentStatusEnum::class,
             'content_format' => ContentFormatEnum::class,
             'publish_in_feed' => 'boolean',
             'publish_in_telegram' => 'boolean',

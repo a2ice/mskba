@@ -3,6 +3,7 @@
 namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Reaction\Application\Services\ReactionReadService;
@@ -37,7 +38,7 @@ final class NewsController extends Controller
     public function show(ContentItem $contentItem, ReactionReadService $reactions): Response|RedirectResponse
     {
         abort_unless(
-            $contentItem->publish_in_feed
+            $contentItem->status === ContentStatusEnum::PUBLISHED && $contentItem->publish_in_feed
                 && $contentItem->feed_published_at?->lessThanOrEqualTo(now()),
             404,
         );

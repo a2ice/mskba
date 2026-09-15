@@ -110,13 +110,15 @@
                 });
                 if (!response.ok) throw new Error('FAQ search failed');
                 const payload = await response.json();
-                render(payload.results || [], query);
+                if (input.value.trim() === query && !controller.signal.aborted) render(payload.results || [], query);
             } catch (error) {
                 if (error.name !== 'AbortError') clear();
             }
         };
 
         input.addEventListener('input', () => {
+            controller?.abort();
+            clear();
             window.clearTimeout(timer);
             timer = window.setTimeout(search, 220);
         });

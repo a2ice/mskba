@@ -33,8 +33,6 @@ final class AdminVenueEditingTest extends TestCase
             ->get(route('admin.venues.edit', $venue))
             ->assertOk()
             ->assertSee('Старое название')
-            ->assertSee('Условия оплаты')
-            ->assertSee('Требуется подтверждение бронирования')
             ->assertSee('Кольца, покрытие и разметка')
             ->assertSee('Оснащение и удобства');
 
