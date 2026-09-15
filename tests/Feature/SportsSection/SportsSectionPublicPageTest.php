@@ -11,7 +11,10 @@ use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\ManageSectionCoachHandler;
+use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
+use App\Modules\SportsSection\Domain\Models\SectionTraineeMembership;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -26,7 +29,7 @@ final class SportsSectionPublicPageTest extends TestCase
         config()->set('features.sports_sections.enabled', true);
     }
 
-    public function test_public_page_shows_age_group_recruitment_states_and_clear_guest_cta(): void
+    public function test_public_page_shows_age_group_single_recruitment_state_and_clear_guest_cta(): void
     {
         [, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
         $section = $this->activeSection($actor, [
@@ -37,18 +40,60 @@ final class SportsSectionPublicPageTest extends TestCase
         DB::table('sports_sections')->where('id', $section->id)->update([
             'target_year_from' => 2010,
             'target_year_to' => 2012,
+            'trainee_capacity' => 15,
+        ]);
+        [$player] = $this->roleUser(UserParticipationRoleEnum::PLAYER);
+        SectionTraineeMembership::query()->create([
+            'sports_section_id' => $section->id,
+            'user_id' => $player->id,
+            'status' => TraineeMembershipStatusEnum::ACTIVE,
+            'joined_at' => now(),
         ]);
 
-        $this->get(route('sports-sections.show', $section))
+        $response = $this->get(route('sports-sections.show', $section));
+
+        $response
             ->assertOk()
             ->assertSee('2010–2012 г.р.')
-            ->assertSee('Идёт набор')
-            ->assertSee('Принимает заявки')
+            ->assertSee('Идёт набор 1/15')
+            ->assertDontSee('Принимает заявки 1/15')
             ->assertSee('Записаться')
             ->assertSee('data-modal-target="auth-entry-classic"', false)
             ->assertSee('Ближайшие подтверждённые занятия')
             ->assertSee('Стоимость и тарифы')
             ->assertDontSee('title="Групповой"', false);
+    }
+
+    public function test_accepting_requests_without_active_recruitment_shows_single_capacity_badge(): void
+    {
+        [, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $section = $this->activeSection($actor, [
+            'accepts_trainee_requests' => true,
+            'is_recruiting' => false,
+        ]);
+        $section->forceFill(['trainee_capacity' => 15])->save();
+
+        $this->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertSee('Принимает заявки 0/15')
+            ->assertDontSee('Идёт набор 0/15');
+    }
+
+    public function test_primary_venue_is_labeled_as_default_and_opens_existing_preview_modal(): void
+    {
+        [, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $venue = Venue::factory()->create(['name' => 'Школа №1794']);
+        $section = $this->activeSection($actor);
+        $section->forceFill(['primary_venue_id' => $venue->id])->save();
+
+        $this->get(route('sports-sections.show', $section->refresh()))
+            ->assertOk()
+            ->assertSee('Основная площадка')
+            ->assertSee('Занятия могут проводиться и на других площадках')
+            ->assertSee('Школа №1794')
+            ->assertSee('data-modal-target="embedded-entity-preview"', false)
+            ->assertSee('data-entity-preview-trigger', false)
+            ->assertSee(route('venues.preview', $venue->routeIdentifier(), false), false);
     }
 
     public function test_manager_gets_direct_public_management_navigation(): void
@@ -97,7 +142,7 @@ final class SportsSectionPublicPageTest extends TestCase
             ->assertDontSee('former-section-coach');
     }
 
-    public function test_recruitment_settings_persist_exact_or_range_target_years_exclusively(): void
+    public function test_recruitment_settings_persist_age_target_and_capacity(): void
     {
         [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
         $section = $this->activeSection($actor);
@@ -106,6 +151,7 @@ final class SportsSectionPublicPageTest extends TestCase
             ->patch(route('account.sports-sections.applications.settings', $section), [
                 'accepts_trainee_requests' => 1,
                 'is_recruiting' => 0,
+                'trainee_capacity' => 15,
                 'audience_mode' => 'exact',
                 'target_year' => 2011,
             ])
@@ -117,11 +163,13 @@ final class SportsSectionPublicPageTest extends TestCase
             'target_year' => 2011,
             'target_year_from' => null,
             'target_year_to' => null,
+            'trainee_capacity' => 15,
         ]);
 
         $this->patch(route('account.sports-sections.applications.settings', $section), [
             'accepts_trainee_requests' => 1,
             'is_recruiting' => 1,
+            'trainee_capacity' => null,
             'audience_mode' => 'range',
             'target_year_from' => 2009,
             'target_year_to' => 2012,
@@ -132,6 +180,7 @@ final class SportsSectionPublicPageTest extends TestCase
             'target_year' => null,
             'target_year_from' => 2009,
             'target_year_to' => 2012,
+            'trainee_capacity' => null,
         ]);
     }
 
