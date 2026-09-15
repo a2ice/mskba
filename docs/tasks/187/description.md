@@ -15,7 +15,7 @@
 
 ## Статус
 
-В работе, feature/187.
+Завершена и включена в main. PR #201: `73d47f8e`, полный GitHub CI [34972545258](https://github.com/a2ice/mskba/actions/runs/34972545258) прошёл, включая PHP suite и production build.
 
 ## Реализация
 
