@@ -1008,9 +1008,9 @@ body.telegram-mini-app {
     margin-bottom: 18px;
 }
 .alert {
-    display: flex;
+    /*display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: space-between;*/
     gap: 12px;
     padding: 12px 18px;
     border: 1px solid transparent;
