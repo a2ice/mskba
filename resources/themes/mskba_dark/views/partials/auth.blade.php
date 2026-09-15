@@ -11,7 +11,7 @@
                 </form>
             </div>
         @else
-            <div class="auth-form-wrapper mx-auto" style="max-width: 400px;">
+            <div class="auth-form-wrapper mx-auto">
                 @if ($errors->any())
                     <div class="alert alert-danger">
                         <ul class="mb-0">
