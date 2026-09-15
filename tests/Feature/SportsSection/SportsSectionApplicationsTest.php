@@ -138,7 +138,7 @@ final class SportsSectionApplicationsTest extends TestCase
         $this->get(route('sports-sections.show', $recruiting))
             ->assertOk()
             ->assertSee('Идёт набор')
-            ->assertSee('Принимает заявки')
+            ->assertDontSee('Принимает заявки')
             ->assertSee('data-modal-target="auth-entry-classic"', false);
     }
 
