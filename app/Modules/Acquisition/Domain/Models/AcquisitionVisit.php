@@ -27,8 +27,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'location_verified_at',
     'visited_at',
     'linked_at',
-    'ip_hash',
-    'user_agent',
 ])]
 class AcquisitionVisit extends Model
 {
