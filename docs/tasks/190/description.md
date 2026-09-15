@@ -1,6 +1,6 @@
 # Task 190 — персональная подсказка никнейма
 
-Статус: в работе.
+Статус: выполнено, PR #204 вмержен в `main`.
 
 ## Цель
 
@@ -20,4 +20,5 @@
 - транслитерация кириллицы;
 - fallback при занятом персональном варианте;
 - цифровой suffix при занятом `court_king`;
-- профильный Identity test и CI перед merge.
+- GitHub CI run #215: PHP suite и frontend production build — успешно;
+- merge commit: `295bdcd3cfed7b703a799312e26ba94645d266a1`.
