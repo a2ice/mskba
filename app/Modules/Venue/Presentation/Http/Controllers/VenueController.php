@@ -20,6 +20,7 @@ use App\Modules\Venue\Application\UseCases\ShowManageableVenueHandler;
 use App\Modules\Venue\Application\UseCases\ShowVenueHandler;
 use App\Modules\Venue\Application\UseCases\SubmitModerationRequestHandler;
 use App\Modules\Venue\Application\UseCases\UpdateVenueHandler;
+use App\Modules\Venue\Domain\Enums\VenueCreationRoleEnum;
 use App\Modules\Venue\Domain\Enums\VenueOperationalStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Enums\VenueTypeEnum;
@@ -239,11 +240,15 @@ class VenueController extends Controller
             return response()->json([
                 'message' => 'Площадка создана. Проверьте данные и отправьте её на модерацию.',
                 'venue' => $this->venuePayload($venue),
+                'management_url' => $request->validated('creation_role') === VenueCreationRoleEnum::REPRESENTATIVE->value
+                    ? route('venues.management', $venue)
+                    : null,
             ], 201);
         }
 
         return redirect()
             ->route('account.venues.edit', $venue->routeIdentifier())
+            ->with('venue_creation_representative_id', $request->validated('creation_role') === VenueCreationRoleEnum::REPRESENTATIVE->value ? $venue->id : null)
             ->with('status', 'Площадка создана. Проверьте и дополните данные.');
     }
 

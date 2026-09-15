@@ -14,6 +14,11 @@
                 @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'edit'])
                 @if(($venueSidebarActive ?? null) === 'edit') aria-current="page" @endif
             >Редактировать</a>
+            <a
+                href="{{ route('account.venues.conditions.edit', $venue->routeIdentifier()) }}"
+                @class(['venue-side-nav__link', 'is-active' => ($venueSidebarActive ?? null) === 'conditions'])
+                @if(($venueSidebarActive ?? null) === 'conditions') aria-current="page" @endif
+            >Условия</a>
         @endif
 
         @if($venue->allowsOperationalChanges())
