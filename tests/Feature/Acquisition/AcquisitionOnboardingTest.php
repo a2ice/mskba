@@ -127,6 +127,26 @@ final class AcquisitionOnboardingTest extends TestCase
             ->assertSee('Создать игру или тренировку');
     }
 
+    public function test_authenticated_resume_reuses_visit_created_before_login(): void
+    {
+        $this->get(route('acquisition.join'))->assertOk();
+        $originalVisit = AcquisitionVisit::query()->sole();
+        $this->assertSame(AcquisitionChannelEnum::DIRECT, $originalVisit->channel);
+        $this->assertNull($originalVisit->user_id);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->withHeader('Referer', route('acquisition.join'))
+            ->get(route('acquisition.join', ['resume' => 1]))
+            ->assertOk()
+            ->assertSee('Моя роль');
+
+        $this->assertSame(1, AcquisitionVisit::query()->count());
+        $this->assertSame($user->canonical()->id, $originalVisit->fresh()->user_id);
+        $this->assertNotNull($originalVisit->fresh()->linked_at);
+    }
+
     public function test_authenticated_user_can_update_roles_inside_onboarding(): void
     {
         $user = User::factory()->create();
