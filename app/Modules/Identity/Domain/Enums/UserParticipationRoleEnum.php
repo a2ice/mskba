@@ -10,6 +10,7 @@ enum UserParticipationRoleEnum: string
     case STATISTICIAN = 'statistician';
     case MEDIA = 'media';
     case VENUE_RELATED = 'venue_related';
+    case ORGANIZER = 'organizer';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum UserParticipationRoleEnum: string
             self::STATISTICIAN => 'Статист',
             self::MEDIA => 'Медиа',
             self::VENUE_RELATED => 'Представитель площадки',
+            self::ORGANIZER => 'Организатор мероприятий',
         };
     }
 
@@ -32,6 +34,7 @@ enum UserParticipationRoleEnum: string
             self::STATISTICIAN => 'Веду статистику игр, команд и игроков.',
             self::MEDIA => 'Создаю фото, видео и другие материалы о баскетболе.',
             self::VENUE_RELATED => 'Представляю площадку или участвую в её работе.',
+            self::ORGANIZER => 'Организую игры, тренировки, турниры и другие баскетбольные мероприятия.',
         };
     }
 
@@ -39,7 +42,7 @@ enum UserParticipationRoleEnum: string
     {
         return match ($this) {
             self::PLAYER, self::COACH, self::REFEREE => true,
-            self::STATISTICIAN, self::MEDIA, self::VENUE_RELATED => false,
+            self::STATISTICIAN, self::MEDIA, self::VENUE_RELATED, self::ORGANIZER => false,
         };
     }
 }
