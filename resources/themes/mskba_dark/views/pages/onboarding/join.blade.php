@@ -4,7 +4,7 @@
     $initialPersona = old('onboarding_persona', $selectedPersona ?? '');
     $campaignVenue = $campaign?->venue;
     $authRedirectTo = route('acquisition.success', [], false);
-    $hasLoginErrors = $errors->has('login');
+    $hasLoginErrors = $errors->has('login') || session()->has('error');
     $hasProfileErrors = $errors->has('birth_date') || $errors->has('gender') || $errors->has('first_name') || $errors->has('last_name');
     $hasRegistrationErrors = $errors->any() && ! $hasLoginErrors;
     $initialFlow = $hasLoginErrors ? 'login' : ($hasRegistrationErrors ? 'join' : '');
@@ -18,6 +18,7 @@
 
 @section('styles')
     <link rel="stylesheet" href="{{ asset('css/acquisition-onboarding.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/acquisition-onboarding-v2.css') }}">
 @endsection
 
 @section('content')
@@ -177,16 +178,7 @@
                         <div class="acquisition-onboarding__form-grid">
                             <div class="field acquisition-onboarding__field acquisition-onboarding__field--wide">
                                 <label for="acquisitionUsername" class="form-label">Логин</label>
-                                <input
-                                    id="acquisitionUsername"
-                                    type="text"
-                                    name="username"
-                                    value="{{ old('username') }}"
-                                    class="form-control @error('username') is-invalid @enderror"
-                                    autocomplete="username"
-                                    minlength="3"
-                                    required
-                                >
+                                <input id="acquisitionUsername" type="text" name="username" value="{{ old('username') }}" class="form-control @error('username') is-invalid @enderror" autocomplete="username" minlength="3" required>
                                 <small>Используется для входа. Публичный никнейм можно настроить отдельно в аккаунте.</small>
                             </div>
 
