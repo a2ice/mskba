@@ -21,10 +21,17 @@
     const progressBar = root.querySelector('[data-acquisition-progress-bar]');
     const locationButton = root.querySelector('[data-acquisition-location-button]');
     const locationStatus = root.querySelector('[data-acquisition-location-status]');
+    const authRolesForm = root.querySelector('[data-acquisition-auth-roles-form]');
+    const authRoleToggles = Array.from(root.querySelectorAll('[data-acquisition-role-toggle]'));
+    const authRoleSummary = root.querySelector('[data-acquisition-role-summary]');
+    const authRolesStatus = root.querySelector('[data-acquisition-roles-status]');
+    const saveRolesButton = root.querySelector('[data-acquisition-save-roles]');
+    const authContinueButton = root.querySelector('[data-acquisition-auth-continue]');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const hasLocationTarget = root.dataset.hasLocationTarget === '1';
+    const isAuthenticated = root.dataset.authenticated === '1';
 
-    let flow = root.dataset.initialFlow || '';
+    let flow = isAuthenticated ? 'authenticated' : (root.dataset.initialFlow || '');
     let currentStepKey = 'entry';
 
     const personaRoleMap = {
@@ -36,7 +43,7 @@
     };
 
     const captions = {
-        entry: 'Добро пожаловать',
+        entry: isAuthenticated ? 'Твои роли' : 'Добро пожаловать',
         login: 'Вход в аккаунт',
         persona: 'Выбор роли',
         account: 'Создание аккаунта',
@@ -52,6 +59,10 @@
     }
 
     function flowSteps() {
+        if (flow === 'authenticated') {
+            return ['entry'];
+        }
+
         if (flow === 'login') {
             return ['entry', 'login'];
         }
@@ -198,13 +209,13 @@
         return true;
     }
 
-    async function postJson(url, payload) {
+    async function requestJson(url, payload, method = 'POST') {
         if (!url) {
             return null;
         }
 
         const response = await fetch(url, {
-            method: 'POST',
+            method,
             credentials: 'same-origin',
             headers: {
                 Accept: 'application/json',
@@ -229,10 +240,91 @@
         }
 
         try {
-            return await postJson(root.dataset.personaUrl, { persona });
+            return await requestJson(root.dataset.personaUrl, { persona });
         } catch (error) {
             console.warn('MSKBA acquisition persona was not persisted.', error);
             return null;
+        }
+    }
+
+    function roleKey(input) {
+        return input.name.match(/^roles\[([^\]]+)]$/)?.[1] || '';
+    }
+
+    function selectedAuthRoleLabels() {
+        return authRoleToggles
+            .filter((input) => input.checked)
+            .map((input) => input.dataset.roleLabel || '')
+            .filter(Boolean);
+    }
+
+    function formatRoleSummary(labels) {
+        const normalized = labels.map((label) => label.charAt(0).toLocaleLowerCase('ru-RU') + label.slice(1));
+
+        if (normalized.length === 0) {
+            return 'не установлена';
+        }
+
+        if (normalized.length === 1) {
+            return normalized[0];
+        }
+
+        if (normalized.length === 2) {
+            return `${normalized[0]} и ${normalized[1]}`;
+        }
+
+        return `${normalized[0]} и ещё ${normalized.length - 1}`;
+    }
+
+    function syncAuthRoleSummary(labels = selectedAuthRoleLabels()) {
+        if (authRoleSummary) {
+            authRoleSummary.textContent = formatRoleSummary(labels);
+        }
+    }
+
+    function updateRolesStatus(message, variant = '') {
+        if (!authRolesStatus) {
+            return;
+        }
+
+        authRolesStatus.textContent = message;
+        authRolesStatus.classList.remove('is-success', 'is-warning');
+
+        if (variant) {
+            authRolesStatus.classList.add(`is-${variant}`);
+        }
+    }
+
+    async function persistAuthRoles() {
+        if (!isAuthenticated || authRoleToggles.length === 0) {
+            return true;
+        }
+
+        const roles = {};
+        authRoleToggles.forEach((input) => {
+            const key = roleKey(input);
+            if (key) {
+                roles[key] = input.checked;
+            }
+        });
+
+        saveRolesButton && (saveRolesButton.disabled = true);
+        authContinueButton && (authContinueButton.disabled = true);
+        updateRolesStatus('Сохраняем…');
+
+        try {
+            const result = await requestJson(root.dataset.rolesUrl, { roles }, 'PATCH');
+            const labels = Array.isArray(result?.roles) ? result.roles.map((role) => role.label) : selectedAuthRoleLabels();
+            syncAuthRoleSummary(labels);
+            updateRolesStatus('Роли сохранены.', 'success');
+            return true;
+        } catch (error) {
+            updateRolesStatus('Не удалось сохранить роли. Попробуй ещё раз.', 'warning');
+            console.warn('MSKBA acquisition roles were not persisted.', error);
+            return false;
+        } finally {
+            saveRolesButton && (saveRolesButton.disabled = false);
+            authContinueButton && (authContinueButton.disabled = false);
         }
     }
 
@@ -251,7 +343,7 @@
 
     async function persistLocation(status, position = null) {
         try {
-            const result = await postJson(root.dataset.locationUrl, {
+            const result = await requestJson(root.dataset.locationUrl, {
                 status,
                 latitude: position?.coords?.latitude ?? null,
                 longitude: position?.coords?.longitude ?? null,
@@ -349,6 +441,30 @@
         });
     });
 
+    authRoleToggles.forEach((input) => {
+        input.addEventListener('change', () => {
+            syncAuthRoleSummary();
+            updateRolesStatus('Есть несохранённые изменения.');
+        });
+    });
+
+    saveRolesButton?.addEventListener('click', () => {
+        void persistAuthRoles();
+    });
+
+    authRolesForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        void persistAuthRoles();
+    });
+
+    authContinueButton?.addEventListener('click', async () => {
+        const saved = await persistAuthRoles();
+
+        if (saved && root.dataset.successUrl) {
+            window.location.assign(root.dataset.successUrl);
+        }
+    });
+
     nextButton?.addEventListener('click', async () => {
         if (!currentStepIsValid()) {
             return;
@@ -416,8 +532,11 @@
     }
 
     syncPersonaUi();
+    syncAuthRoleSummary();
 
-    if (flow === 'login') {
+    if (flow === 'authenticated') {
+        showStep('entry', { focus: false });
+    } else if (flow === 'login') {
         showStep('login', { focus: false });
     } else if (flow === 'join') {
         const errorStep = root.dataset.errorStep || '';
