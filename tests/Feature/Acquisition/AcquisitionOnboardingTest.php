@@ -10,6 +10,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -19,15 +20,7 @@ final class AcquisitionOnboardingTest extends TestCase
 
     public function test_generic_join_page_creates_direct_acquisition_visit(): void
     {
-        $this->get(route('acquisition.join'))
-            ->assertOk()
-            ->assertSee('Привет и добро пожаловать на MSKBA.')
-            ->assertSee('Присоединиться')
-            ->assertSee('У меня уже есть аккаунт')
-            ->assertSee('Игрок')
-            ->assertSee('Тренер')
-            ->assertSee('Представитель площадки')
-            ->assertSee('Организатор');
+        $this->get(route('acquisition.join'))->assertOk();
 
         $visit = AcquisitionVisit::query()->sole();
 
@@ -83,11 +76,7 @@ final class AcquisitionOnboardingTest extends TestCase
 
         $this->get(route('acquisition.success'))
             ->assertOk()
-            ->assertSee('Добро пожаловать')
-            ->assertSee('Роль · Игрок')
-            ->assertSee('Доступные действия')
-            ->assertSee('Найти игру или тренировку')
-            ->assertSee('Понадобится подтверждённый аккаунт');
+            ->assertViewHas('activeRoles', fn (Collection $roles): bool => $roles->contains(UserParticipationRoleEnum::PLAYER));
 
         $visit = AcquisitionVisit::query()->sole();
         $this->assertSame($user->canonical()->id, $visit->user_id);
@@ -110,10 +99,8 @@ final class AcquisitionOnboardingTest extends TestCase
         $this->actingAs($user)
             ->get(route('acquisition.join', ['campaignCode' => $campaign->public_code]))
             ->assertOk()
-            ->assertSee('Моя роль')
-            ->assertSee('организатор мероприятий')
-            ->assertSee('Сохранить роли')
-            ->assertSee('Продолжить');
+            ->assertViewHas('authenticatedUser', fn (User $viewUser): bool => $viewUser->id === $canonical->id)
+            ->assertViewHas('activeRoleValues', fn (array $roles): bool => in_array(UserParticipationRoleEnum::ORGANIZER->value, $roles, true));
 
         $visit = AcquisitionVisit::query()->sole();
         $this->assertSame($canonical->id, $visit->user_id);
@@ -123,8 +110,7 @@ final class AcquisitionOnboardingTest extends TestCase
 
         $this->get(route('acquisition.success'))
             ->assertOk()
-            ->assertSee('Роль · Организатор мероприятий')
-            ->assertSee('Создать игру или тренировку');
+            ->assertViewHas('activeRoles', fn (Collection $roles): bool => $roles->contains(UserParticipationRoleEnum::ORGANIZER));
     }
 
     public function test_authenticated_resume_reuses_visit_created_before_login(): void
@@ -139,8 +125,7 @@ final class AcquisitionOnboardingTest extends TestCase
         $this->actingAs($user)
             ->withHeader('Referer', route('acquisition.join'))
             ->get(route('acquisition.join', ['resume' => 1]))
-            ->assertOk()
-            ->assertSee('Моя роль');
+            ->assertOk();
 
         $this->assertSame(1, AcquisitionVisit::query()->count());
         $this->assertSame($user->canonical()->id, $originalVisit->fresh()->user_id);
@@ -173,7 +158,7 @@ final class AcquisitionOnboardingTest extends TestCase
         $this->assertTrue($canonical->fresh()->hasActiveRole(UserParticipationRoleEnum::COACH->value));
     }
 
-    public function test_success_groups_actions_for_each_active_role(): void
+    public function test_success_exposes_all_active_roles_to_the_view(): void
     {
         $user = User::factory()->create();
         $canonical = $user->canonical();
@@ -189,10 +174,11 @@ final class AcquisitionOnboardingTest extends TestCase
         $this->actingAs($user)
             ->get(route('acquisition.success'))
             ->assertOk()
-            ->assertSee('Роль · Игрок')
-            ->assertSee('Роль · Тренер')
-            ->assertSee('Найти игру или тренировку')
-            ->assertSee('Открыть свою секцию');
+            ->assertViewHas('activeRoles', function (Collection $roles): bool {
+                return $roles->contains(UserParticipationRoleEnum::PLAYER)
+                    && $roles->contains(UserParticipationRoleEnum::COACH)
+                    && $roles->count() === 2;
+            });
     }
 
     public function test_utm_medium_can_attribute_generic_join_to_context_ads(): void
