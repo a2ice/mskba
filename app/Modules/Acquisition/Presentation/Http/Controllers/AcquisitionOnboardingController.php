@@ -82,22 +82,25 @@ final class AcquisitionOnboardingController extends Controller
         }
 
         $visit = $tracker->attachCurrentUser($request);
-        $personaValue = $request->session()->get(AcquisitionTracker::SESSION_PERSONA)
-            ?? $visit?->persona?->value;
-        $persona = is_string($personaValue)
-            ? AcquisitionPersonaEnum::tryFrom($personaValue)
-            : null;
+        $user = $request->user()->canonical();
+
+        $persona = match (true) {
+            $user->hasActiveRole(UserParticipationRoleEnum::PLAYER->value) => AcquisitionPersonaEnum::PLAYER,
+            $user->hasActiveRole(UserParticipationRoleEnum::COACH->value) => AcquisitionPersonaEnum::COACH,
+            $user->hasActiveRole(UserParticipationRoleEnum::VENUE_RELATED->value) => AcquisitionPersonaEnum::VENUE,
+            $user->hasActiveRole(UserParticipationRoleEnum::ORGANIZER->value) => AcquisitionPersonaEnum::ORGANIZER,
+            default => null,
+        };
 
         if ($persona === null) {
-            $user = $request->user()->canonical();
-            $persona = match (true) {
-                $user->hasActiveRole(UserParticipationRoleEnum::PLAYER->value) => AcquisitionPersonaEnum::PLAYER,
-                $user->hasActiveRole(UserParticipationRoleEnum::COACH->value) => AcquisitionPersonaEnum::COACH,
-                $user->hasActiveRole(UserParticipationRoleEnum::VENUE_RELATED->value) => AcquisitionPersonaEnum::VENUE,
-                $user->hasActiveRole(UserParticipationRoleEnum::ORGANIZER->value) => AcquisitionPersonaEnum::ORGANIZER,
-                default => AcquisitionPersonaEnum::EXPLORE,
-            };
+            $personaValue = $request->session()->get(AcquisitionTracker::SESSION_PERSONA)
+                ?? $visit?->persona?->value;
+            $persona = is_string($personaValue)
+                ? AcquisitionPersonaEnum::tryFrom($personaValue)
+                : null;
         }
+
+        $persona ??= AcquisitionPersonaEnum::EXPLORE;
 
         return ThemeResolver::page('onboarding.success', [
             'persona' => $persona,
