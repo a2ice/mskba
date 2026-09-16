@@ -8,6 +8,10 @@ Route::prefix('join')->group(function (): void {
         ->middleware('auth')
         ->name('acquisition.success');
 
+    Route::patch('/roles', [AcquisitionOnboardingController::class, 'updateRoles'])
+        ->middleware(['auth', 'throttle:30,1'])
+        ->name('acquisition.roles.update');
+
     Route::post('/persona', [AcquisitionOnboardingController::class, 'updatePersona'])
         ->middleware('throttle:60,1')
         ->name('acquisition.persona');
