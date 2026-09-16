@@ -242,7 +242,7 @@
                 <span class="acquisition-success__check" aria-hidden="true"><i class="ti ti-check"></i></span>
                 <div>
                     <span class="acquisition-success__eyebrow">Готово</span>
-                    <h1>Добро пожаловать 👋</h1>
+                    <h1>Добро пожаловать</h1>
                     <p>
                         @if($activeRoles->isEmpty())
                             Аккаунт готов. Роль пока не выбрана — можно спокойно посмотреть портал и настроить её позже.
