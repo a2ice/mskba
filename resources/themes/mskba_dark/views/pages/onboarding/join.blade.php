@@ -4,9 +4,11 @@
     $initialPersona = old('onboarding_persona', $selectedPersona ?? '');
     $campaignVenue = $campaign?->venue;
     $isAuthenticatedOnboarding = isset($authenticatedUser) && $authenticatedUser !== null;
-    $loginRedirectTo = $campaign?->public_code
-        ? route('acquisition.join', ['campaignCode' => $campaign->public_code], false)
-        : route('acquisition.join', [], false);
+    $loginRedirectParams = ['resume' => 1];
+    if ($campaign?->public_code) {
+        $loginRedirectParams['campaignCode'] = $campaign->public_code;
+    }
+    $loginRedirectTo = route('acquisition.join', $loginRedirectParams, false);
     $registrationRedirectTo = route('acquisition.success', [], false);
     $hasLoginErrors = $errors->has('login') || session()->has('error');
     $hasProfileErrors = $errors->has('birth_date') || $errors->has('gender') || $errors->has('first_name') || $errors->has('last_name');
