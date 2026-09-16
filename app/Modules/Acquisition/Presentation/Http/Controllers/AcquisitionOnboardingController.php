@@ -89,18 +89,8 @@ final class AcquisitionOnboardingController extends Controller
             $user->hasActiveRole(UserParticipationRoleEnum::COACH->value) => AcquisitionPersonaEnum::COACH,
             $user->hasActiveRole(UserParticipationRoleEnum::VENUE_RELATED->value) => AcquisitionPersonaEnum::VENUE,
             $user->hasActiveRole(UserParticipationRoleEnum::ORGANIZER->value) => AcquisitionPersonaEnum::ORGANIZER,
-            default => null,
+            default => AcquisitionPersonaEnum::EXPLORE,
         };
-
-        if ($persona === null) {
-            $personaValue = $request->session()->get(AcquisitionTracker::SESSION_PERSONA)
-                ?? $visit?->persona?->value;
-            $persona = is_string($personaValue)
-                ? AcquisitionPersonaEnum::tryFrom($personaValue)
-                : null;
-        }
-
-        $persona ??= AcquisitionPersonaEnum::EXPLORE;
 
         return ThemeResolver::page('onboarding.success', [
             'persona' => $persona,
