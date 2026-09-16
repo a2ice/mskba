@@ -15,7 +15,7 @@ final class UpdatePlayerProfileHandler
      * @param  array<string, mixed>  $profileData
      * @param  array<int, PlayerPositionEnum>  $positions
      * @param  array<string, int|null>  $selfAssessment
-     * @param  array<string, int|string>|null  $characterAppearance
+     * @param  array<string, int|string|null>|null  $characterAppearance
      *
      * @throws AuthorizationException
      */
@@ -36,8 +36,9 @@ final class UpdatePlayerProfileHandler
             $profile = $lockedUser->playerProfile()->updateOrCreate([], $profileData);
 
             if ($characterAppearance !== null) {
-                $extra = $profile->extra ?? [];
-                $extra['character'] = $characterAppearance;
+                $extra = is_array($profile->extra) ? $profile->extra : [];
+                $storedCharacter = is_array($extra['character'] ?? null) ? $extra['character'] : [];
+                $extra['character'] = array_merge($storedCharacter, $characterAppearance);
                 $profile->forceFill(['extra' => $extra])->save();
             }
 
