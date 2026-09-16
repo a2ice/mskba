@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Acquisition\Application\Services\AcquisitionTracker;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionPersonaEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,9 +20,15 @@ final class AcquisitionOnboardingController extends Controller
         Request $request,
         AcquisitionTracker $tracker,
         ?string $campaignCode = null,
-    ): Response {
+    ): Response|RedirectResponse {
         $campaign = $this->campaign($campaignCode);
         $visit = $tracker->capture($request, $campaign);
+
+        if ($request->user() !== null) {
+            $tracker->attachCurrentUser($request, $visit);
+
+            return redirect()->route('acquisition.success');
+        }
 
         return ThemeResolver::page('onboarding.join', [
             'campaign' => $campaign,
@@ -80,7 +87,17 @@ final class AcquisitionOnboardingController extends Controller
         $persona = is_string($personaValue)
             ? AcquisitionPersonaEnum::tryFrom($personaValue)
             : null;
-        $persona ??= AcquisitionPersonaEnum::EXPLORE;
+
+        if ($persona === null) {
+            $user = $request->user()->canonical();
+            $persona = match (true) {
+                $user->hasActiveRole(UserParticipationRoleEnum::PLAYER->value) => AcquisitionPersonaEnum::PLAYER,
+                $user->hasActiveRole(UserParticipationRoleEnum::COACH->value) => AcquisitionPersonaEnum::COACH,
+                $user->hasActiveRole(UserParticipationRoleEnum::VENUE_RELATED->value) => AcquisitionPersonaEnum::VENUE,
+                $user->hasActiveRole(UserParticipationRoleEnum::ORGANIZER->value) => AcquisitionPersonaEnum::ORGANIZER,
+                default => AcquisitionPersonaEnum::EXPLORE,
+            };
+        }
 
         return ThemeResolver::page('onboarding.success', [
             'persona' => $persona,
