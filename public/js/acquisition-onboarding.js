@@ -8,25 +8,24 @@
     const form = root.querySelector('[data-acquisition-form]');
     const personaInputs = Array.from(root.querySelectorAll('input[name="onboarding_persona"]'));
     const allSteps = Array.from(root.querySelectorAll('[data-acquisition-step]'));
+    const footer = root.querySelector('[data-acquisition-footer]');
     const backButton = root.querySelector('[data-acquisition-back]');
     const nextButton = root.querySelector('[data-acquisition-next]');
     const submitButton = root.querySelector('[data-acquisition-submit]');
-    const authenticatedContinue = root.querySelector('[data-acquisition-authenticated-continue]');
+    const startJoinButton = root.querySelector('[data-acquisition-start-join]');
+    const startLoginButton = root.querySelector('[data-acquisition-start-login]');
     const roleInput = root.querySelector('[data-acquisition-role]');
     const profileRequiredInputs = Array.from(root.querySelectorAll('[data-acquisition-profile-required]'));
     const progressCurrent = root.querySelector('[data-acquisition-progress-current]');
     const progressCaption = root.querySelector('[data-acquisition-progress-caption]');
     const progressBar = root.querySelector('[data-acquisition-progress-bar]');
-    const loginPanel = root.querySelector('[data-acquisition-login-panel]');
-    const showLoginButton = root.querySelector('[data-acquisition-show-login]');
-    const hideLoginButton = root.querySelector('[data-acquisition-hide-login]');
     const locationButton = root.querySelector('[data-acquisition-location-button]');
     const locationStatus = root.querySelector('[data-acquisition-location-status]');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const authenticated = root.dataset.authenticated === '1';
     const hasLocationTarget = root.dataset.hasLocationTarget === '1';
-    const hasRegistrationErrors = Boolean(root.querySelector('.acquisition-onboarding__errors'));
-    let currentIndex = 0;
+
+    let flow = root.dataset.initialFlow || '';
+    let currentStepKey = 'entry';
 
     const personaRoleMap = {
         player: 'player',
@@ -37,9 +36,11 @@
     };
 
     const captions = {
-        persona: 'Выберите свой сценарий',
-        account: 'Создайте аккаунт',
-        profile: 'Заполните базовый профиль',
+        entry: 'Добро пожаловать',
+        login: 'Вход в аккаунт',
+        persona: 'Выбор роли',
+        account: 'Создание аккаунта',
+        profile: 'Базовый профиль',
     };
 
     function selectedPersona() {
@@ -50,18 +51,26 @@
         return persona === 'player' || persona === 'coach';
     }
 
-    function visibleSteps() {
-        if (authenticated) {
-            return allSteps.filter((step) => step.dataset.acquisitionStep === 'persona');
+    function flowSteps() {
+        if (flow === 'login') {
+            return ['entry', 'login'];
         }
 
-        return allSteps.filter((step) => {
-            if (step.dataset.acquisitionStep !== 'profile') {
-                return true;
+        if (flow === 'join') {
+            const steps = ['entry', 'persona', 'account'];
+
+            if (personaNeedsProfile()) {
+                steps.push('profile');
             }
 
-            return personaNeedsProfile();
-        });
+            return steps;
+        }
+
+        return ['entry'];
+    }
+
+    function findStep(key) {
+        return allSteps.find((step) => step.dataset.acquisitionStep === key) || null;
     }
 
     function syncPersonaUi() {
@@ -80,72 +89,98 @@
         });
     }
 
-    function syncControls() {
-        const steps = visibleSteps();
-        const step = steps[currentIndex];
-        const isFirst = currentIndex === 0;
-        const isLast = currentIndex === steps.length - 1;
-        const persona = selectedPersona();
-
-        if (backButton) {
-            backButton.hidden = isFirst;
-        }
-
-        if (nextButton) {
-            nextButton.hidden = isLast;
-            nextButton.disabled = step?.dataset.acquisitionStep === 'persona' && !persona;
-        }
-
-        if (submitButton) {
-            submitButton.hidden = authenticated || !isLast;
-        }
-
-        if (authenticatedContinue) {
-            authenticatedContinue.hidden = !authenticated || !isLast;
-            authenticatedContinue.disabled = !persona;
-        }
-    }
-
-    function showStep(index) {
-        const steps = visibleSteps();
-
-        if (!steps.length) {
-            return;
-        }
-
-        currentIndex = Math.max(0, Math.min(index, steps.length - 1));
-        allSteps.forEach((step) => {
-            step.hidden = true;
-        });
-
-        const currentStep = steps[currentIndex];
-        currentStep.hidden = false;
-        const stepKey = currentStep.dataset.acquisitionStep || 'persona';
+    function syncProgress() {
+        const steps = flowSteps();
+        const currentIndex = Math.max(0, steps.indexOf(currentStepKey));
+        const displayTotal = flow ? steps.length : 3;
+        const displayIndex = flow ? currentIndex + 1 : 1;
 
         if (progressCurrent) {
-            progressCurrent.textContent = String(currentIndex + 1);
+            progressCurrent.textContent = String(displayIndex);
         }
 
         if (progressCaption) {
-            progressCaption.textContent = captions[stepKey] || '';
+            progressCaption.textContent = captions[currentStepKey] || '';
         }
 
         if (progressBar) {
-            progressBar.style.width = `${((currentIndex + 1) / steps.length) * 100}%`;
+            progressBar.style.width = `${(displayIndex / displayTotal) * 100}%`;
+        }
+    }
+
+    function syncControls() {
+        const steps = flowSteps();
+        const currentIndex = steps.indexOf(currentStepKey);
+        const isEntry = currentStepKey === 'entry';
+        const isLogin = currentStepKey === 'login';
+        const isPersona = currentStepKey === 'persona';
+        const isAccount = currentStepKey === 'account';
+        const isProfile = currentStepKey === 'profile';
+
+        if (footer) {
+            footer.hidden = isEntry;
         }
 
+        if (backButton) {
+            backButton.hidden = isEntry;
+        }
+
+        if (nextButton) {
+            nextButton.hidden = !(isPersona || (isAccount && personaNeedsProfile()));
+            nextButton.disabled = isPersona && !selectedPersona();
+        }
+
+        if (submitButton) {
+            submitButton.hidden = !(isProfile || (isAccount && !personaNeedsProfile()));
+        }
+
+        if (isLogin && nextButton) {
+            nextButton.hidden = true;
+        }
+
+        if (isLogin && submitButton) {
+            submitButton.hidden = true;
+        }
+
+        if (currentIndex < 0 && backButton) {
+            backButton.hidden = true;
+        }
+    }
+
+    function showStep(key, options = {}) {
+        const step = findStep(key);
+
+        if (!step) {
+            return;
+        }
+
+        currentStepKey = key;
+        allSteps.forEach((item) => {
+            item.hidden = item !== step;
+        });
+
+        syncProgress();
         syncControls();
+
+        if (options.scroll) {
+            step.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        if (key === 'login' && options.focus !== false) {
+            window.setTimeout(() => {
+                step.querySelector('input[name="login"]')?.focus({ preventScroll: true });
+            }, 0);
+        }
     }
 
     function currentStepIsValid() {
-        const steps = visibleSteps();
-        const step = steps[currentIndex];
+        const step = findStep(currentStepKey);
 
         if (!step) {
             return true;
         }
 
-        if (step.dataset.acquisitionStep === 'persona' && !selectedPersona()) {
+        if (currentStepKey === 'persona' && !selectedPersona()) {
             personaInputs[0]?.focus();
             return false;
         }
@@ -295,16 +330,21 @@
         );
     }
 
+    startJoinButton?.addEventListener('click', () => {
+        flow = 'join';
+        showStep('persona', { scroll: true });
+    });
+
+    startLoginButton?.addEventListener('click', () => {
+        flow = 'login';
+        showStep('login', { scroll: true });
+    });
+
     personaInputs.forEach((input) => {
         input.addEventListener('change', () => {
             syncPersonaUi();
-            const steps = visibleSteps();
-
-            if (currentIndex >= steps.length) {
-                currentIndex = steps.length - 1;
-            }
-
-            showStep(currentIndex);
+            syncProgress();
+            syncControls();
             void persistPersona();
         });
     });
@@ -314,46 +354,44 @@
             return;
         }
 
-        await persistPersona();
-        showStep(currentIndex + 1);
-        root.querySelector('[data-acquisition-step]:not([hidden])')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (currentStepKey === 'persona') {
+            await persistPersona();
+            showStep('account', { scroll: true });
+            return;
+        }
+
+        if (currentStepKey === 'account' && personaNeedsProfile()) {
+            showStep('profile', { scroll: true });
+        }
     });
 
     backButton?.addEventListener('click', () => {
-        showStep(currentIndex - 1);
+        if (currentStepKey === 'login' || currentStepKey === 'persona') {
+            flow = '';
+            showStep('entry', { scroll: true, focus: false });
+            return;
+        }
+
+        if (currentStepKey === 'account') {
+            showStep('persona', { scroll: true });
+            return;
+        }
+
+        if (currentStepKey === 'profile') {
+            showStep('account', { scroll: true });
+        }
     });
 
     form?.addEventListener('submit', (event) => {
         syncPersonaUi();
 
-        if (!currentStepIsValid()) {
+        if (!selectedPersona() || !currentStepIsValid()) {
             event.preventDefault();
-        }
-    });
 
-    authenticatedContinue?.addEventListener('click', async () => {
-        if (!currentStepIsValid()) {
-            return;
-        }
-
-        authenticatedContinue.disabled = true;
-        await persistPersona();
-        window.location.assign(root.dataset.successUrl || '/join/success');
-    });
-
-    showLoginButton?.addEventListener('click', () => {
-        if (!loginPanel) {
-            return;
-        }
-
-        loginPanel.hidden = false;
-        loginPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        loginPanel.querySelector('input[name="login"]')?.focus({ preventScroll: true });
-    });
-
-    hideLoginButton?.addEventListener('click', () => {
-        if (loginPanel) {
-            loginPanel.hidden = true;
+            if (!selectedPersona()) {
+                flow = 'join';
+                showStep('persona', { scroll: true });
+            }
         }
     });
 
@@ -379,10 +417,21 @@
 
     syncPersonaUi();
 
-    if (hasRegistrationErrors && selectedPersona() && !authenticated) {
-        currentIndex = 1;
+    if (flow === 'login') {
+        showStep('login', { focus: false });
+    } else if (flow === 'join') {
+        const errorStep = root.dataset.errorStep || '';
+
+        if (errorStep === 'profile' && personaNeedsProfile()) {
+            showStep('profile', { focus: false });
+        } else if (errorStep === 'account') {
+            showStep('account', { focus: false });
+        } else {
+            showStep('persona', { focus: false });
+        }
+    } else {
+        showStep('entry', { focus: false });
     }
 
-    showStep(currentIndex);
     void maybeVerifyAlreadyGrantedLocation();
 })();
