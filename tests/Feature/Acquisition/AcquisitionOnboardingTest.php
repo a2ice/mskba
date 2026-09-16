@@ -6,6 +6,7 @@ use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,11 +21,13 @@ final class AcquisitionOnboardingTest extends TestCase
     {
         $this->get(route('acquisition.join'))
             ->assertOk()
-            ->assertSee('Твоя баскетбольная Москва начинается здесь')
-            ->assertSee('Я игрок')
-            ->assertSee('Я тренер')
-            ->assertSee('Я представляю площадку')
-            ->assertSee('Я организатор');
+            ->assertSee('Привет и добро пожаловать на MSKBA.')
+            ->assertSee('Присоединиться')
+            ->assertSee('У меня уже есть аккаунт')
+            ->assertSee('Игрок')
+            ->assertSee('Тренер')
+            ->assertSee('Представитель площадки')
+            ->assertSee('Организатор');
 
         $visit = AcquisitionVisit::query()->sole();
 
@@ -80,7 +83,8 @@ final class AcquisitionOnboardingTest extends TestCase
 
         $this->get(route('acquisition.success'))
             ->assertOk()
-            ->assertSee('Игрок — можно начинать')
+            ->assertSee('Готово! Добро пожаловать')
+            ->assertSee('Что ты можешь сделать сейчас')
             ->assertSee('Найти игру или тренировку')
             ->assertSee('Понадобится подтверждённый аккаунт');
 
@@ -91,22 +95,32 @@ final class AcquisitionOnboardingTest extends TestCase
         $this->assertNotNull($visit->linked_at);
     }
 
-    public function test_already_authenticated_user_is_linked_without_new_registration(): void
+    public function test_already_authenticated_user_is_linked_and_uses_existing_role(): void
     {
         $user = User::factory()->create();
+        $canonical = $user->canonical();
+        $canonical->participationRoles()->create([
+            'role' => UserParticipationRoleEnum::ORGANIZER,
+            'status' => UserParticipationRoleStatusEnum::ACTIVE,
+            'assigned_at' => now(),
+        ]);
         $campaign = $this->campaign('social-organizer-191', AcquisitionChannelEnum::SOCIAL);
 
         $this->actingAs($user)
             ->get(route('acquisition.join', ['campaignCode' => $campaign->public_code]))
-            ->assertOk()
-            ->assertSee('Вы уже вошли как');
-
-        $this->postJson(route('acquisition.persona'), ['persona' => 'organizer'])->assertOk();
+            ->assertRedirect(route('acquisition.success'));
 
         $visit = AcquisitionVisit::query()->sole();
-        $this->assertSame($user->canonical()->id, $visit->user_id);
+        $this->assertSame($canonical->id, $visit->user_id);
         $this->assertSame(AcquisitionChannelEnum::SOCIAL, $visit->channel);
-        $this->assertSame('organizer', $visit->persona->value);
+        $this->assertNull($visit->persona);
+        $this->assertNotNull($visit->linked_at);
+
+        $this->get(route('acquisition.success'))
+            ->assertOk()
+            ->assertSee('Готово! Добро пожаловать')
+            ->assertSee('Организатор мероприятий')
+            ->assertSee('Создать игру или тренировку');
     }
 
     public function test_utm_medium_can_attribute_generic_join_to_context_ads(): void
