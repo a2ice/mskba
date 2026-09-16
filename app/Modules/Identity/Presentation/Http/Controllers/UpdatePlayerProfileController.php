@@ -86,7 +86,8 @@ final class UpdatePlayerProfileController extends Controller
             return response()->json(['message' => 'Выберите фотографию лица и нужный ракурс.'], 422);
         }
 
-        $contents = $file->get();
+        $path = $file->getRealPath();
+        $contents = is_string($path) && $path !== '' ? @file_get_contents($path) : false;
 
         if (! is_string($contents) || $contents === '') {
             return response()->json(['message' => 'Не удалось прочитать фотографию.'], 422);
