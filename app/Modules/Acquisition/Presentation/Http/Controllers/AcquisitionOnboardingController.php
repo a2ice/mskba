@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Acquisition\Application\Services\AcquisitionTracker;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionPersonaEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
+use App\Modules\Identity\Application\UseCases\UpdateUserParticipationRolesHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
@@ -20,14 +21,19 @@ final class AcquisitionOnboardingController extends Controller
         Request $request,
         AcquisitionTracker $tracker,
         ?string $campaignCode = null,
-    ): Response|RedirectResponse {
+    ): Response {
         $campaign = $this->campaign($campaignCode);
         $visit = $tracker->capture($request, $campaign);
+        $authenticatedUser = null;
+        $activeRoleValues = [];
 
         if ($request->user() !== null) {
             $tracker->attachCurrentUser($request, $visit);
-
-            return redirect()->route('acquisition.success');
+            $authenticatedUser = $request->user()->canonical();
+            $authenticatedUser->load('participationRoles');
+            $activeRoleValues = $authenticatedUser->participationRoles
+                ->map(fn ($role): string => $role->role->value)
+                ->all();
         }
 
         return ThemeResolver::page('onboarding.join', [
@@ -35,6 +41,9 @@ final class AcquisitionOnboardingController extends Controller
             'visit' => $visit,
             'personas' => AcquisitionPersonaEnum::cases(),
             'selectedPersona' => $request->session()->get(AcquisitionTracker::SESSION_PERSONA),
+            'authenticatedUser' => $authenticatedUser,
+            'participationRoles' => UserParticipationRoleEnum::cases(),
+            'activeRoleValues' => $activeRoleValues,
         ]);
     }
 
@@ -52,6 +61,38 @@ final class AcquisitionOnboardingController extends Controller
             'role' => $persona->registrationRole()?->value,
             'needs_profile_details' => $persona->needsProfileDetails(),
             'visit_id' => $visit?->id,
+        ]);
+    }
+
+    public function updateRoles(
+        Request $request,
+        UpdateUserParticipationRolesHandler $handler,
+    ): JsonResponse {
+        $allowedRoles = implode(',', array_column(UserParticipationRoleEnum::cases(), 'value'));
+
+        $request->validate([
+            'roles' => ['required', 'array:'.$allowedRoles],
+            'roles.*' => ['required', 'boolean'],
+        ]);
+
+        $selectedRoles = collect(UserParticipationRoleEnum::cases())
+            ->filter(fn (UserParticipationRoleEnum $role): bool => $request->boolean('roles.'.$role->value))
+            ->values()
+            ->all();
+
+        $user = $handler->handle($request->user()->canonical(), $selectedRoles);
+        $activeRoles = collect(UserParticipationRoleEnum::cases())
+            ->filter(fn (UserParticipationRoleEnum $role): bool => $user->hasActiveRole($role->value))
+            ->values();
+
+        return response()->json([
+            'status' => 'success',
+            'roles' => $activeRoles
+                ->map(fn (UserParticipationRoleEnum $role): array => [
+                    'value' => $role->value,
+                    'label' => $role->label(),
+                ])
+                ->all(),
         ]);
     }
 
@@ -83,17 +124,14 @@ final class AcquisitionOnboardingController extends Controller
 
         $visit = $tracker->attachCurrentUser($request);
         $user = $request->user()->canonical();
+        $user->load('participationRoles');
 
-        $persona = match (true) {
-            $user->hasActiveRole(UserParticipationRoleEnum::PLAYER->value) => AcquisitionPersonaEnum::PLAYER,
-            $user->hasActiveRole(UserParticipationRoleEnum::COACH->value) => AcquisitionPersonaEnum::COACH,
-            $user->hasActiveRole(UserParticipationRoleEnum::VENUE_RELATED->value) => AcquisitionPersonaEnum::VENUE,
-            $user->hasActiveRole(UserParticipationRoleEnum::ORGANIZER->value) => AcquisitionPersonaEnum::ORGANIZER,
-            default => AcquisitionPersonaEnum::EXPLORE,
-        };
+        $activeRoles = collect(UserParticipationRoleEnum::cases())
+            ->filter(fn (UserParticipationRoleEnum $role): bool => $user->hasActiveRole($role->value))
+            ->values();
 
         return ThemeResolver::page('onboarding.success', [
-            'persona' => $persona,
+            'activeRoles' => $activeRoles,
             'visit' => $visit,
         ]);
     }
