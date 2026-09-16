@@ -83,8 +83,9 @@ final class AcquisitionOnboardingTest extends TestCase
 
         $this->get(route('acquisition.success'))
             ->assertOk()
-            ->assertSee('Готово! Добро пожаловать')
-            ->assertSee('Что ты можешь сделать сейчас')
+            ->assertSee('Добро пожаловать')
+            ->assertSee('Роль · Игрок')
+            ->assertSee('Доступные действия')
             ->assertSee('Найти игру или тренировку')
             ->assertSee('Понадобится подтверждённый аккаунт');
 
@@ -95,7 +96,7 @@ final class AcquisitionOnboardingTest extends TestCase
         $this->assertNotNull($visit->linked_at);
     }
 
-    public function test_already_authenticated_user_is_linked_and_uses_existing_role(): void
+    public function test_already_authenticated_user_is_linked_and_can_review_existing_roles(): void
     {
         $user = User::factory()->create();
         $canonical = $user->canonical();
@@ -108,7 +109,11 @@ final class AcquisitionOnboardingTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('acquisition.join', ['campaignCode' => $campaign->public_code]))
-            ->assertRedirect(route('acquisition.success'));
+            ->assertOk()
+            ->assertSee('Моя роль')
+            ->assertSee('организатор мероприятий')
+            ->assertSee('Сохранить роли')
+            ->assertSee('Продолжить');
 
         $visit = AcquisitionVisit::query()->sole();
         $this->assertSame($canonical->id, $visit->user_id);
@@ -118,9 +123,56 @@ final class AcquisitionOnboardingTest extends TestCase
 
         $this->get(route('acquisition.success'))
             ->assertOk()
-            ->assertSee('Готово! Добро пожаловать')
-            ->assertSee('Организатор мероприятий')
+            ->assertSee('Роль · Организатор мероприятий')
             ->assertSee('Создать игру или тренировку');
+    }
+
+    public function test_authenticated_user_can_update_roles_inside_onboarding(): void
+    {
+        $user = User::factory()->create();
+        $canonical = $user->canonical();
+        $canonical->participationRoles()->create([
+            'role' => UserParticipationRoleEnum::PLAYER,
+            'status' => UserParticipationRoleStatusEnum::ACTIVE,
+            'assigned_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('acquisition.roles.update'), [
+                'roles' => [
+                    UserParticipationRoleEnum::PLAYER->value => false,
+                    UserParticipationRoleEnum::COACH->value => true,
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', 'success')
+            ->assertJsonPath('roles.0.value', UserParticipationRoleEnum::COACH->value)
+            ->assertJsonPath('roles.0.label', 'Тренер');
+
+        $this->assertFalse($canonical->fresh()->hasActiveRole(UserParticipationRoleEnum::PLAYER->value));
+        $this->assertTrue($canonical->fresh()->hasActiveRole(UserParticipationRoleEnum::COACH->value));
+    }
+
+    public function test_success_groups_actions_for_each_active_role(): void
+    {
+        $user = User::factory()->create();
+        $canonical = $user->canonical();
+
+        foreach ([UserParticipationRoleEnum::PLAYER, UserParticipationRoleEnum::COACH] as $role) {
+            $canonical->participationRoles()->create([
+                'role' => $role,
+                'status' => UserParticipationRoleStatusEnum::ACTIVE,
+                'assigned_at' => now(),
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get(route('acquisition.success'))
+            ->assertOk()
+            ->assertSee('Роль · Игрок')
+            ->assertSee('Роль · Тренер')
+            ->assertSee('Найти игру или тренировку')
+            ->assertSee('Открыть свою секцию');
     }
 
     public function test_utm_medium_can_attribute_generic_join_to_context_ads(): void
