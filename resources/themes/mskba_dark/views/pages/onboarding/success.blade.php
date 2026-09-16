@@ -202,11 +202,11 @@
             <header class="acquisition-success__hero">
                 <span class="acquisition-success__check" aria-hidden="true"><i class="ti ti-check"></i></span>
                 <div>
-                    <span class="acquisition-success__eyebrow">Добро пожаловать в MSKBA</span>
-                    <h1>{{ $persona->label() }} — можно начинать</h1>
+                    <span class="acquisition-success__eyebrow">{{ $persona->label() }}</span>
+                    <h1>Готово! Добро пожаловать 👋</h1>
                     <p>
                         @if($isConfirmed)
-                            Аккаунт подтверждён. Ниже — действия, с которых удобнее всего начать именно вам.
+                            Аккаунт готов. Ниже — действия, с которых можно начать прямо сейчас.
                         @else
                             Аккаунт создан. Смотреть открытые разделы можно уже сейчас, а для действий от своего имени понадобится подтверждение аккаунта.
                         @endif
@@ -229,8 +229,8 @@
             @endunless
 
             <div class="acquisition-success__heading">
-                <span class="acquisition-success__eyebrow">Ваши первые возможности</span>
-                <h2>С чего начать</h2>
+                <span class="acquisition-success__eyebrow">Что дальше</span>
+                <h2>Что ты можешь сделать сейчас</h2>
             </div>
 
             <div class="acquisition-success__actions">
@@ -265,8 +265,8 @@
 
             <footer class="acquisition-success__footer">
                 <div>
-                    <strong>Вы не привязаны к одному сценарию</strong>
-                    <span>Позже можно добавить другие роли и пользоваться всеми доступными разделами портала.</span>
+                    <strong>Ты не привязан к одной роли</strong>
+                    <span>Позже можно изменить роль, добавить другие и пользоваться всеми доступными разделами портала.</span>
                 </div>
                 <a class="btn btn--secondary btn--sm" href="{{ route('account') }}">Перейти в аккаунт</a>
             </footer>
