@@ -23,7 +23,17 @@ final class AcquisitionOnboardingController extends Controller
         ?string $campaignCode = null,
     ): Response {
         $campaign = $this->campaign($campaignCode);
-        $visit = $tracker->capture($request, $campaign);
+        $currentVisit = $tracker->currentVisit($request);
+        $resumeCurrentVisit = $request->user() !== null
+            && $request->boolean('resume')
+            && $currentVisit !== null
+            && $currentVisit->campaign_id === $campaign?->id
+            && $currentVisit->visited_at?->gte(now()->subMinutes(10));
+
+        $visit = $resumeCurrentVisit
+            ? $tracker->attachCurrentUser($request, $currentVisit)
+            : $tracker->capture($request, $campaign);
+
         $authenticatedUser = null;
         $activeRoleValues = [];
 
