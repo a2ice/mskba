@@ -1,5 +1,7 @@
 @php
+    use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
     use App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions;
+    use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
 
     $currentHeight = old('height_cm', $profile?->height_cm);
     $currentWeight = old('weight_kg', $profile?->weight_kg);
@@ -21,6 +23,13 @@
     $characterHairColor = old('character.hair_color', $character['hair_color']);
     $characterFacialHair = old('character.facial_hair', $character['facial_hair']);
     $characterUniformKit = old('character.uniform_kit', $character['uniform_kit']);
+    $characterChestVolume = old('character.chest_volume', $character['chest_volume'] ?? 'medium');
+
+    $canUseThree = $user->system_role->atLeast(UserSystemRoleEnum::ADMIN);
+    $storedRenderMode = in_array($storedCharacter['render_mode'] ?? null, PlayerCharacterAppearanceOptions::RENDER_MODES, true)
+        ? $storedCharacter['render_mode']
+        : '2d';
+    $characterRenderMode = $storedRenderMode === '3d' && $canUseThree ? '3d' : '2d';
 
     if (! in_array($characterHairstyle, PlayerCharacterAppearanceOptions::hairstylesForGender($characterGender), true)) {
         $characterHairstyle = $characterDefaults['hairstyle'];
@@ -28,6 +37,10 @@
 
     if ($characterGender === 'female') {
         $characterFacialHair = 'none';
+    }
+
+    if (! in_array($characterChestVolume, PlayerCharacterAppearanceOptions::CHEST_VOLUMES, true)) {
+        $characterChestVolume = 'medium';
     }
 
     $skinTones = [
@@ -49,8 +62,6 @@
     $hairstyles = [
         'male_bald' => ['label' => 'Без волос', 'gender' => 'male'],
         'male_buzz' => ['label' => 'Ёжик', 'gender' => 'male'],
-        // Keep the persisted key for backwards compatibility; the authored
-        // MakeHuman asset is visually a regular short hairstyle, not a fade.
         'male_fade' => ['label' => 'Короткая', 'gender' => 'male'],
         'male_short' => ['label' => 'Короткая', 'gender' => 'male'],
         'male_curls' => ['label' => 'Кудри', 'gender' => 'male'],
@@ -68,6 +79,12 @@
         'short_beard' => 'Короткая',
         'full_beard' => 'Полная',
     ];
+    $chestVolumes = [
+        'small' => 'Небольшой',
+        'medium' => 'Средний',
+        'large' => 'Большой',
+        'full' => 'Выраженный',
+    ];
     $authoredHairstyles = ['male_bald', 'male_fade', 'female_ponytail'];
     $authoredFacialHairStyles = ['none', 'short_beard'];
 
@@ -78,6 +95,16 @@
     if (! in_array($characterFacialHair, $authoredFacialHairStyles, true)) {
         $characterFacialHair = 'none';
     }
+
+    $faceReferences = $user->profile
+        ? $user->profile->media()
+            ->whereIn('collection', PlayerCharacterFaceReferenceOptions::collections())
+            ->latest('id')
+            ->get()
+            ->keyBy(fn ($media) => PlayerCharacterFaceReferenceOptions::slotForCollection($media->collection))
+        : collect();
+    $faceReferenceLabels = PlayerCharacterFaceReferenceOptions::labels();
+
     $playerTeams = $playerTeams ?? collect();
     $defaultPlayerTeam = $playerTeams->first();
     $defaultUniformPrimary = data_get($defaultPlayerTeam?->colors, 'home_primary');
@@ -98,6 +125,19 @@
 
     <div class="account-player-character-layout">
         <div class="account-player-character-visual">
+            <div class="account-player-character-render-switch" data-player-character-render-switch aria-label="Режим отображения персонажа">
+                <button
+                    type="button"
+                    data-player-character-render-mode="2d"
+                    aria-pressed="{{ $characterRenderMode === '2d' ? 'true' : 'false' }}"
+                >2D</button>
+                <button
+                    type="button"
+                    data-player-character-render-mode="3d"
+                    aria-pressed="{{ $characterRenderMode === '3d' ? 'true' : 'false' }}"
+                >3D <small>beta</small></button>
+            </div>
+
             <div
                 class="account-player-character-stage"
                 data-player-character-stage
@@ -110,6 +150,9 @@
                 data-hair-color="{{ $characterHairColor }}"
                 data-facial-hair="{{ $characterFacialHair }}"
                 data-uniform-kit="{{ $characterUniformKit }}"
+                data-render-mode="{{ $characterRenderMode }}"
+                data-can-use-three="{{ $canUseThree ? 'true' : 'false' }}"
+                data-character-mutation-url="{{ route('account.player-profile.update') }}"
                 data-has-height="{{ $characterHeightCm !== null ? 'true' : 'false' }}"
                 data-three-status="idle"
                 role="group"
@@ -131,6 +174,10 @@
                     </div>
 
                     <div class="account-player-character-stage__axis" aria-hidden="true"></div>
+
+                    <div class="account-player-character-two" data-player-character-two aria-hidden="true">
+                        <img src="{{ asset('images/player-character/default-2d-player.svg') }}" alt="">
+                    </div>
                     <div class="account-player-character-three" data-player-character-three></div>
 
                     <button
@@ -148,8 +195,15 @@
 
                     <div class="account-player-character-stage__floor" aria-hidden="true"></div>
                 </div>
+
+                <div class="account-player-character-stage__loading" data-player-character-loading hidden aria-hidden="true">
+                    <span></span>
+                </div>
             </div>
 
+            <p class="account-player-character-render-note">
+                2D — основной режим. 3D пока открыт только администраторам для тестирования.
+            </p>
             <p class="account-player-character-error" data-player-character-error aria-live="polite" hidden></p>
         </div>
 
@@ -320,6 +374,24 @@
                 </div>
                 <input type="hidden" name="character[facial_hair]" value="{{ $characterGender === 'female' ? 'none' : $characterFacialHair }}" data-player-character-field="facial-hair">
 
+                @if($characterGender === 'female')
+                    <div class="account-player-character-configurator__group">
+                        <label class="account-player-character-configurator__label" for="player-chest-volume">Объём груди</label>
+                        <select
+                            id="player-chest-volume"
+                            class="form-select"
+                            name="character[chest_volume]"
+                            data-player-character-input="chest-volume"
+                        >
+                            @foreach($chestVolumes as $value => $label)
+                                <option value="{{ $value }}" @selected($characterChestVolume === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">Ручная настройка персонажа. По фотографии этот параметр не определяется.</small>
+                        @error('character.chest_volume') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+                @endif
+
                 <div class="account-player-character-configurator__group account-player-character-configurator__group--uniform">
                     <div class="account-player-character-configurator__group-heading">
                         <span class="account-player-character-configurator__label">Форма</span>
@@ -350,6 +422,45 @@
                     <input type="hidden" name="character[uniform_kit]" value="{{ $characterUniformKit }}" data-player-character-field="uniform-kit">
                     @error('character.uniform_kit') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
+            </div>
+
+            <div class="account-player-character-face-references" data-player-character-face-references>
+                <div class="account-player-character-face-references__heading">
+                    <div>
+                        <span class="eyebrow">Лицо для модели</span>
+                        <h4>Референсы лица</h4>
+                    </div>
+                    <span>private · ≤ 512 px</span>
+                </div>
+                <p class="text-muted mb-0">
+                    Это не аватар профиля. Для будущей генерации понадобится анфас и минимум один профиль; третий ракурс улучшит результат.
+                    Исходный high-res файл не сохраняется.
+                </p>
+
+                <div class="account-player-character-face-references__grid">
+                    @foreach(PlayerCharacterFaceReferenceOptions::SLOTS as $slot)
+                        @php($hasFaceReference = $faceReferences->has($slot))
+                        <label
+                            class="account-player-character-face-reference {{ $hasFaceReference ? 'is-stored' : '' }}"
+                            data-player-character-face-card="{{ $slot }}"
+                        >
+                            <span class="account-player-character-face-reference__icon" aria-hidden="true"></span>
+                            <strong>{{ $faceReferenceLabels[$slot] }}</strong>
+                            <small data-player-character-face-status="{{ $slot }}">
+                                {{ $hasFaceReference ? 'Загружено' : 'Добавить фото' }}
+                            </small>
+                            <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                data-player-character-face-input="{{ $slot }}"
+                            >
+                        </label>
+                    @endforeach
+                </div>
+
+                <p class="account-player-character-face-references__note">
+                    Проверка «анфас / левый / правый профиль» через AI будет подключена вместе с генератором. Сейчас сохраняется только нормализованный приватный reference.
+                </p>
             </div>
 
             <fieldset class="account-player-profile__positions account-player-character-controls__positions">

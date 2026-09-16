@@ -7,16 +7,89 @@
     overflow: hidden;
 }
 
+.account-player-character-render-switch {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(74px, 1fr));
+    gap: 3px;
+    margin: 0 0 9px;
+    padding: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 999px;
+    background: rgba(7, 10, 8, 0.62);
+}
+
+.account-player-character-render-switch button {
+    min-height: 31px;
+    border: 0;
+    border-radius: 999px;
+    padding: 5px 13px;
+    background: transparent;
+    color: rgba(249, 246, 239, 0.56);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+
+.account-player-character-render-switch button small {
+    margin-left: 2px;
+    color: currentColor;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.62;
+}
+
+.account-player-character-render-switch button[aria-pressed="true"] {
+    background: rgba(237, 128, 18, 0.16);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px rgba(237, 128, 18, 0.34);
+}
+
+.account-player-character-render-switch button:disabled {
+    cursor: wait;
+    opacity: 0.58;
+}
+
+.account-player-character-two,
 .account-player-character-three {
     position: absolute;
     z-index: 3;
     inset: 0;
     overflow: hidden;
+    transition: opacity 180ms ease, visibility 180ms ease;
+}
+
+.account-player-character-two {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: none;
+}
+
+.account-player-character-two img {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    display: block;
+    width: auto;
+    height: calc(var(--player-height-percent) * 1%);
+    max-width: 73%;
+    object-fit: contain;
+    object-position: center bottom;
+    transform: translateX(-50%);
+    transform-origin: center bottom;
+    filter: drop-shadow(0 13px 18px rgba(0, 0, 0, 0.32));
+    transition: height 180ms ease;
+}
+
+.account-player-character-three {
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
     touch-action: pan-y;
-    transition: opacity 180ms ease, visibility 180ms ease;
 }
 
 .account-player-character-three__canvas {
@@ -31,16 +104,53 @@
     cursor: grabbing;
 }
 
-.account-player-character-stage[data-three-status="ready"] .account-player-character-three {
+.account-player-character-stage[data-render-mode="3d"][data-three-status="ready"] .account-player-character-three {
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
+}
+
+.account-player-character-stage[data-render-mode="3d"][data-three-status="ready"] .account-player-character-two {
+    visibility: hidden;
+    opacity: 0;
 }
 
 .account-player-character-stage[data-three-status="error"] .account-player-character-three {
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
+}
+
+.account-player-character-stage__loading {
+    position: absolute;
+    z-index: 20;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 50%;
+    background: rgba(12, 14, 12, 0.76);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(5px);
+    pointer-events: none;
+}
+
+.account-player-character-stage__loading[hidden] {
+    display: none;
+}
+
+.account-player-character-stage__loading span {
+    position: absolute;
+    inset: 6px;
+    border: 2px solid rgba(249, 246, 239, 0.22);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: player-character-spin 720ms linear infinite;
+}
+
+@keyframes player-character-spin {
+    to { transform: rotate(360deg); }
 }
 
 .account-player-character-stage__scale,
@@ -56,8 +166,8 @@
     z-index: 7;
 }
 
-/* Height is projected from the same orthographic camera/world coordinates as the
- * model. There is intentionally no horizontal ruler line: only this metric point. */
+/* Height is projected from the same metric viewport in 2D and from the same
+ * orthographic camera/world coordinates in 3D. */
 .account-player-character-stage__height-marker {
     position: absolute;
     z-index: 12;
@@ -75,7 +185,7 @@
     pointer-events: auto;
     cursor: pointer;
     opacity: 1;
-    transition: opacity 140ms ease;
+    transition: opacity 140ms ease, left 180ms ease, top 180ms ease;
 }
 
 .account-player-character-stage__height-marker[hidden],
@@ -131,11 +241,16 @@
     outline-offset: 1px;
 }
 
+.account-player-character-render-note,
 .account-player-character-error {
     margin: 8px 4px 0;
-    color: #d9aa7c;
+    color: var(--text-muted);
     font-size: 11px;
     line-height: 1.4;
+}
+
+.account-player-character-error {
+    color: #d9aa7c;
 }
 
 .account-player-character-configurator__profile-gender {
@@ -153,6 +268,145 @@
     height: 6px;
     border-radius: 50%;
     background: rgba(237, 128, 18, 0.75);
+}
+
+.account-player-character-face-references {
+    display: grid;
+    gap: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 16px;
+    padding: 18px;
+    background: rgba(7, 10, 8, 0.28);
+}
+
+.account-player-character-face-references__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.account-player-character-face-references__heading h4 {
+    margin: 2px 0 0;
+}
+
+.account-player-character-face-references__heading > span {
+    color: rgba(249, 246, 239, 0.44);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.account-player-character-face-references__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.account-player-character-face-reference {
+    position: relative;
+    display: grid;
+    min-height: 118px;
+    align-content: center;
+    justify-items: center;
+    gap: 7px;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 13px;
+    padding: 12px 8px;
+    background: rgba(255, 255, 255, 0.025);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease;
+}
+
+.account-player-character-face-reference:hover {
+    border-color: rgba(237, 128, 18, 0.58);
+    background: rgba(237, 128, 18, 0.045);
+}
+
+.account-player-character-face-reference.is-stored {
+    border-style: solid;
+    border-color: rgba(93, 186, 117, 0.4);
+    background: rgba(93, 186, 117, 0.045);
+}
+
+.account-player-character-face-reference.is-uploading {
+    cursor: wait;
+    opacity: 0.58;
+}
+
+.account-player-character-face-reference input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.account-player-character-face-reference__icon {
+    position: relative;
+    width: 31px;
+    height: 31px;
+    border: 1px solid rgba(249, 246, 239, 0.24);
+    border-radius: 50%;
+}
+
+.account-player-character-face-reference__icon::before,
+.account-player-character-face-reference__icon::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    border-radius: 999px;
+    background: rgba(249, 246, 239, 0.46);
+    transform: translateX(-50%);
+}
+
+.account-player-character-face-reference__icon::before {
+    top: 6px;
+    width: 8px;
+    height: 8px;
+}
+
+.account-player-character-face-reference__icon::after {
+    bottom: 5px;
+    width: 16px;
+    height: 8px;
+}
+
+.account-player-character-face-reference.is-stored .account-player-character-face-reference__icon {
+    border-color: rgba(93, 186, 117, 0.64);
+}
+
+.account-player-character-face-reference strong {
+    color: var(--text-main, #f9f6ef);
+    font-size: 12px;
+}
+
+.account-player-character-face-reference small,
+.account-player-character-face-references__note {
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.account-player-character-face-reference.is-stored small {
+    color: rgba(132, 211, 151, 0.82);
+}
+
+.account-player-character-face-references__note {
+    margin: 0;
+}
+
+@media (max-width: 720px) {
+    .account-player-character-face-references__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-player-character-face-reference {
+        min-height: 88px;
+    }
 }
 
 @media (hover: none) {
