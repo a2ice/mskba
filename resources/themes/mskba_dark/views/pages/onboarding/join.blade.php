@@ -11,10 +11,9 @@
     $loginRedirectTo = route('acquisition.join', $loginRedirectParams, false);
     $registrationRedirectTo = route('acquisition.success', [], false);
     $hasLoginErrors = $errors->has('login') || session()->has('error');
-    $hasProfileErrors = $errors->has('birth_date') || $errors->has('gender') || $errors->has('first_name') || $errors->has('last_name');
     $hasRegistrationErrors = $errors->any() && ! $hasLoginErrors;
     $initialFlow = $hasLoginErrors ? 'login' : ($hasRegistrationErrors ? 'join' : '');
-    $errorStep = $hasProfileErrors ? 'profile' : ($hasRegistrationErrors ? 'account' : '');
+    $errorStep = $hasRegistrationErrors ? 'account' : '';
     $activeRoleValues = $activeRoleValues ?? [];
     $activeRoleLabels = collect($participationRoles ?? [])
         ->filter(fn ($role): bool => in_array($role->value, $activeRoleValues, true))
