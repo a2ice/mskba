@@ -75,10 +75,20 @@
     background: #efefed;
 }
 
+.acquisition-onboarding__step--entry > .acquisition-onboarding__login-link {
+    justify-self: center;
+}
+
 .acquisition-onboarding__roles-form {
     width: min(100%, 860px);
     margin: 30px auto 0;
     text-align: left;
+}
+
+#join-faq .acquisition-onboarding__step-heading {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
 }
 
 .acquisition-onboarding__roles {
