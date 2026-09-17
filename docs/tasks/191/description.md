@@ -199,6 +199,12 @@ Feature coverage защищает устойчивое поведение, а н
 
 Идею из исходного сценария про nullable «желаемый уровень игрока» для набора в секцию не следует смешивать с acquisition schema. Это отдельное доменное поле условий набора секции рядом с возрастом/годом рождения и требует отдельной задачи: модель + enum/справочник уровня + create/edit UI + каталог/заявки + backward compatibility. Рекомендуемый следующий task после 191.
 
+## Production verification
+
+- PR #206 merged into `main`: `43da7682920799114302a3b677daeb92509df9ce`.
+- Production deploy #729 completed successfully for that merge commit.
+- A real HTTP smoke check of `https://mskba.ru/join` completed successfully after deploy and confirmed the new onboarding copy: «Привет и добро пожаловать на MSKBA», «Присоединиться», «У меня уже есть аккаунт».
+
 ## Status
 
 - [x] architecture;
@@ -214,4 +220,4 @@ Feature coverage защищает устойчивое поведение, а н
 - [x] campaign CLI;
 - [x] feature tests added;
 - [x] CI green;
-- [ ] merged to `main` / production deploy verified.
+- [x] merged to `main` / production deploy verified.
