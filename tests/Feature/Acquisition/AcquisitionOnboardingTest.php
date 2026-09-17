@@ -5,6 +5,7 @@ namespace Tests\Feature\Acquisition;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
@@ -93,6 +94,8 @@ final class AcquisitionOnboardingTest extends TestCase
             'role' => UserParticipationRoleEnum::ORGANIZER,
             'status' => UserParticipationRoleStatusEnum::ACTIVE,
             'assigned_at' => now(),
+            'assigned_by' => $canonical->id,
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
         ]);
         $campaign = $this->campaign('social-organizer-191', AcquisitionChannelEnum::SOCIAL);
 
@@ -140,6 +143,8 @@ final class AcquisitionOnboardingTest extends TestCase
             'role' => UserParticipationRoleEnum::PLAYER,
             'status' => UserParticipationRoleStatusEnum::ACTIVE,
             'assigned_at' => now(),
+            'assigned_by' => $canonical->id,
+            'assigner' => UserParticipationRoleAssignerEnum::USER,
         ]);
 
         $this->actingAs($user)
@@ -168,6 +173,8 @@ final class AcquisitionOnboardingTest extends TestCase
                 'role' => $role,
                 'status' => UserParticipationRoleStatusEnum::ACTIVE,
                 'assigned_at' => now(),
+                'assigned_by' => $canonical->id,
+                'assigner' => UserParticipationRoleAssignerEnum::USER,
             ]);
         }
 
