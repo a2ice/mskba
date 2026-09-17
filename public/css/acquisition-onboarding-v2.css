@@ -1,0 +1,274 @@
+.acquisition-onboarding__step--entry {
+    display: grid;
+    min-height: 520px;
+    place-content: center;
+    text-align: center;
+}
+
+.acquisition-onboarding__entry-copy {
+    max-width: 820px;
+    margin: 0 auto;
+}
+
+.acquisition-onboarding__entry-copy h1 {
+    margin: 10px 0 18px;
+    font-family: var(--font-display);
+    font-size: clamp(40px, 5.5vw, 70px);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -.025em;
+}
+
+.acquisition-onboarding__entry-copy p {
+    max-width: 720px;
+    margin: 0 auto;
+    color: var(--muted);
+    font-size: clamp(16px, 1.5vw, 19px);
+    line-height: 1.65;
+}
+
+.acquisition-onboarding__entry-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    width: min(100%, 720px);
+    margin: 34px auto 0;
+}
+
+.acquisition-onboarding__entry-actions--single {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(100%, 420px);
+    margin-top: 22px;
+}
+
+.acquisition-onboarding__entry-button {
+    display: inline-flex;
+    min-height: 58px;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 22px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.acquisition-onboarding__entry-button:hover,
+.acquisition-onboarding__entry-button:focus-visible {
+    transform: translateY(-1px);
+}
+
+.acquisition-onboarding__entry-button--login {
+    border: 1px solid #fff;
+    color: #151713;
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+}
+
+.acquisition-onboarding__entry-button--login:hover,
+.acquisition-onboarding__entry-button--login:focus-visible {
+    border-color: #efefed;
+    color: #151713;
+    background: #efefed;
+}
+
+.acquisition-onboarding__roles-form {
+    width: min(100%, 860px);
+    margin: 30px auto 0;
+    text-align: left;
+}
+
+.acquisition-onboarding__roles {
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .025);
+}
+
+.acquisition-onboarding__roles[open] {
+    border-color: rgba(255, 116, 39, .32);
+    background: linear-gradient(145deg, rgba(226, 89, 15, .07), rgba(255, 255, 255, .025));
+}
+
+.acquisition-onboarding__roles-summary {
+    display: flex;
+    min-height: 78px;
+    gap: 18px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px;
+    list-style: none;
+    cursor: pointer;
+}
+
+.acquisition-onboarding__roles-summary::-webkit-details-marker {
+    display: none;
+}
+
+.acquisition-onboarding__roles-summary span {
+    display: grid;
+    gap: 4px;
+}
+
+.acquisition-onboarding__roles-summary small {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.acquisition-onboarding__roles-summary strong {
+    color: #fff;
+    font-size: 18px;
+    line-height: 1.25;
+}
+
+.acquisition-onboarding__roles-summary > i {
+    color: var(--muted);
+    font-size: 22px;
+    transition: transform .18s ease;
+}
+
+.acquisition-onboarding__roles[open] .acquisition-onboarding__roles-summary > i {
+    transform: rotate(180deg);
+}
+
+.acquisition-onboarding__roles-body {
+    padding: 0 22px 22px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.acquisition-onboarding__roles-body > p {
+    margin: 18px 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.acquisition-onboarding__role-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.acquisition-onboarding__role-toggle {
+    min-width: 0;
+    padding: 14px 15px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .025);
+}
+
+.acquisition-onboarding__role-toggle .form-toggle {
+    margin: 0;
+}
+
+.acquisition-onboarding__role-toggle .form-toggle__title {
+    color: #fff;
+}
+
+.acquisition-onboarding__role-toggle .form-toggle__description {
+    color: var(--muted);
+    line-height: 1.45;
+}
+
+.acquisition-onboarding__roles-actions {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-top: 18px;
+}
+
+.acquisition-onboarding__roles-status {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.acquisition-onboarding__roles-status.is-success {
+    color: #9dd8bc;
+}
+
+.acquisition-onboarding__roles-status.is-warning {
+    color: #e7ba8d;
+}
+
+.acquisition-onboarding__step--login {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.acquisition-onboarding__step--login .auth-form-wrapper {
+    max-width: none;
+}
+
+.acquisition-onboarding__step--login .auth-form-wrapper > .alert:first-child {
+    margin-top: 0;
+}
+
+.acquisition-onboarding__step--login .auth-form-wrapper form > .btn {
+    min-width: 160px;
+}
+
+.acquisition-onboarding__step--login .links {
+    color: var(--muted);
+}
+
+.acquisition-onboarding__wizard-footer[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 700px) {
+    .acquisition-onboarding__step--entry {
+        min-height: 440px;
+        padding-block: 38px;
+    }
+
+    .acquisition-onboarding__entry-copy h1 {
+        font-size: clamp(36px, 10.5vw, 50px);
+    }
+
+    .acquisition-onboarding__entry-actions {
+        grid-template-columns: 1fr;
+        margin-top: 28px;
+    }
+
+    .acquisition-onboarding__entry-button {
+        width: 100%;
+        min-height: 54px;
+    }
+
+    .acquisition-onboarding__role-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .acquisition-onboarding__roles-summary,
+    .acquisition-onboarding__roles-body {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .acquisition-onboarding__roles-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .acquisition-onboarding__roles-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .acquisition-onboarding__step--login .auth-form-wrapper form > .btn {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .acquisition-onboarding__entry-button,
+    .acquisition-onboarding__roles-summary > i {
+        transition: none;
+    }
+}
