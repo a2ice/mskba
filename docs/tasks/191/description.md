@@ -213,5 +213,5 @@ Feature coverage защищает устойчивое поведение, а н
 - [x] organizer participation role;
 - [x] campaign CLI;
 - [x] feature tests added;
-- [ ] CI green;
+- [x] CI green;
 - [ ] merged to `main` / production deploy verified.
