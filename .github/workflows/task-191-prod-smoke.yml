@@ -1,0 +1,20 @@
+name: Task 191 production smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/task-191-prod-smoke.yml"
+
+jobs:
+  verify-join:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify production /join
+        shell: bash
+        run: |
+          set -euo pipefail
+          BODY="$(curl --fail-with-body --silent --show-error --location --max-time 30 https://mskba.ru/join)"
+          grep -Fq 'Привет и добро пожаловать на MSKBA' <<<"$BODY"
+          grep -Fq 'Присоединиться' <<<"$BODY"
+          grep -Fq 'У меня уже есть аккаунт' <<<"$BODY"
+          echo 'TASK_191_PRODUCTION_JOIN_OK'
