@@ -9,21 +9,11 @@
 }
 
 .home-flow-wizard-nav {
-    position: sticky;
-    bottom: -26px;
-    z-index: 30;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-    gap: 14px;
-    margin: 24px -28px -26px;
-    padding: 14px 28px 18px;
-    border-top: 1px solid rgba(255, 255, 255, .1);
-    background:
-        linear-gradient(180deg, rgba(14, 17, 15, .92), rgba(13, 15, 13, .985));
-    box-shadow: 0 -14px 28px rgba(0, 0, 0, .22);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+	display: grid;
+	width: 100%;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	align-items: center;
+	gap: 14px;
 }
 
 .home-flow-wizard-nav__back {

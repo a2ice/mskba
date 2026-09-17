@@ -122,7 +122,15 @@ export function mountHomeFlowNavigation({
     next.innerHTML = '<span>Далее</span><i class="ti ti-arrow-right"></i>';
 
     footer.append(back, skip, next);
-    panel.append(footer);
+    const modalDialog = flow.closest('[data-modal]')?.querySelector('.modal__dialog');
+    let footerContainer = modalDialog?.querySelector('[data-modal-footer-container]');
+    if (modalDialog && !footerContainer) {
+        footerContainer = document.createElement('footer');
+        footerContainer.className = 'modal__footer';
+        footerContainer.dataset.modalFooterContainer = '';
+        modalDialog.append(footerContainer);
+    }
+    (footerContainer || panel).append(footer);
 
     let choiceObserver = null;
     let choiceObserverTimeout = null;
