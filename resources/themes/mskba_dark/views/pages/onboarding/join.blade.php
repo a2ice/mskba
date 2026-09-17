@@ -84,7 +84,7 @@
                 <div class="acquisition-onboarding__progress" aria-live="polite">
                     <div>
                         <span>Шаг <strong data-acquisition-progress-current>1</strong></span>
-                        <span data-acquisition-progress-caption>{{ $isAuthenticatedOnboarding ? 'Твои роли' : 'Добро пожаловать' }}</span>
+                        <span data-acquisition-progress-caption>{{ $isAuthenticatedOnboarding ? 'Твои роли' : 'Быстрая регистрация' }}</span>
                     </div>
                     <div class="acquisition-onboarding__progress-track" aria-hidden="true">
                         <span data-acquisition-progress-bar></span>
@@ -151,7 +151,7 @@
                         </form>
                     @else
                         <div class="acquisition-onboarding__entry-copy">
-                            <span class="acquisition-onboarding__step-label">Добро пожаловать</span>
+                            <span class="acquisition-onboarding__step-label">Московская Баскетбольная Ассоциация</span>
                             <h1>Привет и добро пожаловать на MSKBA.</h1>
                             <p>
                                 Ты можешь сразу выбрать свою роль на портале — или сделать это позже в любое время.
@@ -169,6 +169,12 @@
                                 У меня уже есть аккаунт
                             </button>
                         </div>
+
+                        <a href="#join-faq" class="acquisition-onboarding__login-link">
+                            <i class="ti ti-help-circle" aria-hidden="true"></i>
+                            Частые вопросы
+                            <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                        </a>
                     @endif
                 </section>
 
@@ -336,11 +342,53 @@
                 @endunless
             </div>
 
-            <div class="acquisition-onboarding__trust">
-                <span><i class="ti ti-lock" aria-hidden="true"></i> Регистрация бесплатна</span>
-                <span><i class="ti ti-switch-horizontal" aria-hidden="true"></i> Роли можно менять и добавлять</span>
-                <span><i class="ti ti-map-pin" aria-hidden="true"></i> Геопроверка QR добровольна</span>
-            </div>
+            @unless($isAuthenticatedOnboarding)
+                <section id="join-faq" class="acquisition-onboarding__roles-form" aria-labelledby="join-faq-heading" style="scroll-margin-top: 96px;">
+                    <div class="acquisition-onboarding__step-heading mb-3">
+                        <span class="acquisition-onboarding__step-label">FAQ</span>
+                        <h2 id="join-faq-heading">Частые вопросы</h2>
+                    </div>
+
+                    <details class="acquisition-onboarding__roles">
+                        <summary class="acquisition-onboarding__roles-summary">
+                            <span>
+                                <small>Регистрация</small>
+                                <strong>Регистрация на MSKBA бесплатна?</strong>
+                            </span>
+                            <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                        </summary>
+                        <div class="acquisition-onboarding__roles-body">
+                            <p>Да. Создать аккаунт и выбрать свои роли на портале можно бесплатно.</p>
+                        </div>
+                    </details>
+
+                    <details class="acquisition-onboarding__roles mt-2">
+                        <summary class="acquisition-onboarding__roles-summary">
+                            <span>
+                                <small>Роли</small>
+                                <strong>Можно изменить или добавить роль позже?</strong>
+                            </span>
+                            <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                        </summary>
+                        <div class="acquisition-onboarding__roles-body">
+                            <p>Да. Роли не фиксируются навсегда: их можно менять, отключать и добавлять в аккаунте в любое время.</p>
+                        </div>
+                    </details>
+
+                    <details class="acquisition-onboarding__roles mt-2">
+                        <summary class="acquisition-onboarding__roles-summary">
+                            <span>
+                                <small>QR и геолокация</small>
+                                <strong>Нужно обязательно подтверждать геопозицию?</strong>
+                            </span>
+                            <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                        </summary>
+                        <div class="acquisition-onboarding__roles-body">
+                            <p>Нет. Геопроверка для QR-кампаний добровольна и не блокирует регистрацию, если ты её пропустишь или запретишь доступ к геолокации.</p>
+                        </div>
+                    </details>
+                </section>
+            @endunless
         </div>
     </section>
 
