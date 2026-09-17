@@ -1,5 +1,6 @@
 const FIXED_SHOW_DELAY = 100;
 const HOME_HERO_FIXED_OFFSET = 100;
+const ANCHOR_SCROLL_GAP = 16;
 
 function initStickyHeader() {
     const header = document.querySelector('.site-header');
@@ -45,6 +46,101 @@ function initStickyHeader() {
         header.style.height = `${headerHeight}px`;
         document.documentElement.style.setProperty('--site-header-height', `${headerHeight}px`);
         syncFixedThreshold();
+    };
+
+    const getAnchorTarget = (hash) => {
+        if (!hash || hash === '#') {
+            return null;
+        }
+
+        try {
+            return document.getElementById(decodeURIComponent(hash.slice(1)));
+        } catch (_) {
+            return null;
+        }
+    };
+
+    const scrollToAnchor = (hash, behavior = 'auto') => {
+        const target = getAnchorTarget(hash);
+
+        if (!target) {
+            return false;
+        }
+
+        syncHeaderHeight();
+
+        const top = target.getBoundingClientRect().top
+            + window.scrollY
+            - headerHeight
+            - ANCHOR_SCROLL_GAP;
+
+        window.scrollTo({
+            top: Math.max(0, top),
+            behavior,
+        });
+
+        return true;
+    };
+
+    const correctCurrentAnchor = () => {
+        if (!window.location.hash) {
+            return;
+        }
+
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                scrollToAnchor(window.location.hash);
+            });
+        });
+    };
+
+    const handleAnchorClick = (event) => {
+        if (
+            event.defaultPrevented
+            || event.button !== 0
+            || event.metaKey
+            || event.ctrlKey
+            || event.shiftKey
+            || event.altKey
+        ) {
+            return;
+        }
+
+        const source = event.target instanceof Element ? event.target : null;
+        const link = source?.closest('a[href]');
+
+        if (!link || (link.target && link.target !== '_self') || link.hasAttribute('download')) {
+            return;
+        }
+
+        let url;
+
+        try {
+            url = new URL(link.href, window.location.href);
+        } catch (_) {
+            return;
+        }
+
+        if (
+            url.origin !== window.location.origin
+            || url.pathname !== window.location.pathname
+            || url.search !== window.location.search
+            || !url.hash
+            || !getAnchorTarget(url.hash)
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+        const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+        if (nextUrl !== currentUrl) {
+            window.history.pushState(null, '', nextUrl);
+        }
+
+        scrollToAnchor(url.hash);
     };
 
     const hideFixedHeader = () => {
@@ -94,10 +190,12 @@ function initStickyHeader() {
 
     syncHeaderHeight();
     syncStickyState();
+    correctCurrentAnchor();
 
     window.addEventListener('load', () => {
         syncHeaderHeight();
         syncStickyState();
+        correctCurrentAnchor();
     }, { once: true });
 
     window.addEventListener('resize', () => {
@@ -106,6 +204,8 @@ function initStickyHeader() {
     });
 
     window.addEventListener('scroll', requestStickyStateSync, { passive: true });
+    window.addEventListener('hashchange', () => scrollToAnchor(window.location.hash));
+    document.addEventListener('click', handleAnchorClick);
 }
 
 if (document.readyState === 'loading') {

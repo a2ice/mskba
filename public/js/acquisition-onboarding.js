@@ -43,7 +43,7 @@
     };
 
     const captions = {
-        entry: isAuthenticated ? 'Твои роли' : 'Добро пожаловать',
+        entry: isAuthenticated ? 'Твои роли' : 'Быстрая регистрация',
         login: 'Вход в аккаунт',
         persona: 'Выбор роли',
         account: 'Создание аккаунта',
