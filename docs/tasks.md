@@ -154,3 +154,4 @@
 - [x] 188 - Публичные профили и попапы тренеров секции, B043 ([описание](tasks/188/description.md))
 - [x] 189 - Никнеймы и уточнение публичного профиля ([описание](tasks/189/description.md))
 - [x] 190 - Персональная подсказка никнейма ([описание](tasks/190/description.md))
+- [ ] 191 - Acquisition onboarding / promo landing ([описание](tasks/191/description.md))
