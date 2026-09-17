@@ -45,6 +45,11 @@ function initStickyHeader() {
         headerHeight = measuredHeight;
         header.style.height = `${headerHeight}px`;
         document.documentElement.style.setProperty('--site-header-height', `${headerHeight}px`);
+
+        const scrollPaddingTop = `${headerHeight + ANCHOR_SCROLL_GAP}px`;
+        document.documentElement.style.scrollPaddingTop = scrollPaddingTop;
+        document.body.style.scrollPaddingTop = scrollPaddingTop;
+
         syncFixedThreshold();
     };
 
