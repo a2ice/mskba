@@ -28,5 +28,5 @@ body.main [data-home-flow="event"] [data-home-flow-panel="search"] {
 
 body.main .modal__dialog.home-flow-modal__dialog {
     height: auto;
-    min-height: 0;
+    min-height: min(300px, calc(var(--modal-viewport-height, 100vh) * .95));
 }

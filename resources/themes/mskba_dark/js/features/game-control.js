@@ -1,9 +1,7 @@
 const openGameModal = (id) => {
     const modal = document.querySelector(`[data-modal="${id}"]`);
     if (!modal) return;
-    modal.hidden = false;
-    modal.classList.add('is-open');
-    document.body.classList.add('modal-open', 'content-modal-open');
+    window.MskbaModal?.open(modal);
 };
 
 const closeGameModal = (id) => document.querySelector(`[data-modal="${id}"] [data-modal-action="close"]`)?.click();

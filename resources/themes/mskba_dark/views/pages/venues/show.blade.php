@@ -354,7 +354,7 @@
                         @endforeach
                     </div>
 
-                    <footer class="venue-occupancy-modal__footer">
+                    <footer class="venue-occupancy-modal__footer" data-modal-footer>
                         <button type="button" class="btn btn--secondary" data-venue-occupancy-prev disabled>
                             <i class="ti ti-arrow-left" aria-hidden="true"></i> Пред. день
                         </button>
@@ -375,7 +375,7 @@
                     <h2 class="modal_title" id="modal-title-venue-booking-details">Параметры заявки</h2>
                     <div class="venue-booking-details-modal__content" data-venue-booking-details-content></div>
                     <p class="venue-booking-details-modal__message" data-venue-booking-details-message aria-live="polite"></p>
-                    <footer class="venue-booking-details-modal__footer">
+                    <footer class="venue-booking-details-modal__footer" data-modal-footer>
                         <a class="btn btn--secondary" href="#" data-venue-booking-details-page>Открыть заявку</a>
                         <button type="button" class="btn btn--primary" data-venue-booking-refresh>Обновить статус</button>
                     </footer>

@@ -32,9 +32,7 @@
 
 .venue-selector-preview-modal__dialog {
     width: min(720px, 100%);
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: hidden;
 }
 
 .embedded-entity-link {
@@ -154,14 +152,6 @@
 }
 
 @media (max-width: 768px) {
-    .venue-selector-map-modal__dialog {
-        padding: 22px 16px 16px;
-    }
-
-    .venue-selector-preview-modal__dialog {
-        padding: 22px 16px 16px;
-    }
-
     .venue-selector-map {
         height: 60vh;
         min-height: 320px;
@@ -192,7 +182,6 @@
     }
 
     body.telegram-mini-app .venue-selector-preview-modal__dialog {
-        overflow-y: auto;
-        overscroll-behavior: contain;
+        overflow: hidden;
     }
 }
