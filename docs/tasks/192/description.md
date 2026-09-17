@@ -35,12 +35,22 @@
 - Размеры и позиция рассчитываются относительно `visualViewport`; добавлены compact/mobile режимы и сохранена Telegram safe-area интеграция.
 - Технический контракт описан в `docs/specification/modal-system.md`, краткие входы добавлены в продуктовую и техническую документацию.
 
+### Доработка после production-проверки
+
+- Перед доработкой `main` обновлён fast-forward до `daaff6b1`; 37 параллельных коммитов относятся к task 191 и sticky-header и не меняют общий modal lifecycle.
+- Исправлена смена действия кнопки minimize/restore: обработчик читает актуальный DOM-атрибут, а не закэшированное jQuery-значение.
+- Сворачивание больше не возвращает focus к инициатору и не запускает ошибочное повторное фокусирование формы; возврат focus сохранён только для закрытия.
+- Успешная авторизация очищает из URL временные `modal` и `modal_state`, сохраняя остальные query-параметры и fragment. Правило продублировано на frontend и в общем безопасном backend-resolver, поэтому действует для пароля, регистрации, VK и Telegram.
+- Для обоих auth-попапов добавлен компактный dialog шириной до 460 px, чтобы поля не растягивались до общей ширины контентных окон.
+
 ## Проверки
 
 - `npm run build` — успешно; tracked `public/build` пересобран согласно текущей стратегии репозитория. Сохраняются известные предупреждения про runtime `/images/home-court.png` и chunks больше 500 kB.
 - `php artisan view:cache` — Blade-шаблоны успешно скомпилированы; после проверки compiled views очищены через `php artisan view:clear`.
 - `node --check` для общего lifecycle и изменённых feature-файлов — успешно.
 - `git diff --check` — успешно.
+- После доработки: `php artisan test tests/Feature/Auth tests/Feature/Vk/VkIdAuthenticationTest.php tests/Feature/Telegram/TelegramWebLoginTest.php tests/Feature/Telegram/TelegramBotLoginTest.php` — 48 тестов, 390 assertions, успешно.
+- После доработки: `npm run build`, `node --check`, `php artisan view:cache` и `git diff --check` — успешно; production assets пересобраны.
 - Полноценная локальная HTTP/визуальная проверка не выполнена: локальный PostgreSQL на `127.0.0.1:5432` не запущен, а Browser runtime не обнаружил подключённых браузеров. Поэтому desktop/mobile визуальная приёмка не заявляется.
 
 ## Архитектурная граница

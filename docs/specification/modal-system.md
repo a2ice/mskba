@@ -31,6 +31,8 @@ Dialog центрируется внутри `visualViewport`. Его CSS-пер
 - разворачивание возвращает modal semantics и focus;
 - закрытие возвращает focus живому инициатору.
 
+Сворачивание, в отличие от закрытия, не возвращает focus инициатору: активной остаётся та же кнопка, которая после смены состояния становится кнопкой «Развернуть». Runtime-атрибут `data-modal-action` читается непосредственно из DOM, поэтому повторные циклы minimize/restore не зависят от кэша jQuery.
+
 Сохраняются события `modal:opened` и `modal:closed`; дополнительно публикуются `modal:minimized` и `modal:restored`. Это UI lifecycle, он не меняет backend authorization и доменные правила.
 
 ## URL-контракт
@@ -46,6 +48,8 @@ Dialog центрируется внутри `visualViewport`. Его CSS-пер
 
 В URL хранится только id и UI-состояние. Значения полей, CSRF-токены, результаты запросов и другие чувствительные данные туда не переносятся. Для окна, которое принципиально нельзя восстанавливать из адреса, layout принимает `persistInUrl => false`.
 
+Параметры `modal` и `modal_state` считаются временным UI-состоянием и удаляются из целевого URL после успешной авторизации. Это выполняется и в browser lifecycle (`MskbaModal.withoutState`), и в общем backend-resolver безопасных auth-редиректов, поэтому правило одинаково для пароля, регистрации, VK и Telegram. Остальные query-параметры и fragment сохраняются.
+
 ## Интеграция feature-кода
 
 Обычные кнопки используют текущий декларативный контракт:
@@ -54,7 +58,7 @@ Dialog центрируется внутри `visualViewport`. Его CSS-пер
 <button data-handler="modal" data-modal-action="open" data-modal-target="example">Открыть</button>
 ```
 
-Для программного управления доступен `window.MskbaModal` с методами `open`, `close`, `minimize`, `restore`. Feature-код не должен самостоятельно переключать `hidden`, `is-open` и `body.modal-open`, иначе URL, focus и события расходятся. Homepage wizard, вложенный location wizard, игровые формы и управление правами команды используют общий lifecycle.
+Для программного управления доступен `window.MskbaModal` с методами `open`, `close`, `minimize`, `restore` и helper `withoutState(url)` для очистки popup-параметров перед навигацией. Feature-код не должен самостоятельно переключать `hidden`, `is-open` и `body.modal-open`, иначе URL, focus и события расходятся. Homepage wizard, вложенный location wizard, игровые формы и управление правами команды используют общий lifecycle.
 
 ## Границы
 

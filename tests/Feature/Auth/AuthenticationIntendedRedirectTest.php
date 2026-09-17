@@ -102,6 +102,29 @@ final class AuthenticationIntendedRedirectTest extends TestCase
         $this->assertNull(session('url.intended'));
     }
 
+    public function test_authentication_redirect_removes_transient_modal_state(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'modal_returning_player',
+            'password' => 'password',
+            'registration_channel' => UserRegistrationChannelEnum::SEED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $target = url('/join?utm_source=chatgpt.com&modal=auth-entry-classic&modal_state=minimized#join-faq');
+        $expected = url('/join?utm_source=chatgpt.com#join-faq');
+
+        $this->postJson(route('auth.login'), [
+            'login' => 'modal_returning_player',
+            'password' => 'password',
+            'redirect_to' => $target,
+        ])
+            ->assertOk()
+            ->assertJsonPath('redirect_url', $expected);
+
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_registration_returns_to_intended_target_and_consumes_it(): void
     {
         $target = $this->bookingTarget();

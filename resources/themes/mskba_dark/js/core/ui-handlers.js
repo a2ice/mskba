@@ -34,10 +34,10 @@ const handlers = {
 
     modal(trigger) {
         const triggerElement = $(trigger);
-        const action = triggerElement.data('modalAction') || triggerElement.data('modal-action') || 'open';
-        const modalTarget = triggerElement.data('modalTarget') || triggerElement.data('modal-target');
-        const modalSection = triggerElement.data('modalSection') || triggerElement.data('modal-section') || '';
-        const modalRedirectUrl = triggerElement.data('authRedirectUrl') || triggerElement.data('auth-redirect-url') || '';
+        const action = trigger.getAttribute('data-modal-action') || 'open';
+        const modalTarget = trigger.getAttribute('data-modal-target');
+        const modalSection = trigger.getAttribute('data-modal-section') || '';
+        const modalRedirectUrl = trigger.getAttribute('data-auth-redirect-url') || '';
         const modal = modalTarget ? $('[data-modal="' + modalTarget + '"]') : triggerElement.closest('[data-modal]');
 
         if (!modal.length) {
@@ -332,6 +332,14 @@ function clearModalUrl(modal) {
     window.history.replaceState(window.history.state, '', url);
 }
 
+function withoutModalState(url = window.location.href) {
+    const cleanUrl = new URL(url, window.location.origin);
+    cleanUrl.searchParams.delete(MODAL_URL_PARAM);
+    cleanUrl.searchParams.delete(MODAL_STATE_URL_PARAM);
+
+    return cleanUrl.toString();
+}
+
 function focusModal(modal) {
     window.requestAnimationFrame(() => {
         const autofocus = modal.find('[autofocus]:visible').first().get(0);
@@ -394,7 +402,6 @@ function minimizeModal(modalInput, options = {}) {
         replaceModalUrl(modal, MODAL_STATE_MINIMIZED);
     }
 
-    restoreModalTriggerFocus(modal);
     $(document).trigger('modal:minimized', [modal]);
 }
 
@@ -538,4 +545,5 @@ window.MskbaModal = Object.freeze({
     close: (modal, options = {}) => closeModal(modal, options),
     minimize: (modal, options = {}) => minimizeModal(modal, options),
     restore: (modal, options = {}) => restoreModal(modal, options),
+    withoutState: (url = window.location.href) => withoutModalState(url),
 });

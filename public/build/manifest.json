@@ -45,7 +45,7 @@
     "isEntry": true
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-DD5Hr5Qc.css",
+    "file": "assets/app-DHAIDwvB.css",
     "name": "app",
     "names": [
       "app.css"
@@ -66,7 +66,7 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-CZjIC5NK.js",
+    "file": "assets/app-kAUvbhTT.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
@@ -85,7 +85,7 @@
     ]
   },
   "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js": {
-    "file": "assets/home-event-discovery-v2-kk9GJCuP.js",
+    "file": "assets/home-event-discovery-v2-BqR98FR2.js",
     "name": "home-event-discovery-v2",
     "src": "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
     "isDynamicEntry": true,

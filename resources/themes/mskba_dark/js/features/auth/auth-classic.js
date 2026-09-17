@@ -214,7 +214,7 @@ function updateVkAuthenticationUrl(modal, redirectUrl) {
     }
 
     const url = new URL(endpoint, window.location.origin);
-    url.searchParams.set('redirect_to', redirectUrl || window.location.href);
+    url.searchParams.set('redirect_to', authenticationRedirectUrl(redirectUrl));
     link.attr('href', url.toString());
 }
 
@@ -298,13 +298,21 @@ function resetClassicFormStates(modal) {
 
 function redirectAfterAuthentication(response) {
     const redirectUrl = String(response.redirect_url || '').trim();
+    window.location.assign(authenticationRedirectUrl(redirectUrl));
+}
 
-    if (redirectUrl) {
-        window.location.assign(redirectUrl);
-        return;
+function authenticationRedirectUrl(redirectUrl = '') {
+    const target = String(redirectUrl || '').trim() || window.location.href;
+
+    if (window.MskbaModal?.withoutState) {
+        return window.MskbaModal.withoutState(target);
     }
 
-    window.location.reload();
+    const url = new URL(target, window.location.origin);
+    url.searchParams.delete('modal');
+    url.searchParams.delete('modal_state');
+
+    return url.toString();
 }
 
 function getActiveTelegramLoginContainer() {

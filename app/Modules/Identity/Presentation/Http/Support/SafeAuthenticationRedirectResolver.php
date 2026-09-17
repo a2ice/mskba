@@ -93,7 +93,43 @@ final class SafeAuthenticationRedirectResolver
             return null;
         }
 
-        return $url;
+        return $this->withoutModalState($url);
+    }
+
+    private function withoutModalState(string $url): string
+    {
+        $parts = parse_url($url);
+        if (! is_array($parts)) {
+            return $url;
+        }
+
+        $query = array_values(array_filter(
+            explode('&', (string) ($parts['query'] ?? '')),
+            static function (string $parameter): bool {
+                if ($parameter === '') {
+                    return false;
+                }
+
+                $name = rawurldecode(explode('=', $parameter, 2)[0]);
+
+                return ! in_array($name, ['modal', 'modal_state'], true);
+            },
+        ));
+
+        $authority = $parts['scheme'].'://'.$parts['host'];
+        if (isset($parts['port'])) {
+            $authority .= ':'.$parts['port'];
+        }
+
+        $normalized = $authority.($parts['path'] ?? '');
+        if ($query !== []) {
+            $normalized .= '?'.implode('&', $query);
+        }
+        if (isset($parts['fragment'])) {
+            $normalized .= '#'.$parts['fragment'];
+        }
+
+        return $normalized;
     }
 
     private function isAuthenticationEntryUrl(string $url): bool

@@ -19,12 +19,14 @@ $modals = [
 
 @component('theme::partials.modal.layout', [
 	'id' => 'auth-entry',
+	'dialogClass' => 'modal-auth__dialog',
 ])
 	@include('theme::partials.modal.views.auth')
 @endcomponent
 
 @component('theme::partials.modal.layout', [
 	'id' => 'auth-entry-classic',
+	'dialogClass' => 'modal-auth__dialog',
 ])
 	@include('theme::partials.modal.views.auth-classic')
 @endcomponent
