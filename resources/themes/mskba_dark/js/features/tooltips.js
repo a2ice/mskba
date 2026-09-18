@@ -133,9 +133,10 @@ function tooltipVariant(element) {
         return TITLE_VARIANT;
     }
 
-    const variant = String(element.attr('data-tooltip-variant') || QUESTION_VARIANT).trim();
-
-    return variant === TITLE_VARIANT ? TITLE_VARIANT : QUESTION_VARIANT;
+    // Presentation is semantic, not opt-in: readable text always gets the
+    // text treatment. Legacy data-tooltip-variant="title" is intentionally
+    // ignored here so it cannot silently suppress the question mark/underline.
+    return QUESTION_VARIANT;
 }
 
 function isBlockLike(element) {
