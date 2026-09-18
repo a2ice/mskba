@@ -67,9 +67,11 @@ final class VkRegistrationConsentController extends Controller
         }
 
         $request->session()->forget('vk.pending_registration');
+        $request->session()->put('privacy.distribution.return_to', (string) $pending['redirect_url']);
 
-        return redirect()->to((string) $pending['redirect_url'])
-            ->with('success', 'Аккаунт создан. Вы вошли через VK ID.');
+        return redirect()
+            ->route('account.privacy.distribution')
+            ->with('success', 'Аккаунт создан. Вы вошли через VK ID. Настройте публичность профиля.');
     }
 
     /** @return array{identity: array<string, mixed>, redirect_url: string, expires_at: int}|null */
