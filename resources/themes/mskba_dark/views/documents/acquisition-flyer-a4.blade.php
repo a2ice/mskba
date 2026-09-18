@@ -18,12 +18,13 @@
             font-family: Arial, Helvetica, sans-serif;
             color: #f8f8f5;
             background:
-                radial-gradient(circle at 82% 15%, rgba(255, 103, 0, .25), transparent 24%),
-                radial-gradient(circle at 10% 90%, rgba(55, 182, 111, .13), transparent 24%),
+                radial-gradient(circle at 83% 25%, rgba(255, 103, 0, .11), transparent 26%),
+                radial-gradient(circle at 10% 90%, rgba(55, 182, 111, .10), transparent 24%),
                 #090b0a;
         }
         .flyer {
             position: relative;
+            isolation: isolate;
             min-height: 297mm;
             overflow: hidden;
             padding: 20mm 18mm 16mm;
@@ -33,18 +34,61 @@
         .flyer::before {
             content: "";
             position: absolute;
-            width: 155mm;
-            height: 155mm;
-            right: -64mm;
-            top: -54mm;
-            border: 1.5mm solid rgba(255, 105, 0, .28);
+            z-index: -2;
+            width: 128mm;
+            height: 128mm;
+            right: -34mm;
+            top: 8mm;
             border-radius: 50%;
-            box-shadow: 0 0 35mm rgba(255, 105, 0, .14);
+            background: radial-gradient(circle, rgba(255, 102, 0, .15), rgba(255, 102, 0, .045) 44%, transparent 70%);
+            filter: blur(8mm);
         }
-        .brand { position: relative; z-index: 1; min-height: 24mm; display: flex; align-items: center; }
-        .brand img { display: block; width: 58mm; height: auto; }
-        .brand-fallback { font-size: 15mm; font-weight: 900; letter-spacing: -.9mm; }
-        .hero { position: relative; z-index: 1; margin-top: 16mm; max-width: 160mm; }
+        .hero-art {
+            position: absolute;
+            z-index: -1;
+            top: 27mm;
+            right: -5mm;
+            width: 112mm;
+            height: 146mm;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .hero-art img {
+            display: block;
+            width: 112mm;
+            height: 112mm;
+            object-fit: contain;
+            transform: rotate(2deg);
+            transform-origin: 56% 52%;
+            filter:
+                drop-shadow(0 0 8mm rgba(255, 89, 0, .24))
+                drop-shadow(0 5mm 7mm rgba(0, 0, 0, .45));
+        }
+        .brand {
+            position: relative;
+            z-index: 2;
+            min-height: 24mm;
+            display: flex;
+            align-items: center;
+        }
+        .brand img {
+            display: block;
+            width: 58mm;
+            height: auto;
+        }
+        .brand-fallback {
+            font-size: 15mm;
+            font-weight: 900;
+            letter-spacing: -.9mm;
+        }
+        .hero {
+            position: relative;
+            z-index: 2;
+            margin-top: 16mm;
+            max-width: 118mm;
+        }
         .eyebrow {
             display: inline-block;
             margin-bottom: 7mm;
@@ -52,9 +96,10 @@
             border: .4mm solid rgba(255, 112, 0, .9);
             border-radius: 100mm;
             color: #ff7412;
-            font-size: 4mm;
+            background: rgba(9, 11, 10, .66);
+            font-size: 3.55mm;
             font-weight: 800;
-            letter-spacing: .8mm;
+            letter-spacing: .65mm;
             text-transform: uppercase;
         }
         h1 {
@@ -65,7 +110,7 @@
             text-transform: uppercase;
         }
         .lead {
-            max-width: 132mm;
+            max-width: 108mm;
             margin: 8mm 0 0;
             color: #cecec8;
             font-size: 5.4mm;
@@ -76,10 +121,14 @@
             font-size: 7mm;
             font-weight: 800;
         }
-        .placement { margin-top: 2mm; color: #aaa9a3; font-size: 4mm; }
+        .placement {
+            margin-top: 2mm;
+            color: #aaa9a3;
+            font-size: 4mm;
+        }
         .conversion {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             margin-top: auto;
             display: grid;
             grid-template-columns: 1fr 58mm;
@@ -110,11 +159,19 @@
             color: #111;
             text-align: center;
         }
-        .qr-card img { display: block; width: 48mm; height: 48mm; margin: 0 auto 3mm; }
-        .qr-card strong { display: block; font-size: 3.5mm; }
+        .qr-card img {
+            display: block;
+            width: 48mm;
+            height: 48mm;
+            margin: 0 auto 3mm;
+        }
+        .qr-card strong {
+            display: block;
+            font-size: 3.5mm;
+        }
         .url {
             position: relative;
-            z-index: 1;
+            z-index: 2;
             margin-top: 8mm;
             padding-top: 5mm;
             border-top: .3mm solid rgba(255, 255, 255, .16);
@@ -127,6 +184,12 @@
 </head>
 <body>
 <main class="flyer">
+    @if($heroImageDataUri ?? null)
+        <div class="hero-art" aria-hidden="true">
+            <img src="{{ $heroImageDataUri }}" alt="">
+        </div>
+    @endif
+
     <div class="brand">
         @if($logoDataUri)
             <img src="{{ $logoDataUri }}" alt="MSKBA">
