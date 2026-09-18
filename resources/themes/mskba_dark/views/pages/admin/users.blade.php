@@ -223,7 +223,8 @@
             @foreach($users->filter(fn ($user) => auth()->user()?->can('manage-user-system-role', $user)) as $user)
                 @php
                     $assignableSystemRoles = collect($roles)
-                        ->filter(fn ($role) => $role->numericValue() < auth()->user()->system_role->numericValue());
+                        ->filter(fn ($role) => $role->numericValue() < auth()->user()->system_role->numericValue())
+                        ->sortByDesc(fn ($role) => $role->numericValue());
                 @endphp
                 <div class="admin-action-modal" data-admin-action-modal="user-system-role-{{ $user->id }}" hidden>
                     <div class="admin-action-modal__backdrop" data-admin-action-modal-close></div>

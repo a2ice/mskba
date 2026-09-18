@@ -319,10 +319,10 @@ final class AdminUserManagementTest extends TestCase
 
     public function test_admin_user_list_displays_operational_permissions(): void
     {
-        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $target = $this->user(UserSystemRoleEnum::USER);
 
-        $this->actingAs($admin)
+        $this->actingAs($superadmin)
             ->get(route('admin.users'))
             ->assertOk()
             ->assertSee('Операционные права')
