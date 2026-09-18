@@ -146,6 +146,7 @@ final class AcquisitionTracker
 
         if (
             $campaign === null
+            || ! $campaign->location_verification_enabled
             || $address?->latitude === null
             || $address->longitude === null
             || $latitude === null
