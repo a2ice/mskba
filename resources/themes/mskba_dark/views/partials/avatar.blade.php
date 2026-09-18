@@ -21,6 +21,10 @@
     $activeAvatar = $profile
         ? ($profile->relationLoaded('activeAvatar') ? $profile->activeAvatar : $profile->activeAvatar()->first())
         : null;
+    $isAccountAvatarManager = ($page ?? null) === 'account' && $user?->getKey() === auth()->id();
+    $avatars = $isAccountAvatarManager && $profile
+        ? ($profile->relationLoaded('avatars') ? $profile->avatars : $profile->avatars()->get())
+        : collect();
     $avatarUrl = $activeAvatar?->publicUrl() ?? $placeholderUrl;
     $primaryEmail = $user?->contacts
         ?->first(fn ($contact) => $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL && $contact->is_primary)
@@ -61,20 +65,16 @@
                 >
             </form>
 
-            @if($activeAvatar)
-                <form action="{{ route('account.avatar.destroy', $activeAvatar->id) }}" method="post" class="avatar-upload-delete-form">
-                    @csrf
-                    @method('DELETE')
-                    <button
-                        type="submit"
-                        class="avatar-upload__delete"
-                        title="Удалить аватар"
-                        aria-label="Удалить аватар"
-                        onclick="return confirm('Вы уверены, что хотите удалить аватар?')"
-                    >
-                        <i class="ti ti-x" aria-hidden="true"></i>
-                    </button>
-                </form>
+            @if($isAccountAvatarManager)
+                <button
+                    type="button"
+                    class="avatar-upload__library js-handler"
+                    title="Сохранённые аватары: {{ $avatars->count() }}"
+                    aria-label="Открыть список аватаров: {{ $avatars->count() }}"
+                    data-handler="modal"
+                    data-modal-action="open"
+                    data-modal-target="account-avatars"
+                >{{ $avatars->count() }}</button>
             @endif
         </div>
         <p class="avatar-upload__hint">JPEG, PNG или WebP · до 5 МБ</p>
@@ -83,3 +83,66 @@
     <h5 class="card-title">{{ $displayName }}</h5>
     <p class="card-text fs-smaller">{{ $primaryEmail }}</p>
 </div>
+
+@if($isAccountAvatarManager)
+    @component('theme::partials.modal.layout', [
+        'id' => 'account-avatars',
+        'dialogClass' => 'account-avatar-library__dialog',
+    ])
+        <h2 class="modal_title" id="modal-title-account-avatars">Аватары</h2>
+
+        <div class="account-avatar-library">
+            <div class="account-avatar-library__summary">
+                <p>Сохранено {{ $avatars->count() }} из 3. Выберите активный аватар или удалите ненужный.</p>
+            </div>
+
+            @if($avatars->isEmpty())
+                <p class="account-avatar-library__empty">
+                    Сохранённых аватаров пока нет. Нажмите на основной аватар, чтобы загрузить изображение.
+                </p>
+            @else
+                <div class="account-avatar-library__grid">
+                    @foreach($avatars as $avatar)
+                        <article @class([
+                            'account-avatar-library__item',
+                            'is-active' => $avatar->is_featured,
+                        ])>
+                            <div class="account-avatar-library__preview">
+                                <img src="{{ $avatar->publicUrl() }}" alt="">
+                                @if($avatar->is_featured)
+                                    <span class="account-avatar-library__status">Активный</span>
+                                @endif
+                            </div>
+
+                            <div class="account-avatar-library__actions">
+                                @if(!$avatar->is_featured)
+                                    <form action="{{ route('account.avatar.activate', $avatar->id) }}" method="post">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="btn btn--secondary btn--sm">Сделать активным</button>
+                                    </form>
+                                @else
+                                    <span class="account-avatar-library__current">Используется сейчас</span>
+                                @endif
+
+                                <form action="{{ route('account.avatar.destroy', $avatar->id) }}" method="post">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button
+                                        type="submit"
+                                        class="account-avatar-library__delete"
+                                        title="Удалить аватар"
+                                        aria-label="Удалить аватар"
+                                        onclick="return confirm('Вы уверены, что хотите удалить аватар?')"
+                                    >
+                                        <i class="ti ti-trash" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    @endcomponent
+@endif

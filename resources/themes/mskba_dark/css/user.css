@@ -49,7 +49,7 @@
     font-size: 12px;
 }
 
-/* Primary account avatar: upload on image click, delete via overlay control. */
+/* Primary account avatar: upload on image click, saved avatars via the count badge. */
 .avatar-upload-stage {
     position: relative;
     width: 150px;
@@ -61,45 +61,175 @@
     margin: 0;
 }
 
-.avatar-upload-form,
-.avatar-upload-delete-form {
+.avatar-upload-form {
     margin: 0;
 }
 
-.avatar-upload-delete-form {
+.avatar-upload__library {
     position: absolute;
     top: 0;
     right: 0;
     z-index: 3;
-    transform: translate(25%, -25%);
-}
-
-.avatar-upload__delete {
     display: grid;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.68);
+    transform: translate(25%, -25%);
+    border: 2px solid #171a17;
     border-radius: 50%;
-    background: #2a2d29;
-    color: #fff;
+    background: var(--accent-strong);
+    color: #10120f;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1;
     cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    box-shadow: 0 5px 14px rgb(0 0 0 / 35%);
+    transition: transform 0.18s ease, filter 0.18s ease;
 }
 
-.avatar-upload__delete:hover,
-.avatar-upload__delete:focus-visible {
-    border-color: #ff6f61;
-    background: #b62f35;
+.avatar-upload__library:hover,
+.avatar-upload__library:focus-visible {
+    transform: translate(25%, -25%) scale(1.08);
+    filter: brightness(1.08);
 }
 
-.avatar-upload__delete:focus-visible {
+.avatar-upload__library:focus-visible {
     outline: 2px solid #fff;
     outline-offset: 2px;
 }
 
-.avatar-upload__delete .ti {
-    font-size: 15px;
-    line-height: 1;
+.account-avatar-library__dialog {
+    width: min(680px, 100%);
+}
+
+.account-avatar-library {
+    display: grid;
+    gap: 18px;
+}
+
+.account-avatar-library__summary p,
+.account-avatar-library__empty {
+    margin: 0;
+    color: var(--muted);
+}
+
+.account-avatar-library__empty {
+    padding: 20px;
+    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.account-avatar-library__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+}
+
+.account-avatar-library__item {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.account-avatar-library__item.is-active {
+    border-color: rgba(255, 101, 27, 0.7);
+    box-shadow: inset 0 0 0 1px rgba(255, 101, 27, 0.18);
+}
+
+.account-avatar-library__preview {
+    position: relative;
+    width: min(132px, 100%);
+    aspect-ratio: 1;
+    margin: 0 auto;
+}
+
+.account-avatar-library__preview img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.account-avatar-library__status {
+    position: absolute;
+    right: 50%;
+    bottom: -5px;
+    transform: translateX(50%);
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--accent-strong);
+    color: #10120f;
+    font-size: 10px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.account-avatar-library__actions {
+    display: flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.account-avatar-library__actions form {
+    margin: 0;
+}
+
+.account-avatar-library__current {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.account-avatar-library__delete {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #fff;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.account-avatar-library__delete:hover,
+.account-avatar-library__delete:focus-visible {
+    border-color: #ff6f61;
+    background: rgba(182, 47, 53, 0.34);
+    color: #ff8e84;
+}
+
+.account-avatar-library__delete:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+    .account-avatar-library__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .account-avatar-library__item {
+        grid-template-columns: 92px minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .account-avatar-library__preview {
+        width: 92px;
+        margin: 0;
+    }
+
+    .account-avatar-library__actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
 }
