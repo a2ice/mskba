@@ -216,7 +216,10 @@ final class VkIdAuthenticationTest extends TestCase
             'state' => $state,
             'code' => 'authorization-code',
             'device_id' => 'device-1',
-        ]))->assertRedirect(url('/account'));
+        ]))->assertRedirect(route('auth.vk.consent'));
+
+        $this->post(route('auth.vk.consent'), ['privacy_consent' => '1'])
+            ->assertRedirect(url('/account'));
 
         $user = User::query()->where('username', 'vk_778')->firstOrFail();
         $this->assertNull($user->profile?->birth_date);
