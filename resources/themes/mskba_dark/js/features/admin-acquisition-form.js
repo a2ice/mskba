@@ -65,8 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const option = landingType.selectedOptions[0];
         const needsTarget = option?.dataset.needsTarget === '1';
         const type = landingType.value;
+        const targetLabel = option?.dataset.targetLabel || 'Целевая сущность';
 
         setGroupEnabled(landingTarget, needsTarget);
+
+        const label = landingTarget.querySelector('.form-label');
+        if (label instanceof HTMLElement) label.textContent = targetLabel;
 
         if (landingPredictive instanceof HTMLElement) {
             const baseUrl = landingTarget.dataset.searchBaseUrl || '';
