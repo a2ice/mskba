@@ -34,4 +34,6 @@ Blade получает только подготовленные data URI чер
 - [x] template asset registry;
 - [x] flyer layout;
 - [x] smoke/tests;
-- [ ] CI / merge.
+- [x] CI / merge.
+
+Merged to `main` as `d65dc72a4e9a594a94896a9e97cfe29da3144bf1`; production document smoke прошёл с hero asset.
