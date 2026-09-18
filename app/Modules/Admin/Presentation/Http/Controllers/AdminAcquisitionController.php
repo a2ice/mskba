@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Acquisition\Application\Services\AcquisitionCampaignManager;
+use App\Modules\Acquisition\Application\Services\AcquisitionFlyerContentManager;
 use App\Modules\Acquisition\Application\Services\AcquisitionFlyerContextFactory;
 use App\Modules\Acquisition\Application\Services\AcquisitionLandingResolver;
 use App\Modules\Acquisition\Application\Services\AcquisitionQrCodeRenderer;
@@ -12,6 +13,7 @@ use App\Modules\Acquisition\Application\UseCases\ListAdminAcquisitionCampaignsHa
 use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
+use App\Modules\Admin\Presentation\Http\Requests\UpdateAcquisitionFlyerContentRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpsertAcquisitionCampaignRequest;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Template\Application\Contracts\DocumentRenderer;
@@ -66,6 +68,7 @@ final class AdminAcquisitionController extends Controller
         AcquisitionCampaign $campaign,
         GetAdminAcquisitionCampaignStatsHandler $stats,
         AcquisitionLandingResolver $landing,
+        AcquisitionFlyerContentManager $flyerContent,
     ): Response {
         $campaign->loadMissing('venue.location.address');
 
@@ -76,6 +79,8 @@ final class AdminAcquisitionController extends Controller
             'stats' => $stats->handle($campaign),
             'selectedVenue' => $this->selectedVenue($request, $campaign),
             'selectedLandingTarget' => $this->selectedLandingTarget($request, $campaign, $landing),
+            'flyerFieldDefinitions' => $flyerContent->fieldDefinitions($campaign),
+            'flyerFieldValues' => $flyerContent->resolved($campaign),
         ]);
     }
 
@@ -87,6 +92,24 @@ final class AdminAcquisitionController extends Controller
         $manager->save($request->validated(), $campaign);
 
         return back()->with('success', 'Кампания сохранена.');
+    }
+
+    public function updateFlyerContent(
+        UpdateAcquisitionFlyerContentRequest $request,
+        AcquisitionCampaign $campaign,
+        AcquisitionFlyerContentManager $flyerContent,
+    ): RedirectResponse {
+        abort_unless($campaign->channel->supportsPrintableMaterials(), 404);
+
+        if ($request->boolean('reset')) {
+            $flyerContent->reset($campaign);
+
+            return back()->with('success', 'Текст листовки сброшен к значениям по умолчанию.');
+        }
+
+        $flyerContent->save($campaign, $request->validated('content', []));
+
+        return back()->with('success', 'Текст листовки сохранён.');
     }
 
     public function venueCandidates(
