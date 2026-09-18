@@ -9,7 +9,8 @@ final class BladeTemplateRenderer implements TemplateRenderer
 {
     public function render(string $templateKey, array $context): string
     {
-        $definition = config('document-templates.registry.'.$templateKey);
+        $registry = config('document-templates.registry', []);
+        $definition = is_array($registry) ? ($registry[$templateKey] ?? null) : null;
 
         if (! is_array($definition) || ($definition['driver'] ?? null) !== 'blade') {
             throw new InvalidArgumentException("Unknown trusted template [{$templateKey}].");
