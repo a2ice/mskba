@@ -27,7 +27,7 @@
             isolation: isolate;
             min-height: 297mm;
             overflow: hidden;
-            padding: 20mm 18mm 16mm;
+            padding: 6.6mm 18mm 16mm;
             display: flex;
             flex-direction: column;
         }
@@ -46,8 +46,8 @@
         .hero-art {
             position: absolute;
             z-index: -1;
-            top: 27mm;
-            right: -5mm;
+            top: -28mm;
+            right: -28mm;
             width: 112mm;
             height: 146mm;
             display: flex;
@@ -104,7 +104,7 @@
         }
         h1 {
             margin: 0;
-            font-size: 19mm;
+            font-size: 12.7mm;
             line-height: .93;
             letter-spacing: -1.1mm;
             text-transform: uppercase;
@@ -138,7 +138,7 @@
         }
         .conversion h2 {
             margin: 0 0 5mm;
-            font-size: 10mm;
+            font-size: 6.7mm;
             line-height: 1.04;
             letter-spacing: -.4mm;
         }
@@ -149,7 +149,7 @@
             display: grid;
             gap: 3mm;
             color: #d9d9d3;
-            font-size: 4.7mm;
+            font-size: 3.15mm;
         }
         .steps strong { color: #ff7412; }
         .qr-card {
@@ -167,7 +167,7 @@
         }
         .qr-card strong {
             display: block;
-            font-size: 3.5mm;
+            font-size: 2.35mm;
         }
         .url {
             position: relative;

@@ -163,4 +163,5 @@
 - [x] 197 - Состояния acquisition-кампаний, настраиваемая посадочная и channel-aware UI ([описание](tasks/197/description.md))
 - [x] 198 - Исправить acquisition flyer preview/PDF и добавить production smoke document pipeline ([описание](tasks/198/description.md))
 - [x] 199 - Заменить декоративное кольцо acquisition-листовки на template hero asset ([описание](tasks/199/description.md))
-- [ ] 200 - Редактируемые базовые поля acquisition flyer до полноценного шаблонизатора ([описание](tasks/200/description.md))
+- [x] 200 - Редактируемые базовые поля acquisition flyer до полноценного шаблонизатора ([описание](tasks/200/description.md))
+- [ ] 201 - Поджать композицию A4 acquisition flyer ([описание](tasks/201/description.md))
