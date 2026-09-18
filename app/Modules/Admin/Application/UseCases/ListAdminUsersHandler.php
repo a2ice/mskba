@@ -48,14 +48,12 @@ final class ListAdminUsersHandler
         foreach ($paginator->items() as $user) {
             $snapshot = $user->operationalPermissions
                 ->keyBy(fn (UserOperationalPermission $entry): string => $entry->permission->value);
-            $adminDefaultAllowed = $user->system_role->atLeast(UserSystemRoleEnum::ADMIN);
-
             $effective = collect(UserOperationalPermissionEnum::cases())
-                ->map(function (UserOperationalPermissionEnum $permission) use ($snapshot, $adminDefaultAllowed): UserOperationalPermission {
+                ->map(function (UserOperationalPermissionEnum $permission) use ($snapshot, $user): UserOperationalPermission {
                     return $snapshot->get($permission->value)
                         ?? new UserOperationalPermission([
                             'permission' => $permission,
-                            'is_allowed' => $adminDefaultAllowed || $permission->defaultAllowed(),
+                            'is_allowed' => $permission->defaultAllowedFor($user->system_role),
                         ]);
                 });
 

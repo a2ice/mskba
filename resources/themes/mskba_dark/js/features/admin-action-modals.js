@@ -1,5 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const initiallyOpenedModal = document.querySelector('[data-admin-action-modal]:not([hidden])');
+    const adminActionModals = Array.from(document.querySelectorAll('[data-admin-action-modal]'));
+
+    adminActionModals.forEach((modal) => {
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+    });
+
+    const initiallyOpenedModal = adminActionModals.find((modal) => !modal.hidden);
 
     if (initiallyOpenedModal) {
         document.body.classList.add('modal-open');

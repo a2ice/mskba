@@ -23,10 +23,6 @@ final class UserOperationalPermissionChecker
             return (bool) $snapshot->is_allowed;
         }
 
-        if ($user->isAdmin()) {
-            return true;
-        }
-
-        return $permission->defaultAllowed();
+        return $permission->defaultAllowedFor($user->system_role);
     }
 }

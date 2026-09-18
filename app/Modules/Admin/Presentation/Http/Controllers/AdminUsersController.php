@@ -8,10 +8,12 @@ use App\Modules\Admin\Presentation\Http\Requests\BulkChangeUsersRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserBasicDetailsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserOperationalPermissionsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserStatusRequest;
+use App\Modules\Admin\Presentation\Http\Requests\UpdateUserSystemRoleRequest;
 use App\Modules\Identity\Application\UseCases\AdminBulkChangeUserDeletionStateHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserBasicDetailsHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserStatusHandler;
+use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
@@ -40,6 +42,18 @@ final class AdminUsersController extends Controller
             'onlinePresence' => $presence->snapshot(),
             'onlineSummary' => $summary->get(),
         ]);
+    }
+
+    public function updateSystemRole(
+        UpdateUserSystemRoleRequest $request,
+        User $user,
+        AdminUpdateUserSystemRoleHandler $updateSystemRole,
+    ): RedirectResponse {
+        $updateSystemRole->handle($request->user(), $user->id, $request->systemRole());
+
+        return redirect()
+            ->route('admin.users')
+            ->with('success', 'Системная роль пользователя обновлена.');
     }
 
     public function updateOperationalPermissions(

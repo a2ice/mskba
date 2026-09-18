@@ -155,6 +155,92 @@ final class AdminUserManagementTest extends TestCase
         $this->assertSame(UserStatusEnum::CONFIRMED, $superadmin->fresh()->status);
     }
 
+    public function test_system_role_management_permission_defaults_to_superadmin_only(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $checker = app(UserOperationalPermissionChecker::class);
+
+        $this->assertTrue($checker->allows($superadmin, UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES));
+        $this->assertFalse($checker->allows($admin, UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES));
+    }
+
+    public function test_superadmin_can_assign_and_reset_lower_system_roles(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($superadmin)
+            ->post(route('admin.users.system-role.update', $target), [
+                'role' => UserSystemRoleEnum::MODERATOR->value,
+            ])
+            ->assertRedirect(route('admin.users'))
+            ->assertSessionHas('success');
+
+        $this->assertSame(UserSystemRoleEnum::MODERATOR, $target->refresh()->system_role);
+
+        $this->actingAs($superadmin)
+            ->post(route('admin.users.system-role.update', $target), [
+                'role' => UserSystemRoleEnum::USER->value,
+            ])
+            ->assertRedirect(route('admin.users'));
+
+        $this->assertSame(UserSystemRoleEnum::USER, $target->refresh()->system_role);
+    }
+
+    public function test_admin_requires_permission_and_can_only_assign_roles_below_own_rank(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $peer = $this->user(UserSystemRoleEnum::ADMIN);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.system-role.update', $target), [
+                'role' => UserSystemRoleEnum::MODERATOR->value,
+            ])
+            ->assertForbidden();
+
+        UserOperationalPermission::query()->create([
+            'user_id' => $admin->id,
+            'permission' => UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES,
+            'is_allowed' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.system-role.update', $target), [
+                'role' => UserSystemRoleEnum::MODERATOR->value,
+            ])
+            ->assertRedirect(route('admin.users'));
+
+        $this->assertSame(UserSystemRoleEnum::MODERATOR, $target->refresh()->system_role);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.system-role.update', $target), [
+                'role' => UserSystemRoleEnum::ADMIN->value,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.system-role.update', $peer), [
+                'role' => UserSystemRoleEnum::USER->value,
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_superadmin_cannot_assign_superadmin_role(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::ADMIN);
+
+        $this->actingAs($superadmin)
+            ->post(route('admin.users.system-role.update', $target), [
+                'role' => UserSystemRoleEnum::SUPERADMIN->value,
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(UserSystemRoleEnum::ADMIN, $target->refresh()->system_role);
+    }
+
     public function test_operational_permissions_are_allowed_by_default_and_admin_can_disable_them(): void
     {
         $admin = $this->user(UserSystemRoleEnum::ADMIN);
@@ -233,14 +319,16 @@ final class AdminUserManagementTest extends TestCase
 
     public function test_admin_user_list_displays_operational_permissions(): void
     {
-        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $target = $this->user(UserSystemRoleEnum::USER);
 
-        $this->actingAs($admin)
+        $this->actingAs($superadmin)
             ->get(route('admin.users'))
             ->assertOk()
             ->assertSee('Операционные права')
             ->assertSee(UserOperationalPermissionEnum::CREATE_COORDINATION->label())
+            ->assertSee(UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES->label())
+            ->assertSee(route('admin.users.system-role.update', $target))
             ->assertSee(route('admin.users.operational-permissions.update', $target));
     }
 

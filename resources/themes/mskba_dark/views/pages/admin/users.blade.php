@@ -143,13 +143,29 @@
                                     <span class="admin-badge">{{ $showDeleted ? 'Удалён' : $user->status->label() }}</span>
                                 @endif
                             </td>
-                            <td>{{ $user->system_role->label() }}</td>
+                            <td>
+                                @php
+                                    $canManageSystemRole = ! $showDeleted
+                                        && (auth()->user()?->can('manage-user-system-role', $user) ?? false);
+                                @endphp
+                                @if($canManageSystemRole)
+                                    <button
+                                        type="button"
+                                        class="admin-badge admin-badge--button"
+                                        data-admin-action-modal-open="user-system-role-{{ $user->id }}"
+                                        aria-haspopup="dialog"
+                                    >{{ $user->system_role->label() }}</button>
+                                @else
+                                    <span class="admin-badge">{{ $user->system_role->label() }}</span>
+                                @endif
+                            </td>
                             <td>
                                 @php
                                     $permissionSnapshot = $user->operationalPermissions
                                         ->keyBy(fn ($entry) => $entry->permission->value);
                                     $allowedPermissionCount = collect($operationalPermissions)
-                                        ->filter(fn ($permission) => $permissionSnapshot->get($permission->value)?->is_allowed ?? true)
+                                        ->filter(fn ($permission) => $permissionSnapshot->get($permission->value)?->is_allowed
+                                            ?? $permission->defaultAllowedFor($user->system_role))
                                         ->count();
                                     $canManageOperationalPermissions = ! $showDeleted
                                         && auth()->user()?->can('manage-user-operational-permissions', $user);
@@ -204,6 +220,58 @@
         @endif
 
         @if(! $showDeleted)
+            @foreach($users->filter(fn ($user) => auth()->user()?->can('manage-user-system-role', $user)) as $user)
+                @php
+                    $assignableSystemRoles = collect($roles)
+                        ->filter(fn ($role) => $role->numericValue() < auth()->user()->system_role->numericValue())
+                        ->sortByDesc(fn ($role) => $role->numericValue());
+                @endphp
+                <div class="admin-action-modal" data-admin-action-modal="user-system-role-{{ $user->id }}" hidden>
+                    <div class="admin-action-modal__backdrop" data-admin-action-modal-close></div>
+                    <section class="admin-action-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="user-system-role-title-{{ $user->id }}">
+                        <button type="button" class="admin-action-modal__close" data-admin-action-modal-close aria-label="Закрыть"></button>
+                        <p class="admin-kicker">Системная роль</p>
+                        <h3 id="user-system-role-title-{{ $user->id }}" class="admin-action-modal__title">{{ $user->username ?: 'Пользователь #'.$user->id }}</h3>
+                        <p class="admin-action-modal__description">
+                            Сейчас: <strong>{{ $user->system_role->label() }}</strong>.
+                            Можно назначить только роль ниже вашей. Выбор «Пользователь» сбрасывает административную системную роль.
+                        </p>
+
+                        <form method="POST" action="{{ route('admin.users.system-role.update', $user) }}">
+                            @csrf
+                            <div class="admin-permission-list">
+                                @foreach($assignableSystemRoles as $role)
+                                    <label class="admin-permission-option">
+                                        <input
+                                            type="radio"
+                                            name="role"
+                                            value="{{ $role->value }}"
+                                            @checked($role === $user->system_role)
+                                            required
+                                        >
+                                        <span>
+                                            <strong>{{ $role->label() }}</strong>
+                                            <small>
+                                                {{ $role->value }}
+                                                @if($role === \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::USER)
+                                                    · сброс системной роли
+                                                @endif
+                                            </small>
+                                        </span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            <div class="admin-action-modal__actions">
+                                <button type="submit" class="btn btn--primary btn--sm">Сохранить</button>
+                                <button type="button" class="btn btn--secondary btn--sm" data-admin-action-modal-close>Отмена</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            @endforeach
+        @endif
+
+        @if(! $showDeleted)
             @foreach($users->filter(fn ($user) => auth()->user()?->can('manage-user-operational-permissions', $user)) as $user)
                 @php
                     $permissionSnapshot = $user->operationalPermissions
@@ -226,7 +294,8 @@
                                             type="checkbox"
                                             name="permissions[]"
                                             value="{{ $permission->value }}"
-                                            @checked($permissionSnapshot->get($permission->value)?->is_allowed ?? true)
+                                            @checked($permissionSnapshot->get($permission->value)?->is_allowed
+                                                ?? $permission->defaultAllowedFor($user->system_role))
                                         >
                                         <span>
                                             <strong>{{ $permission->label() }}</strong>

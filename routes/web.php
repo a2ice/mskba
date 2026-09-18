@@ -249,6 +249,9 @@ Route::prefix('admin')
         Route::post('/users/{user}/status', [AdminUsersController::class, 'updateStatus'])
             ->middleware('can:manage-users-as-superadmin')
             ->name('admin.users.status.update');
+        Route::post('/users/{user}/system-role', [AdminUsersController::class, 'updateSystemRole'])
+            ->middleware('can:manage-user-system-role,user')
+            ->name('admin.users.system-role.update');
         Route::post('/users/{user}/operational-permissions', [AdminUsersController::class, 'updateOperationalPermissions'])
             ->middleware('can:manage-user-operational-permissions,user')
             ->name('admin.users.operational-permissions.update');
