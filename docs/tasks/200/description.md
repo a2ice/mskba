@@ -46,4 +46,6 @@ Blade не содержит значения по умолчанию и не ч�
 - [x] flyer context/template;
 - [x] tests/smoke;
 - [x] CI;
-- [ ] merge/deploy.
+- [x] merge/deploy.
+
+Merged to `main` as `bacbbbdab164562fc9438481c57076876165751c`; production deploy and document smoke completed successfully.
