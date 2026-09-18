@@ -9,7 +9,7 @@ const FLOATING_TOOLTIP_OFFSET = 10;
 const FLOATING_TOOLTIP_VIEWPORT_GAP = 8;
 const BASE_MODAL_Z_INDEX = 320;
 const TOUCH_TOOLTIP_MEDIA = window.matchMedia('(hover: none), (pointer: coarse)');
-const INTERACTIVE_TOOLTIP_SELECTOR = 'a[href], button, input, select, textarea, summary, [role="button"]';
+const INTERACTIVE_TOOLTIP_SELECTOR = 'a[href], button, input, select, textarea, summary, label, [role="button"]';
 
 let floatingTooltip = null;
 let activeTooltipElement = null;
@@ -18,7 +18,7 @@ function initTooltips(context = document) {
     $(context).find(TOOLTIP_SELECTOR).addBack(TOOLTIP_SELECTOR).each(function() {
         const element = $(this);
 
-        if (element.data('tooltipEnhanced') || element.closest(SKIP_SELECTOR).length) {
+        if (element.closest(SKIP_SELECTOR).length) {
             return;
         }
 
@@ -30,25 +30,39 @@ function initTooltips(context = document) {
 
         element
             .removeAttr('title')
-            .attr('data-tooltip-source', title)
-            .data('tooltipEnhanced', true);
+            .attr('data-tooltip-source', title);
 
-        if (tooltipVariant(element) === TITLE_VARIANT) {
-            enhanceTitleTooltip(element, title);
+        if (element.data('tooltipEnhanced')) {
+            refreshEnhancedTooltip(element, title);
             return;
         }
 
-        enhanceQuestionTooltip(element, title);
+        element.data('tooltipEnhanced', true);
+
+        if (tooltipVariant(element) === TITLE_VARIANT) {
+            enhanceVisualTooltip(element, title);
+            return;
+        }
+
+        enhanceTextTooltip(element, title);
     });
 }
 
-function enhanceTitleTooltip(element, title) {
+function enhanceVisualTooltip(element, title) {
     element
-        .addClass('ui-tooltip-source ui-tooltip-source--title')
+        .addClass('ui-tooltip-source ui-tooltip-source--visual')
         .attr('data-tooltip', title);
 
     if (isIconOnlyTooltipSource(element)) {
         element.addClass('ui-tooltip-source--icon');
+    }
+
+    if (element.attr('aria-hidden') === 'true') {
+        element.removeAttr('aria-hidden');
+    }
+
+    if (!element.attr('aria-label')) {
+        element.attr('aria-label', title);
     }
 
     if (!isFocusable(element)) {
@@ -57,10 +71,6 @@ function enhanceTitleTooltip(element, title) {
 }
 
 function isIconOnlyTooltipSource(element) {
-    if (element.is('[data-tooltip-icon]')) {
-        return true;
-    }
-
     const iconSelector = 'i, svg, img, picture, [aria-hidden="true"]';
     const containsIcon = element.is(iconSelector)
         || element.find(iconSelector).length > 0;
@@ -80,15 +90,20 @@ function isIconOnlyTooltipSource(element) {
     return textContent === '';
 }
 
-function enhanceQuestionTooltip(element, title) {
+function enhanceTextTooltip(element, title) {
+    element
+        .addClass('ui-tooltip-source ui-tooltip-source--text')
+        .attr('data-tooltip', title);
+
     const trigger = $('<button>', {
         type: 'button',
         class: 'ui-tooltip-trigger',
         'aria-label': `Подсказка: ${title}`,
         'data-tooltip': title,
+        'data-tooltip-generated': '1',
     }).text('?');
 
-    if (isBlockLike(element)) {
+    if (isBlockLike(element) && !isInteractiveTooltipSource(element.get(0))) {
         element.append(trigger);
         return;
     }
@@ -96,8 +111,25 @@ function enhanceQuestionTooltip(element, title) {
     element.after(trigger);
 }
 
+function refreshEnhancedTooltip(element, title) {
+    element.attr('data-tooltip', title);
+
+    element
+        .children('.ui-tooltip-trigger[data-tooltip-generated="1"]')
+        .add(element.next('.ui-tooltip-trigger[data-tooltip-generated="1"]'))
+        .attr('data-tooltip', title)
+        .attr('aria-label', `Подсказка: ${title}`);
+}
+
 function tooltipVariant(element) {
-    if (element.is('.account-player-character-configurator__swatch') || isIconOnlyTooltipSource(element)) {
+    if (element.is('[data-tooltip-text]')) {
+        return QUESTION_VARIANT;
+    }
+
+    if (
+        element.is('[data-tooltip-visual], [data-tooltip-icon], .account-player-character-configurator__swatch')
+        || isIconOnlyTooltipSource(element)
+    ) {
         return TITLE_VARIANT;
     }
 
@@ -123,6 +155,7 @@ function isFocusable(element) {
 $(function() {
     initTooltips();
     bindFloatingTooltips();
+    observeTooltips();
 });
 
 $(document).on('modal:opened', function(_event, modal) {
@@ -135,6 +168,34 @@ $(document).on('modal:minimized modal:closed', function() {
     // The source can become hidden or leave the active UI when a modal changes state.
     hideActiveFloatingTooltip();
 });
+
+function observeTooltips() {
+    if (!window.MutationObserver || !document.body) {
+        return;
+    }
+
+    const observer = new MutationObserver((records) => {
+        records.forEach((record) => {
+            if (record.type === 'attributes') {
+                initTooltips(record.target);
+                return;
+            }
+
+            record.addedNodes.forEach((node) => {
+                if (node instanceof Element) {
+                    initTooltips(node);
+                }
+            });
+        });
+    });
+
+    observer.observe(document.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ['title'],
+    });
+}
 
 function usesTouchTooltipMode() {
     return TOUCH_TOOLTIP_MEDIA.matches;
