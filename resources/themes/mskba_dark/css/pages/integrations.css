@@ -537,7 +537,9 @@
 
 .telegram-feature-modal__dialog h2 {
     margin: 6px 44px 12px 0;
-    font-size: clamp(26px, 7vw, 36px);
+    font-size: var(--modal-title-font-size, 20px);
+    font-weight: var(--modal-title-font-weight, 800);
+    line-height: var(--modal-title-line-height, 1.1);
 }
 
 .telegram-feature-modal__dialog > p:not(.telegram-feature-modal__eyebrow) {
