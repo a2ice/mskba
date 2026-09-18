@@ -137,10 +137,15 @@ final class AuthenticationIntendedRedirectTest extends TestCase
                 'privacy_consent' => '1',
                 'role' => null,
             ])
-            ->assertRedirect($target);
+            ->assertRedirect(route('account.privacy.distribution'));
 
         $this->assertAuthenticated();
         $this->assertNull(session('url.intended'));
+        $this->assertSame($target, session('privacy.distribution.return_to'));
+
+        $this->put(route('account.privacy.distribution.update'), [
+            'action' => 'private',
+        ])->assertRedirect($target);
     }
 
     public function test_vk_login_uses_intended_target_instead_of_login_page_and_consumes_it_on_success(): void
@@ -170,9 +175,14 @@ final class AuthenticationIntendedRedirectTest extends TestCase
         $this->assertNull(session('url.intended'));
 
         $this->post(route('auth.vk.consent'), ['privacy_consent' => '1'])
-            ->assertRedirect($target);
+            ->assertRedirect(route('account.privacy.distribution'));
 
         $this->assertAuthenticated();
+        $this->assertSame($target, session('privacy.distribution.return_to'));
+
+        $this->put(route('account.privacy.distribution.update'), [
+            'action' => 'private',
+        ])->assertRedirect($target);
     }
 
     public function test_cancelled_vk_login_keeps_intended_target_for_retry(): void
