@@ -82,7 +82,7 @@ final class VkIdAuthenticationTest extends TestCase
         $this->assertDatabaseMissing('users', ['username' => 'vk_777']);
 
         $this->post(route('auth.vk.consent'), ['privacy_consent' => '1'])
-            ->assertRedirect(url('/account'));
+            ->assertRedirect(route('account.privacy.distribution'));
 
         $user = User::query()->where('username', 'vk_777')->firstOrFail();
         $this->assertAuthenticatedAs($user);
@@ -219,7 +219,7 @@ final class VkIdAuthenticationTest extends TestCase
         ]))->assertRedirect(route('auth.vk.consent'));
 
         $this->post(route('auth.vk.consent'), ['privacy_consent' => '1'])
-            ->assertRedirect(url('/account'));
+            ->assertRedirect(route('account.privacy.distribution'));
 
         $user = User::query()->where('username', 'vk_778')->firstOrFail();
         $this->assertNull($user->profile?->birth_date);
