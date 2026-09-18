@@ -216,6 +216,9 @@ Route::prefix('admin')
             Route::put('/{campaign}', [AdminAcquisitionController::class, 'update'])
                 ->whereNumber('campaign')
                 ->name('admin.acquisition.update');
+            Route::put('/{campaign}/flyer-content', [AdminAcquisitionController::class, 'updateFlyerContent'])
+                ->whereNumber('campaign')
+                ->name('admin.acquisition.flyer.content.update');
             Route::get('/{campaign}/qr.svg', [AdminAcquisitionController::class, 'qrSvg'])
                 ->whereNumber('campaign')
                 ->name('admin.acquisition.qr.svg');
