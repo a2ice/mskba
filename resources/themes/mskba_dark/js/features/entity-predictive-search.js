@@ -108,6 +108,7 @@ function initEntityPredictiveSearch(root) {
         input.focus();
     });
     root.closest('form')?.addEventListener('submit', (event) => {
+        if (input.disabled || value.disabled) return;
         if (value.value || (!required && input.value.trim() === '')) return;
         event.preventDefault();
         showMessage(
