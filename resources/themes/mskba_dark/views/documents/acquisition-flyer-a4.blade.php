@@ -199,32 +199,45 @@
     </div>
 
     <section class="hero">
-        <span class="eyebrow">Московская Баскетбольная Ассоциация</span>
-        <h1>Баскетбол<br><span class="accent">рядом.</span></h1>
-        <p class="lead">
-            Игры, тренировки, команды, секции и площадки — в одном баскетбольном сообществе.
-        </p>
-
-        @if($venue)
-            <div class="venue">{{ $venue->name }}</div>
+        @if(($templateFields['eyebrow'] ?? '') !== '')
+            <span class="eyebrow">{{ $templateFields['eyebrow'] }}</span>
         @endif
-        @if($placement !== '')
-            <div class="placement">{{ $placement }}</div>
+        <h1>
+            {{ $templateFields['headline'] ?? '' }}
+            @if(($templateFields['headline_accent'] ?? '') !== '')
+                <br><span class="accent">{{ $templateFields['headline_accent'] }}</span>
+            @endif
+        </h1>
+        @if(($templateFields['lead'] ?? '') !== '')
+            <p class="lead">{{ $templateFields['lead'] }}</p>
+        @endif
+
+        @if(($templateFields['venue_title'] ?? '') !== '')
+            <div class="venue">{{ $templateFields['venue_title'] }}</div>
+        @endif
+        @if(($templateFields['venue_subtitle'] ?? '') !== '')
+            <div class="placement">{{ $templateFields['venue_subtitle'] }}</div>
         @endif
     </section>
 
     <section class="conversion">
         <div>
-            <h2>Сканируй.<br>Выбери роль.<br><span class="accent">Присоединяйся.</span></h2>
+            <h2>
+                {{ $templateFields['cta_line_1'] ?? '' }}
+                @if(($templateFields['cta_line_2'] ?? '') !== '')<br>{{ $templateFields['cta_line_2'] }}@endif
+                @if(($templateFields['cta_line_accent'] ?? '') !== '')<br><span class="accent">{{ $templateFields['cta_line_accent'] }}</span>@endif
+            </h2>
             <ol class="steps">
-                <li><strong>01</strong> Открой MSKBA по QR-коду.</li>
-                <li><strong>02</strong> Выбери, зачем ты здесь: играть, тренировать, организовывать.</li>
-                <li><strong>03</strong> Найди людей и баскетбол рядом с собой.</li>
+                @if(($templateFields['step_1'] ?? '') !== '')<li><strong>01</strong> {{ $templateFields['step_1'] }}</li>@endif
+                @if(($templateFields['step_2'] ?? '') !== '')<li><strong>02</strong> {{ $templateFields['step_2'] }}</li>@endif
+                @if(($templateFields['step_3'] ?? '') !== '')<li><strong>03</strong> {{ $templateFields['step_3'] }}</li>@endif
             </ol>
         </div>
         <div class="qr-card">
             <img src="{{ $qrDataUri }}" alt="QR-код">
-            <strong>Открыть MSKBA</strong>
+            @if(($templateFields['qr_caption'] ?? '') !== '')
+                <strong>{{ $templateFields['qr_caption'] }}</strong>
+            @endif
         </div>
     </section>
 
