@@ -4,6 +4,7 @@ namespace App\Modules\Acquisition\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Acquisition\Application\Services\AcquisitionTracker;
+use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionPersonaEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Identity\Application\UseCases\UpdateUserParticipationRolesHandler;
@@ -21,7 +22,7 @@ final class AcquisitionOnboardingController extends Controller
         Request $request,
         AcquisitionTracker $tracker,
         ?string $campaignCode = null,
-    ): Response {
+    ): Response|RedirectResponse {
         $campaign = $this->campaign($campaignCode);
 
         if ($campaign !== null && ! $campaign->isAvailable()) {
@@ -29,6 +30,13 @@ final class AcquisitionOnboardingController extends Controller
                 'campaign' => $campaign,
                 'campaignState' => $campaign->state(),
             ]);
+        }
+
+        if ($campaign !== null && $campaign->landing_type !== AcquisitionLandingTypeEnum::ONBOARDING) {
+            $target = route('acquisition.entry', ['campaignCode' => $campaign->public_code]);
+            $query = $request->getQueryString();
+
+            return redirect()->to($query ? $target.'?'.$query : $target);
         }
 
         $currentVisit = $tracker->currentVisit($request);
