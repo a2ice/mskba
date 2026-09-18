@@ -1077,6 +1077,53 @@
     margin-top: 2px;
 }
 
+.admin-acquisition-flyer-content {
+    display: grid;
+    gap: 20px;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, .025);
+}
+
+.admin-acquisition-flyer-content__intro {
+    display: grid;
+    gap: 6px;
+}
+
+.admin-acquisition-flyer-content__intro .admin-muted {
+    margin: 0;
+}
+
+.admin-acquisition-flyer-group {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.admin-acquisition-flyer-group + .admin-acquisition-flyer-group {
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.admin-acquisition-flyer-group legend {
+    margin: 0 0 2px;
+    padding: 0;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.admin-acquisition-flyer-content__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 2px;
+}
+
 .admin-acquisition-metrics {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1171,6 +1218,18 @@
 
     .admin-acquisition-save {
         justify-content: stretch;
+    }
+
+    .admin-acquisition-flyer-content {
+        padding: 16px;
+    }
+
+    .admin-acquisition-flyer-content__actions {
+        display: grid;
+    }
+
+    .admin-acquisition-flyer-content__actions .btn {
+        width: 100%;
     }
 
     .admin-acquisition-save .btn {
