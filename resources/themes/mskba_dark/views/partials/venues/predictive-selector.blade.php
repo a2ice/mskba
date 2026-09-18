@@ -91,7 +91,7 @@
 
     @if($showBookingScope)
     <div class="mt-3" data-venue-booking-scope @if($selectedHoopsCount < 2) hidden @endif>
-        <label class="form-label" for="{{ $id }}Scope"><span title="Вся площадка блокирует обе половины. Бронь отдельной половины оставляет вторую доступной для параллельной игры." data-tooltip-icon>Игровая зона</span></label>
+        <label class="form-label" for="{{ $id }}Scope"><span title="Вся площадка блокирует обе половины. Бронь отдельной половины оставляет вторую доступной для параллельной игры.">Игровая зона</span></label>
         <select class="form-select" id="{{ $id }}Scope" name="{{ $scopeName }}" data-venue-booking-scope-input>
             @foreach(\App\Modules\Event\Domain\Enums\VenueBookingScopeEnum::cases() as $scope)
                 <option value="{{ $scope->value }}" @selected(old($scopeName, $selectedScope) === $scope->value)>{{ $scope->label() }}</option>
