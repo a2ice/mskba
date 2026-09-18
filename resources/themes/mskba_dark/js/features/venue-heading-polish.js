@@ -29,7 +29,17 @@ function polishVenueHeading() {
     heading.removeAttribute('title');
     heading.removeAttribute('data-tooltip');
     heading.removeAttribute('data-tooltip-source');
-    heading.classList.remove('ui-tooltip-source', 'ui-tooltip-source--title');
+    heading.classList.remove(
+        'ui-tooltip-source',
+        'ui-tooltip-source--title',
+        'ui-tooltip-source--text',
+        'ui-tooltip-source--visual',
+        'ui-tooltip-source--icon',
+    );
+    heading.querySelector(':scope > .ui-tooltip-trigger[data-tooltip-generated="1"]')?.remove();
+    if (heading.nextElementSibling?.matches('.ui-tooltip-trigger[data-tooltip-generated="1"]')) {
+        heading.nextElementSibling.remove();
+    }
 
     if (heading.getAttribute('tabindex') === '0') {
         heading.removeAttribute('tabindex');
