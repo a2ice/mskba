@@ -1,0 +1,67 @@
+name: Diagnose acquisition documents
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/diagnose-acquisition-documents.yml"
+      - "app/Modules/Acquisition/**"
+      - "app/Modules/Template/**"
+      - "resources/themes/mskba_dark/views/documents/**"
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Diagnose acquisition document pipeline on production
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 5m
+          script: |
+            set -u
+            cd /var/www/mskba
+            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
+
+            echo "=== containers ==="
+            $COMPOSE ps
+
+            echo "=== qrencode runtime ==="
+            $COMPOSE exec -T phpfpm sh -lc 'command -v qrencode && qrencode --version'
+            $COMPOSE exec -T phpfpm sh -lc 'set -e; qrencode -t SVG -o /tmp/mskba-qr.svg -m 2 -s 8 "https://mskba.ru/go/diagnostic"; test -s /tmp/mskba-qr.svg; wc -c /tmp/mskba-qr.svg; head -c 100 /tmp/mskba-qr.svg; echo'
+
+            echo "=== application document pipeline ==="
+            $COMPOSE exec -T phpfpm php artisan tinker --execute='
+              try {
+                  $campaign = \App\Modules\Acquisition\Domain\Models\AcquisitionCampaign::query()->first();
+                  if ($campaign === null) {
+                      throw new \RuntimeException("No acquisition campaign exists on production");
+                  }
+
+                  fwrite(STDERR, "CAMPAIGN id=".$campaign->id." code=".$campaign->public_code.PHP_EOL);
+
+                  $qr = app(\App\Modules\Acquisition\Application\Services\AcquisitionQrCodeRenderer::class);
+                  $svg = $qr->svg($campaign);
+                  fwrite(STDERR, "QR_OK bytes=".strlen($svg).PHP_EOL);
+
+                  $factory = app(\App\Modules\Acquisition\Application\Services\AcquisitionFlyerContextFactory::class);
+                  $context = $factory->make($campaign);
+                  fwrite(STDERR, "CONTEXT_OK keys=".implode(",", array_keys($context)).PHP_EOL);
+
+                  $templates = app(\App\Modules\Template\Application\Contracts\TemplateRenderer::class);
+                  $html = $templates->render("acquisition.flyer.a4", $context);
+                  fwrite(STDERR, "HTML_OK bytes=".strlen($html).PHP_EOL);
+
+                  $documents = app(\App\Modules\Template\Application\Contracts\DocumentRenderer::class);
+                  $pdf = $documents->render($html, \App\Modules\Template\Domain\Enums\DocumentFormatEnum::PDF);
+                  fwrite(STDERR, "PDF_OK bytes=".strlen($pdf->contents).PHP_EOL);
+              } catch (\Throwable $e) {
+                  fwrite(STDERR, "DOC_PIPELINE_ERROR ".get_class($e).": ".$e->getMessage()." @ ".$e->getFile().":".$e->getLine().PHP_EOL);
+                  fwrite(STDERR, $e->getTraceAsString().PHP_EOL);
+                  exit(1);
+              }
+            '
