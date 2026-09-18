@@ -8,7 +8,6 @@ use App\Modules\Event\Domain\Models\Event;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Collection;
 
 final class AcquisitionLandingResolver
 {
@@ -31,6 +30,25 @@ final class AcquisitionLandingResolver
         }
 
         $target = $this->target($campaign->landing_type, (int) $campaign->landing_target_id);
+
+        if ($target === null) {
+            return null;
+        }
+
+        return [
+            'id' => $target->getKey(),
+            'name' => (string) ($target->name ?? $target->title ?? ''),
+        ];
+    }
+
+    /** @return array{id: int|string, name: string}|null */
+    public function targetSummary(AcquisitionLandingTypeEnum $type, ?int $id): ?array
+    {
+        if ($id === null || ! $type->needsTarget()) {
+            return null;
+        }
+
+        $target = $this->target($type, $id);
 
         if ($target === null) {
             return null;
