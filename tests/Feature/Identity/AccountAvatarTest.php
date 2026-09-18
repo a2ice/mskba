@@ -90,7 +90,7 @@ class AccountAvatarTest extends TestCase
             ->assertSessionHasErrors('avatar');
     }
 
-    public function test_user_can_select_one_of_saved_avatars_as_active(): void
+    public function test_saved_avatar_can_be_activated_while_account_renders_only_active_avatar(): void
     {
         Storage::fake('public');
         $user = User::factory()->create();
@@ -111,10 +111,12 @@ class AccountAvatarTest extends TestCase
 
         $this->get(route('account'))
             ->assertOk()
-            ->assertSee('Сохранённые аватары')
             ->assertSee('partial-avatar text-center" data-tooltip-skip', false)
-            ->assertSee(route('account.avatar.activate', $first->id), false)
-            ->assertSee(route('account.avatar.destroy', $second->id), false);
+            ->assertSee(Storage::disk('public')->url($second->path), false)
+            ->assertSee(route('account.avatar.destroy', $second->id), false)
+            ->assertDontSee('Сохранённые аватары')
+            ->assertDontSee(route('account.avatar.activate', $first->id), false)
+            ->assertDontSee(route('account.avatar.destroy', $first->id), false);
     }
 
     public function test_deleting_active_avatar_activates_next_saved_avatar_and_removes_file(): void
