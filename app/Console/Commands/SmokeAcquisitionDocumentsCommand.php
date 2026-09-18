@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Modules\Acquisition\Application\Services\AcquisitionQrCodeRenderer;
+use App\Modules\Acquisition\Application\Services\AcquisitionFlyerContextFactory;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
@@ -16,10 +16,10 @@ final class SmokeAcquisitionDocumentsCommand extends Command
 {
     protected $signature = 'acquisition:documents:smoke';
 
-    protected $description = 'Проверить QR → HTML template → PDF pipeline без записи в БД';
+    protected $description = 'Проверить QR → flyer context/assets → HTML template → PDF без записи в БД';
 
     public function handle(
-        AcquisitionQrCodeRenderer $qr,
+        AcquisitionFlyerContextFactory $contextFactory,
         TemplateRenderer $templates,
         DocumentRenderer $documents,
     ): int {
@@ -33,24 +33,34 @@ final class SmokeAcquisitionDocumentsCommand extends Command
                 'verification_radius_m' => 250,
                 'location_verification_enabled' => false,
                 'is_active' => true,
+                'metadata' => [
+                    'template_key' => 'acquisition.flyer.a4',
+                ],
             ]);
 
-            $svg = $qr->svg($campaign);
-            if ($svg === '' || ! str_contains($svg, '<svg')) {
-                throw new \RuntimeException('QR renderer returned invalid SVG.');
+            $context = $contextFactory->make($campaign);
+
+            $qrDataUri = $context['qrDataUri'] ?? null;
+            if (! is_string($qrDataUri) || ! str_starts_with($qrDataUri, 'data:image/svg+xml;base64,')) {
+                throw new \RuntimeException('Flyer context did not provide a QR data URI.');
             }
 
-            $joinUrl = $qr->joinUrl($campaign);
-            $html = $templates->render('acquisition.flyer.a4', [
-                'campaign' => $campaign,
-                'venue' => null,
-                'joinUrl' => $joinUrl,
-                'qrDataUri' => 'data:image/svg+xml;base64,'.base64_encode($svg),
-                'logoDataUri' => null,
-                'placement' => '',
-            ]);
+            $heroImageDataUri = $context['heroImageDataUri'] ?? null;
+            if (! is_string($heroImageDataUri) || ! str_starts_with($heroImageDataUri, 'data:image/png;base64,')) {
+                throw new \RuntimeException('Flyer context did not provide the hero image asset.');
+            }
 
-            if ($html === '' || ! str_contains($html, $joinUrl)) {
+            $joinUrl = $context['joinUrl'] ?? null;
+            if (! is_string($joinUrl) || $joinUrl === '') {
+                throw new \RuntimeException('Flyer context did not provide campaign URL.');
+            }
+
+            $html = $templates->render('acquisition.flyer.a4', $context);
+            if (
+                $html === ''
+                || ! str_contains($html, $joinUrl)
+                || ! str_contains($html, 'class="hero-art"')
+            ) {
                 throw new \RuntimeException('Flyer template returned unexpected HTML.');
             }
 
@@ -60,8 +70,9 @@ final class SmokeAcquisitionDocumentsCommand extends Command
             }
 
             $this->info(sprintf(
-                'Acquisition document pipeline OK: QR %d B, HTML %d B, PDF %d B.',
-                strlen($svg),
+                'Acquisition document pipeline OK: QR context %d B, hero asset %d B, HTML %d B, PDF %d B.',
+                strlen($qrDataUri),
+                strlen($heroImageDataUri),
                 strlen($html),
                 strlen($pdf->contents),
             ));
