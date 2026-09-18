@@ -159,3 +159,4 @@
 - [x] 193 - Исправить sticky tooltip на touch/mobile и унифицировать lifecycle подсказок ([описание](tasks/193/description.md))
 - [x] 194 - Уплотнить social-login в popup авторизации и подготовить раскладку для новых провайдеров ([описание](tasks/194/description.md))
 - [x] 195 - Унифицировать отображение tooltip для текста и визуальных маркеров ([описание](tasks/195/description.md))
+- [ ] 196 - Админка acquisition-кампаний, QR-листовки и фундамент шаблонов документов ([описание](tasks/196/description.md))

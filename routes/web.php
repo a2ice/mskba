@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Presentation\Http\Controllers\AdminAcquisitionController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
@@ -193,6 +194,38 @@ Route::prefix('admin')
     ->middleware('auth', 'can:access-admin-panel')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('admin.dashboard')->defaults('breadcrumb', 'Панель управления');
+        Route::prefix('acquisition')->group(function () {
+            Route::get('/', [AdminAcquisitionController::class, 'index'])
+                ->name('admin.acquisition.index')
+                ->defaults('breadcrumb', 'Привлечение');
+            Route::get('/create', [AdminAcquisitionController::class, 'create'])
+                ->name('admin.acquisition.create')
+                ->defaults('breadcrumb', 'Новая кампания');
+            Route::get('/venues', [AdminAcquisitionController::class, 'venueCandidates'])
+                ->middleware('throttle:60,1')
+                ->name('admin.acquisition.venues');
+            Route::post('/', [AdminAcquisitionController::class, 'store'])
+                ->name('admin.acquisition.store');
+            Route::get('/{campaign}/edit', [AdminAcquisitionController::class, 'edit'])
+                ->whereNumber('campaign')
+                ->name('admin.acquisition.edit')
+                ->defaults('breadcrumb', 'Кампания');
+            Route::put('/{campaign}', [AdminAcquisitionController::class, 'update'])
+                ->whereNumber('campaign')
+                ->name('admin.acquisition.update');
+            Route::get('/{campaign}/qr.svg', [AdminAcquisitionController::class, 'qrSvg'])
+                ->whereNumber('campaign')
+                ->name('admin.acquisition.qr.svg');
+            Route::get('/{campaign}/qr.png', [AdminAcquisitionController::class, 'qrPng'])
+                ->whereNumber('campaign')
+                ->name('admin.acquisition.qr.png');
+            Route::get('/{campaign}/flyer', [AdminAcquisitionController::class, 'flyerPreview'])
+                ->whereNumber('campaign')
+                ->name('admin.acquisition.flyer.preview');
+            Route::get('/{campaign}/flyer.pdf', [AdminAcquisitionController::class, 'flyerPdf'])
+                ->whereNumber('campaign')
+                ->name('admin.acquisition.flyer.pdf');
+        });
         Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
         Route::get('/users/{user}/edit', [AdminUsersController::class, 'edit'])
             ->middleware('can:manage-users-as-superadmin')

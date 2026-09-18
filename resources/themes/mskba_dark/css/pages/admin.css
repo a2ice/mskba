@@ -931,3 +931,160 @@
     .admin-moderation-diff__row > * { padding: 8px 10px; }
     .admin-moderation-gallery-diff__columns { grid-template-columns: 1fr; }
 }
+
+
+/* Acquisition campaigns */
+.admin-section-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.admin-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-acquisition-form {
+    display: grid;
+    gap: 18px;
+}
+
+.admin-acquisition-card {
+    display: grid;
+    gap: 16px;
+}
+
+.admin-acquisition-card h2,
+.admin-acquisition-card h3 {
+    margin: 0;
+}
+
+.admin-acquisition-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.admin-acquisition-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.admin-acquisition-grid__wide {
+    grid-column: 1 / -1;
+}
+
+.admin-acquisition-save {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.admin-acquisition-url {
+    overflow-x: auto;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, .035);
+}
+
+.admin-acquisition-url code {
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.admin-acquisition-actions {
+    margin-top: 2px;
+}
+
+.admin-acquisition-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-acquisition-metrics > div {
+    display: grid;
+    gap: 4px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, .035);
+}
+
+.admin-acquisition-metrics strong {
+    font-size: 28px;
+    line-height: 1;
+}
+
+.admin-acquisition-metrics span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-acquisition-breakdowns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.admin-acquisition-breakdowns > div {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+}
+
+.admin-acquisition-breakdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+
+.admin-acquisition-breakdown-row:last-child {
+    border-bottom: 0;
+}
+
+.admin-badge--muted {
+    opacity: .6;
+}
+
+@media (max-width: 960px) {
+    .admin-acquisition-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-section-toolbar,
+    .admin-acquisition-card__header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-acquisition-grid,
+    .admin-acquisition-breakdowns,
+    .admin-acquisition-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-acquisition-grid__wide {
+        grid-column: auto;
+    }
+
+    .admin-acquisition-save {
+        justify-content: stretch;
+    }
+
+    .admin-acquisition-save .btn {
+        width: 100%;
+    }
+}

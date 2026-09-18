@@ -27,6 +27,9 @@ services:
     profiles:
       - polling
 
+  gotenberg:
+    container_name: mskbanew-gotenberg
+
   db:
     container_name: mskbanew-db
     ports:

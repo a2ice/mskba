@@ -14,12 +14,15 @@ services:
       REVERB_HOST: reverb
       REVERB_PORT: 8080
       REVERB_SCHEME: http
+      GOTENBERG_URL: http://gotenberg:3000
     volumes:
       - .:/var/www/html
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+      gotenberg:
         condition: service_started
     command: ["php-fpm"]
 
@@ -175,6 +178,10 @@ services:
       redis:
         condition: service_started
     command: ["php", "artisan", "telegram:poll-updates"]
+
+  gotenberg:
+    image: gotenberg/gotenberg:8-chromium
+    restart: unless-stopped
 
   db:
     image: postgres:17-alpine

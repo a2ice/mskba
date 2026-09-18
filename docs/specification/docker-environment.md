@@ -48,6 +48,7 @@ prod/VDS: mskbanew
 - `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
 - `queue` - Laravel queue worker;
 - `scheduler` - постоянно работающий Laravel scheduler;
+- `gotenberg` - внутренний Chromium-based HTML→PDF renderer для шаблонов документов; используется `gotenberg/gotenberg:8-chromium` без LibreOffice;
 - `db` - PostgreSQL 17 Alpine, база `mskbabrandnew`, пользователь `mskbabrandnew`;
 - `redis` - Redis 7 для runtime/cache/queue сценариев.
 
@@ -88,6 +89,7 @@ Production/VDS services:
 - `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
 - `queue` - Laravel queue worker;
 - `scheduler` - Laravel scheduler, запускающий due-задачи каждую минуту;
+- `gotenberg` - внутренний HTML→PDF renderer, доступный приложению по `http://gotenberg:3000`;
 - `telegram` - long polling Telegram updates;
 - `db` - PostgreSQL 17, использует новый volume `mskbabrandnew_postgres_data`;
 - `redis` - Redis 7 для будущего runtime/cache/queue сценария;
@@ -120,7 +122,7 @@ Workflow:
 - push в `main`, кроме изменений только в `docs/**` или `README.md`;
 - ручной запуск через `workflow_dispatch`.
 
-Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`. После обновления workflow пересоздаёт и перезапускает `phpfpm`, `nginx`, `queue`, `scheduler` и `telegram`.
+Workflow подключается к VDS по SSH, работает в `/var/www/mskba`, обновляет код из `origin/main`, собирает PHP image, устанавливает Composer-зависимости, собирает Vite assets через Node container, запускает миграции, очищает Laravel caches и кеширует config до подъема `nginx`. В PHP image также устанавливается `qrencode`; Gotenberg используется отдельным compose-service и не встраивает Chromium в PHP runtime. После обновления workflow пересоздаёт и перезапускает `phpfpm`, `nginx`, `queue`, `scheduler` и `telegram`.
 
 Deploy workflow использует:
 

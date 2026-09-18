@@ -11,6 +11,7 @@ function initEntityPredictiveSearch(root) {
     const staticOptions = [...root.querySelectorAll('[data-entity-predictive-option]')];
     const searchUrl = root.dataset.searchUrl || '';
     const minimumLength = Number(root.dataset.minimumLength || (searchUrl ? 2 : 1));
+    const required = root.dataset.required !== '0';
     let timer;
     let controller;
 
@@ -105,9 +106,14 @@ function initEntityPredictiveSearch(root) {
         input.focus();
     });
     root.closest('form')?.addEventListener('submit', (event) => {
-        if (value.value) return;
+        if (value.value || (!required && input.value.trim() === '')) return;
         event.preventDefault();
-        showMessage('Сначала выберите вариант из списка.', true);
+        showMessage(
+            required
+                ? 'Сначала выберите вариант из списка.'
+                : 'Выберите вариант из списка или очистите поле.',
+            true,
+        );
         input.focus();
     });
 }
