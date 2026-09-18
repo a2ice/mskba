@@ -48,7 +48,7 @@ prod/VDS: mskbanew
 - `nginx` - контейнерный Nginx, слушает `${NGINX_PORT:-8000}:80`;
 - `queue` - Laravel queue worker;
 - `scheduler` - постоянно работающий Laravel scheduler;
-- `gotenberg` - внутренний Chromium-based HTML→PDF renderer для шаблонов документов;
+- `gotenberg` - внутренний Chromium-based HTML→PDF renderer для шаблонов документов; используется `gotenberg/gotenberg:8-chromium` без LibreOffice;
 - `db` - PostgreSQL 17 Alpine, база `mskbabrandnew`, пользователь `mskbabrandnew`;
 - `redis` - Redis 7 для runtime/cache/queue сценариев.
 
