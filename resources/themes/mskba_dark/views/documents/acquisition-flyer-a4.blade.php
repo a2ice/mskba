@@ -6,7 +6,14 @@
     <style>
         @page { size: A4; margin: 0; }
         * { box-sizing: border-box; }
-        html, body { width: 210mm; min-height: 297mm; margin: 0; padding: 0; }
+        html, body {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
         body {
             font-family: Arial, Helvetica, sans-serif;
             color: #f8f8f5;
