@@ -180,7 +180,7 @@ services:
     command: ["php", "artisan", "telegram:poll-updates"]
 
   gotenberg:
-    image: gotenberg/gotenberg:8
+    image: gotenberg/gotenberg:8-chromium
     restart: unless-stopped
 
   db:
