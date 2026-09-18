@@ -3,8 +3,8 @@
     $title = $editing ? 'Кампания · '.$campaign->name : 'Новая acquisition-кампания';
     $startsAt = old('starts_at', $campaign->starts_at?->format('Y-m-d\TH:i'));
     $endsAt = old('ends_at', $campaign->ends_at?->format('Y-m-d\TH:i'));
-    $selectedVenueId = old('venue_id', $campaign->venue_id ?? '');
-    $selectedVenueLabel = $campaign->venue?->name ?? '';
+    $selectedVenueId = old('venue_id', $selectedVenue?->id ?? $campaign->venue_id ?? '');
+    $selectedVenueLabel = $selectedVenue?->name ?? $campaign->venue?->name ?? '';
     $locationLabels = [
         'not_requested' => 'Не запрашивалась',
         'verified' => 'Подтверждено',
