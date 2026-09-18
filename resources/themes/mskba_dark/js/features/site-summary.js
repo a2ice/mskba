@@ -13,6 +13,7 @@ const heroPlayButton = document.querySelector('.home-welcome__actions .home-cta.
 
 const onlineTooltipText = 'Авторизованные / всего онлайн';
 const createEventTooltipText = 'Создать мероприятие';
+const siteTooltipTouchMedia = window.matchMedia('(hover: none), (pointer: coarse)');
 let activeTooltip = null;
 let activeTooltipTarget = null;
 
@@ -80,23 +81,59 @@ const bindSiteTooltip = (target, text, { label = false } = {}) => {
         target.setAttribute('aria-label', text);
     }
 
-    target.addEventListener('mouseenter', () => showSiteTooltip(target, text));
-    target.addEventListener('mouseleave', hideSiteTooltip);
-    target.addEventListener('focus', () => showSiteTooltip(target, text));
+    const interactive = target.matches('a[href], button, input, select, textarea, summary, [role="button"]');
+
+    target.addEventListener('mouseenter', () => {
+        if (!siteTooltipTouchMedia.matches) {
+            showSiteTooltip(target, text);
+        }
+    });
+    target.addEventListener('mouseleave', () => {
+        if (!siteTooltipTouchMedia.matches) {
+            hideSiteTooltip();
+        }
+    });
+    target.addEventListener('focus', () => {
+        if (!siteTooltipTouchMedia.matches) {
+            showSiteTooltip(target, text);
+        }
+    });
     target.addEventListener('blur', hideSiteTooltip);
     target.addEventListener('click', () => {
-        if (window.matchMedia('(hover: none)').matches) {
-            if (activeTooltipTarget === target) {
-                hideSiteTooltip();
-            } else {
-                showSiteTooltip(target, text);
-            }
+        if (!siteTooltipTouchMedia.matches) {
+            return;
+        }
+
+        if (interactive) {
+            hideSiteTooltip();
+            return;
+        }
+
+        if (activeTooltipTarget === target) {
+            hideSiteTooltip();
+        } else {
+            showSiteTooltip(target, text);
         }
     });
 };
 
 onlineTooltipTargets.forEach((target) => bindSiteTooltip(target, onlineTooltipText, { label: true }));
 createEventTooltipTargets.forEach((target) => bindSiteTooltip(target, createEventTooltipText));
+
+document.addEventListener('pointerdown', (event) => {
+    if (!siteTooltipTouchMedia.matches || !activeTooltipTarget) {
+        return;
+    }
+
+    const target = event.target;
+    if (target instanceof Node && activeTooltipTarget.contains(target)) {
+        return;
+    }
+
+    hideSiteTooltip();
+});
+
+window.addEventListener('blur', hideSiteTooltip);
 
 if (desktopHomeBadges) {
     const desktopBadgesMedia = window.matchMedia('(min-width: 901px)');

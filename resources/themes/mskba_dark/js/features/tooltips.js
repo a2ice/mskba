@@ -8,6 +8,8 @@ const FLOATING_TOOLTIP_ID = 'ui-tooltip-floating';
 const FLOATING_TOOLTIP_OFFSET = 10;
 const FLOATING_TOOLTIP_VIEWPORT_GAP = 8;
 const BASE_MODAL_Z_INDEX = 320;
+const TOUCH_TOOLTIP_MEDIA = window.matchMedia('(hover: none), (pointer: coarse)');
+const INTERACTIVE_TOOLTIP_SELECTOR = 'a[href], button, input, select, textarea, summary, [role="button"]';
 
 let floatingTooltip = null;
 let activeTooltipElement = null;
@@ -129,20 +131,90 @@ $(document).on('modal:opened', function(_event, modal) {
     initTooltips(modal);
 });
 
+$(document).on('modal:minimized modal:closed', function() {
+    // The source can become hidden or leave the active UI when a modal changes state.
+    hideActiveFloatingTooltip();
+});
+
+function usesTouchTooltipMode() {
+    return TOUCH_TOOLTIP_MEDIA.matches;
+}
+
+function isDedicatedTooltipTrigger(element) {
+    return element.classList.contains('ui-tooltip-trigger');
+}
+
+function isInteractiveTooltipSource(element) {
+    return element.matches(INTERACTIVE_TOOLTIP_SELECTOR);
+}
+
+function shouldToggleTooltipOnTouch(element) {
+    return isDedicatedTooltipTrigger(element) || !isInteractiveTooltipSource(element);
+}
+
 function bindFloatingTooltips() {
+    const selector = '.ui-tooltip-trigger, .ui-tooltip-source';
+
     $(document)
-        .on('mouseenter focusin', '.ui-tooltip-trigger, .ui-tooltip-source', function() {
-            showFloatingTooltip(this);
+        .on('mouseenter', selector, function() {
+            if (!usesTouchTooltipMode()) {
+                showFloatingTooltip(this);
+            }
         })
-        .on('mouseleave focusout', '.ui-tooltip-trigger, .ui-tooltip-source', function() {
+        .on('mouseleave', selector, function() {
+            if (!usesTouchTooltipMode()) {
+                hideFloatingTooltip(this);
+            }
+        })
+        .on('focusin', selector, function() {
+            if (!usesTouchTooltipMode()) {
+                showFloatingTooltip(this);
+            }
+        })
+        .on('focusout', selector, function() {
             hideFloatingTooltip(this);
+        })
+        .on('click', selector, function(event) {
+            if (!usesTouchTooltipMode()) {
+                return;
+            }
+
+            if (!shouldToggleTooltipOnTouch(this)) {
+                // Buttons/links must perform their action on the first tap without leaving
+                // a synthetic hover/focus tooltip behind.
+                hideActiveFloatingTooltip();
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (activeTooltipElement === this) {
+                hideActiveFloatingTooltip();
+            } else {
+                showFloatingTooltip(this);
+            }
+        })
+        .on('pointerdown touchstart', function(event) {
+            if (!usesTouchTooltipMode() || !activeTooltipElement) {
+                return;
+            }
+
+            const target = event.target;
+            if (target instanceof Node && activeTooltipElement.contains(target)) {
+                return;
+            }
+
+            hideActiveFloatingTooltip();
         });
 
-    $(window).on('scroll resize', function() {
-        if (activeTooltipElement) {
-            positionFloatingTooltip(activeTooltipElement);
-        }
-    });
+    $(window)
+        .on('scroll resize', function() {
+            if (activeTooltipElement) {
+                positionFloatingTooltip(activeTooltipElement);
+            }
+        })
+        .on('blur pagehide', hideActiveFloatingTooltip);
 }
 
 function showFloatingTooltip(element) {
