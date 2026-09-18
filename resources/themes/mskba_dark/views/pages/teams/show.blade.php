@@ -81,12 +81,12 @@
             </div>
             <p class="team-profile__description">{{ $team->description ?: 'Описание команды пока не добавлено.' }}</p>
             <div class="team-profile__meta">
-                <p title="{{ $memberCountText($activeMemberships->count()) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="{{ $memberCountText($activeMemberships->count()) }}"><i class="ti ti-users" aria-hidden="true"></i><span class="team-profile__member-count">{{ $activeMemberships->count() }}</span><span class="team-profile__member-label"> {{ str($memberCountText($activeMemberships->count()))->after(' ') }}</span></p>
+                <p title="{{ $memberCountText($activeMemberships->count()) }}" data-tooltip-variant="title" aria-label="{{ $memberCountText($activeMemberships->count()) }}"><i class="ti ti-users" aria-hidden="true"></i><span class="team-profile__member-count">{{ $activeMemberships->count() }}</span><span class="team-profile__member-label"> {{ str($memberCountText($activeMemberships->count()))->after(' ') }}</span></p>
                 @if($headerCoach)
-                    <p title="Тренер: {{ $memberName($headerCoach) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="Тренер: {{ $memberName($headerCoach) }}"><i class="ti ti-user-cog" aria-hidden="true"></i><span>Тренер: {{ $memberName($headerCoach) }}</span></p>
+                    <p title="Тренер: {{ $memberName($headerCoach) }}" data-tooltip-variant="title" aria-label="Тренер: {{ $memberName($headerCoach) }}"><i class="ti ti-user-cog" aria-hidden="true"></i><span>Тренер: {{ $memberName($headerCoach) }}</span></p>
                 @endif
                 @if($headerCaptain)
-                    <p title="Капитан: {{ $memberName($headerCaptain) }}" data-tooltip-variant="title" data-tooltip-icon aria-label="Капитан: {{ $memberName($headerCaptain) }}"><i class="ti ti-star" aria-hidden="true"></i><span>Капитан: {{ $memberName($headerCaptain) }}</span></p>
+                    <p title="Капитан: {{ $memberName($headerCaptain) }}" data-tooltip-variant="title" aria-label="Капитан: {{ $memberName($headerCaptain) }}"><i class="ti ti-star" aria-hidden="true"></i><span>Капитан: {{ $memberName($headerCaptain) }}</span></p>
                 @endif
             </div>
         </div>
