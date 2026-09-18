@@ -3,6 +3,7 @@
 namespace Tests\Feature\Acquisition;
 
 use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
+use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -31,7 +32,9 @@ final class AdminAcquisitionCampaignTest extends TestCase
                 'name' => 'Листовка у школы 1794',
                 'public_code' => '',
                 'channel' => AcquisitionChannelEnum::QR->value,
+                'landing_type' => AcquisitionLandingTypeEnum::ONBOARDING->value,
                 'venue_id' => $venue->id,
+                'location_verification_enabled' => '1',
                 'verification_radius_m' => 250,
                 'is_active' => '1',
                 'placement' => 'Стенд у главного входа',
@@ -44,6 +47,8 @@ final class AdminAcquisitionCampaignTest extends TestCase
         $this->assertSame('Листовка у школы 1794', $campaign->name);
         $this->assertSame(AcquisitionChannelEnum::QR, $campaign->channel);
         $this->assertSame($venue->id, $campaign->venue_id);
+        $this->assertSame(AcquisitionLandingTypeEnum::ONBOARDING, $campaign->landing_type);
+        $this->assertTrue($campaign->location_verification_enabled);
         $this->assertTrue($campaign->is_active);
         $this->assertMatchesRegularExpression('/^[a-z0-9_-]{2,64}$/', $campaign->public_code);
         $this->assertSame('Стенд у главного входа', data_get($campaign->metadata, 'placement'));
@@ -59,7 +64,9 @@ final class AdminAcquisitionCampaignTest extends TestCase
             'public_code' => 'school-1794-a4',
             'name' => 'Школа 1794',
             'channel' => AcquisitionChannelEnum::QR,
+            'landing_type' => AcquisitionLandingTypeEnum::ONBOARDING,
             'verification_radius_m' => 250,
+            'location_verification_enabled' => false,
             'is_active' => true,
         ]);
 
