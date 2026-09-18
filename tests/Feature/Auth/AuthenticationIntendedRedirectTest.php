@@ -164,10 +164,15 @@ final class AuthenticationIntendedRedirectTest extends TestCase
             'state' => $state,
             'code' => 'authorization-code',
             'device_id' => 'device-1',
-        ]))->assertRedirect($target);
+        ]))->assertRedirect(route('auth.vk.consent'));
+
+        $this->assertGuest();
+        $this->assertNull(session('url.intended'));
+
+        $this->post(route('auth.vk.consent'), ['privacy_consent' => '1'])
+            ->assertRedirect($target);
 
         $this->assertAuthenticated();
-        $this->assertNull(session('url.intended'));
     }
 
     public function test_cancelled_vk_login_keeps_intended_target_for_retry(): void
