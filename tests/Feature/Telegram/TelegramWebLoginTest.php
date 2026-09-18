@@ -138,6 +138,22 @@ final class TelegramWebLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_auth_modal_groups_social_login_options_into_compact_rows(): void
+    {
+        config(['vk.app_id' => 'test-vk-app']);
+
+        $this
+            ->get(route('welcome'))
+            ->assertOk()
+            ->assertSee('auth-social-login', false)
+            ->assertSee('auth-social-login__separator', false)
+            ->assertSee('auth-social-login__row', false)
+            ->assertSee('auth-social-login__provider', false)
+            ->assertSee('или быстрый вход через')
+            ->assertSee('auth-social-login__button--telegram', false)
+            ->assertSee('auth-social-login__button--vk', false);
+    }
+
     public function test_login_widget_is_rendered_while_bot_fallback_is_hidden_and_external_redirect_is_ignored(): void
     {
         $this

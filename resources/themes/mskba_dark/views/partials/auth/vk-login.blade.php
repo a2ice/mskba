@@ -1,8 +1,10 @@
 @if(trim((string) config('vk.app_id')) !== '')
-    <div class="auth-vk-login">
-        <div class="auth-telegram-login__separator" aria-hidden="true">
-            <span>или</span>
-        </div>
+    <div class="auth-vk-login{{ ($authSocialGrid ?? false) ? ' auth-social-login__provider' : '' }}">
+        @unless($authSocialGrid ?? false)
+            <div class="auth-telegram-login__separator" aria-hidden="true">
+                <span>или</span>
+            </div>
+        @endunless
 
         <a
             class="auth-social-login__button auth-social-login__button--vk"

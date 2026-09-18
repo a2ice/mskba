@@ -157,3 +157,4 @@
 - [x] 191 - Acquisition onboarding / promo landing ([описание](tasks/191/description.md))
 - [x] 192 - Унифицировать попапы, сворачивание и восстановление из URL (B044) ([описание](tasks/192/description.md))
 - [x] 193 - Исправить sticky tooltip на touch/mobile и унифицировать lifecycle подсказок ([описание](tasks/193/description.md))
+- [x] 194 - Уплотнить social-login в popup авторизации и подготовить раскладку для новых провайдеров ([описание](tasks/194/description.md))

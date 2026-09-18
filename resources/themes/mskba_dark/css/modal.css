@@ -392,7 +392,14 @@ body.has-modal-tray .modal:not(.is-minimized) {
 	gap: 8px;
 }
 
-.auth-telegram-login__separator {
+.auth-social-login {
+	margin-top: 18px;
+	display: grid;
+	gap: 10px;
+}
+
+.auth-telegram-login__separator,
+.auth-social-login__separator {
 	width: 100%;
 	display: flex;
 	align-items: center;
@@ -404,11 +411,47 @@ body.has-modal-tray .modal:not(.is-minimized) {
 }
 
 .auth-telegram-login__separator::before,
-.auth-telegram-login__separator::after {
+.auth-telegram-login__separator::after,
+.auth-social-login__separator::before,
+.auth-social-login__separator::after {
 	height: 1px;
 	flex: 1;
 	background: rgba(255, 255, 255, 0.12);
 	content: '';
+}
+
+.auth-social-login__row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px;
+	align-items: start;
+}
+
+.auth-social-login__row > .auth-social-login__provider {
+	width: 100%;
+	min-width: 0;
+	margin-top: 0;
+	justify-items: stretch;
+}
+
+.auth-social-login__row > .auth-social-login__provider:only-child {
+	grid-column: 1 / -1;
+}
+
+.auth-social-login__row .auth-social-login__button,
+.auth-social-login__row .auth-telegram-login__widget,
+.auth-social-login__row .auth-telegram-login__button {
+	width: 100%;
+	max-width: none;
+}
+
+.auth-social-login__row .auth-social-login__button {
+	padding-right: 12px;
+	padding-left: 12px;
+}
+
+.auth-social-login__row .auth-telegram-login__message:empty {
+	display: none;
 }
 
 .auth-social-login__button,
@@ -643,6 +686,17 @@ body.content-modal-open .site-content {
 @media (max-width: 360px), (max-height: 400px) {
 	.modal {
 		padding: 6px;
+	}
+
+	.auth-social-login__row {
+		gap: 10px;
+	}
+
+	.auth-social-login__row .auth-social-login__button {
+		gap: 6px;
+		padding-right: 8px;
+		padding-left: 8px;
+		font-size: 12px;
 	}
 
 	.modal__header {

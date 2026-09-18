@@ -4,16 +4,18 @@
 
 @if($telegramBotUsername !== '')
     <div
-        class="auth-telegram-login"
+        class="auth-telegram-login{{ ($authSocialGrid ?? false) ? ' auth-social-login__provider' : '' }}"
         data-telegram-login
         data-telegram-redirect-url="{{ $authRedirectTo ?? '' }}"
         data-telegram-login-url="{{ route('auth.telegram', [], false) }}"
         data-telegram-bot-start-url="{{ route('auth.telegram.bot.start', [], false) }}"
         data-telegram-bot-status-url="{{ route('auth.telegram.bot.status', [], false) }}"
     >
-        <div class="auth-telegram-login__separator" aria-hidden="true">
-            <span>или быстрый вход через</span>
-        </div>
+        @unless($authSocialGrid ?? false)
+            <div class="auth-telegram-login__separator" aria-hidden="true">
+                <span>или быстрый вход через</span>
+            </div>
+        @endunless
 
         <div class="auth-telegram-login__widget">
             <span class="auth-social-login__button auth-social-login__button--telegram" aria-hidden="true">
