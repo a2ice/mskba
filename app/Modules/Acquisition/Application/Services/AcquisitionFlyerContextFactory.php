@@ -10,6 +10,7 @@ final readonly class AcquisitionFlyerContextFactory
     public function __construct(
         private AcquisitionQrCodeRenderer $qr,
         private TrustedTemplateRegistry $templates,
+        private AcquisitionFlyerContentManager $content,
     ) {}
 
     /** @return array<string, mixed> */
@@ -31,7 +32,7 @@ final readonly class AcquisitionFlyerContextFactory
             'qrDataUri' => 'data:image/svg+xml;base64,'.base64_encode($qrSvg),
             'logoDataUri' => $this->assetDataUri($this->templates->assetPath($templateKey, 'logo')),
             'heroImageDataUri' => $this->assetDataUri($this->templates->assetPath($templateKey, 'hero_image')),
-            'placement' => trim((string) data_get($campaign->metadata, 'placement', '')),
+            'templateFields' => $this->content->resolved($campaign),
         ];
     }
 
