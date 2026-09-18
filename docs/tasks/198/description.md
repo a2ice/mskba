@@ -46,4 +46,6 @@ Production diagnostic подтвердил:
 - [x] fix;
 - [x] tests;
 - [x] deploy smoke;
-- [ ] merge/deploy.
+- [x] merge/deploy.
+
+Merged to `main` as `e0c0421c1c86db8fa8a42ff782a7d2f5a60c89af`. Production deploy `35351522779` completed successfully; runtime smoke reported `QR 26103 B, HTML 40213 B, PDF 92616 B`.
