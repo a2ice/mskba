@@ -75,8 +75,12 @@
 
         <section class="account-settings-card account-privacy" aria-labelledby="account-privacy-title">
             <h2 id="account-privacy-title" class="h3 mb-3">Настройки приватности и уведомлений</h2>
-            <p class="text-muted mb-4">
+            <p class="text-muted mb-2">
                 Управляйте своей видимостью, взаимодействиями и доставкой уведомлений.
+            </p>
+            <p class="text-muted mb-4">
+                Публичный режим «Все» для персональных данных действует только в пределах отдельного согласия.
+                <a href="{{ route('account.privacy.distribution', ['return' => 'settings']) }}">Изменить перечень публичных данных</a>.
             </p>
 
             <form method="POST" action="{{ route('account.settings.privacy.update') }}" class="account-privacy__form">
