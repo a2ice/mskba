@@ -59,10 +59,11 @@ QR/листовка показываются только для QR campaign.
 
 ## Статус
 
-- [ ] domain/migration
-- [ ] status pages
-- [ ] /go entry
-- [ ] configurable landing
-- [ ] channel-aware form
-- [ ] form polish
-- [ ] tests/docs/CI
+- [x] domain/migration
+- [x] status pages
+- [x] /go entry
+- [x] configurable landing
+- [x] channel-aware form
+- [x] form polish
+- [x] tests/docs
+- [ ] CI / merge
