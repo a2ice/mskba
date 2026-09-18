@@ -58,6 +58,7 @@ final class ResolveVkUserHandler
                 'registration_channel' => UserRegistrationChannelEnum::VK_ID,
                 'system_role' => UserSystemRoleEnum::USER,
                 'status' => UserStatusEnum::UNCONFIRMED,
+                'personal_data_distribution_required_at' => now(),
             ]);
             $user->createProfile([]);
             $user->consents()->create([
