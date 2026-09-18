@@ -182,7 +182,7 @@ function bindModalEscClose() {
             return;
         }
 
-        const openedModal = $('.modal.is-open').last();
+        const openedModal = $('.modal.is-open:not(.is-minimized)').last();
         if (!openedModal.length) {
             return;
         }
@@ -567,11 +567,23 @@ function minimizeModal(modalInput, options = {}) {
         return;
     }
 
+    const activeElement = document.activeElement;
+    const shouldMoveFocusToTray = activeElement instanceof HTMLElement
+        && modal.get(0)?.contains(activeElement);
+
     modal.addClass('is-minimized');
     modal.find('.modal__dialog').attr('aria-modal', 'false');
     updateMinimizeControl(modal, true);
     refreshBodyModalState();
     refreshModalTray();
+
+    if (shouldMoveFocusToTray) {
+        modalTrayTab(modal)
+            .find('[data-modal-tray-restore]')
+            .first()
+            .get(0)
+            ?.focus({ preventScroll: true });
+    }
 
     if (options.syncUrl !== false) {
         syncModalUrl();
