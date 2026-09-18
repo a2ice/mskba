@@ -62,7 +62,7 @@ final class TournamentOnSiteRegistrationService
             );
             $this->assignProjectRoles($user, $roles);
             $user->consents()->create([
-                'type' => UserConsent::TYPE_PRIVACY_POLICY,
+                'type' => UserConsent::TYPE_PERSONAL_DATA_PROCESSING,
                 'document_version' => $consent->documentVersion,
                 'accepted_at' => $consent->acceptedAt,
                 'source' => $consent->source,

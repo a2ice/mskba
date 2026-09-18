@@ -54,7 +54,7 @@ final class RegisterUserHandler
 
             if ($privacyConsent !== null) {
                 $user->consents()->create([
-                    'type' => UserConsent::TYPE_PRIVACY_POLICY,
+                    'type' => UserConsent::TYPE_PERSONAL_DATA_PROCESSING,
                     'document_version' => $privacyConsent->documentVersion,
                     'accepted_at' => $privacyConsent->acceptedAt,
                     'source' => $privacyConsent->source,

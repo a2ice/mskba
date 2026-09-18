@@ -78,7 +78,7 @@ class AuthController extends Controller
             participantRole: $request->participantRole(),
             profile: $request->profile(),
             privacyConsent: new PrivacyConsentDTO(
-                documentVersion: (string) config('legal.privacy_policy_version'),
+                documentVersion: (string) config('legal.personal_data_consent_version'),
                 acceptedAt: CarbonImmutable::now(),
                 source: 'site_registration',
                 ipAddress: $request->ip(),
