@@ -2,8 +2,8 @@ import $ from 'jquery';
 
 const TOOLTIP_SELECTOR = '[title]';
 const SKIP_SELECTOR = '[data-tooltip-skip]';
-const TITLE_VARIANT = 'title';
-const QUESTION_VARIANT = 'question';
+const VISUAL_PRESENTATION = 'visual';
+const TEXT_PRESENTATION = 'text';
 const FLOATING_TOOLTIP_ID = 'ui-tooltip-floating';
 const FLOATING_TOOLTIP_OFFSET = 10;
 const FLOATING_TOOLTIP_VIEWPORT_GAP = 8;
@@ -39,7 +39,7 @@ function initTooltips(context = document) {
 
         element.data('tooltipEnhanced', true);
 
-        if (tooltipVariant(element) === TITLE_VARIANT) {
+        if (tooltipPresentation(element) === VISUAL_PRESENTATION) {
             enhanceVisualTooltip(element, title);
             return;
         }
@@ -71,7 +71,7 @@ function enhanceVisualTooltip(element, title) {
 }
 
 function isIconOnlyTooltipSource(element) {
-    const iconSelector = 'i, svg, img, picture, [aria-hidden="true"]';
+    const iconSelector = 'i, svg, img, picture, [aria-hidden="true"], [hidden], .visually-hidden, .sr-only';
     const containsIcon = element.is(iconSelector)
         || element.find(iconSelector).length > 0;
 
@@ -121,22 +121,22 @@ function refreshEnhancedTooltip(element, title) {
         .attr('aria-label', `Подсказка: ${title}`);
 }
 
-function tooltipVariant(element) {
+function tooltipPresentation(element) {
     if (element.is('[data-tooltip-text]')) {
-        return QUESTION_VARIANT;
+        return TEXT_PRESENTATION;
     }
 
     if (
         element.is('[data-tooltip-visual], [data-tooltip-icon], .account-player-character-configurator__swatch')
         || isIconOnlyTooltipSource(element)
     ) {
-        return TITLE_VARIANT;
+        return VISUAL_PRESENTATION;
     }
 
     // Presentation is semantic, not opt-in: readable text always gets the
     // text treatment. Legacy data-tooltip-variant="title" is intentionally
     // ignored here so it cannot silently suppress the question mark/underline.
-    return QUESTION_VARIANT;
+    return TEXT_PRESENTATION;
 }
 
 function isBlockLike(element) {
