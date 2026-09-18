@@ -58,7 +58,7 @@
             <div class="game-live-header__status {{ $isLiveNow ? 'is-live' : '' }}">
                 <span class="game-live-pulse" aria-hidden="true" @if(!$isLiveNow) hidden @endif></span>
                 <span data-game-live-status>{{ $isLiveNow ? 'LIVE' : ($isFinished ? 'ЗАВЕРШЕНА' : ($isCancelled ? 'ОТМЕНЕНА' : 'ТРАНСЛЯЦИЯ')) }}</span>
-                <span class="game-live-header__audience" data-game-live-audience title="Авторизованные зрители / все зрители" data-tooltip-variant="title" hidden>
+                <span class="game-live-header__audience" data-game-live-audience title="Авторизованные зрители / все зрители" data-tooltip-visual hidden>
                     <i class="ti ti-eye" aria-hidden="true"></i>
                     <span><strong data-game-live-audience-authenticated>0</strong>/<strong data-game-live-audience-total>0</strong></span>
                 </span>
