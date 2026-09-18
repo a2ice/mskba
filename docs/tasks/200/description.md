@@ -40,9 +40,9 @@ Blade не содержит значения по умолчанию и не ч�
 
 ## Статус
 
-- [ ] template field schema;
-- [ ] campaign overrides;
-- [ ] admin UI;
-- [ ] flyer context/template;
-- [ ] tests/smoke;
+- [x] template field schema;
+- [x] campaign overrides;
+- [x] admin UI;
+- [x] flyer context/template;
+- [x] tests/smoke;
 - [ ] CI / merge.
