@@ -2,6 +2,7 @@
 
 namespace App\Modules\Identity\Presentation\Http\Requests;
 
+use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
 use App\Modules\Identity\Domain\Enums\UserMessengerNotificationPreferenceEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
@@ -42,6 +43,9 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
             function (Validator $validator): void {
                 $privacy = $this->input('privacy', []);
 
+                $user = $this->user()?->canonical();
+                $distributionConsents = app(PersonalDataDistributionConsentService::class);
+
                 foreach (UserPrivacySettingTypeEnum::cases() as $type) {
                     if (! array_key_exists($type->value, $privacy) && ! in_array($type, [UserPrivacySettingTypeEnum::DISCOVERABILITY, UserPrivacySettingTypeEnum::CONTACTS, UserPrivacySettingTypeEnum::MESSAGES, UserPrivacySettingTypeEnum::GROUP_INVITATIONS], true)) {
                         continue;
@@ -55,6 +59,19 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
                         );
 
                         continue;
+                    }
+
+                    if (
+                        $user !== null
+                        && $distributionConsents->isEnforcedFor($user)
+                        && $type->requiresDistributionConsent()
+                        && ($setting['visibility'] ?? null) === UserPrivacyVisibilityEnum::EVERYONE->value
+                        && ! $distributionConsents->allows($user, $type)
+                    ) {
+                        $validator->errors()->add(
+                            "privacy.{$type->value}.visibility",
+                            'Чтобы открыть эту категорию для всех, сначала добавьте её в отдельное согласие на публичное распространение.',
+                        );
                     }
 
                     if (
