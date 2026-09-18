@@ -49,6 +49,7 @@
     font-size: 12px;
 }
 
+/* Primary account avatar: upload on image click, delete via overlay control. */
 .avatar-upload-stage {
     position: relative;
     width: 150px;
