@@ -38,6 +38,15 @@ class AccessServiceProvider extends ServiceProvider
                 && $actor->system_role->numericValue() > $target->system_role->numericValue(),
         );
         Gate::define(
+            'manage-user-system-role',
+            fn (User $actor, User $target): bool => $actor->isConfirmed()
+                && $actor->system_role->atLeast(UserSystemRoleEnum::ADMIN)
+                && ! $actor->is($target)
+                && $actor->system_role->numericValue() > $target->system_role->numericValue()
+                && app(UserOperationalPermissionChecker::class)
+                    ->allows($actor, UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES),
+        );
+        Gate::define(
             'coordination-create',
             fn (User $user): bool => app(UserOperationalPermissionChecker::class)
                 ->allows($user, UserOperationalPermissionEnum::CREATE_COORDINATION),

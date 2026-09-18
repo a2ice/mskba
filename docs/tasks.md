@@ -165,3 +165,4 @@
 - [x] 199 - Заменить декоративное кольцо acquisition-листовки на template hero asset ([описание](tasks/199/description.md))
 - [x] 200 - Редактируемые базовые поля acquisition flyer до полноценного шаблонизатора ([описание](tasks/200/description.md))
 - [ ] 201 - Поджать композицию A4 acquisition flyer ([описание](tasks/201/description.md))
+- [x] 202 - Делегируемое управление системными ролями и исправление слоя admin popup ([описание](tasks/202/description.md))
