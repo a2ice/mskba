@@ -42,7 +42,7 @@ HTML→PDF выполняется отдельным Gotenberg/Chromium service.
 - браузерный runtime не добавляется в PHP image;
 - один и тот же HTML используется для browser preview и PDF.
 
-Gotenberg доступен приложению по `GOTENBERG_URL` (по умолчанию `http://gotenberg:3000`). PDF endpoint не является публичным.
+Gotenberg доступен приложению по `GOTENBERG_URL` (по умолчанию `http://gotenberg:3000`). Используется официальный `8-chromium` variant без LibreOffice; endpoint не публикуется наружу. Если позже появится реальный DOCX/office flow, можно перейти на full Gotenberg image или подключить отдельный office renderer без изменения `TemplateRenderer`.
 
 QR генерируется локально утилитой `qrencode` в app image. Для PDF QR передаётся как data URI, поэтому Gotenberg не должен обращаться назад к публичному сайту.
 
