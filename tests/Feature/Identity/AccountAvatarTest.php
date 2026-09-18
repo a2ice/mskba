@@ -133,6 +133,9 @@ class AccountAvatarTest extends TestCase
             ->assertSee('ti ti-x', false)
             ->assertDontSee('ti ti-trash', false)
             ->assertSee('id="account-avatar-library-input"', false)
+            ->assertSee('aria-label="Загрузить ещё один аватар"', false)
+            ->assertSee('data-tooltip-skip', false)
+            ->assertDontSee('title="Загрузить ещё один аватар"', false)
             ->assertSee('Загрузить ещё один аватар');
     }
 

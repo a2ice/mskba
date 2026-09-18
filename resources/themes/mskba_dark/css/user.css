@@ -182,14 +182,13 @@ button.account-avatar-library__avatar:focus-visible,
 
 .account-avatar-library__status {
     position: absolute;
-    left: 50%;
-    bottom: 5px;
-    z-index: 2;
+    right: 7px;
+    bottom: 7px;
+    z-index: 3;
     display: grid;
     width: 28px;
     height: 28px;
     place-items: center;
-    transform: translateX(-50%);
     border: 2px solid #171a17;
     border-radius: 50%;
     background: var(--accent-strong);
@@ -252,9 +251,13 @@ button.account-avatar-library__avatar:focus-visible,
 }
 
 .account-avatar-library__upload .ti-plus {
+    position: absolute;
+    top: 50%;
+    left: 50%;
     font-size: 42px;
     font-weight: 300;
     line-height: 1;
+    transform: translate(-50%, -50%);
 }
 
 @media (max-width: 520px) {

@@ -109,10 +109,10 @@
                                 title="Активный аватар"
                             >
                                 <img src="{{ $avatar->publicUrl() }}" alt="">
-                                <span class="account-avatar-library__status" aria-label="Активный аватар" title="Активный">
-                                    <i class="ti ti-check" aria-hidden="true"></i>
-                                </span>
                             </div>
+                            <span class="account-avatar-library__status" aria-label="Активный аватар">
+                                <i class="ti ti-check" aria-hidden="true"></i>
+                            </span>
                         @else
                             <form action="{{ route('account.avatar.activate', $avatar->id) }}" method="post" class="account-avatar-library__activate-form">
                                 @csrf
@@ -157,7 +157,8 @@
                         <label
                             class="account-avatar-library__upload"
                             for="account-avatar-library-input"
-                            title="Загрузить ещё один аватар"
+                            aria-label="Загрузить ещё один аватар"
+                            data-tooltip-skip
                             data-image-upload-surface
                         >
                             <i class="ti ti-plus" aria-hidden="true"></i>
