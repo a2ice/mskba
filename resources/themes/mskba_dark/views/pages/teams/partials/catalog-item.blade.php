@@ -9,27 +9,27 @@
 
     <div class="team-category-item__body">
         <div class="catalog-card__badges team-category-item__badges">
-            <span class="catalog-card__badge team-status-badge" title="{{ $item['status']['label'] }}" data-tooltip-variant="title" aria-label="{{ $item['status']['label'] }}">
+            <span class="catalog-card__badge team-status-badge" title="{{ $item['status']['label'] }}" data-tooltip-visual aria-label="{{ $item['status']['label'] }}">
                 <span class="team-status-badge__label">{{ $item['status']['label'] }}</span>
                 <i class="ti {{ $item['status']['icon'] }} team-status-badge__icon" aria-hidden="true"></i>
             </span>
 
             @foreach($item['sports'] as $sport)
-                <span class="catalog-card__badge is-sport" title="{{ $sport['label'] }}" data-tooltip-variant="title" aria-label="{{ $sport['label'] }}">
+                <span class="catalog-card__badge is-sport" title="{{ $sport['label'] }}" data-tooltip-visual aria-label="{{ $sport['label'] }}">
                     <span class="is-sport__full" aria-hidden="true">{{ $sport['label'] }}</span>
                     <span class="is-sport__short" aria-hidden="true">{{ $sport['short_label'] }}</span>
                 </span>
             @endforeach
 
             @unless($item['roster_complete'])
-                <span class="catalog-card__badge is-incomplete team-status-badge" title="Неполный состав" data-tooltip-variant="title" aria-label="Неполный состав">
+                <span class="catalog-card__badge is-incomplete team-status-badge" title="Неполный состав" data-tooltip-visual aria-label="Неполный состав">
                     <span class="team-status-badge__label">Неполный состав</span>
                     <i class="ti ti-alert-triangle team-status-badge__icon" aria-hidden="true"></i>
                 </span>
             @endunless
 
             @if($item['hiring_count'] > 0)
-                <span class="catalog-card__badge team-status-badge is-hiring" title="Команда ведёт набор" data-tooltip-variant="title" aria-label="Команда ведёт набор">
+                <span class="catalog-card__badge team-status-badge is-hiring" title="Команда ведёт набор" data-tooltip-visual aria-label="Команда ведёт набор">
                     <span class="team-status-badge__label">Идёт набор</span>
                     <i class="ti ti-user-plus team-status-badge__icon" aria-hidden="true"></i>
                 </span>
