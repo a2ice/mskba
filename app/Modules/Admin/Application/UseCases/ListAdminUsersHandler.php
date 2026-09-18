@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Application\UseCases;
 
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;

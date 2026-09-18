@@ -16,22 +16,28 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_and_superadmin_have_all_operational_permissions_by_default(): void
+    public function test_admin_defaults_keep_creation_permissions_but_system_role_management_is_superadmin_only(): void
     {
         $checker = app(UserOperationalPermissionChecker::class);
+        $admin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::ADMIN,
+        ]);
+        $superadmin = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+        ]);
 
-        foreach ([UserSystemRoleEnum::ADMIN, UserSystemRoleEnum::SUPERADMIN] as $role) {
-            $user = User::factory()->create([
-                'status' => UserStatusEnum::CONFIRMED,
-                'system_role' => $role,
-            ]);
-
-            foreach (UserOperationalPermissionEnum::cases() as $permission) {
-                $this->assertTrue(
-                    $checker->allows($user, $permission),
-                    "{$role->value} should allow {$permission->value} by default.",
-                );
-            }
+        foreach (UserOperationalPermissionEnum::cases() as $permission) {
+            $this->assertSame(
+                $permission !== UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES,
+                $checker->allows($admin, $permission),
+                "admin default mismatch for {$permission->value}.",
+            );
+            $this->assertTrue(
+                $checker->allows($superadmin, $permission),
+                "superadmin should allow {$permission->value} by default.",
+            );
         }
     }
 
@@ -47,6 +53,7 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
         $this->assertTrue($checker->allows($user, UserOperationalPermissionEnum::CREATE_TEAM));
         $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::CREATE_EVENT));
         $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::CREATE_TOURNAMENT));
+        $this->assertFalse($checker->allows($user, UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES));
     }
 
     public function test_explicit_snapshot_overrides_admin_default(): void
@@ -102,12 +109,16 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
             ->keyBy(fn (UserOperationalPermission $permission): string => $permission->permission->value);
 
         foreach (UserOperationalPermissionEnum::cases() as $permission) {
-            $this->assertTrue((bool) $adminPermissions->get($permission->value)->is_allowed);
+            $this->assertSame(
+                $permission !== UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES,
+                (bool) $adminPermissions->get($permission->value)->is_allowed,
+            );
         }
 
         $this->assertTrue((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_COORDINATION->value)->is_allowed);
         $this->assertTrue((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_TEAM->value)->is_allowed);
         $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_EVENT->value)->is_allowed);
         $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::CREATE_TOURNAMENT->value)->is_allowed);
+        $this->assertFalse((bool) $regularPermissions->get(UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES->value)->is_allowed);
     }
 }
