@@ -41,6 +41,10 @@ final class RegisterUserHandler
                 profile: $profile,
             );
 
+            $user->forceFill([
+                'personal_data_distribution_required_at' => now(),
+            ])->save();
+
             if ($participantRole !== null) {
                 $user->participationRoles()->create([
                     'role' => $participantRole,
