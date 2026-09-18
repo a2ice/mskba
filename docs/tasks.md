@@ -161,3 +161,4 @@
 - [x] 195 - Унифицировать отображение tooltip для текста и визуальных маркеров ([описание](tasks/195/description.md))
 - [x] 196 - Админка acquisition-кампаний, QR-листовки и фундамент шаблонов документов ([описание](tasks/196/description.md))
 - [ ] 197 - Состояния acquisition-кампаний, настраиваемая посадочная и channel-aware UI ([описание](tasks/197/description.md))
+- [ ] 198 - Исправить acquisition flyer preview/PDF и добавить production smoke document pipeline ([описание](tasks/198/description.md))
