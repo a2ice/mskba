@@ -1,7 +1,12 @@
 <?php
 
+use App\Modules\Acquisition\Presentation\Http\Controllers\AcquisitionCampaignEntryController;
 use App\Modules\Acquisition\Presentation\Http\Controllers\AcquisitionOnboardingController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/go/{campaignCode}', AcquisitionCampaignEntryController::class)
+    ->where('campaignCode', '[A-Za-z0-9_-]{2,64}')
+    ->name('acquisition.entry');
 
 Route::prefix('join')->group(function (): void {
     Route::get('/success', [AcquisitionOnboardingController::class, 'success'])
