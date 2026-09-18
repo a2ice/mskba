@@ -84,8 +84,9 @@
 }
 
 .account-venue-price-dialog__head h2 {
-    font-size: clamp(22px, 3vw, 30px);
-    line-height: 1.1;
+    font-size: var(--modal-title-font-size, 20px);
+    font-weight: var(--modal-title-font-weight, 800);
+    line-height: var(--modal-title-line-height, 1.1);
 }
 
 .account-venue-price-dialog__head p {
