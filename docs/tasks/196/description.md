@@ -39,7 +39,7 @@
 
 ### PDF runtime
 
-HTML→PDF выполняет отдельный Gotenberg service. Это оставляет Chromium вне PHP-container и даёт современный CSS для печатных шаблонов. LibreOffice converter сейчас не нужен; он остаётся подходящим вторым renderer для будущих office-форматов.
+HTML→PDF выполняет отдельный Gotenberg service на Chromium-only image. Это оставляет Chromium вне PHP-container, даёт современный CSS для печатных шаблонов и не тянет LibreOffice в текущий runtime. Для будущих office-форматов можно переключить Gotenberg на full image или добавить отдельный LibreOffice renderer.
 
 QR генерируется локально через `qrencode` внутри app-container и встраивается в flyer как data URI; Gotenberg не зависит от публичного URL приложения.
 
