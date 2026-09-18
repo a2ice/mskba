@@ -10,6 +10,7 @@ RUN apt-get update \
         libicu-dev \
         libpq-dev \
         libzip-dev \
+        qrencode \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install \
         exif \
