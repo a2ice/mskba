@@ -166,6 +166,70 @@ final class AdminAcquisitionCampaignTest extends TestCase
         $this->assertSame(0, AcquisitionCampaign::query()->count());
     }
 
+    public function test_admin_can_override_and_reset_flyer_text_without_changing_campaign_context(): void
+    {
+        $admin = $this->admin();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($admin, null)->id,
+            'name' => 'Школа 1794',
+        ]);
+        $campaign = AcquisitionCampaign::query()->create([
+            'public_code' => 'flyer-copy-test',
+            'name' => 'Flyer copy test',
+            'channel' => AcquisitionChannelEnum::QR,
+            'landing_type' => AcquisitionLandingTypeEnum::ONBOARDING,
+            'venue_id' => $venue->id,
+            'verification_radius_m' => 250,
+            'location_verification_enabled' => false,
+            'is_active' => true,
+            'metadata' => [
+                'placement' => 'Внутри уличной площадки',
+                'template_key' => 'acquisition.flyer.a4',
+            ],
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->get(route('admin.acquisition.edit', $campaign))
+            ->assertOk()
+            ->assertSee('Баскетбол')
+            ->assertSee('Школа 1794')
+            ->assertSee('Внутри уличной площадки');
+
+        $this
+            ->actingAs($admin)
+            ->put(route('admin.acquisition.flyer.content.update', $campaign), [
+                'content' => [
+                    'headline' => 'Играй рядом',
+                    'lead' => 'Найди игру на этой площадке уже сегодня.',
+                    'venue_subtitle' => '',
+                ],
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $campaign->refresh();
+
+        $this->assertSame('Играй рядом', data_get($campaign->metadata, 'flyer_content.headline'));
+        $this->assertSame('Найди игру на этой площадке уже сегодня.', data_get($campaign->metadata, 'flyer_content.lead'));
+        $this->assertSame('', data_get($campaign->metadata, 'flyer_content.venue_subtitle'));
+        $this->assertSame('Внутри уличной площадки', data_get($campaign->metadata, 'placement'));
+        $this->assertSame('Школа 1794', $campaign->venue->name);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('admin.acquisition.flyer.content.update', $campaign), [
+                'reset' => '1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $campaign->refresh();
+
+        $this->assertNull(data_get($campaign->metadata, 'flyer_content'));
+        $this->assertSame('Внутри уличной площадки', data_get($campaign->metadata, 'placement'));
+    }
+
     public function test_regular_user_cannot_access_acquisition_admin(): void
     {
         $user = User::factory()->create([

@@ -338,6 +338,70 @@
                 <p class="admin-muted">QR ведёт на нейтральный адрес кампании <code>/go/{code}</code>; оттуда посетитель попадает на выбранную посадочную.</p>
             </div>
 
+            <form
+                method="POST"
+                action="{{ route('admin.acquisition.flyer.content.update', $campaign) }}"
+                class="admin-acquisition-flyer-content"
+            >
+                @csrf
+                @method('PUT')
+
+                <div class="admin-acquisition-flyer-content__intro">
+                    <h3>Текст листовки</h3>
+                    <p class="admin-muted">Временные overrides текущего встроенного шаблона. Пустое поле скрывает соответствующий текстовый элемент на листовке.</p>
+                </div>
+
+                @foreach(['hero' => 'Верхний блок', 'cta' => 'CTA и QR'] as $groupKey => $groupLabel)
+                    <fieldset class="admin-acquisition-flyer-group">
+                        <legend>{{ $groupLabel }}</legend>
+                        <div class="admin-acquisition-grid">
+                            @foreach($flyerFieldDefinitions as $fieldKey => $definition)
+                                @continue(($definition['group'] ?? 'hero') !== $groupKey)
+
+                                @php
+                                    $fieldType = $definition['type'] ?? 'text';
+                                    $fieldValue = old('content.'.$fieldKey, $flyerFieldValues[$fieldKey] ?? '');
+                                @endphp
+
+                                <div @class([
+                                    'admin-acquisition-field',
+                                    'admin-acquisition-grid__wide' => $fieldType === 'textarea',
+                                ])>
+                                    <label class="form-label" for="flyer-content-{{ $fieldKey }}">
+                                        {{ $definition['label'] ?? $fieldKey }}
+                                    </label>
+
+                                    @if($fieldType === 'textarea')
+                                        <textarea
+                                            id="flyer-content-{{ $fieldKey }}"
+                                            class="form-control"
+                                            name="content[{{ $fieldKey }}]"
+                                            rows="{{ (int) ($definition['rows'] ?? 2) }}"
+                                            maxlength="{{ (int) ($definition['max'] ?? 255) }}"
+                                        >{{ $fieldValue }}</textarea>
+                                    @else
+                                        <input
+                                            id="flyer-content-{{ $fieldKey }}"
+                                            class="form-control"
+                                            name="content[{{ $fieldKey }}]"
+                                            maxlength="{{ (int) ($definition['max'] ?? 255) }}"
+                                            value="{{ $fieldValue }}"
+                                        >
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                @endforeach
+
+                <div class="admin-acquisition-flyer-content__actions">
+                    <button type="submit" class="btn btn--primary">Сохранить текст</button>
+                    <button type="submit" name="reset" value="1" class="btn btn--secondary" formnovalidate>
+                        Сбросить по умолчанию
+                    </button>
+                </div>
+            </form>
+
             <div class="admin-row-actions admin-acquisition-actions">
                 <a href="{{ route('acquisition.entry', ['campaignCode' => $campaign->public_code]) }}" target="_blank" rel="noopener" class="btn btn--secondary">Открыть кампанию</a>
                 <a href="{{ route('admin.acquisition.flyer.preview', $campaign) }}" target="_blank" rel="noopener" class="btn btn--secondary">Preview A4</a>

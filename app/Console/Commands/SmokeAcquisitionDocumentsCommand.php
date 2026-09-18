@@ -55,6 +55,15 @@ final class SmokeAcquisitionDocumentsCommand extends Command
                 throw new \RuntimeException('Flyer context did not provide campaign URL.');
             }
 
+            $templateFields = $context['templateFields'] ?? null;
+            if (
+                ! is_array($templateFields)
+                || ($templateFields['headline'] ?? null) !== 'Баскетбол'
+                || ($templateFields['cta_line_accent'] ?? null) !== 'Присоединяйся.'
+            ) {
+                throw new \RuntimeException('Flyer context did not resolve template field defaults.');
+            }
+
             $html = $templates->render('acquisition.flyer.a4', $context);
             if (
                 $html === ''

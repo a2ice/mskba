@@ -19,6 +19,14 @@ final class TrustedTemplateRegistry
         return $definition;
     }
 
+    /** @return array<string, array<string, mixed>> */
+    public function fieldDefinitions(string $templateKey): array
+    {
+        $fields = $this->definition($templateKey)['fields'] ?? [];
+
+        return is_array($fields) ? $fields : [];
+    }
+
     public function assetPath(string $templateKey, string $slot): ?string
     {
         $assets = $this->definition($templateKey)['assets'] ?? [];
