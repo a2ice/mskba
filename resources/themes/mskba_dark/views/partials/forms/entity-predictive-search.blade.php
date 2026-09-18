@@ -2,11 +2,17 @@
     $searchUrl = $searchUrl ?? null;
     $options = $options ?? [];
     $minimumLength = $minimumLength ?? ($searchUrl ? 2 : 1);
-    $initialMessage = $initialMessage ?? "Введите не менее {$minimumLength} символов.";
+    $required = $required ?? true;
+    $selectedId = $selectedId ?? '';
+    $selectedLabel = $selectedLabel ?? '';
+    $initialMessage = $initialMessage ?? ($selectedId !== ''
+        ? "Выбрано: {$selectedLabel}"
+        : "Введите не менее {$minimumLength} символов.");
 @endphp
 <div
     data-entity-predictive-search
     data-minimum-length="{{ $minimumLength }}"
+    data-required="{{ $required ? '1' : '0' }}"
     @if($searchUrl) data-search-url="{{ $searchUrl }}" @endif
 >
     <label class="form-label" for="{{ $id }}">{{ $label }}</label>
@@ -18,8 +24,9 @@
             autocomplete="off"
             placeholder="{{ $placeholder }}"
             data-entity-predictive-input
+            value="{{ $selectedLabel }}"
         >
-        <button class="predictive-search__control" type="button" data-entity-predictive-clear hidden aria-label="Очистить"></button>
+        <button class="predictive-search__control" type="button" data-entity-predictive-clear @if($selectedId === '') hidden @endif aria-label="Очистить"></button>
         <div class="predictive-search__list d-none" role="listbox" data-entity-predictive-results>
             @foreach($options as $option)
                 <button class="predictive-search__item" type="button" data-entity-predictive-option data-id="{{ $option['id'] }}" data-label="{{ $option['label'] }}">
@@ -29,6 +36,6 @@
             @endforeach
         </div>
     </div>
-    <input type="hidden" name="{{ $name }}" data-entity-predictive-value required>
+    <input type="hidden" name="{{ $name }}" value="{{ $selectedId }}" data-entity-predictive-value @if($required) required @endif>
     <p class="predictive-search__message text-muted" data-entity-predictive-message>{{ $initialMessage }}</p>
 </div>
