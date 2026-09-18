@@ -20,6 +20,8 @@ class UserConsent extends Model
 {
     public const TYPE_PERSONAL_DATA_PROCESSING = 'personal_data_processing';
 
+    public const TYPE_PERSONAL_DATA_DISTRIBUTION = 'personal_data_distribution';
+
     /** Historical records created before the standalone consent document. */
     public const TYPE_PRIVACY_POLICY_LEGACY = 'privacy_policy';
 
@@ -27,6 +29,7 @@ class UserConsent extends Model
     {
         return [
             'accepted_at' => 'immutable_datetime',
+            'payload' => 'array',
             'revoked_at' => 'immutable_datetime',
         ];
     }
