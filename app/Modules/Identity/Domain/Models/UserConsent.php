@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'source',
     'ip_address',
     'user_agent',
+    'payload',
     'revoked_at',
 ])]
 class UserConsent extends Model
