@@ -3,10 +3,12 @@
 namespace App\Modules\Vk\Application\UseCases;
 
 use App\Modules\Contact\Application\UseCases\SyncVerifiedVkContactHandler;
+use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserConsent;
 use App\Modules\Vk\Application\DTO\VkUserIdentityDTO;
 use App\Modules\Vk\Domain\Models\VkAccount;
 use App\Modules\Vk\Infrastructure\Jobs\SyncVkProfileAvatarJob;
@@ -22,10 +24,10 @@ final class ResolveVkUserHandler
     ) {}
 
     /** @return array{user: User, vk_account: VkAccount, created: bool} */
-    public function handle(VkUserIdentityDTO $identity): array
+    public function handle(VkUserIdentityDTO $identity, ?PrivacyConsentDTO $privacyConsent = null): array
     {
-        return Cache::lock("vk:user:{$identity->id}", 15)->block(5, function () use ($identity): array {
-            $result = DB::transaction(fn (): array => $this->resolve($identity));
+        return Cache::lock("vk:user:{$identity->id}", 15)->block(5, function () use ($identity, $privacyConsent): array {
+            $result = DB::transaction(fn (): array => $this->resolve($identity, $privacyConsent));
             $canonicalUser = $result['user']->canonical();
 
             if (! $canonicalUser->isBlocked()) {
@@ -38,12 +40,16 @@ final class ResolveVkUserHandler
     }
 
     /** @return array{user: User, vk_account: VkAccount, created: bool} */
-    private function resolve(VkUserIdentityDTO $identity): array
+    private function resolve(VkUserIdentityDTO $identity, ?PrivacyConsentDTO $privacyConsent): array
     {
         $account = VkAccount::query()->where('vk_user_id', $identity->id)->lockForUpdate()->first();
         $created = false;
 
         if ($account === null) {
+            if ($privacyConsent === null) {
+                throw new \InvalidArgumentException('Для создания аккаунта через VK ID требуется отдельное согласие на обработку персональных данных.');
+            }
+
             $user = User::query()->create([
                 'username' => $this->uniqueUsername($identity->id),
                 'password' => null,
@@ -54,6 +60,14 @@ final class ResolveVkUserHandler
                 'status' => UserStatusEnum::UNCONFIRMED,
             ]);
             $user->createProfile([]);
+            $user->consents()->create([
+                'type' => UserConsent::TYPE_PERSONAL_DATA_PROCESSING,
+                'document_version' => $privacyConsent->documentVersion,
+                'accepted_at' => $privacyConsent->acceptedAt,
+                'source' => $privacyConsent->source,
+                'ip_address' => $privacyConsent->ipAddress,
+                'user_agent' => $privacyConsent->userAgent,
+            ]);
             $account = new VkAccount(['vk_user_id' => $identity->id]);
             $account->user()->associate($user);
             $created = true;
