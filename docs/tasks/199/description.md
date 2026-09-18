@@ -31,7 +31,7 @@ Blade получает только подготовленные data URI чер
 ## Статус
 
 - [x] asset path normalized;
-- [ ] template asset registry;
-- [ ] flyer layout;
-- [ ] smoke/tests;
+- [x] template asset registry;
+- [x] flyer layout;
+- [x] smoke/tests;
 - [ ] CI / merge.
