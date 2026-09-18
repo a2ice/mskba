@@ -30,6 +30,15 @@ final class AdminMenu implements MenuHandler
                 'hideOnDashboard' => true,
             ],
             [
+                'label' => 'Привлечение',
+                'description' => 'QR, рекламные кампании, листовки и attribution.',
+                'url' => $this->routeUrl('admin.acquisition.index'),
+                'active' => $this->isActiveRoute('admin.acquisition.*'),
+                'visible' => $isAdmin,
+                'icon' => 'ti-qrcode',
+                'data' => ['count' => 0],
+            ],
+            [
                 'label' => 'Пользователи',
                 'description' => 'Аккаунты, статусы и системные роли.',
                 'url' => $this->routeUrl('admin.users'),
