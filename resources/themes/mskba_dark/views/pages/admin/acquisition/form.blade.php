@@ -24,7 +24,7 @@
 
     $locationVerificationEnabled = (bool) old(
         'location_verification_enabled',
-        $editing ? $campaign->location_verification_enabled : $selectedChannel === AcquisitionChannelEnum::QR,
+        $editing ? $campaign->location_verification_enabled : false,
     );
 
     $locationLabels = [
@@ -184,6 +184,7 @@
                             <option
                                 value="{{ $landingType->value }}"
                                 data-needs-target="{{ $landingType->needsTarget() ? '1' : '0' }}"
+                                data-target-label="{{ $landingType->targetLabel() ?? '' }}"
                                 @selected($selectedLandingTypeValue === $landingType->value)
                             >{{ $landingType->label() }}</option>
                         @endforeach
@@ -199,7 +200,7 @@
                     @include('theme::partials.forms.entity-predictive-search', [
                         'id' => 'acquisitionLandingTarget',
                         'name' => 'landing_target_id',
-                        'label' => 'Целевая сущность',
+                        'label' => $selectedLandingType->targetLabel() ?? 'Целевая сущность',
                         'placeholder' => 'Начните вводить название…',
                         'searchUrl' => $landingSearchUrl,
                         'minimumLength' => 2,
