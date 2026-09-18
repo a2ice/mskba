@@ -25,11 +25,13 @@
     cursor: help;
 }
 
+.ui-tooltip-source--text,
 .ui-tooltip-source--title {
     text-decoration: underline dotted rgba(255, 139, 47, 0.72);
     text-underline-offset: 3px;
 }
 
+.ui-tooltip-source--visual,
 .ui-tooltip-source--icon {
     text-decoration: none;
 }
