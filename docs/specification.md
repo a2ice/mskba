@@ -22,6 +22,7 @@
 - [Локации](#локации)
 - [Уведомления](#уведомления)
 - [Интеграции](#интеграции)
+- [Шаблоны и документы](#шаблоны-и-документы)
 - [Площадки](#площадки)
 - [Опросы и согласования](#опросы-и-согласования)
 - [Мероприятия и бронирование](#мероприятия-и-бронирование)
@@ -195,6 +196,12 @@ Backend не доверяет данным Telegram-пользователя с 
 Для публикации закрепленной кнопки Mini App в Telegram-чате или канале используется artisan-команда `telegram:publish-main-link`. Она отправляет сообщение с URL-кнопкой `https://t.me/{bot_username}?startapp=mskba_chat` и закрепляет его через Bot API. Для закрепления бот должен быть администратором чата/канала с правом pin messages.
 
 `TelegramBotApiClient` является общей точкой исходящих Bot API-вызовов и скрывает токен из исключений. При сетевой блокировке можно передать HTTP proxy через `TELEGRAM_HTTP_PROXY` либо сохранить TLS-hostname и принудительно направить cURL на доступный адрес через `TELEGRAM_API_IP`. Способ получения обновлений выбирает `TELEGRAM_UPDATES_TRANSPORT=webhook|polling`, а команда `telegram:configure-updates` регистрирует или удаляет webhook в соответствии с режимом. Webhook проверяет `X-Telegram-Bot-Api-Secret-Token` через `hash_equals`. Production использует отдельный контейнер `telegram` с исходящим long polling, поскольку Telegram сообщает `Connection timed out` при доставке callback на VDS; offset хранится в Redis, а полученные callback передаются в обычную очередь.
+
+## Шаблоны и документы
+
+Общий `TemplateRenderer → HTML → DocumentRenderer` контракт используется для генерируемых материалов. Первый consumer — acquisition A4 flyer; PDF рендерится Gotenberg/Chromium, а QR генерируется внутри app image. Редактируемые шаблоны из БД не должны исполнять Blade/PHP.
+
+Подробнее: [Document templates and rendering](specification/document-templates.md).
 
 ## Площадки
 
@@ -840,6 +847,7 @@ Routes находятся под prefix `/admin` и middleware `auth`, `can:acce
 
 - `admin.dashboard` - `/admin`;
 - `admin.dashboard.legacy` - `/admin/dashboard`, redirect на `/admin`;
+- `admin.acquisition.*` - CRUD acquisition campaigns, venue predictive search, QR и flyer exports;
 - `admin.users`;
 - `admin.users.status.update`, `admin.users.bulk-delete`, `admin.users.bulk-restore` - управление аккаунтами только для `superadmin`;
 - `admin.venues`;
@@ -1108,6 +1116,7 @@ Production compose добавлен отдельно и содержит `phpfpm
 - [Продуктовая документация](project.md)
 - [Agent Rules](specification/agent-rules.md)
 - [Docker Environment](specification/docker-environment.md)
+- [Document templates and rendering](specification/document-templates.md)
 - [Identity Roles](specification/identity-roles.md)
 - [Identity User Profile](specification/identity-user-profile.md)
 - [Identity Account Confirmation](specification/identity-account-confirmation.md)
