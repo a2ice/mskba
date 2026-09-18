@@ -52,11 +52,14 @@ jobs:
                   $context = $factory->make($campaign);
                   fwrite(STDERR, "CONTEXT_OK keys=".implode(",", array_keys($context)).PHP_EOL);
 
+                  $documents = app(\App\Modules\Template\Application\Contracts\DocumentRenderer::class);
+                  $simplePdf = $documents->render("<html><body>MSKBA diagnostic</body></html>", \App\Modules\Template\Domain\Enums\DocumentFormatEnum::PDF);
+                  fwrite(STDERR, "GOTENBERG_OK bytes=".strlen($simplePdf->contents).PHP_EOL);
+
                   $templates = app(\App\Modules\Template\Application\Contracts\TemplateRenderer::class);
                   $html = $templates->render("acquisition.flyer.a4", $context);
                   fwrite(STDERR, "HTML_OK bytes=".strlen($html).PHP_EOL);
 
-                  $documents = app(\App\Modules\Template\Application\Contracts\DocumentRenderer::class);
                   $pdf = $documents->render($html, \App\Modules\Template\Domain\Enums\DocumentFormatEnum::PDF);
                   fwrite(STDERR, "PDF_OK bytes=".strlen($pdf->contents).PHP_EOL);
               } catch (\Throwable $e) {
