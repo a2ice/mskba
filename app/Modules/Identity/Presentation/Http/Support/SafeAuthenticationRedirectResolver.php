@@ -112,7 +112,7 @@ final class SafeAuthenticationRedirectResolver
 
                 $name = rawurldecode(explode('=', $parameter, 2)[0]);
 
-                return ! in_array($name, ['modal', 'modal_state'], true);
+                return ! in_array($name, ['modal', 'modal_state', 'modal_tray'], true);
             },
         ));
 

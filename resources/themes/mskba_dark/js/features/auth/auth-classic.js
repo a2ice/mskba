@@ -311,6 +311,7 @@ function authenticationRedirectUrl(redirectUrl = '') {
     const url = new URL(target, window.location.origin);
     url.searchParams.delete('modal');
     url.searchParams.delete('modal_state');
+    url.searchParams.delete('modal_tray');
 
     return url.toString();
 }

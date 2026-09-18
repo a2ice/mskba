@@ -111,7 +111,7 @@ final class AuthenticationIntendedRedirectTest extends TestCase
             'system_role' => UserSystemRoleEnum::USER,
             'status' => UserStatusEnum::CONFIRMED,
         ]);
-        $target = url('/join?utm_source=chatgpt.com&modal=auth-entry-classic&modal_state=minimized#join-faq');
+        $target = url('/join?utm_source=chatgpt.com&modal=auth-entry-classic&modal_state=minimized&modal_tray=venues,games#join-faq');
         $expected = url('/join?utm_source=chatgpt.com#join-faq');
 
         $this->postJson(route('auth.login'), [

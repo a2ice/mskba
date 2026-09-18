@@ -2,6 +2,7 @@ import $ from 'jquery';
 
 const MODAL_URL_PARAM = 'modal';
 const MODAL_STATE_URL_PARAM = 'modal_state';
+const MODAL_TRAY_URL_PARAM = 'modal_tray';
 const MODAL_STATE_MINIMIZED = 'minimized';
 const MODAL_FOCUSABLE_SELECTOR = [
     'a[href]',
@@ -216,6 +217,8 @@ function syncModalTitle(modal) {
     if (heading.text() !== title) {
         heading.text(title);
     }
+
+    updateModalTrayTab(modal);
 }
 
 function initializeModal(modalInput) {
@@ -291,44 +294,57 @@ function refreshBodyModalState() {
     body[hasContentModal ? 'addClass' : 'removeClass']('content-modal-open');
 }
 
-function replaceModalUrl(modal, state = null) {
-    if (!window.history?.replaceState || modal.attr('data-modal-persist-url') === 'false') {
-        return;
-    }
-
-    const id = String(modal.data('modal') || '');
-    if (!id) {
-        return;
-    }
-
-    const url = new URL(window.location.href);
-    url.searchParams.set(MODAL_URL_PARAM, id);
-    if (state === MODAL_STATE_MINIMIZED) {
-        url.searchParams.set(MODAL_STATE_URL_PARAM, MODAL_STATE_MINIMIZED);
-    } else {
-        url.searchParams.delete(MODAL_STATE_URL_PARAM);
-    }
-    window.history.replaceState(window.history.state, '', url);
+function modalId(modal) {
+    return String(modal.attr('data-modal') || '').trim();
 }
 
-function clearModalUrl(modal) {
-    if (!window.history?.replaceState || modal.attr('data-modal-persist-url') === 'false') {
+function modalPersistsInUrl(modal) {
+    return modal.attr('data-modal-persist-url') !== 'false';
+}
+
+function modalById(id) {
+    return $('[data-modal]').filter(function () {
+        return modalId($(this)) === id;
+    }).first();
+}
+
+function syncModalUrl() {
+    if (!window.history?.replaceState) {
         return;
     }
+
+    const persistent = $('.modal.is-open').filter(function () {
+        return modalPersistsInUrl($(this));
+    });
+    const expanded = persistent.filter(':not(.is-minimized)').last();
+    const minimized = persistent.filter('.is-minimized');
+    const minimizedIdSet = new Set(minimized.map(function () {
+        return modalId($(this));
+    }).get().filter(Boolean));
+    const minimizedIds = $('[data-modal-tray-tab]').map(function () {
+        return this.getAttribute('data-modal-tray-tab');
+    }).get().filter((id) => minimizedIdSet.has(id));
+    minimized.each(function () {
+        const id = modalId($(this));
+        if (id && !minimizedIds.includes(id)) {
+            minimizedIds.push(id);
+        }
+    });
 
     const url = new URL(window.location.href);
-    if (url.searchParams.get(MODAL_URL_PARAM) !== String(modal.data('modal') || '')) {
-        return;
+    const expandedId = modalId(expanded);
+    if (expandedId) {
+        url.searchParams.set(MODAL_URL_PARAM, expandedId);
+    } else {
+        url.searchParams.delete(MODAL_URL_PARAM);
     }
-
-    const remaining = $('.modal.is-open').last();
-    if (remaining.length && !remaining.is(modal)) {
-        replaceModalUrl(remaining, remaining.hasClass('is-minimized') ? MODAL_STATE_MINIMIZED : null);
-        return;
-    }
-
-    url.searchParams.delete(MODAL_URL_PARAM);
     url.searchParams.delete(MODAL_STATE_URL_PARAM);
+    if (minimizedIds.length) {
+        url.searchParams.set(MODAL_TRAY_URL_PARAM, minimizedIds.join(','));
+    } else {
+        url.searchParams.delete(MODAL_TRAY_URL_PARAM);
+    }
+
     window.history.replaceState(window.history.state, '', url);
 }
 
@@ -336,8 +352,161 @@ function withoutModalState(url = window.location.href) {
     const cleanUrl = new URL(url, window.location.origin);
     cleanUrl.searchParams.delete(MODAL_URL_PARAM);
     cleanUrl.searchParams.delete(MODAL_STATE_URL_PARAM);
+    cleanUrl.searchParams.delete(MODAL_TRAY_URL_PARAM);
 
     return cleanUrl.toString();
+}
+
+function ensureModalTray() {
+    let tray = $('[data-modal-tray]').first();
+    if (tray.length) {
+        return tray;
+    }
+
+    tray = $('<aside>', {
+        class: 'modal-tray',
+        'data-modal-tray': '',
+        'aria-label': 'Свёрнутые окна',
+        hidden: true,
+    }).append($('<div>', {
+        class: 'modal-tray__tabs',
+        role: 'tablist',
+        'data-modal-tray-tabs': '',
+    }));
+    $('body').append(tray);
+
+    if (window.ResizeObserver) {
+        const observer = new ResizeObserver(() => updateModalTrayOffset());
+        observer.observe(tray.get(0));
+    }
+
+    return tray;
+}
+
+function modalTrayTitle(modal) {
+    return modal.find('[data-modal-title]').first().text().trim() || modalId(modal) || 'Окно';
+}
+
+function modalTrayTab(modal) {
+    const id = modalId(modal);
+    if (!id) {
+        return $();
+    }
+
+    return ensureModalTray().find('[data-modal-tray-tab]').filter(function () {
+        return this.getAttribute('data-modal-tray-tab') === id;
+    }).first();
+}
+
+function ensureModalTrayTab(modal) {
+    let tab = modalTrayTab(modal);
+    if (tab.length) {
+        return tab;
+    }
+
+    const id = modalId(modal);
+    if (!id) {
+        return $();
+    }
+
+    const restore = $('<button>', {
+        class: 'modal-tray__restore',
+        type: 'button',
+        role: 'tab',
+        title: 'Развернуть окно',
+        'aria-label': `Развернуть окно «${modalTrayTitle(modal)}»`,
+        'data-modal-tray-restore': id,
+    }).append(
+        $('<i>', { class: 'ti ti-window-maximize', 'aria-hidden': 'true' }),
+        $('<span>', { class: 'modal-tray__title', text: modalTrayTitle(modal) }),
+    );
+    const close = $('<button>', {
+        class: 'modal-tray__close',
+        type: 'button',
+        title: 'Закрыть окно',
+        'aria-label': `Закрыть окно «${modalTrayTitle(modal)}»`,
+        'data-modal-tray-close': id,
+    }).append($('<i>', { class: 'ti ti-x', 'aria-hidden': 'true' }));
+
+    tab = $('<div>', {
+        class: 'modal-tray__tab',
+        'data-modal-tray-tab': id,
+    }).append(restore, close);
+    ensureModalTray().find('[data-modal-tray-tabs]').append(tab);
+
+    return tab;
+}
+
+function updateModalTrayTab(modalInput) {
+    const modal = modalElement(modalInput);
+    if (!modal.hasClass('is-minimized')) {
+        return;
+    }
+
+    const title = modalTrayTitle(modal);
+    const tab = ensureModalTrayTab(modal);
+    tab.find('.modal-tray__title').text(title);
+    tab.find('[data-modal-tray-restore]').attr('aria-label', `Развернуть окно «${title}»`);
+    tab.find('[data-modal-tray-close]').attr('aria-label', `Закрыть окно «${title}»`);
+}
+
+function updateModalTrayOffset() {
+    const tray = $('[data-modal-tray]').first();
+    const height = tray.length && !tray.prop('hidden') ? Math.ceil(tray.get(0).getBoundingClientRect().height) : 0;
+    document.documentElement.style.setProperty('--modal-tray-height', `${height}px`);
+}
+
+function refreshModalTray() {
+    const tray = ensureModalTray();
+    const minimized = $('.modal.is-open.is-minimized');
+    const ids = new Set(minimized.map(function () {
+        return modalId($(this));
+    }).get().filter(Boolean));
+
+    tray.find('[data-modal-tray-tab]').each(function () {
+        if (!ids.has(this.getAttribute('data-modal-tray-tab'))) {
+            $(this).remove();
+        }
+    });
+    minimized.each(function () {
+        updateModalTrayTab($(this));
+    });
+
+    const hasTabs = ids.size > 0;
+    tray.prop('hidden', !hasTabs).css('--modal-tray-count', Math.max(ids.size, 1));
+    $('body').toggleClass('has-modal-tray', hasTabs);
+    updateModalTrayOffset();
+}
+
+function bindModalTray() {
+    $(document).on('click', '[data-modal-tray-restore]', function () {
+        restoreModal(modalById(this.getAttribute('data-modal-tray-restore')), { exclusive: true });
+    });
+
+    $(document).on('click', '[data-modal-tray-close]', function () {
+        closeModal(modalById(this.getAttribute('data-modal-tray-close')), { restoreFocus: false });
+    });
+
+    $(document).on('keydown', '[data-modal-tray-restore]', function (event) {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+            return;
+        }
+
+        const tabs = $('[data-modal-tray-restore]:visible').get();
+        const currentIndex = tabs.indexOf(this);
+        if (currentIndex < 0 || tabs.length < 2) {
+            return;
+        }
+
+        event.preventDefault();
+        const nextIndex = event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+                ? tabs.length - 1
+                : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+        tabs[nextIndex].focus({ preventScroll: true });
+        tabs[nextIndex].scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    });
 }
 
 function focusModal(modal) {
@@ -366,15 +535,20 @@ function openModal(modalInput, options = {}) {
         restoreModal(modal, options);
         return;
     }
+    if (wasOpen && !modal.hasClass('is-minimized') && options.minimized) {
+        minimizeModal(modal, options);
+        return;
+    }
 
     modal.removeAttr('hidden').addClass('is-open');
     modal[options.minimized ? 'addClass' : 'removeClass']('is-minimized');
     modal.find('.modal__dialog').attr('aria-modal', options.minimized ? 'false' : 'true');
     updateMinimizeControl(modal, Boolean(options.minimized));
     refreshBodyModalState();
+    refreshModalTray();
 
     if (options.syncUrl !== false) {
-        replaceModalUrl(modal, options.minimized ? MODAL_STATE_MINIMIZED : null);
+        syncModalUrl();
     }
 
     if (!wasOpen) {
@@ -397,9 +571,10 @@ function minimizeModal(modalInput, options = {}) {
     modal.find('.modal__dialog').attr('aria-modal', 'false');
     updateMinimizeControl(modal, true);
     refreshBodyModalState();
+    refreshModalTray();
 
     if (options.syncUrl !== false) {
-        replaceModalUrl(modal, MODAL_STATE_MINIMIZED);
+        syncModalUrl();
     }
 
     $(document).trigger('modal:minimized', [modal]);
@@ -407,6 +582,16 @@ function minimizeModal(modalInput, options = {}) {
 
 function restoreModal(modalInput, options = {}) {
     const modal = initializeModal(modalInput);
+    if (!modal.length) {
+        return;
+    }
+
+    if (options.exclusive) {
+        $('.modal.is-open:not(.is-minimized)').not(modal).each(function () {
+            minimizeModal($(this), { syncUrl: false });
+        });
+    }
+
     if (!modal.hasClass('is-open')) {
         openModal(modal, options);
         return;
@@ -416,9 +601,10 @@ function restoreModal(modalInput, options = {}) {
     modal.find('.modal__dialog').attr('aria-modal', 'true');
     updateMinimizeControl(modal, false);
     refreshBodyModalState();
+    refreshModalTray();
 
     if (options.syncUrl !== false) {
-        replaceModalUrl(modal);
+        syncModalUrl();
     }
 
     $(document).trigger('modal:restored', [modal]);
@@ -435,13 +621,16 @@ function closeModal(modalInput, options = {}) {
     modal.find('.modal__dialog').attr('aria-modal', 'true');
     updateMinimizeControl(modal, false);
     refreshBodyModalState();
+    refreshModalTray();
 
     if (options.syncUrl !== false) {
-        clearModalUrl(modal);
+        syncModalUrl();
     }
 
     $(document).trigger('modal:closed', [modal]);
-    restoreModalTriggerFocus(modal);
+    if (options.restoreFocus !== false) {
+        restoreModalTriggerFocus(modal);
+    }
 }
 
 function trapModalFocus(event) {
@@ -478,29 +667,61 @@ function refreshModalViewport() {
     root.style.setProperty('--modal-viewport-top', `${viewport?.offsetTop || 0}px`);
     root.style.setProperty('--modal-viewport-width', `${viewport?.width || window.innerWidth}px`);
     root.style.setProperty('--modal-viewport-height', `${viewport?.height || window.innerHeight}px`);
+    updateModalTrayOffset();
 }
 
-function modalFromUrl() {
+function modalStateFromUrl() {
     const url = new URL(window.location.href);
-    const id = url.searchParams.get(MODAL_URL_PARAM);
-    if (!id) {
-        return $();
+    const modalIdFromUrl = String(url.searchParams.get(MODAL_URL_PARAM) || '').trim();
+    const trayIds = String(url.searchParams.get(MODAL_TRAY_URL_PARAM) || '')
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+    if (modalIdFromUrl && url.searchParams.get(MODAL_STATE_URL_PARAM) === MODAL_STATE_MINIMIZED) {
+        trayIds.unshift(modalIdFromUrl);
     }
 
-    return $('[data-modal]').filter(function () {
-        return String($(this).data('modal')) === id;
-    }).first();
+    const uniqueTrayIds = [...new Set(trayIds)];
+    const expandedId = url.searchParams.get(MODAL_STATE_URL_PARAM) === MODAL_STATE_MINIMIZED
+        ? ''
+        : modalIdFromUrl;
+
+    return {
+        expandedId,
+        trayIds: uniqueTrayIds.filter((id) => id !== expandedId),
+    };
 }
 
-function restoreModalFromUrl() {
-    const url = new URL(window.location.href);
-    const modal = modalFromUrl();
-    if (!modal.length) {
-        return;
-    }
+function restoreModalTrayFromUrl() {
+    modalStateFromUrl().trayIds.forEach((id) => {
+        const modal = modalById(id);
+        if (modal.length) {
+            openModal(modal, { minimized: true, syncUrl: false });
+        }
+    });
+}
 
-    const minimized = url.searchParams.get(MODAL_STATE_URL_PARAM) === MODAL_STATE_MINIMIZED;
-    openModal(modal, { minimized, syncUrl: false });
+function restoreExpandedModalFromUrl() {
+    const modal = modalById(modalStateFromUrl().expandedId);
+    if (modal.length) {
+        openModal(modal, { syncUrl: false });
+    }
+}
+
+function reconcileModalsWithUrl() {
+    const state = modalStateFromUrl();
+    const desiredIds = new Set([...state.trayIds, state.expandedId].filter(Boolean));
+
+    $('.modal.is-open').filter(function () {
+        return modalPersistsInUrl($(this));
+    }).each(function () {
+        if (!desiredIds.has(modalId($(this)))) {
+            closeModal($(this), { syncUrl: false, restoreFocus: false });
+        }
+    });
+    restoreModalTrayFromUrl();
+    restoreExpandedModalFromUrl();
 }
 
 function bindModalUrlRestore() {
@@ -508,20 +729,14 @@ function bindModalUrlRestore() {
     window.addEventListener('resize', refreshModalViewport);
     window.visualViewport?.addEventListener('resize', refreshModalViewport);
     window.visualViewport?.addEventListener('scroll', refreshModalViewport);
-    window.addEventListener('popstate', restoreModalFromUrl);
+    window.addEventListener('popstate', reconcileModalsWithUrl);
 
     window.setTimeout(() => {
-        const url = new URL(window.location.href);
-        if (url.searchParams.get(MODAL_STATE_URL_PARAM) === MODAL_STATE_MINIMIZED) {
-            restoreModalFromUrl();
-        }
+        restoreModalTrayFromUrl();
     }, 0);
 
     const openAfterLoad = () => window.setTimeout(() => {
-        const url = new URL(window.location.href);
-        if (url.searchParams.get(MODAL_STATE_URL_PARAM) !== MODAL_STATE_MINIMIZED) {
-            restoreModalFromUrl();
-        }
+        restoreExpandedModalFromUrl();
     }, 1000);
 
     if (document.readyState === 'complete') {
@@ -538,6 +753,7 @@ function bindModalUrlRestore() {
 bindActionHandlers();
 bindModalBackgroundClose();
 bindModalEscClose();
+bindModalTray();
 bindModalUrlRestore();
 
 window.MskbaModal = Object.freeze({
