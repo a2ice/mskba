@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setGroupEnabled(landingTarget, needsTarget);
 
         if (landingPredictive instanceof HTMLElement) {
-            const baseUrl = landingPredictive.dataset.searchBaseUrl || '';
+            const baseUrl = landingTarget.dataset.searchBaseUrl || '';
             if (baseUrl && needsTarget) {
                 const url = new URL(baseUrl, window.location.origin);
                 url.searchParams.set('type', type);
