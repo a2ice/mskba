@@ -27,6 +27,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRoles
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
+use App\Modules\Identity\Presentation\Http\Controllers\PersonalDataDistributionConsentController;
 use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
@@ -100,6 +101,13 @@ Route::get('/register', function () use ($themeResolver) {
 Route::get('/privacy', function () use ($themeResolver) {
     return $themeResolver->page('legal.privacy');
 })->name('privacy.policy')->defaults('breadcrumb', 'Персональные данные');
+
+Route::middleware(['auth', 'throttle:30,1'])->prefix('account/privacy')->group(function (): void {
+    Route::get('/distribution', [PersonalDataDistributionConsentController::class, 'show'])
+        ->name('account.privacy.distribution');
+    Route::put('/distribution', [PersonalDataDistributionConsentController::class, 'store'])
+        ->name('account.privacy.distribution.update');
+});
 
 Route::prefix('news')->group(function () {
     Route::get('/', [NewsController::class, 'index'])
