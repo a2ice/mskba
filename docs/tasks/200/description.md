@@ -45,4 +45,5 @@ Blade не содержит значения по умолчанию и не ч�
 - [x] admin UI;
 - [x] flyer context/template;
 - [x] tests/smoke;
-- [ ] CI / merge.
+- [x] CI;
+- [ ] merge/deploy.
