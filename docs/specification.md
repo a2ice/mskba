@@ -847,7 +847,7 @@ Routes находятся под prefix `/admin` и middleware `auth`, `can:acce
 
 - `admin.dashboard` - `/admin`;
 - `admin.dashboard.legacy` - `/admin/dashboard`, redirect на `/admin`;
-- `admin.acquisition.*` - CRUD acquisition campaigns, venue predictive search, QR и flyer exports;
+- `admin.acquisition.*` - CRUD acquisition campaigns, channel-aware physical context, landing target predictive search, QR и flyer exports; публичный campaign entry использует `/go/{public_code}`;
 - `admin.users`;
 - `admin.users.status.update`, `admin.users.bulk-delete`, `admin.users.bulk-restore` - управление аккаунтами только для `superadmin`;
 - `admin.venues`;

@@ -54,10 +54,12 @@ QR генерируется локально через `qrencode` внутри 
 ## Статус
 
 - [x] архитектура;
-- [ ] admin CRUD;
-- [ ] analytics;
-- [ ] QR export;
-- [ ] flyer HTML/PDF;
-- [ ] template/document contracts;
-- [ ] documentation;
-- [ ] CI / merge.
+- [x] admin CRUD;
+- [x] analytics;
+- [x] QR export;
+- [x] flyer HTML/PDF;
+- [x] template/document contracts;
+- [x] documentation;
+- [x] CI / merge.
+
+Task 196 merged in `main` commit `878bea0d`. Дальнейшее развитие campaign state/landing/channel-aware UI вынесено в Task 197.

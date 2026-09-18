@@ -3,6 +3,9 @@
 
     $initialPersona = old('onboarding_persona', $selectedPersona ?? '');
     $campaignVenue = $campaign?->venue;
+    $canVerifyCampaignLocation = (bool) ($campaign?->location_verification_enabled)
+        && $campaignVenue?->location?->address?->latitude !== null
+        && $campaignVenue?->location?->address?->longitude !== null;
     $isAuthenticatedOnboarding = isset($authenticatedUser) && $authenticatedUser !== null;
     $loginRedirectParams = ['resume' => 1];
     if ($campaign?->public_code) {
@@ -49,7 +52,7 @@
         data-initial-persona="{{ $initialPersona }}"
         data-initial-flow="{{ $isAuthenticatedOnboarding ? 'authenticated' : $initialFlow }}"
         data-error-step="{{ $errorStep }}"
-        data-has-location-target="{{ $campaignVenue?->location?->address?->latitude !== null && $campaignVenue?->location?->address?->longitude !== null ? '1' : '0' }}"
+        data-has-location-target="{{ $canVerifyCampaignLocation ? '1' : '0' }}"
     >
         <div class="acquisition-onboarding__glow acquisition-onboarding__glow--one" aria-hidden="true"></div>
         <div class="acquisition-onboarding__glow acquisition-onboarding__glow--two" aria-hidden="true"></div>
@@ -61,11 +64,13 @@
                         <span class="acquisition-onboarding__venue-kicker">Этот вход связан с площадкой</span>
                         <strong>{{ $campaignVenue->name }}</strong>
                     </div>
-                    <button type="button" class="btn btn--secondary-bordered btn--sm" data-acquisition-location-button>
-                        <i class="ti ti-current-location" aria-hidden="true"></i>
-                        Подтвердить, что я здесь
-                    </button>
-                    <span class="acquisition-onboarding__location-status" data-acquisition-location-status aria-live="polite"></span>
+                    @if($canVerifyCampaignLocation)
+                        <button type="button" class="btn btn--secondary-bordered btn--sm" data-acquisition-location-button>
+                            <i class="ti ti-current-location" aria-hidden="true"></i>
+                            Подтвердить, что я здесь
+                        </button>
+                        <span class="acquisition-onboarding__location-status" data-acquisition-location-status aria-live="polite"></span>
+                    @endif
                 </div>
             @endif
 

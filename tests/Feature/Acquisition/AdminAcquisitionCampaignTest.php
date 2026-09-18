@@ -3,6 +3,7 @@
 namespace Tests\Feature\Acquisition;
 
 use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
+use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
@@ -31,7 +32,9 @@ final class AdminAcquisitionCampaignTest extends TestCase
                 'name' => 'Листовка у школы 1794',
                 'public_code' => '',
                 'channel' => AcquisitionChannelEnum::QR->value,
+                'landing_type' => AcquisitionLandingTypeEnum::ONBOARDING->value,
                 'venue_id' => $venue->id,
+                'location_verification_enabled' => '1',
                 'verification_radius_m' => 250,
                 'is_active' => '1',
                 'placement' => 'Стенд у главного входа',
@@ -44,6 +47,8 @@ final class AdminAcquisitionCampaignTest extends TestCase
         $this->assertSame('Листовка у школы 1794', $campaign->name);
         $this->assertSame(AcquisitionChannelEnum::QR, $campaign->channel);
         $this->assertSame($venue->id, $campaign->venue_id);
+        $this->assertSame(AcquisitionLandingTypeEnum::ONBOARDING, $campaign->landing_type);
+        $this->assertTrue($campaign->location_verification_enabled);
         $this->assertTrue($campaign->is_active);
         $this->assertMatchesRegularExpression('/^[a-z0-9_-]{2,64}$/', $campaign->public_code);
         $this->assertSame('Стенд у главного входа', data_get($campaign->metadata, 'placement'));
@@ -59,7 +64,9 @@ final class AdminAcquisitionCampaignTest extends TestCase
             'public_code' => 'school-1794-a4',
             'name' => 'Школа 1794',
             'channel' => AcquisitionChannelEnum::QR,
+            'landing_type' => AcquisitionLandingTypeEnum::ONBOARDING,
             'verification_radius_m' => 250,
+            'location_verification_enabled' => false,
             'is_active' => true,
         ]);
 
@@ -94,6 +101,69 @@ final class AdminAcquisitionCampaignTest extends TestCase
         $this->assertSame(1, $stats['location_statuses']['not_requested']);
         $this->assertSame(1, $stats['personas']['player']);
         $this->assertSame(1, $stats['personas']['coach']);
+    }
+
+    public function test_switching_to_online_channel_clears_physical_context(): void
+    {
+        $admin = $this->admin();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($admin, null)->id,
+        ]);
+        $campaign = AcquisitionCampaign::query()->create([
+            'public_code' => 'old-qr-context',
+            'name' => 'Old QR context',
+            'channel' => AcquisitionChannelEnum::QR,
+            'landing_type' => AcquisitionLandingTypeEnum::ONBOARDING,
+            'venue_id' => $venue->id,
+            'verification_radius_m' => 250,
+            'location_verification_enabled' => true,
+            'is_active' => true,
+            'metadata' => [
+                'placement' => 'Стенд у входа',
+                'template_key' => 'acquisition.flyer.a4',
+            ],
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('admin.acquisition.update', $campaign), [
+                'name' => 'Online campaign',
+                'public_code' => 'old-qr-context',
+                'channel' => AcquisitionChannelEnum::CONTEXT_ADS->value,
+                'landing_type' => AcquisitionLandingTypeEnum::HOME->value,
+                'is_active' => '1',
+                'location_verification_enabled' => '0',
+                'notes' => 'Yandex campaign',
+            ])
+            ->assertRedirect();
+
+        $campaign->refresh();
+
+        $this->assertSame(AcquisitionChannelEnum::CONTEXT_ADS, $campaign->channel);
+        $this->assertSame(AcquisitionLandingTypeEnum::HOME, $campaign->landing_type);
+        $this->assertNull($campaign->venue_id);
+        $this->assertFalse($campaign->location_verification_enabled);
+        $this->assertNull(data_get($campaign->metadata, 'placement'));
+    }
+
+    public function test_entity_landing_requires_target(): void
+    {
+        $admin = $this->admin();
+
+        $this
+            ->actingAs($admin)
+            ->from(route('admin.acquisition.create'))
+            ->post(route('admin.acquisition.store'), [
+                'name' => 'Venue landing without venue',
+                'channel' => AcquisitionChannelEnum::SOCIAL->value,
+                'landing_type' => AcquisitionLandingTypeEnum::VENUE->value,
+                'is_active' => '1',
+                'location_verification_enabled' => '0',
+            ])
+            ->assertRedirect(route('admin.acquisition.create'))
+            ->assertSessionHasErrors('landing_target_id');
+
+        $this->assertSame(0, AcquisitionCampaign::query()->count());
     }
 
     public function test_regular_user_cannot_access_acquisition_admin(): void

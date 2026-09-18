@@ -124,6 +124,7 @@ import './features/admin-action-modals.js';
 import './features/admin-venue-bulk-actions.js';
 import './features/admin-user-bulk-actions.js';
 import './features/admin-venue-duplicates.js';
+import './features/admin-acquisition-form.js';
 
 import TomSelect from 'tom-select';
 import 'tom-select/dist/css/tom-select.css';

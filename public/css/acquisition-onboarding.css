@@ -555,3 +555,65 @@
         transition: none;
     }
 }
+
+
+/* Acquisition campaign availability state */
+.acquisition-campaign-state {
+    min-height: 100vh;
+    padding: 150px 0 90px;
+    background:
+        radial-gradient(circle at 22% 14%, rgba(246, 95, 42, .11), transparent 28%),
+        radial-gradient(circle at 82% 72%, rgba(255, 153, 75, .07), transparent 28%),
+        #0d100d;
+}
+
+.acquisition-campaign-state__inner {
+    display: flex;
+    justify-content: center;
+}
+
+.acquisition-campaign-state__card {
+    width: min(720px, 100%);
+    padding: clamp(28px, 5vw, 54px);
+    text-align: center;
+}
+
+.acquisition-campaign-state__eyebrow {
+    display: inline-block;
+    margin-bottom: 14px;
+    color: var(--accent-text);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}
+
+.acquisition-campaign-state__card h1 {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(34px, 6vw, 58px);
+    line-height: 1;
+}
+
+.acquisition-campaign-state__card > p {
+    max-width: 560px;
+    margin: 20px auto 0;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+.acquisition-campaign-state__campaign {
+    font-size: 13px !important;
+    opacity: .72;
+}
+
+.acquisition-campaign-state__card .btn {
+    margin-top: 28px;
+}
+
+@media (max-width: 700px) {
+    .acquisition-campaign-state {
+        padding: 110px 16px 72px;
+    }
+}

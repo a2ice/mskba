@@ -1,10 +1,32 @@
 @php
+    use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
+    use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
+
     $editing = $campaign->exists;
-    $title = $editing ? 'Кампания · '.$campaign->name : 'Новая acquisition-кампания';
+    $title = $editing ? 'Кампания · '.$campaign->name : 'Новая кампания привлечения';
     $startsAt = old('starts_at', $campaign->starts_at?->format('Y-m-d\TH:i'));
     $endsAt = old('ends_at', $campaign->ends_at?->format('Y-m-d\TH:i'));
+
+    $selectedChannelValue = old('channel', $campaign->channel?->value ?? AcquisitionChannelEnum::QR->value);
+    $selectedChannel = AcquisitionChannelEnum::tryFrom($selectedChannelValue) ?? AcquisitionChannelEnum::QR;
+
+    $selectedLandingTypeValue = old(
+        'landing_type',
+        $campaign->landing_type?->value ?? AcquisitionLandingTypeEnum::ONBOARDING->value,
+    );
+    $selectedLandingType = AcquisitionLandingTypeEnum::tryFrom($selectedLandingTypeValue)
+        ?? AcquisitionLandingTypeEnum::ONBOARDING;
+
     $selectedVenueId = old('venue_id', $selectedVenue?->id ?? $campaign->venue_id ?? '');
     $selectedVenueLabel = $selectedVenue?->name ?? $campaign->venue?->name ?? '';
+    $selectedLandingTargetId = old('landing_target_id', $selectedLandingTarget['id'] ?? '');
+    $selectedLandingTargetLabel = $selectedLandingTarget['name'] ?? '';
+
+    $locationVerificationEnabled = (bool) old(
+        'location_verification_enabled',
+        $editing ? $campaign->location_verification_enabled : false,
+    );
+
     $locationLabels = [
         'not_requested' => 'Не запрашивалась',
         'verified' => 'Подтверждено',
@@ -13,13 +35,17 @@
         'denied' => 'Отказ',
         'unavailable' => 'Недоступна',
     ];
+
+    $landingSearchUrl = $selectedLandingType->needsTarget()
+        ? route('admin.acquisition.landing-candidates', ['type' => $selectedLandingType->value])
+        : '';
 @endphp
 
 @extends('theme::partials.admin.list-shell', [
     'title' => $title,
     'subtitle' => $editing
-        ? 'Настройки, материалы и результаты конкретного канала привлечения.'
-        : 'Создайте отдельную кампанию для физической QR-точки, рекламы или партнёрского источника.',
+        ? 'Настройки, посадочная, материалы и результаты конкретного источника привлечения.'
+        : 'Создайте отдельную кампанию для QR-точки, рекламы, социальных сетей или партнёрского источника.',
 ])
 
 @section('section-content')
@@ -52,6 +78,7 @@
         method="POST"
         action="{{ $editing ? route('admin.acquisition.update', $campaign) : route('admin.acquisition.store') }}"
         class="admin-acquisition-form"
+        data-admin-acquisition-form
     >
         @csrf
         @if($editing) @method('PUT') @endif
@@ -61,23 +88,24 @@
                 <div>
                     <p class="admin-kicker">Кампания</p>
                     <h2>Основные параметры</h2>
+                    <p class="admin-muted">Название и канал нужны для внутреннего учёта и аналитики.</p>
                 </div>
-                <label class="form-check form-switch">
-                    <input
-                        class="form-check-input"
-                        type="checkbox"
-                        name="is_active"
-                        value="1"
-                        @checked(old('is_active', $editing ? $campaign->is_active : true))
-                    >
-                    <span class="form-check-label">Активна</span>
-                </label>
+
+                @include('theme::partials.forms.toggle', [
+                    'id' => 'acquisition-active',
+                    'name' => 'is_active',
+                    'checked' => (bool) old('is_active', $editing ? $campaign->is_active : true),
+                    'title' => 'Кампания активна',
+                    'description' => 'Можно выключить вручную независимо от периода действия.',
+                    'wrapperClass' => 'admin-acquisition-toggle',
+                ])
             </div>
 
             <div class="admin-acquisition-grid">
-                <label class="form-field">
-                    <span class="form-label">Название</span>
+                <div class="admin-acquisition-field">
+                    <label class="form-label" for="acquisition-name">Название</label>
                     <input
+                        id="acquisition-name"
                         class="form-control"
                         name="name"
                         maxlength="160"
@@ -85,23 +113,28 @@
                         value="{{ old('name', $campaign->name) }}"
                         placeholder="Листовка · Школа 1794 · главный вход"
                     >
-                </label>
+                </div>
 
-                <label class="form-field">
-                    <span class="form-label">Канал</span>
-                    <select class="form-select" name="channel" required>
+                <div class="admin-acquisition-field">
+                    <label class="form-label" for="acquisition-channel">Канал</label>
+                    <select id="acquisition-channel" class="form-select" name="channel" required data-acquisition-channel>
                         @foreach($channels as $channel)
                             <option
                                 value="{{ $channel->value }}"
-                                @selected(old('channel', $campaign->channel?->value ?? 'qr') === $channel->value)
+                                data-supports-physical="{{ $channel->supportsPhysicalContext() ? '1' : '0' }}"
+                                data-supports-location="{{ $channel->supportsLocationVerification() ? '1' : '0' }}"
+                                data-supports-materials="{{ $channel->supportsPrintableMaterials() ? '1' : '0' }}"
+                                @selected($selectedChannelValue === $channel->value)
                             >{{ $channel->label() }}</option>
                         @endforeach
                     </select>
-                </label>
+                    <p class="form-hint">Набор дополнительных полей ниже зависит от выбранного канала.</p>
+                </div>
 
-                <label class="form-field">
-                    <span class="form-label">Публичный код</span>
+                <div class="admin-acquisition-field admin-acquisition-grid__wide">
+                    <label class="form-label" for="acquisition-code">Публичный код</label>
                     <input
+                        id="acquisition-code"
                         class="form-control"
                         name="public_code"
                         maxlength="64"
@@ -109,74 +142,180 @@
                         value="{{ old('public_code', $campaign->public_code) }}"
                         placeholder="Можно оставить пустым"
                     >
-                    <span class="form-hint">Используется в /join/{code}. Для новой кампании может быть сгенерирован автоматически.</span>
-                </label>
+                    <p class="form-hint">Используется в адресе <code>/go/{code}</code>. Для новой кампании код может быть сгенерирован автоматически.</p>
+                </div>
+            </div>
+        </section>
 
-                <label class="form-field">
-                    <span class="form-label">Радиус геопроверки, м</span>
+        <section class="section-card admin-acquisition-card">
+            <div>
+                <p class="admin-kicker">Период</p>
+                <h2>Период действия</h2>
+                <p class="admin-muted">Оставьте оба поля пустыми для бессрочной кампании. Ручной тумблер «Кампания активна» имеет приоритет.</p>
+            </div>
+
+            <div class="admin-acquisition-grid">
+                <div class="admin-acquisition-field">
+                    <label class="form-label" for="acquisition-starts-at">Начало действия <span class="admin-acquisition-optional">необязательно</span></label>
+                    <input id="acquisition-starts-at" class="form-control" type="datetime-local" name="starts_at" value="{{ $startsAt }}">
+                    <p class="form-hint">До этой даты существующая кампания покажет посетителю страницу «Кампания ещё не началась».</p>
+                </div>
+
+                <div class="admin-acquisition-field">
+                    <label class="form-label" for="acquisition-ends-at">Окончание действия <span class="admin-acquisition-optional">необязательно</span></label>
+                    <input id="acquisition-ends-at" class="form-control" type="datetime-local" name="ends_at" value="{{ $endsAt }}">
+                    <p class="form-hint">После этой даты посетитель увидит страницу «Кампания завершена».</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-card admin-acquisition-card">
+            <div>
+                <p class="admin-kicker">Посадочная</p>
+                <h2>Куда вести посетителя</h2>
+                <p class="admin-muted">По умолчанию используется текущий onboarding: приветствие, выбор роли, регистрация или вход.</p>
+            </div>
+
+            <div class="admin-acquisition-grid">
+                <div class="admin-acquisition-field admin-acquisition-grid__wide">
+                    <label class="form-label" for="acquisition-landing-type">Посадочная страница</label>
+                    <select id="acquisition-landing-type" class="form-select" name="landing_type" required data-acquisition-landing-type>
+                        @foreach($landingTypes as $landingType)
+                            <option
+                                value="{{ $landingType->value }}"
+                                data-needs-target="{{ $landingType->needsTarget() ? '1' : '0' }}"
+                                data-target-label="{{ $landingType->targetLabel() ?? '' }}"
+                                @selected($selectedLandingTypeValue === $landingType->value)
+                            >{{ $landingType->label() }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div
+                    class="admin-acquisition-field admin-acquisition-grid__wide"
+                    data-acquisition-landing-target
+                    data-search-base-url="{{ route('admin.acquisition.landing-candidates') }}"
+                    @if(! $selectedLandingType->needsTarget()) hidden @endif
+                >
+                    @include('theme::partials.forms.entity-predictive-search', [
+                        'id' => 'acquisitionLandingTarget',
+                        'name' => 'landing_target_id',
+                        'label' => $selectedLandingType->targetLabel() ?? 'Целевая сущность',
+                        'placeholder' => 'Начните вводить название…',
+                        'searchUrl' => $landingSearchUrl,
+                        'minimumLength' => 2,
+                        'required' => true,
+                        'selectedId' => $selectedLandingTargetId,
+                        'selectedLabel' => $selectedLandingTargetLabel,
+                        'initialMessage' => $selectedLandingTargetId
+                            ? 'Выбрано: '.$selectedLandingTargetLabel
+                            : 'Введите не менее 2 символов и выберите вариант.',
+                    ])
+                </div>
+            </div>
+
+            @if($editing)
+                <div class="admin-acquisition-url">
+                    <span>Вход кампании</span>
+                    <code>{{ route('acquisition.entry', ['campaignCode' => $campaign->public_code]) }}</code>
+                </div>
+            @endif
+        </section>
+
+        <section
+            class="section-card admin-acquisition-card"
+            data-acquisition-physical-context
+            @if(! $selectedChannel->supportsPhysicalContext()) hidden @endif
+        >
+            <div>
+                <p class="admin-kicker">Контекст</p>
+                <h2>Площадка и физическая точка</h2>
+                <p class="admin-muted">
+                    Этот блок нужен для офлайн-размещения. Для онлайн-каналов он скрывается и не участвует в кампании.
+                </p>
+            </div>
+
+            <div class="admin-acquisition-field">
+                @include('theme::partials.forms.entity-predictive-search', [
+                    'id' => 'acquisitionVenue',
+                    'name' => 'venue_id',
+                    'label' => 'Площадка',
+                    'placeholder' => 'Начните вводить название или адрес…',
+                    'searchUrl' => route('admin.acquisition.venues'),
+                    'minimumLength' => 2,
+                    'required' => false,
+                    'selectedId' => $selectedVenueId,
+                    'selectedLabel' => $selectedVenueLabel,
+                    'initialMessage' => $selectedVenueId
+                        ? 'Выбрано: '.$selectedVenueLabel
+                        : 'Необязательно. Введите не менее 2 символов и выберите площадку.',
+                ])
+            </div>
+
+            <div class="admin-acquisition-field">
+                <label class="form-label" for="acquisition-placement">Место размещения <span class="admin-acquisition-optional">необязательно</span></label>
+                <input
+                    id="acquisition-placement"
+                    class="form-control"
+                    name="placement"
+                    maxlength="160"
+                    value="{{ old('placement', data_get($campaign->metadata, 'placement')) }}"
+                    placeholder="Например: стенд у главного входа"
+                >
+                <p class="form-hint">Позволяет отличать несколько физических источников на одной площадке.</p>
+            </div>
+
+            <div
+                data-acquisition-location-capability
+                @if(! $selectedChannel->supportsLocationVerification()) hidden @endif
+            >
+                @include('theme::partials.forms.toggle', [
+                    'id' => 'acquisition-location-verification',
+                    'name' => 'location_verification_enabled',
+                    'checked' => $locationVerificationEnabled,
+                    'title' => 'Проверять присутствие рядом с площадкой',
+                    'description' => 'Добровольно запросим геолокацию посетителя и сравним её с координатами площадки.',
+                    'wrapperClass' => 'admin-acquisition-toggle admin-acquisition-toggle--boxed',
+                    'inputAttributes' => ['data-acquisition-location-toggle' => true],
+                ])
+
+                <div
+                    class="admin-acquisition-field admin-acquisition-radius"
+                    data-acquisition-radius
+                    @if(! $locationVerificationEnabled) hidden @endif
+                >
+                    <label class="form-label" for="acquisition-radius">Радиус геопроверки, м</label>
                     <input
+                        id="acquisition-radius"
                         class="form-control"
                         type="number"
                         name="verification_radius_m"
                         min="25"
                         max="5000"
-                        required
                         value="{{ old('verification_radius_m', $campaign->verification_radius_m ?? 250) }}"
                     >
-                </label>
-
-                <label class="form-field">
-                    <span class="form-label">Начало</span>
-                    <input class="form-control" type="datetime-local" name="starts_at" value="{{ $startsAt }}">
-                </label>
-
-                <label class="form-field">
-                    <span class="form-label">Окончание</span>
-                    <input class="form-control" type="datetime-local" name="ends_at" value="{{ $endsAt }}">
-                </label>
+                    <p class="form-hint">Для QR возле площадки обычно достаточно 100–250 м. Система дополнительно учитывает точность GPS.</p>
+                </div>
             </div>
         </section>
 
         <section class="section-card admin-acquisition-card">
-            <p class="admin-kicker">Контекст</p>
-            <h2>Площадка и физическая точка</h2>
-            <p class="admin-muted">
-                Площадка необязательна: acquisition-кампания может относиться к партнёру, рекламе или мероприятию.
-                Для QR возле площадки связь нужна для контекста landing и добровольной геопроверки.
-            </p>
+            <div>
+                <p class="admin-kicker">Служебное</p>
+                <h2>Внутренняя заметка</h2>
+            </div>
 
-            @include('theme::partials.forms.entity-predictive-search', [
-                'id' => 'acquisitionVenue',
-                'name' => 'venue_id',
-                'label' => 'Площадка',
-                'placeholder' => 'Начните вводить название или адрес…',
-                'searchUrl' => route('admin.acquisition.venues'),
-                'minimumLength' => 2,
-                'required' => false,
-                'selectedId' => $selectedVenueId,
-                'selectedLabel' => $selectedVenueLabel,
-                'initialMessage' => $selectedVenueId
-                    ? 'Выбрано: '.$selectedVenueLabel
-                    : 'Необязательно. Введите не менее 2 символов и выберите площадку.',
-            ])
-
-            <div class="admin-acquisition-grid mt-3">
-                <label class="form-field">
-                    <span class="form-label">Место размещения</span>
-                    <input
-                        class="form-control"
-                        name="placement"
-                        maxlength="160"
-                        value="{{ old('placement', data_get($campaign->metadata, 'placement')) }}"
-                        placeholder="Например: стенд у главного входа"
-                    >
-                    <span class="form-hint">Позволяет отличать несколько QR-источников на одной площадке.</span>
-                </label>
-
-                <label class="form-field admin-acquisition-grid__wide">
-                    <span class="form-label">Внутренняя заметка</span>
-                    <textarea class="form-control" name="notes" rows="3" maxlength="1000" placeholder="Не показывается посетителю">{{ old('notes', data_get($campaign->metadata, 'notes')) }}</textarea>
-                </label>
+            <div class="admin-acquisition-field">
+                <label class="form-label" for="acquisition-notes">Заметка <span class="admin-acquisition-optional">необязательно</span></label>
+                <textarea
+                    id="acquisition-notes"
+                    class="form-control"
+                    name="notes"
+                    rows="3"
+                    maxlength="1000"
+                    placeholder="Например: А4 в прозрачной рамке, размещено 18.09"
+                >{{ old('notes', data_get($campaign->metadata, 'notes')) }}</textarea>
+                <p class="form-hint">Не показывается посетителю.</p>
             </div>
         </section>
 
@@ -188,19 +327,19 @@
     </form>
 
     @if($editing)
-        <section class="section-card admin-acquisition-card">
-            <p class="admin-kicker">Материалы</p>
-            <h2>Ссылка, QR и A4-листовка</h2>
-            <p class="admin-muted">
-                Текущая листовка — встроенный HTML-шаблон. PDF формируется из того же HTML, поэтому preview и печатный результат используют один источник.
-            </p>
-
-            <div class="admin-acquisition-url">
-                <code>{{ route('acquisition.join', ['campaignCode' => $campaign->public_code]) }}</code>
+        <section
+            class="section-card admin-acquisition-card"
+            data-acquisition-qr-materials
+            @if(! $selectedChannel->supportsPrintableMaterials()) hidden @endif
+        >
+            <div>
+                <p class="admin-kicker">Материалы QR</p>
+                <h2>QR и A4-листовка</h2>
+                <p class="admin-muted">QR ведёт на нейтральный адрес кампании <code>/go/{code}</code>; оттуда посетитель попадает на выбранную посадочную.</p>
             </div>
 
             <div class="admin-row-actions admin-acquisition-actions">
-                <a href="{{ route('acquisition.join', ['campaignCode' => $campaign->public_code]) }}" target="_blank" rel="noopener" class="btn btn--secondary">Открыть /join</a>
+                <a href="{{ route('acquisition.entry', ['campaignCode' => $campaign->public_code]) }}" target="_blank" rel="noopener" class="btn btn--secondary">Открыть кампанию</a>
                 <a href="{{ route('admin.acquisition.flyer.preview', $campaign) }}" target="_blank" rel="noopener" class="btn btn--secondary">Preview A4</a>
                 <a href="{{ route('admin.acquisition.flyer.pdf', $campaign) }}" class="btn btn--primary">Скачать PDF</a>
                 <a href="{{ route('admin.acquisition.qr.svg', $campaign) }}" target="_blank" rel="noopener" class="btn btn--secondary">QR SVG</a>
@@ -209,8 +348,10 @@
         </section>
 
         <section class="section-card admin-acquisition-card">
-            <p class="admin-kicker">Attribution</p>
-            <h2>Результаты кампании</h2>
+            <div>
+                <p class="admin-kicker">Attribution</p>
+                <h2>Результаты кампании</h2>
+            </div>
 
             <div class="admin-acquisition-metrics">
                 <div><strong>{{ $stats['visits'] }}</strong><span>переходов</span></div>

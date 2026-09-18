@@ -204,6 +204,9 @@ Route::prefix('admin')
             Route::get('/venues', [AdminAcquisitionController::class, 'venueCandidates'])
                 ->middleware('throttle:60,1')
                 ->name('admin.acquisition.venues');
+            Route::get('/landing-candidates', [AdminAcquisitionController::class, 'landingCandidates'])
+                ->middleware('throttle:60,1')
+                ->name('admin.acquisition.landing-candidates');
             Route::post('/', [AdminAcquisitionController::class, 'store'])
                 ->name('admin.acquisition.store');
             Route::get('/{campaign}/edit', [AdminAcquisitionController::class, 'edit'])

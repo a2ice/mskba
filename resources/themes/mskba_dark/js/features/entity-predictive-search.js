@@ -9,8 +9,8 @@ function initEntityPredictiveSearch(root) {
     const clear = root.querySelector('[data-entity-predictive-clear]');
     const message = root.querySelector('[data-entity-predictive-message]');
     const staticOptions = [...root.querySelectorAll('[data-entity-predictive-option]')];
-    const searchUrl = root.dataset.searchUrl || '';
-    const minimumLength = Number(root.dataset.minimumLength || (searchUrl ? 2 : 1));
+    const searchUrl = () => root.dataset.searchUrl || '';
+    const minimumLength = Number(root.dataset.minimumLength || (searchUrl() ? 2 : 1));
     const required = root.dataset.required !== '0';
     let timer;
     let controller;
@@ -25,11 +25,13 @@ function initEntityPredictiveSearch(root) {
     };
     const resetSelection = () => {
         value.value = '';
+        value.dispatchEvent(new Event('change', { bubbles: true }));
         if (clear instanceof HTMLElement) clear.hidden = input.value === '';
     };
     const select = (id, label) => {
         input.value = label;
         value.value = id;
+        value.dispatchEvent(new Event('change', { bubbles: true }));
         results.classList.add('d-none');
         if (clear instanceof HTMLElement) clear.hidden = false;
         showMessage(`Выбрано: ${label}`);
@@ -69,7 +71,7 @@ function initEntityPredictiveSearch(root) {
             showMessage(`Введите не менее ${minimumLength} символов.`);
             return;
         }
-        if (!searchUrl) {
+        if (!searchUrl()) {
             let visible = 0;
             staticOptions.forEach((option) => {
                 const matches = (option.dataset.label || '').toLocaleLowerCase('ru').includes(query.toLocaleLowerCase('ru'));
@@ -85,7 +87,7 @@ function initEntityPredictiveSearch(root) {
             clear?.classList.add('is-loading');
             if (clear instanceof HTMLElement) clear.hidden = false;
             try {
-                const url = new URL(searchUrl, window.location.origin);
+                const url = new URL(searchUrl(), window.location.origin);
                 url.searchParams.set('q', query);
                 const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: controller.signal });
                 if (!response.ok) throw new Error('Не удалось выполнить поиск.');
@@ -106,6 +108,7 @@ function initEntityPredictiveSearch(root) {
         input.focus();
     });
     root.closest('form')?.addEventListener('submit', (event) => {
+        if (input.disabled || value.disabled) return;
         if (value.value || (!required && input.value.trim() === '')) return;
         event.preventDefault();
         showMessage(

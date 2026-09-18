@@ -4,6 +4,7 @@ namespace App\Modules\Acquisition\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Acquisition\Application\Services\AcquisitionTracker;
+use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionPersonaEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Identity\Application\UseCases\UpdateUserParticipationRolesHandler;
@@ -21,8 +22,23 @@ final class AcquisitionOnboardingController extends Controller
         Request $request,
         AcquisitionTracker $tracker,
         ?string $campaignCode = null,
-    ): Response {
+    ): Response|RedirectResponse {
         $campaign = $this->campaign($campaignCode);
+
+        if ($campaign !== null && ! $campaign->isAvailable()) {
+            return ThemeResolver::page('onboarding.campaign-state', [
+                'campaign' => $campaign,
+                'campaignState' => $campaign->state(),
+            ]);
+        }
+
+        if ($campaign !== null && $campaign->landing_type !== AcquisitionLandingTypeEnum::ONBOARDING) {
+            $target = route('acquisition.entry', ['campaignCode' => $campaign->public_code]);
+            $query = $request->getQueryString();
+
+            return redirect()->to($query ? $target.'?'.$query : $target);
+        }
+
         $currentVisit = $tracker->currentVisit($request);
         $resumeCurrentVisit = $request->user() !== null
             && $request->boolean('resume')
@@ -157,7 +173,7 @@ final class AcquisitionOnboardingController extends Controller
             ->where('public_code', trim($campaignCode))
             ->first();
 
-        abort_if($campaign === null || ! $campaign->isAvailable(), 404);
+        abort_if($campaign === null, 404);
 
         return $campaign;
     }

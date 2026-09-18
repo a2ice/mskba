@@ -10,7 +10,7 @@ final class AcquisitionQrCodeRenderer
 {
     public function joinUrl(AcquisitionCampaign $campaign): string
     {
-        return route('acquisition.join', ['campaignCode' => $campaign->public_code]);
+        return route('acquisition.entry', ['campaignCode' => $campaign->public_code]);
     }
 
     public function svg(AcquisitionCampaign $campaign): string

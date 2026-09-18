@@ -96,8 +96,9 @@
                                 @endif
                             </td>
                             <td>
-                                <span @class(['admin-badge', 'admin-badge--muted' => ! $campaign->is_active])>
-                                    {{ $campaign->isAvailable() ? 'Активна' : ($campaign->is_active ? 'Вне периода' : 'Выключена') }}
+                                @php($campaignState = $campaign->state())
+                                <span @class(['admin-badge', 'admin-badge--muted' => ! $campaign->isAvailable()])>
+                                    {{ $campaignState->label() }}
                                 </span>
                             </td>
                             <td>{{ $campaign->visits_count }}</td>
@@ -106,7 +107,7 @@
                             <td>
                                 <div class="admin-row-actions">
                                     <a href="{{ route('admin.acquisition.edit', $campaign) }}" class="btn btn--secondary btn--sm">Открыть</a>
-                                    <a href="{{ route('acquisition.join', ['campaignCode' => $campaign->public_code]) }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">/join</a>
+                                    <a href="{{ route('acquisition.entry', ['campaignCode' => $campaign->public_code]) }}" class="btn btn--secondary btn--sm" target="_blank" rel="noopener">/go</a>
                                 </div>
                             </td>
                         </tr>
