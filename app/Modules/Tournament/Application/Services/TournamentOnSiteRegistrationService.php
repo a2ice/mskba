@@ -60,6 +60,9 @@ final class TournamentOnSiteRegistrationService
                 password: null,
                 registrationChannel: UserRegistrationChannelEnum::TOURNAMENT_ON_SITE,
             );
+            $user->forceFill([
+                'personal_data_distribution_required_at' => now(),
+            ])->save();
             $this->assignProjectRoles($user, $roles);
             $user->consents()->create([
                 'type' => UserConsent::TYPE_PERSONAL_DATA_PROCESSING,
