@@ -39,9 +39,12 @@ final readonly class AcquisitionFlyerContentManager
     {
         $metadata = is_array($campaign->metadata) ? $campaign->metadata : [];
         $overrides = [];
+        $current = $this->resolved($campaign);
 
         foreach ($this->fieldDefinitions($campaign) as $key => $definition) {
-            $value = trim((string) ($values[$key] ?? ''));
+            $value = array_key_exists($key, $values)
+                ? trim((string) $values[$key])
+                : (string) ($current[$key] ?? '');
             $default = $this->defaultValue($campaign, $definition);
 
             if ($value !== $default) {
