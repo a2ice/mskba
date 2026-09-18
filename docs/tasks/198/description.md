@@ -27,11 +27,23 @@ QR/flyer pipeline состоит из:
 - добавить автоматический smoke, чтобы deploy больше не считался успешным при сломанном document pipeline;
 - удалить временную диагностику после фикса.
 
+## Результат диагностики
+
+Production diagnostic подтвердил:
+
+- `qrencode 4.1.1` установлен и успешно генерирует SVG;
+- `AcquisitionQrCodeRenderer` работает;
+- `AcquisitionFlyerContextFactory` работает;
+- Gotenberg/Chromium успешно возвращает PDF;
+- ошибка возникает в `BladeTemplateRenderer`: literal key `acquisition.flyer.a4` читался через Laravel dot-notation и превращался в несуществующий nested path.
+
+Исправление читает registry целиком и затем обращается к exact array key.
+
 ## Статус
 
 - [x] воспроизведено в production UI;
-- [ ] production diagnostics;
-- [ ] fix;
-- [ ] tests;
-- [ ] deploy smoke;
+- [x] production diagnostics;
+- [x] fix;
+- [x] tests;
+- [x] deploy smoke;
 - [ ] merge/deploy.
