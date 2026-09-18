@@ -984,11 +984,9 @@ function initEventParticipantManagement(miniGames) {
         identity.append(name, state);
         if (participant.changed_label && participant.changed_title) {
             const changed = document.createElement('small');
-            changed.className = 'event-participant-chip__changed ui-tooltip-source ui-tooltip-source--title';
+            changed.className = 'event-participant-chip__changed';
             changed.textContent = participant.changed_label;
-            changed.dataset.tooltip = participant.changed_title;
-            changed.dataset.tooltipSource = participant.changed_title;
-            changed.tabIndex = 0;
+            changed.title = participant.changed_title;
             identity.append(changed);
         }
         card.append(avatar, identity);
