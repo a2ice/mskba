@@ -6,10 +6,26 @@ use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionLandingTypeEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Template\Application\Contracts\TemplateRenderer;
+use App\Modules\Template\Application\Services\TrustedTemplateRegistry;
 use Tests\TestCase;
 
 final class BladeTemplateRendererTest extends TestCase
 {
+    public function test_template_assets_are_resolved_by_named_slots(): void
+    {
+        $registry = app(TrustedTemplateRegistry::class);
+
+        $this->assertSame(
+            'images/acquisition/flyer-basketball-fire.png',
+            $registry->assetPath('acquisition.flyer.a4', 'hero_image'),
+        );
+        $this->assertSame(
+            'images/logo-header-cropped.png',
+            $registry->assetPath('acquisition.flyer.a4', 'logo'),
+        );
+        $this->assertNull($registry->assetPath('acquisition.flyer.a4', 'missing_slot'));
+    }
+
     public function test_trusted_template_key_with_dots_is_resolved_literally(): void
     {
         $campaign = new AcquisitionCampaign;

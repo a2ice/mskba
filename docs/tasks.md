@@ -162,3 +162,4 @@
 - [x] 196 - Админка acquisition-кампаний, QR-листовки и фундамент шаблонов документов ([описание](tasks/196/description.md))
 - [x] 197 - Состояния acquisition-кампаний, настраиваемая посадочная и channel-aware UI ([описание](tasks/197/description.md))
 - [x] 198 - Исправить acquisition flyer preview/PDF и добавить production smoke document pipeline ([описание](tasks/198/description.md))
+- [ ] 199 - Заменить декоративное кольцо acquisition-листовки на template hero asset ([описание](tasks/199/description.md))

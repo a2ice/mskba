@@ -5,15 +5,16 @@ namespace App\Modules\Template\Application\Services;
 use App\Modules\Template\Application\Contracts\TemplateRenderer;
 use InvalidArgumentException;
 
-final class BladeTemplateRenderer implements TemplateRenderer
+final readonly class BladeTemplateRenderer implements TemplateRenderer
 {
+    public function __construct(private TrustedTemplateRegistry $registry) {}
+
     public function render(string $templateKey, array $context): string
     {
-        $registry = config('document-templates.registry', []);
-        $definition = is_array($registry) ? ($registry[$templateKey] ?? null) : null;
+        $definition = $this->registry->definition($templateKey);
 
-        if (! is_array($definition) || ($definition['driver'] ?? null) !== 'blade') {
-            throw new InvalidArgumentException("Unknown trusted template [{$templateKey}].");
+        if (($definition['driver'] ?? null) !== 'blade') {
+            throw new InvalidArgumentException("Unknown trusted Blade template [{$templateKey}].");
         }
 
         $view = $definition['view'] ?? null;
