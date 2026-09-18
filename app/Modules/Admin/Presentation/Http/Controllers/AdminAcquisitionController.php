@@ -16,6 +16,7 @@ use App\Modules\Template\Application\Contracts\DocumentRenderer;
 use App\Modules\Template\Application\Contracts\TemplateRenderer;
 use App\Modules\Template\Domain\Enums\DocumentFormatEnum;
 use App\Modules\Venue\Application\UseCases\SearchVenuesHandler;
+use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -34,12 +35,13 @@ final class AdminAcquisitionController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return ThemeResolver::page('admin.acquisition.form', [
             'campaign' => new AcquisitionCampaign,
             'channels' => AcquisitionChannelEnum::cases(),
             'stats' => null,
+            'selectedVenue' => $this->selectedVenue($request),
         ]);
     }
 
@@ -55,6 +57,7 @@ final class AdminAcquisitionController extends Controller
     }
 
     public function edit(
+        Request $request,
         AcquisitionCampaign $campaign,
         GetAdminAcquisitionCampaignStatsHandler $stats,
     ): Response {
@@ -64,6 +67,7 @@ final class AdminAcquisitionController extends Controller
             'campaign' => $campaign,
             'channels' => AcquisitionChannelEnum::cases(),
             'stats' => $stats->handle($campaign),
+            'selectedVenue' => $this->selectedVenue($request, $campaign),
         ]);
     }
 
@@ -148,5 +152,16 @@ final class AdminAcquisitionController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$campaign->public_code.'-flyer.'.$document->extension().'"',
             'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    private function selectedVenue(Request $request, ?AcquisitionCampaign $campaign = null): ?Venue
+    {
+        $oldVenueId = $request->old('venue_id');
+
+        if (is_numeric($oldVenueId)) {
+            return Venue::query()->find((int) $oldVenueId);
+        }
+
+        return $campaign?->venue;
     }
 }
