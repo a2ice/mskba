@@ -939,7 +939,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
 }
 
 .admin-row-actions {
@@ -950,12 +950,19 @@
 
 .admin-acquisition-form {
     display: grid;
-    gap: 18px;
+    gap: 22px;
 }
 
 .admin-acquisition-card {
     display: grid;
-    gap: 16px;
+    gap: 24px;
+    padding: 26px;
+}
+
+.admin-acquisition-card > div:first-child > .admin-muted,
+.admin-acquisition-card__header .admin-muted {
+    margin: 7px 0 0;
+    line-height: 1.5;
 }
 
 .admin-acquisition-card h2,
@@ -967,30 +974,93 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: 28px;
 }
 
 .admin-acquisition-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
+    gap: 22px 24px;
 }
 
 .admin-acquisition-grid__wide {
     grid-column: 1 / -1;
 }
 
+.admin-acquisition-field {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.admin-acquisition-field > .form-label,
+.admin-acquisition-field [data-entity-predictive-search] > .form-label {
+    margin: 0;
+    line-height: 1.25;
+}
+
+.admin-acquisition-field .form-control,
+.admin-acquisition-field .form-select {
+    margin: 0;
+}
+
+.admin-acquisition-field .form-hint,
+.admin-acquisition-field .predictive-search__message {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.admin-acquisition-optional {
+    margin-left: 5px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: none;
+}
+
+.admin-acquisition-toggle {
+    min-width: 230px;
+}
+
+.admin-acquisition-toggle .form-toggle {
+    padding-top: 0;
+}
+
+.admin-acquisition-toggle--boxed {
+    min-width: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, .025);
+}
+
+.admin-acquisition-radius {
+    max-width: 420px;
+    margin-top: 14px;
+}
+
 .admin-acquisition-save {
     display: flex;
     justify-content: flex-end;
+    padding-top: 2px;
 }
 
 .admin-acquisition-url {
+    display: grid;
+    gap: 6px;
     overflow-x: auto;
-    padding: 12px 14px;
+    padding: 13px 15px;
     border: 1px solid var(--line);
     border-radius: var(--radius-control);
     background: rgba(255, 255, 255, .035);
+}
+
+.admin-acquisition-url > span {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
 }
 
 .admin-acquisition-url code {
@@ -1057,6 +1127,11 @@
     opacity: .6;
 }
 
+[data-admin-acquisition-form] [hidden],
+[data-acquisition-qr-materials][hidden] {
+    display: none !important;
+}
+
 @media (max-width: 960px) {
     .admin-acquisition-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1070,6 +1145,11 @@
         flex-direction: column;
     }
 
+    .admin-acquisition-card {
+        gap: 20px;
+        padding: 20px 16px;
+    }
+
     .admin-acquisition-grid,
     .admin-acquisition-breakdowns,
     .admin-acquisition-metrics {
@@ -1078,6 +1158,10 @@
 
     .admin-acquisition-grid__wide {
         grid-column: auto;
+    }
+
+    .admin-acquisition-toggle {
+        min-width: 0;
     }
 
     .admin-acquisition-save {
