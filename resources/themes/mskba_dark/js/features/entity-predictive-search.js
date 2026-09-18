@@ -11,6 +11,7 @@ function initEntityPredictiveSearch(root) {
     const staticOptions = [...root.querySelectorAll('[data-entity-predictive-option]')];
     const searchUrl = root.dataset.searchUrl || '';
     const minimumLength = Number(root.dataset.minimumLength || (searchUrl ? 2 : 1));
+    const required = root.dataset.required !== '0';
     let timer;
     let controller;
 
@@ -105,7 +106,7 @@ function initEntityPredictiveSearch(root) {
         input.focus();
     });
     root.closest('form')?.addEventListener('submit', (event) => {
-        if (value.value) return;
+        if (!required || value.value) return;
         event.preventDefault();
         showMessage('Сначала выберите вариант из списка.', true);
         input.focus();
