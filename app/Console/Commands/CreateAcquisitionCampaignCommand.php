@@ -10,14 +10,14 @@ use Illuminate\Console\Command;
 final class CreateAcquisitionCampaignCommand extends Command
 {
     protected $signature = 'acquisition:campaign
-        {code : Публичный код для ссылки /join/...}
+        {code : Публичный код для ссылки /go/...}
         {name : Понятное название кампании}
         {--channel=qr : qr|context_ads|social|partner|referral|direct|other}
         {--venue= : ID или alias площадки для геопроверки}
         {--radius=250 : Радиус подтверждения положения в метрах}
         {--force : Обновить существующую кампанию с таким кодом}';
 
-    protected $description = 'Создать или обновить acquisition-кампанию и вывести ссылку для QR/рекламы';
+    protected $description = 'Создать или обновить acquisition-кампанию и вывести canonical ссылку для QR/рекламы';
 
     public function handle(): int
     {
@@ -80,7 +80,7 @@ final class CreateAcquisitionCampaignCommand extends Command
         $this->line('ID: '.$campaign->id);
         $this->line('Канал: '.$campaign->channel->label());
         $this->line('Площадка: '.($venue?->name ?? 'не привязана'));
-        $this->line('Ссылка: '.route('acquisition.join', ['campaignCode' => $campaign->public_code]));
+        $this->line('Ссылка: '.route('acquisition.entry', ['campaignCode' => $campaign->public_code]));
 
         return self::SUCCESS;
     }

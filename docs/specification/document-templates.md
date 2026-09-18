@@ -46,6 +46,8 @@ Gotenberg доступен приложению по `GOTENBERG_URL` (по ум�
 
 QR генерируется локально утилитой `qrencode` в app image. Для PDF QR передаётся как data URI, поэтому Gotenberg не должен обращаться назад к публичному сайту.
 
+Production deploy запускает `php artisan acquisition:documents:smoke`. Команда без записи в БД проверяет реальную цепочку `qrencode → trusted Blade template → Gotenberg PDF`; ошибка любого внешнего runtime-компонента делает deploy неуспешным.
+
 ## Будущие редактируемые шаблоны
 
 Шаблоны, которые в будущем будут редактироваться через админку и храниться в БД, **не должны** исполняться как Blade/PHP.
