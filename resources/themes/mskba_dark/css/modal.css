@@ -1,3 +1,9 @@
+:root {
+	--modal-title-font-size: 20px;
+	--modal-title-line-height: 1.1;
+	--modal-title-font-weight: 800;
+}
+
 .modal {
 	position: fixed;
 	top: var(--modal-viewport-top, 0px);
@@ -240,9 +246,9 @@ body.has-modal-tray .modal:not(.is-minimized) {
 .modal_title {
 	margin: 0;
 	color: #fff;
-	font-size: 20px;
-	line-height: 1.1;
-	font-weight: 800;
+	font-size: var(--modal-title-font-size);
+	line-height: var(--modal-title-line-height);
+	font-weight: var(--modal-title-font-weight);
 }
 
 .modal-description {

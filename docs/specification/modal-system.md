@@ -68,4 +68,4 @@ Tray допускает несколько свёрнутых окон. Вкла
 
 ## Границы
 
-Контракт автоматически охватывает окна на `theme::partials.modal.layout` и динамический location mini-wizard, приведённый к тому же DOM shell. Media lightbox, старые venue day overlays, native `<dialog>` редактора цен и Telegram-specific overlays пока имеют отдельный media/platform lifecycle; механически подменять его без проверки нельзя.
+Контракт автоматически охватывает окна на `theme::partials.modal.layout` и динамический location mini-wizard, приведённый к тому же DOM shell. Видимые заголовки остальных dialog-like интерфейсов (admin action modal, Telegram feature modal, venue day overlay, live-stats sheet и native `<dialog>` редактора цен) используют те же CSS-токены заголовка: `20px`, `line-height: 1.1`, `font-weight: 800`. Media lightbox/caption остаётся контентной подписью, а не заголовком окна. При этом media lightbox, старые venue day overlays, native `<dialog>` редактора цен и Telegram-specific overlays пока сохраняют отдельный media/platform lifecycle; механически подменять его без проверки нельзя.

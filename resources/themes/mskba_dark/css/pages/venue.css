@@ -1013,10 +1013,10 @@
 .venue-day-modal h3 {
     margin: 0;
     color: #fff;
-    font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 700;
-    line-height: 1.05;
+    font-family: inherit;
+    font-size: var(--modal-title-font-size, 20px);
+    font-weight: var(--modal-title-font-weight, 800);
+    line-height: var(--modal-title-line-height, 1.1);
 }
 
 .venue-day-modal__close {
