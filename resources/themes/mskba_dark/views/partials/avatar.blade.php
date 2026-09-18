@@ -93,56 +93,87 @@
 
         <div class="account-avatar-library">
             <div class="account-avatar-library__summary">
-                <p>Сохранено {{ $avatars->count() }} из 3. Выберите активный аватар или удалите ненужный.</p>
+                <p>Сохранено {{ $avatars->count() }} из 3. Нажмите на аватар, чтобы сделать его активным.</p>
             </div>
 
-            @if($avatars->isEmpty())
-                <p class="account-avatar-library__empty">
-                    Сохранённых аватаров пока нет. Нажмите на основной аватар, чтобы загрузить изображение.
-                </p>
-            @else
-                <div class="account-avatar-library__grid">
-                    @foreach($avatars as $avatar)
-                        <article @class([
-                            'account-avatar-library__item',
-                            'is-active' => $avatar->is_featured,
-                        ])>
-                            <div class="account-avatar-library__preview">
+            <div class="account-avatar-library__slots" data-account-avatar-slots>
+                @foreach($avatars as $avatar)
+                    <article @class([
+                        'account-avatar-library__item',
+                        'is-active' => $avatar->is_featured,
+                    ])>
+                        @if($avatar->is_featured)
+                            <div
+                                class="account-avatar-library__avatar"
+                                aria-current="true"
+                                title="Активный аватар"
+                            >
                                 <img src="{{ $avatar->publicUrl() }}" alt="">
-                                @if($avatar->is_featured)
-                                    <span class="account-avatar-library__status">Активный</span>
-                                @endif
+                                <span class="account-avatar-library__status" aria-label="Активный аватар" title="Активный">
+                                    <i class="ti ti-check" aria-hidden="true"></i>
+                                </span>
                             </div>
+                        @else
+                            <form action="{{ route('account.avatar.activate', $avatar->id) }}" method="post" class="account-avatar-library__activate-form">
+                                @csrf
+                                @method('PATCH')
+                                <button
+                                    type="submit"
+                                    class="account-avatar-library__avatar"
+                                    title="Сделать активным"
+                                    aria-label="Сделать аватар активным"
+                                >
+                                    <img src="{{ $avatar->publicUrl() }}" alt="">
+                                </button>
+                            </form>
+                        @endif
 
-                            <div class="account-avatar-library__actions">
-                                @if(!$avatar->is_featured)
-                                    <form action="{{ route('account.avatar.activate', $avatar->id) }}" method="post">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit" class="btn btn--secondary btn--sm">Сделать активным</button>
-                                    </form>
-                                @else
-                                    <span class="account-avatar-library__current">Используется сейчас</span>
-                                @endif
+                        <form action="{{ route('account.avatar.destroy', $avatar->id) }}" method="post" class="account-avatar-library__delete-form">
+                            @csrf
+                            @method('DELETE')
+                            <button
+                                type="submit"
+                                class="account-avatar-library__delete"
+                                title="Удалить аватар"
+                                aria-label="Удалить аватар"
+                                onclick="return confirm('Вы уверены, что хотите удалить аватар?')"
+                            >
+                                <i class="ti ti-x" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                    </article>
+                @endforeach
 
-                                <form action="{{ route('account.avatar.destroy', $avatar->id) }}" method="post">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button
-                                        type="submit"
-                                        class="account-avatar-library__delete"
-                                        title="Удалить аватар"
-                                        aria-label="Удалить аватар"
-                                        onclick="return confirm('Вы уверены, что хотите удалить аватар?')"
-                                    >
-                                        <i class="ti ti-trash" aria-hidden="true"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </article>
-                    @endforeach
-                </div>
-            @endif
+                @if($avatars->count() < 3)
+                    <form
+                        action="{{ route('account.avatar.store') }}"
+                        method="post"
+                        enctype="multipart/form-data"
+                        class="account-avatar-library__upload-form"
+                        data-image-upload
+                        data-image-upload-auto-submit
+                    >
+                        @csrf
+                        <label
+                            class="account-avatar-library__upload"
+                            for="account-avatar-library-input"
+                            title="Загрузить ещё один аватар"
+                            data-image-upload-surface
+                        >
+                            <i class="ti ti-plus" aria-hidden="true"></i>
+                            <span class="visually-hidden">Загрузить ещё один аватар</span>
+                            @include('theme::partials.image-upload-loading', ['text' => 'Загружаем аватар…'])
+                        </label>
+                        <input
+                            id="account-avatar-library-input"
+                            class="visually-hidden"
+                            type="file"
+                            name="avatar"
+                            accept="image/jpeg,image/png,image/webp"
+                        >
+                    </form>
+                @endif
+            </div>
         </div>
     @endcomponent
 @endif

@@ -74,6 +74,12 @@ class AccountAvatarTest extends TestCase
         foreach ($avatars as $avatar) {
             Storage::disk('public')->assertExists($avatar->path);
         }
+
+        $this->actingAs($user)
+            ->get(route('account'))
+            ->assertOk()
+            ->assertSee('Сохранено 3 из 3')
+            ->assertDontSee('id="account-avatar-library-input"', false);
     }
 
     public function test_avatar_upload_rejects_unsupported_file(): void
@@ -122,7 +128,12 @@ class AccountAvatarTest extends TestCase
             ->assertDontSee(route('account.avatar.activate', $second->id), false)
             ->assertSee(route('account.avatar.destroy', $first->id), false)
             ->assertSee(route('account.avatar.destroy', $second->id), false)
-            ->assertSee('Используется сейчас');
+            ->assertSee('aria-label="Активный аватар"', false)
+            ->assertSee('ti ti-check', false)
+            ->assertSee('ti ti-x', false)
+            ->assertDontSee('ti ti-trash', false)
+            ->assertSee('id="account-avatar-library-input"', false)
+            ->assertSee('Загрузить ещё один аватар');
     }
 
     public function test_deleting_active_avatar_activates_next_saved_avatar_and_removes_file(): void

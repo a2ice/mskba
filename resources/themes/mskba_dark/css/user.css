@@ -104,132 +104,175 @@
 }
 
 .account-avatar-library {
+    --account-avatar-slot-size: 132px;
     display: grid;
-    gap: 18px;
+    gap: 20px;
 }
 
-.account-avatar-library__summary p,
-.account-avatar-library__empty {
+.account-avatar-library__summary p {
     margin: 0;
     color: var(--muted);
 }
 
-.account-avatar-library__empty {
-    padding: 20px;
-    border: 1px dashed rgba(255, 255, 255, 0.16);
-    border-radius: 12px;
-    text-align: center;
+.account-avatar-library__slots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    width: 100%;
+    padding: 8px 0 12px;
 }
 
-.account-avatar-library__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 14px;
-}
-
-.account-avatar-library__item {
-    display: grid;
-    gap: 12px;
-    padding: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.025);
-}
-
-.account-avatar-library__item.is-active {
-    border-color: rgba(255, 101, 27, 0.7);
-    box-shadow: inset 0 0 0 1px rgba(255, 101, 27, 0.18);
-}
-
-.account-avatar-library__preview {
+.account-avatar-library__item,
+.account-avatar-library__upload-form {
     position: relative;
-    width: min(132px, 100%);
-    aspect-ratio: 1;
-    margin: 0 auto;
+    width: var(--account-avatar-slot-size);
+    height: var(--account-avatar-slot-size);
+    flex: 0 0 var(--account-avatar-slot-size);
+    margin: 0;
 }
 
-.account-avatar-library__preview img {
+.account-avatar-library__activate-form,
+.account-avatar-library__delete-form {
+    margin: 0;
+}
+
+.account-avatar-library__activate-form {
     width: 100%;
     height: 100%;
+}
+
+.account-avatar-library__avatar,
+.account-avatar-library__upload {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    place-items: center;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.18);
     border-radius: 50%;
+    background: rgba(255, 255, 255, 0.035);
+    color: #fff;
+    cursor: pointer;
+    transition: border-color 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+.account-avatar-library__avatar img {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
+}
+
+button.account-avatar-library__avatar:hover,
+button.account-avatar-library__avatar:focus-visible,
+.account-avatar-library__upload:hover,
+.account-avatar-library__upload:focus-within {
+    border-color: var(--accent-strong);
+    transform: scale(1.025);
+}
+
+.account-avatar-library__item.is-active .account-avatar-library__avatar {
+    border-color: var(--accent-strong);
+    box-shadow: 0 0 0 1px rgba(255, 101, 27, 0.22);
+    cursor: default;
 }
 
 .account-avatar-library__status {
     position: absolute;
-    right: 50%;
-    bottom: -5px;
-    transform: translateX(50%);
-    padding: 3px 8px;
-    border-radius: 999px;
+    left: 50%;
+    bottom: 5px;
+    z-index: 2;
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    transform: translateX(-50%);
+    border: 2px solid #171a17;
+    border-radius: 50%;
     background: var(--accent-strong);
     color: #10120f;
-    font-size: 10px;
+    box-shadow: 0 3px 10px rgb(0 0 0 / 32%);
+}
+
+.account-avatar-library__status .ti {
+    font-size: 17px;
     font-weight: 900;
-    white-space: nowrap;
 }
 
-.account-avatar-library__actions {
-    display: flex;
-    min-height: 36px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.account-avatar-library__actions form {
-    margin: 0;
-}
-
-.account-avatar-library__current {
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
+.account-avatar-library__delete-form {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 4;
+    transform: translate(28%, -28%);
 }
 
 .account-avatar-library__delete {
     display: grid;
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.68);
+    border-radius: 50%;
+    background: #2a2d29;
     color: #fff;
     cursor: pointer;
-    transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+    box-shadow: 0 3px 9px rgb(0 0 0 / 34%);
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
 }
 
 .account-avatar-library__delete:hover,
 .account-avatar-library__delete:focus-visible {
     border-color: #ff6f61;
-    background: rgba(182, 47, 53, 0.34);
-    color: #ff8e84;
+    background: #b62f35;
+    transform: scale(1.08);
 }
 
-.account-avatar-library__delete:focus-visible {
+.account-avatar-library__delete:focus-visible,
+button.account-avatar-library__avatar:focus-visible,
+.account-avatar-library__upload:focus-within {
     outline: 2px solid #fff;
-    outline-offset: 2px;
+    outline-offset: 3px;
+}
+
+.account-avatar-library__delete .ti {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.account-avatar-library__upload {
+    border-style: dashed;
+    border-color: rgba(255, 101, 27, 0.56);
+    background: rgba(255, 101, 27, 0.055);
+    color: var(--accent-strong);
+}
+
+.account-avatar-library__upload .ti-plus {
+    font-size: 42px;
+    font-weight: 300;
+    line-height: 1;
 }
 
 @media (max-width: 520px) {
-    .account-avatar-library__grid {
-        grid-template-columns: 1fr;
+    .account-avatar-library {
+        --account-avatar-slot-size: 104px;
     }
 
-    .account-avatar-library__item {
-        grid-template-columns: 92px minmax(0, 1fr);
-        align-items: center;
+    .account-avatar-library__slots {
+        gap: 18px;
     }
 
-    .account-avatar-library__preview {
-        width: 92px;
-        margin: 0;
+    .account-avatar-library__status {
+        width: 25px;
+        height: 25px;
     }
 
-    .account-avatar-library__actions {
-        justify-content: flex-start;
-        flex-wrap: wrap;
+    .account-avatar-library__delete {
+        width: 25px;
+        height: 25px;
     }
 }
