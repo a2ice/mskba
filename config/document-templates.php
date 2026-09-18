@@ -6,6 +6,10 @@ return [
         'timeout_seconds' => (int) env('GOTENBERG_TIMEOUT_SECONDS', 30),
     ],
 
+    'qr' => [
+        'binary' => env('QR_CODE_BINARY', 'qrencode'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Trusted built-in templates
