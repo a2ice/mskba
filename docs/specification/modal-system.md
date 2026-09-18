@@ -16,7 +16,7 @@
 - `.modal__body` — единственная прокручиваемая область с `min-height: 0` и `overflow-y: auto`;
 - необязательный `.modal__footer` — неподвижные действия формы или wizard.
 
-Существующий feature-код может продолжать менять локальный `.modal_title`: общий header наблюдает за активным заголовком и синхронизирует его текст, не вырывая исходный узел из DOM-контекста feature. Для фиксированного footer Blade-компонент принимает named slot `footer`; динамический код может создать `[data-modal-footer-container]`, а существующий узел с `[data-modal-footer]` shell переносит в эту область при инициализации.
+Существующий feature-код может продолжать менять локальный `.modal_title`: общий header наблюдает за активным заголовком и синхронизирует его текст, не вырывая исходный узел из DOM-контекста feature. Видимый заголовок в `.modal__header` всегда использует базовую типографику общего shell (`20px`, `line-height: 1.1`, `font-weight: 800`); feature-стили не должны переопределять `.modal__header [data-modal-title]`. Для фиксированного footer Blade-компонент принимает named slot `footer`; динамический код может создать `[data-modal-footer-container]`, а существующий узел с `[data-modal-footer]` shell переносит в эту область при инициализации.
 
 Dialog центрируется внутри `visualViewport`. Его CSS-переменные обновляются при resize/scroll visual viewport, поэтому zoom, экранная клавиатура и Telegram safe-area не возвращают расчёт к document viewport.
 
