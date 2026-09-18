@@ -22,6 +22,9 @@ services:
     environment:
       MAIL_HOST: mailpit
 
+  gotenberg:
+    container_name: mskbabrandnew-gotenberg
+
   db:
     container_name: mskbabrandnew-db
     ports:
