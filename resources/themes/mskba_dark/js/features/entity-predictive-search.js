@@ -106,9 +106,14 @@ function initEntityPredictiveSearch(root) {
         input.focus();
     });
     root.closest('form')?.addEventListener('submit', (event) => {
-        if (!required || value.value) return;
+        if (value.value || (!required && input.value.trim() === '')) return;
         event.preventDefault();
-        showMessage('Сначала выберите вариант из списка.', true);
+        showMessage(
+            required
+                ? 'Сначала выберите вариант из списка.'
+                : 'Выберите вариант из списка или очистите поле.',
+            true,
+        );
         input.focus();
     });
 }
