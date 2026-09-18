@@ -994,6 +994,11 @@
     min-width: 0;
 }
 
+.admin-acquisition-field > [data-entity-predictive-search] {
+    display: grid;
+    gap: 8px;
+}
+
 .admin-acquisition-field > .form-label,
 .admin-acquisition-field [data-entity-predictive-search] > .form-label {
     margin: 0;
