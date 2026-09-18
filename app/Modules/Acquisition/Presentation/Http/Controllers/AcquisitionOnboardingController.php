@@ -23,6 +23,14 @@ final class AcquisitionOnboardingController extends Controller
         ?string $campaignCode = null,
     ): Response {
         $campaign = $this->campaign($campaignCode);
+
+        if ($campaign !== null && ! $campaign->isAvailable()) {
+            return ThemeResolver::page('onboarding.campaign-state', [
+                'campaign' => $campaign,
+                'campaignState' => $campaign->state(),
+            ]);
+        }
+
         $currentVisit = $tracker->currentVisit($request);
         $resumeCurrentVisit = $request->user() !== null
             && $request->boolean('resume')
@@ -157,7 +165,7 @@ final class AcquisitionOnboardingController extends Controller
             ->where('public_code', trim($campaignCode))
             ->first();
 
-        abort_if($campaign === null || ! $campaign->isAvailable(), 404);
+        abort_if($campaign === null, 404);
 
         return $campaign;
     }
