@@ -19,6 +19,10 @@
     'metaDescription' => 'Статус промо-кампании MSKBA.',
 ])
 
+@section('styles')
+    <link rel="stylesheet" href="{{ asset('css/acquisition-onboarding.css') }}">
+@endsection
+
 @section('content')
     <section class="acquisition-campaign-state">
         <div class="inner acquisition-campaign-state__inner">
