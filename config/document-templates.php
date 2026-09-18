@@ -25,6 +25,10 @@ return [
             'driver' => 'blade',
             'view' => 'theme::documents.acquisition-flyer-a4',
             'channels' => ['flyer'],
+            'assets' => [
+                'logo' => 'images/logo-header-cropped.png',
+                'hero_image' => 'images/acquisition/flyer-basketball-fire.png',
+            ],
         ],
     ],
 ];
