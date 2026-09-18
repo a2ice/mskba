@@ -4,6 +4,7 @@ namespace App\Modules\Vk\Infrastructure\Providers;
 
 use App\Modules\Vk\Presentation\Http\Controllers\StartVkAuthenticationController;
 use App\Modules\Vk\Presentation\Http\Controllers\VkCallbackController;
+use App\Modules\Vk\Presentation\Http\Controllers\VkRegistrationConsentController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -14,6 +15,12 @@ final class VkServiceProvider extends ServiceProvider
         Route::middleware(['web', 'throttle:10,1'])->group(function (): void {
             Route::get('/auth/vk', StartVkAuthenticationController::class)->name('auth.vk.start');
             Route::get('/auth/vk/callback', VkCallbackController::class)->name('auth.vk.callback');
+            Route::get('/auth/vk/consent', [VkRegistrationConsentController::class, 'show'])
+                ->middleware('guest')
+                ->name('auth.vk.consent');
+            Route::post('/auth/vk/consent', [VkRegistrationConsentController::class, 'store'])
+                ->middleware('guest')
+                ->name('auth.vk.consent.store');
         });
 
         Route::middleware(['web', 'auth'])->prefix('account')->group(function (): void {

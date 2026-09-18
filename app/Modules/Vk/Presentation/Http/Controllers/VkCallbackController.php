@@ -9,6 +9,7 @@ use App\Modules\Vk\Application\Services\VkOAuthFlowStore;
 use App\Modules\Vk\Application\UseCases\CompleteVkAuthenticationHandler;
 use App\Modules\Vk\Application\UseCases\LinkVkIdentityHandler;
 use App\Modules\Vk\Application\UseCases\ResolveVkUserHandler;
+use App\Modules\Vk\Domain\Models\VkAccount;
 use App\Modules\Vk\Infrastructure\Services\VkIdClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,25 @@ final class VkCallbackController extends Controller
                             ? 'VK ID подтверждён и привязан к аккаунту.'
                             : 'VK ID подтверждён. Право на создание включено — можно продолжить.',
                     );
+            }
+
+            if (! VkAccount::query()->where('vk_user_id', $identity->id)->exists()) {
+                $request->session()->put('vk.pending_registration', [
+                    'identity' => [
+                        'id' => $identity->id,
+                        'first_name' => $identity->firstName,
+                        'last_name' => $identity->lastName,
+                        'avatar_url' => $identity->avatarUrl,
+                        'raw_data' => $identity->rawData,
+                        'gender' => $identity->gender,
+                        'birth_date' => $identity->birthDate,
+                    ],
+                    'redirect_url' => $flow['redirect_url'],
+                    'expires_at' => now()->addMinutes(10)->timestamp,
+                ]);
+                $redirects->forgetIntended($request);
+
+                return redirect()->route('auth.vk.consent');
             }
 
             $result = $resolveUser->handle($identity);

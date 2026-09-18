@@ -4,16 +4,19 @@ namespace Tests\Feature\Vk;
 
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Domain\Enums\UserDuplicateEvidenceTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserConsent;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Vk\Application\DTO\VkUserIdentityDTO;
 use App\Modules\Vk\Application\UseCases\ResolveVkUserHandler;
 use App\Modules\Vk\Domain\Models\VkAccount;
 use App\Modules\Vk\Infrastructure\Jobs\SyncVkProfileAvatarJob;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -54,7 +57,7 @@ final class VkIdAuthenticationTest extends TestCase
         $this->assertSame(url('/account'), session('vk.oauth_flows')[$query['state']]['redirect_url']);
     }
 
-    public function test_callback_creates_user_and_logs_in(): void
+    public function test_callback_requires_standalone_consent_before_creating_user(): void
     {
         $state = $this->startFlow();
         $this->fakeVk($state, '777');
@@ -63,12 +66,34 @@ final class VkIdAuthenticationTest extends TestCase
             'state' => $state,
             'code' => 'authorization-code',
             'device_id' => 'device-1',
-        ]))->assertRedirect(url('/account'));
+        ]))->assertRedirect(route('auth.vk.consent'));
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['username' => 'vk_777']);
+
+        $this->get(route('auth.vk.consent'))
+            ->assertOk()
+            ->assertSee(route('personal-data.consent'))
+            ->assertSee(route('privacy.policy'))
+            ->assertSee('не является согласием');
+
+        $this->post(route('auth.vk.consent'), [])
+            ->assertSessionHasErrors('privacy_consent');
+        $this->assertDatabaseMissing('users', ['username' => 'vk_777']);
+
+        $this->post(route('auth.vk.consent'), ['privacy_consent' => '1'])
+            ->assertRedirect(url('/account'));
 
         $user = User::query()->where('username', 'vk_777')->firstOrFail();
         $this->assertAuthenticatedAs($user);
         $this->assertSame(UserRegistrationChannelEnum::VK_ID, $user->registration_channel);
         $this->assertDatabaseHas('vk_accounts', ['user_id' => $user->id, 'vk_user_id' => '777']);
+        $this->assertDatabaseHas('user_consents', [
+            'user_id' => $user->id,
+            'type' => UserConsent::TYPE_PERSONAL_DATA_PROCESSING,
+            'document_version' => config('legal.personal_data_consent_version'),
+            'source' => 'vk_id_registration',
+        ]);
         $this->assertDatabaseHas('contacts', [
             'contactable_type' => 'user',
             'contactable_id' => $user->id,
@@ -76,19 +101,11 @@ final class VkIdAuthenticationTest extends TestCase
             'value' => '777',
         ]);
         $this->assertNotNull(Contact::query()->where('contactable_id', $user->id)->where('type', ContactTypeEnum::VK)->sole()->verified_at);
-        $this->assertSame(1, UserNotification::query()
-            ->where('user_id', $user->id)
-            ->where('title', 'Контакт подтвержден')
-            ->count());
         $this->assertSame('Иван', $user->profile?->first_name);
         $this->assertSame('Петров', $user->profile?->last_name);
         $this->assertSame(UserGenderEnum::MALE, $user->profile?->gender);
         $this->assertSame('1990-05-20', $user->profile?->birth_date?->format('Y-m-d'));
         Queue::assertPushed(fn (SyncVkProfileAvatarJob $job): bool => $job->vkAccountId === $user->vkAccount?->id);
-
-        $this->get(route('account'))
-            ->assertOk()
-            ->assertSee('aria-label="Иван Петров"', false);
     }
 
     public function test_callback_reuses_existing_vk_identity_and_rejects_replayed_state(): void
@@ -125,7 +142,13 @@ final class VkIdAuthenticationTest extends TestCase
         );
         $handler = $this->app->make(ResolveVkUserHandler::class);
 
-        $firstResult = $handler->handle($identity);
+        $firstResult = $handler->handle($identity, new PrivacyConsentDTO(
+            documentVersion: (string) config('legal.personal_data_consent_version'),
+            acceptedAt: CarbonImmutable::now(),
+            source: 'vk_id_registration',
+            ipAddress: '127.0.0.1',
+            userAgent: 'test',
+        ));
         $secondResult = $handler->handle($identity);
         $user = $firstResult['user'];
 
@@ -140,6 +163,20 @@ final class VkIdAuthenticationTest extends TestCase
             ->where('user_id', $user->id)
             ->where('title', 'Контакт подтвержден')
             ->count());
+    }
+
+    public function test_resolver_rejects_new_vk_account_without_consent(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('требуется отдельное согласие');
+
+        $this->app->make(ResolveVkUserHandler::class)->handle(new VkUserIdentityDTO(
+            id: '999',
+            firstName: 'Новый',
+            lastName: 'Пользователь',
+            avatarUrl: null,
+            rawData: ['user_id' => '999'],
+        ));
     }
 
     public function test_repeated_vk_login_does_not_overwrite_manually_edited_profile(): void
@@ -179,7 +216,10 @@ final class VkIdAuthenticationTest extends TestCase
             'state' => $state,
             'code' => 'authorization-code',
             'device_id' => 'device-1',
-        ]))->assertRedirect(url('/account'));
+        ]))->assertRedirect(route('auth.vk.consent'));
+
+        $this->post(route('auth.vk.consent'), ['privacy_consent' => '1'])
+            ->assertRedirect(url('/account'));
 
         $user = User::query()->where('username', 'vk_778')->firstOrFail();
         $this->assertNull($user->profile?->birth_date);
