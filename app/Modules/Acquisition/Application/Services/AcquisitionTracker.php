@@ -6,8 +6,8 @@ use App\Modules\Acquisition\Domain\Enums\AcquisitionChannelEnum;
 use App\Modules\Acquisition\Domain\Enums\AcquisitionPersonaEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
+use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 final class AcquisitionTracker
 {
@@ -84,17 +84,30 @@ final class AcquisitionTracker
 
     public function attachCurrentUser(Request $request, ?AcquisitionVisit $visit = null): ?AcquisitionVisit
     {
-        $authenticatedUser = $request->user() ?? Auth::user();
-        $user = $authenticatedUser?->canonical();
-        $visit ??= $this->currentVisit($request);
+        $user = $request->user();
 
-        if ($user === null || $visit === null) {
-            return $visit;
+        if (! $user instanceof User) {
+            return $visit ?? $this->currentVisit($request);
         }
 
-        if ((int) $visit->user_id !== (int) $user->id) {
+        return $this->attachUser($request, $user, $visit);
+    }
+
+    public function attachUser(
+        Request $request,
+        User $user,
+        ?AcquisitionVisit $visit = null,
+    ): ?AcquisitionVisit {
+        $canonical = $user->canonical();
+        $visit ??= $this->currentVisit($request);
+
+        if ($visit === null) {
+            return null;
+        }
+
+        if ((int) $visit->user_id !== (int) $canonical->id) {
             $visit->forceFill([
-                'user_id' => $user->id,
+                'user_id' => $canonical->id,
                 'linked_at' => now(),
             ])->save();
         }
