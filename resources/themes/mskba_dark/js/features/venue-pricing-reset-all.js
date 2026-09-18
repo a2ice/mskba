@@ -18,9 +18,9 @@ function setupVenuePricingResetAll() {
         const tooltip = 'Сбрасывает индивидуальные цены всех слотов этого интервала. После сохранения будет использоваться базовая стоимость из условий аренды.';
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'account-venue-price-dialog__reset-all ui-tooltip-source ui-tooltip-source--title';
+        button.className = 'account-venue-price-dialog__reset-all';
         button.dataset.venuePriceResetAll = '';
-        button.dataset.tooltip = tooltip;
+        button.title = tooltip;
         button.setAttribute('aria-label', `Сбросить у всех. ${tooltip}`);
         button.textContent = 'Сбросить у всех';
 
