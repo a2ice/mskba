@@ -7,6 +7,7 @@ use App\Modules\Acquisition\Domain\Enums\AcquisitionPersonaEnum;
 use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 final class AcquisitionTracker
 {
@@ -83,7 +84,8 @@ final class AcquisitionTracker
 
     public function attachCurrentUser(Request $request, ?AcquisitionVisit $visit = null): ?AcquisitionVisit
     {
-        $user = $request->user()?->canonical();
+        $authenticatedUser = $request->user() ?? Auth::user();
+        $user = $authenticatedUser?->canonical();
         $visit ??= $this->currentVisit($request);
 
         if ($user === null || $visit === null) {
