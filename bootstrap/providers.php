@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Acquisition\Infrastructure\Providers\AcquisitionServiceProvider;
 use App\Modules\Contact\Infrastructure\Providers\ContactServiceProvider;
 use App\Modules\Coordination\Infrastructure\Providers\CoordinationInterfaceServiceProvider;
 use App\Modules\Event\Infrastructure\Providers\EventLifecycleServiceProvider;
@@ -20,6 +21,7 @@ use App\Providers\AppServiceProvider;
 
 return [
     AppServiceProvider::class,
+    AcquisitionServiceProvider::class,
     AccessServiceProvider::class,
     ContactServiceProvider::class,
     CoordinationInterfaceServiceProvider::class,
