@@ -3,7 +3,7 @@
 > **Статус документа:** внутренний рабочий реестр юридического соответствия проекта MSKBA.  
 > **Юрисдикция:** Российская Федерация.  
 > **Последняя проверка:** 2026-09-18.  
-> **Проверенный `main`:** `158755d2caa396b8cc8c5b18e162413a5abd10f4`.  
+> **Проверенный `main`:** `9158133fe2428a4d29ae64ab8daf4ff5262dd63d`.  
 > **Source of truth:** этот файл является главным индексом текущего юридического статуса проекта. Публичные тексты (`/privacy`, будущие `/terms`, согласия и т. п.) не заменяют этот реестр.
 
 ## 0. Обязательный протокол работы с юридическим контуром
@@ -96,10 +96,10 @@
 
   **Evidence:** `app/Modules/Identity/Domain/Models/UserConsent.php`, `app/Modules/Identity/Application/UseCases/RegisterUserHandler.php`, `app/Modules/Tournament/Application/Services/TournamentOnSiteRegistrationService.php`, `app/Modules/Identity/Presentation/Http/Controllers/AuthController.php`, `app/Modules/Tournament/Presentation/Http/Controllers/TournamentOnSiteRegistrationController.php`, `config/legal.php`, `tests/Feature/Auth/RegisterTest.php`. CI run #285 passed on PR #222.
 
-- [ ] **LEGAL-009 — Правовое основание / отдельное согласие при первом входе через VK ID.**  
-  Текущий `ResolveVkUserHandler` может создать пользователя, сохранить VK ID, имя, фамилию, avatar URL/raw data и синхронизировать профиль без отдельного MSKBA-экрана согласия. Нужно определить правовое основание для каждого действия; если используется согласие — получить его отдельно до/при создании аккаунта и сохранить доказательство.
+- [x] **LEGAL-009 — Правовое основание / отдельное согласие при первом входе через VK ID.**  
+  Для существующего VK ID вход остаётся обычной аутентификацией. Если VK ID ещё не связан с MSKBA, callback не создаёт `User`/`VkAccount` и не синхронизирует профиль: полученная от VK identity временно хранится в серверной session не более 10 минут только для завершения инициированного пользователем authentication flow. Пользователь перенаправляется на отдельный экран MSKBA; новый аккаунт создаётся только после отдельного `privacy_consent=accepted`. `ResolveVkUserHandler` дополнительно запрещает создание нового VK-аккаунта без `PrivacyConsentDTO`, поэтому UI нельзя обойти прямым вызовом handler. Evidence согласия создаётся в той же DB-транзакции, что и новый аккаунт.
 
-  **Evidence:** `app/Modules/Vk/Application/UseCases/ResolveVkUserHandler.php`.
+  **Evidence:** `app/Modules/Vk/Presentation/Http/Controllers/VkCallbackController.php`, `app/Modules/Vk/Presentation/Http/Controllers/VkRegistrationConsentController.php`, `app/Modules/Vk/Application/UseCases/ResolveVkUserHandler.php`, `app/Modules/Vk/Infrastructure/Providers/VkServiceProvider.php`, `resources/themes/mskba_dark/views/pages/auth/vk-consent.blade.php`, `tests/Feature/Vk/VkIdAuthenticationTest.php`, `tests/Feature/Auth/AuthenticationIntendedRedirectTest.php`. PR #223, CI run #287.
 
 - [ ] **LEGAL-010 — Правовое основание / отдельное согласие при первом входе через Telegram.**  
   `ResolveTelegramUserHandler` и Mini App flow могут создать аккаунт и сохранить Telegram ID, username, имя, фамилию и raw data без отдельного MSKBA-экрана согласия. Требуется тот же юридический и технический контур, что и для VK.
@@ -172,10 +172,11 @@
 ### VK ID
 
 - [x] Техническая OAuth-авторизация реализована.
-- [x] При первом входе может создаваться аккаунт MSKBA.
-- [x] Сохраняются VK ID и данные профиля.
-- [ ] Отдельное MSKBA-согласие на обработку ПД при первом создании аккаунта — не обнаружено.
-- [ ] Доказательство такого согласия в `user_consents` — не обнаружено.
+- [x] Существующий VK ID авторизуется без повторного создания аккаунта.
+- [x] Новый VK ID сначала попадает в короткоживущий pending-registration flow; постоянный аккаунт до consent не создаётся.
+- [x] Для первого создания аккаунта требуется отдельный MSKBA-consent с backend validation.
+- [x] Доказательство сохраняется в `user_consents` как `personal_data_processing` с версией, временем, source=`vk_id_registration`, IP и user-agent.
+- [x] Прямое создание через `ResolveVkUserHandler` без consent блокируется.
 
 ### Telegram
 
@@ -218,7 +219,7 @@
 1. **LEGAL-001 / 002:** определить владельца сайта и оператора ПД.
 2. **LEGAL-003 / 004 / 005:** внешне проверить Роскомнадзор, трансграничную передачу и инфраструктурную локализацию.
 3. **LEGAL-007 / 008 — закрыто 2026-09-18:** самостоятельное согласие, отдельный тип/версия `user_consents`, UI/backend/tests подтверждены PR #222 и CI run #285.
-4. **LEGAL-009 / 010:** исправить first-time VK/Telegram onboarding, чтобы выбранное правовое основание и согласие (если оно используется) были явными и доказуемыми.
+4. **LEGAL-009 — закрыто 2026-09-18; LEGAL-010 — в очереди:** VK first-time onboarding закрыт PR #223 / CI #287; для Telegram необходимо покрыть Web Login, Mini App и bot/callback flows, а не только web-widget.
 5. **LEGAL-011:** инвентаризировать публичные поля и внедрить отдельное согласие на распространение ПД.
 6. **LEGAL-012 / 013 / 014 / 020:** подготовить User Agreement, UGC/photo rules и распределение ролей в бронированиях.
 7. **LEGAL-015 / 016:** провести отдельный audit cookie / Yandex Metrika / browser fingerprint.
@@ -317,7 +318,18 @@
 - LEGAL-007 закрыт: опубликован отдельный versioned consent document, checkbox отделён от Privacy Policy во всех проверенных account-creation UI, backend validation сохранена.
 - LEGAL-008 закрыт: новые доказательства сохраняются как `personal_data_processing` с отдельной версией, timestamp/source/IP/user-agent; обычная и tournament on-site регистрация покрыты тестами.
 - PR #222 влит в `main` коммитом `158755d2caa396b8cc8c5b18e162413a5abd10f4`; CI run #285 полностью прошёл (PHP tests + frontend build + production compose validation).
-- Следующий исполнимый пункт очереди: LEGAL-009 / LEGAL-010 (first-time VK/Telegram onboarding и доказуемое правовое основание).
+- Следующий исполнимый пункт очереди после этого изменения был LEGAL-009 / LEGAL-010 (first-time social onboarding).
+
+### 2026-09-18 — LEGAL-009: first-time VK ID consent
+
+- Новый VK ID больше не создаёт постоянный аккаунт непосредственно в OAuth callback.
+- До согласия identity находится только в server-side pending session с TTL 10 минут; затем пользователь видит отдельный consent screen.
+- POST consent защищён обычной web/CSRF-моделью и требует `privacy_consent=accepted`.
+- `ResolveVkUserHandler` требует `PrivacyConsentDTO` именно при создании новой связи и атомарно пишет `user_consents`.
+- Existing VK accounts продолжают входить без повторного согласия.
+- Проверены intended redirects и отсутствие создания пользователя при непринятом consent.
+- PR #223 влит в `main` коммитом `9158133fe2428a4d29ae64ab8daf4ff5262dd63d`; CI run #287 полностью прошёл.
+- LEGAL-010 оставлен открытым: Telegram создаёт пользователей не только через Web Login, но также через Mini App и bot/callback handlers, поэтому частичный web-only fix нельзя считать закрытием.
 
 ### 2026-09-11 — создание юридического контура
 
