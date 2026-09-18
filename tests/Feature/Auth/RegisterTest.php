@@ -32,8 +32,8 @@ class RegisterTest extends TestCase
 
         $this->assertDatabaseHas('user_consents', [
             'user_id' => $user->id,
-            'type' => UserConsent::TYPE_PRIVACY_POLICY,
-            'document_version' => config('legal.privacy_policy_version'),
+            'type' => UserConsent::TYPE_PERSONAL_DATA_PROCESSING,
+            'document_version' => config('legal.personal_data_consent_version'),
             'source' => 'site_registration',
         ]);
     }
@@ -120,17 +120,17 @@ class RegisterTest extends TestCase
             ->assertJsonPath('redirect_url', route('account'));
     }
 
-    public function test_registration_requires_privacy_consent(): void
+    public function test_registration_requires_personal_data_consent(): void
     {
         $response = $this->post(route('auth.register'), $this->registrationPayload([
-            'username' => 'without_privacy_consent',
+            'username' => 'without_personal_data_consent',
             'privacy_consent' => null,
         ]));
 
         $response->assertSessionHasErrors('privacy_consent');
 
         $this->assertDatabaseMissing('users', [
-            'username' => 'without_privacy_consent',
+            'username' => 'without_personal_data_consent',
         ]);
     }
 
