@@ -12,6 +12,21 @@ enum AcquisitionChannelEnum: string
     case DIRECT = 'direct';
     case OTHER = 'other';
 
+    public function supportsPhysicalContext(): bool
+    {
+        return in_array($this, [self::QR, self::PARTNER, self::OTHER], true);
+    }
+
+    public function supportsLocationVerification(): bool
+    {
+        return $this === self::QR;
+    }
+
+    public function supportsPrintableMaterials(): bool
+    {
+        return $this === self::QR;
+    }
+
     public function label(): string
     {
         return match ($this) {
