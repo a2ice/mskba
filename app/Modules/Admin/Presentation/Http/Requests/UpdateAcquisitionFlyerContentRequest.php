@@ -23,7 +23,7 @@ final class UpdateAcquisitionFlyerContentRequest extends FormRequest
         $definitions = app(AcquisitionFlyerContentManager::class)->fieldDefinitions($campaign);
 
         $rules = [
-            'content' => ['required_unless:reset,1', 'array'],
+            'content' => [$this->boolean('reset') ? 'nullable' : 'required', 'array'],
             'reset' => ['nullable', 'boolean'],
         ];
 
