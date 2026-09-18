@@ -104,12 +104,9 @@ body.main .home-status-action > i.ti-plus {
     gap: 16px;
 }
 
-.home-flow-modal .modal_title,
-.home-flow-modal__dialog > .modal__header .modal_title {
+.home-flow-modal .modal_title {
     max-width: 520px;
     margin-bottom: 2px;
-    font-size: clamp(30px, 3.4vw, 40px);
-    line-height: 1.04;
 }
 
 .home-flow-modal__tabs {
