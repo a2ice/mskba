@@ -103,6 +103,69 @@ final class AdminAcquisitionCampaignTest extends TestCase
         $this->assertSame(1, $stats['personas']['coach']);
     }
 
+    public function test_switching_to_online_channel_clears_physical_context(): void
+    {
+        $admin = $this->admin();
+        $venue = Venue::factory()->create([
+            'created_by_actor_id' => app(CurrentActorResolver::class)->resolve($admin, null)->id,
+        ]);
+        $campaign = AcquisitionCampaign::query()->create([
+            'public_code' => 'old-qr-context',
+            'name' => 'Old QR context',
+            'channel' => AcquisitionChannelEnum::QR,
+            'landing_type' => AcquisitionLandingTypeEnum::ONBOARDING,
+            'venue_id' => $venue->id,
+            'verification_radius_m' => 250,
+            'location_verification_enabled' => true,
+            'is_active' => true,
+            'metadata' => [
+                'placement' => 'Стенд у входа',
+                'template_key' => 'acquisition.flyer.a4',
+            ],
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('admin.acquisition.update', $campaign), [
+                'name' => 'Online campaign',
+                'public_code' => 'old-qr-context',
+                'channel' => AcquisitionChannelEnum::CONTEXT_ADS->value,
+                'landing_type' => AcquisitionLandingTypeEnum::HOME->value,
+                'is_active' => '1',
+                'location_verification_enabled' => '0',
+                'notes' => 'Yandex campaign',
+            ])
+            ->assertRedirect();
+
+        $campaign->refresh();
+
+        $this->assertSame(AcquisitionChannelEnum::CONTEXT_ADS, $campaign->channel);
+        $this->assertSame(AcquisitionLandingTypeEnum::HOME, $campaign->landing_type);
+        $this->assertNull($campaign->venue_id);
+        $this->assertFalse($campaign->location_verification_enabled);
+        $this->assertNull(data_get($campaign->metadata, 'placement'));
+    }
+
+    public function test_entity_landing_requires_target(): void
+    {
+        $admin = $this->admin();
+
+        $this
+            ->actingAs($admin)
+            ->from(route('admin.acquisition.create'))
+            ->post(route('admin.acquisition.store'), [
+                'name' => 'Venue landing without venue',
+                'channel' => AcquisitionChannelEnum::SOCIAL->value,
+                'landing_type' => AcquisitionLandingTypeEnum::VENUE->value,
+                'is_active' => '1',
+                'location_verification_enabled' => '0',
+            ])
+            ->assertRedirect(route('admin.acquisition.create'))
+            ->assertSessionHasErrors('landing_target_id');
+
+        $this->assertSame(0, AcquisitionCampaign::query()->count());
+    }
+
     public function test_regular_user_cannot_access_acquisition_admin(): void
     {
         $user = User::factory()->create([
