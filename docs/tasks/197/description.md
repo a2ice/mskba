@@ -66,4 +66,6 @@ QR/листовка показываются только для QR campaign.
 - [x] channel-aware form
 - [x] form polish
 - [x] tests/docs
-- [ ] CI / merge
+- [x] CI / merge
+
+Merged to `main` as `dd8a8fcdeb9c34765dfd214752fa2baab7db4afa`.
