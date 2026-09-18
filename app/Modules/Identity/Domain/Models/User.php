@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'first_logged_in_at', 'status', 'system_role', 'registration_channel'])]
+#[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'first_logged_in_at', 'personal_data_distribution_required_at', 'personal_data_distribution_setup_completed_at', 'status', 'system_role', 'registration_channel'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -54,6 +54,8 @@ class User extends Authenticatable
             'is_temporary_password' => 'boolean',
             'password_updated_at' => 'datetime',
             'first_logged_in_at' => 'datetime',
+            'personal_data_distribution_required_at' => 'immutable_datetime',
+            'personal_data_distribution_setup_completed_at' => 'immutable_datetime',
             'registration_channel' => UserRegistrationChannelEnum::class,
             'system_role' => UserSystemRoleEnum::class,
             'status' => UserStatusEnum::class,
