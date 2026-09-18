@@ -92,11 +92,13 @@ class AuthController extends Controller
             remember: false,
         );
 
-        $redirectTo = $redirects->resolve(
+        $finalRedirectTo = $redirects->resolve(
             request: $request,
             requestedUrl: $validated['redirect_to'] ?? null,
             fallbackUrl: route('account'),
         );
+        $request->session()->put('privacy.distribution.return_to', $finalRedirectTo);
+        $redirectTo = route('account.privacy.distribution');
 
         if ($this->shouldReturnJson($request)) {
             return response()->json([
