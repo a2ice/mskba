@@ -29,7 +29,9 @@
 
 - `acquisition.flyer.a4` — A4-листовка для acquisition campaign.
 
-Контекст листовки содержит campaign, optional venue, placement, canonical join URL, QR data URI и logo data URI.
+Контекст листовки содержит campaign, optional venue, placement, canonical campaign URL, QR data URI и media asset slots. Для built-in template пути к медиа задаются в template definition (`assets.logo`, `assets.hero_image`), а Blade получает уже подготовленные data URI. Поэтому конкретный путь к картинке не зашит в разметку.
+
+Literal template keys с точками (например `acquisition.flyer.a4`) и их asset slots разрешаются через `TrustedTemplateRegistry`. Будущий DB/editor template layer должен предоставлять тот же логический набор media slots, но хранить их как управляемые media references, а не как PHP/Blade paths.
 
 ## PDF
 
