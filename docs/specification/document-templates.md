@@ -33,6 +33,11 @@
 
 Literal template keys с точками (например `acquisition.flyer.a4`) и их asset slots разрешаются через `TrustedTemplateRegistry`. Будущий DB/editor template layer должен предоставлять тот же логический набор media slots, но хранить их как управляемые media references, а не как PHP/Blade paths.
 
+
+До появления DB/editor template layer встроенный шаблон может объявлять `fields` — схему редактируемых текстовых слотов с label/type/max/default/default_source/group. Acquisition campaign хранит только отличающиеся значения в `metadata.flyer_content`; `AcquisitionFlyerContentManager` объединяет defaults и overrides и передаёт Blade готовый `templateFields`. Пустая строка является осознанным override и скрывает соответствующий текстовый элемент, а «Сбросить по умолчанию» удаляет весь campaign override.
+
+Этот механизм намеренно не является отдельным «редактором листовок»: field keys должны оставаться совместимыми с будущим универсальным шаблонизатором, чтобы flyer/email/notification templates могли использовать одинаковую модель schema + instance values.
+
 ## PDF
 
 HTML→PDF выполняется отдельным Gotenberg/Chromium service.
