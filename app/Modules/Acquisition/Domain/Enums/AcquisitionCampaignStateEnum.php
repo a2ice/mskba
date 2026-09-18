@@ -9,6 +9,16 @@ enum AcquisitionCampaignStateEnum: string
     case SCHEDULED = 'scheduled';
     case ENDED = 'ended';
 
+    public function label(): string
+    {
+        return match ($this) {
+            self::ACTIVE => 'Активна',
+            self::INACTIVE => 'Выключена',
+            self::SCHEDULED => 'Запланирована',
+            self::ENDED => 'Завершена',
+        };
+    }
+
     public function title(): string
     {
         return match ($this) {
