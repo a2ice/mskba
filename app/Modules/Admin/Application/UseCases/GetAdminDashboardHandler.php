@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Application\UseCases;
 
+use App\Modules\Acquisition\Domain\Models\AcquisitionCampaign;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Event\Domain\Models\Event;
@@ -29,6 +30,9 @@ final class GetAdminDashboardHandler
         foreach ($menuItems as &$item) {
             $item['data'] = ['count' => null];
             switch ($item['url']) {
+                case route('admin.acquisition.index'):
+                    $item['data']['count'] = AcquisitionCampaign::query()->count();
+                    break;
                 case route('admin.users'):
                     $item['data']['count'] = User::query()->count();
                     break;
