@@ -1,8 +1,8 @@
 .notification-toast-region {
     position: fixed;
     z-index: 1200;
-    top: calc(var(--site-header-height, 80px) + 1rem + env(safe-area-inset-top));
-    right: max(1rem, env(safe-area-inset-right));
+    top: calc(var(--site-header-height, 80px) + 1rem + var(--app-safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    right: max(1rem, var(--app-safe-area-inset-right, env(safe-area-inset-right, 0px)));
     display: grid;
     width: min(20rem, calc(100vw - 2rem));
     gap: .5rem;
@@ -58,13 +58,13 @@
 
 @media (max-width: 767px) {
     .notification-toast-region {
-        top: max(.75rem, env(safe-area-inset-top));
-        right: max(.75rem, env(safe-area-inset-right));
-        width: calc(100vw - 1.5rem - env(safe-area-inset-left) - env(safe-area-inset-right));
+        top: max(.75rem, var(--app-safe-area-inset-top, env(safe-area-inset-top, 0px)));
+        right: max(.75rem, var(--app-safe-area-inset-right, env(safe-area-inset-right, 0px)));
+        width: calc(100vw - 1.5rem - var(--app-safe-area-inset-left, env(safe-area-inset-left, 0px)) - var(--app-safe-area-inset-right, env(safe-area-inset-right, 0px)));
     }
 
     body.telegram-mini-app .notification-toast-region {
-        top: calc(var(--telegram-content-top, env(safe-area-inset-top, 0px)) + .75rem + 15px);
+        top: calc(var(--telegram-content-top, var(--app-safe-area-inset-top, env(safe-area-inset-top, 0px))) + .75rem + 15px);
         width: min(20rem, 75vw);
     }
 }

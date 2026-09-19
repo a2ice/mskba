@@ -35,7 +35,7 @@
     padding:
         calc(max(18px, env(safe-area-inset-top)) + 6vh)
         max(14px, env(safe-area-inset-right))
-        max(18px, env(safe-area-inset-bottom))
+        max(18px, var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))
         max(14px, env(safe-area-inset-left));
 }
 
@@ -275,7 +275,7 @@
     padding:
         calc(max(18px, env(safe-area-inset-top)) + var(--telegram-modal-top-offset))
         max(14px, env(safe-area-inset-right))
-        max(18px, env(safe-area-inset-bottom))
+        max(18px, var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))
         max(14px, env(safe-area-inset-left));
 }
 
@@ -304,7 +304,7 @@
         100dvh
         - max(18px, env(safe-area-inset-top))
         - var(--telegram-modal-top-offset)
-        - max(18px, env(safe-area-inset-bottom))
+        - max(18px, var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))
     );
     overflow-y: auto;
 }

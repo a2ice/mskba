@@ -20,7 +20,7 @@
     }
 
     .site-frame {
-        padding-bottom: calc(var(--mobile-primary-actions-height) + var(--mobile-primary-stats-height) + var(--modal-tray-height, 0px) + env(safe-area-inset-bottom));
+        padding-bottom: calc(var(--mobile-primary-actions-height) + var(--mobile-primary-stats-height) + var(--modal-tray-height, 0px) + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     }
 
     .mobile-primary-bar {
@@ -32,7 +32,7 @@
     .mobile-primary-bar__stats {
         position: fixed;
         right: 0;
-        bottom: calc(var(--mobile-primary-actions-height) + var(--modal-tray-height, 0px) + env(safe-area-inset-bottom));
+        bottom: calc(var(--mobile-primary-actions-height) + var(--modal-tray-height, 0px) + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         left: 0;
         z-index: 200;
         display: grid;
@@ -94,8 +94,8 @@
         z-index: 200;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        height: calc(var(--mobile-primary-actions-height) + env(safe-area-inset-bottom));
-        padding-bottom: env(safe-area-inset-bottom);
+        height: calc(var(--mobile-primary-actions-height) + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+        padding-bottom: var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
         border-top: 1px solid rgba(255, 255, 255, 0.14);
         background: rgba(7, 8, 8, 0.98);
         box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.36);
@@ -196,7 +196,7 @@
 
     body.nav-shown .site-header .site-nav-wrapper {
         top: 0;
-        bottom: calc(var(--mobile-primary-actions-height) + var(--mobile-primary-stats-height) + var(--modal-tray-height, 0px) + env(safe-area-inset-bottom));
+        bottom: calc(var(--mobile-primary-actions-height) + var(--mobile-primary-stats-height) + var(--modal-tray-height, 0px) + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         z-index: 90;
         display: flex;
         height: auto;

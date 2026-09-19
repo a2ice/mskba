@@ -522,7 +522,7 @@
         position: sticky;
         bottom: 0;
         z-index: 3;
-        padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+        padding: 14px 18px calc(14px + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
         background: rgba(12, 14, 12, .96);
         backdrop-filter: blur(18px);
     }

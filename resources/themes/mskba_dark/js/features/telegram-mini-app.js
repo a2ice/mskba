@@ -35,8 +35,47 @@ document.addEventListener('DOMContentLoaded', () => {
     async function initializeTelegramContext() {
         const telegram = await waitForTelegramWebApp();
 
+        bindTelegramSafeArea(telegram);
         safeTelegramCall(() => telegram?.ready());
         safeTelegramCall(() => telegram?.expand());
+
+        window.requestAnimationFrame(() => syncTelegramSafeArea(telegram));
+    }
+
+    function bindTelegramSafeArea(telegram) {
+        if (!telegram) {
+            return;
+        }
+
+        const update = () => syncTelegramSafeArea(telegram);
+
+        update();
+        safeTelegramCall(() => telegram.onEvent?.('safeAreaChanged', update));
+        safeTelegramCall(() => telegram.onEvent?.('contentSafeAreaChanged', update));
+    }
+
+    function syncTelegramSafeArea(telegram) {
+        if (!telegram) {
+            return;
+        }
+
+        writeTelegramInsetVariables('safe-area', telegram.safeAreaInset);
+        writeTelegramInsetVariables('content-safe-area', telegram.contentSafeAreaInset);
+    }
+
+    function writeTelegramInsetVariables(prefix, inset) {
+        ['top', 'right', 'bottom', 'left'].forEach((side) => {
+            const value = Number(inset?.[side]);
+
+            if (!Number.isFinite(value) || value < 0) {
+                return;
+            }
+
+            document.documentElement.style.setProperty(
+                `--telegram-${prefix}-inset-${side}`,
+                `${value}px`,
+            );
+        });
     }
 
     function waitForTelegramWebApp() {

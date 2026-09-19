@@ -162,7 +162,7 @@ body.has-game-live-screen .site-content {
     align-items: center;
     justify-content: center;
     min-height: 0;
-    padding: 0 clamp(18px, 4vw, 72px) max(24px, env(safe-area-inset-bottom));
+    padding: 0 clamp(18px, 4vw, 72px) max(24px, var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     text-align: center;
 }
 
@@ -408,7 +408,7 @@ body.has-game-live-screen .site-content {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 28px;
     min-height: 0;
-    padding: 24px clamp(20px, 4vw, 42px) max(28px, env(safe-area-inset-bottom));
+    padding: 24px clamp(20px, 4vw, 42px) max(28px, var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     overflow: auto;
 }
 
@@ -605,7 +605,7 @@ body.has-game-live-screen .site-content {
             var(--mobile-primary-actions-height, 68px)
             + var(--mobile-primary-stats-height, 38px)
             + var(--mobile-primary-bar-inset, 4px)
-            + env(safe-area-inset-bottom)
+            + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
         );
     }
 

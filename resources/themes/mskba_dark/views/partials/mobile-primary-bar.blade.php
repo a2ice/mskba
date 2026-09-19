@@ -81,7 +81,7 @@
             + var(--mobile-primary-stats-height)
             + var(--mobile-primary-bar-inset)
             + var(--modal-tray-height, 0px)
-            + env(safe-area-inset-bottom)
+            + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
         );
     }
 
@@ -91,7 +91,7 @@
             var(--mobile-primary-actions-height)
             + var(--mobile-primary-bar-inset)
             + var(--modal-tray-height, 0px)
-            + env(safe-area-inset-bottom)
+            + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
         );
         left: 50%;
         width: calc(100% - (var(--mobile-primary-bar-inset) * 2));
@@ -123,8 +123,8 @@
         width: calc(100% - (var(--mobile-primary-bar-inset) * 2));
         max-width: var(--mobile-primary-bar-max-width);
         grid-template-columns: repeat(5, minmax(0, 1fr));
-        height: calc(var(--mobile-primary-actions-height) + env(safe-area-inset-bottom));
-        padding: 0 3px env(safe-area-inset-bottom);
+        height: calc(var(--mobile-primary-actions-height) + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+        padding: 0 3px var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
         border: 1px solid rgba(255, 255, 255, 0.11);
         border-radius: 0 0 24px 24px;
         background: rgba(7, 8, 8, 0.96);
@@ -201,7 +201,7 @@
             + var(--mobile-primary-stats-height)
             + var(--mobile-primary-bar-inset)
             + var(--modal-tray-height, 0px)
-            + env(safe-area-inset-bottom)
+            + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
         );
     }
 }
