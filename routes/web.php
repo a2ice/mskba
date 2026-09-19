@@ -28,6 +28,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarCont
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteOwnAccountController;
+use App\Modules\Identity\Presentation\Http\Controllers\ParticipantCatalogController;
 use App\Modules\Identity\Presentation\Http\Controllers\PersonalDataDistributionConsentController;
 use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
@@ -117,6 +118,18 @@ Route::prefix('news')->group(function () {
     Route::get('/{contentItem:alias}', [NewsController::class, 'show'])
         ->name('news.show');
 });
+
+Route::get('/participants', ParticipantCatalogController::class)
+    ->name('participants.index')
+    ->defaults('breadcrumb', 'Участники');
+Route::get('/players', ParticipantCatalogController::class)
+    ->defaults('participant_role', 'player')
+    ->name('participants.players')
+    ->defaults('breadcrumb', 'Игроки');
+Route::get('/coaches', ParticipantCatalogController::class)
+    ->defaults('participant_role', 'coach')
+    ->name('participants.coaches')
+    ->defaults('breadcrumb', 'Тренеры');
 
 Route::prefix('sections')->group(function () {
     Route::get('/', [SportsSectionController::class, 'index'])->name('sports-sections.index')->defaults('breadcrumb', 'Секции');
