@@ -132,7 +132,7 @@ final class ParticipantCatalogTest extends TestCase
             ->assertSee('Мой профиль')
             ->assertSeeInOrder(['Яков Последний', 'Алексей Первый']);
 
-        $this->assertSame(1, substr_count($response->getContent(), 'Мой профиль'));
+        $this->assertSame(2, substr_count($response->getContent(), 'participant-category-item__own-badge'));
         $this->assertNotNull($other);
     }
 
