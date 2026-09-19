@@ -44,6 +44,79 @@ final class PublicUserProfileService
             && $this->privacy->allows($subject, $viewer, Privacy::PLAYER_SECTIONS);
     }
 
+    /**
+     * Public catalog projection for participant listings.
+     *
+     * @return array{name: string, nickname: ?string, avatar_url: ?string, avatar_restricted: bool, url: string, roles: array<int, array{value: string, label: string}>}|null
+     */
+    public function catalogEntry(
+        User $subject,
+        ?User $viewer,
+        ?UserParticipationRoleEnum $requiredRole = null,
+    ): ?array {
+        $subject = $subject->canonical();
+
+        if (
+            ! $subject->isConfirmed()
+            || $subject->isBlocked()
+            || $subject->trashed()
+            || ! $this->privacy->allows($subject, $viewer, Privacy::DISCOVERABILITY)
+        ) {
+            return null;
+        }
+
+        $sections = $this->sections($subject);
+        $publicCoach = $sections->isNotEmpty()
+            && $this->privacy->allowsDistribution($subject, Privacy::PROFILE)
+            && $this->privacy->allowsDistribution($subject, Privacy::ROLE_COACH)
+            && $this->privacy->allowsDistribution($subject, Privacy::COACH_SECTIONS);
+        $profileAllowed = $this->privacy->allows($subject, $viewer, Privacy::PROFILE);
+
+        $roles = collect(UserParticipationRoleEnum::cases())
+            ->filter(function (UserParticipationRoleEnum $role) use ($subject, $viewer, $publicCoach, $profileAllowed): bool {
+                if (! $subject->hasActiveRole($role->value)) {
+                    return false;
+                }
+
+                if ($role === UserParticipationRoleEnum::COACH && $publicCoach) {
+                    return true;
+                }
+
+                return $profileAllowed
+                    && $this->privacy->allows($subject, $viewer, Privacy::from('role_'.$role->value));
+            });
+
+        if ($requiredRole !== null) {
+            $roles = $roles->filter(fn (UserParticipationRoleEnum $role): bool => $role === $requiredRole);
+        }
+
+        if ($roles->isEmpty()) {
+            return null;
+        }
+
+        $subject->loadMissing(['profile.activeAvatar', 'telegramAccount', 'vkAccount']);
+        $avatarAllowed = $this->privacy->allows($subject, $viewer, Privacy::AVATAR);
+        $name = trim(($subject->profile?->first_name ?? '').' '.($subject->profile?->last_name ?? ''))
+            ?: ($subject->nickname ?: $subject->username ?: 'Пользователь');
+
+        return [
+            'name' => $name,
+            'nickname' => $profileAllowed && $subject->nickname ? $subject->nickname : null,
+            'avatar_url' => $avatarAllowed
+                ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url)
+                : null,
+            'avatar_restricted' => ! $avatarAllowed,
+            'url' => $this->url($subject, $requiredRole?->value),
+            'roles' => $roles
+                ->map(fn (UserParticipationRoleEnum $role): array => [
+                    'value' => $role->value,
+                    'label' => $role->label(),
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
     public function sections(User $user): Collection
     {
         $user = $user->canonical();
