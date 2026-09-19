@@ -132,5 +132,17 @@
                 </div>
             @endif
         @endif
+
+        <hr class="my-4">
+
+        <form
+            method="POST"
+            action="{{ route('account.destroy') }}"
+            onsubmit="return confirm('вы уверены что хотите удалить аккаунт')"
+        >
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn--danger btn--sm">Удалить аккаунт</button>
+        </form>
     @endif
 @endsection
