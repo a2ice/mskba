@@ -20,7 +20,7 @@ final class UpdatePersonalDataDistributionConsentRequest extends FormRequest
             'action' => ['required', Rule::in(['save', 'private'])],
             'public' => ['nullable', 'array'],
             'public.*' => ['nullable'],
-            'distribution_consent' => ['nullable', 'accepted'],
+            'distribution_consent' => ['exclude_if:action,private', 'nullable', 'accepted'],
         ];
     }
 
