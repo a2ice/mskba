@@ -70,6 +70,17 @@
     background: rgba(255, 116, 39, .1);
 }
 
+.participant-category-item__participant-badge {
+    color: var(--muted);
+    background: rgba(255, 255, 255, .04);
+}
+
+.participant-category-item__details--disabled {
+    cursor: default;
+    opacity: .62;
+    pointer-events: none;
+}
+
 .participant-category-item__title {
     margin: 0;
     font-size: 20px;
