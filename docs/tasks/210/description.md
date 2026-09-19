@@ -26,4 +26,8 @@
 
 ## Результат
 
-Заполняется после реализации и проверки.
+Введён единый набор `--app-safe-area-inset-*`: в обычном браузере он использует CSS `env(...)`, а в Telegram объединяет browser safe-area, штатные `--tg-*` переменные и значения WebApp SDK. `telegram-mini-app.js` считывает `safeAreaInset` / `contentSafeAreaInset` после загрузки SDK и пересинхронизирует их по Telegram safe-area events.
+
+Toast привязан к Telegram content-safe top. Общий mobile primary bar, stats, резерв контента, мобильное меню и связанные нижние fixed-компоненты переведены на общий bottom safe inset; это оставляет кликабельную область выше Android navigation bar и iOS gesture area. Старый минимальный Telegram top fallback сохранён для совместимости.
+
+Релевантная автоматическая проверка выполняется PR CI: backend suite и production frontend build являются gate перед merge в `main`.
