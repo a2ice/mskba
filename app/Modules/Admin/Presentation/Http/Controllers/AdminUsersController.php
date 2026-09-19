@@ -9,6 +9,7 @@ use App\Modules\Admin\Presentation\Http\Requests\UpdateUserBasicDetailsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserOperationalPermissionsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserStatusRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserSystemRoleRequest;
+use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\UseCases\AdminBulkChangeUserDeletionStateHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserBasicDetailsHandler;
@@ -21,6 +22,8 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Portal\Application\Services\OnlineUserPresence;
 use App\Modules\Portal\Application\Services\SiteSummaryService;
+use App\Modules\Telegram\Domain\Models\TelegramAccount;
+use App\Modules\Vk\Domain\Models\VkAccount;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,6 +67,12 @@ final class AdminUsersController extends Controller
     ): RedirectResponse {
         $updatePermissions->handle($request->user(), $user->id, $request->permissions());
 
+        if ($request->input('return_to') === 'user-edit') {
+            return redirect()
+                ->route('admin.users.edit', ['user' => $user->canonical(), 'tab' => 'roles'])
+                ->with('success', 'Операционные права пользователя обновлены.');
+        }
+
         return redirect()
             ->route('admin.users')
             ->with('success', 'Операционные права пользователя обновлены.');
@@ -90,7 +99,38 @@ final class AdminUsersController extends Controller
             'operationalPermissions',
         ]);
 
+        $identityIds = $canonical->identityIds();
+        $registrationAccounts = collect();
+        $telegramAccounts = collect();
+        $vkAccounts = collect();
+        $acquisitionVisits = collect();
         $auditLogs = collect();
+
+        if ($activeTab === 'general') {
+            $registrationAccounts = User::query()
+                ->whereIn('id', $identityIds)
+                ->orderBy('id')
+                ->get();
+
+            $telegramAccounts = TelegramAccount::query()
+                ->whereIn('user_id', $identityIds)
+                ->orderByDesc('last_auth_at')
+                ->orderByDesc('id')
+                ->get();
+
+            $vkAccounts = VkAccount::query()
+                ->whereIn('user_id', $identityIds)
+                ->orderByDesc('last_auth_at')
+                ->orderByDesc('id')
+                ->get();
+
+            $acquisitionVisits = AcquisitionVisit::query()
+                ->with('campaign')
+                ->whereIn('user_id', $identityIds)
+                ->orderBy('visited_at')
+                ->limit(5)
+                ->get();
+        }
 
         if ($activeTab === 'history') {
             $auditLogs = AuditLog::query()
@@ -106,6 +146,10 @@ final class AdminUsersController extends Controller
         return ThemeResolver::page('admin.user-edit', [
             'editedUser' => $canonical,
             'activeTab' => $activeTab,
+            'registrationAccounts' => $registrationAccounts,
+            'telegramAccounts' => $telegramAccounts,
+            'vkAccounts' => $vkAccounts,
+            'acquisitionVisits' => $acquisitionVisits,
             'auditLogs' => $auditLogs,
             'operationalPermissions' => UserOperationalPermissionEnum::cases(),
         ]);

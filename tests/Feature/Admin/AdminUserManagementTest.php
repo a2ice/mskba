@@ -5,10 +5,12 @@ namespace Tests\Feature\Admin;
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
+use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
+use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -365,6 +367,74 @@ final class AdminUserManagementTest extends TestCase
             ->assertOk()
             ->assertSee(route('admin.users.edit', $target), false)
             ->assertSee('admin-table admin-table--users', false);
+    }
+
+    public function test_superadmin_user_editor_shows_registration_metadata_from_canonical_identity(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'registration_channel' => UserRegistrationChannelEnum::SITE_FULL_REGISTRATION,
+        ]);
+        $alias = User::factory()->create([
+            'status' => UserStatusEnum::UNCONFIRMED,
+            'system_role' => UserSystemRoleEnum::USER,
+            'registration_channel' => UserRegistrationChannelEnum::TELEGRAM_MINI_APP,
+        ]);
+        $alias->forceFill(['canonical_user_id' => $target->id])->save();
+
+        TelegramAccount::query()->create([
+            'user_id' => $alias->id,
+            'telegram_user_id' => 777000,
+            'username' => 'court_player',
+            'first_name' => 'Dmitry',
+            'last_name' => 'Hooper',
+            'language_code' => 'ru',
+            'last_auth_at' => now(),
+        ]);
+
+        $this->actingAs($superadmin)
+            ->get(route('admin.users.edit', $target))
+            ->assertOk()
+            ->assertSee('Мета-информация регистрации')
+            ->assertSee('Полная регистрация')
+            ->assertSee('Telegram Mini App')
+            ->assertSee('TG ID 777000')
+            ->assertSee('@court_player')
+            ->assertSee('Dmitry Hooper');
+    }
+
+    public function test_superadmin_can_edit_operational_permissions_from_roles_tab_and_returns_to_it(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($superadmin)
+            ->get(route('admin.users.edit', ['user' => $target, 'tab' => 'roles']))
+            ->assertOk()
+            ->assertSee('Сохранить права')
+            ->assertSee(route('admin.users.operational-permissions.update', $target), false)
+            ->assertSee(UserOperationalPermissionEnum::CREATE_TEAM->value);
+
+        $this->actingAs($superadmin)
+            ->post(route('admin.users.operational-permissions.update', $target), [
+                'return_to' => 'user-edit',
+                'permissions' => [UserOperationalPermissionEnum::CREATE_TEAM->value],
+            ])
+            ->assertRedirect(route('admin.users.edit', ['user' => $target, 'tab' => 'roles']))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('user_operational_permissions', [
+            'user_id' => $target->id,
+            'permission' => UserOperationalPermissionEnum::CREATE_TEAM->value,
+            'is_allowed' => true,
+        ]);
+        $this->assertDatabaseHas('user_operational_permissions', [
+            'user_id' => $target->id,
+            'permission' => UserOperationalPermissionEnum::CREATE_COORDINATION->value,
+            'is_allowed' => false,
+        ]);
     }
 
     private function user(
