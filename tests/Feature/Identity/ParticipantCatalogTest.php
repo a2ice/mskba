@@ -121,6 +121,21 @@ final class ParticipantCatalogTest extends TestCase
         $this->assertNotNull($visible);
     }
 
+    public function test_authenticated_participant_is_first_and_marked_as_own_profile(): void
+    {
+        $other = $this->participant('player', 'Алексей', 'Первый');
+        $me = $this->participant('player', 'Яков', 'Последний');
+
+        $response = $this->actingAs($me)
+            ->get(route('participants.players'))
+            ->assertOk()
+            ->assertSee('Мой профиль')
+            ->assertSeeInOrder(['Яков Последний', 'Алексей Первый']);
+
+        $this->assertSame(1, substr_count($response->getContent(), 'Мой профиль'));
+        $this->assertNotNull($other);
+    }
+
     public function test_catalog_supports_card_and_list_modes(): void
     {
         $this->participant('player', 'Режим', 'Отображения');
