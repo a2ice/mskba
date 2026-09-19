@@ -1,5 +1,5 @@
 @php
-    $persistent = array_filter([
+    $persistent = $persistent ?? array_filter([
         'q' => filled($filters['q'] ?? null) ? $filters['q'] : null,
         'view' => request('view') === 'list' ? 'list' : null,
     ]);
