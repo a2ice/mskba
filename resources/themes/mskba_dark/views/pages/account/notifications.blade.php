@@ -86,6 +86,12 @@ $notificationPresenter = app(\App\Modules\Notification\Presentation\Presenters\U
                         <p class="mb-3">{{ $notification->body }}</p>
 
                         <div class="d-flex flex-wrap gap-2">
+                            @if($notification->action_text)
+                                <a href="{{ $notificationView['href'] }}" class="btn btn--primary btn--sm">
+                                    {{ $notification->action_text }}
+                                </a>
+                            @endif
+
                             @foreach($notificationView['actions'] as $action)
                                 <form method="POST" action="{{ $action['url'] }}">
                                     @csrf
