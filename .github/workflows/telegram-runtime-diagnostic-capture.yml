@@ -91,3 +91,5 @@ jobs:
           git add telegram-runtime-output.txt
           git commit -m "chore: refresh Telegram production runtime" || exit 0
           git push
+
+# rerun after PR 234 merge
