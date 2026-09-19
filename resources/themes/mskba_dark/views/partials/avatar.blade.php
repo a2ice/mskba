@@ -70,6 +70,7 @@
                     type="button"
                     class="avatar-upload__library js-handler"
                     title="Сохранённые аватары: {{ $avatars->count() }}"
+                    data-tooltip-skip
                     aria-label="Открыть список аватаров: {{ $avatars->count() }}"
                     data-handler="modal"
                     data-modal-action="open"
