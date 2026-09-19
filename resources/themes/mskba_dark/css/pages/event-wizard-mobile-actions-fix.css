@@ -4,7 +4,7 @@
             var(--mobile-primary-actions-height, 72px)
             + var(--mobile-primary-stats-height, 43px)
             + 92px
-            + env(safe-area-inset-bottom)
+            + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
         );
     }
 
@@ -14,7 +14,7 @@
         bottom: calc(
             var(--mobile-primary-actions-height, 72px)
             + var(--mobile-primary-stats-height, 43px)
-            + env(safe-area-inset-bottom)
+            + var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))
             + 8px
         );
         left: 8px;
