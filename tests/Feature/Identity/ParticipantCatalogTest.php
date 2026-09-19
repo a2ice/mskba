@@ -21,7 +21,7 @@ final class ParticipantCatalogTest extends TestCase
 
         $this->get(route('participants.index'))
             ->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store')
+            ->assertHeader('Cache-Control', 'no-store, private')
             ->assertSee('data-default-category', false)
             ->assertSee('participants-category-catalog', false)
             ->assertSee('Игрок Каталога')
