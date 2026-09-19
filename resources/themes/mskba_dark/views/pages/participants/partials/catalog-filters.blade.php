@@ -4,9 +4,13 @@
     $currentView = $currentView ?? 'cards';
     $searchValue = $filters['q'] ?? '';
     $action = url()->current();
+    $resetQuery = array_filter([
+        'q' => filled($searchValue) ? $searchValue : null,
+        'view' => $currentView === 'cards' ? null : $currentView,
+    ]);
     $resetUrl = $presetRole
-        ? route(request()->route()->getName())
-        : route('participants.index');
+        ? route(request()->route()->getName(), $resetQuery)
+        : route('participants.index', $resetQuery);
 @endphp
 
 <form
