@@ -119,6 +119,21 @@ final class PublicUserProfileTest extends TestCase
         app(ManageSportsSectionJoinRequestHandler::class)->submit($section, $user);
     }
 
+    public function test_own_public_profile_has_account_shortcut_only_for_owner(): void
+    {
+        $user = $this->user('player');
+
+        $this->get('/users/'.$user->username)
+            ->assertOk()
+            ->assertDontSee('Перейти в аккаунт');
+
+        $this->actingAs($user)
+            ->get('/users/'.$user->username)
+            ->assertOk()
+            ->assertSee('Перейти в аккаунт')
+            ->assertSee(route('account'), false);
+    }
+
     public function test_legacy_account_without_username_has_working_public_link(): void
     {
         $user = $this->user('coach');

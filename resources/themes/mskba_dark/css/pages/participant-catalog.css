@@ -64,6 +64,12 @@
     margin-bottom: 10px;
 }
 
+.participant-category-item__own-badge {
+    border-color: rgba(255, 116, 39, .58);
+    color: #ff9a60;
+    background: rgba(255, 116, 39, .1);
+}
+
 .participant-category-item__title {
     margin: 0;
     font-size: 20px;

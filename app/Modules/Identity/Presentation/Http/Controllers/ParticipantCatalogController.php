@@ -48,7 +48,18 @@ final class ParticipantCatalogController
                     return str_contains($haystack, $needle);
                 });
             })
-            ->sortBy(fn (array $item): string => mb_strtolower($item['name']))
+            ->map(function (array $item) use ($viewer): array {
+                $item['is_own'] = $viewer !== null && (int) $viewer->id === (int) $item['id'];
+
+                return $item;
+            })
+            ->sort(function (array $left, array $right): int {
+                if ($left['is_own'] !== $right['is_own']) {
+                    return $left['is_own'] ? -1 : 1;
+                }
+
+                return strnatcasecmp($left['name'], $right['name']);
+            })
             ->values();
 
         $page = max(1, $request->integer('page', 1));

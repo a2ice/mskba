@@ -26,7 +26,13 @@ final class PublicUserProfileController
             return redirect($profiles->url($canonical, $role), 301);
         }
 
-        return ThemeResolver::page('users.show', ['publicProfile' => $data])->header('Cache-Control', 'private, no-store');
+        $viewer = $request->user()?->canonical();
+        $isOwnProfile = $viewer !== null && (int) $viewer->id === (int) $canonical->id;
+
+        return ThemeResolver::page('users.show', [
+            'publicProfile' => $data,
+            'isOwnProfile' => $isOwnProfile,
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function preview(Request $request, string $user, PublicUserProfileService $profiles)

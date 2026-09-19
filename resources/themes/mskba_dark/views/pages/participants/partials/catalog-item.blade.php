@@ -16,6 +16,9 @@
 
     <div class="participant-category-item__body">
         <div class="participant-category-item__roles">
+            @if($item['is_own'] ?? false)
+                <span class="catalog-card__badge participant-category-item__own-badge">Мой профиль</span>
+            @endif
             @foreach($item['roles'] as $role)
                 <span class="catalog-card__badge">{{ $role['label'] }}</span>
             @endforeach
