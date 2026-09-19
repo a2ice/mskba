@@ -20,11 +20,13 @@ class RegisterTest extends TestCase
             'username' => 'optional_role_user',
         ]));
 
-        $response->assertRedirect(route('account'));
+        $response->assertRedirect(route('account.privacy.distribution'));
 
         $user = User::query()->where('username', 'optional_role_user')->firstOrFail();
 
         $this->assertAuthenticatedAs($user);
+        $this->assertNotNull($user->personal_data_distribution_required_at);
+        $this->assertNull($user->personal_data_distribution_setup_completed_at);
 
         $this->assertDatabaseMissing('user_participation_roles', [
             'user_id' => $user->id,
@@ -45,7 +47,7 @@ class RegisterTest extends TestCase
             'role' => UserParticipationRoleEnum::PLAYER->value,
         ]));
 
-        $response->assertRedirect(route('account'));
+        $response->assertRedirect(route('account.privacy.distribution'));
 
         $user = User::query()->where('username', 'player_role_user')->firstOrFail();
 
@@ -66,7 +68,7 @@ class RegisterTest extends TestCase
             'participantRole' => UserParticipationRoleEnum::COACH->value,
         ]));
 
-        $response->assertRedirect(route('account'));
+        $response->assertRedirect(route('account.privacy.distribution'));
 
         $user = User::query()->where('username', 'coach_role_user')->firstOrFail();
 
@@ -102,7 +104,8 @@ class RegisterTest extends TestCase
         $response
             ->assertCreated()
             ->assertJsonPath('status', 'success')
-            ->assertJsonPath('redirect_url', route('venues.create'));
+            ->assertJsonPath('redirect_url', route('account.privacy.distribution'));
+        $this->assertSame(route('venues.create'), session('privacy.distribution.return_to'));
         $this->assertAuthenticatedAs($user);
     }
 
@@ -117,7 +120,8 @@ class RegisterTest extends TestCase
 
         $response
             ->assertCreated()
-            ->assertJsonPath('redirect_url', route('account'));
+            ->assertJsonPath('redirect_url', route('account.privacy.distribution'));
+        $this->assertSame(route('account'), session('privacy.distribution.return_to'));
     }
 
     public function test_registration_requires_personal_data_consent(): void

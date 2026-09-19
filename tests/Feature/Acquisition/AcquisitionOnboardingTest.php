@@ -67,13 +67,27 @@ final class AcquisitionOnboardingTest extends TestCase
             'gender' => 'male',
             'privacy_consent' => '1',
             'redirect_to' => route('acquisition.success', [], false),
-        ])->assertRedirect(route('acquisition.success'));
+        ])->assertRedirect(route('account.privacy.distribution'));
 
         $this->assertAuthenticated();
+        $this->assertSame(route('acquisition.success'), session('privacy.distribution.return_to'));
 
         $user = User::query()->where('username', 'qr_player_191')->firstOrFail();
         $this->assertSame(UserRegistrationChannelEnum::SITE_FULL_REGISTRATION, $user->registration_channel);
         $this->assertTrue($user->participationRoles()->where('role', UserParticipationRoleEnum::PLAYER)->exists());
+
+        $this->put(route('account.privacy.distribution.update'), [
+            'action' => 'save',
+            'public' => [
+                'profile' => '1',
+                'avatar' => '1',
+                'role_player' => '1',
+                'player_characteristics' => '1',
+                'player_teams' => '1',
+                'player_games' => '1',
+            ],
+            'distribution_consent' => '1',
+        ])->assertRedirect(route('acquisition.success'));
 
         $this->get(route('acquisition.success'))
             ->assertOk()

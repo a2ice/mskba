@@ -69,6 +69,42 @@ enum UserPrivacySettingTypeEnum: string
         };
     }
 
+    /**
+     * Settings that may expose personal data to an unlimited circle of portal visitors.
+     *
+     * @return list<self>
+     */
+    public static function distributionTypes(): array
+    {
+        return [
+            self::CONTACTS,
+            self::PROFILE,
+            self::AVATAR,
+            self::ROLE_PLAYER,
+            self::ROLE_COACH,
+            self::ROLE_REFEREE,
+            self::ROLE_STATISTICIAN,
+            self::ROLE_MEDIA,
+            self::ROLE_VENUE_RELATED,
+            self::ROLE_ORGANIZER,
+            self::PLAYER_CHARACTERISTICS,
+            self::PLAYER_TEAMS,
+            self::PLAYER_SECTIONS,
+            self::PLAYER_GAMES,
+            self::PLAYER_TOURNAMENTS,
+            self::COACH_SECTIONS,
+            self::MEDIA_MATERIALS,
+            self::VENUE_VENUES,
+            self::REFEREE_EVENTS,
+            self::STATISTICIAN_EVENTS,
+        ];
+    }
+
+    public function requiresDistributionConsent(): bool
+    {
+        return in_array($this, self::distributionTypes(), true);
+    }
+
     public function defaultVisibility(): UserPrivacyVisibilityEnum
     {
         return match ($this) {

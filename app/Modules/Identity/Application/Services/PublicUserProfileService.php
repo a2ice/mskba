@@ -61,7 +61,10 @@ final class PublicUserProfileService
         $subject = $subject->canonical();
         abort_if($subject->isBlocked() || $subject->trashed(), 404);
         $sections = $this->sections($subject);
-        $publicCoach = $sections->isNotEmpty();
+        $publicCoach = $sections->isNotEmpty()
+            && $this->privacy->allowsDistribution($subject, Privacy::PROFILE)
+            && $this->privacy->allowsDistribution($subject, Privacy::ROLE_COACH)
+            && $this->privacy->allowsDistribution($subject, Privacy::COACH_SECTIONS);
         abort_unless($publicCoach || $this->privacy->allows($subject, $viewer, Privacy::PROFILE), 404);
         $subject->loadMissing(['profile.activeAvatar', 'telegramAccount', 'vkAccount']);
         $avatarAllowed = $this->privacy->allows($subject, $viewer, Privacy::AVATAR);

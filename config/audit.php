@@ -12,6 +12,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserDuplicate;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use App\Modules\Identity\Domain\Models\UserParticipationRole;
+use App\Modules\Identity\Domain\Models\UserPrivacySetting;
 use App\Modules\Location\Domain\Models\Address;
 use App\Modules\Location\Domain\Models\City;
 use App\Modules\Location\Domain\Models\District;
@@ -48,6 +49,7 @@ return [
         Profile::class,
         PlayerProfile::class,
         UserParticipationRole::class,
+        UserPrivacySetting::class,
         Contact::class,
         ContactVerification::class,
         Venue::class,
