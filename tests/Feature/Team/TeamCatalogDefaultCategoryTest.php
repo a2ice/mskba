@@ -33,10 +33,41 @@ final class TeamCatalogDefaultCategoryTest extends TestCase
             ->assertSee('data-default-category-results="cards"', false)
             ->assertSee('data-default-category-results="list"', false)
             ->assertSee('data-default-category-results="map"', false)
+            ->assertSee('aria-controls="teams-sidebar-pre-navigation"', false)
+            ->assertSee('id="teams-sidebar-pre-navigation"', false)
+            ->assertSee(route('participants.players'), false)
+            ->assertSee(route('participants.coaches'), false)
+            ->assertSee(route('participants.index'), false)
+            ->assertSeeInOrder([
+                'aria-controls="teams-sidebar-pre-navigation"',
+                'aria-controls="teams-sidebar-navigation"',
+                'aria-controls="teams-sidebar-filters"',
+            ], false)
             ->assertSee('Все команды')
             ->assertSee('Идёт набор')
             ->assertSee('title="Баскетбол"', false)
             ->assertSee('class="is-sport__short" aria-hidden="true">5x5', false);
+    }
+
+    public function test_participants_group_is_collapsed_while_team_group_is_open_by_default(): void
+    {
+        $response = $this->get(route('teams.index'))
+            ->assertOk();
+
+        $html = $response->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/aria-expanded="false"\\s+aria-controls="teams-sidebar-pre-navigation"/s',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="teams-sidebar-pre-navigation"[^>]*data-default-category-sidebar-content[^>]*hidden/s',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/default-category-sidebar-accordion__item is-open[^>]*>.*?aria-expanded="true"\\s+aria-controls="teams-sidebar-navigation"/s',
+            $html,
+        );
     }
 
     public function test_map_uses_only_confirmed_team_venue_relations_and_supports_multiple_points(): void
