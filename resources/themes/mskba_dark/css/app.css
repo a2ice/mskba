@@ -26,6 +26,7 @@
 @import './pages/content';
 @import './pages/sports-sections';
 @import './pages/public-user-profile';
+@import './pages/participant-catalog.css';
 @import './mobile-primary-bar';
 @import './image-upload';
 
