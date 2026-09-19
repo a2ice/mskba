@@ -72,6 +72,6 @@ final class ParticipantCatalogController
             ],
             'roleOptions' => UserParticipationRoleEnum::cases(),
             'presetRole' => $presetRole,
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 }
