@@ -1,0 +1,25 @@
+Warning: Permanently added '31.41.44.156' (ED25519) to the list of known hosts.
+=== captured_at ===
+2026-09-19T14:48:08+00:00
+=== deployed_revision ===
+9656b216f39b83a72a9c950770ada4d1291b2d42
+=== telegram_non_secret_env ===
+TELEGRAM_UPDATES_TRANSPORT=webhook
+TELEGRAM_QUEUE_CONNECTION=redis
+TELEGRAM_QUEUE_INBOUND=telegram-inbound
+TELEGRAM_QUEUE_BACKGROUND=telegram-background
+TELEGRAM_FORCE_IPV4=true
+=== compose_services ===
+NAME                                 IMAGE                                COMMAND                  SERVICE                     CREATED        STATUS                 PORTS
+mskbanew-db                          postgres:17-alpine                   "docker-entrypoint.s…"   db                          3 months ago   Up 13 days (healthy)   127.0.0.1:5433->5432/tcp
+mskbanew-gotenberg                   gotenberg/gotenberg:8-chromium       "/usr/bin/tini -- go…"   gotenberg                   29 hours ago   Up 29 hours            3000/tcp
+mskbanew-nginx                       nginx:1.27-alpine                    "/docker-entrypoint.…"   nginx                       3 hours ago    Up 3 hours             0.0.0.0:8000->80/tcp, [::]:8000->80/tcp
+mskbanew-phpfpm                      mskbanew-phpfpm                      "docker-php-entrypoi…"   phpfpm                      3 hours ago    Up 3 hours             9000/tcp
+mskbanew-queue                       mskbanew-queue                       "docker-php-entrypoi…"   queue                       3 hours ago    Up 3 hours             9000/tcp
+mskbanew-redis                       redis:7-alpine                       "docker-entrypoint.s…"   redis                       3 months ago   Up 13 days             6379/tcp
+mskbanew-reverb                      mskbanew-reverb                      "docker-php-entrypoi…"   reverb                      3 hours ago    Up 3 hours             9000/tcp
+mskbanew-scheduler                   mskbanew-scheduler                   "docker-php-entrypoi…"   scheduler                   3 hours ago    Up 3 hours             9000/tcp
+mskbanew-telegram-background-queue   mskbanew-telegram-background-queue   "docker-php-entrypoi…"   telegram-background-queue   3 hours ago    Up 3 hours             9000/tcp
+mskbanew-telegram-inbound-queue      mskbanew-telegram-inbound-queue      "docker-php-entrypoi…"   telegram-inbound-queue      3 hours ago    Up 3 hours             9000/tcp
+=== telegram_webhook_info ===
+   App\Modules\Telegram\Infrastructure\Exceptions\TelegramBotApiException  Telegram API connection failed.
