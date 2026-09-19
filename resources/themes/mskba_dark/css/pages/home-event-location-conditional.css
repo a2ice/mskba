@@ -395,7 +395,7 @@
     }
 
     .home-event-location-modal__nav {
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding-bottom: var(--app-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
     }
 }
 
