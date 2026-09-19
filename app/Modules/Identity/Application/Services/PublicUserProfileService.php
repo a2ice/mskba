@@ -47,7 +47,7 @@ final class PublicUserProfileService
     /**
      * Public catalog projection for participant listings.
      *
-     * @return array{name: string, nickname: ?string, avatar_url: ?string, avatar_restricted: bool, url: string, roles: array<int, array{value: string, label: string}>}|null
+     * @return array{id: int, name: string, nickname: ?string, avatar_url: ?string, avatar_restricted: bool, url: string, roles: array<int, array{value: string, label: string}>}|null
      */
     public function catalogEntry(
         User $subject,
@@ -100,6 +100,7 @@ final class PublicUserProfileService
             ?: ($subject->nickname ?: $subject->username ?: 'Пользователь');
 
         return [
+            'id' => (int) $subject->id,
             'name' => $name,
             'nickname' => $profileAllowed && $subject->nickname ? $subject->nickname : null,
             'avatar_url' => $avatarAllowed
