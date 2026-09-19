@@ -32,55 +32,55 @@ jobs:
             -o UserKnownHostsFile=/dev/null \
             -o ConnectTimeout=10 \
             deploy@"$SERVER_HOST" 'bash -s' > telegram-runtime-output.txt 2>&1 <<'REMOTE'
-          set -u
+          set +e
           cd /var/www/mskba
           COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
 
           echo "=== captured_at ==="
-          date -Is || true
-
+          date -Is
           echo "=== deployed_revision ==="
-          git rev-parse HEAD || true
+          git rev-parse HEAD
 
           echo "=== telegram_non_secret_env ==="
-          grep -E '^(TELEGRAM_UPDATES_TRANSPORT|TELEGRAM_QUEUE_CONNECTION|TELEGRAM_QUEUE_INBOUND|TELEGRAM_QUEUE_BACKGROUND|TELEGRAM_FORCE_IPV4)=' .env || true
+          grep -E '^(TELEGRAM_UPDATES_TRANSPORT|TELEGRAM_QUEUE_CONNECTION|TELEGRAM_QUEUE_INBOUND|TELEGRAM_QUEUE_BACKGROUND|TELEGRAM_FORCE_IPV4)=' .env
 
           echo "=== compose_services ==="
-          $COMPOSE ps || true
+          $COMPOSE ps
 
-          echo "=== telegram_webhook_info ==="
-          $COMPOSE exec -T phpfpm php artisan tinker --execute='$r=app(\App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient::class)->call("getWebhookInfo"); $i=$r["result"]??[]; echo json_encode(["url"=>$i["url"]??null,"pending_update_count"=>$i["pending_update_count"]??null,"last_error_date"=>$i["last_error_date"]??null,"last_error_message"=>$i["last_error_message"]??null], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).PHP_EOL;' || true
+          echo "=== nginx_webhook_hits_last_60m ==="
+          $COMPOSE logs --since=60m nginx 2>&1 | grep -F '/api/integrations/telegram/webhook' | tail -n 200
 
-          echo "=== outbound_telegram ==="
-          for URL in https://api.telegram.org https://github.com; do
-            CODE="$(curl -4 -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$URL" 2>/dev/null || true)"
-            echo "HOST $URL => ${CODE:-FAIL}"
-          done
-          for IP in 149.154.166.110 149.154.167.220 91.108.56.130 91.108.4.1 1.1.1.1; do
-            RESULT="$(timeout 5 bash -lc "</dev/tcp/$IP/443" >/dev/null 2>&1 && echo OK || echo FAIL)"
-            echo "HOST TCP $IP:443 => $RESULT"
-          done
+          echo "=== inbound_worker_last_60m ==="
+          $COMPOSE logs --since=60m telegram-inbound-queue 2>&1 | tail -n 200
 
-          echo "=== nginx_webhook_hits_tail ==="
-          $COMPOSE logs --since=30m nginx 2>&1 | grep -F '/api/integrations/telegram/webhook' | tail -n 120 || true
+          echo "=== poller_service_status_and_logs ==="
+          $COMPOSE --profile polling ps telegram
+          $COMPOSE --profile polling logs --since=60m telegram 2>&1 | tail -n 120
 
-          echo "=== telegram_inbound_worker_tail ==="
-          $COMPOSE logs --since=30m telegram-inbound-queue 2>&1 | tail -n 160 || true
-
-          echo "=== telegram_poller_tail ==="
-          $COMPOSE --profile polling logs --since=30m telegram 2>&1 | tail -n 120 || true
-
-          echo "=== laravel_telegram_errors_tail ==="
-          tail -n 1200 storage/logs/laravel.log 2>/dev/null | grep -Ei 'telegram|ProcessTelegramCallbackJob|HandleEventParticipationCallback|callback_query|event:24|api\.telegram\.org|Connection timed out|cURL error' | tail -n 240 || true
+          echo "=== laravel_telegram_lines_last_1500 ==="
+          tail -n 1500 storage/logs/laravel.log 2>/dev/null | grep -Ei 'telegram|ProcessTelegramCallbackJob|HandleEventParticipationCallback|callback_query|event:24|api\.telegram\.org|Connection timed out|cURL error' | tail -n 300
 
           echo "=== failed_jobs ==="
-          $COMPOSE exec -T phpfpm php artisan queue:failed || true
+          $COMPOSE exec -T phpfpm php artisan queue:failed
 
           echo "=== redis_inbound_queue ==="
-          $COMPOSE exec -T redis sh -lc 'for key in queues:telegram-inbound queues:telegram-inbound:reserved queues:telegram-inbound:delayed; do printf "%s type=" "$key"; redis-cli TYPE "$key"; printf " len="; redis-cli LLEN "$key" 2>/dev/null || redis-cli ZCARD "$key" 2>/dev/null || true; done' || true
-          REMOTE
+          $COMPOSE exec -T redis sh -lc 'for key in queues:telegram-inbound queues:telegram-inbound:reserved queues:telegram-inbound:delayed; do echo -n "$key type="; redis-cli TYPE "$key"; echo -n " llen="; redis-cli LLEN "$key" 2>/dev/null; echo -n " zcard="; redis-cli ZCARD "$key" 2>/dev/null; done'
 
-          sed -i -E 's/(TELEGRAM_BOT_TOKEN|SERVER_SSH_KEY|secret_token)[^ ]*/[REDACTED]/Ig' telegram-runtime-output.txt || true
+          echo "=== host_outbound ==="
+          for URL in https://api.telegram.org https://github.com; do
+            CODE="$(timeout 12 curl -4 -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 --max-time 10 "$URL" 2>/dev/null)"
+            RC=$?
+            echo "HOST $URL => rc=$RC code=${CODE:-FAIL}"
+          done
+          for IP in 149.154.166.110 149.154.167.220 91.108.56.130 91.108.4.1 1.1.1.1; do
+            timeout 6 bash -lc "</dev/tcp/$IP/443" >/dev/null 2>&1
+            echo "HOST TCP $IP:443 => rc=$?"
+          done
+
+          echo "=== webhook_info_with_timeout ==="
+          timeout 15 $COMPOSE exec -T phpfpm php artisan tinker --execute='$r=app(\App\Modules\Telegram\Infrastructure\Services\TelegramBotApiClient::class)->call("getWebhookInfo"); $i=$r["result"]??[]; echo json_encode(["url"=>$i["url"]??null,"pending_update_count"=>$i["pending_update_count"]??null,"last_error_date"=>$i["last_error_date"]??null,"last_error_message"=>$i["last_error_message"]??null], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).PHP_EOL;'
+          echo "webhook_info_rc=$?"
+          REMOTE
 
       - name: Commit diagnostic output
         shell: bash
@@ -89,5 +89,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add telegram-runtime-output.txt
-          git commit -m "chore: capture Telegram production runtime" || exit 0
+          git commit -m "chore: refresh Telegram production runtime" || exit 0
           git push
