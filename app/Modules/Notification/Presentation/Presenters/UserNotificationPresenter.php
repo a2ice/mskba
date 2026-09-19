@@ -11,12 +11,14 @@ final class UserNotificationPresenter
     /** @return array<string, mixed> */
     public function present(UserNotification $notification): array
     {
+        $actions = $this->actions($notification);
+
         return [
             'id' => $notification->id,
             'title' => $notification->title,
             'body' => $notification->body,
             'href' => $notification->action_url ?: route('account.notifications', absolute: false),
-            'action_text' => $notification->action_text,
+            'action_text' => $actions === [] ? $notification->action_text : null,
             'read_url' => route('account.notifications.read', $notification, absolute: false),
             'created_at' => $notification->created_at?->toIso8601String(),
             'context' => array_filter([
@@ -30,7 +32,7 @@ final class UserNotificationPresenter
                 'booking_id' => $notification->payload['booking_id'] ?? null,
                 'venue_id' => $notification->payload['venue_id'] ?? null,
             ], static fn ($value): bool => $value !== null),
-            'actions' => $this->actions($notification),
+            'actions' => $actions,
         ];
     }
 
