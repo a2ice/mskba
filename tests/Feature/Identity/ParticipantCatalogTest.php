@@ -96,7 +96,7 @@ final class ParticipantCatalogTest extends TestCase
         $this->assertNotNull($other);
     }
 
-    public function test_catalog_respects_discoverability_and_role_privacy(): void
+    public function test_catalog_respects_discoverability_but_role_page_privacy_does_not_hide_role_membership(): void
     {
         $hidden = $this->participant('player', 'Скрытый', 'Игрок');
         $hidden->privacySettings()->updateOrCreate(
@@ -115,10 +115,67 @@ final class ParticipantCatalogTest extends TestCase
         $this->get(route('participants.players'))
             ->assertOk()
             ->assertSee('Открытый Игрок')
-            ->assertDontSee('Скрытый Игрок')
-            ->assertDontSee('Закрытая Роль');
+            ->assertSee('Закрытая Роль')
+            ->assertDontSee('Скрытый Игрок');
+
+        $this->get('/users/'.$privateRole->username.'/player')
+            ->assertNotFound();
 
         $this->assertNotNull($visible);
+    }
+
+    public function test_all_participants_includes_confirmed_user_without_project_role(): void
+    {
+        $roleless = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'username' => 'confirmed_without_role',
+        ]);
+        $roleless->createProfile([
+            'first_name' => 'Без',
+            'last_name' => 'Роли',
+        ]);
+
+        $this->get(route('participants.index'))
+            ->assertOk()
+            ->assertSee('Без Роли')
+            ->assertSee('Участник');
+
+        $this->get(route('participants.players'))
+            ->assertOk()
+            ->assertDontSee('Без Роли');
+    }
+
+    public function test_confirmed_player_is_listed_even_when_role_page_is_private(): void
+    {
+        $player = $this->participant('player', 'Игрок', 'Приватный');
+        $player->privacySettings()->updateOrCreate(
+            ['type' => 'role_player'],
+            ['visibility' => UserPrivacyVisibilityEnum::NOBODY],
+        );
+
+        $this->get(route('participants.players'))
+            ->assertOk()
+            ->assertSee('Игрок Приватный')
+            ->assertSee('Игрок');
+    }
+
+    public function test_catalog_does_not_leak_private_profile_fields_when_distribution_is_not_allowed(): void
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED,
+            'username' => 'tg_123456789',
+            'personal_data_distribution_required_at' => now(),
+        ]);
+        $user->createProfile([
+            'first_name' => 'Секретное',
+            'last_name' => 'Имя',
+        ]);
+
+        $this->get(route('participants.index'))
+            ->assertOk()
+            ->assertSee('tg_123456789')
+            ->assertDontSee('Секретное Имя')
+            ->assertSee('Профиль закрыт');
     }
 
     public function test_authenticated_participant_is_first_and_marked_as_own_profile(): void

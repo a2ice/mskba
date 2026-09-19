@@ -25,8 +25,10 @@ final class ParticipantCatalogController
         $candidates = User::query()
             ->whereNull('canonical_user_id')
             ->where('status', UserStatusEnum::CONFIRMED->value)
-            ->whereHas('participationRoles', fn ($query) => $query
-                ->when($role !== null, fn ($roleQuery) => $roleQuery->where('role', $role->value)))
+            ->when($role !== null, fn ($query) => $query->whereHas(
+                'participationRoles',
+                fn ($roleQuery) => $roleQuery->where('role', $role->value),
+            ))
             ->with([
                 'profile.activeAvatar',
                 'telegramAccount',

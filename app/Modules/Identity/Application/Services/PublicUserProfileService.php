@@ -47,7 +47,11 @@ final class PublicUserProfileService
     /**
      * Public catalog projection for participant listings.
      *
-     * @return array{id: int, name: string, nickname: ?string, avatar_url: ?string, avatar_restricted: bool, url: string, roles: array<int, array{value: string, label: string}>}|null
+     * Catalog membership is controlled by account status + DISCOVERABILITY.
+     * Detailed profile/role-page privacy is still respected for the target URL
+     * and for personal fields such as avatar/full profile name.
+     *
+     * @return array{id: int, name: string, nickname: ?string, avatar_url: ?string, avatar_restricted: bool, url: ?string, roles: array<int, array{value: string, label: string}>}|null
      */
     public function catalogEntry(
         User $subject,
@@ -66,9 +70,13 @@ final class PublicUserProfileService
         }
 
         $subject->loadMissing('participationRoles');
-        $activeRoleValues = $subject->participationRoles
-            ->map(fn ($participationRole): string => $participationRole->role->value)
-            ->all();
+        $activeRoles = collect(UserParticipationRoleEnum::cases())
+            ->filter(fn (UserParticipationRoleEnum $role): bool => $subject->participationRoles
+                ->contains(fn ($participationRole): bool => $participationRole->role === $role));
+
+        if ($requiredRole !== null && ! $activeRoles->contains($requiredRole)) {
+            return null;
+        }
 
         $sections = $this->sections($subject);
         $publicCoach = $sections->isNotEmpty()
@@ -77,32 +85,28 @@ final class PublicUserProfileService
             && $this->privacy->allowsDistribution($subject, Privacy::COACH_SECTIONS);
         $profileAllowed = $this->privacy->allows($subject, $viewer, Privacy::PROFILE);
 
-        $roles = collect(UserParticipationRoleEnum::cases())
-            ->filter(function (UserParticipationRoleEnum $role) use ($subject, $viewer, $publicCoach, $profileAllowed, $activeRoleValues): bool {
-                if (! in_array($role->value, $activeRoleValues, true)) {
-                    return false;
-                }
+        $subject->loadMissing(['profile.activeAvatar', 'telegramAccount', 'vkAccount']);
+        $avatarAllowed = $profileAllowed && $this->privacy->allows($subject, $viewer, Privacy::AVATAR);
 
-                if ($role === UserParticipationRoleEnum::COACH && $publicCoach) {
-                    return true;
-                }
+        $publicName = trim(($subject->profile?->first_name ?? '').' '.($subject->profile?->last_name ?? ''));
+        $fallbackName = $subject->nickname ?: $subject->username ?: 'Пользователь';
+        $name = ($profileAllowed || $publicCoach) && $publicName !== '' ? $publicName : $fallbackName;
 
-                return $profileAllowed
-                    && $this->privacy->allows($subject, $viewer, Privacy::from('role_'.$role->value));
-            });
+        $url = null;
 
         if ($requiredRole !== null) {
-            $roles = $roles->filter(fn (UserParticipationRoleEnum $role): bool => $role === $requiredRole);
-        }
+            $rolePageAllowed = $requiredRole === UserParticipationRoleEnum::COACH
+                ? $publicCoach || ($profileAllowed && $this->privacy->allows($subject, $viewer, Privacy::ROLE_COACH))
+                : $profileAllowed && $this->privacy->allows($subject, $viewer, Privacy::from('role_'.$requiredRole->value));
 
-        if ($roles->isEmpty()) {
-            return null;
+            if ($rolePageAllowed) {
+                $url = $this->url($subject, $requiredRole->value);
+            } elseif ($profileAllowed || $publicCoach) {
+                $url = $this->url($subject);
+            }
+        } elseif ($profileAllowed || $publicCoach) {
+            $url = $this->url($subject);
         }
-
-        $subject->loadMissing(['profile.activeAvatar', 'telegramAccount', 'vkAccount']);
-        $avatarAllowed = $this->privacy->allows($subject, $viewer, Privacy::AVATAR);
-        $name = trim(($subject->profile?->first_name ?? '').' '.($subject->profile?->last_name ?? ''))
-            ?: ($subject->nickname ?: $subject->username ?: 'Пользователь');
 
         return [
             'id' => (int) $subject->id,
@@ -112,8 +116,8 @@ final class PublicUserProfileService
                 ? ($subject->profile?->avatarUrl() ?: $subject->telegramAccount?->photo_url ?: $subject->vkAccount?->avatar_url)
                 : null,
             'avatar_restricted' => ! $avatarAllowed,
-            'url' => $this->url($subject, $requiredRole?->value),
-            'roles' => $roles
+            'url' => $url,
+            'roles' => $activeRoles
                 ->map(fn (UserParticipationRoleEnum $role): array => [
                     'value' => $role->value,
                     'label' => $role->label(),
