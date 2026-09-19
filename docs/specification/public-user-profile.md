@@ -12,6 +12,14 @@ Placeholder никнейма на `/account` не является общим с
 
 Приватность проверяется `UserPrivacyAccessService` с каноническими identity. Новые enum-типы не требуют миграции: type хранится строкой, отсутствующие строки используют defaults. Старые клиенты могут отправить четыре прежние настройки; пропущенные новые настройки сохраняются. Форма перечисляет все enum cases.
 
+## Публичный каталог участников
+
+`/participants`, `/players` и `/coaches` используют `PublicUserProfileService::catalogEntry()` и публикуют только явную projection: display name, разрешённый avatar, nickname при доступном PROFILE, публичные роли и URL профиля. В каталог не попадают удалённые, заблокированные, неподтверждённые или недоступные через DISCOVERABILITY canonical users.
+
+Роль считается видимой, если она активна, PROFILE доступен текущему viewer и разрешён соответствующий `ROLE_*`. Для coach сохраняется существующее исключение публичного тренера с действующей открытой секцией. AVATAR проверяется отдельно. Результат зависит от viewer, поэтому каталог отвечает `Cache-Control: private, no-store`.
+
+`/players` и `/coaches` — не отдельные модели данных: это тот же participant catalog с preset role. На `/participants` роль выбирается фильтром из `UserParticipationRoleEnum`.
+
 ## Публичный минимум тренера
 
 Требуются включённый контур секций, активная роль coach, SportsSection status=active и membership со sport_roles=coach. Контракт имеет family=membership, status=active, starts_at отсутствует либо наступил, expires_at отсутствует либо строго в будущем. Учитываются канонические identity IDs. Исключение открывает базовую идентичность, роль coach и открытые секции, но не переопределяет AVATAR и не делает PROFILE глобально разрешённым для других ролей/блоков.

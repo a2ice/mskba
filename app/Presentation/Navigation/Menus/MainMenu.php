@@ -86,6 +86,33 @@ final class MainMenu implements MenuHandler
             ],
         ];
 
+        $participantItems = [
+            [
+                'label' => 'Игроки',
+                'url' => $this->routeUrl('participants.players'),
+                'active' => $this->isActiveRoute('participants.players'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Тренеры',
+                'url' => $this->routeUrl('participants.coaches'),
+                'active' => $this->isActiveRoute('participants.coaches'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Все участники',
+                'url' => $this->routeUrl('participants.index'),
+                'active' => $this->isActiveRoute('participants.index'),
+                'visible' => true,
+            ],
+            [
+                'label' => 'Команды',
+                'url' => $this->routeUrl('teams.index'),
+                'active' => $this->isActiveRoute('teams, teams.*'),
+                'visible' => true,
+            ],
+        ];
+
         $items = [
             [
                 'label' => 'Площадки',
@@ -101,10 +128,11 @@ final class MainMenu implements MenuHandler
                 'children' => $moreGames,
             ],
             [
-                'label' => 'Команды',
-                'url' => $this->routeUrl('/teams'),
-                'active' => $this->isActiveRoute('teams, teams.*'),
+                'label' => 'Участники',
+                'url' => $this->routeUrl('participants.index'),
+                'active' => $this->hasActiveItem($participantItems),
                 'visible' => true,
+                'children' => $participantItems,
             ],
             [
                 'label' => 'Новости',
