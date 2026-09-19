@@ -1,0 +1,191 @@
+.participants-category-catalog .default-category__results [hidden] {
+    display: none !important;
+}
+
+.participant-category-results .default-category__empty {
+    grid-column: 1 / -1;
+}
+
+.participant-category-results--cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.participant-category-results--list {
+    display: grid;
+    gap: 12px;
+}
+
+.participant-category-item {
+    min-width: 0;
+    border: 1px solid #353936;
+    border-radius: 18px;
+    background: rgba(15, 18, 15, .88);
+    transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.participant-category-item:hover {
+    border-color: #505650;
+}
+
+.participant-category-item__avatar {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 50%;
+    color: #d9d7cf;
+    background:
+        radial-gradient(circle at 50% 35%, rgba(255, 111, 38, .16), transparent 58%),
+        #171a17;
+    text-decoration: none;
+}
+
+.participant-category-item__avatar img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.participant-category-item__avatar i {
+    font-size: 44px;
+}
+
+.participant-category-item__body {
+    min-width: 0;
+}
+
+.participant-category-item__roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.participant-category-item__title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.participant-category-item__title a {
+    color: #f5f3ed;
+    text-decoration: none;
+}
+
+.participant-category-item__title a:hover,
+.participant-category-item__title a:focus-visible {
+    color: var(--accent-text);
+    outline: none;
+}
+
+.participant-category-item__nickname {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.participant-category-item__details {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 118px;
+    text-decoration: none;
+}
+
+.participant-category-item--card {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-rows: minmax(92px, auto) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 18px;
+}
+
+.participant-category-item--card .participant-category-item__avatar {
+    width: 92px;
+    height: 92px;
+}
+
+.participant-category-item--card .participant-category-item__details {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.participant-category-item--list {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 16px;
+}
+
+.participant-category-item--list .participant-category-item__avatar {
+    width: 76px;
+    height: 76px;
+}
+
+.participant-category-item--list .participant-category-item__avatar i {
+    font-size: 36px;
+}
+
+.participant-category-item--list .participant-category-item__roles {
+    margin-bottom: 7px;
+}
+
+.participant-category-item--list .participant-category-item__title {
+    font-size: 18px;
+}
+
+.participant-category-catalog__pagination {
+    margin-top: 20px;
+}
+
+@media (max-width: 1180px) {
+    .participant-category-results--cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .participant-category-results--cards {
+        grid-template-columns: 1fr;
+    }
+
+    .participant-category-item--card {
+        grid-template-columns: 76px minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        padding: 14px;
+    }
+
+    .participant-category-item--card .participant-category-item__avatar {
+        width: 76px;
+        height: 76px;
+    }
+
+    .participant-category-item--list {
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 12px;
+    }
+
+    .participant-category-item--list .participant-category-item__avatar {
+        width: 64px;
+        height: 64px;
+    }
+
+    .participant-category-item--list .participant-category-item__details {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .participant-category-item__title {
+        font-size: 17px;
+    }
+}
