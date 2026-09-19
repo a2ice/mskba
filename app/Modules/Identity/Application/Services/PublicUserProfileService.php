@@ -65,6 +65,11 @@ final class PublicUserProfileService
             return null;
         }
 
+        $subject->loadMissing('participationRoles');
+        $activeRoleValues = $subject->participationRoles
+            ->map(fn ($participationRole): string => $participationRole->role->value)
+            ->all();
+
         $sections = $this->sections($subject);
         $publicCoach = $sections->isNotEmpty()
             && $this->privacy->allowsDistribution($subject, Privacy::PROFILE)
@@ -73,8 +78,8 @@ final class PublicUserProfileService
         $profileAllowed = $this->privacy->allows($subject, $viewer, Privacy::PROFILE);
 
         $roles = collect(UserParticipationRoleEnum::cases())
-            ->filter(function (UserParticipationRoleEnum $role) use ($subject, $viewer, $publicCoach, $profileAllowed): bool {
-                if (! $subject->hasActiveRole($role->value)) {
+            ->filter(function (UserParticipationRoleEnum $role) use ($subject, $viewer, $publicCoach, $profileAllowed, $activeRoleValues): bool {
+                if (! in_array($role->value, $activeRoleValues, true)) {
                     return false;
                 }
 
