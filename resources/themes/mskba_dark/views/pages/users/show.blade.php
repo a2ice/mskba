@@ -7,6 +7,13 @@
             <li class="nav-item"><a class="nav-link {{ $publicProfile['role'] === $role['value'] ? 'active' : '' }}" href="{{ $role['url'] }}">{{ $role['name'] }}</a></li>
         @endforeach
     </ul>
+
+    @if($isOwnProfile)
+        <a class="btn btn--secondary public-user-profile__account-link" href="{{ route('account') }}">
+            <span>Перейти в аккаунт</span>
+            <i class="ti ti-arrow-right" aria-hidden="true"></i>
+        </a>
+    @endif
 @endsection
 
 @section('section-content')
