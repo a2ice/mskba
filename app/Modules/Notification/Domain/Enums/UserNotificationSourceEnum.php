@@ -5,6 +5,7 @@ namespace App\Modules\Notification\Domain\Enums;
 enum UserNotificationSourceEnum: string
 {
     case IDENTITY_REGISTRATION = 'identity.registration';
+    case IDENTITY_PRIVACY_REVIEW_REQUIRED = 'identity.privacy_review_required';
     case CONTACT_CONFIRMATION = 'contact.confirmation';
     case TEAM_INVITATION_CREATED = 'team.invitation.created';
     case TEAM_INVITATION_ACCEPTED = 'team.invitation.accepted';
@@ -37,6 +38,7 @@ enum UserNotificationSourceEnum: string
     {
         return match ($this) {
             self::IDENTITY_REGISTRATION => 'Регистрация пользователя',
+            self::IDENTITY_PRIVACY_REVIEW_REQUIRED => 'Проверка настроек приватности',
             self::CONTACT_CONFIRMATION => 'Подтверждение контакта',
             self::TEAM_INVITATION_CREATED => 'Приглашение в команду',
             self::TEAM_INVITATION_ACCEPTED => 'Принятие приглашения в команду',
