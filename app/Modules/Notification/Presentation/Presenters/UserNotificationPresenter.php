@@ -16,6 +16,7 @@ final class UserNotificationPresenter
             'title' => $notification->title,
             'body' => $notification->body,
             'href' => $notification->action_url ?: route('account.notifications', absolute: false),
+            'action_text' => $notification->action_text,
             'read_url' => route('account.notifications.read', $notification, absolute: false),
             'created_at' => $notification->created_at?->toIso8601String(),
             'context' => array_filter([
