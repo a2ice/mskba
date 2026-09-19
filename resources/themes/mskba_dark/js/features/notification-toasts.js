@@ -107,10 +107,20 @@ if (region) {
         close.addEventListener('click', () => markRead(notification, toast).catch((error) => showError(toast, error)));
 
         toast.append(link, body, close);
-        if (notification.actions?.length) {
+
+        if (notification.action_text || notification.actions?.length) {
             const actions = document.createElement('div');
             actions.className = 'notification-toast__actions';
-            notification.actions.forEach((action) => {
+
+            if (notification.action_text) {
+                const actionLink = document.createElement('a');
+                actionLink.className = 'btn btn--primary btn--sm';
+                actionLink.href = notification.href;
+                actionLink.textContent = notification.action_text;
+                actions.append(actionLink);
+            }
+
+            (notification.actions || []).forEach((action) => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = `btn btn--${action.variant === 'primary' ? 'primary' : 'secondary'} btn--sm`;
