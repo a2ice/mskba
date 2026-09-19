@@ -76,6 +76,128 @@
                     </label>
                 </div>
 
+                <section class="admin-user-registration-meta" aria-labelledby="registration-meta-title">
+                    <div class="admin-user-registration-meta__header">
+                        <h3 id="registration-meta-title">Мета-информация регистрации</h3>
+                        <p>Источник регистрации и связанные внешние аккаунты.</p>
+                    </div>
+
+                    <dl class="admin-user-details">
+                        <div class="admin-user-details__item">
+                            <dt>Канал регистрации</dt>
+                            <dd>{{ $editedUser->registration_channel?->label() ?? 'Не указан' }}</dd>
+                        </div>
+                        <div class="admin-user-details__item">
+                            <dt>Создан</dt>
+                            <dd>{{ $editedUser->created_at?->format('d.m.Y H:i:s') ?? '—' }}</dd>
+                        </div>
+                        <div class="admin-user-details__item">
+                            <dt>Первый вход</dt>
+                            <dd>{{ $editedUser->first_logged_in_at?->format('d.m.Y H:i:s') ?? 'Не зафиксирован' }}</dd>
+                        </div>
+                        <div class="admin-user-details__item">
+                            <dt>Identity</dt>
+                            <dd>#{{ $editedUser->id }}{{ $registrationAccounts->count() > 1 ? ' · связанных аккаунтов: '.$registrationAccounts->count() : '' }}</dd>
+                        </div>
+                    </dl>
+
+                    @if($registrationAccounts->count() > 1)
+                        <div class="admin-user-meta-provider">
+                            <h4>Связанные локальные аккаунты</h4>
+                            @foreach($registrationAccounts as $identityAccount)
+                                <div class="admin-user-meta-provider__row">
+                                    <span>#{{ $identityAccount->id }} · {{ $identityAccount->username }}</span>
+                                    <span class="admin-muted">{{ $identityAccount->registration_channel?->label() ?? 'Канал не указан' }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @foreach($telegramAccounts as $telegramAccount)
+                        <div class="admin-user-meta-provider">
+                            <div class="admin-user-meta-provider__title">
+                                <h4>Telegram</h4>
+                                <span class="admin-badge">TG ID {{ $telegramAccount->telegram_user_id }}</span>
+                            </div>
+                            <dl class="admin-user-details">
+                                <div class="admin-user-details__item">
+                                    <dt>Username</dt>
+                                    <dd>{{ $telegramAccount->username ? '@'.$telegramAccount->username : '—' }}</dd>
+                                </div>
+                                <div class="admin-user-details__item">
+                                    <dt>Имя в Telegram</dt>
+                                    <dd>{{ trim(($telegramAccount->first_name ?? '').' '.($telegramAccount->last_name ?? '')) ?: '—' }}</dd>
+                                </div>
+                                <div class="admin-user-details__item">
+                                    <dt>Язык</dt>
+                                    <dd>{{ $telegramAccount->language_code ?: '—' }}</dd>
+                                </div>
+                                <div class="admin-user-details__item">
+                                    <dt>Последняя авторизация</dt>
+                                    <dd>{{ $telegramAccount->last_auth_at?->format('d.m.Y H:i:s') ?? '—' }}</dd>
+                                </div>
+                                <div class="admin-user-details__item">
+                                    <dt>Локальный аккаунт</dt>
+                                    <dd>#{{ $telegramAccount->user_id }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    @endforeach
+
+                    @foreach($vkAccounts as $vkAccount)
+                        <div class="admin-user-meta-provider">
+                            <div class="admin-user-meta-provider__title">
+                                <h4>VK ID</h4>
+                                <span class="admin-badge">VK ID {{ $vkAccount->vk_user_id }}</span>
+                            </div>
+                            <dl class="admin-user-details">
+                                <div class="admin-user-details__item">
+                                    <dt>Имя в VK</dt>
+                                    <dd>{{ trim(($vkAccount->first_name ?? '').' '.($vkAccount->last_name ?? '')) ?: '—' }}</dd>
+                                </div>
+                                <div class="admin-user-details__item">
+                                    <dt>Последняя авторизация</dt>
+                                    <dd>{{ $vkAccount->last_auth_at?->format('d.m.Y H:i:s') ?? '—' }}</dd>
+                                </div>
+                                <div class="admin-user-details__item">
+                                    <dt>Локальный аккаунт</dt>
+                                    <dd>#{{ $vkAccount->user_id }}</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    @endforeach
+
+                    @if($acquisitionVisits->isNotEmpty())
+                        <div class="admin-user-meta-provider">
+                            <h4>Источники привлечения</h4>
+                            <div class="admin-user-acquisition-list">
+                                @foreach($acquisitionVisits as $visit)
+                                    <article class="admin-user-acquisition">
+                                        <div class="admin-user-acquisition__head">
+                                            <strong>{{ $visit->campaign?->name ?: ($visit->campaign_name ?: 'Без кампании') }}</strong>
+                                            <span class="admin-badge">{{ $visit->channel->label() }}</span>
+                                        </div>
+                                        <div class="admin-user-acquisition__meta">
+                                            @if($visit->source || $visit->medium)
+                                                <span>Источник: {{ $visit->source ?: '—' }}{{ $visit->medium ? ' / '.$visit->medium : '' }}</span>
+                                            @endif
+                                            @if($visit->persona)
+                                                <span>Сценарий: {{ $visit->persona->label() }}</span>
+                                            @endif
+                                            <span>Визит: {{ $visit->visited_at?->format('d.m.Y H:i:s') ?? '—' }}</span>
+                                            <span>Landing: {{ $visit->landing_path }}</span>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($telegramAccounts->isEmpty() && $vkAccounts->isEmpty() && $acquisitionVisits->isEmpty())
+                        <p class="admin-muted admin-user-registration-meta__empty">Дополнительных данных Telegram, VK или acquisition не найдено.</p>
+                    @endif
+                </section>
+
                 <hr class="my-4">
 
                 <h3>Временный пароль</h3>
