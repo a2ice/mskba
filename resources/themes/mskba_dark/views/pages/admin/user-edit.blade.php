@@ -111,7 +111,7 @@
                     >
                         @csrf
                         <input type="hidden" name="user_ids[]" value="{{ $editedUser->id }}">
-                        <button type="submit" class="btn btn--danger">Удалить аккаунт</button>
+                        <button type="submit" class="btn btn--danger">Удалить</button>
                     </form>
                 @else
                     <p class="admin-user-danger-zone__text mb-0">Собственный аккаунт удаляется со страницы личного кабинета.</p>
