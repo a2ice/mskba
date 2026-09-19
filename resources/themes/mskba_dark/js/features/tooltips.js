@@ -28,6 +28,13 @@ function initTooltips(context = document) {
             return;
         }
 
+        if (tooltipPresentation(element) === TEXT_PRESENTATION && isRedundantTextTooltip(element, title)) {
+            removeEnhancedTooltip(element);
+            element.removeAttr('title');
+
+            return;
+        }
+
         element
             .removeAttr('title')
             .attr('data-tooltip-source', title);
@@ -46,6 +53,32 @@ function initTooltips(context = document) {
 
         enhanceTextTooltip(element, title);
     });
+}
+
+function isRedundantTextTooltip(element, title) {
+    const readableText = element
+        .clone()
+        .find('i, svg, img, picture, [aria-hidden="true"], [hidden], .visually-hidden, .sr-only, .ui-tooltip-trigger[data-tooltip-generated="1"]')
+        .remove()
+        .end()
+        .text()
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    return readableText !== '' && readableText === title.replace(/\s+/g, ' ').trim();
+}
+
+function removeEnhancedTooltip(element) {
+    element
+        .removeClass('ui-tooltip-source ui-tooltip-source--text ui-tooltip-source--title ui-tooltip-source--visual ui-tooltip-source--icon')
+        .removeAttr('data-tooltip')
+        .removeAttr('data-tooltip-source')
+        .removeData('tooltipEnhanced');
+
+    element
+        .children('.ui-tooltip-trigger[data-tooltip-generated="1"]')
+        .add(element.next('.ui-tooltip-trigger[data-tooltip-generated="1"]'))
+        .remove();
 }
 
 function enhanceVisualTooltip(element, title) {

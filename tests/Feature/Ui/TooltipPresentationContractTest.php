@@ -25,10 +25,14 @@ final class TooltipPresentationContractTest extends TestCase
         $this->assertStringContainsString('data-tooltip-generated', $javascript);
         $this->assertStringContainsString('[data-tooltip-visual], [data-tooltip-icon]', $javascript);
         $this->assertStringContainsString('MutationObserver', $javascript);
+        $this->assertStringContainsString('isRedundantTextTooltip', $javascript);
+        $this->assertStringContainsString('removeEnhancedTooltip', $javascript);
         $this->assertStringNotContainsString("element.attr('data-tooltip-variant')", $javascript);
 
         $this->assertStringContainsString('.ui-tooltip-source--text,', $css);
         $this->assertStringContainsString('.ui-tooltip-source--visual,', $css);
+        $this->assertStringContainsString('color: rgba(255, 255, 255, 0.58);', $css);
+        $this->assertStringContainsString('.ui-tooltip-source--text:hover + .ui-tooltip-trigger', $css);
     }
 
     #[Test]
@@ -49,6 +53,9 @@ final class TooltipPresentationContractTest extends TestCase
         $this->assertIsString($bookingSelector);
 
         $this->assertStringContainsString('data-tooltip-visual', $teamCatalog);
+        $this->assertStringNotContainsString('title="{{ $item[\'member_count_text\'] }}"', $teamCatalog);
+        $this->assertStringNotContainsString('title="Тренер: {{ $item[\'coach_name\'] }}"', $teamCatalog);
+        $this->assertStringNotContainsString('title="Капитан: {{ $item[\'captain_name\'] }}"', $teamCatalog);
         $this->assertStringNotContainsString('data-tooltip-icon>Количество колец', $facilitiesEditor);
         $this->assertStringNotContainsString('data-tooltip-icon>Игровая зона', $bookingSelector);
     }
