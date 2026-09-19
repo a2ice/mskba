@@ -47,7 +47,7 @@ final class TelegramEventParticipationModeTest extends TestCase
         ]);
     }
 
-    public function test_individual_game_card_shows_context_and_personal_participation_buttons(): void
+    public function test_individual_game_card_shows_context_and_mini_app_link_while_inline_voting_is_disabled(): void
     {
         $this->travelTo(now()->setTimezone('Europe/Moscow')->startOfDay()->addHours(12));
 
@@ -80,8 +80,9 @@ final class TelegramEventParticipationModeTest extends TestCase
         $this->assertStringContainsString('🗓 Сегодня,', $text);
         $this->assertStringNotContainsString('(МСК)', $text);
         $this->assertStringNotContainsString('👥 Участники:', $text);
-        $this->assertSame("event:{$event->id}:join", $buttons[0][0]['callback_data']);
-        $this->assertSame("event:{$event->id}:leave", $buttons[0][1]['callback_data']);
+        $this->assertCount(1, $buttons);
+        $this->assertArrayNotHasKey('callback_data', $buttons[0][0]);
+        $this->assertSame("https://t.me/MSKBABot?startapp=event_{$event->id}", $buttons[0][0]['url']);
     }
 
     public function test_preformed_team_game_has_no_personal_participation_buttons(): void

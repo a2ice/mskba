@@ -127,10 +127,16 @@ final class TelegramEventMessageBuilder
     public function replyMarkup(Event $event): array
     {
         $rows = [];
-        $participationButtons = $this->participationButtons($event);
-        if ($participationButtons !== []) {
-            $rows[] = $participationButtons;
-        }
+
+        // TEMPORARY (2026-09-19): inline participation voting is disabled while
+        // the production Telegram network path is unstable. Keep the button
+        // builder and callback handlers intact so voting can be restored simply
+        // by uncommenting this block once Telegram connectivity is reliable.
+        //
+        // $participationButtons = $this->participationButtons($event);
+        // if ($participationButtons !== []) {
+        //     $rows[] = $participationButtons;
+        // }
 
         $rows[] = [[
             'text' => '🏀 Открыть мероприятие',
