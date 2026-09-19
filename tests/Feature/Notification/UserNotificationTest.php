@@ -228,6 +228,35 @@ class UserNotificationTest extends TestCase
             ->assertJsonPath('notifications.0.title', 'Непрочитанное');
     }
 
+    public function test_generic_notification_cta_is_exposed_to_sync_and_notification_center(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::PROFILE,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Проверьте настройки приватности',
+            'body' => 'Настройте нужные разрешения.',
+            'action_url' => '/account/settings',
+            'action_text' => 'Настроить приватность',
+            'payload' => ['source' => UserNotificationSourceEnum::IDENTITY_PRIVACY_REVIEW_REQUIRED->value],
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('account.notifications.new'))
+            ->assertOk()
+            ->assertJsonPath('notifications.0.href', '/account/settings')
+            ->assertJsonPath('notifications.0.action_text', 'Настроить приватность')
+            ->assertJsonPath('notifications.0.context.source', UserNotificationSourceEnum::IDENTITY_PRIVACY_REVIEW_REQUIRED->value);
+
+        $this->actingAs($user)
+            ->get(route('account.notifications'))
+            ->assertOk()
+            ->assertSee('href="/account/settings"', false)
+            ->assertSee('Настроить приватность');
+    }
+
     public function test_created_notification_is_broadcast_to_its_private_user_channel(): void
     {
         Event::fake([UserNotificationCreatedBroadcast::class]);
