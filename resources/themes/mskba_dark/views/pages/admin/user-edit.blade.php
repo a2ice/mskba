@@ -311,19 +311,58 @@
             @php
                 $permissionSnapshot = $editedUser->operationalPermissions
                     ->keyBy(fn ($entry) => $entry->permission->value);
+                $canManageOperationalPermissions = auth()->user()?->can('manage-user-operational-permissions', $editedUser) ?? false;
             @endphp
-            <ul class="admin-user-role-list">
-                @foreach($operationalPermissions as $permission)
-                    @php
-                        $isAllowed = $permissionSnapshot->get($permission->value)?->is_allowed
-                            ?? $permission->defaultAllowedFor($editedUser->system_role);
-                    @endphp
-                    <li class="admin-user-role-list__item">
-                        <span>{{ $permission->label() }}</span>
-                        <span class="admin-badge">{{ $isAllowed ? 'Разрешено' : 'Запрещено' }}</span>
-                    </li>
-                @endforeach
-            </ul>
+
+            @if($canManageOperationalPermissions)
+                <form
+                    method="POST"
+                    action="{{ route('admin.users.operational-permissions.update', $editedUser) }}"
+                    class="admin-permission-editor"
+                >
+                    @csrf
+                    <input type="hidden" name="return_to" value="user-edit">
+
+                    @foreach($operationalPermissions as $permission)
+                        @php
+                            $isAllowed = $permissionSnapshot->get($permission->value)?->is_allowed
+                                ?? $permission->defaultAllowedFor($editedUser->system_role);
+                        @endphp
+                        <label class="admin-permission-editor__item">
+                            <span class="admin-permission-editor__copy">
+                                <strong>{{ $permission->label() }}</strong>
+                                <small>{{ $permission->value }}</small>
+                            </span>
+                            <span class="admin-permission-editor__control">
+                                <input
+                                    type="checkbox"
+                                    name="permissions[]"
+                                    value="{{ $permission->value }}"
+                                    @checked($isAllowed)
+                                >
+                                <span aria-hidden="true"></span>
+                            </span>
+                        </label>
+                    @endforeach
+
+                    <div class="admin-permission-editor__actions">
+                        <button type="submit" class="btn btn--primary btn--sm">Сохранить права</button>
+                    </div>
+                </form>
+            @else
+                <ul class="admin-user-role-list">
+                    @foreach($operationalPermissions as $permission)
+                        @php
+                            $isAllowed = $permissionSnapshot->get($permission->value)?->is_allowed
+                                ?? $permission->defaultAllowedFor($editedUser->system_role);
+                        @endphp
+                        <li class="admin-user-role-list__item">
+                            <span>{{ $permission->label() }}</span>
+                            <span class="admin-badge">{{ $isAllowed ? 'Разрешено' : 'Запрещено' }}</span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
     @else
         <div class="admin-card">
