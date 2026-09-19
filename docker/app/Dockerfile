@@ -20,7 +20,20 @@ RUN apt-get update \
         pdo_pgsql \
         zip \
         opcache \
-    && pecl install redis \
+    && ( \
+        pecl install redis-6.3.0 \
+        || pecl install https://pecl.php.net/get/redis-6.3.0.tgz \
+        || ( \
+            git clone --depth 1 --branch 6.3.0 https://github.com/phpredis/phpredis.git /tmp/phpredis \
+            && cd /tmp/phpredis \
+            && phpize \
+            && ./configure \
+            && make -j"$(nproc)" \
+            && make install \
+            && cd / \
+            && rm -rf /tmp/phpredis \
+        ) \
+    ) \
     && docker-php-ext-enable redis \
     && rm -rf /var/lib/apt/lists/*
 
