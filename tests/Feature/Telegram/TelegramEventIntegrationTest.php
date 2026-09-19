@@ -46,7 +46,7 @@ final class TelegramEventIntegrationTest extends TestCase
         Cache::forget('telegram:updates:offset');
     }
 
-    public function test_public_event_is_published_to_main_chat_with_participation_actions(): void
+    public function test_public_event_is_published_to_main_chat_with_mini_app_link_only(): void
     {
         $event = Event::factory()->create([
             'title' => 'Игра у метро',
@@ -115,9 +115,9 @@ final class TelegramEventIntegrationTest extends TestCase
                 && str_contains($request['text'], 'Ответственные: game-responsible')
                 && str_contains($request['text'], 'Игра до семи')
                 && str_contains($request['text'], 'Оранжевые <b>—:—</b> Чёрные')
-                && $buttons[0][0]['callback_data'] === "event:{$event->id}:join"
-                && $buttons[0][1]['callback_data'] === "event:{$event->id}:leave"
-                && $buttons[1][0]['url'] === "https://t.me/MSKBABot?startapp=event_{$event->id}";
+                && count($buttons) === 1
+                && ! array_key_exists('callback_data', $buttons[0][0])
+                && $buttons[0][0]['url'] === "https://t.me/MSKBABot?startapp=event_{$event->id}";
         });
     }
 
