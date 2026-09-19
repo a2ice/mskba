@@ -87,8 +87,6 @@ final class PersonalDataDistributionConsentTest extends TestCase
 
     public function test_private_choice_completes_setup_without_distribution_consent(): void
     {
-        $this->withoutExceptionHandling();
-
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
 
         $this->actingAs($user)
