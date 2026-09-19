@@ -43,13 +43,13 @@
         @endif
 
         <div class="team-category-item__meta">
-            <p title="{{ $item['member_count_text'] }}" data-tooltip-variant="title" aria-label="{{ $item['member_count_text'] }}">
+            <p aria-label="{{ $item['member_count_text'] }}">
                 <i class="ti ti-users" aria-hidden="true"></i><span>{{ $item['member_count_text'] }}</span>
             </p>
-            <p @class(['is-missing' => $item['coach_name'] === '—']) title="Тренер: {{ $item['coach_name'] }}" data-tooltip-variant="title" aria-label="Тренер: {{ $item['coach_name'] }}">
+            <p @class(['is-missing' => $item['coach_name'] === '—']) aria-label="Тренер: {{ $item['coach_name'] }}">
                 <i class="ti ti-user-cog" aria-hidden="true"></i><span>Тренер: {{ $item['coach_name'] }}</span>
             </p>
-            <p @class(['is-missing' => $item['captain_name'] === '—']) title="Капитан: {{ $item['captain_name'] }}" data-tooltip-variant="title" aria-label="Капитан: {{ $item['captain_name'] }}">
+            <p @class(['is-missing' => $item['captain_name'] === '—']) aria-label="Капитан: {{ $item['captain_name'] }}">
                 <i class="ti ti-star" aria-hidden="true"></i><span>Капитан: {{ $item['captain_name'] }}</span>
             </p>
         </div>
