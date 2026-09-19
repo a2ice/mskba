@@ -332,6 +332,41 @@ final class AdminUserManagementTest extends TestCase
             ->assertSee(route('admin.users.operational-permissions.update', $target));
     }
 
+    public function test_superadmin_user_editor_exposes_tabs_and_soft_delete_action(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($superadmin)
+            ->get(route('admin.users.edit', $target))
+            ->assertOk()
+            ->assertSee('Общая информация')
+            ->assertSee('Профиль')
+            ->assertSee('Роли')
+            ->assertSee('История')
+            ->assertSee(route('admin.users.bulk-delete'), false)
+            ->assertSee('вы уверены что хотите удалить аккаунт')
+            ->assertSee('Удалить');
+    }
+
+    public function test_only_superadmin_sees_user_login_as_edit_link(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+
+        $this->actingAs($admin)
+            ->get(route('admin.users'))
+            ->assertOk()
+            ->assertDontSee(route('admin.users.edit', $target), false);
+
+        $this->actingAs($superadmin)
+            ->get(route('admin.users'))
+            ->assertOk()
+            ->assertSee(route('admin.users.edit', $target), false)
+            ->assertSee('admin-table admin-table--users', false);
+    }
+
     private function user(
         UserSystemRoleEnum $role,
         UserStatusEnum $status = UserStatusEnum::CONFIRMED,

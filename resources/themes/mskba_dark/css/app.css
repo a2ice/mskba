@@ -4,7 +4,7 @@
 @import './default';
 @import './menu';
 @import './modal';
-@import './user';
+@import './user.css';
 @import './tooltip';
 @import './tom-select';
 @import './predictive-search';

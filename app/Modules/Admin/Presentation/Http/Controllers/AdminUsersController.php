@@ -9,6 +9,7 @@ use App\Modules\Admin\Presentation\Http\Requests\UpdateUserBasicDetailsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserOperationalPermissionsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserStatusRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserSystemRoleRequest;
+use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\UseCases\AdminBulkChangeUserDeletionStateHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserBasicDetailsHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler;
@@ -68,7 +69,7 @@ final class AdminUsersController extends Controller
             ->with('success', 'Операционные права пользователя обновлены.');
     }
 
-    public function edit(User $user): Response|RedirectResponse
+    public function edit(Request $request, User $user): Response|RedirectResponse
     {
         $canonical = $user->canonical();
 
@@ -78,8 +79,35 @@ final class AdminUsersController extends Controller
                 ->with('info', "Аккаунт #{$user->id} является alias пользователя #{$canonical->id}. Редактируется основной аккаунт.");
         }
 
+        $activeTab = (string) $request->query('tab', 'general');
+        if (! in_array($activeTab, ['general', 'profile', 'roles', 'history'], true)) {
+            $activeTab = 'general';
+        }
+
+        $canonical->load([
+            'profile',
+            'participationRoles',
+            'operationalPermissions',
+        ]);
+
+        $auditLogs = collect();
+
+        if ($activeTab === 'history') {
+            $auditLogs = AuditLog::query()
+                ->with('actor')
+                ->whereHas('actor', function ($query) use ($canonical): void {
+                    $query->whereIn('user_id', $canonical->identityIds());
+                })
+                ->latest('id')
+                ->limit(50)
+                ->get();
+        }
+
         return ThemeResolver::page('admin.user-edit', [
-            'editedUser' => $canonical->load('profile'),
+            'editedUser' => $canonical,
+            'activeTab' => $activeTab,
+            'auditLogs' => $auditLogs,
+            'operationalPermissions' => UserOperationalPermissionEnum::cases(),
         ]);
     }
 

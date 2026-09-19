@@ -184,6 +184,21 @@ class AccountAvatarTest extends TestCase
         Storage::disk('public')->assertExists($avatar->path);
     }
 
+    public function test_theme_entrypoint_includes_avatar_manager_styles(): void
+    {
+        $entrypoint = file_get_contents(resource_path('themes/mskba_dark/css/app.css'));
+        $avatarStyles = file_get_contents(resource_path('themes/mskba_dark/css/user.css'));
+
+        $this->assertIsString($entrypoint);
+        $this->assertIsString($avatarStyles);
+        $this->assertStringContainsString("@import './user.css';", $entrypoint);
+        $this->assertStringContainsString('.avatar-upload__library', $avatarStyles);
+        $this->assertStringContainsString('.account-avatar-library__slots', $avatarStyles);
+        $this->assertStringContainsString('.account-avatar-library__avatar', $avatarStyles);
+        $this->assertStringContainsString('.account-avatar-library__delete', $avatarStyles);
+        $this->assertStringContainsString('.account-avatar-library__upload', $avatarStyles);
+    }
+
     /**
      * @return array<string, mixed>
      */
