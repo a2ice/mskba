@@ -77,7 +77,13 @@ function initSidebarAccordion(root) {
         candidate.item.classList.toggle('is-open', open);
     };
 
-    items.forEach((candidate, index) => setOpen(candidate, index === 0));
+    const initialOpen = items.find(({ item, trigger, content }) => (
+        item.classList.contains('is-open')
+        || trigger.getAttribute('aria-expanded') === 'true'
+        || !content.hidden
+    )) ?? items[0];
+
+    items.forEach((candidate) => setOpen(candidate, candidate === initialOpen));
 
     items.forEach((candidate) => {
         candidate.trigger.addEventListener('click', () => {

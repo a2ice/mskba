@@ -6,6 +6,7 @@
     $hasMap = (bool) ($hasMap ?? false);
     $mobileFilterModalId = $mobileFilterModalId ?? $categoryId.'-filters';
     $sidebarNavigationTitle = $sidebarNavigationTitle ?? $title;
+    $sidebarPreNavigationTitle = $sidebarPreNavigationTitle ?? null;
     $sidebarFiltersTitle = $sidebarFiltersTitle ?? 'Фильтры';
 @endphp
 
@@ -30,6 +31,31 @@
             <div class="default-category__grid">
                 <aside class="default-category__sidebar" aria-label="Навигация и фильтры раздела">
                     <div class="default-category__sidebar-panel" data-default-category-sidebar-accordion>
+                        @hasSection('category-pre-navigation')
+                            <section class="default-category-sidebar-accordion__item" data-default-category-sidebar-item>
+                                <button
+                                    class="default-category-sidebar-accordion__trigger"
+                                    type="button"
+                                    aria-expanded="false"
+                                    aria-controls="{{ $categoryId }}-sidebar-pre-navigation"
+                                    data-default-category-sidebar-trigger
+                                >
+                                    <span>{{ $sidebarPreNavigationTitle ?? 'Навигация' }}</span>
+                                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                                </button>
+                                <div
+                                    id="{{ $categoryId }}-sidebar-pre-navigation"
+                                    class="default-category-sidebar-accordion__content"
+                                    data-default-category-sidebar-content
+                                    hidden
+                                >
+                                    <div class="default-category__navigation">
+                                        @yield('category-pre-navigation')
+                                    </div>
+                                </div>
+                            </section>
+                        @endif
+
                         <section class="default-category-sidebar-accordion__item is-open" data-default-category-sidebar-item>
                             <button
                                 class="default-category-sidebar-accordion__trigger"
