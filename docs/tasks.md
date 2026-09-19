@@ -166,3 +166,4 @@
 - [x] 200 - Редактируемые базовые поля acquisition flyer до полноценного шаблонизатора ([описание](tasks/200/description.md))
 - [ ] 201 - Поджать композицию A4 acquisition flyer ([описание](tasks/201/description.md))
 - [x] 202 - Делегируемое управление системными ролями и исправление слоя admin popup ([описание](tasks/202/description.md))
+- [ ] 210 - Синхронизировать safe area Telegram Mini App и Android navigation bar ([описание](tasks/210/description.md))
