@@ -8,3 +8,13 @@
 .sports-section-public__person-card:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
 .sports-section-public__person-avatar { overflow: hidden; }
 .sports-section-public__person-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.public-user-profile__account-link {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    text-decoration: none;
+}
