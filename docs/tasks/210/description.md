@@ -30,4 +30,4 @@
 
 Toast привязан к Telegram content-safe top. Общий mobile primary bar, stats, резерв контента, мобильное меню и связанные нижние fixed-компоненты переведены на общий bottom safe inset; это оставляет кликабельную область выше Android navigation bar и iOS gesture area. Старый минимальный Telegram top fallback сохранён для совместимости.
 
-Релевантная автоматическая проверка выполняется PR CI: backend suite и production frontend build являются gate перед merge в `main`.
+PR CI успешно прошёл: backend suite и production frontend build завершились без ошибок перед merge в `main`.
