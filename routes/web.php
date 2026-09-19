@@ -27,6 +27,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRoles
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
+use App\Modules\Identity\Presentation\Http\Controllers\DeleteOwnAccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\PersonalDataDistributionConsentController;
 use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
@@ -677,6 +678,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
+        Route::delete('/', DeleteOwnAccountController::class)
+            ->name('account.destroy');
         Route::post('/avatar', AccountAvatarController::class)
             ->middleware('throttle:10,1')
             ->name('account.avatar.store');
