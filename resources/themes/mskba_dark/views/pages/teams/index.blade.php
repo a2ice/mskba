@@ -38,7 +38,12 @@
     'currentView' => $currentView,
     'hasMap' => true,
     'mobileFilterModalId' => 'team-catalog-filters',
+    'sidebarPreNavigationTitle' => 'Участники',
 ])
+
+@section('category-pre-navigation')
+    @include('theme::pages.participants.partials.catalog-navigation', ['persistent' => []])
+@endsection
 
 @section('category-navigation')
     @include('theme::pages.teams.partials.catalog-navigation')
