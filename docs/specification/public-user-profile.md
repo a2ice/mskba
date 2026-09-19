@@ -43,3 +43,8 @@ Placeholder никнейма на `/account` не является общим с
 Организатор не видит CTA записи; ManageSportsSectionJoinRequestHandler повторяет запрет внутри транзакции после блокировки секции. Публичное чтение новых lock-порядков не вводит.
 
 Проверки: AccountNicknameTest, NicknameSuggestionTest, PublicUserProfileTest, AccountPrivacySettingsTest, AccountAvatarTest, SportsSection suite, production build и GitHub CI. [Продуктовые правила](../project/public-user-profile.md).
+
+
+## Собственный публичный профиль
+
+При открытии своей canonical public-profile страницы авторизованному пользователю в sidebar показывается CTA «Перейти в аккаунт» → `/account`. Для других пользователей и гостей эта ссылка не выводится. Признак owner вычисляется controller-ом по canonical identity и не передаётся из клиентских параметров.
