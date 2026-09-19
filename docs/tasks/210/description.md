@@ -1,0 +1,29 @@
+# 210 - Синхронизировать safe area Telegram Mini App и Android navigation bar
+
+## Оригинальное описание
+
+В Telegram Mini App верхние системные контролы Telegram перекрывают toast и часть интерфейса, а на Android системная нижняя навигация наслаивается на мобильный нижний bar MSKBA. Ранее Telegram имел отдельный safe-отступ, но текущее поведение стало недостаточным.
+
+## Подробное описание
+
+Нужно восстановить единый контракт safe area для мобильного shell:
+
+- учитывать browser `env(safe-area-inset-*)`;
+- в Telegram дополнительно учитывать `Telegram.WebApp.safeAreaInset` и `Telegram.WebApp.contentSafeAreaInset`;
+- поддержать CSS-переменные Telegram `--tg-safe-area-inset-*` и `--tg-content-safe-area-inset-*` как штатный источник;
+- синхронизировать значения из SDK после загрузки и при событиях `safeAreaChanged` / `contentSafeAreaChanged`;
+- toast в Mini App располагать ниже верхних контролов Telegram;
+- нижний mobile primary bar, его stats-блок, отступ контента и раскрытое мобильное меню поднимать над системной нижней областью Android/iOS;
+- сохранить browser fallback и старый минимальный Telegram top-offset для клиентов без новых safe-area API.
+
+## Проверка
+
+- CI должен пройти PHP tests и production frontend build;
+- в обычном мобильном браузере нижний bar сохраняет прежнее положение с browser safe area;
+- в Telegram Android нижний bar находится выше системных кнопок/gesture area;
+- в Telegram toast появляется ниже верхней панели Telegram;
+- изменение safe area при смене состояния WebView обновляет CSS без перезагрузки.
+
+## Результат
+
+Заполняется после реализации и проверки.
