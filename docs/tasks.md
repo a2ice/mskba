@@ -169,4 +169,4 @@
 - [x] 210 - Синхронизировать safe area Telegram Mini App и Android navigation bar ([описание](tasks/210/description.md))
 - [x] 211 - Исправить Telegram sticky-header и упростить venue acquisition entry ([описание](tasks/211/description.md))
 - [x] 212 - Доработать Telegram hero spacing и плавность параллакса на мобильных ([описание](tasks/212/description.md))
-- [ ] 213 - Перевести parallax hero в Safari на native scroll-driven animation ([описание](tasks/213/description.md))
+- [x] 213 - Перевести parallax hero в Safari на native scroll-driven animation ([описание](tasks/213/description.md))
