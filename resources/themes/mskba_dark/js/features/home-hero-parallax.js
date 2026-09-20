@@ -25,6 +25,14 @@ function preloadLayer(image) {
     });
 }
 
+function supportsNativeScrollParallax() {
+    return !document.body.classList.contains('telegram-mini-app')
+        && typeof CSS !== 'undefined'
+        && CSS.supports?.('animation-timeline', 'scroll(root block)')
+        && CSS.supports?.('animation-range-start', '1px')
+        && CSS.supports?.('animation-range-end', '2px');
+}
+
 function initHomeHeroParallax() {
     const hero = document.querySelector('.home-welcome');
     const imageLayer = hero?.querySelector('.home-welcome__image');
@@ -69,9 +77,14 @@ function initHomeHeroParallax() {
         .then(() => imageLayer.classList.add('is-parallax-ready'))
         .catch(() => {
             stack.remove();
-            imageLayer.classList.remove('home-welcome__image--parallax');
+            imageLayer.classList.remove(
+                'home-welcome__image--parallax',
+                'home-welcome__image--native-scroll',
+            );
             fallbackImage.classList.remove('home-welcome__parallax-fallback');
         });
+
+    const useNativeScrollTimeline = supportsNativeScrollParallax();
 
     let heroTop = 0;
     let heroHeight = 0;
@@ -95,6 +108,19 @@ function initHomeHeroParallax() {
         });
     };
 
+    const syncNativeTimelineGeometry = () => {
+        imageLayer.style.setProperty('--home-parallax-range-start', `${heroTop}px`);
+        imageLayer.style.setProperty('--home-parallax-range-end', `${heroTop + heroHeight}px`);
+        imageLayer.style.setProperty('--home-parallax-scale', String(scale));
+
+        layers.forEach(({ image, compensation }) => {
+            image.style.setProperty('--home-parallax-end-y', `${(heroHeight * compensation).toFixed(2)}px`);
+            image.style.removeProperty('transform');
+        });
+
+        imageLayer.classList.add('home-welcome__image--native-scroll');
+    };
+
     const render = (timestamp) => {
         frameId = null;
 
@@ -116,9 +142,6 @@ function initHomeHeroParallax() {
             : 16.67;
         previousFrameTime = timestamp;
 
-        // Telegram/iOS WebView may deliver scroll events in batches instead of once
-        // per display frame. Interpolate the visual position in RAF so those batches
-        // do not become visible jumps between parallax layers.
         const smoothing = 1 - Math.exp(-elapsed / PARALLAX_SMOOTHING_MS);
         currentTravelled += delta * smoothing;
         paint(currentTravelled);
@@ -143,6 +166,13 @@ function initHomeHeroParallax() {
         heroTop = rect.top + window.scrollY;
         heroHeight = rect.height || hero.offsetHeight || 0;
         scale = window.innerWidth <= 768 ? 1.18 : 1.12;
+
+        if (useNativeScrollTimeline) {
+            syncNativeTimelineGeometry();
+            geometryReady = true;
+            return;
+        }
+
         syncTarget();
 
         if (snap || !geometryReady) {
@@ -154,7 +184,10 @@ function initHomeHeroParallax() {
         }
     };
 
-    window.addEventListener('scroll', requestRender, { passive: true });
+    if (!useNativeScrollTimeline) {
+        window.addEventListener('scroll', requestRender, { passive: true });
+    }
+
     window.addEventListener('resize', () => syncGeometry(), { passive: true });
     window.addEventListener('load', () => syncGeometry({ snap: true }), { once: true });
 
