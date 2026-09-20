@@ -37,4 +37,8 @@
 
 ## Результат
 
-Заполняется после реализации.
+Внешний 18 px gap у `.site-content` удалён. Те же 18 px перенесены внутрь `.home-welcome__content`, поэтому фон hero начинается сразу под Telegram header, а текст сохраняет нужный визуальный воздух.
+
+Parallax больше не читает `getBoundingClientRect()` на каждом scroll-render. Позиция/высота hero кэшируются и обновляются на init, resize и ResizeObserver; scroll меняет только target offset. Между target и фактическим transform добавлено короткое time-based RAF smoothing (45 ms), которое сглаживает пакетную доставку scroll events в Telegram/iOS WebView и останавливает loop после сходимости.
+
+Foreground `court` layer получил отдельный `--home-parallax-x`; на ширине до 520 px он сдвигается влево на 6vw. Масштаб 1.18 оставляет достаточный запас по краям и не меняет остальные слои.
