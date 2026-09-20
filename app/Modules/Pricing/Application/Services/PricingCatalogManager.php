@@ -110,7 +110,11 @@ final class PricingCatalogManager
     public function deleteService(PricingService $service): void
     {
         DB::transaction(function () use ($service): void {
-            $service->prices()->get()->each->delete();
+            $service->prices()
+                ->where('is_active', true)
+                ->get()
+                ->each(fn (PricingPrice $price) => $this->deactivatePrice($price));
+
             $service->variants()->get()->each(fn (PricingVariant $variant) => $this->deleteVariant($variant));
             $service->delete();
         });
@@ -119,7 +123,11 @@ final class PricingCatalogManager
     public function deleteVariant(PricingVariant $variant): void
     {
         DB::transaction(function () use ($variant): void {
-            $variant->prices()->get()->each->delete();
+            $variant->prices()
+                ->where('is_active', true)
+                ->get()
+                ->each(fn (PricingPrice $price) => $this->deactivatePrice($price));
+
             $variant->delete();
         });
     }
