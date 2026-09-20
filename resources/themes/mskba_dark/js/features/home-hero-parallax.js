@@ -91,7 +91,7 @@ function initHomeHeroParallax() {
     const paint = (travelled) => {
         layers.forEach(({ image, compensation }) => {
             const offset = travelled * compensation;
-            image.style.transform = `translate3d(0, ${offset.toFixed(2)}px, 0) scale(${scale})`;
+            image.style.transform = `translate3d(var(--home-parallax-x, 0px), ${offset.toFixed(2)}px, 0) scale(${scale})`;
         });
     };
 
