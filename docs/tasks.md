@@ -168,3 +168,4 @@
 - [x] 202 - Делегируемое управление системными ролями и исправление слоя admin popup ([описание](tasks/202/description.md))
 - [x] 210 - Синхронизировать safe area Telegram Mini App и Android navigation bar ([описание](tasks/210/description.md))
 - [x] 211 - Исправить Telegram sticky-header и упростить venue acquisition entry ([описание](tasks/211/description.md))
+- [ ] 212 - Доработать Telegram hero spacing и плавность параллакса на мобильных ([описание](tasks/212/description.md))

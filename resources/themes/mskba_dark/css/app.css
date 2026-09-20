@@ -804,16 +804,12 @@ body.telegram-mini-app {
         padding-top: var(--telegram-content-top);
     }
 
-    body.telegram-mini-app.main .site-header + .site-content {
-        padding-top: 18px;
-    }
-
     body.telegram-mini-app:not(.main) .first-screen {
         padding-top: var(--telegram-header-height, calc(var(--telegram-content-top) + 65px));
     }
 
     body.telegram-mini-app .home-welcome__content {
-        padding-top: var(--telegram-content-top);
+        padding-top: calc(var(--telegram-content-top) + 18px);
     }
 }
 
