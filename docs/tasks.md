@@ -167,4 +167,4 @@
 - [ ] 201 - Поджать композицию A4 acquisition flyer ([описание](tasks/201/description.md))
 - [x] 202 - Делегируемое управление системными ролями и исправление слоя admin popup ([описание](tasks/202/description.md))
 - [x] 210 - Синхронизировать safe area Telegram Mini App и Android navigation bar ([описание](tasks/210/description.md))
-- [ ] 211 - Исправить Telegram sticky-header и упростить venue acquisition entry ([описание](tasks/211/description.md))
+- [x] 211 - Исправить Telegram sticky-header и упростить venue acquisition entry ([описание](tasks/211/description.md))
