@@ -31,10 +31,19 @@ final class IdempotentWalletMutation
         ?string $referenceKey = null,
         array $metadata = [],
     ): WalletOperation {
-        if ($idempotencyKey === '') {
-            throw new WalletException('Ключ идемпотентности финансовой операции обязателен.');
+        if ($idempotencyKey === '' || strlen($idempotencyKey) > 64) {
+            throw new WalletException('Ключ идемпотентности финансовой операции должен содержать от 1 до 64 символов.');
         }
 
+        if ($referenceType !== null && strlen($referenceType) > 80) {
+            throw new WalletException('Тип ссылки финансовой операции не должен превышать 80 символов.');
+        }
+
+        if ($referenceKey !== null && strlen($referenceKey) > 191) {
+            throw new WalletException('Ключ ссылки финансовой операции не должен превышать 191 символ.');
+        }
+
+        $metadata = $this->canonicalize($metadata);
         $requestHash = hash('sha256', json_encode($this->canonicalize([
             'wallet_id' => (int) $wallet->id,
             'operation_type' => $operationType,

@@ -14,8 +14,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'owner_id',
     'type',
     'currency',
-    'real_balance_minor',
-    'bonus_balance_minor',
 ])]
 class Wallet extends Model
 {

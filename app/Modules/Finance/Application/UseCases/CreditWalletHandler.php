@@ -37,6 +37,14 @@ final readonly class CreditWalletHandler
             throw new InvalidArgumentException('Тип операции не поддерживает начисление.');
         }
 
+        if ($operationType === WalletOperationTypeEnum::TOP_UP && $balanceType !== WalletBalanceTypeEnum::REAL) {
+            throw new InvalidArgumentException('Пополнение реальными деньгами зачисляется только в real-баланс.');
+        }
+
+        if ($operationType === WalletOperationTypeEnum::REFERRAL_REWARD && $balanceType !== WalletBalanceTypeEnum::BONUS) {
+            throw new InvalidArgumentException('Реферальное вознаграждение зачисляется только в bonus-баланс.');
+        }
+
         $this->ownerOperations->ensureEnabled($wallet->owner_type);
 
         return $this->mutations->execute(
@@ -53,11 +61,10 @@ final readonly class CreditWalletHandler
                     WalletBalanceTypeEnum::BONUS => 'bonus_balance_minor',
                 };
                 $current = (int) $lockedWallet->{$field};
-                $next = $current + $amountMinor;
-
-                if ($next < $current) {
+                if ($amountMinor > PHP_INT_MAX - $current) {
                     throw new InvalidArgumentException('Сумма начисления выходит за допустимый диапазон.');
                 }
+                $next = $current + $amountMinor;
 
                 $lockedWallet->forceFill([$field => $next])->save();
                 $operation->entries()->create([

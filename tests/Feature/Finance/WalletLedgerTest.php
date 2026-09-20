@@ -74,6 +74,40 @@ final class WalletLedgerTest extends TestCase
         $this->assertDatabaseCount('wallet_ledger_entries', 4);
     }
 
+    public function test_top_up_and_referral_reward_cannot_be_routed_to_the_wrong_sub_balance(): void
+    {
+        $user = User::factory()->create();
+        $wallet = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $user->id);
+        $credits = app(CreditWalletHandler::class);
+
+        try {
+            $credits->handle(
+                $wallet,
+                WalletBalanceTypeEnum::BONUS,
+                10_000,
+                WalletOperationTypeEnum::TOP_UP,
+                'wrong-top-up',
+            );
+            $this->fail('A real top-up must not be routed to bonus.');
+        } catch (\InvalidArgumentException) {
+            $this->assertSame(0, $wallet->refresh()->totalBalanceMinor());
+        }
+
+        try {
+            $credits->handle(
+                $wallet,
+                WalletBalanceTypeEnum::REAL,
+                50_000,
+                WalletOperationTypeEnum::REFERRAL_REWARD,
+                'wrong-referral',
+            );
+            $this->fail('A referral reward must not become real balance.');
+        } catch (\InvalidArgumentException) {
+            $this->assertSame(0, $wallet->refresh()->totalBalanceMinor());
+            $this->assertDatabaseCount('wallet_operations', 0);
+        }
+    }
+
     public function test_same_idempotency_key_is_applied_once_and_cannot_be_reused_with_different_payload(): void
     {
         $user = User::factory()->create();

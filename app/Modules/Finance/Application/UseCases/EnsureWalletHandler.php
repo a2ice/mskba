@@ -20,8 +20,8 @@ final readonly class EnsureWalletHandler
         $canonicalOwnerId = $this->owners->canonicalOwnerId($ownerType, $ownerId);
         $currency = strtoupper(trim($currency));
 
-        if (strlen($currency) !== 3) {
-            throw new \InvalidArgumentException('Валюта кошелька должна быть задана кодом ISO 4217.');
+        if ($currency !== 'RUB') {
+            throw new \InvalidArgumentException('В первой версии Finance поддерживает только RUB.');
         }
 
         return Wallet::query()->firstOrCreate(
