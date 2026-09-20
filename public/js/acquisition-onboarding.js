@@ -19,7 +19,6 @@
     const progressCurrent = root.querySelector('[data-acquisition-progress-current]');
     const progressCaption = root.querySelector('[data-acquisition-progress-caption]');
     const progressBar = root.querySelector('[data-acquisition-progress-bar]');
-    const locationButton = root.querySelector('[data-acquisition-location-button]');
     const locationStatus = root.querySelector('[data-acquisition-location-status]');
     const authRolesForm = root.querySelector('[data-acquisition-auth-roles-form]');
     const authRoleToggles = Array.from(root.querySelectorAll('[data-acquisition-role-toggle]'));
@@ -33,6 +32,7 @@
 
     let flow = isAuthenticated ? 'authenticated' : (root.dataset.initialFlow || '');
     let currentStepKey = 'entry';
+    let locationRequestStarted = false;
 
     const personaRoleMap = {
         player: 'player',
@@ -392,9 +392,11 @@
     }
 
     function requestLocation() {
-        if (!hasLocationTarget || !locationButton) {
+        if (!hasLocationTarget || locationRequestStarted) {
             return;
         }
+
+        locationRequestStarted = true;
 
         if (!navigator.geolocation) {
             updateLocationStatus('Этот браузер не поддерживает геопозицию. Это не мешает регистрации.', 'warning');
@@ -402,17 +404,14 @@
             return;
         }
 
-        locationButton.disabled = true;
         updateLocationStatus('Проверяем положение…');
 
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 await persistLocation('granted', position);
-                locationButton.disabled = false;
             },
             async (error) => {
                 await persistLocation(error.code === error.PERMISSION_DENIED ? 'denied' : 'unavailable');
-                locationButton.disabled = false;
             },
             {
                 enableHighAccuracy: true,
@@ -423,11 +422,13 @@
     }
 
     startJoinButton?.addEventListener('click', () => {
+        requestLocation();
         flow = 'join';
         showStep('persona', { scroll: true });
     });
 
     startLoginButton?.addEventListener('click', () => {
+        requestLocation();
         flow = 'login';
         showStep('login', { scroll: true });
     });
@@ -524,6 +525,7 @@
             if (permission.state === 'granted') {
                 requestLocation();
             } else if (permission.state === 'denied') {
+                locationRequestStarted = true;
                 await persistLocation('denied');
             }
         } catch (_) {
