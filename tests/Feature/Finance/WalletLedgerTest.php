@@ -184,8 +184,6 @@ final class WalletLedgerTest extends TestCase
             'owner_id' => 999,
             'type' => 'main',
             'currency' => 'RUB',
-            'real_balance_minor' => 0,
-            'bonus_balance_minor' => 0,
         ]);
 
         $this->expectException(WalletOperationsDisabledException::class);

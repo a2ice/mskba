@@ -24,17 +24,11 @@ final readonly class EnsureWalletHandler
             throw new \InvalidArgumentException('В первой версии Finance поддерживает только RUB.');
         }
 
-        return Wallet::query()->firstOrCreate(
-            [
-                'owner_type' => $ownerType->value,
-                'owner_id' => $canonicalOwnerId,
-                'type' => $walletType->value,
-                'currency' => $currency,
-            ],
-            [
-                'real_balance_minor' => 0,
-                'bonus_balance_minor' => 0,
-            ],
-        );
+        return Wallet::query()->firstOrCreate([
+            'owner_type' => $ownerType->value,
+            'owner_id' => $canonicalOwnerId,
+            'type' => $walletType->value,
+            'currency' => $currency,
+        ]);
     }
 }
