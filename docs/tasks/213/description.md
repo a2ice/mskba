@@ -29,4 +29,8 @@
 
 ## Результат
 
-Заполняется после реализации.
+Для обычного браузера с поддержкой CSS Scroll-driven Animations parallax переведён с main-thread JS transforms на native `animation-timeline: scroll(root block)`. JS теперь только измеряет document-top/height hero при init/load/resize и задаёт каждому слою конечный Y offset; сам scroll-progress ведёт браузер.
+
+Telegram Mini App намеренно остаётся на существующем JS path, поскольку на реальном iPhone он уже работает плавно. Браузеры без `animation-timeline` также используют этот fallback.
+
+Native range повторяет прежнюю математику: старт = document top hero, конец = heroTop + heroHeight. Мобильный scale и отдельный сдвиг court layer через `--home-parallax-x` сохраняются.
