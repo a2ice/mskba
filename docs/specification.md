@@ -51,7 +51,7 @@
 - Frontend/assets: Vite, npm.
 - Docker окружение: общие сервисы описаны в `compose.yaml`; local/dev настройки находятся в `compose.override.yaml`; VDS/prod настройки находятся в `compose.prod.yaml`.
 - Доменные части приложения находятся в `app/Modules`.
-- Текущие доменные модули: `Identity`, `Contact`, `Location`, `Media`, `Notification`, `Venue`, `Contract`, `Telegram`.
+- Доменные контексты живут в `app/Modules`; финансовый контекст — `Finance`, рядом с предметными `Identity`, `Team`, `Event`, `Venue`, `VenueBooking`, `Contract` и другими модулями.
 - Основная тема находится в `resources/themes/mskba_dark`.
 - Минимальная тема-заготовка находится в `resources/themes/blank`.
 - Внешний backlog быстрых записей ведется во внешнем файле `../backlog/todo.md`.

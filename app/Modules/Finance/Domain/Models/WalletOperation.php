@@ -27,7 +27,7 @@ class WalletOperation extends Model
     protected static function booted(): void
     {
         static::updating(function (self $operation): void {
-            if ($operation->getOriginal('status') === WalletOperationStatusEnum::COMPLETED->value) {
+            if ($operation->getRawOriginal('status') === WalletOperationStatusEnum::COMPLETED->value) {
                 throw new LogicException('Completed wallet operation is immutable.');
             }
         });

@@ -69,7 +69,7 @@ final class WalletLedgerTest extends TestCase
         $this->assertCount(2, $payment->entries);
         $this->assertSame(
             [-50_000, -70_000],
-            $payment->entries->pluck('amount_minor')->all(),
+            $payment->entries->sortBy('id')->pluck('amount_minor')->values()->all(),
         );
         $this->assertDatabaseCount('wallet_ledger_entries', 4);
     }
