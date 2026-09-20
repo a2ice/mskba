@@ -10,6 +10,7 @@ enum EventResponsibilityPermissionEnum: string
     case MANAGE_RESULT = 'event.result.manage';
     case COMPLETE_EVENT = 'event.complete';
     case CANCEL_EVENT = 'event.cancel';
+    case MANAGE_FUNDS = 'event.wallet.manage';
     case CREATE_MINI_GAME = 'mini_game.create';
     case UPDATE_MINI_GAME = 'mini_game.update';
     case MANAGE_MINI_GAME_ROSTER = 'mini_game.roster.manage';
@@ -28,6 +29,7 @@ enum EventResponsibilityPermissionEnum: string
             self::MANAGE_RESULT => 'Редактировать итог и фотографии',
             self::COMPLETE_EVENT => 'Завершать мероприятие',
             self::CANCEL_EVENT => 'Отменять мероприятие',
+            self::MANAGE_FUNDS => 'Распоряжаться средствами мероприятия',
             self::CREATE_MINI_GAME => 'Создавать мини-игры',
             self::UPDATE_MINI_GAME => 'Редактировать параметры мини-игр',
             self::MANAGE_MINI_GAME_ROSTER => 'Назначать состав мини-игр',
@@ -49,7 +51,22 @@ enum EventResponsibilityPermissionEnum: string
             self::MANAGE_RESULT,
             self::COMPLETE_EVENT,
             self::CANCEL_EVENT,
+            self::MANAGE_FUNDS,
         ];
+    }
+
+    /**
+     * Legacy/default responsibility assignment must never acquire a new
+     * financial capability merely because a new enum case was added.
+     *
+     * @return list<self>
+     */
+    public static function defaultAssignmentPermissions(): array
+    {
+        return array_values(array_filter(
+            self::cases(),
+            static fn (self $permission): bool => $permission !== self::MANAGE_FUNDS,
+        ));
     }
 
     /** @return list<self> */

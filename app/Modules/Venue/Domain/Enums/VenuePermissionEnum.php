@@ -15,6 +15,7 @@ enum VenuePermissionEnum: string
     case DECIDE_BOOKING_REQUESTS = 'rental.bookings.decide';
     case VIEW_PAYMENTS = 'rental.payments.view';
     case CONFIRM_PAYMENTS = 'rental.payments.confirm';
+    case MANAGE_FUNDS = 'venue.wallet.manage';
 
     public function label(): string
     {
@@ -30,6 +31,7 @@ enum VenuePermissionEnum: string
             self::DECIDE_BOOKING_REQUESTS => 'Решения по заявкам на аренду',
             self::VIEW_PAYMENTS => 'Просмотр оплат',
             self::CONFIRM_PAYMENTS => 'Подтверждение оплат',
+            self::MANAGE_FUNDS => 'Распоряжаться средствами площадки',
         };
     }
 }
