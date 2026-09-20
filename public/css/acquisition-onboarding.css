@@ -2,7 +2,7 @@
     position: relative;
     min-height: 100vh;
     overflow: hidden;
-    padding: 112px 0 72px;
+    padding: 32px 0 72px;
     background:
         radial-gradient(circle at 78% 16%, rgba(226, 89, 15, .14), transparent 28%),
         radial-gradient(circle at 16% 42%, rgba(47, 140, 105, .12), transparent 32%),
@@ -447,7 +447,7 @@
 
 @media (max-width: 900px) {
     .acquisition-onboarding {
-        padding-top: 100px;
+        padding-top: 28px;
     }
 
     .acquisition-onboarding__hero {
@@ -461,7 +461,7 @@
 
 @media (max-width: 700px) {
     .acquisition-onboarding {
-        padding-top: 88px;
+        padding-top: 22px;
         padding-bottom: 96px;
     }
 
