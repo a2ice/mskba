@@ -24,12 +24,12 @@ class PricingPrice extends Model
 
     public function service(): BelongsTo
     {
-        return $this->belongsTo(PricingService::class, 'service_id');
+        return $this->belongsTo(PricingService::class, 'service_id')->withTrashed();
     }
 
     public function variant(): BelongsTo
     {
-        return $this->belongsTo(PricingVariant::class, 'variant_id');
+        return $this->belongsTo(PricingVariant::class, 'variant_id')->withTrashed();
     }
 
     public function scopeCurrent(Builder $query): Builder
