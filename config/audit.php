@@ -19,6 +19,10 @@ use App\Modules\Location\Domain\Models\District;
 use App\Modules\Location\Domain\Models\Location;
 use App\Modules\Media\Domain\Models\Media;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Pricing\Domain\Models\PricingCategory;
+use App\Modules\Pricing\Domain\Models\PricingPrice;
+use App\Modules\Pricing\Domain\Models\PricingService;
+use App\Modules\Pricing\Domain\Models\PricingVariant;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
@@ -71,5 +75,9 @@ return [
         Location::class,
         Media::class,
         UserNotification::class,
+        PricingCategory::class,
+        PricingService::class,
+        PricingVariant::class,
+        PricingPrice::class,
     ],
 ];
