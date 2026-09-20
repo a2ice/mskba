@@ -10,6 +10,9 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Location\Domain\Models\Address;
+use App\Modules\Location\Domain\Models\Location;
+use App\Modules\Venue\Domain\Models\Venue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -46,6 +49,34 @@ final class AcquisitionOnboardingTest extends TestCase
         $this->assertSame($campaign->id, $visit->campaign_id);
         $this->assertSame(AcquisitionChannelEnum::QR, $visit->channel);
         $this->assertSame('coach', $visit->persona->value);
+    }
+
+    public function test_venue_campaign_uses_cta_location_trigger_without_standalone_context_card(): void
+    {
+        $address = Address::factory()->create([
+            'latitude' => 55.8782,
+            'longitude' => 37.5364,
+            'full_address' => 'Москва, школа 1794',
+        ]);
+        $location = Location::factory()->create(['address_id' => $address->id]);
+        $venue = Venue::factory()->create([
+            'name' => 'Школа №1794',
+            'location_id' => $location->id,
+            'raw_address' => $address->full_address,
+        ]);
+        $campaign = $this->campaign('1794-inside-outdoor', AcquisitionChannelEnum::QR);
+        $campaign->update([
+            'venue_id' => $venue->id,
+            'location_verification_enabled' => true,
+        ]);
+
+        $this->get(route('acquisition.join', ['campaignCode' => $campaign->public_code]))
+            ->assertOk()
+            ->assertSee('data-has-location-target="1"', false)
+            ->assertSee('data-acquisition-start-join', false)
+            ->assertSee('data-acquisition-start-login', false)
+            ->assertDontSee('Этот вход связан с площадкой')
+            ->assertDontSee('Подтвердить, что я здесь');
     }
 
     public function test_registration_from_campaign_links_visit_to_new_canonical_user(): void

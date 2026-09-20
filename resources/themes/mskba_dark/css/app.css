@@ -797,7 +797,15 @@ body.telegram-mini-app {
 
 @media (max-width: 768px) {
     body.telegram-mini-app .site-header {
-        padding-top: var(--telegram-content-top) !important;
+        padding-top: 0 !important;
+    }
+
+    body.telegram-mini-app .site-header > .header-wrapper {
+        padding-top: var(--telegram-content-top);
+    }
+
+    body.telegram-mini-app.main .site-header + .site-content {
+        padding-top: 18px;
     }
 
     body.telegram-mini-app:not(.main) .first-screen {
