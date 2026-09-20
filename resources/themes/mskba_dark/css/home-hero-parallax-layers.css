@@ -72,3 +72,9 @@ body.main .home-welcome__overlay {
         transform: translate3d(0, 0, 0) scale(1.18);
     }
 }
+
+@media (max-width: 520px) {
+    .home-welcome__image--parallax .home-welcome__parallax-layer--court {
+        object-position: 56% top;
+    }
+}
