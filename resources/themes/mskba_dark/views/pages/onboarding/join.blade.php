@@ -58,22 +58,6 @@
         <div class="acquisition-onboarding__glow acquisition-onboarding__glow--two" aria-hidden="true"></div>
 
         <div class="inner acquisition-onboarding__inner">
-            @if($campaignVenue)
-                <div class="acquisition-onboarding__venue-context">
-                    <div>
-                        <span class="acquisition-onboarding__venue-kicker">Этот вход связан с площадкой</span>
-                        <strong>{{ $campaignVenue->name }}</strong>
-                    </div>
-                    @if($canVerifyCampaignLocation)
-                        <button type="button" class="btn btn--secondary-bordered btn--sm" data-acquisition-location-button>
-                            <i class="ti ti-current-location" aria-hidden="true"></i>
-                            Подтвердить, что я здесь
-                        </button>
-                        <span class="acquisition-onboarding__location-status" data-acquisition-location-status aria-live="polite"></span>
-                    @endif
-                </div>
-            @endif
-
             <div class="acquisition-onboarding__wizard-shell">
                 @if($hasRegistrationErrors && ! $isAuthenticatedOnboarding)
                     <div class="alert alert-danger acquisition-onboarding__errors">
@@ -389,7 +373,7 @@
                             <i class="ti ti-chevron-down" aria-hidden="true"></i>
                         </summary>
                         <div class="acquisition-onboarding__roles-body">
-                            <p>Нет. Геопроверка для QR-кампаний добровольна и не блокирует регистрацию, если ты её пропустишь или запретишь доступ к геолокации.</p>
+                            <p>Нет. Для QR-кампаний проверка может запускаться при нажатии основной кнопки, но она добровольна: отказ в доступе к геолокации или ошибка определения положения не блокируют регистрацию.</p>
                         </div>
                     </details>
                 </section>
