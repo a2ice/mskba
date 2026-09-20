@@ -7,6 +7,7 @@ use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Pricing\Domain\Models\PricingService;
 use App\Modules\Telegram\Domain\Models\TelegramChat;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
@@ -51,6 +52,9 @@ final class GetAdminDashboardHandler
                     break;
                 case route('admin.content'):
                     $item['data']['count'] = ContentItem::query()->count();
+                    break;
+                case route('admin.pricing.index'):
+                    $item['data']['count'] = PricingService::query()->count();
                     break;
                 case route('admin.audit'):
                     $item['data']['count'] = AuditLog::query()->count();

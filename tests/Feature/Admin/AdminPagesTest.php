@@ -67,6 +67,7 @@ class AdminPagesTest extends TestCase
             ->assertSee('Мероприятия')
             ->assertSee('Команды')
             ->assertSee('Контент')
+            ->assertSee('Прайс')
             ->assertSee('Аудит')
             ->assertSee('Настройки')
             ->assertSee('Telegram-чаты');
@@ -79,6 +80,7 @@ class AdminPagesTest extends TestCase
         $this->assertSame(0, $tiles['Мероприятия']['data']['count']);
         $this->assertSame(0, $tiles['Команды']['data']['count']);
         $this->assertSame(1, $tiles['Контент']['data']['count']);
+        $this->assertSame(3, $tiles['Прайс']['data']['count']);
         $this->assertSame(4, $tiles['Настройки']['data']['count']);
         $this->assertSame(2, $tiles['Telegram-чаты']['data']['count']);
     }

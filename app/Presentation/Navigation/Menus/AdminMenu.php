@@ -111,6 +111,15 @@ final class AdminMenu implements MenuHandler
                 'data' => ['count' => 0],
             ],
             [
+                'label' => 'Прайс',
+                'description' => 'Категории услуг, варианты и история цен.',
+                'url' => $this->routeUrl('admin.pricing.index'),
+                'active' => $this->isActiveRoute('admin.pricing.*'),
+                'visible' => $isAdmin,
+                'icon' => 'ti-currency-ruble',
+                'data' => ['count' => 0],
+            ],
+            [
                 'label' => 'Аудит',
                 'description' => 'Журнал изменений ключевых сущностей.',
                 'url' => $this->routeUrl('admin.audit'),
