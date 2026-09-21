@@ -2,6 +2,8 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
+use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
 use App\Modules\Media\Application\Services\WebpImageNormalizer;
@@ -16,6 +18,7 @@ final class StorePlayerCharacterFaceReferenceHandler
 {
     public function __construct(
         private readonly WebpImageNormalizer $normalizer,
+        private readonly PlayerCharacterAiGateway $ai,
     ) {}
 
     /**
@@ -28,6 +31,29 @@ final class StorePlayerCharacterFaceReferenceHandler
             $contents,
             PlayerCharacterFaceReferenceOptions::MAX_OUTPUT_DIMENSION,
         );
+
+        // The normalized image exists only in memory until AI confirms that the
+        // uploaded face matches the requested slot. Failed validation must not
+        // create Media rows or permanent files.
+        $validation = $this->ai->validateFaceReference(
+            $slot,
+            $image['contents'],
+            $image['mime'],
+        );
+
+        if (! $validation->valid) {
+            $expectedLabel = PlayerCharacterFaceReferenceOptions::labels()[$slot] ?? $slot;
+            throw new PlayerCharacterFlowException(
+                'face_reference_invalid',
+                $validation->reason ?: 'Фото не соответствует ракурсу «'.$expectedLabel.'».',
+                422,
+                [
+                    'expected_slot' => $slot,
+                    'detected_slot' => $validation->detectedSlot,
+                ],
+            );
+        }
+
         $disk = 'local';
         $path = sprintf(
             'player-character-faces/%d/%s/%s.webp',
@@ -62,6 +88,7 @@ final class StorePlayerCharacterFaceReferenceHandler
                 $media = $lockedProfile->media()->create([
                     'collection' => $collection,
                     'source' => 'upload',
+                    'source_reference' => PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE,
                     'disk' => $disk,
                     'path' => $path,
                     'title' => $slot,
