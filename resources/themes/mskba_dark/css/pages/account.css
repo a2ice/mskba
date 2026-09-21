@@ -1228,6 +1228,14 @@
     margin: 0;
 }
 
+.account-wallet__recipient-picker {
+    min-width: 0;
+}
+
+.account-wallet__recipient-picker .predictive-search__message {
+    margin-bottom: 0;
+}
+
 .account-wallet__transfer-form label > span {
     color: var(--text-muted);
     font-size: 12px;
