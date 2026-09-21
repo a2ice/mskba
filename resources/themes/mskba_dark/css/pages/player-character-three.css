@@ -253,6 +253,22 @@
     color: #d9aa7c;
 }
 
+.account-player-character-generate {
+    display: grid;
+    gap: 6px;
+    margin: 12px 4px 0;
+}
+
+.account-player-character-generate .btn {
+    width: 100%;
+}
+
+.account-player-character-generate small {
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1.35;
+}
+
 .account-player-character-configurator__profile-gender {
     display: inline-flex;
     align-items: center;
