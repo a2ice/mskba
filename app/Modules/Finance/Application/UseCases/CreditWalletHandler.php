@@ -45,6 +45,10 @@ final readonly class CreditWalletHandler
             throw new InvalidArgumentException('Реферальное вознаграждение зачисляется только в bonus-баланс.');
         }
 
+        if ($operationType === WalletOperationTypeEnum::BONUS_GRANT && $balanceType !== WalletBalanceTypeEnum::BONUS) {
+            throw new InvalidArgumentException('Бонусное начисление зачисляется только в bonus-баланс.');
+        }
+
         $this->ownerOperations->ensureEnabled($wallet->owner_type);
 
         return $this->mutations->execute(

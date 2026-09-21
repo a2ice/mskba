@@ -1196,3 +1196,68 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+.account-wallet__transfer,
+.account-wallet__bootstrap {
+    display: grid;
+    gap: 16px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    padding: 22px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.account-wallet__transfer > div p,
+.account-wallet__bootstrap > div p,
+.account-wallet__transfer-hint {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.account-wallet__transfer-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(140px, .7fr) max-content;
+    align-items: end;
+    gap: 12px;
+}
+
+.account-wallet__transfer-form label {
+    display: grid;
+    gap: 7px;
+    margin: 0;
+}
+
+.account-wallet__transfer-form label > span {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.account-wallet__transfer-hint strong {
+    color: var(--text);
+}
+
+.account-wallet__bootstrap {
+    border-color: rgba(255, 132, 64, 0.36);
+    background: rgba(236, 127, 18, 0.07);
+}
+
+.account-wallet__operation-description {
+    display: block;
+    margin-top: 3px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+@media (max-width: 760px) {
+    .account-wallet__transfer-form {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .account-wallet__transfer-form .btn {
+        justify-self: start;
+    }
+}

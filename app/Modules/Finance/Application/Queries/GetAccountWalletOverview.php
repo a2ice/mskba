@@ -2,9 +2,11 @@
 
 namespace App\Modules\Finance\Application\Queries;
 
+use App\Modules\Finance\Application\Services\SuperadminWalletBootstrapBonus;
 use App\Modules\Finance\Application\Services\WalletOwnerResolver;
 use App\Modules\Finance\Domain\Enums\WalletBalanceTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletOperationStatusEnum;
+use App\Modules\Finance\Domain\Enums\WalletOperationTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletTypeEnum;
 use App\Modules\Finance\Domain\Models\Wallet;
@@ -13,7 +15,10 @@ use App\Modules\Identity\Domain\Models\User;
 
 final readonly class GetAccountWalletOverview
 {
-    public function __construct(private WalletOwnerResolver $owners) {}
+    public function __construct(
+        private WalletOwnerResolver $owners,
+        private SuperadminWalletBootstrapBonus $bootstrapBonus,
+    ) {}
 
     /**
      * @return array{
@@ -22,10 +27,12 @@ final readonly class GetAccountWalletOverview
      *     totalBalanceMinor: int,
      *     realBalanceMinor: int,
      *     bonusBalanceMinor: int,
+     *     bootstrapBonusAvailable: bool,
      *     operations: array<int, array{
      *         id: int,
      *         type: string,
      *         label: string,
+     *         description: ?string,
      *         completedAt: mixed,
      *         realDeltaMinor: int,
      *         bonusDeltaMinor: int,
@@ -51,6 +58,7 @@ final readonly class GetAccountWalletOverview
                 'totalBalanceMinor' => 0,
                 'realBalanceMinor' => 0,
                 'bonusBalanceMinor' => 0,
+                'bootstrapBonusAvailable' => $this->bootstrapBonus->available($user),
                 'operations' => [],
             ];
         }
@@ -67,7 +75,7 @@ final readonly class GetAccountWalletOverview
             ->orderByDesc('id')
             ->limit(min(100, max(1, $historyLimit)))
             ->get()
-            ->map(function (WalletOperation $operation): array {
+            ->map(function (WalletOperation $operation) use ($ownerId): array {
                 $realDelta = (int) $operation->entries
                     ->filter(fn ($entry): bool => $entry->balance_type === WalletBalanceTypeEnum::REAL)
                     ->sum('amount_minor');
@@ -79,6 +87,7 @@ final readonly class GetAccountWalletOverview
                     'id' => (int) $operation->id,
                     'type' => $operation->type->value,
                     'label' => $operation->type->label(),
+                    'description' => $this->operationDescription($operation, $ownerId),
                     'completedAt' => $operation->completed_at,
                     'realDeltaMinor' => $realDelta,
                     'bonusDeltaMinor' => $bonusDelta,
@@ -93,7 +102,29 @@ final readonly class GetAccountWalletOverview
             'totalBalanceMinor' => $wallet->totalBalanceMinor(),
             'realBalanceMinor' => (int) $wallet->real_balance_minor,
             'bonusBalanceMinor' => (int) $wallet->bonus_balance_minor,
+            'bootstrapBonusAvailable' => $this->bootstrapBonus->available($user),
             'operations' => $operations,
         ];
+    }
+
+    private function operationDescription(WalletOperation $operation, int $ownerId): ?string
+    {
+        if ($operation->type === WalletOperationTypeEnum::USER_TRANSFER) {
+            $senderId = (int) ($operation->metadata['sender_user_id'] ?? 0);
+            $senderHandle = trim((string) ($operation->metadata['sender_handle'] ?? ''));
+            $recipientHandle = trim((string) ($operation->metadata['recipient_handle'] ?? ''));
+
+            if ($senderId === $ownerId && $recipientHandle !== '') {
+                return '→ '.$recipientHandle;
+            }
+
+            if ($senderId !== $ownerId && $senderHandle !== '') {
+                return '← '.$senderHandle;
+            }
+        }
+
+        $description = trim((string) ($operation->metadata['description'] ?? ''));
+
+        return $description !== '' ? $description : null;
     }
 }
