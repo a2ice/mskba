@@ -138,6 +138,10 @@
 Контракт 3D-assets, границы предметных контекстов и этапы развития описаны в
 [Player Character and Uniform Assets](specification/player-character-and-uniform-assets.md).
 
+AI-проверка face references и 2D-генерация проходят только через внутреннюю границу
+[AI Services](specification/ai-services.md). Фото лица не сохраняется до успешной
+AI-проверки ракурса; генерация сначала проверяет актуальную цену и баланс пользователя.
+
 ## Контакты
 
 Техническая модель контактных каналов, подтверждений и уникальности пользовательского email описана в [Contact](specification/contact.md).
