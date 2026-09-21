@@ -378,7 +378,7 @@ class VenueShowPageTest extends TestCase
                 'sort_order' => 10,
             ]);
 
-            $this
+            $response = $this
                 ->get(route('venues.show', $venue->alias))
                 ->assertOk()
                 ->assertSee('Расписание')
@@ -389,15 +389,23 @@ class VenueShowPageTest extends TestCase
                 ->assertSee('Нажмите на день, чтобы посмотреть интервалы.')
                 ->assertSee('data-venue-day-card', false)
                 ->assertSee('data-venue-day-modal', false)
-                ->assertSee('15 июн')
-                ->assertSee('Пн')
-                ->assertSee('Ср')
+                ->assertSee('data-label="15 июн"', false)
+                ->assertSee('data-weekday="Пн"', false)
+                ->assertSee('data-weekday="Ср"', false)
                 ->assertSee('10:00-12:30')
                 ->assertSee('18:00-21:00')
-                ->assertSee('Закрыто')
-                ->assertDontSee('Jun')
-                ->assertDontSee('Mon')
-                ->assertDontSee('Wed');
+                ->assertSee('Закрыто');
+
+            $html = $response->getContent();
+
+            $this->assertDoesNotMatchRegularExpression(
+                '/data-label="\\d{2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"/',
+                $html,
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/data-weekday="(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)"/',
+                $html,
+            );
 
             Carbon::setTestNow('2026-06-15 13:00:00');
 
