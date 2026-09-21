@@ -35,6 +35,13 @@ final class AccountMenu implements MenuHandler
             $newNotificationsCount = app(CountNewUserNotificationsHandler::class)->handle($user);
 
             $items[] = [
+                'label' => 'Кошелёк',
+                'url' => $this->routeUrl('account.wallet'),
+                'active' => $this->isActiveRoute('account.wallet'),
+                'visible' => true,
+            ];
+
+            $items[] = [
                 'label' => 'Роли в проекте',
                 'url' => $this->routeUrl('account.roles'),
                 'active' => $this->isActiveRoute('account.roles, account.roles.*, account.participation-role'),
