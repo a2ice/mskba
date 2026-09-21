@@ -53,4 +53,5 @@ Presentation получает read model через Finance Application query. U
 
 ## Статус
 
-В работе.
+Выполнено и влито в `main` через PR #244,
+merge commit `0105d6480ad1657587800d37ce6a6421cca765bb`.
