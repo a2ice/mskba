@@ -212,39 +212,96 @@ final class UserWalletTransferTest extends TestCase
             ->assertSee('← @sender');
     }
 
-    public function test_superadmin_can_claim_bootstrap_bonus_only_once(): void
+    public function test_superadmin_can_grant_arbitrary_bonus_more_than_once_with_current_password(): void
     {
         $superadmin = $this->confirmedUser('superadmin', UserSystemRoleEnum::SUPERADMIN);
+        $superadmin->forceFill(['password' => 'StrongPass123!'])->save();
 
         $this->actingAs($superadmin)
             ->get(route('account.wallet'))
             ->assertOk()
-            ->assertSee('Начислить 10 000 ₽ бонусами');
+            ->assertSee('Начислить бонусы')
+            ->assertSee('Текущий пароль superadmin');
 
         $this->actingAs($superadmin)
-            ->post(route('account.wallet.bootstrap-bonus.store'))
-            ->assertRedirect(route('account.wallet'));
+            ->post(route('account.wallet.bonus-grants.store'), [
+                'grant_amount' => '1 234,56',
+                'grant_password' => 'StrongPass123!',
+                'grant_idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect(route('account.wallet'))
+            ->assertSessionHas('status');
 
         $this->actingAs($superadmin)
-            ->post(route('account.wallet.bootstrap-bonus.store'))
-            ->assertRedirect(route('account.wallet'));
+            ->post(route('account.wallet.bonus-grants.store'), [
+                'grant_amount' => '765,44',
+                'grant_password' => 'StrongPass123!',
+                'grant_idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect(route('account.wallet'))
+            ->assertSessionHas('status');
 
         $wallet = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $superadmin->id);
-        $this->assertSame(1_000_000, $wallet->bonus_balance_minor);
-        $this->assertSame(1, WalletOperation::query()->where('type', WalletOperationTypeEnum::BONUS_GRANT->value)->count());
-
-        $this->actingAs($superadmin)
-            ->get(route('account.wallet'))
-            ->assertOk()
-            ->assertDontSee('Начислить 10 000 ₽ бонусами');
+        $this->assertSame(200_000, $wallet->bonus_balance_minor);
+        $this->assertSame(
+            2,
+            WalletOperation::query()->where('type', WalletOperationTypeEnum::BONUS_GRANT->value)->count(),
+        );
     }
 
-    public function test_regular_user_cannot_claim_superadmin_bootstrap_bonus(): void
+    public function test_superadmin_bonus_grant_requires_correct_current_password(): void
+    {
+        $superadmin = $this->confirmedUser('superadmin', UserSystemRoleEnum::SUPERADMIN);
+        $superadmin->forceFill(['password' => 'StrongPass123!'])->save();
+
+        $this->actingAs($superadmin)
+            ->post(route('account.wallet.bonus-grants.store'), [
+                'grant_amount' => '500',
+                'grant_password' => 'WrongPass123!',
+                'grant_idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('grant_password');
+
+        $this->assertDatabaseCount('wallet_operations', 0);
+        $this->assertDatabaseCount('wallet_ledger_entries', 0);
+    }
+
+    public function test_superadmin_bonus_grant_is_idempotent_for_same_request_key(): void
+    {
+        $superadmin = $this->confirmedUser('superadmin', UserSystemRoleEnum::SUPERADMIN);
+        $superadmin->forceFill(['password' => 'StrongPass123!'])->save();
+        $key = (string) Str::uuid();
+
+        foreach ([1, 2] as $attempt) {
+            $this->actingAs($superadmin)
+                ->post(route('account.wallet.bonus-grants.store'), [
+                    'grant_amount' => '250',
+                    'grant_password' => 'StrongPass123!',
+                    'grant_idempotency_key' => $key,
+                ])
+                ->assertRedirect(route('account.wallet'));
+        }
+
+        $wallet = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $superadmin->id);
+        $this->assertSame(25_000, $wallet->bonus_balance_minor);
+        $this->assertSame(
+            1,
+            WalletOperation::query()->where('type', WalletOperationTypeEnum::BONUS_GRANT->value)->count(),
+        );
+    }
+
+    public function test_regular_user_cannot_use_superadmin_bonus_grant(): void
     {
         $user = $this->confirmedUser('regular');
+        $user->forceFill(['password' => 'StrongPass123!'])->save();
 
         $this->actingAs($user)
-            ->post(route('account.wallet.bootstrap-bonus.store'))
+            ->post(route('account.wallet.bonus-grants.store'), [
+                'grant_amount' => '500',
+                'grant_password' => 'StrongPass123!',
+                'grant_idempotency_key' => (string) Str::uuid(),
+            ])
             ->assertForbidden();
     }
 
