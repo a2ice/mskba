@@ -1,6 +1,6 @@
 # 012 - Добавить визуальные tooltip для элементов с атрибутом title
 
-> **Актуализация:** это историческое описание первой версии tooltip. Начиная с Task 195 актуальный контракт определяется семантически: текст получает подчёркивание + `?`, visual/icon/sign — tooltip без декоративных добавлений. `data-tooltip-variant="title"` больше не является способом выбрать presentation. Source of truth: `docs/specification.md`.
+> **Актуализация:** это историческое описание первой версии tooltip. Текущий контракт: любой `title` даёт tooltip без автоматического `?` и без подчёркивания; видимый help-indicator включается только явно через `data-tooltip-help`. `data-tooltip-variant="title"` больше не управляет presentation. Source of truth: `docs/specification.md`.
 
 ## Оригинальное описание
 
