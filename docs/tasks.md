@@ -170,4 +170,4 @@
 - [x] 211 - Исправить Telegram sticky-header и упростить venue acquisition entry ([описание](tasks/211/description.md))
 - [x] 212 - Доработать Telegram hero spacing и плавность параллакса на мобильных ([описание](tasks/212/description.md))
 - [x] 213 - Перевести parallax hero в Safari на native scroll-driven animation ([описание](tasks/213/description.md))
-- [ ] 214 - Заложить финансовый контекст: кошельки, подбалансы и журнал транзакций ([описание](tasks/214/description.md))
+- [x] 214 - Заложить финансовый контекст: кошельки, подбалансы и журнал транзакций ([описание](tasks/214/description.md))
