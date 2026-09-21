@@ -3,7 +3,8 @@ import $ from 'jquery';
 const TOOLTIP_SELECTOR = '[title]';
 const SKIP_SELECTOR = '[data-tooltip-skip]';
 const VISUAL_PRESENTATION = 'visual';
-const TEXT_PRESENTATION = 'text';
+const HELP_PRESENTATION = 'help';
+const PLAIN_PRESENTATION = 'plain';
 const FLOATING_TOOLTIP_ID = 'ui-tooltip-floating';
 const FLOATING_TOOLTIP_OFFSET = 10;
 const FLOATING_TOOLTIP_VIEWPORT_GAP = 8;
@@ -28,12 +29,7 @@ function initTooltips(context = document) {
             return;
         }
 
-        if (tooltipPresentation(element) === TEXT_PRESENTATION && isRedundantTextTooltip(element, title)) {
-            removeEnhancedTooltip(element);
-            element.removeAttr('title');
-
-            return;
-        }
+        const presentation = tooltipPresentation(element);
 
         element
             .removeAttr('title')
@@ -46,39 +42,24 @@ function initTooltips(context = document) {
 
         element.data('tooltipEnhanced', true);
 
-        if (tooltipPresentation(element) === VISUAL_PRESENTATION) {
+        if (presentation === VISUAL_PRESENTATION) {
             enhanceVisualTooltip(element, title);
             return;
         }
 
-        enhanceTextTooltip(element, title);
+        if (presentation === HELP_PRESENTATION) {
+            enhanceHelpTooltip(element, title);
+            return;
+        }
+
+        enhancePlainTooltip(element, title);
     });
 }
 
-function isRedundantTextTooltip(element, title) {
-    const readableText = element
-        .clone()
-        .find('i, svg, img, picture, [aria-hidden="true"], [hidden], .visually-hidden, .sr-only, .ui-tooltip-trigger[data-tooltip-generated="1"]')
-        .remove()
-        .end()
-        .text()
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    return readableText !== '' && readableText === title.replace(/\s+/g, ' ').trim();
-}
-
-function removeEnhancedTooltip(element) {
+function enhancePlainTooltip(element, title) {
     element
-        .removeClass('ui-tooltip-source ui-tooltip-source--text ui-tooltip-source--title ui-tooltip-source--visual ui-tooltip-source--icon')
-        .removeAttr('data-tooltip')
-        .removeAttr('data-tooltip-source')
-        .removeData('tooltipEnhanced');
-
-    element
-        .children('.ui-tooltip-trigger[data-tooltip-generated="1"]')
-        .add(element.next('.ui-tooltip-trigger[data-tooltip-generated="1"]'))
-        .remove();
+        .addClass('ui-tooltip-source ui-tooltip-source--plain')
+        .attr('data-tooltip', title);
 }
 
 function enhanceVisualTooltip(element, title) {
@@ -123,9 +104,9 @@ function isIconOnlyTooltipSource(element) {
     return textContent === '';
 }
 
-function enhanceTextTooltip(element, title) {
+function enhanceHelpTooltip(element, title) {
     element
-        .addClass('ui-tooltip-source ui-tooltip-source--text')
+        .addClass('ui-tooltip-source ui-tooltip-source--help')
         .attr('data-tooltip', title);
 
     const trigger = $('<button>', {
@@ -155,8 +136,8 @@ function refreshEnhancedTooltip(element, title) {
 }
 
 function tooltipPresentation(element) {
-    if (element.is('[data-tooltip-text]')) {
-        return TEXT_PRESENTATION;
+    if (element.is('[data-tooltip-help], [data-tooltip-text]')) {
+        return HELP_PRESENTATION;
     }
 
     if (
@@ -166,10 +147,9 @@ function tooltipPresentation(element) {
         return VISUAL_PRESENTATION;
     }
 
-    // Presentation is semantic, not opt-in: readable text always gets the
-    // text treatment. Legacy data-tooltip-variant="title" is intentionally
-    // ignored here so it cannot silently suppress the question mark/underline.
-    return TEXT_PRESENTATION;
+    // title is tooltip-only by default. Visible help affordances are opt-in
+    // through data-tooltip-help.
+    return PLAIN_PRESENTATION;
 }
 
 function isBlockLike(element) {
