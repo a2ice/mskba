@@ -446,7 +446,7 @@ final class EventController extends Controller
         ]);
         $permissions = array_key_exists('permissions_present', $validated)
             ? ($validated['permissions'] ?? [])
-            : array_map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value, EventResponsibilityPermissionEnum::cases());
+            : array_map(fn (EventResponsibilityPermissionEnum $permission): string => $permission->value, EventResponsibilityPermissionEnum::defaultAssignmentPermissions());
 
         try {
             $responsibilities->handle($event, $participant, $actor, $permissions);

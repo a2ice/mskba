@@ -72,6 +72,7 @@ enum VenueMembershipAccessLevelEnum: string
                 VenuePermissionEnum::MANAGE_MEMBERSHIPS,
                 VenuePermissionEnum::VIEW_PAYMENTS,
                 VenuePermissionEnum::CONFIRM_PAYMENTS,
+                VenuePermissionEnum::MANAGE_FUNDS,
             ],
             self::BOOKING_OPERATOR => $this->defaultPermissions(),
             self::FINANCE_VIEWER => [
