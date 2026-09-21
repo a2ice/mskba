@@ -304,16 +304,20 @@ function setStageError(stage, message = '') {
 }
 
 function syncRenderModeButtons(stage) {
-    const wrapper = stage.closest('.account-player-character-visual')
-        ?.querySelector('[data-player-character-render-switch]');
-    if (!wrapper) {
-        return;
-    }
+    const visual = stage.closest('.account-player-character-visual');
+    const wrapper = visual?.querySelector('[data-player-character-render-switch]');
+    const busy = stage.dataset.renderBusy === 'true';
 
-    wrapper.querySelectorAll('[data-player-character-render-mode]').forEach((button) => {
+    wrapper?.querySelectorAll('[data-player-character-render-mode]').forEach((button) => {
         button.setAttribute('aria-pressed', button.dataset.playerCharacterRenderMode === stage.dataset.renderMode ? 'true' : 'false');
-        button.disabled = stage.dataset.renderBusy === 'true';
+        button.disabled = busy;
     });
+
+    const generate = visual?.querySelector('[data-player-character-generate]');
+    if (generate) {
+        generate.disabled = busy;
+        generate.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
 }
 
 async function requestJsonMutation(stage, form, payload) {
@@ -332,6 +336,7 @@ async function requestJsonMutation(stage, form, payload) {
     if (!response.ok) {
         const error = new Error(data.message || 'Не удалось выполнить действие.');
         error.status = response.status;
+        error.code = data.code || null;
         error.payload = data;
         throw error;
     }
@@ -447,8 +452,9 @@ async function uploadFaceReference(stage, form, input) {
     const hadReference = card.classList.contains('is-stored');
     const previousStatus = status.textContent;
     card.classList.add('is-uploading');
-    status.textContent = 'Обработка…';
+    status.textContent = 'Проверка AI…';
     input.disabled = true;
+    setStageError(stage, '');
 
     const payload = new FormData();
     payload.append('_method', 'PATCH');
@@ -470,12 +476,15 @@ async function uploadFaceReference(stage, form, input) {
             const validationMessage = data.errors
                 ? Object.values(data.errors).flat()[0]
                 : null;
-            throw new Error(validationMessage || data.message || 'Не удалось сохранить фотографию.');
+            const error = new Error(validationMessage || data.message || 'Не удалось проверить фотографию.');
+            error.code = data.code || null;
+            throw error;
         }
 
         card.classList.add('is-stored');
         status.textContent = `Загружено · ${data.width}×${data.height}`;
     } catch (error) {
+        setStageError(stage, error.message || 'Не удалось проверить фотографию.');
         if (hadReference) {
             card.classList.add('is-stored');
             status.textContent = 'Не обновлено · прежнее фото сохранено';
@@ -488,6 +497,69 @@ async function uploadFaceReference(stage, form, input) {
         input.disabled = false;
         input.value = '';
     }
+}
+
+function formatRubles(minor) {
+    const value = Number(minor);
+    if (!Number.isFinite(value)) {
+        return null;
+    }
+
+    return new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        maximumFractionDigits: value % 100 === 0 ? 0 : 2,
+    }).format(value / 100);
+}
+
+function generationErrorMessage(error) {
+    if (error?.code !== 'insufficient_balance') {
+        return error?.message || 'Не удалось сгенерировать 2D-модель.';
+    }
+
+    const price = formatRubles(error.payload?.price_minor);
+    const available = formatRubles(error.payload?.available_minor);
+
+    if (price && available) {
+        return `Недостаточно средств. Стоимость генерации — ${price}, доступно — ${available}.`;
+    }
+
+    return error.message;
+}
+
+function bindGenerateTwoDimensional(stage, form) {
+    const button = stage.closest('.account-player-character-visual')
+        ?.querySelector('[data-player-character-generate]');
+
+    if (!button) {
+        return;
+    }
+
+    button.addEventListener('click', async () => {
+        if (stage.dataset.renderBusy === 'true') {
+            return;
+        }
+
+        setStageBusy(stage, true);
+        setStageError(stage, '');
+        syncRenderModeButtons(stage);
+
+        try {
+            const result = await requestJsonMutation(stage, form, {
+                mutation: 'generate_2d',
+            });
+
+            const image = stage.querySelector('[data-player-character-two-image]');
+            if (image && result.image_data_url) {
+                image.src = result.image_data_url;
+            }
+        } catch (error) {
+            setStageError(stage, generationErrorMessage(error));
+        } finally {
+            setStageBusy(stage, false);
+            syncRenderModeButtons(stage);
+        }
+    });
 }
 
 function bindFaceReferences(stage, form) {
@@ -511,6 +583,7 @@ async function bindPlayerCharacterStage(stage) {
     bindTeamUniform(stage, form, configurator, runtimeRef);
     bindHeightMarker(stage);
     bindFaceReferences(stage, form);
+    bindGenerateTwoDimensional(stage, form);
     bindRenderModeSwitch(stage, form, runtimeRef);
 
     const initialState = updateStage(stage, form);
