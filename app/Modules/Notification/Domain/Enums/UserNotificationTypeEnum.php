@@ -8,6 +8,7 @@ enum UserNotificationTypeEnum: string
     case SECURITY = 'security';
     case PROFILE = 'profile';
     case REMINDER = 'reminder';
+    case FINANCE = 'finance';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum UserNotificationTypeEnum: string
             self::SECURITY => 'Безопасность',
             self::PROFILE => 'Профиль',
             self::REMINDER => 'Напоминание',
+            self::FINANCE => 'Финансы',
         };
     }
 }

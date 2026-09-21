@@ -26,6 +26,16 @@
 ])
 
 @section('section-content')
+    @if(session('status'))
+        <div class="alert alert-success">{{ session('status') }}</div>
+    @endif
+
+    @if($errors->any())
+        <div class="alert alert-danger">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
     <div class="account-wallet">
         <section class="account-wallet__hero" aria-labelledby="account-wallet-total-title">
             <span class="account-wallet__eyebrow" id="account-wallet-total-title">Доступно</span>
@@ -47,8 +57,69 @@
             </section>
         </div>
 
+        <section class="account-wallet__transfer" aria-labelledby="account-wallet-transfer-title">
+            <div>
+                <h2 class="h3 mb-1" id="account-wallet-transfer-title">Перевести бонусы</h2>
+                <p>Сейчас между пользовательскими кошельками переводится только бонусный баланс. Основной баланс остаётся недоступным для переводов.</p>
+            </div>
+
+            <form method="POST" action="{{ route('account.wallet.transfers.store') }}" class="account-wallet__transfer-form">
+                @csrf
+                <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
+
+                <label>
+                    <span>Получатель</span>
+                    <input
+                        type="text"
+                        name="recipient"
+                        class="form-control"
+                        value="{{ old('recipient') }}"
+                        placeholder="@olsen"
+                        maxlength="64"
+                        autocomplete="off"
+                        required
+                    >
+                </label>
+
+                <label>
+                    <span>Сумма, ₽</span>
+                    <input
+                        type="text"
+                        name="amount"
+                        class="form-control"
+                        value="{{ old('amount') }}"
+                        placeholder="500"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        required
+                    >
+                </label>
+
+                <button type="submit" class="btn btn--primary btn--sm" @disabled($bonusBalanceMinor <= 0)>
+                    Перевести
+                </button>
+            </form>
+
+            <p class="account-wallet__transfer-hint">
+                Доступно для перевода: <strong>{{ $formatMoney($bonusBalanceMinor, $currency) }}</strong>. Получатель увидит уведомление и toast о зачислении.
+            </p>
+        </section>
+
+        @if($bootstrapBonusAvailable)
+            <section class="account-wallet__bootstrap" aria-labelledby="account-wallet-bootstrap-title">
+                <div>
+                    <h2 class="h3 mb-1" id="account-wallet-bootstrap-title">Тестовый бонус superadmin</h2>
+                    <p>Одноразовое начисление для проверки цепочки переводов между аккаунтами.</p>
+                </div>
+                <form method="POST" action="{{ route('account.wallet.bootstrap-bonus.store') }}">
+                    @csrf
+                    <button type="submit" class="btn btn--secondary btn--sm">Начислить 10 000 ₽ бонусами</button>
+                </form>
+            </section>
+        @endif
+
         <p class="account-wallet__notice">
-            Пополнение, вывод и переводы пока не подключены. На этом этапе кошелёк показывает баланс и финансовую историю.
+            Пополнение реальными деньгами, вывод и перевод основного баланса пока не подключены.
         </p>
 
         <section class="account-wallet__history" aria-labelledby="account-wallet-history-title">
@@ -82,7 +153,12 @@
                                 @endphp
                                 <tr>
                                     <td>{{ $operation['completedAt']?->format('d.m.Y H:i') ?? '—' }}</td>
-                                    <td>{{ $operation['label'] }}</td>
+                                    <td>
+                                        <strong>{{ $operation['label'] }}</strong>
+                                        @if($operation['description'])
+                                            <small class="account-wallet__operation-description">{{ $operation['description'] }}</small>
+                                        @endif
+                                    </td>
                                     <td>
                                         {{ $operation['realDeltaMinor'] === 0 ? '—' : $formatMoney($operation['realDeltaMinor'], $currency, true) }}
                                     </td>
