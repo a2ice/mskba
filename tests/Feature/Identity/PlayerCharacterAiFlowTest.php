@@ -6,6 +6,7 @@ use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
 use App\Modules\Ai\Application\Dto\FaceReferenceValidationResult;
 use App\Modules\Ai\Application\Dto\GeneratedPlayerCharacterImage;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
+use App\Modules\Ai\Infrastructure\Gateways\NullPlayerCharacterAiGateway;
 use App\Modules\Finance\Application\UseCases\CreditWalletHandler;
 use App\Modules\Finance\Application\UseCases\EnsureWalletHandler;
 use App\Modules\Finance\Domain\Enums\WalletBalanceTypeEnum;
@@ -155,7 +156,7 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->uploadReference($user, 'front');
         $this->uploadReference($user, 'left');
 
-        $this->app->forgetInstance(PlayerCharacterAiGateway::class);
+        $this->app->instance(PlayerCharacterAiGateway::class, new NullPlayerCharacterAiGateway);
 
         $this->actingAs($user)
             ->patchJson(route('account.player-profile.update'), [
