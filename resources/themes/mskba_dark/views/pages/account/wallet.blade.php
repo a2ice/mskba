@@ -122,8 +122,12 @@
                             placeholder="10 000"
                             inputmode="decimal"
                             autocomplete="off"
+                            required
+                            aria-describedby="wallet-bonus-grant-amount-help"
                             data-wallet-bonus-grant-amount
                         >
+                        <small id="wallet-bonus-grant-amount-help" class="text-muted">Только сумма в рублях, например 500 или 1 250,50.</small>
+                        @error('grant_amount')<div class="form-error">{{ $message }}</div>@enderror
                     </label>
 
                     <button
@@ -142,7 +146,7 @@
             @component('theme::partials.modal.layout', [
                 'id' => 'wallet-bonus-grant-confirm',
                 'dialogClass' => 'account-wallet-bonus-grant-modal__dialog',
-                'openOnLoad' => $errors->has('grant_amount') || $errors->has('grant_password') || $errors->has('grant'),
+                'openOnLoad' => $errors->has('grant_password') || $errors->has('grant'),
                 'persistInUrl' => false,
             ])
                 <div class="account-wallet-bonus-grant-confirm">
@@ -178,7 +182,6 @@
                             >
                         </label>
 
-                        @error('grant_amount')<div class="form-error">{{ $message }}</div>@enderror
                         @error('grant_password')<div class="form-error">{{ $message }}</div>@enderror
                         @error('grant')<div class="form-error">{{ $message }}</div>@enderror
 
