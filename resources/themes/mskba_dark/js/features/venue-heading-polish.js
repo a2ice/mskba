@@ -33,6 +33,8 @@ function polishVenueHeading() {
         'ui-tooltip-source',
         'ui-tooltip-source--title',
         'ui-tooltip-source--text',
+        'ui-tooltip-source--plain',
+        'ui-tooltip-source--help',
         'ui-tooltip-source--visual',
         'ui-tooltip-source--icon',
     );
