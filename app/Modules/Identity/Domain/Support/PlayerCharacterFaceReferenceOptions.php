@@ -8,6 +8,8 @@ final class PlayerCharacterFaceReferenceOptions
 {
     public const MAX_OUTPUT_DIMENSION = 512;
 
+    public const AI_VALIDATED_REFERENCE = 'player-character-ai-validated-v1';
+
     public const SLOTS = ['front', 'left', 'right'];
 
     public const COLLECTIONS = [
