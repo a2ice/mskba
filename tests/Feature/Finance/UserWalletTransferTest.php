@@ -310,6 +310,17 @@ final class UserWalletTransferTest extends TestCase
             ->assertSee(route('account.wallet.transfer-recipients'), false);
     }
 
+    public function test_wallet_horizontal_form_rows_use_shared_top_alignment_pattern(): void
+    {
+        $user = $this->confirmedUser('sender');
+
+        $this->actingAs($user)
+            ->get(route('account.wallet'))
+            ->assertOk()
+            ->assertSee('account-wallet__transfer-form form-row--top', false)
+            ->assertSee('form-row__action', false);
+    }
+
     public function test_superadmin_can_grant_arbitrary_bonus_more_than_once_with_current_password(): void
     {
         $superadmin = $this->confirmedUser('superadmin', UserSystemRoleEnum::SUPERADMIN);

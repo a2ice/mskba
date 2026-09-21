@@ -1218,7 +1218,6 @@
 .account-wallet__transfer-form {
     display: grid;
     grid-template-columns: minmax(220px, 1.4fr) minmax(140px, .7fr) max-content;
-    align-items: end;
     gap: 12px;
 }
 
@@ -1262,7 +1261,6 @@
 @media (max-width: 760px) {
     .account-wallet__transfer-form {
         grid-template-columns: 1fr;
-        align-items: stretch;
     }
 
     .account-wallet__transfer-form .btn {
@@ -1274,7 +1272,6 @@
 .account-wallet__grant-form {
     display: flex;
     flex-wrap: wrap;
-    align-items: end;
     gap: 12px;
 }
 
