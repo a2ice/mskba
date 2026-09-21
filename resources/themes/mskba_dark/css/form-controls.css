@@ -1,3 +1,37 @@
+/*
+ * Horizontal form rows must align by the top edge of each logical cell.
+ * Bottom alignment makes rows jump when one field gains helper/error text.
+ * Keep action buttons on the control line without tying alignment to the
+ * tallest field. Reuse these classes instead of page-specific align-items:end.
+ */
+.form-row--top {
+    align-items: flex-start !important;
+}
+
+.form-row__action {
+    display: grid;
+    grid-template-rows: 15px auto;
+    gap: 6px;
+}
+
+.form-row__action::before {
+    content: '';
+}
+
+@media (max-width: 767px) {
+    .form-row--top {
+        align-items: stretch !important;
+    }
+
+    .form-row__action {
+        grid-template-rows: auto;
+    }
+
+    .form-row__action::before {
+        display: none;
+    }
+}
+
 .form-toggle {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr);

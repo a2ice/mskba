@@ -63,7 +63,7 @@
                 <p>Сейчас между пользовательскими кошельками переводится только бонусный баланс. Основной баланс остаётся недоступным для переводов.</p>
             </div>
 
-            <form method="POST" action="{{ route('account.wallet.transfers.store') }}" class="account-wallet__transfer-form">
+            <form method="POST" action="{{ route('account.wallet.transfers.store') }}" class="account-wallet__transfer-form form-row--top">
                 @csrf
                 <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
 
@@ -94,9 +94,11 @@
                     >
                 </label>
 
-                <button type="submit" class="btn btn--primary btn--sm" @disabled($bonusBalanceMinor <= 0)>
-                    Перевести
-                </button>
+                <div class="form-row__action">
+                    <button type="submit" class="btn btn--primary btn--sm" @disabled($bonusBalanceMinor <= 0)>
+                        Перевести
+                    </button>
+                </div>
             </form>
 
             <p class="account-wallet__transfer-hint">
@@ -111,7 +113,7 @@
                     <p>Служебное начисление на свой бонусный баланс. Каждое начисление фиксируется в финансовой истории.</p>
                 </div>
 
-                <div class="account-wallet__grant-form">
+                <div class="account-wallet__grant-form form-row--top">
                     <label>
                         <span>Сумма, ₽</span>
                         <input
@@ -132,16 +134,18 @@
                         @error('grant_amount')<div class="form-error">{{ $message }}</div>@enderror
                     </label>
 
-                    <button
-                        type="button"
-                        class="btn btn--secondary btn--sm js-handler"
-                        data-handler="modal"
-                        data-modal-action="open"
-                        data-modal-target="wallet-bonus-grant-confirm"
-                        data-wallet-bonus-grant-open
-                    >
-                        Начислить
-                    </button>
+                    <div class="form-row__action">
+                        <button
+                            type="button"
+                            class="btn btn--secondary btn--sm js-handler"
+                            data-handler="modal"
+                            data-modal-action="open"
+                            data-modal-target="wallet-bonus-grant-confirm"
+                            data-wallet-bonus-grant-open
+                        >
+                            Начислить
+                        </button>
+                    </div>
                 </div>
             </section>
 
