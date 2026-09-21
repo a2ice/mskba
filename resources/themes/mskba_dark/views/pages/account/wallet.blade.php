@@ -105,17 +105,97 @@
             </p>
         </section>
 
-        @if($bootstrapBonusAvailable)
-            <section class="account-wallet__bootstrap" aria-labelledby="account-wallet-bootstrap-title">
+        @if($canGrantBonus)
+            <section class="account-wallet__grant" aria-labelledby="account-wallet-grant-title">
                 <div>
-                    <h2 class="h3 mb-1" id="account-wallet-bootstrap-title">Тестовый бонус superadmin</h2>
-                    <p>Одноразовое начисление для проверки цепочки переводов между аккаунтами.</p>
+                    <h2 class="h3 mb-1" id="account-wallet-grant-title">Начислить бонусы</h2>
+                    <p>Служебное начисление на свой бонусный баланс. Каждое начисление фиксируется в финансовой истории.</p>
                 </div>
-                <form method="POST" action="{{ route('account.wallet.bootstrap-bonus.store') }}">
-                    @csrf
-                    <button type="submit" class="btn btn--secondary btn--sm">Начислить 10 000 ₽ бонусами</button>
-                </form>
+
+                <div class="account-wallet__grant-form">
+                    <label>
+                        <span>Сумма, ₽</span>
+                        <input
+                            type="text"
+                            class="form-control"
+                            value="{{ old('grant_amount') }}"
+                            placeholder="10 000"
+                            inputmode="decimal"
+                            autocomplete="off"
+                            data-wallet-bonus-grant-amount
+                        >
+                    </label>
+
+                    <button
+                        type="button"
+                        class="btn btn--secondary btn--sm js-handler"
+                        data-handler="modal"
+                        data-modal-action="open"
+                        data-modal-target="wallet-bonus-grant-confirm"
+                        data-wallet-bonus-grant-open
+                    >
+                        Начислить
+                    </button>
+                </div>
             </section>
+
+            @component('theme::partials.modal.layout', [
+                'id' => 'wallet-bonus-grant-confirm',
+                'dialogClass' => 'account-wallet-bonus-grant-modal__dialog',
+                'openOnLoad' => $errors->has('grant_amount') || $errors->has('grant_password') || $errors->has('grant'),
+                'persistInUrl' => false,
+            ])
+                <div class="account-wallet-bonus-grant-confirm">
+                    <h2 class="modal_title" id="modal-title-wallet-bonus-grant-confirm">Подтвердить начисление</h2>
+                    <p>
+                        Начислить <strong data-wallet-bonus-grant-display>{{ old('grant_amount', '—') }} ₽</strong>
+                        на бонусный баланс?
+                    </p>
+
+                    <form method="POST" action="{{ route('account.wallet.bonus-grants.store') }}" data-wallet-bonus-grant-form>
+                        @csrf
+                        <input
+                            type="hidden"
+                            name="grant_amount"
+                            value="{{ old('grant_amount') }}"
+                            data-wallet-bonus-grant-modal-amount
+                        >
+                        <input
+                            type="hidden"
+                            name="grant_idempotency_key"
+                            value="{{ old('grant_idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}"
+                        >
+
+                        <label>
+                            <span>Текущий пароль superadmin</span>
+                            <input
+                                type="password"
+                                name="grant_password"
+                                class="form-control @error('grant_password') is-invalid @enderror"
+                                autocomplete="current-password"
+                                data-wallet-bonus-grant-password
+                                required
+                            >
+                        </label>
+
+                        @error('grant_amount')<div class="form-error">{{ $message }}</div>@enderror
+                        @error('grant_password')<div class="form-error">{{ $message }}</div>@enderror
+                        @error('grant')<div class="form-error">{{ $message }}</div>@enderror
+
+                        <div class="account-wallet-bonus-grant-confirm__actions">
+                            <button type="submit" class="btn btn--primary btn--sm">Подтвердить начисление</button>
+                            <button
+                                type="button"
+                                class="btn btn--secondary btn--sm js-handler"
+                                data-handler="modal"
+                                data-modal-action="close"
+                            >
+                                Отмена
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            @endcomponent
         @endif
 
         <p class="account-wallet__notice">

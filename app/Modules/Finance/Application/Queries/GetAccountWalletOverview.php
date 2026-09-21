@@ -2,7 +2,7 @@
 
 namespace App\Modules\Finance\Application\Queries;
 
-use App\Modules\Finance\Application\Services\SuperadminWalletBootstrapBonus;
+use App\Modules\Finance\Application\Services\SuperadminWalletBonusGrant;
 use App\Modules\Finance\Application\Services\WalletOwnerResolver;
 use App\Modules\Finance\Domain\Enums\WalletBalanceTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletOperationStatusEnum;
@@ -17,7 +17,7 @@ final readonly class GetAccountWalletOverview
 {
     public function __construct(
         private WalletOwnerResolver $owners,
-        private SuperadminWalletBootstrapBonus $bootstrapBonus,
+        private SuperadminWalletBonusGrant $bonusGrants,
     ) {}
 
     /**
@@ -27,7 +27,7 @@ final readonly class GetAccountWalletOverview
      *     totalBalanceMinor: int,
      *     realBalanceMinor: int,
      *     bonusBalanceMinor: int,
-     *     bootstrapBonusAvailable: bool,
+     *     canGrantBonus: bool,
      *     operations: array<int, array{
      *         id: int,
      *         type: string,
@@ -58,7 +58,7 @@ final readonly class GetAccountWalletOverview
                 'totalBalanceMinor' => 0,
                 'realBalanceMinor' => 0,
                 'bonusBalanceMinor' => 0,
-                'bootstrapBonusAvailable' => $this->bootstrapBonus->available($user),
+                'canGrantBonus' => $this->bonusGrants->allowed($user),
                 'operations' => [],
             ];
         }
@@ -102,7 +102,7 @@ final readonly class GetAccountWalletOverview
             'totalBalanceMinor' => $wallet->totalBalanceMinor(),
             'realBalanceMinor' => (int) $wallet->real_balance_minor,
             'bonusBalanceMinor' => (int) $wallet->bonus_balance_minor,
-            'bootstrapBonusAvailable' => $this->bootstrapBonus->available($user),
+            'canGrantBonus' => $this->bonusGrants->allowed($user),
             'operations' => $operations,
         ];
     }

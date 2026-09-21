@@ -22,7 +22,7 @@ use App\Modules\Event\Presentation\Http\Controllers\EventGameController;
 use App\Modules\Event\Presentation\Http\Controllers\GameController;
 use App\Modules\Event\Presentation\Http\Controllers\NestedGameController;
 use App\Modules\Finance\Presentation\Http\Controllers\AccountWalletController;
-use App\Modules\Finance\Presentation\Http\Controllers\SuperadminWalletBootstrapBonusController;
+use App\Modules\Finance\Presentation\Http\Controllers\SuperadminWalletBonusGrantController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
@@ -717,9 +717,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::post('/wallet/transfers', WalletTransferController::class)
             ->middleware('throttle:20,1')
             ->name('account.wallet.transfers.store');
-        Route::post('/wallet/bootstrap-bonus', SuperadminWalletBootstrapBonusController::class)
+        Route::post('/wallet/bonus-grants', SuperadminWalletBonusGrantController::class)
             ->middleware('throttle:5,1')
-            ->name('account.wallet.bootstrap-bonus.store');
+            ->name('account.wallet.bonus-grants.store');
         Route::delete('/', DeleteOwnAccountController::class)
             ->name('account.destroy');
         Route::post('/avatar', AccountAvatarController::class)
