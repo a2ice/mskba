@@ -221,7 +221,11 @@ final class UserWalletTransferTest extends TestCase
             ->get(route('account.wallet'))
             ->assertOk()
             ->assertSee('Начислить бонусы')
-            ->assertSee('Текущий пароль superadmin');
+            ->assertSee('Текущий пароль superadmin')
+            ->assertSee('type="number"', false)
+            ->assertSee('min="0.01"', false)
+            ->assertSee('max="999999999.99"', false)
+            ->assertSee('step="0.01"', false);
 
         $this->actingAs($superadmin)
             ->post(route('account.wallet.bonus-grants.store'), [
@@ -247,6 +251,25 @@ final class UserWalletTransferTest extends TestCase
             2,
             WalletOperation::query()->where('type', WalletOperationTypeEnum::BONUS_GRANT->value)->count(),
         );
+    }
+
+    public function test_superadmin_bonus_grant_rejects_invalid_amount_without_financial_operation(): void
+    {
+        $superadmin = $this->confirmedUser('superadmin', UserSystemRoleEnum::SUPERADMIN);
+        $superadmin->forceFill(['password' => 'StrongPass123!'])->save();
+
+        $this->actingAs($superadmin)
+            ->post(route('account.wallet.bonus-grants.store'), [
+                'grant_amount' => 'рллрлорл',
+                'grant_password' => 'StrongPass123!',
+                'grant_idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('grant_amount');
+
+        $this->assertDatabaseCount('wallet_operations', 0);
+        $this->assertDatabaseCount('wallet_ledger_entries', 0);
+        $this->assertDatabaseCount('wallets', 0);
     }
 
     public function test_superadmin_bonus_grant_requires_correct_current_password(): void

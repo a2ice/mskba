@@ -116,14 +116,21 @@
                     <label>
                         <span>Сумма, ₽</span>
                         <input
-                            type="text"
+                            type="number"
                             class="form-control"
                             value="{{ old('grant_amount') }}"
-                            placeholder="10 000"
+                            placeholder="10000"
+                            min="0.01"
+                            max="999999999.99"
+                            step="0.01"
                             inputmode="decimal"
                             autocomplete="off"
+                            required
+                            aria-describedby="wallet-bonus-grant-amount-help"
                             data-wallet-bonus-grant-amount
                         >
+                        <small id="wallet-bonus-grant-amount-help" class="text-muted">Сумма в рублях с точностью до копеек, например 500 или 1250,50.</small>
+                        @error('grant_amount')<div class="form-error">{{ $message }}</div>@enderror
                     </label>
 
                     <button
@@ -142,7 +149,7 @@
             @component('theme::partials.modal.layout', [
                 'id' => 'wallet-bonus-grant-confirm',
                 'dialogClass' => 'account-wallet-bonus-grant-modal__dialog',
-                'openOnLoad' => $errors->has('grant_amount') || $errors->has('grant_password') || $errors->has('grant'),
+                'openOnLoad' => $errors->has('grant_password') || $errors->has('grant'),
                 'persistInUrl' => false,
             ])
                 <div class="account-wallet-bonus-grant-confirm">
@@ -178,7 +185,6 @@
                             >
                         </label>
 
-                        @error('grant_amount')<div class="form-error">{{ $message }}</div>@enderror
                         @error('grant_password')<div class="form-error">{{ $message }}</div>@enderror
                         @error('grant')<div class="form-error">{{ $message }}</div>@enderror
 
