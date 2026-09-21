@@ -108,8 +108,16 @@ final class UpdatePlayerProfileController extends Controller
             ], 422);
         }
 
+        $profile = $request->user()->profile()->first();
+
+        if ($profile === null) {
+            return response()->json([
+                'code' => 'profile_missing',
+                'message' => 'Сначала заполните базовый профиль пользователя.',
+            ], 422);
+        }
+
         try {
-            $profile = $request->user()->profile()->firstOrCreate();
             $result = $handler->handle($profile, $slot, $contents);
         } catch (AiServiceException $exception) {
             $this->logAiFailure($request, 'face_reference', $exception->errorCode, $exception->getMessage());
