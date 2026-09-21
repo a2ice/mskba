@@ -116,17 +116,20 @@
                     <label>
                         <span>Сумма, ₽</span>
                         <input
-                            type="text"
+                            type="number"
                             class="form-control"
                             value="{{ old('grant_amount') }}"
-                            placeholder="10 000"
+                            placeholder="10000"
+                            min="0.01"
+                            max="999999999.99"
+                            step="0.01"
                             inputmode="decimal"
                             autocomplete="off"
                             required
                             aria-describedby="wallet-bonus-grant-amount-help"
                             data-wallet-bonus-grant-amount
                         >
-                        <small id="wallet-bonus-grant-amount-help" class="text-muted">Только сумма в рублях, например 500 или 1 250,50.</small>
+                        <small id="wallet-bonus-grant-amount-help" class="text-muted">Сумма в рублях с точностью до копеек, например 500 или 1250,50.</small>
                         @error('grant_amount')<div class="form-error">{{ $message }}</div>@enderror
                     </label>
 

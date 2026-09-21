@@ -221,7 +221,11 @@ final class UserWalletTransferTest extends TestCase
             ->get(route('account.wallet'))
             ->assertOk()
             ->assertSee('Начислить бонусы')
-            ->assertSee('Текущий пароль superadmin');
+            ->assertSee('Текущий пароль superadmin')
+            ->assertSee('type="number"', false)
+            ->assertSee('min="0.01"', false)
+            ->assertSee('max="999999999.99"', false)
+            ->assertSee('step="0.01"', false);
 
         $this->actingAs($superadmin)
             ->post(route('account.wallet.bonus-grants.store'), [
