@@ -72,6 +72,46 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
+    public function test_failed_ai_replacement_keeps_previous_confirmed_reference(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+
+        $this->bindGateway();
+        $this->uploadReference($user, 'front');
+
+        $profile = $user->profile()->firstOrFail();
+        $reference = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+
+        $this->bindGateway(faceValid: false);
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'face_reference',
+                'face_reference_slot' => 'front',
+                'face_reference' => UploadedFile::fake()->image('wrong-angle.jpg', 1200, 900),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'face_reference_invalid');
+
+        $this->assertDatabaseHas('media', [
+            'id' => $reference->id,
+            'path' => $reference->path,
+            'source_reference' => PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE,
+        ]);
+        Storage::disk('local')->assertExists($reference->path);
+        $this->assertSame(
+            1,
+            $profile->media()
+                ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+                ->count(),
+        );
+    }
+
     public function test_generation_checks_balance_before_calling_ai(): void
     {
         $gateway = $this->bindGateway();
