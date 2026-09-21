@@ -6,6 +6,7 @@ use App\Modules\Finance\Application\Services\SuperadminWalletBootstrapBonus;
 use App\Modules\Finance\Application\Services\WalletOwnerResolver;
 use App\Modules\Finance\Domain\Enums\WalletBalanceTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletOperationStatusEnum;
+use App\Modules\Finance\Domain\Enums\WalletOperationTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletTypeEnum;
 use App\Modules\Finance\Domain\Models\Wallet;
