@@ -67,19 +67,18 @@
                 @csrf
                 <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) \Illuminate\Support\Str::uuid()) }}">
 
-                <label>
-                    <span>Получатель</span>
-                    <input
-                        type="text"
-                        name="recipient"
-                        class="form-control"
-                        value="{{ old('recipient') }}"
-                        placeholder="@olsen"
-                        maxlength="64"
-                        autocomplete="off"
-                        required
-                    >
-                </label>
+                <div class="account-wallet__recipient-picker">
+                    @include('theme::partials.forms.entity-predictive-search', [
+                        'id' => 'walletTransferRecipient',
+                        'name' => 'recipient_user_id',
+                        'label' => 'Получатель',
+                        'placeholder' => 'Имя, никнейм или логин...',
+                        'searchUrl' => route('account.wallet.transfer-recipients'),
+                        'minimumLength' => 2,
+                        'required' => true,
+                    ])
+                    @error('recipient_user_id')<div class="form-error">{{ $message }}</div>@enderror
+                </div>
 
                 <label>
                     <span>Сумма, ₽</span>

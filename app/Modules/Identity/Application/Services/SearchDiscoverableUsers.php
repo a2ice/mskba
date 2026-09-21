@@ -30,32 +30,14 @@ final class SearchDiscoverableUsers
             return collect();
         }
 
-        $excludedCanonicalIds = $this->canonicalIds([
-            (int) $viewer->id,
-            ...array_map('intval', $excludeUserIds),
-        ]);
-
-        return User::query()
-            ->with('profile')
-            ->whereNull('canonical_user_id')
-            ->whereNotIn('id', $excludedCanonicalIds)
-            ->where('status', '!=', UserStatusEnum::BLOCKED->value)
-            ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
-                $privacyQuery,
-                $viewer,
-                UserPrivacySettingTypeEnum::DISCOVERABILITY,
-            ))
-            ->when($requiredAccess !== null, fn (Builder $userQuery) => $userQuery
-                ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
-                    $privacyQuery,
-                    $viewer,
-                    $requiredAccess,
-                )))
-            ->where(function ($userQuery) use ($normalizedQuery, $rawQuery): void {
+        return $this->baseQuery($viewer, $excludeUserIds, $requiredAccess)
+            ->where(function (Builder $userQuery) use ($normalizedQuery, $rawQuery): void {
                 $userQuery
                     ->whereRaw('LOWER(username) LIKE ?', ["%{$normalizedQuery}%"])
                     ->orWhereLike('username', "%{$rawQuery}%")
-                    ->orWhereHas('profile', function ($profileQuery) use ($normalizedQuery, $rawQuery): void {
+                    ->orWhereRaw('LOWER(nickname) LIKE ?', ["%{$normalizedQuery}%"])
+                    ->orWhereLike('nickname', "%{$rawQuery}%")
+                    ->orWhereHas('profile', function (Builder $profileQuery) use ($normalizedQuery, $rawQuery): void {
                         $profileQuery
                             ->whereRaw('LOWER(first_name) LIKE ?', ["%{$normalizedQuery}%"])
                             ->orWhereRaw('LOWER(last_name) LIKE ?', ["%{$normalizedQuery}%"])
@@ -68,7 +50,60 @@ final class SearchDiscoverableUsers
             ->get();
     }
 
-    /** @param list<int> $userIds
+    public function findVisibleById(
+        User $viewer,
+        int $userId,
+        ?UserPrivacySettingTypeEnum $requiredAccess = null,
+    ): ?User {
+        $viewer = $viewer->canonical();
+        $candidate = User::query()->find($userId)?->canonical();
+
+        if ($candidate === null) {
+            return null;
+        }
+
+        return $this->baseQuery($viewer, [], $requiredAccess)
+            ->whereKey($candidate->id)
+            ->first();
+    }
+
+    /**
+     * @param  array<int>  $excludeUserIds
+     * @return Builder<User>
+     */
+    private function baseQuery(
+        User $viewer,
+        array $excludeUserIds,
+        ?UserPrivacySettingTypeEnum $requiredAccess,
+    ): Builder {
+        $excludedCanonicalIds = $this->canonicalIds([
+            (int) $viewer->id,
+            ...array_map('intval', $excludeUserIds),
+        ]);
+
+        return User::query()
+            ->with('profile')
+            ->whereNull('canonical_user_id')
+            ->when(
+                $excludedCanonicalIds !== [],
+                fn (Builder $query) => $query->whereNotIn('id', $excludedCanonicalIds),
+            )
+            ->where('status', '!=', UserStatusEnum::BLOCKED->value)
+            ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
+                $privacyQuery,
+                $viewer,
+                UserPrivacySettingTypeEnum::DISCOVERABILITY,
+            ))
+            ->when($requiredAccess !== null, fn (Builder $userQuery) => $userQuery
+                ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
+                    $privacyQuery,
+                    $viewer,
+                    $requiredAccess,
+                )));
+    }
+
+    /**
+     * @param  list<int>  $userIds
      * @return list<int>
      */
     private function canonicalIds(array $userIds): array

@@ -11,6 +11,8 @@ use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
 use App\Modules\Finance\Domain\Exceptions\InsufficientWalletBalanceException;
 use App\Modules\Finance\Domain\Exceptions\WalletException;
 use App\Modules\Finance\Domain\Models\WalletOperation;
+use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
+use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -184,7 +186,7 @@ final class UserWalletTransferTest extends TestCase
 
         $this->actingAs($sender)
             ->post(route('account.wallet.transfers.store'), [
-                'recipient' => '@olsen',
+                'recipient_user_id' => $recipient->id,
                 'amount' => '125,50',
                 'idempotency_key' => (string) Str::uuid(),
             ])
@@ -210,6 +212,102 @@ final class UserWalletTransferTest extends TestCase
             ->get(route('account.wallet'))
             ->assertOk()
             ->assertSee('← @sender');
+    }
+
+    public function test_wallet_recipient_predictive_search_respects_discoverability_and_searches_nickname(): void
+    {
+        $sender = $this->confirmedUser('sender');
+        $visible = $this->confirmedUser('olsen');
+        $hidden = $this->confirmedUser('olsen_hidden');
+
+        $hidden->privacySettings()->updateOrCreate(
+            ['type' => UserPrivacySettingTypeEnum::DISCOVERABILITY],
+            ['visibility' => UserPrivacyVisibilityEnum::NOBODY],
+        );
+
+        $response = $this->actingAs($sender)
+            ->getJson(route('account.wallet.transfer-recipients', ['q' => 'ols']))
+            ->assertOk();
+
+        $candidateIds = collect($response->json('candidates'))->pluck('id')->map('intval')->all();
+
+        $this->assertContains($visible->id, $candidateIds);
+        $this->assertNotContains($hidden->id, $candidateIds);
+        $this->assertNotContains($sender->id, $candidateIds);
+    }
+
+    public function test_wallet_recipient_predictive_search_respects_selected_users_discoverability(): void
+    {
+        $sender = $this->confirmedUser('sender');
+        $otherViewer = $this->confirmedUser('other');
+        $selected = $this->confirmedUser('selected_recipient');
+
+        $setting = $selected->privacySettings()->updateOrCreate(
+            ['type' => UserPrivacySettingTypeEnum::DISCOVERABILITY],
+            ['visibility' => UserPrivacyVisibilityEnum::SELECTED_USERS],
+        );
+        $setting->allowedUsers()->sync([$sender->id]);
+
+        $this->actingAs($sender)
+            ->getJson(route('account.wallet.transfer-recipients', ['q' => 'selected']))
+            ->assertOk()
+            ->assertJsonFragment(['id' => $selected->id]);
+
+        $otherResponse = $this->actingAs($otherViewer)
+            ->getJson(route('account.wallet.transfer-recipients', ['q' => 'selected']))
+            ->assertOk();
+
+        $this->assertNotContains(
+            $selected->id,
+            collect($otherResponse->json('candidates'))->pluck('id')->map('intval')->all(),
+        );
+    }
+
+    public function test_wallet_transfer_cannot_bypass_recipient_discoverability_with_crafted_user_id(): void
+    {
+        $sender = $this->confirmedUser('sender');
+        $hidden = $this->confirmedUser('hidden_recipient');
+        $source = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $sender->id);
+
+        $hidden->privacySettings()->updateOrCreate(
+            ['type' => UserPrivacySettingTypeEnum::DISCOVERABILITY],
+            ['visibility' => UserPrivacyVisibilityEnum::NOBODY],
+        );
+
+        app(CreditWalletHandler::class)->handle(
+            $source,
+            WalletBalanceTypeEnum::BONUS,
+            50_000,
+            WalletOperationTypeEnum::BONUS_GRANT,
+            'hidden-recipient-source',
+        );
+
+        $this->actingAs($sender)
+            ->post(route('account.wallet.transfers.store'), [
+                'recipient_user_id' => $hidden->id,
+                'amount' => '100',
+                'idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('transfer');
+
+        $this->assertSame(50_000, $source->refresh()->bonus_balance_minor);
+        $this->assertSame(
+            0,
+            WalletOperation::query()->where('type', WalletOperationTypeEnum::USER_TRANSFER->value)->count(),
+        );
+    }
+
+    public function test_wallet_page_uses_shared_predictive_user_picker_for_transfer_recipient(): void
+    {
+        $sender = $this->confirmedUser('sender');
+
+        $this->actingAs($sender)
+            ->get(route('account.wallet'))
+            ->assertOk()
+            ->assertSee('data-entity-predictive-search', false)
+            ->assertSee('name="recipient_user_id"', false)
+            ->assertSee(route('account.wallet.transfer-recipients'), false);
     }
 
     public function test_superadmin_can_grant_arbitrary_bonus_more_than_once_with_current_password(): void

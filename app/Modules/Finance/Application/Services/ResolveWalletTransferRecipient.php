@@ -3,33 +3,19 @@
 namespace App\Modules\Finance\Application\Services;
 
 use App\Modules\Finance\Domain\Exceptions\WalletException;
-use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
 use App\Modules\Identity\Domain\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 
-final class ResolveWalletTransferRecipient
+final readonly class ResolveWalletTransferRecipient
 {
-    public function handle(string $identifier): User
+    public function __construct(private SearchDiscoverableUsers $discoverableUsers) {}
+
+    public function handle(User $viewer, int $userId): User
     {
-        $identifier = ltrim(trim($identifier), '@');
-        if ($identifier === '') {
-            throw new WalletException('Укажите получателя.');
-        }
+        $user = $this->discoverableUsers->findVisibleById($viewer, $userId);
 
-        $normalized = mb_strtolower($identifier);
-
-        $user = User::query()
-            ->where(function (Builder $query) use ($normalized): void {
-                $query
-                    ->whereRaw('LOWER(nickname) = ?', [$normalized])
-                    ->orWhereRaw('LOWER(username) = ?', [$normalized]);
-            })
-            ->first();
-
-        $user = $user?->canonical();
-
-        if ($user === null || $user->status !== UserStatusEnum::CONFIRMED || $user->isBlocked()) {
-            throw new WalletException('Получатель не найден или его аккаунт недоступен для переводов.');
+        if ($user === null || ! $user->isConfirmed() || $user->isBlocked()) {
+            throw new WalletException('Получатель не найден или недоступен для переводов с учётом его настроек видимости.');
         }
 
         return $user;

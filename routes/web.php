@@ -24,6 +24,7 @@ use App\Modules\Event\Presentation\Http\Controllers\NestedGameController;
 use App\Modules\Finance\Presentation\Http\Controllers\AccountWalletController;
 use App\Modules\Finance\Presentation\Http\Controllers\SuperadminWalletBonusGrantController;
 use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferController;
+use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRecipientSearchController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
@@ -714,6 +715,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/wallet', AccountWalletController::class)
             ->name('account.wallet')
             ->defaults('breadcrumb', 'Кошелёк');
+        Route::get('/wallet/transfer-recipients', WalletTransferRecipientSearchController::class)
+            ->middleware('throttle:60,1')
+            ->name('account.wallet.transfer-recipients');
         Route::post('/wallet/transfers', WalletTransferController::class)
             ->middleware('throttle:20,1')
             ->name('account.wallet.transfers.store');

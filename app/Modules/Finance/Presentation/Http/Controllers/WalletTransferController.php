@@ -25,7 +25,7 @@ final class WalletTransferController extends Controller
         CreateUserNotificationHandler $notifications,
     ): RedirectResponse {
         $validated = $request->validate([
-            'recipient' => ['required', 'string', 'max:64'],
+            'recipient_user_id' => ['required', 'integer', 'min:1'],
             'amount' => ['required', 'string', 'max:32'],
             'idempotency_key' => ['required', 'uuid'],
         ]);
@@ -36,7 +36,7 @@ final class WalletTransferController extends Controller
         $sender = $sender->canonical();
 
         try {
-            $recipient = $recipients->handle((string) $validated['recipient']);
+            $recipient = $recipients->handle($sender, (int) $validated['recipient_user_id']);
             $amountMinor = $amounts->parse((string) $validated['amount']);
             $result = $transfers->handle(
                 sender: $sender,
