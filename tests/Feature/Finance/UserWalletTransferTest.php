@@ -321,6 +321,50 @@ final class UserWalletTransferTest extends TestCase
             ->assertSee('form-row__action', false);
     }
 
+    public function test_notification_failure_does_not_turn_committed_transfer_into_500(): void
+    {
+        $sender = $this->confirmedUser('sender');
+        $recipient = $this->confirmedUser('recipient');
+        $source = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $sender->id);
+
+        app(CreditWalletHandler::class)->handle(
+            $source,
+            WalletBalanceTypeEnum::BONUS,
+            50_000,
+            WalletOperationTypeEnum::BONUS_GRANT,
+            'notification-failure-source',
+        );
+
+        \Illuminate\Support\Facades\DB::statement(<<<'SQL'
+            CREATE TRIGGER reject_finance_notification
+            BEFORE INSERT ON user_notifications
+            WHEN NEW.type = 'finance'
+            BEGIN
+                SELECT RAISE(FAIL, 'finance notification rejected');
+            END
+        SQL);
+
+        $this->actingAs($sender)
+            ->post(route('account.wallet.transfers.store'), [
+                'recipient_user_id' => $recipient->id,
+                'amount' => '100',
+                'idempotency_key' => (string) Str::uuid(),
+            ])
+            ->assertRedirect(route('account.wallet'))
+            ->assertSessionHas('status')
+            ->assertSessionHas('warning');
+
+        $destination = app(EnsureWalletHandler::class)->handle(WalletOwnerTypeEnum::USER, $recipient->id);
+
+        $this->assertSame(40_000, $source->refresh()->bonus_balance_minor);
+        $this->assertSame(10_000, $destination->refresh()->bonus_balance_minor);
+        $this->assertDatabaseCount('user_notifications', 0);
+        $this->assertSame(
+            1,
+            WalletOperation::query()->where('type', WalletOperationTypeEnum::USER_TRANSFER->value)->count(),
+        );
+    }
+
     public function test_superadmin_can_grant_arbitrary_bonus_more_than_once_with_current_password(): void
     {
         $superadmin = $this->confirmedUser('superadmin', UserSystemRoleEnum::SUPERADMIN);
