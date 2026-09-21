@@ -29,12 +29,12 @@
     cursor: help;
 }
 
-.ui-tooltip-source--text,
-.ui-tooltip-source--title {
+.ui-tooltip-source--help {
     text-decoration: underline dotted rgba(255, 139, 47, 0.72);
     text-underline-offset: 3px;
 }
 
+.ui-tooltip-source--plain,
 .ui-tooltip-source--visual,
 .ui-tooltip-source--icon {
     text-decoration: none;
@@ -51,14 +51,10 @@
 
 .ui-tooltip-trigger:hover,
 .ui-tooltip-trigger:focus-visible,
-.ui-tooltip-source--text:hover > .ui-tooltip-trigger,
-.ui-tooltip-source--text:focus-within > .ui-tooltip-trigger,
-.ui-tooltip-source--text:hover + .ui-tooltip-trigger,
-.ui-tooltip-source--text:focus-visible + .ui-tooltip-trigger,
-.ui-tooltip-source--title:hover > .ui-tooltip-trigger,
-.ui-tooltip-source--title:focus-within > .ui-tooltip-trigger,
-.ui-tooltip-source--title:hover + .ui-tooltip-trigger,
-.ui-tooltip-source--title:focus-visible + .ui-tooltip-trigger {
+.ui-tooltip-source--help:hover > .ui-tooltip-trigger,
+.ui-tooltip-source--help:focus-within > .ui-tooltip-trigger,
+.ui-tooltip-source--help:hover + .ui-tooltip-trigger,
+.ui-tooltip-source--help:focus-visible + .ui-tooltip-trigger {
     border-color: rgba(255, 139, 47, 0.72);
     background: rgba(236, 127, 18, 0.16);
     color: var(--accent-text);
