@@ -8,7 +8,7 @@ use Tests\TestCase;
 final class TooltipPresentationContractTest extends TestCase
 {
     #[Test]
-    public function title_tooltips_use_semantic_text_and_visual_presentations(): void
+    public function title_tooltips_are_plain_by_default_and_help_indicators_are_opt_in(): void
     {
         $javascript = file_get_contents(
             resource_path('themes/mskba_dark/js/features/tooltips.js'),
@@ -20,19 +20,23 @@ final class TooltipPresentationContractTest extends TestCase
         $this->assertIsString($javascript);
         $this->assertIsString($css);
 
-        $this->assertStringContainsString('ui-tooltip-source--text', $javascript);
+        $this->assertStringContainsString('ui-tooltip-source--plain', $javascript);
+        $this->assertStringContainsString('ui-tooltip-source--help', $javascript);
         $this->assertStringContainsString('ui-tooltip-source--visual', $javascript);
         $this->assertStringContainsString('data-tooltip-generated', $javascript);
+        $this->assertStringContainsString('[data-tooltip-help], [data-tooltip-text]', $javascript);
         $this->assertStringContainsString('[data-tooltip-visual], [data-tooltip-icon]', $javascript);
+        $this->assertStringContainsString("return PLAIN_PRESENTATION;", $javascript);
         $this->assertStringContainsString('MutationObserver', $javascript);
-        $this->assertStringContainsString('isRedundantTextTooltip', $javascript);
-        $this->assertStringContainsString('removeEnhancedTooltip', $javascript);
+        $this->assertStringNotContainsString('isRedundantTextTooltip', $javascript);
         $this->assertStringNotContainsString("element.attr('data-tooltip-variant')", $javascript);
 
-        $this->assertStringContainsString('.ui-tooltip-source--text,', $css);
+        $this->assertStringContainsString('.ui-tooltip-source--help {', $css);
+        $this->assertStringContainsString('.ui-tooltip-source--plain,', $css);
         $this->assertStringContainsString('.ui-tooltip-source--visual,', $css);
         $this->assertStringContainsString('color: rgba(255, 255, 255, 0.58);', $css);
-        $this->assertStringContainsString('.ui-tooltip-source--text:hover + .ui-tooltip-trigger', $css);
+        $this->assertStringContainsString('.ui-tooltip-source--help:hover + .ui-tooltip-trigger', $css);
+        $this->assertStringNotContainsString('.ui-tooltip-source--text,', $css);
     }
 
     #[Test]
