@@ -38,6 +38,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileContro
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
+use App\Modules\Pricing\Presentation\Http\Controllers\AdminPricingController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\AccountSportsSectionController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionCandidateController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionController;
@@ -320,6 +321,22 @@ Route::prefix('admin')
             });
         Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events')->defaults('breadcrumb', 'Мероприятия');
         Route::get('/teams', [AdminTeamsController::class, 'index'])->name('admin.teams')->defaults('breadcrumb', 'Команды');
+        Route::prefix('pricing')->group(function () {
+            Route::get('/', [AdminPricingController::class, 'index'])
+                ->name('admin.pricing.index')
+                ->defaults('breadcrumb', 'Прайс');
+            Route::post('/categories', [AdminPricingController::class, 'storeCategory'])->name('admin.pricing.categories.store');
+            Route::put('/categories/{category}', [AdminPricingController::class, 'updateCategory'])->name('admin.pricing.categories.update');
+            Route::delete('/categories/{category}', [AdminPricingController::class, 'destroyCategory'])->name('admin.pricing.categories.destroy');
+            Route::post('/services', [AdminPricingController::class, 'storeService'])->name('admin.pricing.services.store');
+            Route::put('/services/{service}', [AdminPricingController::class, 'updateService'])->name('admin.pricing.services.update');
+            Route::delete('/services/{service}', [AdminPricingController::class, 'destroyService'])->name('admin.pricing.services.destroy');
+            Route::post('/variants', [AdminPricingController::class, 'storeVariant'])->name('admin.pricing.variants.store');
+            Route::put('/variants/{variant}', [AdminPricingController::class, 'updateVariant'])->name('admin.pricing.variants.update');
+            Route::delete('/variants/{variant}', [AdminPricingController::class, 'destroyVariant'])->name('admin.pricing.variants.destroy');
+            Route::post('/prices', [AdminPricingController::class, 'storePrice'])->name('admin.pricing.prices.store');
+            Route::patch('/prices/{price}/deactivate', [AdminPricingController::class, 'deactivatePrice'])->name('admin.pricing.prices.deactivate');
+        });
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
         Route::get('/telegram-chats', [AdminTelegramChatsController::class, 'index'])
