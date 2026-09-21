@@ -38,7 +38,7 @@ final class AccountPlayerCharacterAppearanceTest extends TestCase
         $profile = $user->playerProfile()->firstOrFail();
 
         $this->assertTrue($profile->extra['legacy_flag']);
-        $this->assertSame(2, $profile->extra['character']['version']);
+        $this->assertSame(3, $profile->extra['character']['version']);
         $this->assertSame('male', $profile->extra['character']['gender']);
         $this->assertSame('tan', $profile->extra['character']['skin_tone']);
         $this->assertSame('male_curls', $profile->extra['character']['hairstyle']);

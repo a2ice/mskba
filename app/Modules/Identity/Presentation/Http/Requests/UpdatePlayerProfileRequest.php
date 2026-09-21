@@ -7,7 +7,9 @@ use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions;
+use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 
 final class UpdatePlayerProfileRequest extends FormRequest
@@ -31,6 +33,24 @@ final class UpdatePlayerProfileRequest extends FormRequest
             : PlayerCharacterAppearanceOptions::FACIAL_HAIR;
 
         $rules = [
+            'mutation' => ['nullable', Rule::in(['render_mode', 'face_reference'])],
+            'render_mode' => [
+                'nullable',
+                Rule::requiredIf(fn (): bool => $this->input('mutation') === 'render_mode'),
+                Rule::in(PlayerCharacterAppearanceOptions::RENDER_MODES),
+            ],
+            'face_reference_slot' => [
+                'nullable',
+                Rule::requiredIf(fn (): bool => $this->input('mutation') === 'face_reference'),
+                Rule::in(PlayerCharacterFaceReferenceOptions::SLOTS),
+            ],
+            'face_reference' => [
+                'nullable',
+                Rule::requiredIf(fn (): bool => $this->input('mutation') === 'face_reference'),
+                'file',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
             'height_cm' => ['nullable', 'integer', 'between:150,220'],
             'weight_kg' => ['nullable', 'integer', 'between:40,140'],
             'body_type' => ['nullable', Rule::enum(PlayerBodyTypeEnum::class)],
@@ -43,12 +63,13 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
-            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit'],
+            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,chest_volume'],
             'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
             'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
             'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
             'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
             'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
+            'character.chest_volume' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::CHEST_VOLUMES)],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
         ];
 
@@ -57,6 +78,34 @@ final class UpdatePlayerProfileRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    public function mutation(): ?string
+    {
+        $mutation = $this->validated('mutation');
+
+        return is_string($mutation) && $mutation !== '' ? $mutation : null;
+    }
+
+    public function renderMode(): ?string
+    {
+        $renderMode = $this->validated('render_mode');
+
+        return is_string($renderMode) && $renderMode !== '' ? $renderMode : null;
+    }
+
+    public function faceReferenceSlot(): ?string
+    {
+        $slot = $this->validated('face_reference_slot');
+
+        return is_string($slot) && $slot !== '' ? $slot : null;
+    }
+
+    public function faceReferenceFile(): ?UploadedFile
+    {
+        $file = $this->file('face_reference');
+
+        return $file instanceof UploadedFile ? $file : null;
     }
 
     /**
@@ -76,7 +125,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
     }
 
     /**
-     * @return array<string, int|string>|null
+     * @return array<string, int|string|null>|null
      */
     public function characterAppearance(): ?array
     {
@@ -99,6 +148,9 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 ? 'none'
                 : (string) $character['facial_hair'],
             'uniform_kit' => (string) $character['uniform_kit'],
+            'chest_volume' => $profileGender === 'female'
+                ? ($character['chest_volume'] ?? null)
+                : null,
         ];
     }
 

@@ -1,5 +1,9 @@
 import '../../css/pages/player-character-three.css';
-import { mountPlayerCharacterThree, updatePlayerCharacterThree } from './player-character-authored-renderer.js';
+import {
+    destroyPlayerCharacterThree,
+    mountPlayerCharacterThree,
+    updatePlayerCharacterThree,
+} from './player-character-authored-renderer.js';
 import {
     applyAuthoredBodyShape,
     updateAuthoredAccessories,
@@ -17,6 +21,10 @@ function parseNullableNumber(value) {
 
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
 }
 
 function characterField(form, key) {
@@ -47,6 +55,7 @@ function readState(stage, form) {
         heightCm: parseNullableNumber(form.querySelector('[data-player-character-input="height"]')?.value),
         weightKg: parseNullableNumber(form.querySelector('[data-player-character-input="weight"]')?.value),
         bodyType: form.querySelector('[data-player-character-input="body-type"]')?.value || 'unspecified',
+        chestVolume: form.querySelector('[data-player-character-input="chest-volume"]')?.value || null,
         skinTone: characterField(form, 'skin-tone')?.value || 'warm',
         hairstyle: characterField(form, 'hairstyle')?.value || DEFAULT_HAIRSTYLE[normalizeGender(stage.dataset.gender)],
         hairColor: characterField(form, 'hair-color')?.value || 'dark_brown',
@@ -137,11 +146,44 @@ function updateAuthoredCustomization(runtime, state) {
     updateAuthoredAccessories(runtime, state);
 }
 
+function updateTwoDimensionalMetrics(stage, state) {
+    const heightCm = state.heightCm ?? 185;
+    const heightPercent = clamp(heightCm / 250 * 100, 0, 100);
+    stage.style.setProperty('--player-height-percent', heightPercent.toFixed(2));
+    stage.dataset.hasHeight = state.heightCm === null ? 'false' : 'true';
+
+    if (stage.dataset.renderMode === '3d') {
+        return;
+    }
+
+    const marker = stage.querySelector('[data-player-character-height-marker]');
+    const label = marker?.querySelector('[data-player-character-height-label]');
+
+    if (!marker || state.heightCm === null) {
+        if (marker) {
+            marker.hidden = true;
+            marker.setAttribute('aria-expanded', 'false');
+        }
+        return;
+    }
+
+    marker.style.left = '15%';
+    marker.style.top = `${(100 - heightPercent).toFixed(2)}%`;
+    marker.hidden = false;
+    marker.setAttribute('aria-label', `${state.heightCm} см`);
+    if (label) {
+        label.textContent = `${state.heightCm} см`;
+    }
+}
+
 function updateStage(stage, form, runtime = null) {
     const state = readState(stage, form);
-    stage.dataset.hasHeight = state.heightCm === null ? 'false' : 'true';
-    updateAuthoredCustomization(runtime, state);
-    updatePlayerCharacterThree(stage, state);
+    updateTwoDimensionalMetrics(stage, state);
+
+    if (runtime) {
+        updateAuthoredCustomization(runtime, state);
+        updatePlayerCharacterThree(stage, state);
+    }
 
     stage.dispatchEvent(new CustomEvent('player-character:change', {
         bubbles: true,
@@ -236,6 +278,224 @@ function waitUntilNearViewport(stage) {
     });
 }
 
+function csrfToken(form) {
+    return form.querySelector('input[name="_token"]')?.value
+        || document.querySelector('meta[name="csrf-token"]')?.content
+        || '';
+}
+
+function setStageBusy(stage, busy) {
+    const loading = stage.querySelector('[data-player-character-loading]');
+    stage.dataset.renderBusy = busy ? 'true' : 'false';
+    if (loading) {
+        loading.hidden = !busy;
+    }
+}
+
+function setStageError(stage, message = '') {
+    const errorNode = stage.closest('.account-player-character-visual')
+        ?.querySelector('[data-player-character-error]');
+    if (!errorNode) {
+        return;
+    }
+
+    errorNode.textContent = message;
+    errorNode.hidden = message === '';
+}
+
+function syncRenderModeButtons(stage) {
+    const wrapper = stage.closest('.account-player-character-visual')
+        ?.querySelector('[data-player-character-render-switch]');
+    if (!wrapper) {
+        return;
+    }
+
+    wrapper.querySelectorAll('[data-player-character-render-mode]').forEach((button) => {
+        button.setAttribute('aria-pressed', button.dataset.playerCharacterRenderMode === stage.dataset.renderMode ? 'true' : 'false');
+        button.disabled = stage.dataset.renderBusy === 'true';
+    });
+}
+
+async function requestJsonMutation(stage, form, payload) {
+    const response = await fetch(stage.dataset.characterMutationUrl, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken(form),
+        },
+        body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        const error = new Error(data.message || 'Не удалось выполнить действие.');
+        error.status = response.status;
+        error.payload = data;
+        throw error;
+    }
+
+    return data;
+}
+
+async function rollbackRenderMode(stage, form) {
+    try {
+        await requestJsonMutation(stage, form, {
+            mutation: 'render_mode',
+            render_mode: '2d',
+        });
+    } catch (error) {
+        console.warn('Could not persist Player Character renderer rollback.', error);
+    }
+}
+
+async function activateThree(stage, form, runtimeRef) {
+    if (runtimeRef.current) {
+        return true;
+    }
+
+    await waitUntilNearViewport(stage);
+    const state = readState(stage, form);
+    runtimeRef.current = await mountPlayerCharacterThree(stage, state);
+
+    if (!runtimeRef.current) {
+        return false;
+    }
+
+    updateStage(stage, form, runtimeRef.current);
+    return true;
+}
+
+function activateTwo(stage, form, runtimeRef) {
+    stage.dataset.renderMode = '2d';
+    updateStage(stage, form, null);
+
+    if (runtimeRef.current) {
+        destroyPlayerCharacterThree(stage);
+        runtimeRef.current = null;
+    }
+}
+
+function bindRenderModeSwitch(stage, form, runtimeRef) {
+    const wrapper = stage.closest('.account-player-character-visual')
+        ?.querySelector('[data-player-character-render-switch]');
+    if (!wrapper) {
+        return;
+    }
+
+    syncRenderModeButtons(stage);
+
+    wrapper.querySelectorAll('[data-player-character-render-mode]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const requestedMode = button.dataset.playerCharacterRenderMode;
+            const previousMode = stage.dataset.renderMode || '2d';
+
+            if (!requestedMode || requestedMode === previousMode || stage.dataset.renderBusy === 'true') {
+                return;
+            }
+
+            setStageBusy(stage, true);
+            setStageError(stage, '');
+            syncRenderModeButtons(stage);
+
+            try {
+                const result = await requestJsonMutation(stage, form, {
+                    mutation: 'render_mode',
+                    render_mode: requestedMode,
+                });
+
+                if (result.render_mode === '3d') {
+                    const ready = await activateThree(stage, form, runtimeRef);
+                    if (!ready) {
+                        await rollbackRenderMode(stage, form);
+                        activateTwo(stage, form, runtimeRef);
+                        setStageError(stage, 'Не удалось загрузить 3D-модель. 2D-модель осталась активной.');
+                        return;
+                    }
+
+                    stage.dataset.renderMode = '3d';
+                    updateStage(stage, form, runtimeRef.current);
+                } else {
+                    activateTwo(stage, form, runtimeRef);
+                }
+            } catch (error) {
+                stage.dataset.renderMode = previousMode;
+                if (previousMode === '2d') {
+                    updateStage(stage, form, null);
+                }
+                setStageError(stage, error.message || 'Не удалось переключить режим отображения.');
+            } finally {
+                setStageBusy(stage, false);
+                syncRenderModeButtons(stage);
+            }
+        });
+    });
+}
+
+async function uploadFaceReference(stage, form, input) {
+    const slot = input.dataset.playerCharacterFaceInput;
+    const file = input.files?.[0];
+    const container = form.querySelector('[data-player-character-face-references]');
+    const card = container?.querySelector(`[data-player-character-face-card="${slot}"]`);
+    const status = container?.querySelector(`[data-player-character-face-status="${slot}"]`);
+
+    if (!slot || !file || !card || !status) {
+        return;
+    }
+
+    const hadReference = card.classList.contains('is-stored');
+    const previousStatus = status.textContent;
+    card.classList.add('is-uploading');
+    status.textContent = 'Обработка…';
+    input.disabled = true;
+
+    const payload = new FormData();
+    payload.append('_method', 'PATCH');
+    payload.append('_token', csrfToken(form));
+    payload.append('mutation', 'face_reference');
+    payload.append('face_reference_slot', slot);
+    payload.append('face_reference', file);
+
+    try {
+        const response = await fetch(stage.dataset.characterMutationUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+            body: payload,
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const validationMessage = data.errors
+                ? Object.values(data.errors).flat()[0]
+                : null;
+            throw new Error(validationMessage || data.message || 'Не удалось сохранить фотографию.');
+        }
+
+        card.classList.add('is-stored');
+        status.textContent = `Загружено · ${data.width}×${data.height}`;
+    } catch (error) {
+        if (hadReference) {
+            card.classList.add('is-stored');
+            status.textContent = 'Не обновлено · прежнее фото сохранено';
+        } else {
+            card.classList.remove('is-stored');
+            status.textContent = error.message || previousStatus || 'Ошибка загрузки';
+        }
+    } finally {
+        card.classList.remove('is-uploading');
+        input.disabled = false;
+        input.value = '';
+    }
+}
+
+function bindFaceReferences(stage, form) {
+    form.querySelectorAll('[data-player-character-face-input]').forEach((input) => {
+        input.addEventListener('change', () => uploadFaceReference(stage, form, input));
+    });
+}
+
 async function bindPlayerCharacterStage(stage) {
     const form = stage.closest('form');
     const configurator = form?.querySelector('[data-player-character-configurator]');
@@ -250,16 +510,33 @@ async function bindPlayerCharacterStage(stage) {
     bindPhysicalInputs(stage, form, runtimeRef);
     bindTeamUniform(stage, form, configurator, runtimeRef);
     bindHeightMarker(stage);
+    bindFaceReferences(stage, form);
+    bindRenderModeSwitch(stage, form, runtimeRef);
 
     const initialState = updateStage(stage, form);
-    await waitUntilNearViewport(stage);
 
-    runtimeRef.current = await mountPlayerCharacterThree(stage, initialState);
-    if (!runtimeRef.current) {
+    if (stage.dataset.renderMode !== '3d') {
         return;
     }
 
-    updateStage(stage, form, runtimeRef.current);
+    setStageBusy(stage, true);
+    syncRenderModeButtons(stage);
+    const ready = await activateThree(stage, form, runtimeRef);
+
+    if (!ready) {
+        await rollbackRenderMode(stage, form);
+        activateTwo(stage, form, runtimeRef);
+        setStageError(stage, 'Не удалось загрузить 3D-модель. 2D-модель осталась активной.');
+    } else {
+        updateStage(stage, form, runtimeRef.current || null);
+    }
+
+    setStageBusy(stage, false);
+    syncRenderModeButtons(stage);
+    stage.dispatchEvent(new CustomEvent('player-character:ready', {
+        bubbles: true,
+        detail: initialState,
+    }));
 }
 
 document.addEventListener('DOMContentLoaded', () => {

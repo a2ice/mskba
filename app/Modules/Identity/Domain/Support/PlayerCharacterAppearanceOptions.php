@@ -4,9 +4,18 @@ namespace App\Modules\Identity\Domain\Support;
 
 final class PlayerCharacterAppearanceOptions
 {
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     public const GENDERS = ['male', 'female'];
+
+    public const RENDER_MODES = ['2d', '3d'];
+
+    public const CHEST_VOLUMES = [
+        'small',
+        'medium',
+        'large',
+        'full',
+    ];
 
     public const SKIN_TONES = [
         'porcelain',
@@ -74,7 +83,7 @@ final class PlayerCharacterAppearanceOptions
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array<string, int|string|null>
      */
     public static function defaults(string $gender = 'male'): array
     {
@@ -88,6 +97,7 @@ final class PlayerCharacterAppearanceOptions
             'hair_color' => 'dark_brown',
             'facial_hair' => 'none',
             'uniform_kit' => 'mskba_home',
+            'chest_volume' => $gender === 'female' ? 'medium' : null,
         ];
     }
 }
