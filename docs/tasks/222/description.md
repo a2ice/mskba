@@ -39,4 +39,5 @@ headers, filters и декоративные layouts, где `center/end` явл
 
 ## Статус
 
-В работе.
+Выполнено и влито в `main` через PR #252,
+merge commit `b2510090368de3a7aa1ba889982b7bdcea60c328`.
