@@ -84,11 +84,38 @@ Presentation возвращает стабильный `code`, а UI показ�
 
 Provider-specific тексты/HTTP детали не должны становиться frontend-контрактом.
 
+## Выбор provider
+
+`PLAYER_CHARACTER_AI_PROVIDER` принимает `auto|yandex|openai|null`.
+
+В режиме `auto` приоритет имеет Yandex AI Studio, если одновременно заданы
+`YANDEX_AI_API_KEY` и `YANDEX_AI_FOLDER_ID`. Если Yandex не настроен, используется
+OpenAI при наличии `OPENAI_API_KEY`. Иначе остаётся null provider.
+
+## Yandex AI Studio provider
+
+`YandexPlayerCharacterAiGateway` использует OpenAI-compatible Responses API по адресу
+`https://ai.api.cloud.yandex.net/v1`.
+
+Проверка pending face references выполняется мультимодальной Qwen через image inputs и
+strict JSON schema. Генерация персонажа выполняется через Responses API с инструментом
+`image_generation` (Alice AI ART), которому передаются те же face references и
+`input_fidelity=high` для максимального сохранения черт лица.
+
+На текущем API Yandex параметр прозрачного background помечен как не поддерживаемый.
+MSKBA поэтому не считает opaque PNG корректным финальным результатом: gateway проверяет
+alpha самостоятельно и возвращает `generation_background_not_transparent`, если
+провайдер не дал реально прозрачный фон. Это capability gap, который нужно закрыть
+отдельным background-removal этапом, если реальные генерации Yandex стабильно opaque.
+
+Production secrets: `YANDEX_AI_API_KEY` и `YANDEX_AI_FOLDER_ID`. Deploy синхронизирует
+их из GitHub Actions secrets и переключает player-character provider на Yandex только
+когда присутствуют оба значения.
 
 ## OpenAI provider
 
-When `OPENAI_API_KEY` is configured, `AiServiceProvider` binds
-`OpenAiPlayerCharacterAiGateway`. Without a key the null provider remains active.
+OpenAI остаётся fallback/provider override. При `PLAYER_CHARACTER_AI_PROVIDER=openai`
+и настроенном `OPENAI_API_KEY` контейнер использует `OpenAiPlayerCharacterAiGateway`.
 
 Face validation uses the Responses API with image inputs and strict structured output.
 Pending face references are sent in one validation request. The provider does not identify
