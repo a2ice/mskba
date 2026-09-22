@@ -10,6 +10,7 @@ use App\Modules\Finance\Domain\Enums\WalletTypeEnum;
 use App\Modules\Finance\Domain\Models\Wallet;
 use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
 use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -107,6 +108,9 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         $storedCharacter = (array) data_get($playerProfile?->extra, 'character', []);
         $requestedCharacter = is_array($options['character'] ?? null) ? $options['character'] : [];
         $character = array_merge($storedCharacter, $requestedCharacter);
+        $character['attributes'] = PlayerCharacterAppearanceOptions::normalizeAttributes(
+            (array) ($character['attributes'] ?? []),
+        );
 
         $team = null;
         $teamId = $options['team_id'] ?? null;
