@@ -28,7 +28,6 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
 
         foreach ($references as $slot => $reference) {
             $image = (string) ($reference['contents'] ?? '');
-            $mime = (string) ($reference['mime'] ?? 'image/webp');
 
             if ($image === '') {
                 throw new AiServiceException(
@@ -44,7 +43,7 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
             ];
             $content[] = [
                 'type' => 'input_image',
-                'image_url' => 'data:'.$mime.';base64,'.base64_encode($image),
+                'image_url' => $this->inputImageDataUrl($image),
                 'detail' => 'high',
             ];
         }
@@ -169,7 +168,6 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
 
         foreach ($references as $slot => $reference) {
             $image = (string) ($reference['contents'] ?? '');
-            $mime = (string) ($reference['mime'] ?? 'image/webp');
 
             if ($image === '') {
                 continue;
@@ -181,7 +179,7 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
             ];
             $content[] = [
                 'type' => 'input_image',
-                'image_url' => 'data:'.$mime.';base64,'.base64_encode($image),
+                'image_url' => $this->inputImageDataUrl($image),
                 'detail' => 'high',
             ];
         }
@@ -429,23 +427,57 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
             }
         }
 
+        $providerCode = data_get($json, 'error.code');
+        $providerType = data_get($json, 'error.type');
+        $providerMessage = data_get($json, 'error.message');
+
         Log::warning('Yandex AI response contained no readable output text.', [
             'request_id' => $this->requestId($response),
             'status' => $json['status'] ?? null,
             'top_level_keys' => array_keys(is_array($json) ? $json : []),
             'output_types' => array_values(array_unique($outputTypes, SORT_REGULAR)),
             'content_types' => array_values(array_unique($contentTypes, SORT_REGULAR)),
-            'has_error' => isset($json['error']),
+            'provider_code' => is_scalar($providerCode) ? (string) $providerCode : null,
+            'provider_type' => is_scalar($providerType) ? (string) $providerType : null,
+            'provider_message' => is_scalar($providerMessage)
+                ? $this->sanitizeProviderMessage((string) $providerMessage)
+                : null,
         ]);
+
+        $context = [
+            'provider' => 'yandex',
+            'provider_request_id' => $this->requestId($response),
+            'provider_code' => is_scalar($providerCode) ? (string) $providerCode : null,
+        ];
+
+        if (in_array((string) $providerCode, [
+            'invalid_image',
+            'invalid_image_format',
+            'invalid_base64_image',
+            'invalid_image_url',
+            'image_too_large',
+            'image_too_small',
+            'image_parse_error',
+            'invalid_image_mode',
+            'image_file_too_large',
+            'unsupported_image_media_type',
+            'empty_image_file',
+            'failed_to_download_image',
+            'image_file_not_found',
+        ], true)) {
+            throw new AiServiceException(
+                'face_reference_invalid_file',
+                'Яндекс AI не смог обработать фотографию лица. Попробуйте выбрать другое изображение.',
+                422,
+                $context,
+            );
+        }
 
         throw new AiServiceException(
             'ai_request_rejected',
             'Яндекс AI не вернул результат проверки лица.',
             502,
-            [
-                'provider' => 'yandex',
-                'provider_request_id' => $this->requestId($response),
-            ],
+            $context,
         );
     }
 
@@ -514,6 +546,48 @@ IMPORTANT OUTPUT:
 Character parameters:
 {$json}
 PROMPT;
+    }
+
+    private function inputImageDataUrl(string $contents): string
+    {
+        $image = @imagecreatefromstring($contents);
+
+        if ($image === false) {
+            throw new AiServiceException(
+                'face_reference_invalid_file',
+                'Не удалось подготовить фотографию лица для Яндекс AI.',
+                422,
+            );
+        }
+
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+
+        ob_start();
+        $encoded = imagepng($image);
+        $png = ob_get_clean();
+        imagedestroy($image);
+
+        if (! $encoded || ! is_string($png) || $png === '') {
+            throw new AiServiceException(
+                'face_reference_invalid_file',
+                'Не удалось подготовить фотографию лица для Яндекс AI.',
+                422,
+            );
+        }
+
+        return 'data:image/png;base64,'.base64_encode($png);
+    }
+
+    private function sanitizeProviderMessage(string $message): string
+    {
+        $message = preg_replace(
+            '/data:image\\/[^;]+;base64,[A-Za-z0-9+\\/=]+/',
+            '[redacted-data-image]',
+            $message,
+        ) ?: $message;
+
+        return mb_substr(preg_replace('/\\s+/', ' ', $message) ?: '', 0, 500);
     }
 
     private function hasTransparentBackground(string $contents): bool
