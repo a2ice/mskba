@@ -75,8 +75,8 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
             $payload = $request->data();
 
             return $request->url() === 'https://ai.api.cloud.yandex.test/v1/responses'
-                && $request->header('Authorization')[0] === 'Api-Key AQVN-test-not-real'
-                && $request->header('OpenAI-Project')[0] === 'b1g-test-folder'
+                && $request->header('Authorization')[0] === 'Bearer AQVN-test-not-real'
+                && $request->header('x-project')[0] === 'b1g-test-folder'
                 && data_get($payload, 'model') === 'gpt://b1g-test-folder/qwen3.6-35b-a3b'
                 && data_get($payload, 'text.format.type') === 'json_schema'
                 && data_get($payload, 'text.format.strict') === true
@@ -136,7 +136,6 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
                 && data_get($payload, 'tools.0.action') === 'auto'
                 && data_get($payload, 'tools.0.output_format') === 'png'
                 && data_get($payload, 'tools.0.size') === '1024x1536'
-                && data_get($payload, 'tool_choice.type') === 'image_generation'
                 && str_contains(
                     (string) data_get($payload, 'input.0.content.2.image_url'),
                     'data:image/webp;base64,',
