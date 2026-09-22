@@ -7,23 +7,22 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 final class RouteScopedThrottleRequests extends ThrottleRequests
 {
     /**
-     * Keep the default Laravel throttle signature everywhere, but isolate the
-     * high-frequency Telegram bot status polling from the bot-login start
-     * endpoint. Numeric throttle middleware otherwise shares the same
-     * user/IP signature across both routes.
+     * Numeric Laravel throttles use only the authenticated user or client IP
+     * as their request signature. Without a route suffix, attempts against
+     * unrelated endpoints consume the same counter and one authentication
+     * method can lock every other method for the same client.
      */
     protected function resolveRequestSignature($request)
     {
         $signature = parent::resolveRequestSignature($request);
-        $routeName = $request->route()?->getName();
+        $route = $request->route();
+        $routeScope = $route?->getName();
 
-        if (in_array($routeName, [
-            'auth.telegram.bot.start',
-            'auth.telegram.bot.status',
-        ], true)) {
-            return $signature.'|'.$routeName;
+        if (! is_string($routeScope) || $routeScope === '') {
+            $methods = implode('|', $route?->methods() ?? [$request->getMethod()]);
+            $routeScope = $methods.'|'.($route?->uri() ?? $request->path());
         }
 
-        return $signature;
+        return $signature.'|'.$routeScope;
     }
 }
