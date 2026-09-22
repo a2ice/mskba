@@ -384,10 +384,28 @@ PROMPT;
             'provider_code' => $providerCode,
         ];
 
-        if (in_array($status, [401, 403], true)) {
+        if ($status === 401) {
+            if ($providerCode === 'ip_not_authorized') {
+                throw new AiServiceException(
+                    'ai_ip_not_authorized',
+                    'IP сервера не разрешён в настройках OpenAI API.',
+                    503,
+                    $context,
+                );
+            }
+
             throw new AiServiceException(
                 'ai_authentication_failed',
-                'Не удалось авторизоваться в сервисе AI.',
+                'Ключ OpenAI API отклонён. Создайте новый ключ и обновите секрет OPENAI_API_KEY.',
+                503,
+                $context,
+            );
+        }
+
+        if ($status === 403) {
+            throw new AiServiceException(
+                'ai_permission_denied',
+                'У ключа OpenAI API нет доступа к этому ресурсу. Проверьте права ключа и проекта.',
                 503,
                 $context,
             );
