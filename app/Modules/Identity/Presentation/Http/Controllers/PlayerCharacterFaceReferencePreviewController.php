@@ -40,7 +40,7 @@ final class PlayerCharacterFaceReferencePreviewController extends Controller
             200,
             [
                 'Content-Type' => $reference->mime ?: 'image/webp',
-                'Cache-Control' => 'private, max-age=300',
+                'Cache-Control' => 'private, no-store',
                 'X-Content-Type-Options' => 'nosniff',
             ],
         );
