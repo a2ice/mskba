@@ -279,8 +279,8 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
     private function request(int $timeout): PendingRequest
     {
         return Http::withHeaders([
-            'Authorization' => 'Bearer '.$this->apiKey(),
-            'x-project' => $this->folderId(),
+            'Authorization' => 'Api-Key '.$this->apiKey(),
+            'OpenAI-Project' => $this->folderId(),
         ])
             ->acceptJson()
             ->connectTimeout((int) config('services.yandex_ai.connect_timeout_seconds', 10))
