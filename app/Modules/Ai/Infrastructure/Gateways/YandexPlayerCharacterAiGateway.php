@@ -6,15 +6,20 @@ use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
 use App\Modules\Ai\Application\Dto\FaceReferenceValidationResult;
 use App\Modules\Ai\Application\Dto\GeneratedPlayerCharacterImage;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
+use App\Modules\Ai\Infrastructure\Images\YandexGreenBackgroundRemover;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use JsonException;
+use Throwable;
 
 final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
 {
+    public function __construct(
+        private readonly YandexGreenBackgroundRemover $backgroundRemover,
+    ) {}
     public function validateFaceReferences(array $references): array
     {
         if ($references === []) {
@@ -249,14 +254,43 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
             );
         }
 
+        $backgroundRemoved = false;
+
+        if ((bool) config('services.yandex_ai.remove_green_background', true)) {
+            try {
+                $processed = $this->backgroundRemover->remove(
+                    $contents,
+                    (string) config('services.yandex_ai.chroma_key_color', '#00FF00'),
+                    (int) config('services.yandex_ai.chroma_key_threshold', 110),
+                    (int) config('services.yandex_ai.chroma_key_green_dominance', 35),
+                );
+
+                if (is_string($processed) && $processed !== '') {
+                    $contents = $processed;
+                    $mime = 'image/png';
+                    $imageInfo = @getimagesizefromstring($contents);
+                    $backgroundRemoved = true;
+                }
+            } catch (Throwable $exception) {
+                // Background cleanup is intentionally fail-open: a valid Yandex
+                // generation must still reach the user if local post-processing
+                // fails for any reason.
+                Log::warning('Yandex AI green background removal failed.', [
+                    'request_id' => $this->requestId($response),
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
+        }
+
         Log::info('Yandex AI player character generated.', [
             'request_id' => $this->requestId($response),
             'generation_model' => $this->generationModel(),
             'requested_size' => (string) config('services.yandex_ai.image_size', '1024x1536'),
             'quality' => (string) config('services.yandex_ai.image_quality', 'high'),
             'actual_mime' => $mime,
-            'actual_width' => $imageInfo[0] ?? null,
-            'actual_height' => $imageInfo[1] ?? null,
+            'actual_width' => is_array($imageInfo) ? ($imageInfo[0] ?? null) : null,
+            'actual_height' => is_array($imageInfo) ? ($imageInfo[1] ?? null) : null,
+            'background_removed' => $backgroundRemoved,
             'image_call_count' => $imageCallCount,
             'bytes' => strlen($contents),
         ]);
@@ -671,13 +705,16 @@ the source backgrounds, crops, lighting, or clothing.
 
 The player must be completely visible head-to-toe, front-facing, standing upright in a neutral
 athletic pose. Use realistic anatomy and proportions matching the requested gender, height, weight
-and body type. Use a modern basketball jersey and shorts, requested team colors, shoes and sports
-attributes. Do not add logos, sponsors, names, numbers, text, watermarks, extra people or extra limbs.
+and body type. Preserve a clearly recognizable face with sharp eyes, natural skin texture and even
+soft frontal lighting. Use a clean studio-style composition with the player centered and fully visible.
+Use a modern basketball jersey and shorts, requested team colors, shoes and sports attributes.
+Do not add logos, sponsors, names, numbers, text, watermarks, extra people or extra limbs.
 
 IMPORTANT OUTPUT:
 - Generate exactly one image.
-- Use a flat solid pure green #00FF00 background.
-- No scenery, floor, studio set, shadows, gradients or checkerboard pattern.
+- Use a flat solid pure green #00FF00 background from edge to edge.
+- Keep the background uniform: no scenery, floor, studio set, shadows, gradients or checkerboard pattern.
+- Do not cast a shadow onto the green background.
 - Keep comfortable padding around the whole body.
 
 Character parameters:
