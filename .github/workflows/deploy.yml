@@ -71,6 +71,21 @@ jobs:
             fi
             unset OPENAI_API_KEY_SECRET
 
+            # Yandex AI Studio is the preferred player-character provider when
+            # both production credentials are configured. Secrets stay in
+            # GitHub Actions / server-only .env and are never committed.
+            YANDEX_AI_API_KEY_SECRET='${{ secrets.YANDEX_AI_API_KEY }}'
+            YANDEX_AI_FOLDER_ID_SECRET='${{ secrets.YANDEX_AI_FOLDER_ID }}'
+            if [ -n "$YANDEX_AI_API_KEY_SECRET" ] && [ -n "$YANDEX_AI_FOLDER_ID_SECRET" ]; then
+              update_env_value YANDEX_AI_API_KEY "$YANDEX_AI_API_KEY_SECRET"
+              update_env_value YANDEX_AI_FOLDER_ID "$YANDEX_AI_FOLDER_ID_SECRET"
+              update_env_value PLAYER_CHARACTER_AI_PROVIDER yandex
+              echo "Yandex AI credentials synchronized from GitHub Actions secrets"
+            else
+              echo "::warning::YANDEX_AI_API_KEY/YANDEX_AI_FOLDER_ID are not both configured; player-character provider will keep its current fallback."
+            fi
+            unset YANDEX_AI_API_KEY_SECRET YANDEX_AI_FOLDER_ID_SECRET
+
             update_env_value VK_ID_APP_ID "$VK_ID_APP_ID"
             update_env_value VK_ID_REDIRECT_URI "$VK_ID_REDIRECT_URI"
             update_env_value FEATURE_VENUE_RENTAL_BOOKING_EVENTS true

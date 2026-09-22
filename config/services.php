@@ -49,6 +49,24 @@ return [
         'merchant' => env('VENUE_RENTAL_PAYMENT_MERCHANT', 'mskba'),
     ],
 
+    'player_character_ai' => [
+        'provider' => env('PLAYER_CHARACTER_AI_PROVIDER', 'auto'),
+    ],
+
+    'yandex_ai' => [
+        'api_key' => env('YANDEX_AI_API_KEY'),
+        'folder_id' => env('YANDEX_AI_FOLDER_ID'),
+        'base_url' => env('YANDEX_AI_BASE_URL', 'https://ai.api.cloud.yandex.net/v1'),
+        'face_validation_model' => env('YANDEX_AI_FACE_VALIDATION_MODEL', 'qwen3.6-35b-a3b'),
+        'generation_model' => env('YANDEX_AI_GENERATION_MODEL', 'qwen3.6-35b-a3b'),
+        'image_model' => env('YANDEX_AI_IMAGE_MODEL', 'aliceai-image-art-3.0'),
+        'image_size' => env('YANDEX_AI_IMAGE_SIZE', '1024x1536'),
+        'image_quality' => env('YANDEX_AI_IMAGE_QUALITY', 'high'),
+        'connect_timeout_seconds' => (int) env('YANDEX_AI_CONNECT_TIMEOUT_SECONDS', 10),
+        'validation_timeout_seconds' => (int) env('YANDEX_AI_VALIDATION_TIMEOUT_SECONDS', 45),
+        'generation_timeout_seconds' => (int) env('YANDEX_AI_GENERATION_TIMEOUT_SECONDS', 180),
+    ],
+
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'base_url' => env('OPENAI_API_BASE_URL', 'https://api.openai.com/v1'),
