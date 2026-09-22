@@ -291,6 +291,59 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
+    public function test_validated_pending_faces_stay_saved_when_generation_provider_fails(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 10_000);
+        $gateway = $this->bindGateway(generationFailure: AiServiceException::connectionFailed());
+
+        $response = $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900),
+                    'left' => UploadedFile::fake()->image('left.jpg', 1200, 900),
+                ],
+            ])
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'ai_connection_failed');
+
+        $profile = $user->profile()->firstOrFail();
+        $front = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $left = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('left'))
+            ->firstOrFail();
+
+        $response
+            ->assertJsonPath(
+                'face_previews.front',
+                route('account.player-character.face-reference', ['slot' => 'front']).'?v='.$front->id,
+            )
+            ->assertJsonPath(
+                'face_previews.left',
+                route('account.player-character.face-reference', ['slot' => 'left']).'?v='.$left->id,
+            );
+
+        $this->assertSame(1, $gateway->validationCalls);
+        $this->assertTrue($gateway->generationCalled);
+
+        $retryGateway = $this->bindGateway();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generate_2d',
+            ])
+            ->assertOk();
+
+        $this->assertSame(0, $retryGateway->validationCalls);
+        $this->assertTrue($retryGateway->generationCalled);
+    }
+
     public function test_generation_uses_current_unsaved_character_settings(): void
     {
         Storage::fake('local');
