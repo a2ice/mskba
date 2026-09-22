@@ -181,6 +181,9 @@ final class UpdatePlayerProfileController extends Controller
             return response()->json([
                 'code' => $exception->errorCode,
                 'message' => $exception->getMessage(),
+                'face_previews' => $this->facePreviewUrls(
+                    (array) ($exception->context['validated_face_media_ids'] ?? []),
+                ),
             ], $exception->httpStatus);
         } catch (PlayerCharacterFlowException $exception) {
             return response()->json(array_merge([
@@ -205,10 +208,7 @@ final class UpdatePlayerProfileController extends Controller
             ], 502);
         }
 
-        $facePreviews = [];
-        foreach ($result['validated_face_media_ids'] as $slot => $mediaId) {
-            $facePreviews[$slot] = route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$mediaId;
-        }
+        $facePreviews = $this->facePreviewUrls($result['validated_face_media_ids']);
 
         return response()->json([
             'message' => '2D-модель сгенерирована.',
@@ -218,6 +218,25 @@ final class UpdatePlayerProfileController extends Controller
             'image_data_url' => 'data:'.$result['image_mime'].';base64,'.base64_encode($result['image_contents']),
             'face_previews' => $facePreviews,
         ]);
+    }
+
+    /**
+     * @param array<string, int> $mediaIds
+     * @return array<string, string>
+     */
+    private function facePreviewUrls(array $mediaIds): array
+    {
+        $previews = [];
+
+        foreach ($mediaIds as $slot => $mediaId) {
+            if (! in_array($slot, ['front', 'left', 'right'], true) || $mediaId < 1) {
+                continue;
+            }
+
+            $previews[$slot] = route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$mediaId;
+        }
+
+        return $previews;
     }
 
     private function logAiFailure(
