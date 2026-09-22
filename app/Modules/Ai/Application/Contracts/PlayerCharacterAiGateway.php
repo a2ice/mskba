@@ -7,11 +7,13 @@ use App\Modules\Ai\Application\Dto\GeneratedPlayerCharacterImage;
 
 interface PlayerCharacterAiGateway
 {
-    public function validateFaceReference(
-        string $expectedSlot,
-        string $imageContents,
-        string $mime,
-    ): FaceReferenceValidationResult;
+    /**
+     * Validate all pending face references in one provider request.
+     *
+     * @param array<string, array{contents: string, mime: string}> $references
+     * @return array<string, FaceReferenceValidationResult>
+     */
+    public function validateFaceReferences(array $references): array;
 
     /**
      * @param array<string, mixed> $payload
