@@ -154,6 +154,10 @@ jobs:
             $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
 
+            echo "::group::OpenAI production diagnostic"
+            $COMPOSE run -T --rm phpfpm php artisan ai:openai:smoke </dev/null || true
+            echo "::endgroup::"
+
             # Validate the real production-only document dependencies before
             # declaring the deployment healthy: qrencode, trusted Blade
             # template resolution and Gotenberg/Chromium PDF rendering.
