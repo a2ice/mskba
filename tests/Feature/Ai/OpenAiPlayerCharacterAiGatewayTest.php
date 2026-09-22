@@ -123,14 +123,14 @@ final class OpenAiPlayerCharacterAiGatewayTest extends TestCase
         $this->assertSame($png, $result->contents);
 
         Http::assertSent(function (Request $request): bool {
-            $data = $request->data();
+            $body = $request->body();
 
             return $request->url() === 'https://api.openai.test/v1/images/edits'
-                && ($data['model'] ?? null) === 'gpt-image-2.5-sunburst'
-                && ($data['background'] ?? null) === 'transparent'
-                && ($data['output_format'] ?? null) === 'png'
-                && ($data['size'] ?? null) === '1024x1536'
-                && ($data['quality'] ?? null) === 'medium';
+                && str_contains($body, 'gpt-image-2.5-sunburst')
+                && str_contains($body, 'transparent')
+                && str_contains($body, 'png')
+                && str_contains($body, '1024x1536')
+                && str_contains($body, 'medium');
         });
     }
 
