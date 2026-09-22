@@ -109,6 +109,8 @@
             ->keyBy(fn ($media) => PlayerCharacterFaceReferenceOptions::slotForCollection($media->collection))
         : collect();
     $faceReferenceLabels = PlayerCharacterFaceReferenceOptions::labels();
+    $hasConfirmedFaceSet = $faceReferences->has('front')
+        && ($faceReferences->has('left') || $faceReferences->has('right'));
 
     $playerTeams = $playerTeams ?? collect();
     $defaultPlayerTeam = $playerTeams->first();
@@ -523,6 +525,14 @@
                     @error('character.attributes.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </details>
 
+                <p
+                    class="account-player-character-generate__face-note"
+                    data-player-character-face-validation-note
+                    @if($hasConfirmedFaceSet) hidden @endif
+                >
+                    Генерация пройдёт в два этапа: сначала проверим фото лица, затем создадим персонажа.
+                    Проверка лица не входит в стоимость генерации.
+                </p>
                 <div class="account-player-character-generate">
                     <button type="button" class="btn btn--primary" data-player-character-generate>
                         Сгенерировать
