@@ -98,9 +98,12 @@ OpenAI при наличии `OPENAI_API_KEY`. Иначе остаётся null 
 `https://ai.api.cloud.yandex.net/v1`.
 
 Проверка pending face references выполняется мультимодальной Qwen через image inputs и
-strict JSON schema. Генерация персонажа выполняется через Responses API с инструментом
-`image_generation` (Alice AI ART), которому передаются те же face references и
-`input_fidelity=high` для максимального сохранения черт лица.
+strict JSON schema. Внутренне сохранённые face references остаются WebP, но перед отправкой
+в Yandex Responses gateway перекодирует их в PNG data URL: production показал, что synthetic
+PNG успешно проходит multimodal structured smoke, тогда как реальные WebP-запросы завершались
+provider-level `status=failed` при HTTP 200. Генерация персонажа выполняется через Responses
+API с инструментом `image_generation` (Alice AI ART), которому передаются те же face
+references в PNG и `input_fidelity=high` для максимального сохранения черт лица.
 
 На текущем API Yandex параметр прозрачного background помечен как не поддерживаемый.
 MSKBA поэтому не считает opaque PNG корректным финальным результатом: gateway проверяет
