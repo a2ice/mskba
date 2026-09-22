@@ -26,6 +26,7 @@
     $characterShoes = old('character.shoes', $character['shoes'] ?? 'white');
     $characterAttributes = old('character.attributes', $character['attributes'] ?? []);
     $characterAttributes = is_array($characterAttributes) ? $characterAttributes : [];
+    $characterAttributes = PlayerCharacterAppearanceOptions::normalizeAttributes($characterAttributes);
     $characterChestVolume = old('character.chest_volume', $character['chest_volume'] ?? 'medium');
 
     $canUseThree = $user->system_role->atLeast(UserSystemRoleEnum::ADMIN);
@@ -498,11 +499,12 @@
                     </summary>
                     <div class="account-player-character-configurator__attribute-grid">
                         @foreach([
-                            'elbow_left' => 'Налокотник — левая рука',
-                            'elbow_right' => 'Налокотник — правая рука',
-                            'elbow_both' => 'Налокотники — оба',
-                            'wristbands' => 'Напульсники',
-                            'knee_pads' => 'Наколенники',
+                            'elbow_left' => 'Налокотник — левый',
+                            'elbow_right' => 'Налокотник — правый',
+                            'wristband_left' => 'Напульсник — левый',
+                            'wristband_right' => 'Напульсник — правый',
+                            'knee_left' => 'Наколенник — левый',
+                            'knee_right' => 'Наколенник — правый',
                             'headband' => 'Повязка',
                         ] as $value => $label)
                             <label class="account-player-character-configurator__attribute">

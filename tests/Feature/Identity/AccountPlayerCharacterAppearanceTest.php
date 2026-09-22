@@ -38,7 +38,7 @@ final class AccountPlayerCharacterAppearanceTest extends TestCase
         $profile = $user->playerProfile()->firstOrFail();
 
         $this->assertTrue($profile->extra['legacy_flag']);
-        $this->assertSame(4, $profile->extra['character']['version']);
+        $this->assertSame(5, $profile->extra['character']['version']);
         $this->assertSame('male', $profile->extra['character']['gender']);
         $this->assertSame('tan', $profile->extra['character']['skin_tone']);
         $this->assertSame('male_curls', $profile->extra['character']['hairstyle']);
@@ -62,7 +62,7 @@ final class AccountPlayerCharacterAppearanceTest extends TestCase
                     'facial_hair' => 'none',
                     'uniform_kit' => 'mskba_home',
                     'shoes' => 'black',
-                    'attributes' => ['elbow_both', 'wristbands', 'headband'],
+                    'attributes' => ['elbow_left', 'elbow_right', 'wristband_left', 'knee_right', 'headband'],
                 ],
             ])
             ->assertSessionHasNoErrors();
@@ -70,7 +70,31 @@ final class AccountPlayerCharacterAppearanceTest extends TestCase
         $character = $user->playerProfile()->firstOrFail()->extra['character'];
 
         $this->assertSame('black', $character['shoes']);
-        $this->assertSame(['elbow_both', 'wristbands', 'headband'], $character['attributes']);
+        $this->assertSame(
+            ['elbow_left', 'elbow_right', 'wristband_left', 'knee_right', 'headband'],
+            $character['attributes'],
+        );
+    }
+
+    public function test_legacy_combined_equipment_attributes_are_expanded_to_sides(): void
+    {
+        $this->assertSame(
+            [
+                'elbow_left',
+                'elbow_right',
+                'wristband_left',
+                'wristband_right',
+                'knee_left',
+                'knee_right',
+                'headband',
+            ],
+            \App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions::normalizeAttributes([
+                'elbow_both',
+                'wristbands',
+                'knee_pads',
+                'headband',
+            ]),
+        );
     }
 
     public function test_character_appearance_uses_profile_gender_for_compatibility(): void

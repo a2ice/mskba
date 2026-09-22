@@ -71,7 +71,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
             'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
             'character.shoes' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::SHOES)],
-            'character.attributes' => ['nullable', 'array', 'max:6'],
+            'character.attributes' => ['nullable', 'array', 'max:7'],
             'character.attributes.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::ATTRIBUTES)],
             'character.chest_volume' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::CHEST_VOLUMES)],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
@@ -153,10 +153,9 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 : (string) $character['facial_hair'],
             'uniform_kit' => (string) $character['uniform_kit'],
             'shoes' => (string) ($character['shoes'] ?? 'white'),
-            'attributes' => array_values(array_intersect(
-                PlayerCharacterAppearanceOptions::ATTRIBUTES,
+            'attributes' => PlayerCharacterAppearanceOptions::normalizeAttributes(
                 (array) ($character['attributes'] ?? []),
-            )),
+            ),
             'chest_volume' => $profileGender === 'female'
                 ? ($character['chest_volume'] ?? null)
                 : null,

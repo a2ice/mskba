@@ -555,7 +555,14 @@ function generationOptionsPayload(stage, form) {
     };
 }
 
-function generationErrorMessage(error) {
+function generationErrorMessage(error, form = null) {
+    if (error?.code === 'face_references_missing' && form) {
+        const hasPendingPreview = Boolean(form.querySelector('[data-player-character-face-card].is-preview-unconfirmed'));
+        if (hasPendingPreview) {
+            return 'Фото выбраны, но ещё не подтверждены AI. Для генерации нужны подтверждённые анфас и фото слева или справа.';
+        }
+    }
+
     if (error?.code !== 'insufficient_balance') {
         return error?.message || 'Не удалось сгенерировать 2D-модель.';
     }
@@ -599,7 +606,7 @@ function bindGenerateTwoDimensional(stage, form) {
                 image.removeAttribute('data-placeholder-gender');
             }
         } catch (error) {
-            setStageError(stage, generationErrorMessage(error));
+            setStageError(stage, generationErrorMessage(error, form));
         } finally {
             setStageBusy(stage, false);
             syncRenderModeButtons(stage);
@@ -608,28 +615,8 @@ function bindGenerateTwoDimensional(stage, form) {
 }
 
 function bindCharacterAttributes(stage, form, runtimeRef) {
-    const inputs = [...form.querySelectorAll('[data-player-character-attribute]')];
-
-    inputs.forEach((input) => {
-        input.addEventListener('change', () => {
-            if (input.dataset.playerCharacterAttribute === 'elbow_both' && input.checked) {
-                inputs
-                    .filter((item) => ['elbow_left', 'elbow_right'].includes(item.dataset.playerCharacterAttribute))
-                    .forEach((item) => { item.checked = false; });
-            }
-
-            if (
-                ['elbow_left', 'elbow_right'].includes(input.dataset.playerCharacterAttribute)
-                && input.checked
-            ) {
-                const both = inputs.find((item) => item.dataset.playerCharacterAttribute === 'elbow_both');
-                if (both) {
-                    both.checked = false;
-                }
-            }
-
-            updateStage(stage, form, runtimeRef.current);
-        });
+    form.querySelectorAll('[data-player-character-attribute]').forEach((input) => {
+        input.addEventListener('change', () => updateStage(stage, form, runtimeRef.current));
     });
 }
 
