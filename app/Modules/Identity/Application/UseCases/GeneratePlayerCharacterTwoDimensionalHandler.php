@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
+use App\Modules\Ai\Domain\Exceptions\AiServiceException;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Finance\Application\Services\WalletOwnerResolver;
 use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
@@ -12,6 +13,7 @@ use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Support\PlayerCharacterAppearanceOptions;
 use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
+use App\Modules\Media\Application\Services\WebpImageNormalizer;
 use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
@@ -26,12 +28,22 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         private PricingPriceResolver $prices,
         private WalletOwnerResolver $owners,
         private PlayerCharacterAiGateway $ai,
+        private WebpImageNormalizer $normalizer,
+        private PersistValidatedPlayerCharacterFaceReferencesHandler $facePersister,
     ) {}
 
     /**
-     * @return array{price_minor: int, available_minor: int, image_contents: string, image_mime: string}
+     * @param array<string, mixed> $options
+     * @param array<string, string> $pendingFaceReferences
+     * @return array{
+     *   price_minor: int,
+     *   available_minor: int,
+     *   image_contents: string,
+     *   image_mime: string,
+     *   validated_face_media_ids: array<string, int>
+     * }
      */
-    public function handle(User $user, array $options = []): array
+    public function handle(User $user, array $options = [], array $pendingFaceReferences = []): array
     {
         $price = $this->prices->resolve(self::SERVICE_CODE);
 
@@ -44,17 +56,25 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         }
 
         $priceMinor = (int) $price->amount_minor;
-
         $profile = $user->profile;
-        $references = $profile?->media()
-            ->whereIn('collection', PlayerCharacterFaceReferenceOptions::collections())
-            ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
-            ->latest('id')
-            ->get()
-            ->keyBy(fn ($media) => PlayerCharacterFaceReferenceOptions::slotForCollection($media->collection))
-            ?? collect();
 
-        if (! $references->has('front') || (! $references->has('left') && ! $references->has('right'))) {
+        if ($profile === null) {
+            throw new PlayerCharacterFlowException(
+                'profile_missing',
+                'Сначала заполните базовый профиль пользователя.',
+                422,
+            );
+        }
+
+        $references = $this->confirmedReferences($user);
+        $effectiveSlots = array_fill_keys($references->keys()->all(), true);
+
+        foreach (array_keys($pendingFaceReferences) as $slot) {
+            PlayerCharacterFaceReferenceOptions::collectionForSlot($slot);
+            $effectiveSlots[$slot] = true;
+        }
+
+        if (! isset($effectiveSlots['front']) || (! isset($effectiveSlots['left']) && ! isset($effectiveSlots['right']))) {
             throw new PlayerCharacterFlowException(
                 'face_references_missing',
                 'Для генерации загрузите анфас и фото слева или справа.',
@@ -87,6 +107,58 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                     'currency' => 'RUB',
                 ],
             );
+        }
+
+        $validatedFaceMediaIds = [];
+
+        if ($pendingFaceReferences !== []) {
+            $normalized = [];
+            $validationPayload = [];
+
+            foreach ($pendingFaceReferences as $slot => $contents) {
+                PlayerCharacterFaceReferenceOptions::collectionForSlot($slot);
+
+                $image = $this->normalizer->normalize(
+                    $contents,
+                    PlayerCharacterFaceReferenceOptions::MAX_OUTPUT_DIMENSION,
+                );
+
+                $normalized[$slot] = $image;
+                $validationPayload[$slot] = [
+                    'contents' => $image['contents'],
+                    'mime' => $image['mime'],
+                ];
+            }
+
+            $validations = $this->ai->validateFaceReferences($validationPayload);
+
+            foreach ($normalized as $slot => $_image) {
+                $validation = $validations[$slot] ?? null;
+
+                if ($validation === null || ! $validation->valid) {
+                    $expectedLabel = PlayerCharacterFaceReferenceOptions::labels()[$slot] ?? $slot;
+
+                    throw new PlayerCharacterFlowException(
+                        'face_reference_invalid',
+                        $validation?->reason ?: 'Фото не соответствует ракурсу «'.$expectedLabel.'».',
+                        422,
+                        [
+                            'expected_slot' => $slot,
+                            'detected_slot' => $validation?->detectedSlot,
+                            'price_minor' => $priceMinor,
+                            'currency' => 'RUB',
+                        ],
+                    );
+                }
+            }
+
+            $persisted = $this->facePersister->handle($profile, $normalized);
+
+            foreach ($persisted as $slot => $result) {
+                $validatedFaceMediaIds[$slot] = $result['media']->id;
+            }
+
+            $references = $this->confirmedReferences($user);
         }
 
         $facePayload = [];
@@ -135,26 +207,39 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             }
         }
 
-        $image = $this->ai->generatePlayerCharacter([
-            'user_id' => $canonicalUserId,
-            'gender' => $user->profile?->gender?->value,
-            'height_cm' => array_key_exists('height_cm', $options)
-                ? $options['height_cm']
-                : $playerProfile?->height_cm,
-            'weight_kg' => array_key_exists('weight_kg', $options)
-                ? $options['weight_kg']
-                : $playerProfile?->weight_kg,
-            'body_type' => array_key_exists('body_type', $options)
-                ? $options['body_type']
-                : ($playerProfile?->body_type?->value ?? $playerProfile?->body_type),
-            'appearance' => $character,
-            'team' => $team ? [
-                'id' => $team->id,
-                'name' => $team->name,
-                'colors' => $team->colors,
-            ] : null,
-            'face_references' => $facePayload,
-        ]);
+        try {
+            $image = $this->ai->generatePlayerCharacter([
+                'user_id' => $canonicalUserId,
+                'gender' => $user->profile?->gender?->value,
+                'height_cm' => array_key_exists('height_cm', $options)
+                    ? $options['height_cm']
+                    : $playerProfile?->height_cm,
+                'weight_kg' => array_key_exists('weight_kg', $options)
+                    ? $options['weight_kg']
+                    : $playerProfile?->weight_kg,
+                'body_type' => array_key_exists('body_type', $options)
+                    ? $options['body_type']
+                    : ($playerProfile?->body_type?->value ?? $playerProfile?->body_type),
+                'appearance' => $character,
+                'team' => $team ? [
+                    'id' => $team->id,
+                    'name' => $team->name,
+                    'colors' => $team->colors,
+                ] : null,
+                'face_references' => $facePayload,
+            ]);
+        } catch (AiServiceException $exception) {
+            if ($validatedFaceMediaIds === []) {
+                throw $exception;
+            }
+
+            throw new AiServiceException(
+                $exception->errorCode,
+                $exception->getMessage(),
+                $exception->httpStatus,
+                ['validated_face_media_ids' => $validatedFaceMediaIds],
+            );
+        }
 
         if ($image->contents === '' || ! str_starts_with($image->mime, 'image/')) {
             throw new PlayerCharacterFlowException(
@@ -169,6 +254,18 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             'available_minor' => $availableMinor,
             'image_contents' => $image->contents,
             'image_mime' => $image->mime,
+            'validated_face_media_ids' => $validatedFaceMediaIds,
         ];
+    }
+
+    private function confirmedReferences(User $user): \Illuminate\Support\Collection
+    {
+        return $user->profile?->media()
+            ->whereIn('collection', PlayerCharacterFaceReferenceOptions::collections())
+            ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
+            ->latest('id')
+            ->get()
+            ->keyBy(fn ($media) => PlayerCharacterFaceReferenceOptions::slotForCollection($media->collection))
+            ?? collect();
     }
 }

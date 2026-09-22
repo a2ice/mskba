@@ -452,7 +452,27 @@ function bindRenderModeSwitch(stage, form, runtimeRef) {
     });
 }
 
-async function uploadFaceReference(stage, form, input) {
+function syncFaceValidationNote(form) {
+    const note = form.querySelector('[data-player-character-face-validation-note]');
+    if (!note) {
+        return;
+    }
+
+    const front = form.querySelector('[data-player-character-face-card="front"]');
+    const left = form.querySelector('[data-player-character-face-card="left"]');
+    const right = form.querySelector('[data-player-character-face-card="right"]');
+    const hasPending = Boolean(
+        form.querySelector('[data-player-character-face-card].is-preview-unconfirmed'),
+    );
+    const hasConfirmedSet = Boolean(
+        front?.classList.contains('is-stored')
+        && (left?.classList.contains('is-stored') || right?.classList.contains('is-stored')),
+    );
+
+    note.hidden = !hasPending && hasConfirmedSet;
+}
+
+function previewFaceReference(stage, form, input) {
     const slot = input.dataset.playerCharacterFaceInput;
     const file = input.files?.[0];
     const container = form.querySelector('[data-player-character-face-references]');
@@ -472,53 +492,113 @@ async function uploadFaceReference(stage, form, input) {
     card.dataset.faceObjectUrl = objectUrl;
     image.src = objectUrl;
     image.hidden = false;
-    card.classList.add('has-preview', 'is-uploading');
-    card.classList.remove('is-stored', 'is-preview-unconfirmed');
-    input.disabled = true;
+    card.classList.add('has-preview', 'is-preview-unconfirmed');
+    card.classList.remove('is-uploading');
     setStageError(stage, '');
+    syncFaceValidationNote(form);
+}
 
-    const payload = new FormData();
-    payload.append('_method', 'PATCH');
-    payload.append('_token', csrfToken(form));
-    payload.append('mutation', 'face_reference');
-    payload.append('face_reference_slot', slot);
-    payload.append('face_reference', file);
+function pendingFaceInputs(form) {
+    return [...form.querySelectorAll('[data-player-character-face-input]')]
+        .filter((input) => input.files?.[0]);
+}
 
-    try {
-        const response = await fetch(stage.dataset.characterMutationUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { Accept: 'application/json' },
-            body: payload,
-        });
-        const data = await response.json().catch(() => ({}));
+function setPendingFacesBusy(form, busy) {
+    pendingFaceInputs(form).forEach((input) => {
+        const slot = input.dataset.playerCharacterFaceInput;
+        const card = form.querySelector(`[data-player-character-face-card="${slot}"]`);
 
-        if (!response.ok) {
-            const validationMessage = data.errors
-                ? Object.values(data.errors).flat()[0]
-                : null;
-            const error = new Error(validationMessage || data.message || 'Не удалось проверить фотографию.');
-            error.code = data.code || null;
-            throw error;
+        input.disabled = busy;
+        card?.classList.toggle('is-uploading', busy);
+    });
+}
+
+function appendGenerationValue(data, key, value) {
+    data.append(key, value === null || value === undefined ? '' : String(value));
+}
+
+function generationRequestData(stage, form) {
+    const payload = generationOptionsPayload(stage, form);
+    const data = new FormData();
+
+    data.append('_method', 'PATCH');
+    data.append('_token', csrfToken(form));
+    data.append('mutation', 'generate_2d');
+
+    appendGenerationValue(data, 'height_cm', payload.height_cm);
+    appendGenerationValue(data, 'weight_kg', payload.weight_kg);
+    appendGenerationValue(data, 'body_type', payload.body_type);
+    appendGenerationValue(data, 'generation_team_id', payload.generation_team_id);
+
+    Object.entries(payload.character).forEach(([key, value]) => {
+        if (key === 'attributes') {
+            value.forEach((attribute) => data.append('character[attributes][]', attribute));
+            return;
         }
 
-        if (data.preview_url) {
+        appendGenerationValue(data, `character[${key}]`, value);
+    });
+
+    pendingFaceInputs(form).forEach((input) => {
+        const slot = input.dataset.playerCharacterFaceInput;
+        const file = input.files?.[0];
+
+        if (slot && file) {
+            data.append(`generation_face_references[${slot}]`, file);
+        }
+    });
+
+    return data;
+}
+
+async function requestGenerationMutation(stage, form) {
+    const response = await fetch(stage.dataset.characterMutationUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+        body: generationRequestData(stage, form),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        const validationMessage = data.errors
+            ? Object.values(data.errors).flat()[0]
+            : null;
+        const error = new Error(validationMessage || data.message || 'Не удалось выполнить генерацию.');
+        error.status = response.status;
+        error.code = data.code || null;
+        error.payload = data;
+        throw error;
+    }
+
+    return data;
+}
+
+function applyValidatedFacePreviews(form, previews = {}) {
+    Object.entries(previews).forEach(([slot, url]) => {
+        const card = form.querySelector(`[data-player-character-face-card="${slot}"]`);
+        const image = card?.querySelector('[data-player-character-face-image]');
+        const input = card?.querySelector('[data-player-character-face-input]');
+
+        if (!card || !image || !input || !url) {
+            return;
+        }
+
+        const objectUrl = card.dataset.faceObjectUrl;
+        if (objectUrl) {
             URL.revokeObjectURL(objectUrl);
             delete card.dataset.faceObjectUrl;
-            image.src = data.preview_url;
         }
 
-        card.classList.add('is-stored', 'has-preview');
-        card.classList.remove('is-preview-unconfirmed');
-    } catch (error) {
-        card.classList.add('has-preview', 'is-preview-unconfirmed');
-        card.classList.remove('is-stored');
-        setStageError(stage, error.message || 'Не удалось проверить фотографию.');
-    } finally {
-        card.classList.remove('is-uploading');
+        image.src = url;
+        image.hidden = false;
         input.disabled = false;
         input.value = '';
-    }
+        card.classList.add('is-stored', 'has-preview');
+        card.classList.remove('is-preview-unconfirmed', 'is-uploading');
+    });
+
+    syncFaceValidationNote(form);
 }
 
 function formatRubles(minor) {
@@ -555,14 +635,7 @@ function generationOptionsPayload(stage, form) {
     };
 }
 
-function generationErrorMessage(error, form = null) {
-    if (error?.code === 'face_references_missing' && form) {
-        const hasPendingPreview = Boolean(form.querySelector('[data-player-character-face-card].is-preview-unconfirmed'));
-        if (hasPendingPreview) {
-            return 'Фото выбраны, но ещё не подтверждены AI. Для генерации нужны подтверждённые анфас и фото слева или справа.';
-        }
-    }
-
+function generationErrorMessage(error) {
     if (error?.code !== 'insufficient_balance') {
         return error?.message || 'Не удалось сгенерировать 2D-модель.';
     }
@@ -594,10 +667,9 @@ function bindGenerateTwoDimensional(stage, form) {
         syncRenderModeButtons(stage);
 
         try {
-            const result = await requestJsonMutation(stage, form, {
-                mutation: 'generate_2d',
-                ...generationOptionsPayload(stage, form),
-            });
+            setPendingFacesBusy(form, true);
+            const result = await requestGenerationMutation(stage, form);
+            applyValidatedFacePreviews(form, result.face_previews);
 
             const image = stage.querySelector('[data-player-character-two-image]');
             if (image && result.image_data_url) {
@@ -606,8 +678,10 @@ function bindGenerateTwoDimensional(stage, form) {
                 image.removeAttribute('data-placeholder-gender');
             }
         } catch (error) {
-            setStageError(stage, generationErrorMessage(error, form));
+            applyValidatedFacePreviews(form, error?.payload?.face_previews || {});
+            setStageError(stage, generationErrorMessage(error));
         } finally {
+            setPendingFacesBusy(form, false);
             setStageBusy(stage, false);
             syncRenderModeButtons(stage);
         }
@@ -622,8 +696,10 @@ function bindCharacterAttributes(stage, form, runtimeRef) {
 
 function bindFaceReferences(stage, form) {
     form.querySelectorAll('[data-player-character-face-input]').forEach((input) => {
-        input.addEventListener('change', () => uploadFaceReference(stage, form, input));
+        input.addEventListener('change', () => previewFaceReference(stage, form, input));
     });
+
+    syncFaceValidationNote(form);
 }
 
 async function bindPlayerCharacterStage(stage) {

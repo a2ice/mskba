@@ -269,6 +269,13 @@
     width: 100%;
 }
 
+.account-player-character-generate__face-note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 10px;
+    line-height: 1.45;
+}
+
 .account-player-character-configurator__profile-gender {
     display: inline-flex;
     align-items: center;
@@ -406,8 +413,7 @@
     animation: player-character-face-spin 700ms linear infinite;
 }
 
-.account-player-character-face-reference.is-uploading .account-player-character-face-reference__loading,
-.account-player-character-face-reference.is-preview-unconfirmed .account-player-character-face-reference__loading {
+.account-player-character-face-reference.is-uploading .account-player-character-face-reference__loading {
     display: grid;
 }
 

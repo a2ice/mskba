@@ -186,6 +186,164 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertFalse($gateway->generationCalled);
     }
 
+    public function test_pending_face_references_are_validated_once_then_saved_and_used_for_generation(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 10_000);
+        $gateway = $this->bindGateway();
+
+        $response = $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900),
+                    'right' => UploadedFile::fake()->image('right.jpg', 1200, 900),
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', 'generated');
+
+        $profile = $user->profile()->firstOrFail();
+        $front = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $right = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('right'))
+            ->firstOrFail();
+
+        $response
+            ->assertJsonPath(
+                'face_previews.front',
+                route('account.player-character.face-reference', ['slot' => 'front']).'?v='.$front->id,
+            )
+            ->assertJsonPath(
+                'face_previews.right',
+                route('account.player-character.face-reference', ['slot' => 'right']).'?v='.$right->id,
+            );
+
+        $this->assertSame(1, $gateway->validationCalls);
+        $this->assertSame(['front', 'right'], $gateway->lastValidatedSlots);
+        $this->assertTrue($gateway->generationCalled);
+        $this->assertArrayHasKey('front', $gateway->lastPayload['face_references']);
+        $this->assertArrayHasKey('right', $gateway->lastPayload['face_references']);
+
+        $this->assertDatabaseHas('media', [
+            'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('front'),
+            'source_reference' => PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE,
+        ]);
+        $this->assertDatabaseHas('media', [
+            'collection' => PlayerCharacterFaceReferenceOptions::collectionForSlot('right'),
+            'source_reference' => PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE,
+        ]);
+    }
+
+    public function test_pending_face_validation_is_not_called_when_generation_balance_is_insufficient(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $gateway = $this->bindGateway();
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900),
+                    'left' => UploadedFile::fake()->image('left.jpg', 1200, 900),
+                ],
+            ])
+            ->assertStatus(402)
+            ->assertJsonPath('code', 'insufficient_balance');
+
+        $this->assertSame(0, $gateway->validationCalls);
+        $this->assertFalse($gateway->generationCalled);
+        $this->assertDatabaseCount('media', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_invalid_pending_face_batch_saves_nothing_and_does_not_generate(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 10_000);
+        $gateway = $this->bindGateway(faceValid: false);
+
+        $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900),
+                    'left' => UploadedFile::fake()->image('left.jpg', 1200, 900),
+                ],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'face_reference_invalid');
+
+        $this->assertSame(1, $gateway->validationCalls);
+        $this->assertFalse($gateway->generationCalled);
+        $this->assertDatabaseCount('media', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_validated_pending_faces_stay_saved_when_generation_provider_fails(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 10_000);
+        $gateway = $this->bindGateway(generationFailure: AiServiceException::connectionFailed());
+
+        $response = $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900),
+                    'left' => UploadedFile::fake()->image('left.jpg', 1200, 900),
+                ],
+            ])
+            ->assertStatus(503)
+            ->assertJsonPath('code', 'ai_connection_failed');
+
+        $profile = $user->profile()->firstOrFail();
+        $front = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $left = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('left'))
+            ->firstOrFail();
+
+        $response
+            ->assertJsonPath(
+                'face_previews.front',
+                route('account.player-character.face-reference', ['slot' => 'front']).'?v='.$front->id,
+            )
+            ->assertJsonPath(
+                'face_previews.left',
+                route('account.player-character.face-reference', ['slot' => 'left']).'?v='.$left->id,
+            );
+
+        $this->assertSame(1, $gateway->validationCalls);
+        $this->assertTrue($gateway->generationCalled);
+
+        $retryGateway = $this->bindGateway();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generate_2d',
+            ])
+            ->assertOk();
+
+        $this->assertSame(0, $retryGateway->validationCalls);
+        $this->assertTrue($retryGateway->generationCalled);
+    }
+
     public function test_generation_uses_current_unsaved_character_settings(): void
     {
         Storage::fake('local');
@@ -245,6 +403,7 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ->assertOk();
 
         $this->assertTrue($gateway->generationCalled);
+        $this->assertSame(2, $gateway->validationCalls);
         $this->assertArrayHasKey('front', $gateway->lastPayload['face_references']);
         $this->assertArrayHasKey('left', $gateway->lastPayload['face_references']);
     }
@@ -297,6 +456,11 @@ final class PlayerCharacterAiFlowTest extends TestCase
         {
             public bool $generationCalled = false;
 
+            public int $validationCalls = 0;
+
+            /** @var array<int, string> */
+            public array $lastValidatedSlots = [];
+
             /** @var array<string, mixed>|null */
             public ?array $lastPayload = null;
 
@@ -305,16 +469,21 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 private readonly ?AiServiceException $generationFailure,
             ) {}
 
-            public function validateFaceReference(
-                string $expectedSlot,
-                string $imageContents,
-                string $mime,
-            ): FaceReferenceValidationResult {
-                return new FaceReferenceValidationResult(
-                    valid: $this->faceValid,
-                    detectedSlot: $this->faceValid ? $expectedSlot : 'left',
-                    reason: $this->faceValid ? null : 'Загружено фото в другом ракурсе.',
-                );
+            public function validateFaceReferences(array $references): array
+            {
+                $this->validationCalls++;
+                $this->lastValidatedSlots = array_keys($references);
+
+                $result = [];
+                foreach ($references as $slot => $_reference) {
+                    $result[$slot] = new FaceReferenceValidationResult(
+                        valid: $this->faceValid,
+                        detectedSlot: $this->faceValid ? $slot : ($slot === 'left' ? 'right' : 'left'),
+                        reason: $this->faceValid ? null : 'Загружено фото в другом ракурсе.',
+                    );
+                }
+
+                return $result;
             }
 
             public function generatePlayerCharacter(array $payload): GeneratedPlayerCharacterImage

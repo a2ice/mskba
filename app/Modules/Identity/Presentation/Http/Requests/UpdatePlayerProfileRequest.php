@@ -52,6 +52,12 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 'max:5120',
             ],
             'generation_team_id' => ['nullable', 'integer'],
+            'generation_face_references' => ['nullable', 'array:front,left,right'],
+            'generation_face_references.*' => [
+                'file',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
             'height_cm' => ['nullable', 'integer', 'between:150,220'],
             'weight_kg' => ['nullable', 'integer', 'between:40,140'],
             'body_type' => ['nullable', Rule::enum(PlayerBodyTypeEnum::class)],
@@ -160,6 +166,29 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 ? ($character['chest_volume'] ?? null)
                 : null,
         ];
+    }
+
+    /**
+     * @return array<string, UploadedFile>
+     */
+    public function generationFaceReferenceFiles(): array
+    {
+        $files = $this->file('generation_face_references', []);
+
+        if (! is_array($files)) {
+            return [];
+        }
+
+        $result = [];
+        foreach (PlayerCharacterFaceReferenceOptions::SLOTS as $slot) {
+            $file = $files[$slot] ?? null;
+
+            if ($file instanceof UploadedFile) {
+                $result[$slot] = $file;
+            }
+        }
+
+        return $result;
     }
 
     /**
