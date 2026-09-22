@@ -15,7 +15,7 @@ final class UpdatePlayerProfileHandler
      * @param  array<string, mixed>  $profileData
      * @param  array<int, PlayerPositionEnum>  $positions
      * @param  array<string, int|null>  $selfAssessment
-     * @param  array<string, int|string|null>|null  $characterAppearance
+     * @param  array<string, mixed>|null  $characterAppearance
      *
      * @throws AuthorizationException
      */
