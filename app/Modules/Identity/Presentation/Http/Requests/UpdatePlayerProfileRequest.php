@@ -51,6 +51,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
+            'generation_team_id' => ['nullable', 'integer'],
             'height_cm' => ['nullable', 'integer', 'between:150,220'],
             'weight_kg' => ['nullable', 'integer', 'between:40,140'],
             'body_type' => ['nullable', Rule::enum(PlayerBodyTypeEnum::class)],
@@ -159,6 +160,24 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'chest_volume' => $profileGender === 'female'
                 ? ($character['chest_volume'] ?? null)
                 : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function generationOptions(): array
+    {
+        return [
+            'height_cm' => $this->nullableInteger('height_cm'),
+            'weight_kg' => $this->nullableInteger('weight_kg'),
+            'body_type' => $this->filled('body_type')
+                ? $this->string('body_type')->toString()
+                : null,
+            'team_id' => $this->filled('generation_team_id')
+                ? (int) $this->input('generation_team_id')
+                : null,
+            'character' => $this->characterAppearance(),
         ];
     }
 
