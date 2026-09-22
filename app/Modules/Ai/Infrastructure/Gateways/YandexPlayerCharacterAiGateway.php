@@ -266,6 +266,8 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
 
     private function postResponses(array $payload, int $timeout, string $operation): Response
     {
+        $startedAt = microtime(true);
+
         try {
             $response = $this->request($timeout)->post($this->url('/responses'), $payload);
         } catch (ConnectionException $exception) {
@@ -274,7 +276,139 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
 
         $this->ensureSuccessful($response, $operation);
 
+        return $this->waitForResponseCompletion($response, $timeout, $operation, $startedAt);
+    }
+
+    private function waitForResponseCompletion(
+        Response $response,
+        int $timeout,
+        string $operation,
+        float $startedAt,
+    ): Response {
+        $status = mb_strtolower(trim((string) $response->json('status', '')));
+
+        if (! in_array($status, ['queued', 'in_progress'], true)) {
+            $this->ensureCompletedResponseState($response, $operation);
+
+            return $response;
+        }
+
+        $responseId = trim((string) $response->json('id', ''));
+
+        if ($responseId === '') {
+            Log::warning('Yandex AI returned a pending response without an id.', [
+                'operation' => $operation,
+                'status' => $status,
+                'request_id' => $this->requestId($response),
+            ]);
+
+            throw AiServiceException::generationFailed();
+        }
+
+        $pollCount = 0;
+
+        while (in_array($status, ['queued', 'in_progress'], true)) {
+            $remaining = $timeout - (microtime(true) - $startedAt);
+
+            if ($remaining <= 0) {
+                Log::warning('Yandex AI response polling timed out.', [
+                    'operation' => $operation,
+                    'response_id' => $responseId,
+                    'status' => $status,
+                    'poll_count' => $pollCount,
+                ]);
+
+                throw AiServiceException::timeout();
+            }
+
+            $pollIntervalMs = $this->responsePollIntervalMs();
+            if ($pollIntervalMs > 0) {
+                usleep((int) min($pollIntervalMs * 1000, max(1, $remaining * 1_000_000)));
+            }
+
+            $remaining = max(1, (int) ceil($timeout - (microtime(true) - $startedAt)));
+
+            try {
+                $response = $this->request($remaining)->get(
+                    $this->url('/responses/'.rawurlencode($responseId)),
+                );
+            } catch (ConnectionException $exception) {
+                $this->throwConnectionException($exception, $operation.'_poll');
+            }
+
+            $this->ensureSuccessful($response, $operation.'_poll');
+
+            $pollCount++;
+            $status = mb_strtolower(trim((string) $response->json('status', '')));
+        }
+
+        Log::info('Yandex AI pending response reached terminal state.', [
+            'operation' => $operation,
+            'response_id' => $responseId,
+            'status' => $status !== '' ? $status : null,
+            'poll_count' => $pollCount,
+        ]);
+
+        $this->ensureCompletedResponseState($response, $operation);
+
         return $response;
+    }
+
+    private function ensureCompletedResponseState(Response $response, string $operation): void
+    {
+        $status = mb_strtolower(trim((string) $response->json('status', '')));
+
+        if ($status === '' || $status === 'completed') {
+            return;
+        }
+
+        if (in_array($status, ['queued', 'in_progress'], true)) {
+            return;
+        }
+
+        $providerCode = data_get($response->json(), 'error.code');
+        $providerMessage = data_get($response->json(), 'error.message');
+        $incompleteReason = data_get($response->json(), 'incomplete_details.reason');
+
+        Log::warning('Yandex AI response finished without completion.', [
+            'operation' => $operation,
+            'status' => $status,
+            'response_id' => $response->json('id'),
+            'request_id' => $this->requestId($response),
+            'provider_code' => is_scalar($providerCode) ? (string) $providerCode : null,
+            'provider_message' => is_scalar($providerMessage)
+                ? $this->sanitizeProviderMessage((string) $providerMessage)
+                : null,
+            'incomplete_reason' => is_scalar($incompleteReason) ? (string) $incompleteReason : null,
+        ]);
+
+        if ((string) $providerCode === 'rate_limit_exceeded') {
+            throw AiServiceException::rateLimited();
+        }
+
+        if ($operation === 'face_validation') {
+            throw new AiServiceException(
+                'ai_request_rejected',
+                'Яндекс AI не завершил проверку фотографий.',
+                502,
+                [
+                    'provider' => 'yandex',
+                    'provider_response_id' => $response->json('id'),
+                    'provider_code' => is_scalar($providerCode) ? (string) $providerCode : null,
+                ],
+            );
+        }
+
+        throw new AiServiceException(
+            'generation_failed',
+            'Яндекс AI не завершил генерацию изображения.',
+            502,
+            [
+                'provider' => 'yandex',
+                'provider_response_id' => $response->json('id'),
+                'provider_code' => is_scalar($providerCode) ? (string) $providerCode : null,
+            ],
+        );
     }
 
     private function request(int $timeout): PendingRequest
@@ -640,6 +774,11 @@ PROMPT;
     private function generationTimeout(): int
     {
         return max(30, (int) config('services.yandex_ai.generation_timeout_seconds', 180));
+    }
+
+    private function responsePollIntervalMs(): int
+    {
+        return max(0, (int) config('services.yandex_ai.response_poll_interval_ms', 1000));
     }
 
     private function requestId(Response $response): ?string

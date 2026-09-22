@@ -26,6 +26,7 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
             'connect_timeout_seconds' => 1,
             'validation_timeout_seconds' => 5,
             'generation_timeout_seconds' => 30,
+            'response_poll_interval_ms' => 0,
         ]);
     }
 
@@ -183,6 +184,66 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
                     'data:image/png;base64,',
                 );
         });
+    }
+
+    public function test_it_polls_in_progress_generation_response_until_image_is_ready(): void
+    {
+        $png = $this->png(false);
+        $postCount = 0;
+        $pollCount = 0;
+
+        Http::fake(function (Request $request) use ($png, &$postCount, &$pollCount) {
+            if (
+                $request->method() === 'POST'
+                && $request->url() === 'https://ai.api.cloud.yandex.test/v1/responses'
+            ) {
+                $postCount++;
+
+                return Http::response([
+                    'id' => 'response-pending-test',
+                    'status' => 'in_progress',
+                    'output' => [],
+                ], 200, ['x-request-id' => 'yandex-image-create']);
+            }
+
+            if (
+                $request->method() === 'GET'
+                && $request->url() === 'https://ai.api.cloud.yandex.test/v1/responses/response-pending-test'
+            ) {
+                $pollCount++;
+
+                if ($pollCount === 1) {
+                    return Http::response([
+                        'id' => 'response-pending-test',
+                        'status' => 'in_progress',
+                        'output' => [],
+                    ]);
+                }
+
+                return Http::response([
+                    'id' => 'response-pending-test',
+                    'status' => 'completed',
+                    'output' => [[
+                        'type' => 'image_generation_call',
+                        'status' => 'completed',
+                        'result' => base64_encode($png),
+                    ]],
+                ], 200, ['x-request-id' => 'yandex-image-poll']);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $result = $this->gateway()->generatePlayerCharacter([
+            'face_references' => [
+                'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
+            ],
+        ]);
+
+        $this->assertSame($png, $result->contents);
+        $this->assertSame('image/png', $result->mime);
+        $this->assertSame(1, $postCount);
+        $this->assertSame(2, $pollCount);
     }
 
     public function test_it_accepts_yandex_opaque_image_as_minimal_generation_result(): void

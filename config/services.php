@@ -65,6 +65,7 @@ return [
         'connect_timeout_seconds' => (int) env('YANDEX_AI_CONNECT_TIMEOUT_SECONDS', 10),
         'validation_timeout_seconds' => (int) env('YANDEX_AI_VALIDATION_TIMEOUT_SECONDS', 45),
         'generation_timeout_seconds' => (int) env('YANDEX_AI_GENERATION_TIMEOUT_SECONDS', 180),
+        'response_poll_interval_ms' => (int) env('YANDEX_AI_RESPONSE_POLL_INTERVAL_MS', 1000),
     ],
 
     'openai' => [
