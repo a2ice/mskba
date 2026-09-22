@@ -533,6 +533,27 @@ function formatRubles(minor) {
     }).format(value / 100);
 }
 
+function generationOptionsPayload(stage, form) {
+    const state = readState(stage, form);
+
+    return {
+        height_cm: state.heightCm,
+        weight_kg: state.weightKg,
+        body_type: state.bodyType === 'unspecified' ? null : state.bodyType,
+        generation_team_id: state.teamId ? Number(state.teamId) : null,
+        character: {
+            skin_tone: state.skinTone,
+            hairstyle: state.hairstyle,
+            hair_color: state.hairColor,
+            facial_hair: state.facialHair,
+            uniform_kit: state.uniformKit,
+            shoes: state.shoes,
+            attributes: state.attributes,
+            chest_volume: state.chestVolume,
+        },
+    };
+}
+
 function generationErrorMessage(error) {
     if (error?.code !== 'insufficient_balance') {
         return error?.message || 'Не удалось сгенерировать 2D-модель.';
@@ -567,6 +588,7 @@ function bindGenerateTwoDimensional(stage, form) {
         try {
             const result = await requestJsonMutation(stage, form, {
                 mutation: 'generate_2d',
+                ...generationOptionsPayload(stage, form),
             });
 
             const image = stage.querySelector('[data-player-character-two-image]');
