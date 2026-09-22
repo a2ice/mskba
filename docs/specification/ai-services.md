@@ -108,6 +108,12 @@ Production-проверка генерации показала рабочий R
 Gateway принимает первый completed `image_generation_call`; последующие tool calls игнорируются,
 поскольку Yandex фактически может вернуть их несколько даже при `max_tool_calls=1`.
 
+Responses API на production может ответить HTTP 200 с `status=queued|in_progress` и пустым
+`output`, пока image tool ещё работает. Такой ответ не считается ошибкой: gateway использует
+полученный response `id` и опрашивает `GET /v1/responses/{id}` до terminal state в пределах
+исходного timeout. Только `completed` передаётся в parser; `failed|cancelled|incomplete`
+маппятся в стабильную ошибку MSKBA.
+
 Прозрачный background текущим Yandex image tool не гарантируется. Для минимального production
 MVP prompt просит ровный зелёный фон `#00FF00`, а gateway принимает любое реально декодируемое
 `image/*` изображение без проверки alpha. Это позволяет сначала подтвердить end-to-end flow.
