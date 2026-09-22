@@ -169,12 +169,6 @@ jobs:
             $COMPOSE run -T --rm phpfpm php artisan optimize:clear </dev/null
             $COMPOSE run -T --rm phpfpm php artisan config:cache </dev/null
 
-            if grep -q "^PLAYER_CHARACTER_AI_PROVIDER=yandex$" .env; then
-              echo "::group::Yandex AI production diagnostic"
-              $COMPOSE run -T --rm phpfpm php artisan ai:yandex:smoke </dev/null || true
-              echo "::endgroup::"
-            fi
-
             # Validate the real production-only document dependencies before
             # declaring the deployment healthy: qrencode, trusted Blade
             # template resolution and Gotenberg/Chromium PDF rendering.

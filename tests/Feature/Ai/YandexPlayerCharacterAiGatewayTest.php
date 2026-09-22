@@ -87,6 +87,38 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
         });
     }
 
+    public function test_it_accepts_yandex_message_text_without_top_level_output_text(): void
+    {
+        Http::fake([
+            'https://ai.api.cloud.yandex.test/v1/responses' => Http::response([
+                'status' => 'completed',
+                'output' => [[
+                    'type' => 'message',
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => json_encode([
+                            'references' => [[
+                                'slot' => 'front',
+                                'valid' => true,
+                                'detected_slot' => 'front',
+                                'reason' => '',
+                                'skin_tone' => '#C8906E',
+                            ]],
+                        ], JSON_THROW_ON_ERROR),
+                    ]],
+                ]],
+            ], 200, ['x-request-id' => 'yandex-wire-shape-test']),
+        ]);
+
+        $result = $this->gateway()->validateFaceReferences([
+            'front' => ['contents' => 'front-image', 'mime' => 'image/webp'],
+        ]);
+
+        $this->assertTrue($result['front']->valid);
+        $this->assertSame('front', $result['front']->detectedSlot);
+        $this->assertSame('#C8906E', $result['front']->skinTone);
+    }
+
     public function test_it_generates_player_via_image_generation_tool_with_identity_references(): void
     {
         $png = $this->png(true);
