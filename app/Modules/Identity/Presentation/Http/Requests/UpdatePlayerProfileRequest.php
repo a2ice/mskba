@@ -33,7 +33,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             : PlayerCharacterAppearanceOptions::FACIAL_HAIR;
 
         $rules = [
-            'mutation' => ['nullable', Rule::in(['render_mode', 'face_reference'])],
+            'mutation' => ['nullable', Rule::in(['render_mode', 'face_reference', 'generate_2d'])],
             'render_mode' => [
                 'nullable',
                 Rule::requiredIf(fn (): bool => $this->input('mutation') === 'render_mode'),

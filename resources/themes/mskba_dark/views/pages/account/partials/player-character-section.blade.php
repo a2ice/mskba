@@ -99,6 +99,7 @@
     $faceReferences = $user->profile
         ? $user->profile->media()
             ->whereIn('collection', PlayerCharacterFaceReferenceOptions::collections())
+            ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
             ->latest('id')
             ->get()
             ->keyBy(fn ($media) => PlayerCharacterFaceReferenceOptions::slotForCollection($media->collection))
@@ -176,7 +177,11 @@
                     <div class="account-player-character-stage__axis" aria-hidden="true"></div>
 
                     <div class="account-player-character-two" data-player-character-two aria-hidden="true">
-                        <img src="{{ asset('images/player-character/default-2d-player.svg') }}" alt="">
+                        <img
+                            src="{{ asset('images/player-character/default-2d-player.svg') }}"
+                            alt=""
+                            data-player-character-two-image
+                        >
                     </div>
                     <div class="account-player-character-three" data-player-character-three></div>
 
@@ -204,6 +209,12 @@
             <p class="account-player-character-render-note">
                 2D — основной режим. 3D пока открыт только администраторам для тестирования.
             </p>
+            <div class="account-player-character-generate">
+                <button type="button" class="btn btn-primary" data-player-character-generate>
+                    Сгенерировать 2D через AI
+                </button>
+                <small>Перед запросом сервер проверит актуальную цену, баланс и подтверждённые фото лица.</small>
+            </div>
             <p class="account-player-character-error" data-player-character-error aria-live="polite" hidden></p>
         </div>
 
@@ -433,8 +444,8 @@
                     <span>private · ≤ 512 px</span>
                 </div>
                 <p class="text-muted mb-0">
-                    Это не аватар профиля. Для будущей генерации понадобится анфас и минимум один профиль; третий ракурс улучшит результат.
-                    Исходный high-res файл не сохраняется.
+                    Это не аватар профиля. Для генерации нужен анфас и минимум один профиль; третий ракурс улучшит результат.
+                    Фото сохраняется только после успешной AI-проверки нужного ракурса. Исходный high-res файл не сохраняется.
                 </p>
 
                 <div class="account-player-character-face-references__grid">
@@ -459,7 +470,7 @@
                 </div>
 
                 <p class="account-player-character-face-references__note">
-                    Проверка «анфас / левый / правый профиль» через AI будет подключена вместе с генератором. Сейчас сохраняется только нормализованный приватный reference.
+                    Сначала изображение нормализуется в памяти, затем AI проверяет лицо и ожидаемый ракурс. При ошибке или недоступном AI файл и Media-запись не создаются; прежний подтверждённый reference остаётся без изменений.
                 </p>
             </div>
 

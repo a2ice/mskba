@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Identity;
 
+use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
+use App\Modules\Ai\Application\Dto\FaceReferenceValidationResult;
+use App\Modules\Ai\Application\Dto\GeneratedPlayerCharacterImage;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -144,6 +147,19 @@ final class AccountPlayerCharacterRendererTest extends TestCase
     public function test_face_reference_is_normalized_to_private_webp_and_invalid_replacement_keeps_previous_file(): void
     {
         Storage::fake('local');
+        $this->app->instance(PlayerCharacterAiGateway::class, new class implements PlayerCharacterAiGateway
+        {
+            public function validateFaceReference(string $expectedSlot, string $imageContents, string $mime): FaceReferenceValidationResult
+            {
+                return new FaceReferenceValidationResult(true, $expectedSlot);
+            }
+
+            public function generatePlayerCharacter(array $payload): GeneratedPlayerCharacterImage
+            {
+                return new GeneratedPlayerCharacterImage('test', 'image/webp');
+            }
+        });
+
         $user = $this->player(UserSystemRoleEnum::USER);
 
         $response = $this->actingAs($user)
