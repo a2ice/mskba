@@ -126,7 +126,7 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ->get(route('account.player-character.face-reference', ['slot' => 'front']))
             ->assertOk()
             ->assertHeader('Content-Type', 'image/webp')
-            ->assertHeader('Cache-Control', 'private, no-store');
+            ->assertHeader('Cache-Control', 'no-store, private');
 
         $this->actingAs($other)
             ->get(route('account.player-character.face-reference', ['slot' => 'front']))
