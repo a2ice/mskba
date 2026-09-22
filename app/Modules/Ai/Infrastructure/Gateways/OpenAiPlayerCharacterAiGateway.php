@@ -403,6 +403,15 @@ PROMPT;
         }
 
         if ($status === 403) {
+            if ($providerCode === 'unsupported_country_region_territory') {
+                throw new AiServiceException(
+                    'ai_unsupported_region',
+                    'OpenAI API недоступен из региона, где расположен сервер MSKBA.',
+                    503,
+                    $context,
+                );
+            }
+
             throw new AiServiceException(
                 'ai_permission_denied',
                 'У ключа OpenAI API нет доступа к этому ресурсу. Проверьте права ключа и проекта.',
