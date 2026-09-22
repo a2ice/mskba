@@ -25,8 +25,8 @@ final class PlayerCharacterFaceReferenceOptions
     {
         return [
             'front' => 'Анфас',
-            'left' => 'Левый профиль',
-            'right' => 'Правый профиль',
+            'left' => 'Слева',
+            'right' => 'Справа',
         ];
     }
 
