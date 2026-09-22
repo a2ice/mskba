@@ -61,7 +61,7 @@ async function loadAuthoredModel(engine, gender) {
 
 function setLifecycleStatus(stage, status, message = '') {
     stage.dataset.threeStatus = status;
-    const errorNode = stage.closest('.account-player-character-visual')
+    const errorNode = stage.closest('form')
         ?.querySelector('[data-player-character-error]');
 
     if (!errorNode) {
