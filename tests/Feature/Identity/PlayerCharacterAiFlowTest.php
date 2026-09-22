@@ -113,6 +113,26 @@ final class PlayerCharacterAiFlowTest extends TestCase
         );
     }
 
+    public function test_confirmed_face_reference_can_be_previewed_only_by_its_owner(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $other = $this->player();
+
+        $this->bindGateway();
+        $this->uploadReference($user, 'front');
+
+        $this->actingAs($user)
+            ->get(route('account.player-character.face-reference', ['slot' => 'front']))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/webp')
+            ->assertHeader('Cache-Control', 'no-store, private');
+
+        $this->actingAs($other)
+            ->get(route('account.player-character.face-reference', ['slot' => 'front']))
+            ->assertNotFound();
+    }
+
     public function test_generation_checks_balance_before_calling_ai(): void
     {
         $gateway = $this->bindGateway();

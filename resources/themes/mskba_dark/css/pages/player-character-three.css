@@ -241,32 +241,19 @@
     outline-offset: 1px;
 }
 
-.account-player-character-render-note,
 .account-player-character-error {
-    margin: 8px 4px 0;
-    color: var(--text-muted);
+    margin: 0;
+    color: #d9aa7c;
     font-size: 11px;
     line-height: 1.4;
 }
 
-.account-player-character-error {
-    color: #d9aa7c;
-}
-
 .account-player-character-generate {
     display: grid;
-    gap: 6px;
-    margin: 12px 4px 0;
 }
 
 .account-player-character-generate .btn {
     width: 100%;
-}
-
-.account-player-character-generate small {
-    color: var(--text-muted);
-    font-size: 10px;
-    line-height: 1.35;
 }
 
 .account-player-character-configurator__profile-gender {
@@ -296,22 +283,11 @@
 }
 
 .account-player-character-face-references__heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
+    display: block;
 }
 
 .account-player-character-face-references__heading h4 {
     margin: 2px 0 0;
-}
-
-.account-player-character-face-references__heading > span {
-    color: rgba(249, 246, 239, 0.44);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
 }
 
 .account-player-character-face-references__grid {
@@ -323,17 +299,17 @@
 .account-player-character-face-reference {
     position: relative;
     display: grid;
-    min-height: 118px;
+    min-height: 108px;
     align-content: center;
     justify-items: center;
-    gap: 7px;
+    gap: 8px;
     border: 1px dashed rgba(255, 255, 255, 0.2);
     border-radius: 13px;
     padding: 12px 8px;
     background: rgba(255, 255, 255, 0.025);
     text-align: center;
     cursor: pointer;
-    transition: border-color 140ms ease, background 140ms ease, opacity 140ms ease;
+    transition: border-color 140ms ease, background 140ms ease;
 }
 
 .account-player-character-face-reference:hover {
@@ -347,9 +323,14 @@
     background: rgba(93, 186, 117, 0.045);
 }
 
+.account-player-character-face-reference.is-uploading,
+.account-player-character-face-reference.is-preview-unconfirmed {
+    border-style: solid;
+    border-color: rgba(237, 128, 18, 0.5);
+}
+
 .account-player-character-face-reference.is-uploading {
     cursor: wait;
-    opacity: 0.58;
 }
 
 .account-player-character-face-reference input {
@@ -361,37 +342,63 @@
     pointer-events: none;
 }
 
-.account-player-character-face-reference__icon {
+.account-player-character-face-reference__preview {
     position: relative;
-    width: 31px;
-    height: 31px;
+    display: grid;
+    width: 50px;
+    height: 50px;
+    place-items: center;
+    overflow: hidden;
     border: 1px solid rgba(249, 246, 239, 0.24);
     border-radius: 50%;
+    background: rgba(255, 255, 255, 0.025);
 }
 
-.account-player-character-face-reference__icon::before,
-.account-player-character-face-reference__icon::after {
-    content: '';
+.account-player-character-face-reference__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.account-player-character-face-reference__plus {
+    display: grid;
     position: absolute;
-    left: 50%;
-    border-radius: 999px;
-    background: rgba(249, 246, 239, 0.46);
-    transform: translateX(-50%);
+    inset: 0;
+    place-items: center;
+    color: rgba(249, 246, 239, 0.74);
+    font-size: 28px;
+    font-weight: 300;
+    line-height: 1;
 }
 
-.account-player-character-face-reference__icon::before {
-    top: 6px;
-    width: 8px;
-    height: 8px;
+.account-player-character-face-reference.has-preview .account-player-character-face-reference__plus {
+    display: none;
 }
 
-.account-player-character-face-reference__icon::after {
-    bottom: 5px;
-    width: 16px;
-    height: 8px;
+.account-player-character-face-reference__loading {
+    display: none;
+    position: absolute;
+    inset: 0;
+    place-items: center;
+    border-radius: inherit;
+    background: rgba(7, 10, 8, 0.5);
 }
 
-.account-player-character-face-reference.is-stored .account-player-character-face-reference__icon {
+.account-player-character-face-reference__loading > span {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.32);
+    border-top-color: var(--accent, #ed8012);
+    border-radius: 50%;
+    animation: player-character-face-spin 700ms linear infinite;
+}
+
+.account-player-character-face-reference.is-uploading .account-player-character-face-reference__loading,
+.account-player-character-face-reference.is-preview-unconfirmed .account-player-character-face-reference__loading {
+    display: grid;
+}
+
+.account-player-character-face-reference.is-stored .account-player-character-face-reference__preview {
     border-color: rgba(93, 186, 117, 0.64);
 }
 
@@ -400,28 +407,29 @@
     font-size: 12px;
 }
 
-.account-player-character-face-reference small,
-.account-player-character-face-references__note {
-    color: var(--text-muted);
-    font-size: 10px;
-    line-height: 1.35;
-}
-
-.account-player-character-face-reference.is-stored small {
-    color: rgba(132, 211, 151, 0.82);
-}
-
-.account-player-character-face-references__note {
-    margin: 0;
+@keyframes player-character-face-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (max-width: 720px) {
+    .account-player-character-face-references {
+        padding: 14px;
+    }
+
     .account-player-character-face-references__grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
     }
 
     .account-player-character-face-reference {
-        min-height: 88px;
+        min-height: 96px;
+        padding: 10px 4px;
+    }
+
+    .account-player-character-face-reference strong {
+        font-size: 11px;
     }
 }
 
