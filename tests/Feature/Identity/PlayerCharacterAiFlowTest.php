@@ -209,7 +209,7 @@ final class PlayerCharacterAiFlowTest extends TestCase
                     'facial_hair' => 'none',
                     'uniform_kit' => 'mskba_home',
                     'shoes' => 'black',
-                    'attributes' => ['elbow_both', 'knee_pads'],
+                    'attributes' => ['elbow_left', 'wristband_right', 'knee_right'],
                 ],
             ])
             ->assertOk();
@@ -219,7 +219,34 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->assertSame(92, $gateway->lastPayload['weight_kg']);
         $this->assertSame('athletic', $gateway->lastPayload['body_type']);
         $this->assertSame('black', $gateway->lastPayload['appearance']['shoes']);
-        $this->assertSame(['elbow_both', 'knee_pads'], $gateway->lastPayload['appearance']['attributes']);
+        $this->assertSame(['elbow_left', 'wristband_right', 'knee_right'], $gateway->lastPayload['appearance']['attributes']);
+    }
+
+    public function test_confirmed_face_references_are_reused_for_repeat_generation(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 20_000);
+
+        $gateway = $this->bindGateway();
+        $this->uploadReference($user, 'front');
+        $this->uploadReference($user, 'left');
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generate_2d',
+            ])
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generate_2d',
+            ])
+            ->assertOk();
+
+        $this->assertTrue($gateway->generationCalled);
+        $this->assertArrayHasKey('front', $gateway->lastPayload['face_references']);
+        $this->assertArrayHasKey('left', $gateway->lastPayload['face_references']);
     }
 
     public function test_generation_returns_stable_not_configured_error_after_preflight(): void
