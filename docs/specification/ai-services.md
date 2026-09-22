@@ -114,10 +114,13 @@ Responses API на production может ответить HTTP 200 с `status=qu
 исходного timeout. Только `completed` передаётся в parser; `failed|cancelled|incomplete`
 маппятся в стабильную ошибку MSKBA.
 
-Прозрачный background текущим Yandex image tool не гарантируется. Для минимального production
-MVP prompt просит ровный зелёный фон `#00FF00`, а gateway принимает любое реально декодируемое
-`image/*` изображение без проверки alpha. Это позволяет сначала подтвердить end-to-end flow.
-Удаление фона и нормализация в прозрачный PNG остаются отдельным следующим этапом.
+Прозрачный background текущим Yandex image tool не гарантируется, поэтому Yandex-only pipeline
+просит ровный зелёный фон `#00FF00` и после успешной генерации локально удаляет фон. Cleanup
+строит chroma mask и flood-fill от краёв изображения: прозрачными становятся только зелёные
+области, соединённые с рамкой, поэтому изолированные зелёные детали игрока не удаляются.
+Успешный cleanup нормализует результат в transparent PNG. Обработка fail-open: при ошибке,
+неожиданном фоне или отключённом `YANDEX_AI_REMOVE_GREEN_BACKGROUND` сохраняется исходный
+валидный provider result. OpenAI pipeline этой обработкой не затрагивается.
 
 Production secrets: `YANDEX_AI_API_KEY` и `YANDEX_AI_FOLDER_ID`. Deploy синхронизирует
 их из GitHub Actions secrets и переключает player-character provider на Yandex только
