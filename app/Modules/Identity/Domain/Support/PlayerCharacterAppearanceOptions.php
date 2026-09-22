@@ -4,7 +4,7 @@ namespace App\Modules\Identity\Domain\Support;
 
 final class PlayerCharacterAppearanceOptions
 {
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     public const GENDERS = ['male', 'female'];
 
@@ -75,11 +75,45 @@ final class PlayerCharacterAppearanceOptions
     public const ATTRIBUTES = [
         'elbow_left',
         'elbow_right',
-        'elbow_both',
-        'wristbands',
-        'knee_pads',
+        'wristband_left',
+        'wristband_right',
+        'knee_left',
+        'knee_right',
         'headband',
     ];
+
+    /**
+     * @param array<int, string> $attributes
+     * @return array<int, string>
+     */
+    public static function normalizeAttributes(array $attributes): array
+    {
+        $expanded = [];
+
+        foreach ($attributes as $attribute) {
+            if ($attribute === 'elbow_both') {
+                $expanded[] = 'elbow_left';
+                $expanded[] = 'elbow_right';
+                continue;
+            }
+
+            if ($attribute === 'wristbands') {
+                $expanded[] = 'wristband_left';
+                $expanded[] = 'wristband_right';
+                continue;
+            }
+
+            if ($attribute === 'knee_pads') {
+                $expanded[] = 'knee_left';
+                $expanded[] = 'knee_right';
+                continue;
+            }
+
+            $expanded[] = $attribute;
+        }
+
+        return array_values(array_unique(array_intersect(self::ATTRIBUTES, $expanded)));
+    }
 
     public static function normalizeGender(?string $gender): string
     {
