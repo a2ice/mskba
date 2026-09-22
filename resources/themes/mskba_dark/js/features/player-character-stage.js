@@ -592,6 +592,7 @@ function applyValidatedFacePreviews(form, previews = {}) {
 
         image.src = url;
         image.hidden = false;
+        input.disabled = false;
         input.value = '';
         card.classList.add('is-stored', 'has-preview');
         card.classList.remove('is-preview-unconfirmed', 'is-uploading');
