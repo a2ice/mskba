@@ -206,16 +206,6 @@
                 </div>
             </div>
 
-            <p class="account-player-character-render-note">
-                2D — основной режим. 3D пока открыт только администраторам для тестирования.
-            </p>
-            <div class="account-player-character-generate">
-                <button type="button" class="btn btn-primary" data-player-character-generate>
-                    Сгенерировать 2D через AI
-                </button>
-                <small>Перед запросом сервер проверит актуальную цену, баланс и подтверждённые фото лица.</small>
-            </div>
-            <p class="account-player-character-error" data-player-character-error aria-live="polite" hidden></p>
         </div>
 
         <div class="account-player-character-controls">
@@ -441,37 +431,45 @@
                         <span class="eyebrow">Лицо для модели</span>
                         <h4>Референсы лица</h4>
                     </div>
-                    <span>private · ≤ 512 px</span>
                 </div>
-                <p class="text-muted mb-0">
-                    Это не аватар профиля. Для генерации нужен анфас и минимум один профиль; третий ракурс улучшит результат.
-                    Фото сохраняется только после успешной AI-проверки нужного ракурса. Исходный high-res файл не сохраняется.
-                </p>
 
                 <div class="account-player-character-face-references__grid">
                     @foreach(PlayerCharacterFaceReferenceOptions::SLOTS as $slot)
                         @php($hasFaceReference = $faceReferences->has($slot))
                         <label
-                            class="account-player-character-face-reference {{ $hasFaceReference ? 'is-stored' : '' }}"
+                            class="account-player-character-face-reference {{ $hasFaceReference ? 'is-stored has-preview' : '' }}"
                             data-player-character-face-card="{{ $slot }}"
+                            title="{{ $faceReferenceLabels[$slot] }}"
                         >
-                            <span class="account-player-character-face-reference__icon" aria-hidden="true"></span>
+                            <span class="account-player-character-face-reference__preview" data-player-character-face-preview>
+                                <img
+                                    @if($hasFaceReference)
+                                        src="{{ route('account.player-character.face-reference', ['slot' => $slot]) }}"
+                                    @endif
+                                    alt=""
+                                    data-player-character-face-image
+                                    @if(! $hasFaceReference) hidden @endif
+                                >
+                                <span class="account-player-character-face-reference__plus" aria-hidden="true">+</span>
+                                <span class="account-player-character-face-reference__loading" aria-hidden="true"><span></span></span>
+                            </span>
                             <strong>{{ $faceReferenceLabels[$slot] }}</strong>
-                            <small data-player-character-face-status="{{ $slot }}">
-                                {{ $hasFaceReference ? 'Загружено' : 'Добавить фото' }}
-                            </small>
                             <input
                                 type="file"
                                 accept="image/jpeg,image/png,image/webp"
+                                aria-label="Загрузить фото: {{ $faceReferenceLabels[$slot] }}"
                                 data-player-character-face-input="{{ $slot }}"
                             >
                         </label>
                     @endforeach
                 </div>
 
-                <p class="account-player-character-face-references__note">
-                    Сначала изображение нормализуется в памяти, затем AI проверяет лицо и ожидаемый ракурс. При ошибке или недоступном AI файл и Media-запись не создаются; прежний подтверждённый reference остаётся без изменений.
-                </p>
+                <div class="account-player-character-generate">
+                    <button type="button" class="btn btn--primary" data-player-character-generate>
+                        Сгенерировать 2D через AI
+                    </button>
+                </div>
+                <p class="account-player-character-error" data-player-character-error aria-live="polite" hidden></p>
             </div>
 
             <fieldset class="account-player-profile__positions account-player-character-controls__positions">
