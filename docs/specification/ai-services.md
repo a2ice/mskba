@@ -83,3 +83,20 @@ Presentation возвращает стабильный `code`, а UI показ�
 - `generation_timeout` — превышено время ожидания.
 
 Provider-specific тексты/HTTP детали не должны становиться frontend-контрактом.
+
+
+## OpenAI provider
+
+When `OPENAI_API_KEY` is configured, `AiServiceProvider` binds
+`OpenAiPlayerCharacterAiGateway`. Without a key the null provider remains active.
+
+Face validation uses the Responses API with image inputs and strict structured output.
+Pending face references are sent in one validation request. The provider does not identify
+the person; it only checks image usability and expected front/left/right orientation.
+
+Player generation uses the Images Edit API so all confirmed face references can be passed
+as identity inputs. The provider requests `background=transparent` and PNG output, then
+MSKBA independently rejects responses whose corner pixels are not transparent.
+
+Provider model names, timeouts, image size and quality are environment-configurable via
+`config/services.php`. Secrets must live only in server environment configuration.
