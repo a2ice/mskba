@@ -293,7 +293,7 @@ function setStageBusy(stage, busy) {
 }
 
 function setStageError(stage, message = '') {
-    const errorNode = stage.closest('.account-player-character-visual')
+    const errorNode = stage.closest('form')
         ?.querySelector('[data-player-character-error]');
     if (!errorNode) {
         return;
@@ -305,6 +305,7 @@ function setStageError(stage, message = '') {
 
 function syncRenderModeButtons(stage) {
     const visual = stage.closest('.account-player-character-visual');
+    const form = stage.closest('form');
     const wrapper = visual?.querySelector('[data-player-character-render-switch]');
     const busy = stage.dataset.renderBusy === 'true';
 
@@ -313,7 +314,7 @@ function syncRenderModeButtons(stage) {
         button.disabled = busy;
     });
 
-    const generate = visual?.querySelector('[data-player-character-generate]');
+    const generate = form?.querySelector('[data-player-character-generate]');
     if (generate) {
         generate.disabled = busy;
         generate.setAttribute('aria-busy', busy ? 'true' : 'false');
@@ -443,16 +444,23 @@ async function uploadFaceReference(stage, form, input) {
     const file = input.files?.[0];
     const container = form.querySelector('[data-player-character-face-references]');
     const card = container?.querySelector(`[data-player-character-face-card="${slot}"]`);
-    const status = container?.querySelector(`[data-player-character-face-status="${slot}"]`);
+    const image = card?.querySelector('[data-player-character-face-image]');
 
-    if (!slot || !file || !card || !status) {
+    if (!slot || !file || !card || !image) {
         return;
     }
 
-    const hadReference = card.classList.contains('is-stored');
-    const previousStatus = status.textContent;
-    card.classList.add('is-uploading');
-    status.textContent = 'Проверка AI…';
+    const previousObjectUrl = card.dataset.faceObjectUrl;
+    if (previousObjectUrl) {
+        URL.revokeObjectURL(previousObjectUrl);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    card.dataset.faceObjectUrl = objectUrl;
+    image.src = objectUrl;
+    image.hidden = false;
+    card.classList.add('has-preview', 'is-uploading');
+    card.classList.remove('is-stored', 'is-preview-unconfirmed');
     input.disabled = true;
     setStageError(stage, '');
 
@@ -481,17 +489,18 @@ async function uploadFaceReference(stage, form, input) {
             throw error;
         }
 
-        card.classList.add('is-stored');
-        status.textContent = `Загружено · ${data.width}×${data.height}`;
-    } catch (error) {
-        setStageError(stage, error.message || 'Не удалось проверить фотографию.');
-        if (hadReference) {
-            card.classList.add('is-stored');
-            status.textContent = 'Не обновлено · прежнее фото сохранено';
-        } else {
-            card.classList.remove('is-stored');
-            status.textContent = error.message || previousStatus || 'Ошибка загрузки';
+        if (data.preview_url) {
+            URL.revokeObjectURL(objectUrl);
+            delete card.dataset.faceObjectUrl;
+            image.src = data.preview_url;
         }
+
+        card.classList.add('is-stored', 'has-preview');
+        card.classList.remove('is-preview-unconfirmed');
+    } catch (error) {
+        card.classList.add('has-preview', 'is-preview-unconfirmed');
+        card.classList.remove('is-stored');
+        setStageError(stage, error.message || 'Не удалось проверить фотографию.');
     } finally {
         card.classList.remove('is-uploading');
         input.disabled = false;
@@ -528,8 +537,7 @@ function generationErrorMessage(error) {
 }
 
 function bindGenerateTwoDimensional(stage, form) {
-    const button = stage.closest('.account-player-character-visual')
-        ?.querySelector('[data-player-character-generate]');
+    const button = form.querySelector('[data-player-character-generate]');
 
     if (!button) {
         return;
