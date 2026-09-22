@@ -97,7 +97,7 @@ final class PlayerCharacterAppearanceOptions
     }
 
     /**
-     * @return array<string, int|string|null>
+     * @return array<string, mixed>
      */
     public static function defaults(string $gender = 'male'): array
     {
