@@ -24,9 +24,14 @@
 - используется `action=generate`;
 - prompt просит один full-body result на ровном зелёном `#00FF00` фоне;
 - gateway берёт первый completed image call и игнорирует последующие;
-- opaque image теперь считается успешным MVP-результатом;
-- MIME определяется по фактическим bytes, а не жёстко задаётся как PNG;
-- логируются actual MIME/dimensions, image call count и request metadata;
+- opaque provider image остаётся допустимым входом post-processing;
+- только в Yandex provider включён локальный green-screen cleanup: edge-connected chroma pixels
+  удаляются через flood-fill mask, после чего результат сохраняется как transparent PNG;
+- зелёные детали, не соединённые с краями изображения, сохраняются;
+- cleanup fail-open: при ошибке или отсутствии подходящего фона пользователь всё равно получает
+  исходный валидный provider result;
+- MIME определяется по фактическим bytes до post-processing; после успешного cleanup итог — PNG;
+- логируются actual MIME/dimensions, background_removed, image call count и request metadata;
 - тест закрепляет first-result-wins и отсутствие требования alpha;
 - если POST возвращает `queued|in_progress`, gateway опрашивает
   `GET /v1/responses/{id}` до `completed` либо до общего generation timeout;
@@ -34,5 +39,6 @@
 
 ## Следующий этап
 
-После подтверждения production flow добавить background removal/chroma key, нормализацию
-в прозрачный PNG и отдельно решить риск лишних provider tool calls/стоимости.
+На production проверить качество краёв на реальных генерациях и при необходимости добавить
+мягкий despill/feathering. Отдельно остаётся риск лишних provider tool calls/стоимости.
+Yandex-only cleanup можно отключить через YANDEX_AI_REMOVE_GREEN_BACKGROUND без влияния на OpenAI.
