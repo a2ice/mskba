@@ -530,7 +530,7 @@ PROMPT;
 
     private function imageModel(): string
     {
-        return (string) config('services.openai.image_model', 'gpt-image-2.5-sunburst');
+        return (string) config('services.openai.image_model', 'gpt-image-2');
     }
 
     private function validationTimeout(): int
