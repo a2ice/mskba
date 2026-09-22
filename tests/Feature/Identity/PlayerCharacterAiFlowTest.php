@@ -133,10 +133,30 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_generation_checks_balance_before_calling_ai(): void
+    public function test_generation_checks_face_references_before_balance_and_provider(): void
     {
         $gateway = $this->bindGateway();
         $user = $this->player();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generate_2d',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'face_references_missing')
+            ->assertJsonPath('price_minor', 10000);
+
+        $this->assertFalse($gateway->generationCalled);
+    }
+
+    public function test_generation_checks_balance_after_required_face_references(): void
+    {
+        Storage::fake('local');
+        $gateway = $this->bindGateway();
+        $user = $this->player();
+
+        $this->uploadReference($user, 'front');
+        $this->uploadReference($user, 'left');
 
         $this->actingAs($user)
             ->patchJson(route('account.player-profile.update'), [
@@ -164,6 +184,42 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ->assertJsonPath('code', 'face_references_missing');
 
         $this->assertFalse($gateway->generationCalled);
+    }
+
+    public function test_generation_uses_current_unsaved_character_settings(): void
+    {
+        Storage::fake('local');
+        $user = $this->player();
+        $this->credit($user, 10_000);
+
+        $gateway = $this->bindGateway();
+        $this->uploadReference($user, 'front');
+        $this->uploadReference($user, 'right');
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generate_2d',
+                'height_cm' => 198,
+                'weight_kg' => 92,
+                'body_type' => 'athletic',
+                'character' => [
+                    'skin_tone' => 'tan',
+                    'hairstyle' => 'male_fade',
+                    'hair_color' => 'black',
+                    'facial_hair' => 'none',
+                    'uniform_kit' => 'mskba_home',
+                    'shoes' => 'black',
+                    'attributes' => ['elbow_both', 'knee_pads'],
+                ],
+            ])
+            ->assertOk();
+
+        $this->assertTrue($gateway->generationCalled);
+        $this->assertSame(198, $gateway->lastPayload['height_cm']);
+        $this->assertSame(92, $gateway->lastPayload['weight_kg']);
+        $this->assertSame('athletic', $gateway->lastPayload['body_type']);
+        $this->assertSame('black', $gateway->lastPayload['appearance']['shoes']);
+        $this->assertSame(['elbow_both', 'knee_pads'], $gateway->lastPayload['appearance']['attributes']);
     }
 
     public function test_generation_returns_stable_not_configured_error_after_preflight(): void
@@ -214,6 +270,9 @@ final class PlayerCharacterAiFlowTest extends TestCase
         {
             public bool $generationCalled = false;
 
+            /** @var array<string, mixed>|null */
+            public ?array $lastPayload = null;
+
             public function __construct(
                 private readonly bool $faceValid,
                 private readonly ?AiServiceException $generationFailure,
@@ -234,6 +293,7 @@ final class PlayerCharacterAiFlowTest extends TestCase
             public function generatePlayerCharacter(array $payload): GeneratedPlayerCharacterImage
             {
                 $this->generationCalled = true;
+                $this->lastPayload = $payload;
 
                 if ($this->generationFailure !== null) {
                     throw $this->generationFailure;
