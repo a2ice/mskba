@@ -439,6 +439,7 @@ function bindRenderModeSwitch(stage, form, runtimeRef) {
                 }
             } catch (error) {
                 stage.dataset.renderMode = previousMode;
+                syncRendererSpecificControls(stage, form);
                 if (previousMode === '2d') {
                     updateStage(stage, form, null);
                 }
