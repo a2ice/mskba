@@ -121,15 +121,23 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
 
     public function test_it_generates_player_via_image_generation_tool_with_identity_references(): void
     {
-        $png = $this->png(true);
+        $png = $this->png(false);
+        $ignoredSecondPng = $this->png(true);
 
         Http::fake([
             'https://ai.api.cloud.yandex.test/v1/responses' => Http::response([
-                'output' => [[
-                    'type' => 'image_generation_call',
-                    'status' => 'completed',
-                    'result' => base64_encode($png),
-                ]],
+                'output' => [
+                    [
+                        'type' => 'image_generation_call',
+                        'status' => 'completed',
+                        'result' => base64_encode($png),
+                    ],
+                    [
+                        'type' => 'image_generation_call',
+                        'status' => 'completed',
+                        'result' => base64_encode($ignoredSecondPng),
+                    ],
+                ],
             ], 200, ['x-request-id' => 'yandex-image-test']),
         ]);
 
@@ -163,11 +171,13 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
 
             return data_get($payload, 'model') === 'gpt://b1g-test-folder/qwen3.6-35b-a3b'
                 && data_get($payload, 'tools.0.type') === 'image_generation'
-                && data_get($payload, 'tools.0.model') === 'aliceai-image-art-3.0'
+                && ! array_key_exists('model', (array) data_get($payload, 'tools.0', []))
                 && data_get($payload, 'tools.0.input_fidelity') === 'high'
-                && data_get($payload, 'tools.0.action') === 'auto'
-                && data_get($payload, 'tools.0.output_format') === 'png'
+                && data_get($payload, 'tools.0.action') === 'generate'
+                && ! array_key_exists('output_format', (array) data_get($payload, 'tools.0', []))
                 && data_get($payload, 'tools.0.size') === '1024x1536'
+                && data_get($payload, 'parallel_tool_calls') === false
+                && data_get($payload, 'max_tool_calls') === 1
                 && str_contains(
                     (string) data_get($payload, 'input.0.content.2.image_url'),
                     'data:image/png;base64,',
@@ -175,30 +185,28 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
         });
     }
 
-    public function test_it_surfaces_yandex_opaque_background_as_experimental_capability_gap(): void
+    public function test_it_accepts_yandex_opaque_image_as_minimal_generation_result(): void
     {
+        $png = $this->png(false);
+
         Http::fake([
             'https://ai.api.cloud.yandex.test/v1/responses' => Http::response([
                 'output' => [[
                     'type' => 'image_generation_call',
                     'status' => 'completed',
-                    'result' => base64_encode($this->png(false)),
+                    'result' => base64_encode($png),
                 ]],
             ]),
         ]);
 
-        try {
-            $this->gateway()->generatePlayerCharacter([
-                'face_references' => [
-                    'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
-                ],
-            ]);
+        $result = $this->gateway()->generatePlayerCharacter([
+            'face_references' => [
+                'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
+            ],
+        ]);
 
-            $this->fail('Expected generation failure for opaque image.');
-        } catch (AiServiceException $exception) {
-            $this->assertSame('generation_background_not_transparent', $exception->errorCode);
-            $this->assertStringContainsString('прозрачного фона', $exception->getMessage());
-        }
+        $this->assertSame($png, $result->contents);
+        $this->assertSame('image/png', $result->mime);
     }
 
     public function test_it_maps_yandex_authentication_errors_without_leaking_provider_body(): void

@@ -192,24 +192,35 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
             ]],
             'tools' => [[
                 'type' => 'image_generation',
-                'model' => $this->imageModel(),
                 'size' => (string) config('services.yandex_ai.image_size', '1024x1536'),
                 'quality' => (string) config('services.yandex_ai.image_quality', 'high'),
-                'output_format' => 'png',
                 'input_fidelity' => 'high',
-                'action' => 'auto',
+                'action' => 'generate',
             ]],
+            'parallel_tool_calls' => false,
+            'max_tool_calls' => 1,
         ], $this->generationTimeout(), 'generation');
 
         $encoded = null;
+        $imageCallCount = 0;
+
         foreach ((array) $response->json('output', []) as $item) {
+            if (($item['type'] ?? null) !== 'image_generation_call') {
+                continue;
+            }
+
+            $imageCallCount++;
+
             if (
-                ($item['type'] ?? null) === 'image_generation_call'
+                $encoded === null
                 && ($item['status'] ?? null) === 'completed'
                 && is_string($item['result'] ?? null)
+                && $item['result'] !== ''
             ) {
+                // Yandex may emit more than one image tool call even when
+                // max_tool_calls=1. The first completed image is the product
+                // result; later calls are intentionally ignored.
                 $encoded = $item['result'];
-                break;
             }
         }
 
@@ -218,14 +229,19 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
         if (! is_string($contents) || $contents === '') {
             Log::warning('Yandex AI image generation returned no decodable image.', [
                 'request_id' => $this->requestId($response),
-                'model' => $this->imageModel(),
+                'generation_model' => $this->generationModel(),
+                'image_call_count' => $imageCallCount,
             ]);
 
             throw AiServiceException::generationFailed();
         }
 
         $imageInfo = @getimagesizefromstring($contents);
-        if (! is_array($imageInfo) || ($imageInfo['mime'] ?? null) !== 'image/png') {
+        $mime = is_array($imageInfo) && is_string($imageInfo['mime'] ?? null)
+            ? $imageInfo['mime']
+            : null;
+
+        if ($mime === null || ! str_starts_with($mime, 'image/')) {
             throw new AiServiceException(
                 'generation_failed',
                 'AI вернул изображение в неподдерживаемом формате.',
@@ -233,32 +249,19 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
             );
         }
 
-        if (! $this->hasTransparentBackground($contents)) {
-            Log::warning('Yandex AI image generation did not return a transparent background.', [
-                'request_id' => $this->requestId($response),
-                'model' => $this->imageModel(),
-            ]);
-
-            throw new AiServiceException(
-                'generation_background_not_transparent',
-                'Яндекс сгенерировал персонажа без прозрачного фона. Этот режим пока тестовый.',
-                502,
-                [
-                    'provider' => 'yandex',
-                    'provider_request_id' => $this->requestId($response),
-                ],
-            );
-        }
-
         Log::info('Yandex AI player character generated.', [
             'request_id' => $this->requestId($response),
-            'model' => $this->imageModel(),
-            'size' => (string) config('services.yandex_ai.image_size', '1024x1536'),
+            'generation_model' => $this->generationModel(),
+            'requested_size' => (string) config('services.yandex_ai.image_size', '1024x1536'),
             'quality' => (string) config('services.yandex_ai.image_quality', 'high'),
+            'actual_mime' => $mime,
+            'actual_width' => $imageInfo[0] ?? null,
+            'actual_height' => $imageInfo[1] ?? null,
+            'image_call_count' => $imageCallCount,
             'bytes' => strlen($contents),
         ]);
 
-        return new GeneratedPlayerCharacterImage($contents, 'image/png');
+        return new GeneratedPlayerCharacterImage($contents, $mime);
     }
 
     private function postResponses(array $payload, int $timeout, string $operation): Response
@@ -538,10 +541,10 @@ and body type. Use a modern basketball jersey and shorts, requested team colors,
 attributes. Do not add logos, sponsors, names, numbers, text, watermarks, extra people or extra limbs.
 
 IMPORTANT OUTPUT:
-- Generate a PNG.
-- Isolate the player on a genuinely transparent alpha background if the image tool supports it.
-- No scenery, floor, studio background or checkerboard pattern.
-- Keep comfortable transparent padding around the whole body.
+- Generate exactly one image.
+- Use a flat solid pure green #00FF00 background.
+- No scenery, floor, studio set, shadows, gradients or checkerboard pattern.
+- Keep comfortable padding around the whole body.
 
 Character parameters:
 {$json}
@@ -590,38 +593,6 @@ PROMPT;
         return mb_substr(preg_replace('/\\s+/', ' ', $message) ?: '', 0, 500);
     }
 
-    private function hasTransparentBackground(string $contents): bool
-    {
-        $image = @imagecreatefromstring($contents);
-
-        if ($image === false) {
-            return false;
-        }
-
-        $width = imagesx($image);
-        $height = imagesy($image);
-
-        foreach ([
-            [0, 0],
-            [max(0, $width - 1), 0],
-            [0, max(0, $height - 1)],
-            [max(0, $width - 1), max(0, $height - 1)],
-        ] as [$x, $y]) {
-            $rgba = imagecolorat($image, $x, $y);
-            $alpha = ($rgba & 0x7F000000) >> 24;
-
-            if ($alpha < 100) {
-                imagedestroy($image);
-
-                return false;
-            }
-        }
-
-        imagedestroy($image);
-
-        return true;
-    }
-
     private function modelUri(string $model): string
     {
         return str_starts_with($model, 'gpt://')
@@ -659,11 +630,6 @@ PROMPT;
     private function generationModel(): string
     {
         return (string) config('services.yandex_ai.generation_model', 'qwen3.6-35b-a3b');
-    }
-
-    private function imageModel(): string
-    {
-        return (string) config('services.yandex_ai.image_model', 'aliceai-image-art-3.0');
     }
 
     private function validationTimeout(): int
