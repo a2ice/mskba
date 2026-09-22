@@ -187,6 +187,11 @@ final class UpdatePlayerProfileController extends Controller
                 'code' => $exception->errorCode,
                 'message' => $exception->getMessage(),
             ], $exception->context), $exception->httpStatus);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json([
+                'code' => 'face_reference_invalid_file',
+                'message' => $exception->getMessage(),
+            ], 422);
         } catch (RuntimeException $exception) {
             Log::error('Player character generation failed unexpectedly.', [
                 'user_id' => $request->user()->id,
