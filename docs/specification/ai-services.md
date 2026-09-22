@@ -101,15 +101,17 @@ OpenAI при наличии `OPENAI_API_KEY`. Иначе остаётся null 
 strict JSON schema. Внутренне сохранённые face references остаются WebP, но перед отправкой
 в Yandex Responses gateway перекодирует их в PNG data URL: production показал, что synthetic
 PNG успешно проходит multimodal structured smoke, тогда как реальные WebP-запросы завершались
-provider-level `status=failed` при HTTP 200. Генерация персонажа выполняется через Responses
-API с инструментом `image_generation` (Alice AI ART), которому передаются те же face
-references в PNG и `input_fidelity=high` для максимального сохранения черт лица.
+provider-level `status=failed` при HTTP 200.
 
-На текущем API Yandex параметр прозрачного background помечен как не поддерживаемый.
-MSKBA поэтому не считает opaque PNG корректным финальным результатом: gateway проверяет
-alpha самостоятельно и возвращает `generation_background_not_transparent`, если
-провайдер не дал реально прозрачный фон. Это capability gap, который нужно закрыть
-отдельным background-removal этапом, если реальные генерации Yandex стабильно opaque.
+Production-проверка генерации показала рабочий Responses contract: image tool вызывается без
+явных `model` и `output_format`, с `action=generate`, `input_fidelity=high`, quality/size.
+Gateway принимает первый completed `image_generation_call`; последующие tool calls игнорируются,
+поскольку Yandex фактически может вернуть их несколько даже при `max_tool_calls=1`.
+
+Прозрачный background текущим Yandex image tool не гарантируется. Для минимального production
+MVP prompt просит ровный зелёный фон `#00FF00`, а gateway принимает любое реально декодируемое
+`image/*` изображение без проверки alpha. Это позволяет сначала подтвердить end-to-end flow.
+Удаление фона и нормализация в прозрачный PNG остаются отдельным следующим этапом.
 
 Production secrets: `YANDEX_AI_API_KEY` и `YANDEX_AI_FOLDER_ID`. Deploy синхронизирует
 их из GitHub Actions secrets и переключает player-character provider на Yandex только
