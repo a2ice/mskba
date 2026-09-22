@@ -144,7 +144,7 @@ body.main .home-team-grid--regular { margin-top:0; }
 .home-flow-note,.home-flow-intro { color:rgba(255,255,255,.5); font-size:11px; line-height:1.55; }
 
 @media (min-width: 901px) {
-    body.main .home-welcome { min-height:clamp(650px,78svh,740px); }
+    body.main .home-welcome { min-height:clamp(700px,95svh,860px); }
     body.main .home-welcome__content { padding-top:118px; padding-bottom:118px; }
     body.main .home-welcome__main { grid-template-columns:minmax(0,760px); justify-content:start; gap:0; }
     body.main .home-welcome__copy { max-width:760px; }
