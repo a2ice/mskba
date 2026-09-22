@@ -3,6 +3,7 @@
 namespace App\Modules\Identity\Application\UseCases;
 
 use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
+use App\Modules\Ai\Domain\Exceptions\AiServiceException;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Finance\Application\Services\WalletOwnerResolver;
 use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
@@ -206,26 +207,39 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             }
         }
 
-        $image = $this->ai->generatePlayerCharacter([
-            'user_id' => $canonicalUserId,
-            'gender' => $user->profile?->gender?->value,
-            'height_cm' => array_key_exists('height_cm', $options)
-                ? $options['height_cm']
-                : $playerProfile?->height_cm,
-            'weight_kg' => array_key_exists('weight_kg', $options)
-                ? $options['weight_kg']
-                : $playerProfile?->weight_kg,
-            'body_type' => array_key_exists('body_type', $options)
-                ? $options['body_type']
-                : ($playerProfile?->body_type?->value ?? $playerProfile?->body_type),
-            'appearance' => $character,
-            'team' => $team ? [
-                'id' => $team->id,
-                'name' => $team->name,
-                'colors' => $team->colors,
-            ] : null,
-            'face_references' => $facePayload,
-        ]);
+        try {
+            $image = $this->ai->generatePlayerCharacter([
+                'user_id' => $canonicalUserId,
+                'gender' => $user->profile?->gender?->value,
+                'height_cm' => array_key_exists('height_cm', $options)
+                    ? $options['height_cm']
+                    : $playerProfile?->height_cm,
+                'weight_kg' => array_key_exists('weight_kg', $options)
+                    ? $options['weight_kg']
+                    : $playerProfile?->weight_kg,
+                'body_type' => array_key_exists('body_type', $options)
+                    ? $options['body_type']
+                    : ($playerProfile?->body_type?->value ?? $playerProfile?->body_type),
+                'appearance' => $character,
+                'team' => $team ? [
+                    'id' => $team->id,
+                    'name' => $team->name,
+                    'colors' => $team->colors,
+                ] : null,
+                'face_references' => $facePayload,
+            ]);
+        } catch (AiServiceException $exception) {
+            if ($validatedFaceMediaIds === []) {
+                throw $exception;
+            }
+
+            throw new AiServiceException(
+                $exception->errorCode,
+                $exception->getMessage(),
+                $exception->httpStatus,
+                ['validated_face_media_ids' => $validatedFaceMediaIds],
+            );
+        }
 
         if ($image->contents === '' || ! str_starts_with($image->mime, 'image/')) {
             throw new PlayerCharacterFlowException(
