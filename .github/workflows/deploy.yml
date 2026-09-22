@@ -59,6 +59,29 @@ jobs:
               fi
             }
 
+            # One-time bootstrap: move the temporary OpenAI key from the
+            # previous deployed revision into the server-only .env before the
+            # new revision removes config/tmp.
+            OPENAI_API_KEY_CURRENT="$(grep '^OPENAI_API_KEY=' .env | tail -n 1 | cut -d= -f2- || true)"
+            OPENAI_API_KEY_CURRENT="${OPENAI_API_KEY_CURRENT%\"}"
+            OPENAI_API_KEY_CURRENT="${OPENAI_API_KEY_CURRENT#\"}"
+            if [ -z "$OPENAI_API_KEY_CURRENT" ]; then
+              if [ ! -f config/tmp ]; then
+                echo "OPENAI_API_KEY is missing and temporary bootstrap file is unavailable" >&2
+                exit 1
+              fi
+
+              OPENAI_BOOTSTRAP_KEY="$(tr -d '\r\n' < config/tmp)"
+              if [ -z "$OPENAI_BOOTSTRAP_KEY" ]; then
+                echo "Temporary OpenAI bootstrap key is empty" >&2
+                exit 1
+              fi
+
+              update_env_value OPENAI_API_KEY "$OPENAI_BOOTSTRAP_KEY"
+              unset OPENAI_BOOTSTRAP_KEY
+              echo "OPENAI_API_KEY migrated to production .env"
+            fi
+
             update_env_value VK_ID_APP_ID "$VK_ID_APP_ID"
             update_env_value VK_ID_REDIRECT_URI "$VK_ID_REDIRECT_URI"
             update_env_value FEATURE_VENUE_RENTAL_BOOKING_EVENTS true
