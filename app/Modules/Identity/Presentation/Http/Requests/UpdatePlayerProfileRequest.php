@@ -70,7 +70,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
             'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
             'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
             'character.shoes' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::SHOES)],
-            'character.attributes' => ['nullable', 'array', 'max:5'],
+            'character.attributes' => ['nullable', 'array', 'max:6'],
             'character.attributes.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::ATTRIBUTES)],
             'character.chest_volume' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::CHEST_VOLUMES)],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
