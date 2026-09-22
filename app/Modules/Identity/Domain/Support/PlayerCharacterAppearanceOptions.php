@@ -75,6 +75,7 @@ final class PlayerCharacterAppearanceOptions
     public const ATTRIBUTES = [
         'elbow_left',
         'elbow_right',
+        'elbow_both',
         'wristbands',
         'knee_pads',
         'headband',
