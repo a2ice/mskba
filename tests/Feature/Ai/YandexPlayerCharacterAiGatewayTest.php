@@ -61,8 +61,8 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
         ]);
 
         $result = $this->gateway()->validateFaceReferences([
-            'front' => ['contents' => 'front-image', 'mime' => 'image/webp'],
-            'right' => ['contents' => 'right-image', 'mime' => 'image/webp'],
+            'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
+            'right' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
         ]);
 
         $this->assertTrue($result['front']->valid);
@@ -82,7 +82,7 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
                 && data_get($payload, 'text.format.strict') === true
                 && str_contains(
                     (string) data_get($payload, 'input.0.content.2.image_url'),
-                    'data:image/webp;base64,',
+                    'data:image/png;base64,',
                 );
         });
     }
@@ -111,7 +111,7 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
         ]);
 
         $result = $this->gateway()->validateFaceReferences([
-            'front' => ['contents' => 'front-image', 'mime' => 'image/webp'],
+            'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
         ]);
 
         $this->assertTrue($result['front']->valid);
@@ -150,8 +150,8 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
                 ],
             ],
             'face_references' => [
-                'front' => ['contents' => 'front-image', 'mime' => 'image/webp'],
-                'left' => ['contents' => 'left-image', 'mime' => 'image/webp'],
+                'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
+                'left' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
             ],
         ]);
 
@@ -170,7 +170,7 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
                 && data_get($payload, 'tools.0.size') === '1024x1536'
                 && str_contains(
                     (string) data_get($payload, 'input.0.content.2.image_url'),
-                    'data:image/webp;base64,',
+                    'data:image/png;base64,',
                 );
         });
     }
@@ -190,7 +190,7 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
         try {
             $this->gateway()->generatePlayerCharacter([
                 'face_references' => [
-                    'front' => ['contents' => 'front-image', 'mime' => 'image/webp'],
+                    'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
                 ],
             ]);
 
@@ -215,7 +215,7 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
 
         try {
             $this->gateway()->validateFaceReferences([
-                'front' => ['contents' => 'front-image', 'mime' => 'image/webp'],
+                'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
             ]);
 
             $this->fail('Expected authentication failure.');
@@ -230,6 +230,22 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
     private function gateway(): YandexPlayerCharacterAiGateway
     {
         return app(YandexPlayerCharacterAiGateway::class);
+    }
+
+    private function webp(): string
+    {
+        $image = imagecreatetruecolor(32, 48);
+        $color = imagecolorallocate($image, 205, 165, 125);
+        imagefill($image, 0, 0, $color);
+
+        ob_start();
+        imagewebp($image, null, 82);
+        $contents = ob_get_clean();
+        imagedestroy($image);
+
+        $this->assertIsString($contents);
+
+        return $contents;
     }
 
     private function png(bool $transparent): string
