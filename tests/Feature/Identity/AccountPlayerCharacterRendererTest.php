@@ -150,9 +150,13 @@ final class AccountPlayerCharacterRendererTest extends TestCase
         Storage::fake('local');
         $this->app->instance(PlayerCharacterAiGateway::class, new class implements PlayerCharacterAiGateway
         {
-            public function validateFaceReference(string $expectedSlot, string $imageContents, string $mime): FaceReferenceValidationResult
+            public function validateFaceReferences(array $references): array
             {
-                return new FaceReferenceValidationResult(true, $expectedSlot);
+                return collect($references)
+                    ->mapWithKeys(fn (array $_reference, string $slot): array => [
+                        $slot => new FaceReferenceValidationResult(true, $slot),
+                    ])
+                    ->all();
             }
 
             public function generatePlayerCharacter(array $payload): GeneratedPlayerCharacterImage
