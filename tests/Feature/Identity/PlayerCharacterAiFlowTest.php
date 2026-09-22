@@ -193,7 +193,7 @@ final class PlayerCharacterAiFlowTest extends TestCase
         $this->credit($user, 10_000);
         $gateway = $this->bindGateway();
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->withHeader('Accept', 'application/json')
             ->post(route('account.player-profile.update'), [
                 '_method' => 'PATCH',
@@ -204,9 +204,25 @@ final class PlayerCharacterAiFlowTest extends TestCase
                 ],
             ])
             ->assertOk()
-            ->assertJsonPath('status', 'generated')
-            ->assertJsonPath('face_previews.front', route('account.player-character.face-reference', ['slot' => 'front']).'?v=1')
-            ->assertJsonPath('face_previews.right', route('account.player-character.face-reference', ['slot' => 'right']).'?v=2');
+            ->assertJsonPath('status', 'generated');
+
+        $profile = $user->profile()->firstOrFail();
+        $front = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('front'))
+            ->firstOrFail();
+        $right = $profile->media()
+            ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot('right'))
+            ->firstOrFail();
+
+        $response
+            ->assertJsonPath(
+                'face_previews.front',
+                route('account.player-character.face-reference', ['slot' => 'front']).'?v='.$front->id,
+            )
+            ->assertJsonPath(
+                'face_previews.right',
+                route('account.player-character.face-reference', ['slot' => 'right']).'?v='.$right->id,
+            );
 
         $this->assertSame(1, $gateway->validationCalls);
         $this->assertSame(['front', 'right'], $gateway->lastValidatedSlots);
