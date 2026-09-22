@@ -4,7 +4,7 @@ namespace App\Modules\Identity\Domain\Support;
 
 final class PlayerCharacterAppearanceOptions
 {
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     public const GENDERS = ['male', 'female'];
 
@@ -67,6 +67,20 @@ final class PlayerCharacterAppearanceOptions
         'city_night',
     ];
 
+    public const SHOES = [
+        'white',
+        'black',
+    ];
+
+    public const ATTRIBUTES = [
+        'elbow_left',
+        'elbow_right',
+        'elbow_both',
+        'wristbands',
+        'knee_pads',
+        'headband',
+    ];
+
     public static function normalizeGender(?string $gender): string
     {
         return in_array($gender, self::GENDERS, true) ? $gender : 'male';
@@ -83,7 +97,7 @@ final class PlayerCharacterAppearanceOptions
     }
 
     /**
-     * @return array<string, int|string|null>
+     * @return array<string, mixed>
      */
     public static function defaults(string $gender = 'male'): array
     {
@@ -97,6 +111,8 @@ final class PlayerCharacterAppearanceOptions
             'hair_color' => 'dark_brown',
             'facial_hair' => 'none',
             'uniform_kit' => 'mskba_home',
+            'shoes' => 'white',
+            'attributes' => [],
             'chest_volume' => $gender === 'female' ? 'medium' : null,
         ];
     }

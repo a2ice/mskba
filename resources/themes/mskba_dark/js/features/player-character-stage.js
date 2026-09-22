@@ -61,6 +61,9 @@ function readState(stage, form) {
         hairColor: characterField(form, 'hair-color')?.value || 'dark_brown',
         facialHair: characterField(form, 'facial-hair')?.value || 'none',
         uniformKit: characterField(form, 'uniform-kit')?.value || 'mskba_home',
+        shoes: characterField(form, 'shoes')?.value || 'white',
+        attributes: [...form.querySelectorAll('[data-player-character-attribute]:checked')]
+            .map((input) => input.value),
         ...teamUniform,
     };
 }
@@ -102,6 +105,13 @@ function setCharacterField(form, configurator, field, value) {
 
     input.value = value;
     syncChoiceButtons(configurator, field, value);
+}
+
+function syncRendererSpecificControls(stage, form) {
+    const enabled = stage.dataset.renderMode === '3d';
+    form.querySelectorAll('[data-player-character-three-settings]').forEach((section) => {
+        section.hidden = !enabled;
+    });
 }
 
 function syncProfileGenderControls(stage, form, configurator) {
@@ -375,6 +385,7 @@ async function activateThree(stage, form, runtimeRef) {
 
 function activateTwo(stage, form, runtimeRef) {
     stage.dataset.renderMode = '2d';
+    syncRendererSpecificControls(stage, form);
     updateStage(stage, form, null);
 
     if (runtimeRef.current) {
@@ -421,12 +432,14 @@ function bindRenderModeSwitch(stage, form, runtimeRef) {
                     }
 
                     stage.dataset.renderMode = '3d';
+                    syncRendererSpecificControls(stage, form);
                     updateStage(stage, form, runtimeRef.current);
                 } else {
                     activateTwo(stage, form, runtimeRef);
                 }
             } catch (error) {
                 stage.dataset.renderMode = previousMode;
+                syncRendererSpecificControls(stage, form);
                 if (previousMode === '2d') {
                     updateStage(stage, form, null);
                 }
@@ -521,6 +534,27 @@ function formatRubles(minor) {
     }).format(value / 100);
 }
 
+function generationOptionsPayload(stage, form) {
+    const state = readState(stage, form);
+
+    return {
+        height_cm: state.heightCm,
+        weight_kg: state.weightKg,
+        body_type: state.bodyType === 'unspecified' ? null : state.bodyType,
+        generation_team_id: state.teamId ? Number(state.teamId) : null,
+        character: {
+            skin_tone: state.skinTone,
+            hairstyle: state.hairstyle,
+            hair_color: state.hairColor,
+            facial_hair: state.facialHair,
+            uniform_kit: state.uniformKit,
+            shoes: state.shoes,
+            attributes: state.attributes,
+            chest_volume: state.chestVolume,
+        },
+    };
+}
+
 function generationErrorMessage(error) {
     if (error?.code !== 'insufficient_balance') {
         return error?.message || 'Не удалось сгенерировать 2D-модель.';
@@ -555,11 +589,14 @@ function bindGenerateTwoDimensional(stage, form) {
         try {
             const result = await requestJsonMutation(stage, form, {
                 mutation: 'generate_2d',
+                ...generationOptionsPayload(stage, form),
             });
 
             const image = stage.querySelector('[data-player-character-two-image]');
             if (image && result.image_data_url) {
                 image.src = result.image_data_url;
+                image.classList.remove('is-placeholder');
+                image.removeAttribute('data-placeholder-gender');
             }
         } catch (error) {
             setStageError(stage, generationErrorMessage(error));
@@ -567,6 +604,32 @@ function bindGenerateTwoDimensional(stage, form) {
             setStageBusy(stage, false);
             syncRenderModeButtons(stage);
         }
+    });
+}
+
+function bindCharacterAttributes(stage, form, runtimeRef) {
+    const inputs = [...form.querySelectorAll('[data-player-character-attribute]')];
+
+    inputs.forEach((input) => {
+        input.addEventListener('change', () => {
+            if (input.dataset.playerCharacterAttribute === 'elbow_both' && input.checked) {
+                inputs
+                    .filter((item) => ['elbow_left', 'elbow_right'].includes(item.dataset.playerCharacterAttribute))
+                    .forEach((item) => { item.checked = false; });
+            }
+
+            if (
+                ['elbow_left', 'elbow_right'].includes(input.dataset.playerCharacterAttribute)
+                && input.checked
+            ) {
+                const both = inputs.find((item) => item.dataset.playerCharacterAttribute === 'elbow_both');
+                if (both) {
+                    both.checked = false;
+                }
+            }
+
+            updateStage(stage, form, runtimeRef.current);
+        });
     });
 }
 
@@ -586,11 +649,13 @@ async function bindPlayerCharacterStage(stage) {
     const runtimeRef = { current: null };
 
     syncProfileGenderControls(stage, form, configurator);
+    syncRendererSpecificControls(stage, form);
     bindCharacterChoices(stage, form, configurator, runtimeRef);
     bindPhysicalInputs(stage, form, runtimeRef);
     bindTeamUniform(stage, form, configurator, runtimeRef);
     bindHeightMarker(stage);
     bindFaceReferences(stage, form);
+    bindCharacterAttributes(stage, form, runtimeRef);
     bindGenerateTwoDimensional(stage, form);
     bindRenderModeSwitch(stage, form, runtimeRef);
 

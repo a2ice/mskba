@@ -38,13 +38,39 @@ final class AccountPlayerCharacterAppearanceTest extends TestCase
         $profile = $user->playerProfile()->firstOrFail();
 
         $this->assertTrue($profile->extra['legacy_flag']);
-        $this->assertSame(3, $profile->extra['character']['version']);
+        $this->assertSame(4, $profile->extra['character']['version']);
         $this->assertSame('male', $profile->extra['character']['gender']);
         $this->assertSame('tan', $profile->extra['character']['skin_tone']);
         $this->assertSame('male_curls', $profile->extra['character']['hairstyle']);
         $this->assertSame('black', $profile->extra['character']['hair_color']);
         $this->assertSame('short_beard', $profile->extra['character']['facial_hair']);
         $this->assertSame('city_night', $profile->extra['character']['uniform_kit']);
+        $this->assertSame('white', $profile->extra['character']['shoes']);
+        $this->assertSame([], $profile->extra['character']['attributes']);
+    }
+
+    public function test_player_can_save_shoes_and_optional_attributes(): void
+    {
+        $user = $this->player(UserGenderEnum::MALE);
+
+        $this->actingAs($user)
+            ->patch(route('account.player-profile.update'), [
+                'character' => [
+                    'skin_tone' => 'warm',
+                    'hairstyle' => 'male_fade',
+                    'hair_color' => 'dark_brown',
+                    'facial_hair' => 'none',
+                    'uniform_kit' => 'mskba_home',
+                    'shoes' => 'black',
+                    'attributes' => ['elbow_both', 'wristbands', 'headband'],
+                ],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $character = $user->playerProfile()->firstOrFail()->extra['character'];
+
+        $this->assertSame('black', $character['shoes']);
+        $this->assertSame(['elbow_both', 'wristbands', 'headband'], $character['attributes']);
     }
 
     public function test_character_appearance_uses_profile_gender_for_compatibility(): void

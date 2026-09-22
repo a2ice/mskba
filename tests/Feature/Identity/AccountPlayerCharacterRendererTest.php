@@ -30,7 +30,7 @@ final class AccountPlayerCharacterRendererTest extends TestCase
             ->assertOk()
             ->assertSee('data-render-mode="2d"', false)
             ->assertSee('data-player-character-two', false)
-            ->assertSee('default-2d-player.svg', false)
+            ->assertSee('body-male.png', false)
             ->assertSee('data-player-character-render-mode="3d"', false);
 
         $this->actingAs($user)
@@ -119,7 +119,8 @@ final class AccountPlayerCharacterRendererTest extends TestCase
             ->get(route('account.participation-role', UserParticipationRoleEnum::PLAYER->value))
             ->assertOk()
             ->assertSee('Объём груди')
-            ->assertSee('data-player-character-input="chest-volume"', false);
+            ->assertSee('data-player-character-input="chest-volume"', false)
+            ->assertSee('body-female.png', false);
     }
 
     public function test_male_profile_does_not_accept_chest_volume_as_body_inference(): void

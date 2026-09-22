@@ -153,7 +153,7 @@ final class UpdatePlayerProfileController extends Controller
         GeneratePlayerCharacterTwoDimensionalHandler $handler,
     ): JsonResponse {
         try {
-            $result = $handler->handle($request->user());
+            $result = $handler->handle($request->user(), $request->generationOptions());
         } catch (AiServiceException $exception) {
             $this->logAiFailure($request, 'generate_2d', $exception->errorCode, $exception->getMessage());
 

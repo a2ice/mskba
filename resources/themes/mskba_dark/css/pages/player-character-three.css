@@ -85,6 +85,19 @@
     transition: height 180ms ease;
 }
 
+.account-player-character-two img.is-placeholder {
+    width: auto;
+    max-width: none;
+}
+
+.account-player-character-two img.is-placeholder[data-placeholder-gender="male"] {
+    height: 78%;
+}
+
+.account-player-character-two img.is-placeholder[data-placeholder-gender="female"] {
+    height: 70%;
+}
+
 .account-player-character-three {
     visibility: hidden;
     opacity: 0;

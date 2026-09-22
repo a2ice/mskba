@@ -476,6 +476,116 @@
     gap: 9px;
 }
 
+.account-player-character-configurator__body-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.account-player-character-configurator__subgroup {
+    display: grid;
+    gap: 8px;
+}
+
+.account-player-character-configurator__subgroup + .account-player-character-configurator__subgroup {
+    margin-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.055);
+    padding-top: 12px;
+}
+
+.account-player-character-configurator__sublabel {
+    color: rgba(249, 246, 239, 0.65);
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.account-player-character-configurator__team-selector--inline {
+    width: min(100%, 280px);
+    flex: none;
+}
+
+.account-player-character-configurator__attributes {
+    border-top: 1px solid rgba(255, 255, 255, 0.075);
+    padding-top: 16px;
+}
+
+.account-player-character-configurator__attributes summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: rgba(249, 246, 239, 0.82);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    cursor: pointer;
+    list-style: none;
+}
+
+.account-player-character-configurator__attributes summary::-webkit-details-marker {
+    display: none;
+}
+
+.account-player-character-configurator__attributes summary::after {
+    content: '+';
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.account-player-character-configurator__attributes[open] summary::after {
+    content: '−';
+}
+
+.account-player-character-configurator__attributes summary small {
+    margin-left: auto;
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.account-player-character-configurator__attribute-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.account-player-character-configurator__attribute {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(249, 246, 239, 0.72);
+    font-size: 10px;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.account-player-character-configurator__attribute:has(input:checked) {
+    border-color: rgba(237, 128, 18, 0.58);
+    background: rgba(237, 128, 18, 0.08);
+    color: #fff;
+}
+
+.account-player-character-configurator__attribute input {
+    accent-color: var(--accent);
+}
+
+.account-player-character-controls__profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .account-player-character-configurator__group + .account-player-character-configurator__group {
     border-top: 1px solid rgba(255, 255, 255, 0.075);
     padding-top: 16px;
@@ -773,6 +883,11 @@
 }
 
 @media (max-width: 760px) {
+    .account-player-character-configurator__body-grid,
+    .account-player-character-configurator__attribute-grid {
+        grid-template-columns: 1fr;
+    }
+
     .account-player-character-layout {
         flex-direction: column;
         gap: 22px;

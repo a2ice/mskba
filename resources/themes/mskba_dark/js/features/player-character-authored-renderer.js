@@ -61,7 +61,7 @@ async function loadAuthoredModel(engine, gender) {
 
 function setLifecycleStatus(stage, status, message = '') {
     stage.dataset.threeStatus = status;
-    const errorNode = stage.closest('.account-player-character-visual')
+    const errorNode = stage.closest('form')
         ?.querySelector('[data-player-character-error]');
 
     if (!errorNode) {
@@ -169,6 +169,35 @@ function applySkinTone(runtime, state) {
 
         object.material.color.copy(color);
         object.material.needsUpdate = true;
+    });
+}
+
+function applyShoeColors(runtime, state) {
+    const colors = state.shoes === 'black'
+        ? {
+            'shoes-primary': new runtime.THREE.Color('#171a18'),
+            'shoes-accent': new runtime.THREE.Color('#303531'),
+        }
+        : {
+            'shoes-primary': new runtime.THREE.Color('#eeeeeb'),
+            'shoes-accent': new runtime.THREE.Color('#d7d9d5'),
+        };
+
+    runtime.model?.traverse((object) => {
+        if (!object.isMesh) {
+            return;
+        }
+
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.filter(Boolean).forEach((material) => {
+            const color = colors[material.userData.playerCharacterRole];
+            if (!color) {
+                return;
+            }
+
+            material.color.copy(color);
+            material.needsUpdate = true;
+        });
     });
 }
 
@@ -452,6 +481,7 @@ async function createRuntime(stage, state) {
     applyMetricHeight(runtime, state);
     applySkinTone(runtime, state);
     applyUniformColors(runtime, state);
+    applyShoeColors(runtime, state);
     updateHeightMarker(runtime);
 
     setLifecycleStatus(stage, 'ready');
@@ -485,6 +515,7 @@ export function updatePlayerCharacterThree(stage, state) {
     applyMetricHeight(runtime, state);
     applySkinTone(runtime, state);
     applyUniformColors(runtime, state);
+    applyShoeColors(runtime, state);
     updateHeightMarker(runtime);
 }
 

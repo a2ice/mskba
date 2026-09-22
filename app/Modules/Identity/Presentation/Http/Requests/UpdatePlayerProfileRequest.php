@@ -51,6 +51,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
+            'generation_team_id' => ['nullable', 'integer'],
             'height_cm' => ['nullable', 'integer', 'between:150,220'],
             'weight_kg' => ['nullable', 'integer', 'between:40,140'],
             'body_type' => ['nullable', Rule::enum(PlayerBodyTypeEnum::class)],
@@ -63,12 +64,15 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
-            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,chest_volume'],
+            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,shoes,attributes,chest_volume'],
             'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
             'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
             'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
             'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
             'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
+            'character.shoes' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::SHOES)],
+            'character.attributes' => ['nullable', 'array', 'max:6'],
+            'character.attributes.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::ATTRIBUTES)],
             'character.chest_volume' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::CHEST_VOLUMES)],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
         ];
@@ -125,7 +129,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
     }
 
     /**
-     * @return array<string, int|string|null>|null
+     * @return array<string, mixed>|null
      */
     public function characterAppearance(): ?array
     {
@@ -148,10 +152,49 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 ? 'none'
                 : (string) $character['facial_hair'],
             'uniform_kit' => (string) $character['uniform_kit'],
+            'shoes' => (string) ($character['shoes'] ?? 'white'),
+            'attributes' => array_values(array_intersect(
+                PlayerCharacterAppearanceOptions::ATTRIBUTES,
+                (array) ($character['attributes'] ?? []),
+            )),
             'chest_volume' => $profileGender === 'female'
                 ? ($character['chest_volume'] ?? null)
                 : null,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function generationOptions(): array
+    {
+        $options = [];
+
+        if ($this->has('height_cm')) {
+            $options['height_cm'] = $this->nullableInteger('height_cm');
+        }
+
+        if ($this->has('weight_kg')) {
+            $options['weight_kg'] = $this->nullableInteger('weight_kg');
+        }
+
+        if ($this->has('body_type')) {
+            $options['body_type'] = $this->filled('body_type')
+                ? $this->string('body_type')->toString()
+                : null;
+        }
+
+        if ($this->has('generation_team_id')) {
+            $options['team_id'] = $this->filled('generation_team_id')
+                ? (int) $this->input('generation_team_id')
+                : null;
+        }
+
+        if ($this->has('character')) {
+            $options['character'] = $this->characterAppearance();
+        }
+
+        return $options;
     }
 
     /**
