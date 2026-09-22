@@ -144,6 +144,7 @@ final class UpdatePlayerProfileController extends Controller
             'status' => 'stored',
             'width' => $result['width'],
             'height' => $result['height'],
+            'preview_url' => route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$result['media']->id,
         ]);
     }
 
