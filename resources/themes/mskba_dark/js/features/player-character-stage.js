@@ -678,6 +678,7 @@ function bindGenerateTwoDimensional(stage, form) {
                 image.removeAttribute('data-placeholder-gender');
             }
         } catch (error) {
+            applyValidatedFacePreviews(form, error?.payload?.face_previews || {});
             setStageError(stage, generationErrorMessage(error));
         } finally {
             setPendingFacesBusy(form, false);
