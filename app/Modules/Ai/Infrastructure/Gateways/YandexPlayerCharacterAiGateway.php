@@ -368,22 +368,84 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
     {
         $json = $response->json();
 
-        if (is_string($json['output_text'] ?? null) && $json['output_text'] !== '') {
-            return $json['output_text'];
+        $outputText = $json['output_text'] ?? null;
+        if (is_string($outputText) && trim($outputText) !== '') {
+            return $outputText;
         }
 
-        foreach ((array) ($json['output'] ?? []) as $item) {
+        $output = (array) ($json['output'] ?? []);
+
+        // Yandex documents OpenAI-compatible Responses output, but the raw wire
+        // shape is not always accompanied by the convenience top-level
+        // output_text aggregate. Prefer canonical output_text content first.
+        foreach ($output as $item) {
             foreach ((array) ($item['content'] ?? []) as $content) {
-                if (($content['type'] ?? null) === 'output_text' && is_string($content['text'] ?? null)) {
+                if (
+                    ($content['type'] ?? null) === 'output_text'
+                    && is_string($content['text'] ?? null)
+                    && trim($content['text']) !== ''
+                ) {
                     return $content['text'];
                 }
             }
         }
 
+        // Some Yandex Responses variants return message content as type=text
+        // (or omit the type) while keeping the same content[].text field.
+        foreach ($output as $item) {
+            if (is_string($item['text'] ?? null) && trim($item['text']) !== '') {
+                return $item['text'];
+            }
+
+            foreach ((array) ($item['content'] ?? []) as $content) {
+                $type = $content['type'] ?? null;
+                $text = $content['text'] ?? null;
+
+                if (
+                    in_array($type, [null, 'text'], true)
+                    && is_string($text)
+                    && trim($text) !== ''
+                ) {
+                    return $text;
+                }
+            }
+        }
+
+        // Defensive fallback for compatible gateways that expose chat-like
+        // choices while accepting the Responses endpoint.
+        $choiceContent = data_get($json, 'choices.0.message.content');
+        if (is_string($choiceContent) && trim($choiceContent) !== '') {
+            return $choiceContent;
+        }
+
+        $outputTypes = [];
+        $contentTypes = [];
+
+        foreach ($output as $item) {
+            $outputTypes[] = $item['type'] ?? null;
+
+            foreach ((array) ($item['content'] ?? []) as $content) {
+                $contentTypes[] = $content['type'] ?? null;
+            }
+        }
+
+        Log::warning('Yandex AI response contained no readable output text.', [
+            'request_id' => $this->requestId($response),
+            'status' => $json['status'] ?? null,
+            'top_level_keys' => array_keys(is_array($json) ? $json : []),
+            'output_types' => array_values(array_unique($outputTypes, SORT_REGULAR)),
+            'content_types' => array_values(array_unique($contentTypes, SORT_REGULAR)),
+            'has_error' => isset($json['error']),
+        ]);
+
         throw new AiServiceException(
             'ai_request_rejected',
             'Яндекс AI не вернул результат проверки лица.',
             502,
+            [
+                'provider' => 'yandex',
+                'provider_request_id' => $this->requestId($response),
+            ],
         );
     }
 
