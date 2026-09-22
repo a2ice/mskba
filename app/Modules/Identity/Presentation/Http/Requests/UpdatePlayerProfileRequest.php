@@ -168,17 +168,33 @@ final class UpdatePlayerProfileRequest extends FormRequest
      */
     public function generationOptions(): array
     {
-        return [
-            'height_cm' => $this->nullableInteger('height_cm'),
-            'weight_kg' => $this->nullableInteger('weight_kg'),
-            'body_type' => $this->filled('body_type')
+        $options = [];
+
+        if ($this->has('height_cm')) {
+            $options['height_cm'] = $this->nullableInteger('height_cm');
+        }
+
+        if ($this->has('weight_kg')) {
+            $options['weight_kg'] = $this->nullableInteger('weight_kg');
+        }
+
+        if ($this->has('body_type')) {
+            $options['body_type'] = $this->filled('body_type')
                 ? $this->string('body_type')->toString()
-                : null,
-            'team_id' => $this->filled('generation_team_id')
+                : null;
+        }
+
+        if ($this->has('generation_team_id')) {
+            $options['team_id'] = $this->filled('generation_team_id')
                 ? (int) $this->input('generation_team_id')
-                : null,
-            'character' => $this->characterAppearance(),
-        ];
+                : null;
+        }
+
+        if ($this->has('character')) {
+            $options['character'] = $this->characterAppearance();
+        }
+
+        return $options;
     }
 
     /**
