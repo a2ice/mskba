@@ -152,8 +152,29 @@ final class UpdatePlayerProfileController extends Controller
         UpdatePlayerProfileRequest $request,
         GeneratePlayerCharacterTwoDimensionalHandler $handler,
     ): JsonResponse {
+        $pendingFaceReferences = [];
+
+        foreach ($request->generationFaceReferenceFiles() as $slot => $file) {
+            $path = $file->getRealPath();
+            $contents = is_string($path) && $path !== '' ? @file_get_contents($path) : false;
+
+            if (! is_string($contents) || $contents === '') {
+                return response()->json([
+                    'code' => 'face_reference_invalid_file',
+                    'message' => 'Не удалось прочитать фотографию лица.',
+                    'slot' => $slot,
+                ], 422);
+            }
+
+            $pendingFaceReferences[$slot] = $contents;
+        }
+
         try {
-            $result = $handler->handle($request->user(), $request->generationOptions());
+            $result = $handler->handle(
+                $request->user(),
+                $request->generationOptions(),
+                $pendingFaceReferences,
+            );
         } catch (AiServiceException $exception) {
             $this->logAiFailure($request, 'generate_2d', $exception->errorCode, $exception->getMessage());
 
@@ -179,12 +200,18 @@ final class UpdatePlayerProfileController extends Controller
             ], 502);
         }
 
+        $facePreviews = [];
+        foreach ($result['validated_face_media_ids'] as $slot => $mediaId) {
+            $facePreviews[$slot] = route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$mediaId;
+        }
+
         return response()->json([
             'message' => '2D-модель сгенерирована.',
             'status' => 'generated',
             'price_minor' => $result['price_minor'],
             'available_minor' => $result['available_minor'],
             'image_data_url' => 'data:'.$result['image_mime'].';base64,'.base64_encode($result['image_contents']),
+            'face_previews' => $facePreviews,
         ]);
     }
 
