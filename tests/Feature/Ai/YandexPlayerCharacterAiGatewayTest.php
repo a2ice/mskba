@@ -23,6 +23,10 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
             'image_model' => 'aliceai-image-art-3.0',
             'image_size' => '1024x1536',
             'image_quality' => 'high',
+            'remove_green_background' => true,
+            'chroma_key_color' => '#00FF00',
+            'chroma_key_threshold' => 110,
+            'chroma_key_green_dominance' => 35,
             'connect_timeout_seconds' => 1,
             'validation_timeout_seconds' => 5,
             'generation_timeout_seconds' => 30,
@@ -246,6 +250,71 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
         $this->assertSame(2, $pollCount);
     }
 
+    public function test_it_removes_only_edge_connected_green_background_for_yandex(): void
+    {
+        $greenScreen = $this->greenScreenPng();
+
+        Http::fake([
+            'https://ai.api.cloud.yandex.test/v1/responses' => Http::response([
+                'status' => 'completed',
+                'output' => [[
+                    'type' => 'image_generation_call',
+                    'status' => 'completed',
+                    'result' => base64_encode($greenScreen),
+                ]],
+            ]),
+        ]);
+
+        $result = $this->gateway()->generatePlayerCharacter([
+            'face_references' => [
+                'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
+            ],
+        ]);
+
+        $this->assertSame('image/png', $result->mime);
+        $this->assertNotSame($greenScreen, $result->contents);
+
+        $image = imagecreatefromstring($result->contents);
+        $this->assertInstanceOf(\GdImage::class, $image);
+
+        try {
+            $this->assertSame(127, $this->alphaAt($image, 0, 0));
+            $this->assertSame(0, $this->alphaAt($image, 16, 24));
+
+            // This green pixel is fully enclosed by the red player body, so
+            // edge-connected flood fill must preserve it as foreground detail.
+            $this->assertSame(0, $this->alphaAt($image, 16, 20));
+        } finally {
+            imagedestroy($image);
+        }
+    }
+
+    public function test_it_can_disable_yandex_green_background_removal(): void
+    {
+        config()->set('services.yandex_ai.remove_green_background', false);
+        $greenScreen = $this->greenScreenPng();
+
+        Http::fake([
+            'https://ai.api.cloud.yandex.test/v1/responses' => Http::response([
+                'status' => 'completed',
+                'output' => [[
+                    'type' => 'image_generation_call',
+                    'status' => 'completed',
+                    'result' => base64_encode($greenScreen),
+                ]],
+            ]),
+        ]);
+
+        $result = $this->gateway()->generatePlayerCharacter([
+            'face_references' => [
+                'front' => ['contents' => $this->webp(), 'mime' => 'image/webp'],
+            ],
+        ]);
+
+        $this->assertSame('image/png', $result->mime);
+        $this->assertSame($greenScreen, $result->contents);
+    }
+
     public function test_it_accepts_yandex_opaque_image_as_minimal_generation_result(): void
     {
         $png = $this->png(false);
@@ -315,6 +384,34 @@ final class YandexPlayerCharacterAiGatewayTest extends TestCase
         $this->assertIsString($contents);
 
         return $contents;
+    }
+
+    private function greenScreenPng(): string
+    {
+        $image = imagecreatetruecolor(32, 48);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+
+        $green = imagecolorallocatealpha($image, 0, 255, 0, 0);
+        $red = imagecolorallocatealpha($image, 220, 32, 32, 0);
+
+        imagefill($image, 0, 0, $green);
+        imagefilledrectangle($image, 10, 8, 22, 40, $red);
+        imagefilledrectangle($image, 14, 18, 18, 22, $green);
+
+        ob_start();
+        imagepng($image);
+        $contents = ob_get_clean();
+        imagedestroy($image);
+
+        $this->assertIsString($contents);
+
+        return $contents;
+    }
+
+    private function alphaAt(\GdImage $image, int $x, int $y): int
+    {
+        return (imagecolorat($image, $x, $y) >> 24) & 0x7F;
     }
 
     private function png(bool $transparent): string
