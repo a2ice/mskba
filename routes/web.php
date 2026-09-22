@@ -34,6 +34,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarContro
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteOwnAccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\ParticipantCatalogController;
 use App\Modules\Identity\Presentation\Http\Controllers\PersonalDataDistributionConsentController;
+use App\Modules\Identity\Presentation\Http\Controllers\PlayerCharacterFaceReferencePreviewController;
 use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
@@ -759,6 +760,9 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.participation-role');
         Route::patch('/participation/player/profile', UpdatePlayerProfileController::class)
             ->name('account.player-profile.update');
+        Route::get('/participation/player/face-reference/{slot}', PlayerCharacterFaceReferencePreviewController::class)
+            ->where('slot', 'front|left|right')
+            ->name('account.player-character.face-reference');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')
