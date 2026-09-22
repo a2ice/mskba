@@ -63,12 +63,15 @@ final class UpdatePlayerProfileRequest extends FormRequest
             ],
             'comment' => ['nullable', 'string', 'max:1000'],
             'self_assessment' => ['nullable', 'array:'.implode(',', array_keys(PlayerSelfAssessment::SKILLS))],
-            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,chest_volume'],
+            'character' => ['nullable', 'array:skin_tone,hairstyle,hair_color,facial_hair,uniform_kit,shoes,attributes,chest_volume'],
             'character.skin_tone' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::SKIN_TONES)],
             'character.hairstyle' => ['required_with:character', Rule::in($allowedHairstyles)],
             'character.hair_color' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::HAIR_COLORS)],
             'character.facial_hair' => ['required_with:character', Rule::in($allowedFacialHair)],
             'character.uniform_kit' => ['required_with:character', Rule::in(PlayerCharacterAppearanceOptions::UNIFORM_KITS)],
+            'character.shoes' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::SHOES)],
+            'character.attributes' => ['nullable', 'array', 'max:5'],
+            'character.attributes.*' => ['required', 'distinct', Rule::in(PlayerCharacterAppearanceOptions::ATTRIBUTES)],
             'character.chest_volume' => ['nullable', Rule::in(PlayerCharacterAppearanceOptions::CHEST_VOLUMES)],
             'redirect_to' => ['nullable', Rule::in(['role', 'account'])],
         ];
@@ -125,7 +128,7 @@ final class UpdatePlayerProfileRequest extends FormRequest
     }
 
     /**
-     * @return array<string, int|string|null>|null
+     * @return array<string, mixed>|null
      */
     public function characterAppearance(): ?array
     {
@@ -148,6 +151,11 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 ? 'none'
                 : (string) $character['facial_hair'],
             'uniform_kit' => (string) $character['uniform_kit'],
+            'shoes' => (string) ($character['shoes'] ?? 'white'),
+            'attributes' => array_values(array_intersect(
+                PlayerCharacterAppearanceOptions::ATTRIBUTES,
+                (array) ($character['attributes'] ?? []),
+            )),
             'chest_volume' => $profileGender === 'female'
                 ? ($character['chest_volume'] ?? null)
                 : null,
