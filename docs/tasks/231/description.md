@@ -14,7 +14,7 @@
   и strict JSON Schema;
 - генерация выполняется через Images Edit API с несколькими подтверждёнными face references;
 - default validation model: `gpt-5.6-luna`;
-- default image model: `gpt-image-2.5-sunburst`;
+- default image model: `gpt-image-2`;
 - output: PNG 1024×1536, quality medium, `background=transparent`;
 - после ответа backend дополнительно проверяет PNG и прозрачность углов; непрозрачный результат
   считается ошибкой генерации;
