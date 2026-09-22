@@ -31,6 +31,7 @@ final class SmokeYandexAiCommand extends Command
         $this->line('Yandex AI diagnostic key fingerprint: '.substr(hash('sha256', $apiKey), 0, 12));
         $this->line('Yandex AI diagnostic folder: '.$folderId);
         $this->line('Yandex AI diagnostic model: '.$model);
+        $this->reportRecentPlayerCharacterDiagnostics();
 
         try {
             $request = $this->request($apiKey, $folderId);
@@ -126,6 +127,51 @@ final class SmokeYandexAiCommand extends Command
             $this->error('Yandex AI diagnostic unexpected failure: '.$exception::class.': '.$exception->getMessage());
 
             return self::FAILURE;
+        }
+    }
+
+    private function reportRecentPlayerCharacterDiagnostics(): void
+    {
+        $patterns = [
+            'Yandex AI response contained no readable output text.',
+            'Yandex AI face validation returned invalid structured output.',
+            'Yandex AI face references validated.',
+            'Yandex AI player-character request failed.',
+        ];
+        $matched = [];
+
+        foreach ((array) glob(storage_path('logs/laravel*.log')) as $path) {
+            $size = @filesize($path);
+            if (! is_int($size) || $size <= 0) {
+                continue;
+            }
+
+            $offset = max(0, $size - 512 * 1024);
+            $chunk = @file_get_contents($path, false, null, $offset);
+
+            if (! is_string($chunk) || $chunk === '') {
+                continue;
+            }
+
+            foreach (preg_split('/\R/', $chunk) ?: [] as $line) {
+                foreach ($patterns as $pattern) {
+                    if (str_contains($line, $pattern)) {
+                        $matched[] = mb_substr($line, 0, 2000);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($matched === []) {
+            $this->line('Yandex AI recent production diagnostics: none found.');
+
+            return;
+        }
+
+        $this->line('Yandex AI recent production diagnostics:');
+        foreach (array_slice($matched, -20) as $line) {
+            $this->line($line);
         }
     }
 
