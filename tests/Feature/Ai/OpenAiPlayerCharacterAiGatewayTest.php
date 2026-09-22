@@ -18,7 +18,7 @@ final class OpenAiPlayerCharacterAiGatewayTest extends TestCase
             'api_key' => 'sk-test-not-real',
             'base_url' => 'https://api.openai.test/v1',
             'face_validation_model' => 'gpt-5.6-luna',
-            'image_model' => 'gpt-image-2.5-sunburst',
+            'image_model' => 'gpt-image-2',
             'image_size' => '1024x1536',
             'image_quality' => 'medium',
             'connect_timeout_seconds' => 1,
@@ -126,7 +126,7 @@ final class OpenAiPlayerCharacterAiGatewayTest extends TestCase
             $body = $request->body();
 
             return $request->url() === 'https://api.openai.test/v1/images/edits'
-                && str_contains($body, 'gpt-image-2.5-sunburst')
+                && str_contains($body, 'gpt-image-2')
                 && str_contains($body, 'transparent')
                 && str_contains($body, 'png')
                 && str_contains($body, '1024x1536')
