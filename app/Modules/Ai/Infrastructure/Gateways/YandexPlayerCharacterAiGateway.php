@@ -201,9 +201,6 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
                 'input_fidelity' => 'high',
                 'action' => 'auto',
             ]],
-            'tool_choice' => [
-                'type' => 'image_generation',
-            ],
         ], $this->generationTimeout(), 'generation');
 
         $encoded = null;
@@ -282,8 +279,8 @@ final class YandexPlayerCharacterAiGateway implements PlayerCharacterAiGateway
     private function request(int $timeout): PendingRequest
     {
         return Http::withHeaders([
-            'Authorization' => 'Api-Key '.$this->apiKey(),
-            'OpenAI-Project' => $this->folderId(),
+            'Authorization' => 'Bearer '.$this->apiKey(),
+            'x-project' => $this->folderId(),
         ])
             ->acceptJson()
             ->connectTimeout((int) config('services.yandex_ai.connect_timeout_seconds', 10))
