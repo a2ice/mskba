@@ -32,6 +32,8 @@ final class RouteScopedThrottleTest extends TestCase
 
     public function test_browser_error_responses_use_the_mskba_error_page(): void
     {
+        config(['app.debug' => false]);
+
         $this->get('/definitely-missing-page')
             ->assertNotFound()
             ->assertSee('Страница не найдена')
