@@ -23,6 +23,9 @@
     $characterHairColor = old('character.hair_color', $character['hair_color']);
     $characterFacialHair = old('character.facial_hair', $character['facial_hair']);
     $characterUniformKit = old('character.uniform_kit', $character['uniform_kit']);
+    $characterShoes = old('character.shoes', $character['shoes'] ?? 'white');
+    $characterAttributes = old('character.attributes', $character['attributes'] ?? []);
+    $characterAttributes = is_array($characterAttributes) ? $characterAttributes : [];
     $characterChestVolume = old('character.chest_volume', $character['chest_volume'] ?? 'medium');
 
     $canUseThree = $user->system_role->atLeast(UserSystemRoleEnum::ADMIN);
@@ -178,8 +181,10 @@
 
                     <div class="account-player-character-two" data-player-character-two aria-hidden="true">
                         <img
-                            src="{{ asset('images/player-character/default-2d-player.svg') }}"
+                            src="{{ asset('images/blank/avatar/body-'.$characterGender.'.png') }}"
                             alt=""
+                            class="is-placeholder"
+                            data-placeholder-gender="{{ $characterGender }}"
                             data-player-character-two-image
                         >
                     </div>
@@ -209,67 +214,6 @@
         </div>
 
         <div class="account-player-character-controls">
-            <div class="account-player-profile__grid">
-                <div class="form-group field account-player-profile__field">
-                    <label for="player-height">Рост, см</label>
-                    <select
-                        id="player-height"
-                        class="form-select"
-                        name="height_cm"
-                        data-player-character-input="height"
-                    >
-                        <option value="">Не указан</option>
-                        @for($height = 150; $height <= 220; $height++)
-                            <option value="{{ $height }}" @selected((string) $currentHeight === (string) $height)>{{ $height }} см</option>
-                        @endfor
-                    </select>
-                    @error('height_cm') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="form-group field account-player-profile__field">
-                    <label for="player-weight">Вес, кг</label>
-                    <select
-                        id="player-weight"
-                        class="form-select"
-                        name="weight_kg"
-                        data-player-character-input="weight"
-                    >
-                        <option value="">Не указан</option>
-                        @for($weight = 40; $weight <= 140; $weight++)
-                            <option value="{{ $weight }}" @selected($currentWeight !== null && (int) $currentWeight === $weight)>{{ $weight }} кг</option>
-                        @endfor
-                    </select>
-                    @error('weight_kg') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="form-group field account-player-profile__field">
-                    <label for="player-body-type">Сложение</label>
-                    <select
-                        id="player-body-type"
-                        class="form-select"
-                        name="body_type"
-                        data-player-character-input="body-type"
-                    >
-                        <option value="">Не указано</option>
-                        @foreach($playerBodyTypes as $bodyType)
-                            <option value="{{ $bodyType->value }}" @selected($currentBodyType === $bodyType->value)>{{ $bodyType->label() }}</option>
-                        @endforeach
-                    </select>
-                    @error('body_type') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="form-group field account-player-profile__field">
-                    <label for="player-experience-year">Играю с</label>
-                    <select id="player-experience-year" class="form-select" name="experience_started_year">
-                        <option value="">Не указано</option>
-                        @for($year = now()->year - 10; $year >= now()->year - 50; $year--)
-                            <option value="{{ $year }}" @selected((string) old('experience_started_year', $profile?->experience_started_year) === (string) $year)>{{ $year }}</option>
-                        @endfor
-                    </select>
-                    @error('experience_started_year') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-            </div>
-
             <div class="account-player-character-configurator" data-player-character-configurator>
                 <div class="account-player-character-configurator__heading">
                     <div>
@@ -280,8 +224,211 @@
                             Пол берётся из профиля: {{ $characterGender === 'female' ? 'женский' : 'мужской' }}
                         </span>
                     </div>
+                </div>
+
+                <div class="account-player-character-configurator__group account-player-character-configurator__group--face" data-player-character-face-references>
+                    <div class="account-player-character-configurator__group-heading">
+                        <span class="account-player-character-configurator__label">Лицо</span>
+                    </div>
+
+                    <div class="account-player-character-face-references__grid">
+                        @foreach(PlayerCharacterFaceReferenceOptions::SLOTS as $slot)
+                            @php($hasFaceReference = $faceReferences->has($slot))
+                            <label
+                                class="account-player-character-face-reference {{ $hasFaceReference ? 'is-stored has-preview' : '' }}"
+                                data-player-character-face-card="{{ $slot }}"
+                                title="{{ $faceReferenceLabels[$slot] }}"
+                            >
+                                <span class="account-player-character-face-reference__preview" data-player-character-face-preview>
+                                    <img
+                                        @if($hasFaceReference)
+                                            src="{{ route('account.player-character.face-reference', ['slot' => $slot]) }}"
+                                        @endif
+                                        alt=""
+                                        data-player-character-face-image
+                                        @if(! $hasFaceReference) hidden @endif
+                                    >
+                                    <span class="account-player-character-face-reference__plus" aria-hidden="true">+</span>
+                                    <span class="account-player-character-face-reference__loading" aria-hidden="true"><span></span></span>
+                                </span>
+                                <strong>{{ $faceReferenceLabels[$slot] }}</strong>
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    aria-label="Загрузить фото: {{ $faceReferenceLabels[$slot] }}"
+                                    data-player-character-face-input="{{ $slot }}"
+                                >
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="account-player-character-configurator__group">
+                    <span class="account-player-character-configurator__label">Телосложение</span>
+                    <div class="account-player-character-configurator__body-grid">
+                        <div class="form-group field account-player-profile__field">
+                            <label for="player-height">Рост, см</label>
+                            <select
+                                id="player-height"
+                                class="form-select"
+                                name="height_cm"
+                                data-player-character-input="height"
+                            >
+                                <option value="">Не указан</option>
+                                @for($height = 150; $height <= 220; $height++)
+                                    <option value="{{ $height }}" @selected((string) $currentHeight === (string) $height)>{{ $height }} см</option>
+                                @endfor
+                            </select>
+                            @error('height_cm') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="form-group field account-player-profile__field">
+                            <label for="player-weight">Вес, кг</label>
+                            <select
+                                id="player-weight"
+                                class="form-select"
+                                name="weight_kg"
+                                data-player-character-input="weight"
+                            >
+                                <option value="">Не указан</option>
+                                @for($weight = 40; $weight <= 140; $weight++)
+                                    <option value="{{ $weight }}" @selected($currentWeight !== null && (int) $currentWeight === $weight)>{{ $weight }} кг</option>
+                                @endfor
+                            </select>
+                            @error('weight_kg') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="form-group field account-player-profile__field">
+                            <label for="player-body-type">Сложение</label>
+                            <select
+                                id="player-body-type"
+                                class="form-select"
+                                name="body_type"
+                                data-player-character-input="body-type"
+                            >
+                                <option value="">Не указано</option>
+                                @foreach($playerBodyTypes as $bodyType)
+                                    <option value="{{ $bodyType->value }}" @selected($currentBodyType === $bodyType->value)>{{ $bodyType->label() }}</option>
+                                @endforeach
+                            </select>
+                            @error('body_type') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                        </div>
+
+                        @if($characterGender === 'female')
+                            <div class="form-group field account-player-profile__field">
+                                <label for="player-chest-volume">Объём груди</label>
+                                <select
+                                    id="player-chest-volume"
+                                    class="form-select"
+                                    name="character[chest_volume]"
+                                    data-player-character-input="chest-volume"
+                                >
+                                    @foreach($chestVolumes as $value => $label)
+                                        <option value="{{ $value }}" @selected($characterChestVolume === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('character.chest_volume') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <div
+                    class="account-player-character-configurator__group account-player-character-configurator__group--three"
+                    data-player-character-three-settings
+                    @if($characterRenderMode !== '3d') hidden @endif
+                >
+                    <div class="account-player-character-configurator__group-heading">
+                        <span class="account-player-character-configurator__label">Внешность</span>
+                        <span>3D beta</span>
+                    </div>
+
+                    <div class="account-player-character-configurator__subgroup">
+                        <span class="account-player-character-configurator__sublabel">Тон кожи</span>
+                        <div class="account-player-character-configurator__swatches">
+                            @foreach($skinTones as $value => $tone)
+                                <button
+                                    type="button"
+                                    class="account-player-character-configurator__swatch"
+                                    style="--character-swatch: {{ $tone['color'] }};"
+                                    data-player-character-choice="skin-tone"
+                                    data-value="{{ $value }}"
+                                    aria-label="{{ $tone['label'] }}"
+                                    title="{{ $tone['label'] }}"
+                                    aria-pressed="{{ $characterSkinTone === $value ? 'true' : 'false' }}"
+                                ></button>
+                            @endforeach
+                        </div>
+                        <input type="hidden" name="character[skin_tone]" value="{{ $characterSkinTone }}" data-player-character-field="skin-tone">
+                        @error('character.skin_tone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="account-player-character-configurator__subgroup">
+                        <span class="account-player-character-configurator__sublabel">Причёска</span>
+                        <div class="account-player-character-configurator__chips" data-player-character-hairstyles>
+                            @foreach($hairstyles as $value => $hairstyle)
+                                @continue(! in_array($value, $authoredHairstyles, true))
+                                <button
+                                    type="button"
+                                    class="account-player-character-configurator__chip"
+                                    data-player-character-choice="hairstyle"
+                                    data-character-gender="{{ $hairstyle['gender'] }}"
+                                    data-value="{{ $value }}"
+                                    aria-pressed="{{ $characterHairstyle === $value ? 'true' : 'false' }}"
+                                    @if($hairstyle['gender'] !== $characterGender) hidden @endif
+                                >{{ $hairstyle['label'] }}</button>
+                            @endforeach
+                        </div>
+                        <input type="hidden" name="character[hairstyle]" value="{{ $characterHairstyle }}" data-player-character-field="hairstyle">
+                        @error('character.hairstyle') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="account-player-character-configurator__subgroup">
+                        <span class="account-player-character-configurator__sublabel">Цвет волос</span>
+                        <div class="account-player-character-configurator__swatches">
+                            @foreach($hairColors as $value => $tone)
+                                <button
+                                    type="button"
+                                    class="account-player-character-configurator__swatch account-player-character-configurator__swatch--hair"
+                                    style="--character-swatch: {{ $tone['color'] }};"
+                                    data-player-character-choice="hair-color"
+                                    data-value="{{ $value }}"
+                                    aria-label="{{ $tone['label'] }}"
+                                    title="{{ $tone['label'] }}"
+                                    aria-pressed="{{ $characterHairColor === $value ? 'true' : 'false' }}"
+                                ></button>
+                            @endforeach
+                        </div>
+                        <input type="hidden" name="character[hair_color]" value="{{ $characterHairColor }}" data-player-character-field="hair-color">
+                        @error('character.hair_color') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="account-player-character-configurator__subgroup" data-player-character-facial-hair-group @if($characterGender === 'female') hidden @endif>
+                        <span class="account-player-character-configurator__sublabel">Усы и борода</span>
+                        <div class="account-player-character-configurator__chips">
+                            @foreach($facialHairStyles as $value => $label)
+                                @continue(! in_array($value, $authoredFacialHairStyles, true))
+                                <button
+                                    type="button"
+                                    class="account-player-character-configurator__chip"
+                                    data-player-character-choice="facial-hair"
+                                    data-value="{{ $value }}"
+                                    aria-pressed="{{ $characterFacialHair === $value ? 'true' : 'false' }}"
+                                >{{ $label }}</button>
+                            @endforeach
+                        </div>
+                        @error('character.facial_hair') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    </div>
+                    <input type="hidden" name="character[facial_hair]" value="{{ $characterGender === 'female' ? 'none' : $characterFacialHair }}" data-player-character-field="facial-hair">
+                </div>
+
+                <div class="account-player-character-configurator__group account-player-character-configurator__group--uniform">
+                    <div class="account-player-character-configurator__group-heading">
+                        <span class="account-player-character-configurator__label">Форма</span>
+                    </div>
+
                     @if($playerTeams->isNotEmpty())
-                        <label class="account-player-character-configurator__team-selector">
+                        <label class="account-player-character-configurator__team-selector account-player-character-configurator__team-selector--inline">
                             <span>Команда</span>
                             <select class="form-select" data-player-character-team>
                                 @foreach($playerTeams as $team)
@@ -295,109 +442,7 @@
                             </select>
                         </label>
                     @endif
-                </div>
 
-                <div class="account-player-character-configurator__group">
-                    <span class="account-player-character-configurator__label">Тон кожи</span>
-                    <div class="account-player-character-configurator__swatches">
-                        @foreach($skinTones as $value => $tone)
-                            <button
-                                type="button"
-                                class="account-player-character-configurator__swatch"
-                                style="--character-swatch: {{ $tone['color'] }};"
-                                data-player-character-choice="skin-tone"
-                                data-value="{{ $value }}"
-                                aria-label="{{ $tone['label'] }}"
-                                title="{{ $tone['label'] }}"
-                                aria-pressed="{{ $characterSkinTone === $value ? 'true' : 'false' }}"
-                            ></button>
-                        @endforeach
-                    </div>
-                    <input type="hidden" name="character[skin_tone]" value="{{ $characterSkinTone }}" data-player-character-field="skin-tone">
-                    @error('character.skin_tone') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="account-player-character-configurator__group">
-                    <span class="account-player-character-configurator__label">Причёска</span>
-                    <div class="account-player-character-configurator__chips" data-player-character-hairstyles>
-                        @foreach($hairstyles as $value => $hairstyle)
-                            @continue(! in_array($value, $authoredHairstyles, true))
-                            <button
-                                type="button"
-                                class="account-player-character-configurator__chip"
-                                data-player-character-choice="hairstyle"
-                                data-character-gender="{{ $hairstyle['gender'] }}"
-                                data-value="{{ $value }}"
-                                aria-pressed="{{ $characterHairstyle === $value ? 'true' : 'false' }}"
-                                @if($hairstyle['gender'] !== $characterGender) hidden @endif
-                            >{{ $hairstyle['label'] }}</button>
-                        @endforeach
-                    </div>
-                    <input type="hidden" name="character[hairstyle]" value="{{ $characterHairstyle }}" data-player-character-field="hairstyle">
-                    @error('character.hairstyle') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="account-player-character-configurator__group">
-                    <span class="account-player-character-configurator__label">Цвет волос</span>
-                    <div class="account-player-character-configurator__swatches">
-                        @foreach($hairColors as $value => $tone)
-                            <button
-                                type="button"
-                                class="account-player-character-configurator__swatch account-player-character-configurator__swatch--hair"
-                                style="--character-swatch: {{ $tone['color'] }};"
-                                data-player-character-choice="hair-color"
-                                data-value="{{ $value }}"
-                                aria-label="{{ $tone['label'] }}"
-                                title="{{ $tone['label'] }}"
-                                aria-pressed="{{ $characterHairColor === $value ? 'true' : 'false' }}"
-                            ></button>
-                        @endforeach
-                    </div>
-                    <input type="hidden" name="character[hair_color]" value="{{ $characterHairColor }}" data-player-character-field="hair-color">
-                    @error('character.hair_color') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="account-player-character-configurator__group" data-player-character-facial-hair-group @if($characterGender === 'female') hidden @endif>
-                    <span class="account-player-character-configurator__label">Усы и борода</span>
-                    <div class="account-player-character-configurator__chips">
-                        @foreach($facialHairStyles as $value => $label)
-                            @continue(! in_array($value, $authoredFacialHairStyles, true))
-                            <button
-                                type="button"
-                                class="account-player-character-configurator__chip"
-                                data-player-character-choice="facial-hair"
-                                data-value="{{ $value }}"
-                                aria-pressed="{{ $characterFacialHair === $value ? 'true' : 'false' }}"
-                            >{{ $label }}</button>
-                        @endforeach
-                    </div>
-                    @error('character.facial_hair') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                </div>
-                <input type="hidden" name="character[facial_hair]" value="{{ $characterGender === 'female' ? 'none' : $characterFacialHair }}" data-player-character-field="facial-hair">
-
-                @if($characterGender === 'female')
-                    <div class="account-player-character-configurator__group">
-                        <label class="account-player-character-configurator__label" for="player-chest-volume">Объём груди</label>
-                        <select
-                            id="player-chest-volume"
-                            class="form-select"
-                            name="character[chest_volume]"
-                            data-player-character-input="chest-volume"
-                        >
-                            @foreach($chestVolumes as $value => $label)
-                                <option value="{{ $value }}" @selected($characterChestVolume === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        <small class="text-muted">Ручная настройка персонажа. По фотографии этот параметр не определяется.</small>
-                        @error('character.chest_volume') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                    </div>
-                @endif
-
-                <div class="account-player-character-configurator__group account-player-character-configurator__group--uniform">
-                    <div class="account-player-character-configurator__group-heading">
-                        <span class="account-player-character-configurator__label">Форма</span>
-                        <span>примерка</span>
-                    </div>
                     @if($defaultPlayerTeam)
                         <div class="account-player-character-configurator__team-kit">
                             <span
@@ -423,53 +468,78 @@
                     <input type="hidden" name="character[uniform_kit]" value="{{ $characterUniformKit }}" data-player-character-field="uniform-kit">
                     @error('character.uniform_kit') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
-            </div>
 
-            <div class="account-player-character-face-references" data-player-character-face-references>
-                <div class="account-player-character-face-references__heading">
-                    <div>
-                        <span class="eyebrow">Лицо для модели</span>
-                        <h4>Референсы лица</h4>
+                <div class="account-player-character-configurator__group">
+                    <span class="account-player-character-configurator__label">Кроссовки</span>
+                    <div class="account-player-character-configurator__chips">
+                        <button
+                            type="button"
+                            class="account-player-character-configurator__chip"
+                            data-player-character-choice="shoes"
+                            data-value="white"
+                            aria-pressed="{{ $characterShoes === 'white' ? 'true' : 'false' }}"
+                        >Белые</button>
+                        <button
+                            type="button"
+                            class="account-player-character-configurator__chip"
+                            data-player-character-choice="shoes"
+                            data-value="black"
+                            aria-pressed="{{ $characterShoes === 'black' ? 'true' : 'false' }}"
+                        >Чёрные</button>
                     </div>
+                    <input type="hidden" name="character[shoes]" value="{{ $characterShoes }}" data-player-character-field="shoes">
+                    @error('character.shoes') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
 
-                <div class="account-player-character-face-references__grid">
-                    @foreach(PlayerCharacterFaceReferenceOptions::SLOTS as $slot)
-                        @php($hasFaceReference = $faceReferences->has($slot))
-                        <label
-                            class="account-player-character-face-reference {{ $hasFaceReference ? 'is-stored has-preview' : '' }}"
-                            data-player-character-face-card="{{ $slot }}"
-                            title="{{ $faceReferenceLabels[$slot] }}"
-                        >
-                            <span class="account-player-character-face-reference__preview" data-player-character-face-preview>
-                                <img
-                                    @if($hasFaceReference)
-                                        src="{{ route('account.player-character.face-reference', ['slot' => $slot]) }}"
-                                    @endif
-                                    alt=""
-                                    data-player-character-face-image
-                                    @if(! $hasFaceReference) hidden @endif
+                <details class="account-player-character-configurator__attributes">
+                    <summary>
+                        <span>Атрибуты</span>
+                        <small>дополнительно</small>
+                    </summary>
+                    <div class="account-player-character-configurator__attribute-grid">
+                        @foreach([
+                            'elbow_left' => 'Налокотник — левая рука',
+                            'elbow_right' => 'Налокотник — правая рука',
+                            'elbow_both' => 'Налокотники — оба',
+                            'wristbands' => 'Напульсники',
+                            'knee_pads' => 'Наколенники',
+                            'headband' => 'Повязка',
+                        ] as $value => $label)
+                            <label class="account-player-character-configurator__attribute">
+                                <input
+                                    type="checkbox"
+                                    name="character[attributes][]"
+                                    value="{{ $value }}"
+                                    data-player-character-attribute="{{ $value }}"
+                                    @checked(in_array($value, $characterAttributes, true))
                                 >
-                                <span class="account-player-character-face-reference__plus" aria-hidden="true">+</span>
-                                <span class="account-player-character-face-reference__loading" aria-hidden="true"><span></span></span>
-                            </span>
-                            <strong>{{ $faceReferenceLabels[$slot] }}</strong>
-                            <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                aria-label="Загрузить фото: {{ $faceReferenceLabels[$slot] }}"
-                                data-player-character-face-input="{{ $slot }}"
-                            >
-                        </label>
-                    @endforeach
-                </div>
+                                <span>{{ $label }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    @error('character.attributes') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    @error('character.attributes.*') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                </details>
 
                 <div class="account-player-character-generate">
                     <button type="button" class="btn btn--primary" data-player-character-generate>
-                        Сгенерировать 2D через AI
+                        Сгенерировать
                     </button>
                 </div>
                 <p class="account-player-character-error" data-player-character-error aria-live="polite" hidden></p>
+            </div>
+
+            <div class="account-player-profile__grid account-player-character-controls__profile-grid">
+                <div class="form-group field account-player-profile__field">
+                    <label for="player-experience-year">Играю с</label>
+                    <select id="player-experience-year" class="form-select" name="experience_started_year">
+                        <option value="">Не указано</option>
+                        @for($year = now()->year - 10; $year >= now()->year - 50; $year--)
+                            <option value="{{ $year }}" @selected((string) old('experience_started_year', $profile?->experience_started_year) === (string) $year)>{{ $year }}</option>
+                        @endfor
+                    </select>
+                    @error('experience_started_year') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                </div>
             </div>
 
             <fieldset class="account-player-profile__positions account-player-character-controls__positions">
