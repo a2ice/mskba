@@ -114,8 +114,9 @@ final class PlayerGenerationBillingStateTest extends TestCase
         $wallet->refresh();
         $this->assertSame(4_000, (int) $wallet->bonus_balance_minor);
         $this->assertSame(6_000, (int) $wallet->real_balance_minor);
-        $this->assertSame(2, $wallet->operations()
-            ->where('type', WalletOperationTypeEnum::REFUND->value)
+        $this->assertSame(2, $wallet->ledgerEntries()
+            ->whereHas('operation', fn ($query) => $query
+                ->where('type', WalletOperationTypeEnum::REFUND->value))
             ->count());
     }
 
