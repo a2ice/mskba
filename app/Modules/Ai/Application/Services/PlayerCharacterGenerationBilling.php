@@ -6,28 +6,46 @@ use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Finance\Application\UseCases\CreditWalletHandler;
 use App\Modules\Finance\Application\UseCases\DebitWalletHandler;
 use App\Modules\Finance\Domain\Enums\WalletOperationTypeEnum;
+use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletSpendingPolicyEnum;
+use App\Modules\Finance\Domain\Enums\WalletTypeEnum;
 use App\Modules\Finance\Domain\Models\Wallet;
 use App\Modules\Finance\Domain\Models\WalletOperation;
-use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Pricing\Application\Services\PricingPriceResolver;
+use RuntimeException;
 
 final readonly class PlayerCharacterGenerationBilling
 {
+    private const SERVICE_CODE = 'avatar_generation';
     private const REFERENCE_TYPE = 'player_character_generation';
 
     public function __construct(
+        private PricingPriceResolver $prices,
         private DebitWalletHandler $debits,
         private CreditWalletHandler $credits,
     ) {}
 
-    public function charge(
-        Wallet $wallet,
-        User $user,
-        PlayerCharacterGeneration $generation,
-        int $amountMinor,
-    ): ?WalletOperation {
+    public function charge(PlayerCharacterGeneration $generation, int $canonicalOwnerId): ?WalletOperation
+    {
+        $price = $this->prices->resolve(self::SERVICE_CODE);
+        if ($price === null) {
+            throw new RuntimeException('Цена генерации временно недоступна.');
+        }
+
+        $amountMinor = (int) $price->amount_minor;
         if ($amountMinor <= 0) {
             return null;
+        }
+
+        $wallet = Wallet::query()
+            ->where('owner_type', WalletOwnerTypeEnum::USER->value)
+            ->where('owner_id', $canonicalOwnerId)
+            ->where('type', WalletTypeEnum::MAIN->value)
+            ->where('currency', 'RUB')
+            ->first();
+
+        if ($wallet === null) {
+            throw new RuntimeException('Кошелёк пользователя недоступен.');
         }
 
         return $this->debits->handle(
@@ -36,11 +54,11 @@ final readonly class PlayerCharacterGenerationBilling
             operationType: WalletOperationTypeEnum::INTERNAL_SERVICE_PAYMENT,
             idempotencyKey: $this->chargeKey($generation),
             spendingPolicy: WalletSpendingPolicyEnum::BONUS_THEN_REAL,
-            performedByUserId: $user->id,
+            performedByUserId: $generation->user_id,
             referenceType: self::REFERENCE_TYPE,
             referenceKey: $generation->public_id,
             metadata: [
-                'service_code' => 'avatar_generation',
+                'service_code' => self::SERVICE_CODE,
                 'generation_id' => $generation->public_id,
             ],
         );
@@ -73,7 +91,7 @@ final readonly class PlayerCharacterGenerationBilling
                 referenceType: self::REFERENCE_TYPE,
                 referenceKey: $generation->public_id,
                 metadata: [
-                    'service_code' => 'avatar_generation',
+                    'service_code' => self::SERVICE_CODE,
                     'generation_id' => $generation->public_id,
                     'refund_of_operation_id' => $charge->id,
                 ],
