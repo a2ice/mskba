@@ -3,7 +3,7 @@
 namespace Tests\Feature\Ai;
 
 use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
-use App\Modules\Ai\Infrastructure\Gateways\GitHubOpenAiPlayerCharacterAiGateway;
+use App\Modules\Ai\Infrastructure\Gateways\BillableGitHubOpenAiPlayerCharacterAiGateway;
 use App\Modules\Ai\Infrastructure\Gateways\NullPlayerCharacterAiGateway;
 use App\Modules\Ai\Infrastructure\Gateways\OpenAiPlayerCharacterAiGateway;
 use App\Modules\Ai\Infrastructure\Gateways\YandexPlayerCharacterAiGateway;
@@ -23,7 +23,7 @@ final class AiServiceProviderTest extends TestCase
         $this->app->forgetInstance(PlayerCharacterAiGateway::class);
 
         $this->assertInstanceOf(
-            GitHubOpenAiPlayerCharacterAiGateway::class,
+            BillableGitHubOpenAiPlayerCharacterAiGateway::class,
             app(PlayerCharacterAiGateway::class),
         );
     }
