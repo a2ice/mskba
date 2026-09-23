@@ -13,9 +13,25 @@ final class PlayerCharacterGenerationStatusController extends Controller
 {
     public function __construct(private readonly PlayerCharacterGenerationBilling $billing) {}
 
-    public function __invoke(Request $request, PlayerCharacterGeneration $generation): JsonResponse
+    public function __invoke(Request $request, string $generation): JsonResponse
     {
-        abort_unless(in_array((int) $generation->user_id, $request->user()->identityIds(), true), 404);
+        $query = PlayerCharacterGeneration::query()
+            ->whereIn('user_id', $request->user()->identityIds());
+
+        if ($generation === 'latest') {
+            $generation = $query
+                ->where('status', PlayerCharacterGenerationStatusEnum::COMPLETED->value)
+                ->whereNotNull('result_disk')
+                ->whereNotNull('result_path')
+                ->whereNotNull('completed_at')
+                ->orderByDesc('completed_at')
+                ->orderByDesc('id')
+                ->firstOrFail();
+        } else {
+            $generation = $query
+                ->where('public_id', $generation)
+                ->firstOrFail();
+        }
 
         if (! $generation->status->isTerminal() && $generation->expires_at?->isPast()) {
             $updated = PlayerCharacterGeneration::query()
