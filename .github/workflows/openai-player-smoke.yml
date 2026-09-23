@@ -17,145 +17,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Export confirmed face references from production
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${SERVER_HOST:-}" ] || [ -z "${SERVER_SSH_KEY:-}" ]; then
-            echo "Production SSH secrets are not configured." >&2
-            exit 1
-          fi
-
-          install -m 700 -d "$HOME/.ssh"
-          printf '%s\n' "$SERVER_SSH_KEY" > "$HOME/.ssh/id_mskba"
-          chmod 600 "$HOME/.ssh/id_mskba"
-          ssh-keyscan -H "$SERVER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
-
-          cat > /tmp/export-openai-player.php <<'PHP'
-          <?php
-
-          use App\Modules\Identity\Domain\Models\User;
-          use App\Modules\Identity\Domain\Support\PlayerCharacterFaceReferenceOptions;
-          use Illuminate\Contracts\Console\Kernel;
-          use Illuminate\Support\Facades\Storage;
-
-          require '/var/www/html/vendor/autoload.php';
-          $app = require '/var/www/html/bootstrap/app.php';
-          $app->make(Kernel::class)->bootstrap();
-
-          $runId = preg_replace('/[^0-9]/', '', (string) ($argv[1] ?? ''));
-          if ($runId === '') {
-              fwrite(STDERR, "Missing run id.\n");
-              exit(2);
-          }
-
-          $user = User::query()
-              ->with(['profile', 'playerProfile'])
-              ->where('username', 'Dmitry Olsen')
-              ->orWhereHas('profile', static fn ($query) => $query
-                  ->where('first_name', 'Dmitry')
-                  ->where('last_name', 'Olsen'))
-              ->latest('id')
-              ->first();
-
-          if ($user === null || $user->profile === null) {
-              fwrite(STDERR, "Target player profile was not found.\n");
-              exit(3);
-          }
-
-          $directory = storage_path('app/openai-smoke/'.$runId);
-          if (! is_dir($directory) && ! mkdir($directory, 0700, true) && ! is_dir($directory)) {
-              fwrite(STDERR, "Could not create export directory.\n");
-              exit(4);
-          }
-
-          $exported = [];
-          foreach (PlayerCharacterFaceReferenceOptions::SLOTS as $slot) {
-              $media = $user->profile->media()
-                  ->where('collection', PlayerCharacterFaceReferenceOptions::collectionForSlot($slot))
-                  ->where('source_reference', PlayerCharacterFaceReferenceOptions::AI_VALIDATED_REFERENCE)
-                  ->latest('id')
-                  ->first();
-
-              if ($media === null) {
-                  continue;
-              }
-
-              $contents = Storage::disk($media->disk)->get($media->path);
-              $image = @imagecreatefromstring($contents);
-              if ($image === false) {
-                  continue;
-              }
-
-              imagealphablending($image, false);
-              imagesavealpha($image, true);
-              $path = $directory.'/'.$slot.'.png';
-              $ok = imagepng($image, $path, 6);
-              imagedestroy($image);
-
-              if ($ok) {
-                  chmod($path, 0600);
-                  $exported[] = $slot;
-              }
-          }
-
-          if (! in_array('front', $exported, true)
-              || (! in_array('left', $exported, true) && ! in_array('right', $exported, true))) {
-              fwrite(STDERR, "Confirmed front + profile references were not found.\n");
-              exit(5);
-          }
-
-          $player = $user->playerProfile;
-          $bodyType = $player?->body_type;
-          if (is_object($bodyType) && property_exists($bodyType, 'value')) {
-              $bodyType = $bodyType->value;
-          }
-
-          $metadata = [
-              'gender' => $user->profile->gender?->value,
-              'height_cm' => $player?->height_cm,
-              'weight_kg' => $player?->weight_kg,
-              'body_type' => $bodyType,
-              'character' => (array) data_get($player?->extra, 'character', []),
-              'reference_slots' => $exported,
-          ];
-
-          file_put_contents(
-              $directory.'/metadata.json',
-              json_encode($metadata, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
-          );
-          chmod($directory.'/metadata.json', 0600);
-          PHP
-
-          scp -q -i "$HOME/.ssh/id_mskba" /tmp/export-openai-player.php \
-            deploy@"$SERVER_HOST":/var/www/mskba/storage/app/export-openai-player.php
-
-          ssh -q -i "$HOME/.ssh/id_mskba" deploy@"$SERVER_HOST" \
-            "cd /var/www/mskba && docker compose -f compose.yaml -f compose.prod.yaml exec -T phpfpm php /var/www/html/storage/app/export-openai-player.php '$RUN_ID'"
-
-          mkdir -p openai-input
-          scp -q -r -i "$HOME/.ssh/id_mskba" \
-            deploy@"$SERVER_HOST":"/var/www/mskba/storage/app/openai-smoke/$RUN_ID/." openai-input/
-
-          ssh -q -i "$HOME/.ssh/id_mskba" deploy@"$SERVER_HOST" \
-            "rm -rf '/var/www/mskba/storage/app/openai-smoke/$RUN_ID' '/var/www/mskba/storage/app/export-openai-player.php'" || true
-
-          rm -f /tmp/export-openai-player.php "$HOME/.ssh/id_mskba"
-
-          test -s openai-input/front.png
-          if [ ! -s openai-input/left.png ] && [ ! -s openai-input/right.png ]; then
-            echo "Profile reference is missing after secure export." >&2
-            exit 1
-          fi
-
-      - name: Call OpenAI Images API from GitHub runner
+      - name: Generate MSKBA player through OpenAI API
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -166,67 +28,62 @@ jobs:
             exit 1
           fi
 
-          HEIGHT="$(jq -r '.height_cm // 185' openai-input/metadata.json)"
-          WEIGHT="$(jq -r '.weight_kg // 90' openai-input/metadata.json)"
-          BODY_TYPE="$(jq -r '.body_type // "athletic"' openai-input/metadata.json)"
-          GENDER="$(jq -r '.gender // "male"' openai-input/metadata.json)"
-          SHOES="$(jq -r '.character.shoes // "white"' openai-input/metadata.json)"
+          cat > prompt.txt <<'EOF'
+          Create exactly one photorealistic full-body adult male basketball player for a player-profile character UI.
 
-          cat > prompt.txt <<EOF
-          Create exactly one photorealistic full-body basketball player using all supplied face photographs as identity references for the SAME person.
+          Physical parameters:
+          - height: 185 cm
+          - weight: 90 kg
+          - athletic build, muscular but natural and realistic, not bodybuilder proportions
+          - shaved/bald head with natural short facial stubble
+          - realistic adult facial proportions and natural skin texture
+          - white basketball shoes
 
-          Reference mapping:
-          - Image 1: frontal face reference.
-          - Image 2: left facial profile if present.
-          - Image 3: right facial profile if present.
+          Uniform:
+          - modern red basketball jersey and matching shorts
+          - subtle dark navy accents
+          - no logos, text, sponsor marks, team names or jersey number
 
-          Preserve the person's facial identity as closely as possible: facial proportions, head shape, eyes, nose, mouth, skin tone, hairline and other visible non-sensitive appearance details. Do not copy the source crops, backgrounds, lighting or clothing. The face must remain clearly recognizable as the same person from the references.
+          Composition:
+          - one player only
+          - completely visible head-to-toe
+          - front-facing, standing upright in a relaxed neutral athletic pose
+          - arms naturally relaxed alongside the body
+          - centered vertical composition
+          - comfortable transparent padding around the entire silhouette
+          - realistic human anatomy, hands, feet and limb proportions
+          - clean professional studio-quality lighting
+          - face clearly visible, evenly lit and sharply detailed
+          - realistic jersey fabric, skin, arms, legs and shoes
+          - no ball, no floor, no scenery, no props, no extra people, no extra limbs
+          - no text and no watermark
 
-          Player parameters:
-          - gender: ${GENDER}
-          - height: ${HEIGHT} cm
-          - weight: ${WEIGHT} kg
-          - build: ${BODY_TYPE}
-          - basketball shoes: ${SHOES}
-          - uniform concept: modern red basketball jersey and shorts with subtle dark navy accents, inspired by the user's current BK Kruassan selection; no logos, text, sponsor marks or jersey number.
-
-          Composition and quality:
-          - one adult basketball player only;
-          - completely visible head-to-toe;
-          - front-facing, standing upright in a relaxed neutral athletic pose;
-          - centered vertical composition with comfortable transparent padding;
-          - realistic anatomy and natural proportions;
-          - clean, even studio lighting with a clearly visible face and natural skin texture;
-          - sharp realistic detail on face, hands, jersey fabric, legs and shoes;
-          - no ball, no scenery, no floor, no props, no extra people, no extra limbs, no text, no watermark;
-          - isolate the player on a genuinely fully transparent background; do not create a white/green/gray backdrop or checkerboard and do not add a cast shadow outside the player.
-
-          The final result should look like a high-quality professional sports character photograph suitable for compositing directly into the MSKBA player UI.
+          Background/output:
+          - isolate the player on a genuinely fully transparent background
+          - do not create a white, gray, green or black backdrop
+          - do not create a checkerboard transparency pattern
+          - no cast shadow outside the player silhouette
+          - output should look like a premium professional sports character photograph suitable for direct compositing into a dark basketball web UI
           EOF
 
-          CURL_ARGS=(
-            --silent --show-error
-            --output response.json
-            --write-out '%{http_code}'
-            https://api.openai.com/v1/images/edits
-            -H "Authorization: Bearer $OPENAI_API_KEY"
-            -F "model=gpt-image-2.5-sunburst"
-            -F "image[]=@openai-input/front.png;type=image/png"
-            -F "prompt=<prompt.txt"
-            -F "size=1024x1536"
-            -F "quality=high"
-            -F "background=transparent"
-            -F "output_format=png"
-          )
-
-          if [ -s openai-input/left.png ]; then
-            CURL_ARGS+=( -F "image[]=@openai-input/left.png;type=image/png" )
-          fi
-          if [ -s openai-input/right.png ]; then
-            CURL_ARGS+=( -F "image[]=@openai-input/right.png;type=image/png" )
-          fi
-
-          HTTP_STATUS="$(curl "${CURL_ARGS[@]}")"
+          HTTP_STATUS="$(curl --silent --show-error \
+            --output response.json \
+            --write-out '%{http_code}' \
+            https://api.openai.com/v1/images/generations \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H 'Content-Type: application/json' \
+            --data-binary @- <<JSON
+          {
+            "model": "gpt-image-2.5-sunburst",
+            "prompt": $(jq -Rs . < prompt.txt),
+            "size": "1024x1536",
+            "quality": "high",
+            "background": "transparent",
+            "output_format": "png",
+            "n": 1
+          }
+          JSON
+          )"
 
           jq 'if .error then {error: .error} else {created: .created, data_count: (.data | length), usage: .usage} end' \
             response.json > request-summary.json
@@ -240,9 +97,7 @@ jobs:
           jq -r '.data[0].b64_json // empty' response.json | base64 --decode > openai-player.png
           test -s openai-player.png
           file openai-player.png
-
           rm -f response.json
-          rm -rf openai-input
 
       - name: Upload result
         uses: actions/upload-artifact@v4
