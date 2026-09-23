@@ -74,7 +74,7 @@ jobs:
             -H 'Content-Type: application/json' \
             --data-binary @- <<JSON
           {
-            "model": "gpt-image-2.5-sunburst",
+            "model": "gpt-image-2",
             "prompt": $(jq -Rs . < prompt.txt),
             "size": "1024x1536",
             "quality": "high",
