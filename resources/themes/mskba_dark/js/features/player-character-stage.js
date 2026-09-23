@@ -574,6 +574,50 @@ async function requestGenerationMutation(stage, form) {
     return data;
 }
 
+function wait(milliseconds) {
+    return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+async function waitForGeneration(statusUrl) {
+    const maximumAttempts = 300;
+
+    for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
+        if (attempt > 0) {
+            await wait(4000);
+        }
+
+        const response = await fetch(statusUrl, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const error = new Error(result.message || 'Не удалось проверить статус генерации.');
+            error.status = response.status;
+            error.code = result.code || null;
+            error.payload = result;
+            throw error;
+        }
+
+        if (result.status === 'completed') {
+            return result;
+        }
+
+        if (result.status === 'failed') {
+            const error = new Error(result.message || 'Не удалось сгенерировать 2D-модель.');
+            error.code = result.code || 'generation_failed';
+            error.payload = result;
+            throw error;
+        }
+    }
+
+    const error = new Error('Генерация занимает слишком много времени. Проверьте результат позже.');
+    error.code = 'generation_timeout';
+    throw error;
+}
+
 function applyValidatedFacePreviews(form, previews = {}) {
     Object.entries(previews).forEach(([slot, url]) => {
         const card = form.querySelector(`[data-player-character-face-card="${slot}"]`);
@@ -671,9 +715,14 @@ function bindGenerateTwoDimensional(stage, form) {
             const result = await requestGenerationMutation(stage, form);
             applyValidatedFacePreviews(form, result.face_previews);
 
+            const completed = result.status === 'pending' && result.status_url
+                ? await waitForGeneration(result.status_url)
+                : result;
+
             const image = stage.querySelector('[data-player-character-two-image]');
-            if (image && result.image_data_url) {
-                image.src = result.image_data_url;
+            const imageUrl = completed.image_url || completed.image_data_url;
+            if (image && imageUrl) {
+                image.src = imageUrl;
                 image.classList.remove('is-placeholder');
                 image.removeAttribute('data-placeholder-gender');
             }

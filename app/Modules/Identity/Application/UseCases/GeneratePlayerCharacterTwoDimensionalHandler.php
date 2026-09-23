@@ -2,8 +2,11 @@
 
 namespace App\Modules\Identity\Application\UseCases;
 
+use App\Modules\Ai\Application\Contracts\AsynchronousPlayerCharacterAiGateway;
 use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
+use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
+use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Finance\Application\Services\WalletOwnerResolver;
 use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
@@ -18,7 +21,9 @@ use App\Modules\Pricing\Application\Services\PricingPriceResolver;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
 use App\Modules\Team\Domain\Models\Team;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 final readonly class GeneratePlayerCharacterTwoDimensionalHandler
 {
@@ -33,13 +38,15 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
     ) {}
 
     /**
-     * @param array<string, mixed> $options
-     * @param array<string, string> $pendingFaceReferences
+     * @param  array<string, mixed>  $options
+     * @param  array<string, string>  $pendingFaceReferences
      * @return array{
+     *   status: string,
      *   price_minor: int,
      *   available_minor: int,
-     *   image_contents: string,
-     *   image_mime: string,
+     *   image_contents?: string,
+     *   image_mime?: string,
+     *   generation_id?: string,
      *   validated_face_media_ids: array<string, int>
      * }
      */
@@ -207,28 +214,61 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             }
         }
 
-        try {
-            $image = $this->ai->generatePlayerCharacter([
-                'user_id' => $canonicalUserId,
-                'gender' => $user->profile?->gender?->value,
-                'height_cm' => array_key_exists('height_cm', $options)
-                    ? $options['height_cm']
-                    : $playerProfile?->height_cm,
-                'weight_kg' => array_key_exists('weight_kg', $options)
-                    ? $options['weight_kg']
-                    : $playerProfile?->weight_kg,
-                'body_type' => array_key_exists('body_type', $options)
-                    ? $options['body_type']
-                    : ($playerProfile?->body_type?->value ?? $playerProfile?->body_type),
-                'appearance' => $character,
-                'team' => $team ? [
-                    'id' => $team->id,
-                    'name' => $team->name,
-                    'colors' => $team->colors,
-                ] : null,
-                'face_references' => $facePayload,
+        $generationPayload = [
+            'user_id' => $canonicalUserId,
+            'gender' => $user->profile?->gender?->value,
+            'height_cm' => array_key_exists('height_cm', $options)
+                ? $options['height_cm']
+                : $playerProfile?->height_cm,
+            'weight_kg' => array_key_exists('weight_kg', $options)
+                ? $options['weight_kg']
+                : $playerProfile?->weight_kg,
+            'body_type' => array_key_exists('body_type', $options)
+                ? $options['body_type']
+                : ($playerProfile?->body_type?->value ?? $playerProfile?->body_type),
+            'appearance' => $character,
+            'team' => $team ? [
+                'id' => $team->id,
+                'name' => $team->name,
+                'colors' => $team->colors,
+            ] : null,
+            'face_references' => $facePayload,
+        ];
+
+        $generation = null;
+
+        if ($this->ai instanceof AsynchronousPlayerCharacterAiGateway) {
+            $generation = PlayerCharacterGeneration::query()->create([
+                'public_id' => (string) Str::uuid(),
+                // References belong to the profile that initiated the request.
+                // Wallet canonicalization must not change that media owner.
+                'user_id' => $user->id,
+                'provider' => 'github_openai',
+                'status' => PlayerCharacterGenerationStatusEnum::PENDING,
+                'reference_media_ids' => $references
+                    ->mapWithKeys(fn ($media, string $slot): array => [$slot => (int) $media->id])
+                    ->all(),
+                'payload_snapshot' => collect($generationPayload)->except('face_references')->all(),
+                'expires_at' => now()->addSeconds(
+                    max(300, (int) config('services.github_openai.generation_timeout_seconds', 1200)),
+                ),
             ]);
+
+            $generationPayload['generation_id'] = $generation->public_id;
+        }
+
+        try {
+            $image = $this->ai->generatePlayerCharacter($generationPayload);
         } catch (AiServiceException $exception) {
+            if ($generation !== null) {
+                $generation->forceFill([
+                    'status' => PlayerCharacterGenerationStatusEnum::FAILED,
+                    'error_code' => $exception->errorCode,
+                    'error_message' => $exception->getMessage(),
+                    'failed_at' => now(),
+                ])->save();
+            }
+
             if ($validatedFaceMediaIds === []) {
                 throw $exception;
             }
@@ -241,6 +281,16 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             );
         }
 
+        if ($image->isPending() && $generation !== null) {
+            return [
+                'status' => PlayerCharacterGenerationStatusEnum::PENDING->value,
+                'price_minor' => $priceMinor,
+                'available_minor' => $availableMinor,
+                'generation_id' => $generation->public_id,
+                'validated_face_media_ids' => $validatedFaceMediaIds,
+            ];
+        }
+
         if ($image->contents === '' || ! str_starts_with($image->mime, 'image/')) {
             throw new PlayerCharacterFlowException(
                 'generation_failed',
@@ -250,6 +300,7 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         }
 
         return [
+            'status' => PlayerCharacterGenerationStatusEnum::COMPLETED->value,
             'price_minor' => $priceMinor,
             'available_minor' => $availableMinor,
             'image_contents' => $image->contents,
@@ -258,7 +309,7 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
         ];
     }
 
-    private function confirmedReferences(User $user): \Illuminate\Support\Collection
+    private function confirmedReferences(User $user): Collection
     {
         return $user->profile?->media()
             ->whereIn('collection', PlayerCharacterFaceReferenceOptions::collections())

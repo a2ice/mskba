@@ -12,6 +12,8 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
+use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageController;
+use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
@@ -763,6 +765,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/participation/player/face-reference/{slot}', PlayerCharacterFaceReferencePreviewController::class)
             ->where('slot', 'front|left|right')
             ->name('account.player-character.face-reference');
+        Route::get('/participation/player/generations/{generation}', PlayerCharacterGenerationStatusController::class)
+            ->name('account.player-character.generations.show');
+        Route::get('/participation/player/generations/{generation}/image', PlayerCharacterGenerationImageController::class)
+            ->name('account.player-character.generations.image');
         Route::get('/settings', [AccountController::class, 'settings'])->name('account.settings');
         Route::put('/settings/password', UpdateAccountPasswordController::class)
             ->middleware('throttle:10,1')

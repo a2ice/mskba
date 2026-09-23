@@ -86,6 +86,21 @@ jobs:
             fi
             unset YANDEX_AI_API_KEY_SECRET YANDEX_AI_FOLDER_ID_SECRET
 
+            # The production VDS dispatches generation to a GitHub-hosted
+            # runner. OpenAI remains reachable only from that runner; the VDS
+            # stores a narrowly scoped Actions token and the callback secret.
+            GITHUB_AI_TOKEN_SECRET='${{ secrets.MSKBA_GITHUB_AI_TOKEN }}'
+            GITHUB_AI_CALLBACK_SECRET_VALUE='${{ secrets.MSKBA_GITHUB_AI_CALLBACK_SECRET }}'
+            if [ -n "$GITHUB_AI_TOKEN_SECRET" ] && [ -n "$GITHUB_AI_CALLBACK_SECRET_VALUE" ]; then
+              update_env_value GITHUB_AI_TOKEN "$GITHUB_AI_TOKEN_SECRET"
+              update_env_value GITHUB_AI_CALLBACK_SECRET "$GITHUB_AI_CALLBACK_SECRET_VALUE"
+              update_env_value PLAYER_CHARACTER_AI_PROVIDER github_openai
+              echo "GitHub-hosted OpenAI player generation enabled"
+            else
+              echo "::warning::MSKBA_GITHUB_AI_TOKEN/MSKBA_GITHUB_AI_CALLBACK_SECRET are not both configured; Yandex remains the player-character fallback."
+            fi
+            unset GITHUB_AI_TOKEN_SECRET GITHUB_AI_CALLBACK_SECRET_VALUE
+
             update_env_value VK_ID_APP_ID "$VK_ID_APP_ID"
             update_env_value VK_ID_REDIRECT_URI "$VK_ID_REDIRECT_URI"
             update_env_value FEATURE_VENUE_RENTAL_BOOKING_EVENTS true

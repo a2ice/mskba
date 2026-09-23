@@ -139,7 +139,7 @@ final class UpdatePlayerProfileController extends Controller
         }
 
         return response()->json([
-            'message' => 'Фото проверено AI и сохранено.',
+            'message' => 'Фото проверено и сохранено.',
             'slot' => $slot,
             'status' => 'stored',
             'width' => $result['width'],
@@ -210,6 +210,20 @@ final class UpdatePlayerProfileController extends Controller
 
         $facePreviews = $this->facePreviewUrls($result['validated_face_media_ids']);
 
+        if ($result['status'] === 'pending') {
+            return response()->json([
+                'message' => 'Генерация запущена.',
+                'status' => 'pending',
+                'generation_id' => $result['generation_id'],
+                'status_url' => route('account.player-character.generations.show', [
+                    'generation' => $result['generation_id'],
+                ]),
+                'price_minor' => $result['price_minor'],
+                'available_minor' => $result['available_minor'],
+                'face_previews' => $facePreviews,
+            ], 202);
+        }
+
         return response()->json([
             'message' => '2D-модель сгенерирована.',
             'status' => 'generated',
@@ -221,7 +235,7 @@ final class UpdatePlayerProfileController extends Controller
     }
 
     /**
-     * @param array<string, int> $mediaIds
+     * @param  array<string, int>  $mediaIds
      * @return array<string, string>
      */
     private function facePreviewUrls(array $mediaIds): array
