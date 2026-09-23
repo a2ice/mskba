@@ -21,6 +21,21 @@ function normalizedStatusUrl(value) {
     }
 }
 
+function latestCompletedStatusUrl(stage) {
+    const mutationUrl = normalizedStatusUrl(stage?.dataset.characterMutationUrl);
+    if (!mutationUrl) {
+        return null;
+    }
+
+    const url = new URL(mutationUrl);
+    const originalPath = url.pathname;
+    url.pathname = originalPath.replace(/\/profile\/?$/, '/generations/latest');
+    url.search = '';
+    url.hash = '';
+
+    return url.pathname === originalPath ? null : url.href;
+}
+
 function readStoredGeneration() {
     try {
         const payload = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || 'null');
@@ -100,6 +115,36 @@ function applyCompletedImage(stage, payload) {
     image.src = payload.image_url;
     image.classList.remove('is-placeholder');
     image.removeAttribute('data-placeholder-gender');
+}
+
+async function restoreLatestCompletedImage(stage) {
+    const statusUrl = latestCompletedStatusUrl(stage);
+    if (!statusUrl) {
+        return;
+    }
+
+    try {
+        const response = await originalFetch(statusUrl, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+
+        if (response.status === 404) {
+            return;
+        }
+
+        if (!response.ok) {
+            return;
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        if (payload.status === 'completed') {
+            applyCompletedImage(stage, payload);
+        }
+    } catch {
+        // Restoring a previous image must not block the account page.
+    }
 }
 
 function wait(milliseconds) {
@@ -192,6 +237,12 @@ window.addEventListener('storage', (event) => {
     void pollGeneration(readStoredGeneration());
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const stage = document.querySelector('[data-player-character-stage]');
+    if (!stage) {
+        return;
+    }
+
+    await restoreLatestCompletedImage(stage);
     void pollGeneration(readStoredGeneration());
 });
