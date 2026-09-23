@@ -3,6 +3,7 @@
 namespace App\Modules\Ai\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Ai\Application\Services\PlayerCharacterGenerationBilling;
 use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
 use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 final class GitHubOpenAiGenerationCallbackController extends Controller
 {
+    public function __construct(private readonly PlayerCharacterGenerationBilling $billing) {}
+
     public function __invoke(Request $request, PlayerCharacterGeneration $generation): JsonResponse
     {
         $status = (string) $request->input('status');
@@ -42,7 +45,9 @@ final class GitHubOpenAiGenerationCallbackController extends Controller
         }
 
         if ($status === 'failed') {
-            $this->markFailed($generation, $request);
+            if ($this->markFailed($generation, $request)) {
+                $this->billing->refund($generation->refresh());
+            }
 
             return response()->json(['status' => 'accepted']);
         }
@@ -125,13 +130,13 @@ final class GitHubOpenAiGenerationCallbackController extends Controller
         ]));
     }
 
-    private function markFailed(PlayerCharacterGeneration $generation, Request $request): void
+    private function markFailed(PlayerCharacterGeneration $generation, Request $request): bool
     {
-        DB::transaction(function () use ($generation, $request): void {
+        return DB::transaction(function () use ($generation, $request): bool {
             $locked = PlayerCharacterGeneration::query()->whereKey($generation->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status->isTerminal()) {
-                return;
+                return false;
             }
 
             $locked->forceFill([
@@ -145,6 +150,8 @@ final class GitHubOpenAiGenerationCallbackController extends Controller
                 ),
                 'failed_at' => now(),
             ])->save();
+
+            return true;
         });
     }
 

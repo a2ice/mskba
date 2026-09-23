@@ -46,6 +46,7 @@ import './features/account-nickname.js';
 import './features/account-wallet-bonus-grant.js';
 import './features/account-telegram-link.js';
 import './features/score-range.js';
+import './features/player-character-generation-sync.js';
 import './features/player-character-stage.js';
 import './features/tooltips.js';
 import './features/catalog-filter-defaults.js';

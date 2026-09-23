@@ -73,6 +73,27 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             );
         }
 
+        if ($this->ai instanceof AsynchronousPlayerCharacterAiGateway) {
+            $activeGenerationExists = PlayerCharacterGeneration::query()
+                ->whereIn('user_id', $user->identityIds())
+                ->whereIn('status', [
+                    PlayerCharacterGenerationStatusEnum::PENDING->value,
+                    PlayerCharacterGenerationStatusEnum::PROCESSING->value,
+                ])
+                ->where(function ($query): void {
+                    $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->exists();
+
+            if ($activeGenerationExists) {
+                throw new PlayerCharacterFlowException(
+                    'generation_in_progress',
+                    'Другая генерация модели уже выполняется.',
+                    409,
+                );
+            }
+        }
+
         $references = $this->confirmedReferences($user);
         $effectiveSlots = array_fill_keys($references->keys()->all(), true);
 

@@ -3,6 +3,7 @@
 namespace App\Modules\Ai\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Ai\Application\Services\PlayerCharacterGenerationBilling;
 use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
 use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
 use Illuminate\Http\JsonResponse;
@@ -10,12 +11,30 @@ use Illuminate\Http\Request;
 
 final class PlayerCharacterGenerationStatusController extends Controller
 {
-    public function __invoke(Request $request, PlayerCharacterGeneration $generation): JsonResponse
+    public function __construct(private readonly PlayerCharacterGenerationBilling $billing) {}
+
+    public function __invoke(Request $request, string $generation): JsonResponse
     {
-        abort_unless(in_array((int) $generation->user_id, $request->user()->identityIds(), true), 404);
+        $query = PlayerCharacterGeneration::query()
+            ->whereIn('user_id', $request->user()->identityIds());
+
+        if ($generation === 'latest') {
+            $generation = $query
+                ->where('status', PlayerCharacterGenerationStatusEnum::COMPLETED->value)
+                ->whereNotNull('result_disk')
+                ->whereNotNull('result_path')
+                ->whereNotNull('completed_at')
+                ->orderByDesc('completed_at')
+                ->orderByDesc('id')
+                ->firstOrFail();
+        } else {
+            $generation = $query
+                ->where('public_id', $generation)
+                ->firstOrFail();
+        }
 
         if (! $generation->status->isTerminal() && $generation->expires_at?->isPast()) {
-            PlayerCharacterGeneration::query()
+            $updated = PlayerCharacterGeneration::query()
                 ->whereKey($generation->id)
                 ->whereIn('status', [
                     PlayerCharacterGenerationStatusEnum::PENDING->value,
@@ -30,6 +49,10 @@ final class PlayerCharacterGenerationStatusController extends Controller
                 ]);
 
             $generation->refresh();
+
+            if ($updated > 0) {
+                $this->billing->refund($generation);
+            }
         }
 
         $payload = [
