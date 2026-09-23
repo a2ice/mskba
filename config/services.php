@@ -84,4 +84,19 @@ return [
         'generation_timeout_seconds' => (int) env('OPENAI_GENERATION_TIMEOUT_SECONDS', 180),
     ],
 
+    'github_openai' => [
+        'api_url' => env('GITHUB_AI_API_URL', 'https://api.github.com'),
+        'repository' => env('GITHUB_AI_REPOSITORY', 'a2ice/mskba'),
+        'workflow' => env('GITHUB_AI_WORKFLOW', 'openai-player-generate.yml'),
+        'ref' => env('GITHUB_AI_REF', 'main'),
+        'token' => env('GITHUB_AI_TOKEN'),
+        'callback_secret' => env('GITHUB_AI_CALLBACK_SECRET'),
+        'manifest_ttl_minutes' => (int) env('GITHUB_AI_MANIFEST_TTL_MINUTES', 20),
+        'callback_tolerance_seconds' => (int) env('GITHUB_AI_CALLBACK_TOLERANCE_SECONDS', 300),
+        'connect_timeout_seconds' => (int) env('GITHUB_AI_CONNECT_TIMEOUT_SECONDS', 10),
+        'dispatch_timeout_seconds' => (int) env('GITHUB_AI_DISPATCH_TIMEOUT_SECONDS', 30),
+        'generation_timeout_seconds' => (int) env('GITHUB_AI_GENERATION_TIMEOUT_SECONDS', 1200),
+        'image_quality' => env('GITHUB_AI_IMAGE_QUALITY', 'high'),
+    ],
+
 ];

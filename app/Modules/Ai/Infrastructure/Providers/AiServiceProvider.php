@@ -3,6 +3,7 @@
 namespace App\Modules\Ai\Infrastructure\Providers;
 
 use App\Modules\Ai\Application\Contracts\PlayerCharacterAiGateway;
+use App\Modules\Ai\Infrastructure\Gateways\GitHubOpenAiPlayerCharacterAiGateway;
 use App\Modules\Ai\Infrastructure\Gateways\NullPlayerCharacterAiGateway;
 use App\Modules\Ai\Infrastructure\Gateways\OpenAiPlayerCharacterAiGateway;
 use App\Modules\Ai\Infrastructure\Gateways\YandexPlayerCharacterAiGateway;
@@ -25,8 +26,15 @@ final class AiServiceProvider extends ServiceProvider
                     && trim((string) $app['config']->get('services.yandex_ai.folder_id')) !== '';
                 $openAiConfigured =
                     trim((string) $app['config']->get('services.openai.api_key')) !== '';
+                $githubOpenAiConfigured =
+                    trim((string) $app['config']->get('services.github_openai.token')) !== ''
+                    && trim((string) $app['config']->get('services.github_openai.callback_secret')) !== ''
+                    && trim((string) $app['config']->get('services.github_openai.repository')) !== '';
 
                 return match ($provider) {
+                    'github_openai' => $githubOpenAiConfigured
+                        ? $app->make(GitHubOpenAiPlayerCharacterAiGateway::class)
+                        : $app->make(NullPlayerCharacterAiGateway::class),
                     'yandex' => $yandexConfigured
                         ? $app->make(YandexPlayerCharacterAiGateway::class)
                         : $app->make(NullPlayerCharacterAiGateway::class),
@@ -34,11 +42,13 @@ final class AiServiceProvider extends ServiceProvider
                         ? $app->make(OpenAiPlayerCharacterAiGateway::class)
                         : $app->make(NullPlayerCharacterAiGateway::class),
                     'null', 'none', 'disabled' => $app->make(NullPlayerCharacterAiGateway::class),
-                    default => $yandexConfigured
-                        ? $app->make(YandexPlayerCharacterAiGateway::class)
-                        : ($openAiConfigured
-                            ? $app->make(OpenAiPlayerCharacterAiGateway::class)
-                            : $app->make(NullPlayerCharacterAiGateway::class)),
+                    default => $githubOpenAiConfigured
+                        ? $app->make(GitHubOpenAiPlayerCharacterAiGateway::class)
+                        : ($yandexConfigured
+                            ? $app->make(YandexPlayerCharacterAiGateway::class)
+                            : ($openAiConfigured
+                                ? $app->make(OpenAiPlayerCharacterAiGateway::class)
+                                : $app->make(NullPlayerCharacterAiGateway::class))),
                 };
             },
         );

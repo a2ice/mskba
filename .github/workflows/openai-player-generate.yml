@@ -1,0 +1,164 @@
+name: OpenAI player generation
+
+on:
+  workflow_dispatch:
+    inputs:
+      generation_id:
+        description: MSKBA generation correlation id
+        required: true
+        type: string
+      manifest_url:
+        description: Short-lived signed MSKBA manifest URL
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openai-player-${{ inputs.generation_id }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CALLBACK_SECRET: ${{ secrets.MSKBA_GITHUB_AI_CALLBACK_SECRET }}
+      GENERATION_ID: ${{ inputs.generation_id }}
+      MANIFEST_URL: ${{ inputs.manifest_url }}
+      PROVIDER_RUN_ID: ${{ github.run_id }}
+
+    steps:
+      - name: Generate player and return callback
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if [[ -z "${OPENAI_API_KEY}" || -z "${CALLBACK_SECRET}" ]]; then
+            echo "Required generation secrets are not configured." >&2
+            exit 1
+          fi
+
+          callback_url=""
+
+          callback() {
+            local status="$1"
+            local image_path="${2:-}"
+            local error_code="${3:-}"
+            local error_message="${4:-}"
+            local timestamp content_sha metadata_sha signature model_value
+
+            timestamp="$(date +%s)"
+            if [[ -n "${image_path}" && -f "${image_path}" ]]; then
+              content_sha="$(sha256sum "${image_path}" | awk '{print $1}')"
+            else
+              content_sha="$(printf '' | sha256sum | awk '{print $1}')"
+            fi
+
+            model_value=""
+            if [[ -n "${image_path}" && -f "${image_path}" ]]; then
+              model_value="${model:-gpt-image-2}"
+            fi
+
+            metadata_sha="$(printf '%s\n%s\n%s\n%s' \
+              "${PROVIDER_RUN_ID}" "${error_code}" "${error_message}" "${model_value}" \
+              | sha256sum | awk '{print $1}')"
+
+            signature="$(printf '%s\n%s\n%s\n%s\n%s' \
+              "${timestamp}" "${GENERATION_ID}" "${status}" "${content_sha}" "${metadata_sha}" \
+              | openssl dgst -sha256 -hmac "${CALLBACK_SECRET}" -hex \
+              | awk '{print $NF}')"
+
+            callback_args=(
+              --fail-with-body --silent --show-error
+              --request POST "${callback_url}"
+              --header "Accept: application/json"
+              --header "X-MSKBA-Timestamp: ${timestamp}"
+              --header "X-MSKBA-Content-SHA256: ${content_sha}"
+              --header "X-MSKBA-Metadata-SHA256: ${metadata_sha}"
+              --header "X-MSKBA-Signature: ${signature}"
+              --form-string "status=${status}"
+              --form-string "provider_run_id=${PROVIDER_RUN_ID}"
+            )
+
+            if [[ -n "${image_path}" && -f "${image_path}" ]]; then
+              callback_args+=(--form "image=@${image_path};type=image/png")
+              callback_args+=(--form-string "model=${model_value}")
+            fi
+
+            if [[ -n "${error_code}" ]]; then
+              callback_args+=(--form-string "error_code=${error_code}")
+              callback_args+=(--form-string "error_message=${error_message}")
+            fi
+
+            curl "${callback_args[@]}" >/dev/null
+          }
+
+          fail_callback() {
+            local exit_code=$?
+            trap - ERR
+            if [[ -n "${callback_url}" ]]; then
+              callback failed "" generation_failed "OpenAI generation failed on GitHub runner." || true
+            fi
+            exit "${exit_code}"
+          }
+          trap fail_callback ERR
+
+          curl --fail-with-body --silent --show-error \
+            --header "Accept: application/json" \
+            "${MANIFEST_URL}" \
+            --output manifest.json
+
+          manifest_generation_id="$(jq -r '.generation_id' manifest.json)"
+          if [[ "${manifest_generation_id}" != "${GENERATION_ID}" ]]; then
+            echo "Manifest correlation id mismatch." >&2
+            exit 1
+          fi
+
+          callback_url="$(jq -r '.callback_url' manifest.json)"
+          model="$(jq -r '.openai.model' manifest.json)"
+          size="$(jq -r '.openai.size' manifest.json)"
+          quality="$(jq -r '.openai.quality' manifest.json)"
+          background="$(jq -r '.openai.background' manifest.json)"
+          output_format="$(jq -r '.openai.output_format' manifest.json)"
+          prompt="$(jq -r '.prompt' manifest.json)"
+
+          callback processing
+
+          image_args=()
+          while IFS=$'\t' read -r slot url; do
+            file="reference-${slot}.webp"
+            curl --fail-with-body --silent --show-error --location "${url}" --output "${file}"
+            image_args+=(--form "image[]=@${file};type=image/webp")
+          done < <(jq -r '.references | to_entries[] | [.key, .value] | @tsv' manifest.json)
+
+          if [[ "${#image_args[@]}" -lt 2 ]]; then
+            echo "At least two face references are required." >&2
+            exit 1
+          fi
+
+          http_code="$(curl --silent --show-error \
+            --output response.json \
+            --write-out '%{http_code}' \
+            https://api.openai.com/v1/images/edits \
+            --header "Authorization: Bearer ${OPENAI_API_KEY}" \
+            --form-string "model=${model}" \
+            "${image_args[@]}" \
+            --form-string "prompt=${prompt}" \
+            --form-string "size=${size}" \
+            --form-string "quality=${quality}" \
+            --form-string "background=${background}" \
+            --form-string "output_format=${output_format}")"
+
+          if [[ "${http_code}" -lt 200 || "${http_code}" -ge 300 ]]; then
+            echo "OpenAI image request failed with HTTP ${http_code}." >&2
+            exit 1
+          fi
+
+          jq -er '.data[0].b64_json' response.json | base64 --decode > player.png
+          file player.png | grep -q 'PNG image data'
+
+          callback completed player.png
+          trap - ERR

@@ -7,8 +7,8 @@
 контроллера, Blade или frontend. Identity передаёт нормализованный предметный payload
 через `PlayerCharacterAiGateway`.
 
-На Task 225 зарегистрирован `NullPlayerCharacterAiGateway`. Он намеренно возвращает
-стабильную ошибку `ai_not_configured`: реальный provider и секреты ещё не подключены.
+`NullPlayerCharacterAiGateway` остаётся безопасным fallback и возвращает
+стабильную ошибку `ai_not_configured`, если ни один provider не настроен.
 
 ## Player Character
 
@@ -54,18 +54,20 @@ AJAX flow:
    повторной проверки ракурса;
 8. текущие параметры персонажа, формы, обуви и атрибутов нормализуются в предметный payload;
 9. выбранная команда, если есть, повторно авторизуется по активному player membership;
-10. выполняется отдельный provider call `generatePlayerCharacter()`;
-11. во время запроса предыдущая 2D/3D-визуализация остаётся на сцене;
-12. ошибка AI не очищает существующую модель.
+10. выполняется provider call `generatePlayerCharacter()`;
+11. синхронные providers сразу возвращают PNG, а `github_openai` создаёт
+    `player_character_generations`, dispatch-ит workflow и возвращает HTTP 202;
+12. frontend опрашивает private status endpoint до `completed|failed`, не очищая
+    предыдущую 2D/3D-визуализацию;
+13. полученный PNG хранится в private storage и отдаётся только владельцу.
 
 Таким образом новые фото проходят проверку прямо внутри пользовательского действия
 «Сгенерировать», но сохранённые ранее подтверждённые фото не создают повторную стоимость
 валидации при каждой генерации.
 
-Task 225 выполняет preflight и provider boundary, но не списывает деньги: реальный AI
-provider ещё не подключён. При активации provider финансовое исполнение должно использовать
-Purchase/hold или компенсирующий refund, чтобы внешний сбой не оставлял пользователя без
-средств и результата.
+Текущий flow делает balance preflight, но ещё не списывает деньги. Финансовое исполнение
+должно использовать Purchase/hold или компенсирующий refund, чтобы внешний сбой не оставлял
+пользователя без средств и результата.
 
 ## Машинные коды ошибок
 
@@ -86,11 +88,38 @@ Provider-specific тексты/HTTP детали не должны станов�
 
 ## Выбор provider
 
-`PLAYER_CHARACTER_AI_PROVIDER` принимает `auto|yandex|openai|null`.
+`PLAYER_CHARACTER_AI_PROVIDER` принимает `auto|github_openai|yandex|openai|null`.
 
-В режиме `auto` приоритет имеет Yandex AI Studio, если одновременно заданы
-`YANDEX_AI_API_KEY` и `YANDEX_AI_FOLDER_ID`. Если Yandex не настроен, используется
-OpenAI при наличии `OPENAI_API_KEY`. Иначе остаётся null provider.
+В режиме `auto` приоритет имеет `github_openai`, если заданы GitHub token,
+callback secret и repository. Затем идут Yandex AI Studio, прямой OpenAI и null provider.
+На deploy `github_openai` становится default только когда оба GitHub-секрета доступны;
+иначе Yandex остаётся fallback.
+
+## OpenAI через GitHub Actions
+
+`GitHubOpenAiPlayerCharacterAiGateway` реализует асинхронный production flow:
+
+1. VDS создаёт generation job с `pending` и короткоживущий signed manifest URL;
+2. VDS вызывает GitHub `workflow_dispatch`; на VDS нет OpenAI API request;
+3. GitHub-hosted runner скачивает private references по signed URLs и вызывает
+   `POST /v1/images/edits` с `gpt-image-2`, PNG и transparent background;
+4. runner отправляет `processing|completed|failed` callback в MSKBA;
+5. MSKBA проверяет timestamp, SHA-256 файла/метаданных и HMAC, валидирует
+   PNG/прозрачные углы и сохраняет файл в private storage.
+
+Личные фото не коммитятся в GitHub и не попадают в artifacts. Signed URLs и generation job
+имеют TTL. Callback идемпотентен: terminal state защищён row lock, поэтому повторный
+delivery не создаёт второй результат, а конкурентные terminal callbacks сериализуются.
+Незавершённый job переходит в `generation_timeout` после TTL.
+
+Face preflight в этом provider локально проверяет, что файл читается как изображение
+и не слишком мал. Ракурс и identity fidelity оцениваются в самой генерации, без
+отдельного платного AI-validation call.
+
+Production secrets в GitHub Actions: `OPENAI_API_KEY`, `MSKBA_GITHUB_AI_TOKEN` и
+`MSKBA_GITHUB_AI_CALLBACK_SECRET`. Первый доступен только runner. Deploy передаёт на VDS только
+токен запуска workflow и callback secret как `GITHUB_AI_*` env. GitHub token должен иметь минимальное repository
+permission `Actions: write`.
 
 ## Yandex AI Studio provider
 
@@ -123,8 +152,8 @@ Responses API на production может ответить HTTP 200 с `status=qu
 валидный provider result. OpenAI pipeline этой обработкой не затрагивается.
 
 Production secrets: `YANDEX_AI_API_KEY` и `YANDEX_AI_FOLDER_ID`. Deploy синхронизирует
-их из GitHub Actions secrets и переключает player-character provider на Yandex только
-когда присутствуют оба значения.
+их из GitHub Actions secrets. Yandex остаётся fallback/rollback после включения
+`github_openai` по умолчанию.
 
 ## OpenAI provider
 
