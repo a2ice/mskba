@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Survival Experiment</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0d10;color:#eef2f7;font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:100vh}#app{width:min(94vw,680px);padding:18px}.hud{margin-bottom:12px}.hpRow{display:flex;align-items:center;gap:10px;font-size:14px;letter-spacing:.08em}.bar{height:16px;flex:1;background:#242932;border-radius:99px;overflow:hidden;border:1px solid #3a404b}#hpFill{height:100%;width:65%;background:#f3f5f7;transition:width .15s}.hpRow strong{width:48px;text-align:right}.meta{display:flex;justify-content:space-between;margin-top:7px;color:#89919e;font-size:12px;letter-spacing:.14em}canvas{width:100%;height:auto;display:block;background:#10141a;border:1px solid #303640;border-radius:14px;box-shadow:0 15px 50px #0008}.controls{display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr;gap:10px;margin-top:12px}.controls button{border:1px solid #3a414c;background:#171b22;color:#fff;border-radius:12px;font-size:24px;min-height:62px;cursor:pointer}.controls button:hover{background:#222833}.controls button:disabled{opacity:.35;cursor:not-allowed}#wait{font-size:14px;letter-spacing:.12em}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="hpRow"><span>HEALTH</span><div class="bar"><div id="hpFill"></div></div><strong id="hpText">65.0</strong></div>
+    <div class="meta"><span id="state">ALIVE</span><span id="steps">STEP 0</span></div>
+  </div>
+  <canvas id="game" width="620" height="620"></canvas>
+  <div class="controls">
+    <button id="left" aria-label="Turn left">↶</button>
+    <button id="forward" aria-label="Move forward">↑</button>
+    <button id="right" aria-label="Turn right">↷</button>
+    <button id="wait" aria-label="Wait">WAIT</button>
+  </div>
+</div>
+<script>
+(()=>{
+const W=100,H=100,R=15,N=30;
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const hpText=document.getElementById('hpText'),hpFill=document.getElementById('hpFill'),stateEl=document.getElementById('state'),stepsEl=document.getElementById('steps');
+const buttons=[...document.querySelectorAll('button')];
+let hp=65,step=0,alive=true;
+const hero={x:50,y:50,d:0};
+const objects=[];
+const rnd=n=>Math.floor(Math.random()*n);
+function emptyCell(x,y){return !(x===hero.x&&y===hero.y)&&!objects.some(o=>o.x===x&&o.y===y)}
+function spawn(kind){let x,y;do{x=rnd(W);y=rnd(H)}while(!emptyCell(x,y));objects.push({x,y,kind,size:1+rnd(3)})}
+for(const kind of ['g','r','n'])for(let i=0;i<N;i++)spawn(kind);
+function forwardVec(){return [[0,-1],[1,0],[0,1],[-1,0]][hero.d]}
+function visible(dx,dy){const dist=Math.hypot(dx,dy);if(dist>R||dist===0)return dist===0;const [fx,fy]=forwardVec();const dot=(dx*fx+dy*fy)/dist;return dot>=0.5}
+function consume(){const i=objects.findIndex(o=>o.x===hero.x&&o.y===hero.y);if(i<0)return;const o=objects[i];if(o.kind==='g')hp=Math.min(100,hp+10*o.size);else if(o.kind==='r')hp-=12*o.size;objects.splice(i,1);spawn(o.kind)}
+function act(type){if(!alive)return;step++;if(type==='left'){hero.d=(hero.d+3)%4;hp-=.2}else if(type==='right'){hero.d=(hero.d+1)%4;hp-=.2}else if(type==='wait'){hp-=.15}else if(type==='forward'){const [dx,dy]=forwardVec();const nx=hero.x+dx,ny=hero.y+dy;hp-=.6;if(nx>=0&&nx<W&&ny>=0&&ny<H){hero.x=nx;hero.y=ny;consume()}}if(hp<=0){hp=0;alive=false;buttons.forEach(b=>b.disabled=true);stateEl.textContent='DEAD'}render()}
+document.getElementById('left').onclick=()=>act('left');document.getElementById('right').onclick=()=>act('right');document.getElementById('forward').onclick=()=>act('forward');document.getElementById('wait').onclick=()=>act('wait');
+function render(){hpText.textContent=hp.toFixed(1);hpFill.style.width=Math.max(0,hp)+'%';stepsEl.textContent='STEP '+step;const size=canvas.width/(R*2+1);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#0e1217';ctx.fillRect(0,0,canvas.width,canvas.height);const cx=R,cy=R;for(let vy=-R;vy<=R;vy++)for(let vx=-R;vx<=R;vx++){const wx=hero.x+vx,wy=hero.y+vy,x=(vx+R)*size,y=(vy+R)*size;if(wx<0||wy<0||wx>=W||wy>=H)continue;const vis=visible(vx,vy);ctx.fillStyle=vis?'#171d24':'#0d1015';ctx.fillRect(x,y,size+1,size+1);if(vis){ctx.strokeStyle='#202832';ctx.lineWidth=.5;ctx.strokeRect(x,y,size,size)}}for(const o of objects){let dx=o.x-hero.x,dy=o.y-hero.y;if(Math.abs(dx)>R||Math.abs(dy)>R||!visible(dx,dy))continue;const x=(dx+R+.5)*size,y=(dy+R+.5)*size;ctx.beginPath();ctx.arc(x,y,size*(.19+.105*o.size),0,Math.PI*2);ctx.fillStyle=o.kind==='g'?'#20d66b':o.kind==='r'?'#ef4444':'#8b929c';ctx.shadowBlur=10;ctx.shadowColor=ctx.fillStyle;ctx.fill();ctx.shadowBlur=0}const hx=(cx+.5)*size,hy=(cy+.5)*size;ctx.save();ctx.translate(hx,hy);ctx.rotate(hero.d*Math.PI/2);ctx.beginPath();ctx.moveTo(0,-size*.45);ctx.lineTo(size*.35,size*.35);ctx.lineTo(-size*.35,size*.35);ctx.closePath();ctx.fillStyle='#fff';ctx.fill();ctx.restore();if(!alive){ctx.fillStyle='#000b';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#fff';ctx.font='700 46px system-ui';ctx.textAlign='center';ctx.fillText('DEAD',canvas.width/2,canvas.height/2)}}render();
+})();
+</script>
+</body>
+</html>
