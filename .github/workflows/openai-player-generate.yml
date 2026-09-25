@@ -162,6 +162,7 @@ jobs:
             --form-string "prompt=${prompt}" \
             --form-string "size=${size}" \
             --form-string "quality=${quality}" \
+            --form-string "input_fidelity=high" \
             --form-string "background=${background}" \
             --form-string "output_format=${output_format}")"
 

@@ -33,7 +33,11 @@ final class PlayerCharacterGenerationPromptBuilder
 
         $teamLogoInstruction = $withTeamLogo
             ? <<<'TEXT'
-- A team-logo reference image is supplied after the face-reference images. Reproduce that logo faithfully on the jersey in a natural basketball-uniform placement. Use it only as a logo reference, never as a face/identity reference.
+- The LAST supplied image is the team-logo reference. It is NOT a face or identity reference.
+- Copy that supplied team logo onto the jersey as faithfully and literally as possible in a natural basketball-uniform placement.
+- Do NOT redesign, stylize, simplify, reinterpret, substitute, replace, or invent the team logo.
+- Preserve the logo's geometry, layout, colors, proportions, internal marks, and high-contrast details. If the logo is a QR code, preserve the QR module pattern and quiet-zone structure as accurately as possible.
+- The jersey logo must visually match the LAST supplied image, not merely represent the team's identity or theme.
 TEXT
             : <<<'TEXT'
 - Do not place a team logo on the uniform.
