@@ -3,17 +3,26 @@
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Ai\Domain\Enums\PlayerCharacterGenerationStatusEnum;
 use App\Modules\Ai\Domain\Exceptions\AiServiceException;
+use App\Modules\Ai\Domain\Models\PlayerCharacterGeneration;
+use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\UseCases\GeneratePlayerCharacterTwoDimensionalHandler;
 use App\Modules\Identity\Application\UseCases\StorePlayerCharacterFaceReferenceHandler;
 use App\Modules\Identity\Application\UseCases\UpdatePlayerCharacterRenderModeHandler;
 use App\Modules\Identity\Application\UseCases\UpdatePlayerProfileHandler;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Exceptions\PlayerCharacterFlowException;
+use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\UpdatePlayerProfileRequest;
+use App\Modules\Pricing\Application\Services\PricingPriceResolver;
+use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
+use App\Modules\Team\Domain\Enums\TeamMemberTypeEnum;
+use App\Modules\Team\Domain\Models\Team;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
@@ -26,6 +35,7 @@ final class UpdatePlayerProfileController extends Controller
         UpdatePlayerCharacterRenderModeHandler $renderModeHandler,
         StorePlayerCharacterFaceReferenceHandler $faceReferenceHandler,
         GeneratePlayerCharacterTwoDimensionalHandler $generationHandler,
+        PricingPriceResolver $prices,
     ): JsonResponse|RedirectResponse {
         if ($request->mutation() === 'render_mode') {
             return $this->updateRenderMode($request, $renderModeHandler);
@@ -33,6 +43,22 @@ final class UpdatePlayerProfileController extends Controller
 
         if ($request->mutation() === 'face_reference') {
             return $this->storeFaceReference($request, $faceReferenceHandler);
+        }
+
+        if ($request->mutation() === 'generation_quote') {
+            return $this->generationQuote($prices);
+        }
+
+        if ($request->mutation() === 'generation_preferences') {
+            return $this->generationPreferences($request);
+        }
+
+        if ($request->mutation() === 'generation_history') {
+            return $this->generationHistory($request);
+        }
+
+        if ($request->mutation() === 'generation_primary') {
+            return $this->setPrimaryGeneration($request);
         }
 
         if ($request->mutation() === 'generate_2d') {
@@ -146,6 +172,164 @@ final class UpdatePlayerProfileController extends Controller
             'height' => $result['height'],
             'preview_url' => route('account.player-character.face-reference', ['slot' => $slot]).'?v='.$result['media']->id,
         ]);
+    }
+
+    private function generationQuote(PricingPriceResolver $prices): JsonResponse
+    {
+        $price = $prices->resolve(GeneratePlayerCharacterTwoDimensionalHandler::SERVICE_CODE);
+
+        if ($price === null) {
+            return response()->json([
+                'code' => 'pricing_unavailable',
+                'message' => 'Цена генерации временно недоступна.',
+            ], 503);
+        }
+
+        return response()->json([
+            'price_minor' => (int) $price->amount_minor,
+            'currency' => 'RUB',
+        ]);
+    }
+
+    private function generationPreferences(UpdatePlayerProfileRequest $request): JsonResponse
+    {
+        $playerProfile = $request->user()->playerProfile()->first();
+        $character = (array) data_get($playerProfile?->extra, 'character', []);
+        $teams = $this->playerGenerationTeams($request->user());
+
+        return response()->json([
+            'height_cm' => $playerProfile?->height_cm,
+            'weight_kg' => $playerProfile?->weight_kg !== null ? (float) $playerProfile->weight_kg : null,
+            'body_type' => $playerProfile?->body_type?->value,
+            'character' => $character,
+            'generation_team_id' => data_get($character, 'generation_team_id'),
+            'with_team_logo' => (bool) data_get($character, 'with_team_logo', false),
+            'teams' => $teams->map(fn (Team $team): array => [
+                'id' => (int) $team->id,
+                'name' => (string) $team->name,
+                'has_logo' => $team->logo !== null,
+            ])->values(),
+        ]);
+    }
+
+    private function generationHistory(UpdatePlayerProfileRequest $request): JsonResponse
+    {
+        $primaryId = (string) data_get(
+            $request->user()->playerProfile()->first()?->extra,
+            'character.primary_generation_id',
+            '',
+        );
+
+        $generations = PlayerCharacterGeneration::query()
+            ->whereIn('user_id', $request->user()->identityIds())
+            ->whereIn('status', [
+                PlayerCharacterGenerationStatusEnum::PENDING->value,
+                PlayerCharacterGenerationStatusEnum::PROCESSING->value,
+                PlayerCharacterGenerationStatusEnum::COMPLETED->value,
+            ])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get();
+
+        $completed = $generations->first(fn (PlayerCharacterGeneration $generation): bool =>
+            $generation->status === PlayerCharacterGenerationStatusEnum::COMPLETED
+            && $generation->result_disk !== null
+            && $generation->result_path !== null
+        );
+
+        $storedPrimary = $primaryId !== ''
+            ? $generations->first(fn (PlayerCharacterGeneration $generation): bool =>
+                $generation->public_id === $primaryId
+                && $generation->status === PlayerCharacterGenerationStatusEnum::COMPLETED
+            )
+            : null;
+        $effectivePrimaryId = $storedPrimary?->public_id ?: $completed?->public_id;
+
+        return response()->json([
+            'primary_generation_id' => $effectivePrimaryId,
+            'generations' => $generations->map(function (PlayerCharacterGeneration $generation) use ($effectivePrimaryId, $completed): array {
+                $isCompleted = $generation->status === PlayerCharacterGenerationStatusEnum::COMPLETED
+                    && $generation->result_disk !== null
+                    && $generation->result_path !== null;
+
+                return [
+                    'generation_id' => $generation->public_id,
+                    'status' => $generation->status->value,
+                    'image_url' => $isCompleted
+                        ? route('account.player-character.generations.image', [
+                            'generation' => $generation->public_id,
+                        ]).'?v='.$generation->updated_at?->getTimestamp()
+                        : null,
+                    'is_primary' => $isCompleted && $generation->public_id === $effectivePrimaryId,
+                    'is_new' => $isCompleted && $generation->public_id === $completed?->public_id,
+                    'created_at' => $generation->created_at?->toIso8601String(),
+                ];
+            })->values(),
+        ], 200, ['Cache-Control' => 'private, no-store']);
+    }
+
+    private function setPrimaryGeneration(UpdatePlayerProfileRequest $request): JsonResponse
+    {
+        $generationId = $request->generationId();
+        if ($generationId === null) {
+            return response()->json([
+                'code' => 'generation_missing',
+                'message' => 'Не выбрана генерация.',
+            ], 422);
+        }
+
+        $generation = PlayerCharacterGeneration::query()
+            ->whereIn('user_id', $request->user()->identityIds())
+            ->where('public_id', $generationId)
+            ->where('status', PlayerCharacterGenerationStatusEnum::COMPLETED->value)
+            ->whereNotNull('result_disk')
+            ->whereNotNull('result_path')
+            ->first();
+
+        if ($generation === null) {
+            return response()->json([
+                'code' => 'generation_unavailable',
+                'message' => 'Эта генерация недоступна.',
+            ], 404);
+        }
+
+        $playerProfile = $request->user()->playerProfile()->first();
+        if ($playerProfile === null) {
+            return response()->json([
+                'code' => 'profile_missing',
+                'message' => 'Профиль игрока не найден.',
+            ], 422);
+        }
+
+        $extra = is_array($playerProfile->extra) ? $playerProfile->extra : [];
+        $character = is_array($extra['character'] ?? null) ? $extra['character'] : [];
+        $character['primary_generation_id'] = $generation->public_id;
+        $extra['character'] = $character;
+        $playerProfile->forceFill(['extra' => $extra])->save();
+
+        return response()->json([
+            'message' => 'Главное изображение обновлено.',
+            'generation_id' => $generation->public_id,
+            'image_url' => route('account.player-character.generations.image', [
+                'generation' => $generation->public_id,
+            ]).'?v='.$generation->updated_at?->getTimestamp(),
+        ]);
+    }
+
+    /** @return Collection<int, Team> */
+    private function playerGenerationTeams(User $user): Collection
+    {
+        return Team::query()
+            ->with('logo')
+            ->whereNull('temporary_for_event_id')
+            ->whereHas('memberships', fn ($memberships) => $memberships
+                ->whereIn('user_id', $user->identityIds())
+                ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                ->withSportRole(TeamMemberTypeEnum::PLAYER)
+                ->whereHas('contract', fn ($contract) => $contract
+                    ->where('status', ContractStatusEnum::ACTIVE->value)))
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     private function generateTwoDimensional(
