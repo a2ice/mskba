@@ -139,6 +139,19 @@ jobs:
             exit 1
           fi
 
+          team_logo_url="$(jq -r '.team_logo_reference.url // empty' manifest.json)"
+          if [[ -n "${team_logo_url}" ]]; then
+            team_logo_mime="$(jq -r '.team_logo_reference.mime // "image/png"' manifest.json)"
+            case "${team_logo_mime}" in
+              image/jpeg) team_logo_ext="jpg" ;;
+              image/webp) team_logo_ext="webp" ;;
+              *) team_logo_ext="png" ;;
+            esac
+            team_logo_file="team-logo.${team_logo_ext}"
+            curl --fail-with-body --silent --show-error --location "${team_logo_url}" --output "${team_logo_file}"
+            image_args+=(--form "image[]=@${team_logo_file};type=${team_logo_mime}")
+          fi
+
           http_code="$(curl --silent --show-error \
             --output response.json \
             --write-out '%{http_code}' \

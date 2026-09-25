@@ -9,6 +9,7 @@ final class PlayerCharacterGenerationPromptBuilder
     {
         $appearance = (array) ($payload['appearance'] ?? []);
         $team = is_array($payload['team'] ?? null) ? $payload['team'] : null;
+        $withTeamLogo = (bool) ($team['with_logo'] ?? false);
 
         $description = [
             'gender' => $payload['gender'] ?? null,
@@ -21,6 +22,7 @@ final class PlayerCharacterGenerationPromptBuilder
             'team' => $team ? [
                 'name' => $team['name'] ?? null,
                 'colors' => $team['colors'] ?? null,
+                'with_logo' => $withTeamLogo,
             ] : null,
         ];
 
@@ -29,6 +31,14 @@ final class PlayerCharacterGenerationPromptBuilder
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT,
         );
 
+        $teamLogoInstruction = $withTeamLogo
+            ? <<<'TEXT'
+- A team-logo reference image is supplied after the face-reference images. Reproduce that logo faithfully on the jersey in a natural basketball-uniform placement. Use it only as a logo reference, never as a face/identity reference.
+TEXT
+            : <<<'TEXT'
+- Do not place a team logo on the uniform.
+TEXT;
+
         return <<<PROMPT
 Create ONE photorealistic full-body basketball player using all supplied face-reference images as identity references.
 
@@ -36,15 +46,21 @@ Reference mapping:
 - front is the frontal face reference;
 - left is the subject's left facial profile;
 - right is the subject's right facial profile.
+{$teamLogoInstruction}
 
 Identity:
-- Preserve the same person's facial identity from all reference images as closely as possible.
-- Use the reference images for identity only; do not copy their background, crop, lighting, clothing, or camera angle.
+- Preserve the same person's facial identity from all face-reference images as closely as possible.
+- Use face-reference images for identity only; do not copy their background, crop, lighting, clothing, or camera angle.
 
-Composition:
+Composition - STRICT:
 - One person only.
 - Full body from head to both feet, completely inside frame with comfortable transparent padding.
-- Standing upright, front-facing, neutral athletic stance, arms relaxed and slightly away from the torso.
+- Front view, facing the camera directly.
+- Standing upright in a neutral pose / neutral athletic stance.
+- Arms relaxed and slightly away from the torso; hands empty and clearly visible.
+- NO basketball. Do not put a basketball in either hand, under an arm, at the feet, or anywhere in the image.
+- NO props of any kind.
+- NO extra accessories unless explicitly selected in Character parameters.
 - Camera at approximately waist/chest height, natural perspective, no dramatic foreshortening.
 - Realistic anatomy and proportions appropriate for the requested height, weight, body type, and gender.
 - Basketball-player physique, not a bodybuilder caricature.
@@ -52,8 +68,8 @@ Composition:
 Clothing:
 - Modern basketball jersey and matching shorts.
 - If team colors are supplied, use those colors as the uniform palette.
-- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
-- Apply requested shoes and sports attributes naturally.
+{$teamLogoInstruction}- Do not invent brand logos, sponsors, text, names, numbers, watermarks, or badges.
+- Apply requested shoes and ONLY the explicitly requested sports attributes.
 
 OUTPUT REQUIREMENTS - STRICT:
 - Background MUST be fully transparent alpha, not white, black, gray, checkerboard, studio, floor, gradient, or scenery.

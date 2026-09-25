@@ -22,7 +22,7 @@ Route::get('/integrations/github-openai/player-character/{generation}/manifest',
 
 Route::get('/integrations/github-openai/player-character/{generation}/references/{slot}', GitHubOpenAiGenerationReferenceController::class)
     ->middleware(['signed', 'throttle:60,1'])
-    ->where('slot', 'front|left|right')
+    ->where('slot', 'front|left|right|team_logo')
     ->name('integrations.github-openai.player-character.reference');
 
 Route::post('/integrations/github-openai/player-character/{generation}/callback', GitHubOpenAiGenerationCallbackController::class)

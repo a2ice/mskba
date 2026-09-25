@@ -1,3 +1,5 @@
+import './player-character-generation-ux.js';
+
 const STORAGE_KEY = 'mskba:player-character-generation:v1';
 const POLL_INTERVAL_MS = 4000;
 const MAXIMUM_ATTEMPTS = 300;
