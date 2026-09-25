@@ -43,10 +43,26 @@ final class GitHubOpenAiGenerationManifestController extends Controller
 
         abort_if($referenceUrls === [], 422);
 
+        $teamLogoReference = null;
+        if (
+            (bool) data_get($generation->payload_snapshot, 'team.with_logo', false)
+            && isset($generation->reference_media_ids['team_logo'])
+        ) {
+            $teamLogoReference = [
+                'url' => URL::temporarySignedRoute(
+                    'integrations.github-openai.player-character.reference',
+                    now()->addMinutes($ttlMinutes),
+                    ['generation' => $generation->public_id, 'slot' => 'team_logo'],
+                ),
+                'mime' => (string) data_get($generation->payload_snapshot, 'team.logo_mime', 'image/png'),
+            ];
+        }
+
         return response()->json([
             'generation_id' => $generation->public_id,
             'prompt' => $promptBuilder->build((array) $generation->payload_snapshot),
             'references' => $referenceUrls,
+            'team_logo_reference' => $teamLogoReference,
             'callback_url' => route('integrations.github-openai.player-character.callback', [
                 'generation' => $generation->public_id,
             ]),
