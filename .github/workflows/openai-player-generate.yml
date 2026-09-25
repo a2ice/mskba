@@ -96,12 +96,20 @@ jobs:
             curl "${callback_args[@]}" >/dev/null
           }
 
+          notify_failure() {
+            local error_code="${1:-generation_failed}"
+            local error_message="${2:-OpenAI generation failed on GitHub runner.}"
+
+            if [[ -n "${callback_url}" ]]; then
+              callback failed "" "${error_code}" "${error_message}" \
+                || echo "Failed to deliver terminal generation callback." >&2
+            fi
+          }
+
           fail_callback() {
             local exit_code=$?
             trap - ERR
-            if [[ -n "${callback_url}" ]]; then
-              callback failed "" generation_failed "OpenAI generation failed on GitHub runner." || true
-            fi
+            notify_failure generation_failed "OpenAI generation failed on GitHub runner."
             exit "${exit_code}"
           }
           trap fail_callback ERR
@@ -136,7 +144,7 @@ jobs:
 
           if [[ "${#image_args[@]}" -lt 2 ]]; then
             echo "At least two face references are required." >&2
-            exit 1
+            false
           fi
 
           team_logo_url="$(jq -r '.team_logo_reference.url // empty' manifest.json)"
@@ -162,12 +170,20 @@ jobs:
             --form-string "prompt=${prompt}" \
             --form-string "size=${size}" \
             --form-string "quality=${quality}" \
-            --form-string "input_fidelity=high" \
             --form-string "background=${background}" \
             --form-string "output_format=${output_format}")"
 
           if [[ "${http_code}" -lt 200 || "${http_code}" -ge 300 ]]; then
-            echo "OpenAI image request failed with HTTP ${http_code}." >&2
+            provider_error="$(jq -r '.error.message // empty' response.json 2>/dev/null || true)"
+            provider_error="$(printf '%s' "${provider_error}" | tr '\r\n' ' ' | cut -c1-400)"
+            error_message="OpenAI generation request failed with HTTP ${http_code}."
+            if [[ -n "${provider_error}" ]]; then
+              error_message="OpenAI: ${provider_error}"
+            fi
+
+            echo "${error_message}" >&2
+            trap - ERR
+            notify_failure generation_failed "${error_message}"
             exit 1
           fi
 
