@@ -37,10 +37,9 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             ->assertOk()
             ->assertJsonPath('generation_id', $older->public_id);
 
-        $user->playerProfile()->firstOrFail()->refresh();
         $this->assertSame(
             $older->public_id,
-            data_get($user->playerProfile()->firstOrFail()->extra, 'character.primary_generation_id'),
+            data_get($user->playerProfile()->firstOrFail()->fresh()->extra, 'character.primary_generation_id'),
         );
 
         $this->actingAs($user)
@@ -90,6 +89,43 @@ final class PlayerCharacterGenerationUxTest extends TestCase
             ->assertJsonPath('with_team_logo', true)
             ->assertJsonPath('character.shoes', 'white')
             ->assertJsonPath('character.attributes.0', 'headband');
+    }
+
+    public function test_generation_start_persists_current_player_and_visual_settings(): void
+    {
+        $user = $this->player();
+
+        $this->actingAs($user)
+            ->patchJson(route('account.player-profile.update'), [
+                'mutation' => 'generate_2d',
+                'height_cm' => 199,
+                'weight_kg' => 97,
+                'body_type' => 'athletic',
+                'generation_with_team_logo' => false,
+                'character' => [
+                    'skin_tone' => 'tan',
+                    'hairstyle' => 'male_fade',
+                    'hair_color' => 'black',
+                    'facial_hair' => 'short_beard',
+                    'uniform_kit' => 'city_night',
+                    'shoes' => 'black',
+                    'attributes' => ['headband', 'knee_left', 'knee_right'],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'face_references_missing');
+
+        $profile = $user->playerProfile()->firstOrFail()->fresh();
+        $this->assertSame(199, $profile->height_cm);
+        $this->assertSame('97.0', (string) $profile->weight_kg);
+        $this->assertSame('athletic', $profile->body_type?->value);
+        $this->assertSame('city_night', data_get($profile->extra, 'character.uniform_kit'));
+        $this->assertSame('black', data_get($profile->extra, 'character.shoes'));
+        $this->assertSame(
+            ['headband', 'knee_left', 'knee_right'],
+            data_get($profile->extra, 'character.attributes'),
+        );
+        $this->assertFalse((bool) data_get($profile->extra, 'character.with_team_logo'));
     }
 
     public function test_generation_quote_uses_current_pricing_catalog(): void
