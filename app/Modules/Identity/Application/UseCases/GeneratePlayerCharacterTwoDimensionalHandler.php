@@ -94,6 +94,78 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             }
         }
 
+        $playerProfile = $user->playerProfile()->first();
+        $storedCharacter = (array) data_get($playerProfile?->extra, 'character', []);
+        $requestedCharacter = is_array($options['character'] ?? null) ? $options['character'] : [];
+        $character = array_merge($storedCharacter, $requestedCharacter);
+        $character['attributes'] = PlayerCharacterAppearanceOptions::normalizeAttributes(
+            (array) ($character['attributes'] ?? []),
+        );
+
+        $team = null;
+        $teamId = $options['team_id'] ?? null;
+        if ($teamId !== null) {
+            $team = Team::query()
+                ->with('logo')
+                ->whereKey((int) $teamId)
+                ->whereNull('temporary_for_event_id')
+                ->whereHas('memberships', fn ($memberships) => $memberships
+                    ->whereIn('user_id', $user->identityIds())
+                    ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
+                    ->withSportRole(TeamMemberTypeEnum::PLAYER)
+                    ->whereHas('contract', fn ($contract) => $contract
+                        ->where('status', ContractStatusEnum::ACTIVE->value)))
+                ->first(['id', 'name', 'colors']);
+
+            if ($team === null) {
+                throw new PlayerCharacterFlowException(
+                    'team_unavailable',
+                    'Выбранная команда недоступна для генерации.',
+                    422,
+                );
+            }
+        }
+
+        $withTeamLogo = (bool) ($options['with_team_logo'] ?? false);
+        if ($withTeamLogo && $team === null) {
+            throw new PlayerCharacterFlowException(
+                'team_logo_unavailable',
+                'Сначала выберите команду с логотипом.',
+                422,
+            );
+        }
+
+        if ($withTeamLogo && $team?->logo === null) {
+            throw new PlayerCharacterFlowException(
+                'team_logo_unavailable',
+                'У выбранной команды нет логотипа.',
+                422,
+            );
+        }
+
+        if ($playerProfile !== null) {
+            $extra = is_array($playerProfile->extra) ? $playerProfile->extra : [];
+            $persistedCharacter = is_array($extra['character'] ?? null) ? $extra['character'] : [];
+            $extra['character'] = array_merge($persistedCharacter, $character, [
+                'generation_team_id' => $team?->id,
+                'with_team_logo' => $withTeamLogo,
+            ]);
+
+            $profileUpdates = ['extra' => $extra];
+            if (array_key_exists('height_cm', $options)) {
+                $profileUpdates['height_cm'] = $options['height_cm'];
+            }
+            if (array_key_exists('weight_kg', $options)) {
+                $profileUpdates['weight_kg'] = $options['weight_kg'];
+            }
+            if (array_key_exists('body_type', $options)) {
+                $profileUpdates['body_type'] = $options['body_type'];
+            }
+
+            $playerProfile->forceFill($profileUpdates)->save();
+            $playerProfile->refresh();
+        }
+
         $references = $this->confirmedReferences($user);
         $effectiveSlots = array_fill_keys($references->keys()->all(), true);
 
@@ -204,35 +276,21 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
             ];
         }
 
-        $playerProfile = $user->playerProfile()->first();
-        $storedCharacter = (array) data_get($playerProfile?->extra, 'character', []);
-        $requestedCharacter = is_array($options['character'] ?? null) ? $options['character'] : [];
-        $character = array_merge($storedCharacter, $requestedCharacter);
-        $character['attributes'] = PlayerCharacterAppearanceOptions::normalizeAttributes(
-            (array) ($character['attributes'] ?? []),
-        );
-
-        $team = null;
-        $teamId = $options['team_id'] ?? null;
-        if ($teamId !== null) {
-            $team = Team::query()
-                ->whereKey((int) $teamId)
-                ->whereNull('temporary_for_event_id')
-                ->whereHas('memberships', fn ($memberships) => $memberships
-                    ->whereIn('user_id', $user->identityIds())
-                    ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)
-                    ->withSportRole(TeamMemberTypeEnum::PLAYER)
-                    ->whereHas('contract', fn ($contract) => $contract
-                        ->where('status', ContractStatusEnum::ACTIVE->value)))
-                ->first(['id', 'name', 'colors']);
-
-            if ($team === null) {
+        $teamLogoPayload = null;
+        if ($withTeamLogo && $team?->logo !== null) {
+            $logoDisk = Storage::disk($team->logo->disk);
+            if (! $logoDisk->exists($team->logo->path)) {
                 throw new PlayerCharacterFlowException(
-                    'team_unavailable',
-                    'Выбранная команда недоступна для генерации.',
+                    'team_logo_unavailable',
+                    'Логотип выбранной команды временно недоступен.',
                     422,
                 );
             }
+
+            $teamLogoPayload = [
+                'contents' => $logoDisk->get($team->logo->path),
+                'mime' => $team->logo->mime ?: 'image/png',
+            ];
         }
 
         $generationPayload = [
@@ -252,13 +310,29 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'id' => $team->id,
                 'name' => $team->name,
                 'colors' => $team->colors,
+                'with_logo' => $withTeamLogo,
+                'logo_mime' => $withTeamLogo ? ($team->logo?->mime ?: 'image/png') : null,
             ] : null,
             'face_references' => $facePayload,
+            'team_logo_reference' => $teamLogoPayload,
         ];
 
         $generation = null;
 
         if ($this->ai instanceof AsynchronousPlayerCharacterAiGateway) {
+            $referenceMediaIds = $references
+                ->mapWithKeys(fn ($media, string $slot): array => [$slot => (int) $media->id])
+                ->all();
+
+            if ($withTeamLogo && $team?->logo !== null) {
+                $referenceMediaIds['team_logo'] = (int) $team->logo->id;
+            }
+
+            $payloadSnapshot = collect($generationPayload)
+                ->except(['face_references', 'team_logo_reference'])
+                ->all();
+            $payloadSnapshot['price_minor'] = $priceMinor;
+
             $generation = PlayerCharacterGeneration::query()->create([
                 'public_id' => (string) Str::uuid(),
                 // References belong to the profile that initiated the request.
@@ -266,10 +340,8 @@ final readonly class GeneratePlayerCharacterTwoDimensionalHandler
                 'user_id' => $user->id,
                 'provider' => 'github_openai',
                 'status' => PlayerCharacterGenerationStatusEnum::PENDING,
-                'reference_media_ids' => $references
-                    ->mapWithKeys(fn ($media, string $slot): array => [$slot => (int) $media->id])
-                    ->all(),
-                'payload_snapshot' => collect($generationPayload)->except('face_references')->all(),
+                'reference_media_ids' => $referenceMediaIds,
+                'payload_snapshot' => $payloadSnapshot,
                 'expires_at' => now()->addSeconds(
                     max(300, (int) config('services.github_openai.generation_timeout_seconds', 1200)),
                 ),
