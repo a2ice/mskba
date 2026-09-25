@@ -117,7 +117,7 @@ final class PlayerCharacterGenerationUxTest extends TestCase
 
         $profile = $user->playerProfile()->firstOrFail()->fresh();
         $this->assertSame(199, $profile->height_cm);
-        $this->assertSame('97.0', (string) $profile->weight_kg);
+        $this->assertSame(97.0, (float) $profile->weight_kg);
         $this->assertSame('athletic', $profile->body_type?->value);
         $this->assertSame('city_night', data_get($profile->extra, 'character.uniform_kit'));
         $this->assertSame('black', data_get($profile->extra, 'character.shoes'));
