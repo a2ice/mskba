@@ -122,7 +122,7 @@ final class PlayerCharacterGenerationUxTest extends TestCase
         $this->assertSame('city_night', data_get($profile->extra, 'character.uniform_kit'));
         $this->assertSame('black', data_get($profile->extra, 'character.shoes'));
         $this->assertSame(
-            ['headband', 'knee_left', 'knee_right'],
+            ['knee_left', 'knee_right', 'headband'],
             data_get($profile->extra, 'character.attributes'),
         );
         $this->assertFalse((bool) data_get($profile->extra, 'character.with_team_logo'));
