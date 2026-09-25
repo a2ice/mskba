@@ -84,6 +84,11 @@ function setStageBusy(stage, busy) {
         loading.hidden = !busy;
     }
 
+    const generationOverlay = stage.querySelector('[data-player-generation-overlay]');
+    if (generationOverlay) {
+        generationOverlay.hidden = !busy;
+    }
+
     const form = stage.closest('form');
     const generate = form?.querySelector('[data-player-character-generate]');
     if (generate) {
@@ -201,7 +206,8 @@ async function pollGeneration(record) {
             }
         }
 
-        throw new Error('Генерация занимает слишком много времени. Проверьте результат позже.');
+        clearStoredGeneration(record.generationId);
+        throw new Error('Генерация не завершилась в отведённое время. Попробуйте запустить её ещё раз.');
     } catch (error) {
         setStageError(stage, error?.message || 'Не удалось сгенерировать 2D-модель.');
     } finally {
