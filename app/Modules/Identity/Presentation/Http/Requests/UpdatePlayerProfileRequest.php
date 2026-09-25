@@ -33,7 +33,15 @@ final class UpdatePlayerProfileRequest extends FormRequest
             : PlayerCharacterAppearanceOptions::FACIAL_HAIR;
 
         $rules = [
-            'mutation' => ['nullable', Rule::in(['render_mode', 'face_reference', 'generate_2d'])],
+            'mutation' => ['nullable', Rule::in([
+                'render_mode',
+                'face_reference',
+                'generate_2d',
+                'generation_quote',
+                'generation_preferences',
+                'generation_history',
+                'generation_primary',
+            ])],
             'render_mode' => [
                 'nullable',
                 Rule::requiredIf(fn (): bool => $this->input('mutation') === 'render_mode'),
@@ -52,6 +60,12 @@ final class UpdatePlayerProfileRequest extends FormRequest
                 'max:5120',
             ],
             'generation_team_id' => ['nullable', 'integer'],
+            'generation_with_team_logo' => ['nullable', 'boolean'],
+            'generation_id' => [
+                'nullable',
+                Rule::requiredIf(fn (): bool => $this->input('mutation') === 'generation_primary'),
+                'uuid',
+            ],
             'generation_face_references' => ['nullable', 'array:front,left,right'],
             'generation_face_references.*' => [
                 'file',
@@ -116,6 +130,13 @@ final class UpdatePlayerProfileRequest extends FormRequest
         $file = $this->file('face_reference');
 
         return $file instanceof UploadedFile ? $file : null;
+    }
+
+    public function generationId(): ?string
+    {
+        $generationId = $this->validated('generation_id');
+
+        return is_string($generationId) && $generationId !== '' ? $generationId : null;
     }
 
     /**
@@ -216,6 +237,10 @@ final class UpdatePlayerProfileRequest extends FormRequest
             $options['team_id'] = $this->filled('generation_team_id')
                 ? (int) $this->input('generation_team_id')
                 : null;
+        }
+
+        if ($this->has('generation_with_team_logo')) {
+            $options['with_team_logo'] = $this->boolean('generation_with_team_logo');
         }
 
         if ($this->has('character')) {
