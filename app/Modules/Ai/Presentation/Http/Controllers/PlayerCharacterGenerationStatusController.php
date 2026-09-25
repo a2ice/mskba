@@ -19,7 +19,22 @@ final class PlayerCharacterGenerationStatusController extends Controller
             ->whereIn('user_id', $request->user()->identityIds());
 
         if ($generation === 'latest') {
-            $generation = $query
+            $primaryId = (string) data_get(
+                $request->user()->playerProfile()->first()?->extra,
+                'character.primary_generation_id',
+                '',
+            );
+
+            $generation = $primaryId !== ''
+                ? (clone $query)
+                    ->where('public_id', $primaryId)
+                    ->where('status', PlayerCharacterGenerationStatusEnum::COMPLETED->value)
+                    ->whereNotNull('result_disk')
+                    ->whereNotNull('result_path')
+                    ->first()
+                : null;
+
+            $generation ??= $query
                 ->where('status', PlayerCharacterGenerationStatusEnum::COMPLETED->value)
                 ->whereNotNull('result_disk')
                 ->whereNotNull('result_path')
@@ -59,6 +74,7 @@ final class PlayerCharacterGenerationStatusController extends Controller
             'generation_id' => $generation->public_id,
             'status' => $generation->status->value,
             'message' => $generation->status->label(),
+            'price_minor' => (int) data_get($generation->payload_snapshot, 'price_minor', 0),
         ];
 
         if ($generation->status === PlayerCharacterGenerationStatusEnum::COMPLETED) {
