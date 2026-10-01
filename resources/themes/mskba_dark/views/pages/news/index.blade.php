@@ -1,4 +1,29 @@
-@php $title = 'Новости'; @endphp
+@php
+    $title = 'Новости';
+    $currentPage = $contentItems->currentPage();
+    $metaTitle = $currentPage > 1
+        ? 'Новости баскетбола и стритбола — страница '.$currentPage.' — MSKBA'
+        : 'Новости баскетбола и стритбола — MSKBA';
+    $metaDescription = 'Новости MSKBA о баскетболе и стритболе: игры, турниры, площадки, команды, уличная культура и жизнь сообщества.';
+    $canonicalUrl = route('news.index', $currentPage > 1 ? ['page' => $currentPage] : []);
+    $paginationPrev = $contentItems->previousPageUrl();
+    $paginationNext = $contentItems->nextPageUrl();
+    $metaRobots = $contentItems->isEmpty() && $currentPage > 1
+        ? 'noindex, follow'
+        : 'index, follow, max-image-preview:large';
+    $structuredData = [
+        '@context' => 'https://schema.org',
+        '@type' => 'CollectionPage',
+        'name' => $metaTitle,
+        'description' => $metaDescription,
+        'url' => $canonicalUrl,
+        'isPartOf' => [
+            '@type' => 'WebSite',
+            'name' => 'MSKBA',
+            'url' => url('/'),
+        ],
+    ];
+@endphp
 
 @extends('theme::layouts.section-sidebar', [
     'title' => $title,
@@ -31,7 +56,7 @@
                 <article class="news-card">
                     <a class="news-card__media" href="{{ route('news.show', $contentItem->alias) }}" @if(! $cover) aria-label="{{ $contentItem->title }}" @endif>
                         @if($cover)
-                            <img src="{{ $cover->publicUrl() }}" alt="" loading="lazy">
+                            <img src="{{ $cover->publicUrl() }}" alt="{{ $cover->title ?: $contentItem->title }}" loading="lazy">
                         @else
                             <span class="news-card__placeholder" aria-hidden="true"><i class="ti ti-basketball"></i></span>
                         @endif

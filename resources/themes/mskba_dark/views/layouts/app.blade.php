@@ -1,11 +1,29 @@
 @php
     $theme = app(\App\Presentation\Theming\ThemeResolver::class);
+    $siteName = (string) config('seo.site_name', config('app.name', 'MSKBA'));
     $pageTitle = isset($metaTitle)
-        ? $metaTitle
-        : (isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA'));
-    $pageDescription = isset($metaDescription) ? trim((string) $metaDescription) : null;
+        ? trim((string) $metaTitle)
+        : (isset($title) ? trim((string) $title).' · '.$siteName : (string) config('seo.default_title', $siteName));
+    $pageDescription = trim((string) ($metaDescription ?? config('seo.default_description', '')));
     $pageKeywords = isset($metaKeywords) ? trim((string) $metaKeywords) : null;
     $pageCanonical = $canonicalUrl ?? url()->current();
+    $pageLanguage = (string) ($metaLanguage ?? config('seo.language', 'ru'));
+    $pageLocale = (string) ($metaLocale ?? config('seo.locale', 'ru_RU'));
+    $pageImageValue = trim((string) ($metaImage ?? ''));
+    $pageImage = $pageImageValue !== ''
+        ? (\Illuminate\Support\Str::startsWith($pageImageValue, ['http://', 'https://']) ? $pageImageValue : url($pageImageValue))
+        : asset((string) config('seo.default_image', 'images/logo-with-ball.png'));
+    $pageImageAlt = trim((string) ($metaImageAlt ?? $pageTitle));
+
+    $routeName = Route::currentRouteName() ?? '';
+    $isNonIndexableRoute = \Illuminate\Support\Str::startsWith($routeName, [
+        'admin.',
+        'account.',
+        'auth.',
+        'integrations.',
+    ]) || request()->is('api/*');
+    $pageRobots = (string) ($metaRobots
+        ?? ($isNonIndexableRoute ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'));
     $contextManagementPlacement = $contextManagementPlacement ?? 'top';
 
     $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
@@ -40,7 +58,7 @@
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ $pageLanguage }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -52,21 +70,57 @@
         <link rel="manifest" href="{{ asset('site.webmanifest') }}">
         <meta name="yandex-verification" content="5e74a0d5140e0b49" />
         <title>{{ $pageTitle }}</title>
-        @if($pageDescription)
+        @if($pageDescription !== '')
             <meta name="description" content="{{ $pageDescription }}">
         @endif
         @if($pageKeywords)
             <meta name="keywords" content="{{ $pageKeywords }}">
         @endif
+        <meta name="robots" content="{{ $pageRobots }}">
         <link rel="canonical" href="{{ $pageCanonical }}">
+        @if(! empty($paginationPrev))
+            <link rel="prev" href="{{ $paginationPrev }}">
+        @endif
+        @if(! empty($paginationNext))
+            <link rel="next" href="{{ $paginationNext }}">
+        @endif
+
+        <meta property="og:site_name" content="{{ $siteName }}">
+        <meta property="og:locale" content="{{ $pageLocale }}">
         <meta property="og:title" content="{{ $pageTitle }}">
-        @if($pageDescription)
+        @if($pageDescription !== '')
             <meta property="og:description" content="{{ $pageDescription }}">
         @endif
         <meta property="og:url" content="{{ $pageCanonical }}">
         <meta property="og:type" content="{{ $metaType ?? 'website' }}">
-        @if(! empty($metaImage))
-            <meta property="og:image" content="{{ $metaImage }}">
+        <meta property="og:image" content="{{ $pageImage }}">
+        <meta property="og:image:alt" content="{{ $pageImageAlt }}">
+        @if(! empty($metaPublishedTime))
+            <meta property="article:published_time" content="{{ $metaPublishedTime }}">
+        @endif
+        @if(! empty($metaModifiedTime))
+            <meta property="article:modified_time" content="{{ $metaModifiedTime }}">
+        @endif
+
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $pageTitle }}">
+        @if($pageDescription !== '')
+            <meta name="twitter:description" content="{{ $pageDescription }}">
+        @endif
+        <meta name="twitter:image" content="{{ $pageImage }}">
+        <meta name="twitter:image:alt" content="{{ $pageImageAlt }}">
+
+        @if(! empty($structuredData))
+            <script type="application/ld+json">{!! json_encode(
+                $structuredData,
+                JSON_UNESCAPED_UNICODE
+                    | JSON_UNESCAPED_SLASHES
+                    | JSON_HEX_TAG
+                    | JSON_HEX_AMP
+                    | JSON_HEX_APOS
+                    | JSON_HEX_QUOT
+                    | JSON_THROW_ON_ERROR
+            ) !!}</script>
         @endif
         @include('partials.analytics.yandex-metrika')
         @if($isTelegramMiniApp)

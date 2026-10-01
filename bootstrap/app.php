@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             __DIR__.'/../routes/game-recruitment.php',
             __DIR__.'/../routes/venue-activities.php',
             __DIR__.'/../routes/feed.php',
+            __DIR__.'/../routes/seo.php',
             __DIR__.'/../routes/reactions.php',
             __DIR__.'/../routes/acquisition.php',
             __DIR__.'/../routes/identity-organizer.php',

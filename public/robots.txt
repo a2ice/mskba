@@ -1,2 +1,9 @@
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin/
+Disallow: /account/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /integrations/
+
+Sitemap: https://mskba.ru/sitemap.xml

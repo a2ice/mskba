@@ -1,0 +1,30 @@
+# 001 - SEO foundation
+
+## Цель
+
+Устранить базовые технические SEO-проблемы до начала масштабного производства контента.
+
+## Статус
+
+Готово к merge: PR #282, CI green.
+
+## Состав
+
+- русский `lang` для публичного документа;
+- default и page-specific description;
+- robots meta для публичных и служебных маршрутов;
+- canonical + prev/next для ленты;
+- Open Graph + Twitter Card;
+- JSON-LD для главной и новостных материалов;
+- динамический sitemap публичных сущностей;
+- robots.txt со ссылкой на sitemap и закрытием служебных зон;
+- смысловые alt для обложек новостей и динамических карточек главной;
+- feature-проверки ключевого SEO-контракта.
+
+## Результат
+
+После merge production должен отдавать `/sitemap.xml`, корректный русский language/meta layer и structured data без ручной настройки для каждой новой новости.
+
+## Проверка
+
+GitHub Actions CI #380: PHP tests и frontend production build завершены успешно.
