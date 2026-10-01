@@ -6,8 +6,58 @@
     $metaDescription = $contentItem->meta_description ?: $contentItem->short_description;
     $metaKeywords = $contentItem->meta_keywords;
     $metaImage = $cover?->publicUrl();
+    $metaImageAlt = $cover?->title ?: $contentItem->title;
     $metaType = 'article';
     $canonicalUrl = $contentItem->publicUrl();
+    $metaPublishedTime = $contentItem->feed_published_at?->toIso8601String();
+    $metaModifiedTime = $contentItem->updated_at?->toIso8601String();
+    $articleImage = $metaImage
+        ? (\Illuminate\Support\Str::startsWith($metaImage, ['http://', 'https://']) ? $metaImage : url($metaImage))
+        : null;
+    $structuredData = [
+        [
+            '@context' => 'https://schema.org',
+            '@type' => 'NewsArticle',
+            'headline' => $contentItem->title,
+            'description' => $metaDescription,
+            'mainEntityOfPage' => $canonicalUrl,
+            'datePublished' => $metaPublishedTime,
+            'dateModified' => $metaModifiedTime,
+            'image' => $articleImage ? [$articleImage] : null,
+            'author' => [
+                '@type' => 'Organization',
+                'name' => 'MSKBA',
+                'url' => url('/'),
+            ],
+            'publisher' => [
+                '@type' => 'Organization',
+                'name' => 'MSKBA',
+                'url' => url('/'),
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => asset('images/logo.png'),
+                ],
+            ],
+        ],
+        [
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => [
+                [
+                    '@type' => 'ListItem',
+                    'position' => 1,
+                    'name' => 'Новости',
+                    'item' => route('news.index'),
+                ],
+                [
+                    '@type' => 'ListItem',
+                    'position' => 2,
+                    'name' => $contentItem->title,
+                    'item' => $canonicalUrl,
+                ],
+            ],
+        ],
+    ];
     $breadcrumbs = [
         ['label' => 'Новости', 'url' => route('news.index')],
         ['label' => $contentItem->title],
@@ -43,7 +93,7 @@
         </header>
 
         @if($cover)
-            <img class="news-article__cover" src="{{ $cover->publicUrl() }}" alt="">
+            <img class="news-article__cover" src="{{ $cover->publicUrl() }}" alt="{{ $metaImageAlt }}">
         @endif
 
         <div class="news-article__content">{!! $contentHtml !!}</div>
