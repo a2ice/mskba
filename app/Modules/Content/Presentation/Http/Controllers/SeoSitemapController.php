@@ -9,7 +9,6 @@ use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
 use App\Modules\SportsSection\Domain\Enums\SportsSectionStatusEnum;
 use App\Modules\SportsSection\Domain\Models\SportsSection;
-use App\Modules\Team\Domain\Enums\TeamStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
 use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
@@ -59,7 +58,7 @@ final class SeoSitemapController extends Controller
 
         $this->append(
             $urls,
-            Team::query()->where('status', TeamStatusEnum::ACTIVE->value)->orderBy('id')->get(['id', 'alias', 'updated_at']),
+            Team::query()->competitionEligible()->orderBy('id')->get(['id', 'alias', 'updated_at']),
             fn (Team $team): string => route('teams.show', $team->routeIdentifier()),
         );
 
