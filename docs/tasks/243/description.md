@@ -36,11 +36,12 @@ Google Search Console через доступный connector на момент 
 
 ## Этапы
 
-- [ ] 001 - SEO foundation
-- [ ] 002 - Social publication abstraction + VK
-- [ ] 003 - Instagram publication
-- [ ] 004 - Content sources admin
-- [ ] 005 - Ingestion and deduplication
-- [ ] 006 - AI editorial draft and image
-- [ ] 007 - Editorial queue and scheduler
-- [ ] 008 - SEO/traffic measurement loop
+- [x] 001 - SEO foundation (PR #282, CI green; ожидает merge)
+- [ ] 002 - Public page SEO templates and structured data
+- [ ] 003 - Social publication abstraction + VK
+- [ ] 004 - Instagram publication
+- [ ] 005 - Content sources admin
+- [ ] 006 - Ingestion and deduplication
+- [ ] 007 - AI editorial draft and image
+- [ ] 008 - Editorial queue and scheduler
+- [ ] 009 - SEO/traffic measurement loop
