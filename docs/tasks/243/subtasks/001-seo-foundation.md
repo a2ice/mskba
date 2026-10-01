@@ -6,7 +6,7 @@
 
 ## Статус
 
-В работе.
+Готово к merge: PR #282, CI green.
 
 ## Состав
 
@@ -24,3 +24,7 @@
 ## Результат
 
 После merge production должен отдавать `/sitemap.xml`, корректный русский language/meta layer и structured data без ручной настройки для каждой новой новости.
+
+## Проверка
+
+GitHub Actions CI #380: PHP tests и frontend production build завершены успешно.
