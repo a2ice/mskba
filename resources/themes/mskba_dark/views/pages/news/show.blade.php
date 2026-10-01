@@ -6,8 +6,36 @@
     $metaDescription = $contentItem->meta_description ?: $contentItem->short_description;
     $metaKeywords = $contentItem->meta_keywords;
     $metaImage = $cover?->publicUrl();
+    $metaImageAlt = $contentItem->title;
     $metaType = 'article';
     $canonicalUrl = $contentItem->publicUrl();
+    $structuredData = [[
+        '@context' => 'https://schema.org',
+        '@type' => 'NewsArticle',
+        'headline' => $contentItem->title,
+        'description' => $metaDescription,
+        'datePublished' => $contentItem->feed_published_at?->toIso8601String(),
+        'dateModified' => $contentItem->updated_at?->toIso8601String(),
+        'mainEntityOfPage' => [
+            '@type' => 'WebPage',
+            '@id' => $canonicalUrl,
+        ],
+        'author' => [
+            '@type' => 'Organization',
+            'name' => config('seo.site_name', 'MSKBA'),
+            'url' => route('welcome'),
+        ],
+        'publisher' => [
+            '@type' => 'Organization',
+            'name' => config('seo.site_name', 'MSKBA'),
+            'url' => route('welcome'),
+            'logo' => [
+                '@type' => 'ImageObject',
+                'url' => asset((string) config('seo.organization_logo', 'images/logo.png')),
+            ],
+        ],
+        ...($metaImage ? ['image' => [$metaImage]] : []),
+    ]];
     $breadcrumbs = [
         ['label' => 'Новости', 'url' => route('news.index')],
         ['label' => $contentItem->title],
@@ -43,7 +71,7 @@
         </header>
 
         @if($cover)
-            <img class="news-article__cover" src="{{ $cover->publicUrl() }}" alt="">
+            <img class="news-article__cover" src="{{ $cover->publicUrl() }}" alt="{{ $contentItem->title }}">
         @endif
 
         <div class="news-article__content">{!! $contentHtml !!}</div>

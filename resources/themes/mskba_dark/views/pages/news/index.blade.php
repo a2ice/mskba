@@ -1,4 +1,16 @@
-@php $title = 'Новости'; @endphp
+@php
+    $title = 'Новости';
+    $feedPage = $contentItems->currentPage();
+    $metaTitle = $feedPage > 1
+        ? 'Новости MSKBA — страница '.$feedPage
+        : 'Новости MSKBA — баскетбол и стритбол';
+    $metaDescription = 'Новости баскетбола и стритбола: Москва, команды, площадки, турниры и жизнь сообщества MSKBA.';
+    $canonicalUrl = $feedPage > 1
+        ? route('news.index', ['page' => $feedPage])
+        : route('news.index');
+    $paginationPrevUrl = $contentItems->previousPageUrl();
+    $paginationNextUrl = $contentItems->nextPageUrl();
+@endphp
 
 @extends('theme::layouts.section-sidebar', [
     'title' => $title,
@@ -31,7 +43,7 @@
                 <article class="news-card">
                     <a class="news-card__media" href="{{ route('news.show', $contentItem->alias) }}" @if(! $cover) aria-label="{{ $contentItem->title }}" @endif>
                         @if($cover)
-                            <img src="{{ $cover->publicUrl() }}" alt="" loading="lazy">
+                            <img src="{{ $cover->publicUrl() }}" alt="{{ $contentItem->title }}" loading="lazy">
                         @else
                             <span class="news-card__placeholder" aria-hidden="true"><i class="ti ti-basketball"></i></span>
                         @endif
