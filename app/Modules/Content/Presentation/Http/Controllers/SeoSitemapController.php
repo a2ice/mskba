@@ -29,9 +29,9 @@ final class SeoSitemapController extends Controller
             $this->entry(route('teams.index')),
             $this->entry(route('tournaments.index')),
             $this->entry(route('sports-sections.index')),
-            $this->entry(route('players')),
-            $this->entry(route('coaches')),
-            $this->entry(route('participants')),
+            $this->entry(route('participants.players')),
+            $this->entry(route('participants.coaches')),
+            $this->entry(route('participants.index')),
         ]);
 
         $this->append(
