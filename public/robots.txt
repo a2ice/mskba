@@ -1,2 +1,4 @@
 User-agent: *
 Disallow:
+
+Sitemap: https://mskba.ru/sitemap.xml

@@ -1,14 +1,52 @@
 @php
     $theme = app(\App\Presentation\Theming\ThemeResolver::class);
+    $routeName = Route::currentRouteName() ?? 'default';
+    $routeSeo = (config('seo.pages', [])[$routeName] ?? []);
     $pageTitle = isset($metaTitle)
         ? $metaTitle
-        : (isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA'));
-    $pageDescription = isset($metaDescription) ? trim((string) $metaDescription) : null;
+        : ($routeSeo['title'] ?? (isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA')));
+    $pageDescription = isset($metaDescription)
+        ? trim((string) $metaDescription)
+        : (isset($routeSeo['description']) ? trim((string) $routeSeo['description']) : null);
     $pageKeywords = isset($metaKeywords) ? trim((string) $metaKeywords) : null;
     $pageCanonical = $canonicalUrl ?? url()->current();
+    $pageRobots = isset($metaRobots) ? trim((string) $metaRobots) : null;
+    $pageImage = ! empty($metaImage)
+        ? $metaImage
+        : asset((string) config('seo.default_image', 'images/bg-home-welcome-screen.png'));
+    $pageImageAlt = isset($metaImageAlt) && filled($metaImageAlt) ? trim((string) $metaImageAlt) : $pageTitle;
+    $structuredDataItems = [];
+
+    if ($routeName === 'welcome') {
+        $structuredDataItems[] = [
+            '@context' => 'https://schema.org',
+            '@type' => 'SportsOrganization',
+            'name' => (string) config('seo.site_name', 'MSKBA'),
+            'url' => route('welcome'),
+            'logo' => asset((string) config('seo.organization_logo', 'images/logo.png')),
+            'sameAs' => array_values(array_filter((array) config('seo.same_as', []))),
+        ];
+        $structuredDataItems[] = [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => (string) config('seo.site_name', 'MSKBA'),
+            'url' => route('welcome'),
+            'inLanguage' => (string) config('seo.html_lang', 'ru'),
+        ];
+    }
+
+    if (! empty($structuredData)) {
+        $additionalStructuredData = isset($structuredData['@context']) ? [$structuredData] : $structuredData;
+        foreach ((array) $additionalStructuredData as $structuredDataItem) {
+            if (is_array($structuredDataItem)) {
+                $structuredDataItems[] = $structuredDataItem;
+            }
+        }
+    }
+
     $contextManagementPlacement = $contextManagementPlacement ?? 'top';
 
-    $routeClass = 'page-'.str_replace('.', '-', Route::currentRouteName() ?? 'default');
+    $routeClass = 'page-'.str_replace('.', '-', $routeName);
 
     $isTelegramMiniApp = ($telegramMiniApp ?? false) === true
         || session()->get('telegram_mini_app_context') === true;
@@ -40,7 +78,7 @@
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ config('seo.html_lang', 'ru') }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -58,16 +96,36 @@
         @if($pageKeywords)
             <meta name="keywords" content="{{ $pageKeywords }}">
         @endif
+        @if($pageRobots)
+            <meta name="robots" content="{{ $pageRobots }}">
+        @endif
         <link rel="canonical" href="{{ $pageCanonical }}">
+        @if(! empty($paginationPrevUrl))
+            <link rel="prev" href="{{ $paginationPrevUrl }}">
+        @endif
+        @if(! empty($paginationNextUrl))
+            <link rel="next" href="{{ $paginationNextUrl }}">
+        @endif
+        <meta property="og:site_name" content="{{ config('seo.site_name', 'MSKBA') }}">
+        <meta property="og:locale" content="{{ config('seo.og_locale', 'ru_RU') }}">
         <meta property="og:title" content="{{ $pageTitle }}">
         @if($pageDescription)
             <meta property="og:description" content="{{ $pageDescription }}">
         @endif
         <meta property="og:url" content="{{ $pageCanonical }}">
         <meta property="og:type" content="{{ $metaType ?? 'website' }}">
-        @if(! empty($metaImage))
-            <meta property="og:image" content="{{ $metaImage }}">
+        <meta property="og:image" content="{{ $pageImage }}">
+        <meta property="og:image:alt" content="{{ $pageImageAlt }}">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{{ $pageTitle }}">
+        @if($pageDescription)
+            <meta name="twitter:description" content="{{ $pageDescription }}">
         @endif
+        <meta name="twitter:image" content="{{ $pageImage }}">
+        <meta name="twitter:image:alt" content="{{ $pageImageAlt }}">
+        @foreach($structuredDataItems as $structuredDataItem)
+            <script type="application/ld+json">{!! json_encode($structuredDataItem, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
+        @endforeach
         @include('partials.analytics.yandex-metrika')
         @if($isTelegramMiniApp)
             <script async src="https://telegram.org/js/telegram-web-app.js" data-telegram-sdk></script>

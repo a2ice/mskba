@@ -16,6 +16,7 @@ use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageC
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
+use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueBookingAttendanceController;
 use App\Modules\Coordination\Presentation\Http\Controllers\VenueRentalCoordinationController;
@@ -95,6 +96,8 @@ $themeResolver = app(ThemeResolver::class);
 Route::get('/', function () use ($themeResolver) {
     return $themeResolver->page('welcome');
 })->name('welcome');
+
+Route::get('/sitemap.xml', SeoSitemapController::class)->name('seo.sitemap');
 
 Route::post('/site-summary/heartbeat', SiteSummaryController::class)
     ->middleware('throttle:30,1')
