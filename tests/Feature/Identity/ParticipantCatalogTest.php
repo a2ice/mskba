@@ -19,7 +19,7 @@ final class ParticipantCatalogTest extends TestCase
         $player = $this->participant('player', 'Игрок', 'Каталога');
         $coach = $this->participant('coach', 'Тренер', 'Каталога');
 
-        $this->get(route('participants.index'))
+        $response = $this->get(route('participants.index'))
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertSee('data-default-category', false)
@@ -31,8 +31,13 @@ final class ParticipantCatalogTest extends TestCase
             ->assertSee(route('participants.coaches'), false)
             ->assertSee(route('participants.index'), false)
             ->assertSee(route('teams.index'), false)
-            ->assertSeeInOrder(['Игроки', 'Тренеры', 'Все участники', 'Команды']);
+            ->assertSeeInOrder(['Игроки', 'Тренеры', 'Все участники', 'Команды'])
+            ->assertSee('data-context-submenu', false)
+            ->assertSee('Действия')
+            ->assertSee('data-handler="historyBack"', false)
+            ->assertSee('Назад');
 
+        $this->assertSame(1, substr_count($response->getContent(), 'class="page-breadcrumbs"'));
         $this->assertSame('/players', route('participants.players', [], false));
         $this->assertSame('/coaches', route('participants.coaches', [], false));
         $this->assertSame('/participants', route('participants.index', [], false));

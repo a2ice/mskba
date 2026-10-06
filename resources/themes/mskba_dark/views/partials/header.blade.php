@@ -29,7 +29,9 @@
 
         </div>
 
-        @include('theme::partials.context-submenu')
+        @unless($isMainPage ?? false)
+            @include('theme::partials.context-submenu')
+        @endunless
 
     </div>
 
