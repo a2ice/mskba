@@ -221,18 +221,35 @@ body:not(.main) .site-header > .header-wrapper {
 
 .context-submenu__dropdown-link {
     display: flex;
+    width: 100%;
     min-height: 34px;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     padding: 0 11px;
+    border: 0;
     border-radius: 7px;
+    background: transparent;
+    color: rgba(255, 255, 255, .78);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
     white-space: nowrap;
+    cursor: pointer;
 }
 
 .context-submenu__dropdown-link:hover,
 .context-submenu__dropdown-link:focus-visible {
     background: rgba(255, 111, 38, .13);
+    color: var(--accent-hover);
+}
+
+.context-submenu__divider {
+    display: block;
+    height: 1px;
+    margin: 6px 4px;
+    background: rgba(255, 255, 255, .12);
 }
 
 .context-submenu__dropdown-link--toggle::after {
