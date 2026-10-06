@@ -3,6 +3,7 @@
 namespace Tests\Feature\Rewards;
 
 use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Finance\Domain\Enums\WalletOperationTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -18,15 +19,15 @@ final class RewardsCatalogTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_initial_catalog_contains_planned_rewards_but_keeps_them_disabled(): void
+    public function test_initial_catalog_contains_implemented_and_enabled_rewards(): void
     {
         $referral = Reward::query()->where('code', 'referral_user_confirmed')->firstOrFail();
         $secondLevelReferral = Reward::query()->where('code', 'referral_second_level_user_confirmed')->firstOrFail();
         $venue = Reward::query()->where('code', 'venue_first_approval')->firstOrFail();
 
-        $this->assertFalse($referral->is_enabled);
-        $this->assertFalse($secondLevelReferral->is_enabled);
-        $this->assertFalse($venue->is_enabled);
+        $this->assertTrue($referral->is_enabled);
+        $this->assertTrue($secondLevelReferral->is_enabled);
+        $this->assertTrue($venue->is_enabled);
         $this->assertSame(30000, $referral->currentVersion()->firstOrFail()->amount_minor);
         $this->assertSame(10000, $secondLevelReferral->currentVersion()->firstOrFail()->amount_minor);
         $this->assertSame(10000, $venue->currentVersion()->firstOrFail()->amount_minor);
@@ -119,8 +120,25 @@ final class RewardsCatalogTest extends TestCase
     {
         $reward = Reward::query()->where('code', 'referral_user_confirmed')->firstOrFail();
         $version = $reward->currentVersion()->firstOrFail();
+        $admin = $this->superadmin();
 
-        $this->actingAs($this->superadmin())
+        $this->actingAs($admin)
+            ->put(route('admin.rewards.update', $reward), [
+                'name' => $reward->name,
+                'description' => $reward->description,
+                'mechanism_code' => 'not_implemented',
+                'is_enabled' => '0',
+                'amount_rub' => '300.00',
+                'recipient_description' => $version->recipient_description,
+                'trigger_description' => $version->trigger_description,
+                'conditions' => $version->conditions,
+            ])
+            ->assertRedirect();
+
+        $reward->refresh();
+        $version = $reward->currentVersion()->firstOrFail();
+
+        $this->actingAs($admin)
             ->from(route('admin.rewards.index'))
             ->put(route('admin.rewards.update', $reward), [
                 'name' => $reward->name,
@@ -230,6 +248,11 @@ final class TestRewardMechanism implements RewardMechanism
     public function label(): string
     {
         return 'Тестовый механизм';
+    }
+
+    public function walletOperationType(): WalletOperationTypeEnum
+    {
+        return WalletOperationTypeEnum::BONUS_GRANT;
     }
 
     public function parameterRules(): array

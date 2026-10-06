@@ -1,5 +1,9 @@
 <?php
 
+use App\Modules\Rewards\Application\Mechanisms\DirectReferralConfirmedMechanism;
+use App\Modules\Rewards\Application\Mechanisms\SecondLevelReferralConfirmedMechanism;
+use App\Modules\Rewards\Application\Mechanisms\VenueFirstApprovalMechanism;
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -11,5 +15,9 @@ return [
     | enabled until a matching RewardMechanism is registered.
     |
     */
-    'mechanisms' => [],
+    'mechanisms' => [
+        DirectReferralConfirmedMechanism::class,
+        SecondLevelReferralConfirmedMechanism::class,
+        VenueFirstApprovalMechanism::class,
+    ],
 ];

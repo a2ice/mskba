@@ -244,6 +244,7 @@ class User extends Authenticatable
         $this->forceFill([
             'status' => UserStatusEnum::CONFIRMED,
         ])->save();
+
     }
 
     /**
