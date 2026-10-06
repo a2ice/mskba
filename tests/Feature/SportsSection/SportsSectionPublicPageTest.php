@@ -146,6 +146,28 @@ final class SportsSectionPublicPageTest extends TestCase
             ->assertDontSee('former-section-coach');
     }
 
+
+    public function test_coach_without_public_distribution_consent_does_not_turn_public_section_page_into_404(): void
+    {
+        [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
+        $owner->forceFill([
+            'username' => 'consent-pending-section-coach',
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => null,
+        ])->save();
+
+        $section = $this->activeSection($actor);
+
+        $this->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertDontSee('data-entity-type="user"', false);
+
+        $this->actingAs($owner)
+            ->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertSee('data-entity-type="user"', false);
+    }
+
     public function test_recruitment_settings_persist_age_target_and_capacity(): void
     {
         [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);

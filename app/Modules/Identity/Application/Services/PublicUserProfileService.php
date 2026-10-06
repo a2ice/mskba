@@ -139,16 +139,32 @@ final class PublicUserProfileService
             ->orderBy('name')->get();
     }
 
-    public function preview(User $subject, ?User $viewer): array
+    public function canPreview(User $subject, ?User $viewer): bool
     {
         $subject = $subject->canonical();
-        abort_if($subject->isBlocked() || $subject->trashed(), 404);
+
+        if ($subject->isBlocked() || $subject->trashed()) {
+            return false;
+        }
+
         $sections = $this->sections($subject);
         $publicCoach = $sections->isNotEmpty()
             && $this->privacy->allowsDistribution($subject, Privacy::PROFILE)
             && $this->privacy->allowsDistribution($subject, Privacy::ROLE_COACH)
             && $this->privacy->allowsDistribution($subject, Privacy::COACH_SECTIONS);
-        abort_unless($publicCoach || $this->privacy->allows($subject, $viewer, Privacy::PROFILE), 404);
+
+        return $publicCoach || $this->privacy->allows($subject, $viewer, Privacy::PROFILE);
+    }
+
+    public function preview(User $subject, ?User $viewer): array
+    {
+        $subject = $subject->canonical();
+        abort_unless($this->canPreview($subject, $viewer), 404);
+        $sections = $this->sections($subject);
+        $publicCoach = $sections->isNotEmpty()
+            && $this->privacy->allowsDistribution($subject, Privacy::PROFILE)
+            && $this->privacy->allowsDistribution($subject, Privacy::ROLE_COACH)
+            && $this->privacy->allowsDistribution($subject, Privacy::COACH_SECTIONS);
         $subject->loadMissing(['profile.activeAvatar', 'telegramAccount', 'vkAccount']);
         $avatarAllowed = $this->privacy->allows($subject, $viewer, Privacy::AVATAR);
 
