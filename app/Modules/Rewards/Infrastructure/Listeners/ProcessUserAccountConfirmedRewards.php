@@ -13,6 +13,10 @@ final class ProcessUserAccountConfirmedRewards implements ShouldQueue
 {
     use Queueable;
 
+    public function __construct(
+        private readonly RewardEngine $engine,
+    ) {}
+
     public int $tries = 5;
 
     public function backoff(): array
@@ -20,7 +24,7 @@ final class ProcessUserAccountConfirmedRewards implements ShouldQueue
         return [5, 30, 120, 300];
     }
 
-    public function handle(UserAccountConfirmed $event, RewardEngine $engine): void
+    public function handle(UserAccountConfirmed $event): void
     {
         $user = User::query()->find($event->userId)?->canonical();
 
@@ -34,7 +38,7 @@ final class ProcessUserAccountConfirmedRewards implements ShouldQueue
             payload: ['confirmed_user_id' => (int) $user->id],
         );
 
-        $engine->process('referral_user_confirmed', $context);
-        $engine->process('referral_second_level_user_confirmed', $context);
+        $this->engine->process('referral_user_confirmed', $context);
+        $this->engine->process('referral_second_level_user_confirmed', $context);
     }
 }
