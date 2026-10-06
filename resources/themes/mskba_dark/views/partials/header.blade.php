@@ -29,6 +29,8 @@
 
         </div>
 
+        @include('theme::partials.context-submenu')
+
     </div>
 
 </header>
