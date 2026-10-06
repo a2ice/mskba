@@ -35,6 +35,6 @@ sudo systemctl reload nginx
 trap - ERR
 
 echo "Verifying canonical host policy"
-"$(dirname "$0")/check-canonical-host.sh"
+bash "$(dirname "$0")/check-canonical-host.sh"
 
 echo "Canonical host redirects installed successfully."
