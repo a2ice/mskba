@@ -56,6 +56,13 @@
             </button>
 
             <div class="context-submenu__dropdown" role="menu">
+                @if ($contextSubmenuItems !== [])
+                    <div class="context-submenu__group context-submenu__group--section" aria-label="Действия раздела">
+                        {!! $renderContextSubmenuItems($contextSubmenuItems) !!}
+                    </div>
+                    <span class="context-submenu__divider" aria-hidden="true"></span>
+                @endif
+
                 <div class="context-submenu__group context-submenu__group--system" aria-label="Системные действия">
                     <button
                         type="button"
@@ -75,14 +82,15 @@
                     >
                         Поделиться
                     </button>
-                </div>
 
-                @if ($contextSubmenuItems !== [])
-                    <span class="context-submenu__divider" aria-hidden="true"></span>
-                    <div class="context-submenu__group context-submenu__group--section" aria-label="Действия раздела">
-                        {!! $renderContextSubmenuItems($contextSubmenuItems) !!}
-                    </div>
-                @endif
+                    <a
+                        class="context-submenu__dropdown-link"
+                        href="{{ url('/faq') }}"
+                        role="menuitem"
+                    >
+                        Помощь
+                    </a>
+                </div>
             </div>
         </div>
     </div>
