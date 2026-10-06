@@ -8,6 +8,8 @@ use App\Modules\Finance\Domain\Enums\WalletOperationTypeEnum;
 use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
 use App\Modules\Finance\Domain\Models\Wallet;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Events\UserAccountConfirmed;
@@ -35,7 +37,7 @@ final class RewardMechanismPayoutTest extends TestCase
         $this->referral($referrer, $referred);
         $this->addVerifiedPrimaryEmail($referred);
 
-        $referred->confirmAccount();
+        $this->confirmAccount($referred);
 
         $this->assertSame(UserStatusEnum::CONFIRMED, $referred->refresh()->status);
         $this->assertSame(30_000, $this->bonusBalance($referrer));
@@ -70,7 +72,7 @@ final class RewardMechanismPayoutTest extends TestCase
         $this->referral($direct, $confirmed);
         $this->addVerifiedPrimaryEmail($confirmed);
 
-        $confirmed->confirmAccount();
+        $this->confirmAccount($confirmed);
 
         $this->assertSame(30_000, $this->bonusBalance($direct));
         $this->assertSame(10_000, $this->bonusBalance($root));
@@ -200,6 +202,19 @@ final class RewardMechanismPayoutTest extends TestCase
             'captured_at' => now()->subMinute(),
             'linked_at' => now(),
         ]);
+    }
+
+    private function confirmAccount(User $user): User
+    {
+        return app(CompleteAccountConfirmationWizardHandler::class)->handle(
+            user: $user,
+            role: UserParticipationRoleEnum::ORGANIZER,
+            firstName: null,
+            lastName: null,
+            middleName: null,
+            birthDate: null,
+            gender: null,
+        );
     }
 
     private function addVerifiedPrimaryEmail(User $user): void
