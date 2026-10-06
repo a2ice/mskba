@@ -1,8 +1,7 @@
 @php
     $contextBar = $contextBar ?? false;
     $showBack = $showBack ?? true;
-    $hasContextSubmenu = app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve() !== [];
-    $shouldRenderBreadcrumbs = $contextBar || ! $hasContextSubmenu;
+    $shouldRenderBreadcrumbs = $contextBar;
 
     $trail = app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
     $historyFallbackUrl = route('welcome');
