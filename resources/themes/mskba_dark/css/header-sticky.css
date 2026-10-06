@@ -84,10 +84,17 @@ body:not(.main) .site-header > .header-wrapper {
 
 
 /* Contextual navigation belongs to the header wrapper so it follows the same
-   normal/fixed/reveal lifecycle as the primary navigation. */
+   normal/fixed/reveal lifecycle as the primary navigation. Keep the main header
+   row above it so primary dropdowns can overlap the submenu. */
+.site-header-inner {
+    position: relative;
+    z-index: 2;
+}
+
+
 .context-submenu {
     position: relative;
-    z-index: 29;
+    z-index: 1;
     border-top: 1px solid rgba(255, 255, 255, .08);
     border-bottom: 1px solid rgba(255, 255, 255, .14);
     background: rgba(5, 6, 5, .82);
@@ -97,11 +104,10 @@ body:not(.main) .site-header > .header-wrapper {
 
 .context-submenu__inner {
     display: flex;
-    min-height: 38px;
     align-items: center;
     gap: 24px;
-    padding-top: 0;
-    padding-bottom: 0;
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
 
 .context-submenu__item {
@@ -112,9 +118,9 @@ body:not(.main) .site-header > .header-wrapper {
 
 .context-submenu__link {
     display: inline-flex;
-    min-height: 38px;
     align-items: center;
     gap: 7px;
+    line-height: 1.2;
     color: rgba(255, 255, 255, .76);
     font-size: 12px;
     font-weight: 700;
