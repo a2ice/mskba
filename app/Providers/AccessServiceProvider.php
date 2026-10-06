@@ -75,5 +75,9 @@ class AccessServiceProvider extends ServiceProvider
             'manage-users-as-superadmin',
             fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),
         );
+        Gate::define(
+            'manage-rewards-as-superadmin',
+            fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),
+        );
     }
 }
