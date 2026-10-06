@@ -146,6 +146,15 @@ body:not(.main) .site-header > .header-wrapper {
     flex: 0 0 auto;
 }
 
+.context-submenu__actions::after {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: max(100%, 190px);
+    height: 10px;
+    content: "";
+}
+
 .context-submenu__actions-toggle,
 .context-submenu__dropdown-link {
     color: rgba(255, 255, 255, .78);
