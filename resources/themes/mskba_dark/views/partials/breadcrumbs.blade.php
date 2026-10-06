@@ -1,4 +1,9 @@
 @php
+    $contextBar = $contextBar ?? false;
+    $showBack = $showBack ?? true;
+    $hasContextSubmenu = app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve() !== [];
+    $shouldRenderBreadcrumbs = $contextBar || ! $hasContextSubmenu;
+
     $trail = app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
     $historyFallbackUrl = route('welcome');
 
@@ -10,7 +15,7 @@
     }
 @endphp
 
-@if (!request()->routeIs('home'))
+@if ($shouldRenderBreadcrumbs && !request()->routeIs('home'))
     <nav class="page-breadcrumbs" aria-label="Навигационная цепочка">
         <ol class="page-breadcrumbs__list">
             @foreach ($trail as $item)
@@ -44,14 +49,17 @@
                 </li>
             @endforeach
         </ol>
-        <button
-            type="button"
-            class="page-breadcrumbs__back js-handler"
-            data-handler="historyBack"
-            data-history-fallback="{{ $historyFallbackUrl }}"
-            aria-label="Вернуться на предыдущую страницу"
-        >
-            Назад
-        </button>
+
+        @if ($showBack)
+            <button
+                type="button"
+                class="page-breadcrumbs__back js-handler"
+                data-handler="historyBack"
+                data-history-fallback="{{ $historyFallbackUrl }}"
+                aria-label="Вернуться на предыдущую страницу"
+            >
+                Назад
+            </button>
+        @endif
     </nav>
 @endif
