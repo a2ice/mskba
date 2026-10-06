@@ -81,3 +81,111 @@ body:not(.main) .site-header > .header-wrapper {
         transition-duration: .01ms;
     }
 }
+
+
+/* Contextual navigation belongs to the header wrapper so it follows the same
+   normal/fixed/reveal lifecycle as the primary navigation. */
+.context-submenu {
+    position: relative;
+    z-index: 29;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    border-bottom: 1px solid rgba(255, 255, 255, .14);
+    background: rgba(5, 6, 5, .82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.context-submenu__inner {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    gap: 24px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.context-submenu__item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.context-submenu__link {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    gap: 7px;
+    color: rgba(255, 255, 255, .76);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 160ms ease;
+}
+
+.context-submenu__link:hover,
+.context-submenu__link:focus-visible {
+    color: var(--accent-hover);
+}
+
+.context-submenu__toggle::after {
+    width: 6px;
+    height: 6px;
+    margin-top: -3px;
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    content: "";
+    transform: rotate(45deg);
+}
+
+.context-submenu__dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 5;
+    display: grid;
+    min-width: 190px;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 0 0 10px 10px;
+    background: rgba(10, 12, 12, .96);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .38);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.context-submenu__dropdown .context-submenu__dropdown {
+    top: -8px;
+    left: calc(100% + 12px);
+    border-radius: 10px;
+}
+
+.context-submenu__item--dropdown:hover > .context-submenu__dropdown,
+.context-submenu__item--dropdown:focus-within > .context-submenu__dropdown {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    .context-submenu {
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .context-submenu::-webkit-scrollbar {
+        display: none;
+    }
+
+    .context-submenu__inner {
+        width: max-content;
+        min-width: 100%;
+        gap: 20px;
+    }
+
+    .context-submenu__dropdown {
+        display: contents;
+    }
+}
