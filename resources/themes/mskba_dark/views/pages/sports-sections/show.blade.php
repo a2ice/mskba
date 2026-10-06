@@ -2,8 +2,11 @@
     $headCoach = $section->headCoachMembership?->user;
     $headCoachName = trim(($headCoach?->profile?->first_name ?? '').' '.($headCoach?->profile?->last_name ?? '')) ?: ($headCoach?->username ?? 'Не указан');
     $canContact = $contacts->isNotEmpty() || filled($section->contact_notes);
+    $profileService = app(\App\Modules\Identity\Application\Services\PublicUserProfileService::class);
+    $viewer = auth()->user()?->canonical();
     $publicCoaches = $section->coachMemberships
         ->filter(fn ($membership) => $membership->user !== null && in_array('coach', $membership->sportRoleValues(), true))
+        ->filter(fn ($membership) => $profileService->canPreview($membership->user, $viewer))
         ->sortByDesc(fn ($membership) => $membership->id === $section->head_coach_membership_id)
         ->unique('user_id')
         ->values();
