@@ -32,9 +32,8 @@ sudo nginx -t
 echo "Reloading host Nginx"
 sudo systemctl reload nginx
 
-trap - ERR
-
 echo "Verifying canonical host policy"
 bash "$(dirname "$0")/check-canonical-host.sh"
 
+trap - ERR
 echo "Canonical host redirects installed successfully."
