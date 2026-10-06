@@ -11,6 +11,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
+use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
@@ -111,6 +112,10 @@ Route::get('/login', function () use ($themeResolver) {
 Route::get('/register', function () use ($themeResolver) {
     return $themeResolver->page('auth.register');
 })->name('register');
+
+Route::get('/r/{username}', ReferralEntryController::class)
+    ->middleware('throttle:60,1')
+    ->name('referral.entry');
 
 Route::get('/privacy', function () use ($themeResolver) {
     return $themeResolver->page('legal.privacy');
