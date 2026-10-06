@@ -47,8 +47,33 @@ Google Search Console через подключённый GSC Wizard прове�
 - корректный canonical для страниц пагинации ленты;
 - динамический `/sitemap.xml` для основных каталогов и публичных сущностей;
 - ссылка на sitemap из `robots.txt`;
-- 301-редирект `www.mskba.ru → mskba.ru` на внутреннем Nginx;
 - осмысленные alt-тексты для новостей и ключевых динамических карточек главной.
+
+## Canonical host: www → non-www
+
+Первая реализация редиректа `www.mskba.ru → mskba.ru` была добавлена во внутренний
+Docker Nginx и после production deploy привела к `ERR_TOO_MANY_REDIRECTS` через внешний
+host-level HTTPS reverse proxy. Эта часть была откатана hotfix PR #291.
+
+Диагностика production 2026-10-06 подтвердила фактическую схему:
+
+- внешний Ubuntu Nginx завершает TLS на `443`;
+- `mskba.ru` и `www.mskba.ru` проксируются на Docker Nginx `127.0.0.1:8000`;
+- Docker Nginx должен оставаться HTTP-only и не отвечать за canonical-host redirect;
+- production deploy user `deploy` не имеет passwordless sudo, поэтому host-level Nginx
+  нельзя безопасно менять из обычного GitHub Actions deploy.
+
+Целевая политика:
+
+- `http://mskba.ru/* → 301 https://mskba.ru/*`;
+- `http://www.mskba.ru/* → 301 https://mskba.ru/*`;
+- `https://www.mskba.ru/* → 301 https://mskba.ru/*`;
+- `https://mskba.ru/* → application response`.
+
+Версионированный host-level конфиг находится в `ops/nginx/mskba-prod.conf`.
+Для безопасного применения с backup, `nginx -t`, reload и автоматическим rollback
+подготовлен `ops/nginx/apply-mskba-prod.sh`. Проверка всех четырёх вариантов адреса —
+`ops/nginx/check-canonical-host.sh`.
 
 ## Следующие задачи программы
 
@@ -74,4 +99,6 @@ Google Search Console через подключённый GSC Wizard прове�
 - feature tests на sitemap, базовые метаданные, canonical пагинации и NewsArticle JSON-LD;
 - профильный PHPUnit-прогон и затем CI;
 - после deploy: live fetch главной, `/feed`, материала, `/robots.txt`, `/sitemap.xml`;
+- после применения host-level canonical config: проверить все четыре URL-варианта через
+  `ops/nginx/check-canonical-host.sh`;
 - после восстановления GSC: URL Inspection и отправка sitemap.
