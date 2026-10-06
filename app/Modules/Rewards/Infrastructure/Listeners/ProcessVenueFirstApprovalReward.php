@@ -14,6 +14,10 @@ final class ProcessVenueFirstApprovalReward implements ShouldQueue
 {
     use Queueable;
 
+    public function __construct(
+        private readonly RewardEngine $engine,
+    ) {}
+
     public int $tries = 5;
 
     public function backoff(): array
@@ -21,7 +25,7 @@ final class ProcessVenueFirstApprovalReward implements ShouldQueue
         return [5, 30, 120, 300];
     }
 
-    public function handle(ModerationRequestApproved $event, RewardEngine $engine): void
+    public function handle(ModerationRequestApproved $event): void
     {
         $request = ModerationRequest::query()->find($event->request->id);
 
@@ -29,7 +33,7 @@ final class ProcessVenueFirstApprovalReward implements ShouldQueue
             return;
         }
 
-        $engine->process(
+        $this->engine->process(
             'venue_first_approval',
             new RewardMechanismContext(
                 businessFactType: 'venue_first_approval',
