@@ -21,11 +21,14 @@ final class RewardsCatalogTest extends TestCase
     public function test_initial_catalog_contains_planned_rewards_but_keeps_them_disabled(): void
     {
         $referral = Reward::query()->where('code', 'referral_user_confirmed')->firstOrFail();
+        $secondLevelReferral = Reward::query()->where('code', 'referral_second_level_user_confirmed')->firstOrFail();
         $venue = Reward::query()->where('code', 'venue_first_approval')->firstOrFail();
 
         $this->assertFalse($referral->is_enabled);
+        $this->assertFalse($secondLevelReferral->is_enabled);
         $this->assertFalse($venue->is_enabled);
         $this->assertSame(30000, $referral->currentVersion()->firstOrFail()->amount_minor);
+        $this->assertSame(10000, $secondLevelReferral->currentVersion()->firstOrFail()->amount_minor);
         $this->assertSame(10000, $venue->currentVersion()->firstOrFail()->amount_minor);
     }
 
@@ -40,6 +43,7 @@ final class RewardsCatalogTest extends TestCase
             ->assertOk()
             ->assertSee('Вознаграждения')
             ->assertSee('Подтверждённый приглашённый пользователь')
+            ->assertSee('Подтверждённый пользователь второго уровня')
             ->assertSee('Первая успешная модерация новой площадки');
     }
 
