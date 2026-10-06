@@ -299,3 +299,46 @@ jobs:
               # so it cannot contend for getUpdates or create misleading failures.
               docker rm -f mskbanew-telegram >/dev/null 2>&1 || true
             fi
+
+      - name: Verify public canonical host policy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          check() {
+            local url="$1"
+            local expected_status="$2"
+            local expected_location="${3:-}"
+
+            local headers=""
+            local status=""
+            local location=""
+
+            for attempt in 1 2 3; do
+              headers="$(curl -sS -o /dev/null -D - --max-redirs 0 --connect-timeout 10 --max-time 30 "$url" || true)"
+              status="$(printf '%s\n' "$headers" | awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}')"
+              location="$(printf '%s\n' "$headers" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]+:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}')"
+
+              if [ "$status" = "$expected_status" ] && { [ -z "$expected_location" ] || [ "$location" = "$expected_location" ]; }; then
+                echo "$url -> $status ${location:+Location: $location}"
+                return 0
+              fi
+
+              echo "Attempt $attempt/3 failed for $url: status=$status location=$location" >&2
+              sleep $((attempt * 2))
+            done
+
+            echo "::error::Canonical host check failed for $url; expected status=$expected_status location=$expected_location" >&2
+            return 1
+          }
+
+          check "http://mskba.ru/" "301" "https://mskba.ru/"
+          check "http://www.mskba.ru/" "301" "https://mskba.ru/"
+          check "https://www.mskba.ru/" "301" "https://mskba.ru/"
+          check "https://mskba.ru/" "200"
+
+          final_url="$(curl -sS -o /dev/null -w '%{url_effective}' -L --max-redirs 3 --connect-timeout 10 --max-time 30 https://www.mskba.ru/)"
+          if [ "$final_url" != "https://mskba.ru/" ]; then
+            echo "::error::www canonical chain ended at $final_url instead of https://mskba.ru/" >&2
+            exit 1
+          fi
