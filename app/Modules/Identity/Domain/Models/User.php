@@ -9,7 +9,6 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
-use App\Modules\Identity\Domain\Events\UserAccountConfirmed;
 use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
@@ -28,7 +27,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'first_logged_in_at', 'personal_data_distribution_required_at', 'personal_data_distribution_setup_completed_at', 'status', 'system_role', 'registration_channel'])]
@@ -247,8 +245,6 @@ class User extends Authenticatable
             'status' => UserStatusEnum::CONFIRMED,
         ])->save();
 
-        $userId = (int) $this->id;
-        DB::afterCommit(static fn () => event(new UserAccountConfirmed($userId)));
     }
 
     /**
