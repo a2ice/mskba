@@ -106,8 +106,7 @@ body:not(.main) .site-header > .header-wrapper {
     display: flex;
     align-items: center;
     gap: 24px;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding-block: 7.5px!important;
 }
 
 .context-submenu__item {
