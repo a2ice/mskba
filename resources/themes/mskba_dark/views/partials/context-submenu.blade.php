@@ -56,20 +56,33 @@
             </button>
 
             <div class="context-submenu__dropdown" role="menu">
-                @if ($contextSubmenuItems !== [])
-                    {!! $renderContextSubmenuItems($contextSubmenuItems) !!}
-                    <span class="context-submenu__divider" aria-hidden="true"></span>
-                @endif
+                <div class="context-submenu__group context-submenu__group--system" aria-label="Системные действия">
+                    <button
+                        type="button"
+                        class="context-submenu__dropdown-link context-submenu__dropdown-button js-handler"
+                        data-handler="historyBack"
+                        data-history-fallback="{{ $historyFallbackUrl }}"
+                        role="menuitem"
+                    >
+                        Назад
+                    </button>
 
-                <button
-                    type="button"
-                    class="context-submenu__dropdown-link context-submenu__dropdown-button js-handler"
-                    data-handler="historyBack"
-                    data-history-fallback="{{ $historyFallbackUrl }}"
-                    role="menuitem"
-                >
-                    Назад
-                </button>
+                    <button
+                        type="button"
+                        class="context-submenu__dropdown-link context-submenu__dropdown-button"
+                        data-context-share
+                        role="menuitem"
+                    >
+                        Поделиться
+                    </button>
+                </div>
+
+                @if ($contextSubmenuItems !== [])
+                    <span class="context-submenu__divider" aria-hidden="true"></span>
+                    <div class="context-submenu__group context-submenu__group--section" aria-label="Действия раздела">
+                        {!! $renderContextSubmenuItems($contextSubmenuItems) !!}
+                    </div>
+                @endif
             </div>
         </div>
     </div>
