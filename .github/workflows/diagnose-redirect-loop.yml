@@ -8,34 +8,38 @@ on:
       - ".github/workflows/diagnose-redirect-loop.yml"
 
 jobs:
-  inspect-host:
+  public-http:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect production host nginx
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: deploy
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          command_timeout: 5m
-          script: |
-            set +e
+      - name: Verify canonical host policy externally
+        shell: bash
+        run: |
+          set -euo pipefail
 
-            echo "===== file metadata ====="
-            ls -l /etc/nginx/sites-enabled/mskba-prod /etc/nginx/sites-available/mskba-prod 2>/dev/null || true
+          check() {
+            local url="$1"
+            local expected_status="$2"
+            local expected_location="${3:-}"
 
-            echo "===== current mskba-prod ====="
-            cat /etc/nginx/sites-enabled/mskba-prod 2>/dev/null || true
+            local headers
+            headers="$(curl -sS -o /dev/null -D - --max-redirs 0 "$url")"
+            local status
+            status="$(printf '%s\n' "$headers" | awk 'toupper($1) ~ /^HTTP\// {code=$2} END {print code}')"
+            local location
+            location="$(printf '%s\n' "$headers" | awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]+:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit}')"
 
-            echo "===== passwordless sudo ====="
-            if sudo -n true 2>/dev/null; then
-              echo "SUDO_N_NOPASSWD=yes"
-            else
-              echo "SUDO_N_NOPASSWD=no"
+            echo "$url -> $status ${location:+Location: $location}"
+
+            test "$status" = "$expected_status"
+            if [ -n "$expected_location" ]; then
+              test "$location" = "$expected_location"
             fi
+          }
 
-            echo "===== nginx config test availability ====="
-            nginx -t 2>&1 || true
-            sudo -n nginx -t 2>&1 || true
+          check "http://mskba.ru/" "301" "https://mskba.ru/"
+          check "http://www.mskba.ru/" "301" "https://mskba.ru/"
+          check "https://www.mskba.ru/" "301" "https://mskba.ru/"
+          check "https://mskba.ru/" "200"
 
-# verification run after host-level canonical config applied
+          final_url="$(curl -sS -o /dev/null -w '%{url_effective}' -L --max-redirs 3 https://www.mskba.ru/)"
+          test "$final_url" = "https://mskba.ru/"
