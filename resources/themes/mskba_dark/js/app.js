@@ -52,6 +52,7 @@ import './features/tooltips.js';
 import './features/catalog-filter-defaults.js';
 import './features/mobile-sidebar-navigation.js';
 import './features/sticky-header.js';
+import './features/context-navigation.js';
 import './features/image-upload.js';
 import './features/telegram-mini-app.js';
 import './features/address-suggest.js';
