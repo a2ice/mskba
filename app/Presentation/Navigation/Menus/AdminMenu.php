@@ -17,6 +17,7 @@ final class AdminMenu implements MenuHandler
         $isAdmin = $user?->isAdmin() ?? false;
         $canManageContent = $user?->can('manage-content') ?? false;
         $canManageUserDuplicates = $user?->can('manage-users-as-superadmin') ?? false;
+        $canManageRewards = $user?->can('manage-rewards-as-superadmin') ?? false;
 
         return [
             [
@@ -117,6 +118,15 @@ final class AdminMenu implements MenuHandler
                 'active' => $this->isActiveRoute('admin.pricing.*'),
                 'visible' => $isAdmin,
                 'icon' => 'ti-currency-ruble',
+                'data' => ['count' => 0],
+            ],
+            [
+                'label' => 'Вознаграждения',
+                'description' => 'Бонусные номиналы, условия и готовность механизмов.',
+                'url' => $this->routeUrl('admin.rewards.index'),
+                'active' => $this->isActiveRoute('admin.rewards.*'),
+                'visible' => $canManageRewards,
+                'icon' => 'ti-gift',
                 'data' => ['count' => 0],
             ],
             [

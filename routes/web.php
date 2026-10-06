@@ -47,6 +47,7 @@ use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeCont
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
 use App\Modules\Pricing\Presentation\Http\Controllers\AdminPricingController;
+use App\Modules\Rewards\Presentation\Http\Controllers\AdminRewardsController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\AccountSportsSectionController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionCandidateController;
 use App\Modules\SportsSection\Presentation\Http\Controllers\SportsSectionController;
@@ -347,6 +348,21 @@ Route::prefix('admin')
             Route::post('/prices', [AdminPricingController::class, 'storePrice'])->name('admin.pricing.prices.store');
             Route::patch('/prices/{price}/deactivate', [AdminPricingController::class, 'deactivatePrice'])->name('admin.pricing.prices.deactivate');
         });
+        Route::prefix('rewards')
+            ->middleware('can:manage-rewards-as-superadmin')
+            ->group(function () {
+                Route::get('/', [AdminRewardsController::class, 'index'])
+                    ->name('admin.rewards.index')
+                    ->defaults('breadcrumb', 'Вознаграждения');
+                Route::post('/', [AdminRewardsController::class, 'store'])
+                    ->name('admin.rewards.store');
+                Route::put('/{reward}', [AdminRewardsController::class, 'update'])
+                    ->whereNumber('reward')
+                    ->name('admin.rewards.update');
+                Route::delete('/{reward}', [AdminRewardsController::class, 'destroy'])
+                    ->whereNumber('reward')
+                    ->name('admin.rewards.destroy');
+            });
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
         Route::get('/telegram-chats', [AdminTelegramChatsController::class, 'index'])
