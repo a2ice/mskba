@@ -6,12 +6,9 @@ use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
-use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
-use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
-use App\Modules\Identity\Domain\Models\UserPrivacySetting;
 use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\ManageSectionCoachHandler;
 use App\Modules\SportsSection\Domain\Enums\TraineeMembershipStatusEnum;
@@ -150,31 +147,25 @@ final class SportsSectionPublicPageTest extends TestCase
     }
 
 
-    public function test_private_coach_profile_does_not_turn_public_section_page_into_404(): void
+    public function test_coach_without_public_distribution_consent_does_not_turn_public_section_page_into_404(): void
     {
         [$owner, $actor] = $this->roleUser(UserParticipationRoleEnum::COACH);
-        $owner->forceFill(['username' => 'private-section-coach'])->save();
-
-        UserPrivacySetting::query()->updateOrCreate(
-            [
-                'user_id' => $owner->id,
-                'type' => UserPrivacySettingTypeEnum::PROFILE,
-            ],
-            [
-                'visibility' => UserPrivacyVisibilityEnum::NOBODY,
-            ],
-        );
+        $owner->forceFill([
+            'username' => 'consent-pending-section-coach',
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => null,
+        ])->save();
 
         $section = $this->activeSection($actor);
 
         $this->get(route('sports-sections.show', $section))
             ->assertOk()
-            ->assertDontSee('private-section-coach');
+            ->assertDontSee('data-entity-type="user"', false);
 
         $this->actingAs($owner)
             ->get(route('sports-sections.show', $section))
             ->assertOk()
-            ->assertSee('private-section-coach');
+            ->assertSee('data-entity-type="user"', false);
     }
 
     public function test_recruitment_settings_persist_age_target_and_capacity(): void
