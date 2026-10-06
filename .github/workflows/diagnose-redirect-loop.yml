@@ -37,3 +37,5 @@ jobs:
             echo "===== nginx config test availability ====="
             nginx -t 2>&1 || true
             sudo -n nginx -t 2>&1 || true
+
+# verification run after host-level canonical config applied
