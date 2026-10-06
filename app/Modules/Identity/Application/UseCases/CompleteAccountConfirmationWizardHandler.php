@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Events\UserAccountConfirmed;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -26,7 +27,18 @@ final class CompleteAccountConfirmationWizardHandler
         ?string $birthDate,
         ?UserGenderEnum $gender,
     ): User {
-        return DB::transaction(function () use ($user, $role, $firstName, $lastName, $middleName, $birthDate, $gender): User {
+        $confirmedUserId = null;
+
+        $updatedUser = DB::transaction(function () use (
+            $user,
+            $role,
+            $firstName,
+            $lastName,
+            $middleName,
+            $birthDate,
+            $gender,
+            &$confirmedUserId,
+        ): User {
             $lockedUser = User::query()
                 ->whereKey($user->id)
                 ->lockForUpdate()
@@ -69,9 +81,16 @@ final class CompleteAccountConfirmationWizardHandler
 
             if ($lockedUser->status === UserStatusEnum::UNCONFIRMED && $this->wizard->requiredStepsCompleted($lockedUser)) {
                 $lockedUser->confirmAccount();
+                $confirmedUserId = (int) $lockedUser->id;
             }
 
             return $lockedUser->refresh();
         });
+
+        if ($confirmedUserId !== null) {
+            event(new UserAccountConfirmed($confirmedUserId));
+        }
+
+        return $updatedUser;
     }
 }
