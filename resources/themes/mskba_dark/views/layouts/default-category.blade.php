@@ -8,6 +8,7 @@
     $sidebarNavigationTitle = $sidebarNavigationTitle ?? $title;
     $sidebarPreNavigationTitle = $sidebarPreNavigationTitle ?? null;
     $sidebarFiltersTitle = $sidebarFiltersTitle ?? 'Фильтры';
+    $hasContextSubmenu = app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve() !== [];
 @endphp
 
 @extends('theme::layouts.app', ['title' => $title])
@@ -20,9 +21,11 @@
         data-default-category-view="{{ $currentView }}"
     >
         <div class="inner default-category__inner">
-            <div class="default-category__breadcrumbs">
-                @include('theme::partials.breadcrumbs')
-            </div>
+            @unless($hasContextSubmenu)
+                <div class="default-category__breadcrumbs">
+                    @include('theme::partials.breadcrumbs')
+                </div>
+            @endunless
 
             <header class="default-category__header">
                 <h1>{{ $title }}</h1>
