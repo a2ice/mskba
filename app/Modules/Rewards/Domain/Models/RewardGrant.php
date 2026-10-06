@@ -9,6 +9,7 @@ use App\Modules\Rewards\Domain\Enums\RewardGrantStatusEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 #[Fillable([
     'reward_id',
@@ -26,6 +27,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 final class RewardGrant extends Model
 {
+    protected static function booted(): void
+    {
+        static::updating(function (self $grant): void {
+            if ($grant->getRawOriginal('status') === RewardGrantStatusEnum::COMPLETED->value) {
+                throw new LogicException('Completed reward grant is immutable.');
+            }
+        });
+
+        static::deleting(static fn () => throw new LogicException('Reward grant history is immutable.'));
+    }
+
     public function reward(): BelongsTo
     {
         return $this->belongsTo(Reward::class)->withTrashed();
