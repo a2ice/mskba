@@ -1,33 +1,26 @@
 @php
-    $requestPath = '/'.ltrim(request()->path(), '/');
-    $sections = config('context-submenu.sections', []);
-
-    $exactSection = collect($sections)->first(function (array $section) use ($requestPath): bool {
-        return in_array($requestPath, $section['exact'] ?? [], true);
-    });
-
-    $contextSubmenu = $exactSection ?? collect($sections)->first(function (array $section) use ($requestPath): bool {
-        $pattern = $section['pattern'] ?? null;
-
-        return is_string($pattern) && @preg_match($pattern, $requestPath) === 1;
-    });
-
-    $contextSubmenuItems = $contextSubmenu['items'] ?? [];
+    $contextSubmenuItems = app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve();
 
     $renderContextSubmenuItems = function (array $items, int $level = 0) use (&$renderContextSubmenuItems): string {
         return collect($items)->map(function (array $item) use (&$renderContextSubmenuItems, $level): string {
-            $label = e((string) ($item['label'] ?? ''));
-            $url = e((string) ($item['url'] ?? '#'));
-            $children = array_values($item['children'] ?? []);
-            $hasChildren = $children !== [];
-
-            if (! $hasChildren) {
-                return '<a class="context-submenu__link" href="'.$url.'">'.$label.'</a>';
+            if (($item['visible'] ?? true) !== true) {
+                return '';
             }
 
-            return '<div class="context-submenu__item context-submenu__item--dropdown">'
-                .'<a class="context-submenu__link context-submenu__toggle" href="'.$url.'" aria-haspopup="true">'.$label.'</a>'
-                .'<div class="context-submenu__dropdown context-submenu__dropdown--level-'.$level.'">'
+            $label = e((string) ($item['label'] ?? ''));
+            $url = e((string) ($item['url'] ?? '#'));
+            $children = array_values(array_filter(
+                $item['children'] ?? [],
+                static fn (array $child): bool => ($child['visible'] ?? true) === true,
+            ));
+
+            if ($children === []) {
+                return '<a class="context-submenu__dropdown-link" href="'.$url.'">'.$label.'</a>';
+            }
+
+            return '<div class="context-submenu__dropdown-item context-submenu__dropdown-item--nested">'
+                .'<a class="context-submenu__dropdown-link context-submenu__dropdown-link--toggle" href="'.$url.'">'.$label.'</a>'
+                .'<div class="context-submenu__nested context-submenu__nested--level-'.$level.'">'
                 .$renderContextSubmenuItems($children, $level + 1)
                 .'</div></div>';
         })->implode('');
@@ -36,8 +29,28 @@
 
 @if ($contextSubmenuItems !== [])
     <div class="context-submenu" data-context-submenu>
-        <nav class="inner context-submenu__inner" aria-label="Навигация раздела">
-            {!! $renderContextSubmenuItems($contextSubmenuItems) !!}
-        </nav>
+        <div class="inner context-submenu__inner">
+            <div class="context-submenu__breadcrumbs">
+                @include('theme::partials.breadcrumbs', [
+                    'contextBar' => true,
+                    'showBack' => false,
+                ])
+            </div>
+
+            <div class="context-submenu__actions">
+                <button
+                    class="context-submenu__actions-toggle"
+                    type="button"
+                    aria-haspopup="true"
+                    aria-expanded="false"
+                >
+                    Действия
+                </button>
+
+                <div class="context-submenu__dropdown" role="menu">
+                    {!! $renderContextSubmenuItems($contextSubmenuItems) !!}
+                </div>
+            </div>
+        </div>
     </div>
 @endif
