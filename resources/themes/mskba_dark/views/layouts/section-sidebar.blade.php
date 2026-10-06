@@ -11,12 +11,18 @@
 
 @extends('theme::layouts.app', ['title' => $title])
 
+@php
+    $hasContextSubmenu = app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve() !== [];
+@endphp
+
 @section('content')
     <section id="{{ $sectionId }}" class="{{ $sectionClass }} section-sidebar-layout first-screen">
         <div class="inner">
-            <div class="mb-3">
-                @include('theme::partials.breadcrumbs')
-            </div>
+            @unless($hasContextSubmenu)
+                <div class="mb-3">
+                    @include('theme::partials.breadcrumbs')
+                </div>
+            @endunless
 
             @hasSection('section-mobile-sticky-navigation')
                 <div class="section-sidebar-layout__mobile-sticky-navigation">
