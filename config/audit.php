@@ -23,6 +23,8 @@ use App\Modules\Pricing\Domain\Models\PricingCategory;
 use App\Modules\Pricing\Domain\Models\PricingPrice;
 use App\Modules\Pricing\Domain\Models\PricingService;
 use App\Modules\Pricing\Domain\Models\PricingVariant;
+use App\Modules\Rewards\Domain\Models\Reward;
+use App\Modules\Rewards\Domain\Models\RewardVersion;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Modules\Venue\Domain\Models\VenueDuplicate;
 use App\Modules\Venue\Domain\Models\VenueOwnership;
@@ -79,5 +81,7 @@ return [
         PricingService::class,
         PricingVariant::class,
         PricingPrice::class,
+        Reward::class,
+        RewardVersion::class,
     ],
 ];
