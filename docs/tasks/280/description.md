@@ -78,10 +78,16 @@ host-level HTTPS reverse proxy. Эта часть была откатана hotf
 ## Production hardening sitemap — 2026-10-07
 
 После первого production rollout динамический `/sitemap.xml` начал возвращать 500,
-хотя профильный feature-тест и общий CI оставались зелёными. Причина пробела в проверках:
-тест создавал только опубликованный `ContentItem`, а production sitemap дополнительно
-обходит площадки, мероприятия, команды, турниры и спортивные секции. Ошибка внутри одного
-динамического источника или отдельной production-записи поэтому могла оборвать весь XML.
+хотя профильный feature-тест и общий CI оставались зелёными. Runtime-диагностика на
+production установила точную причину: PHP-FPM работает с `short_open_tag=1`, а первая
+строка Blade-шаблона содержала literal `<?xml ... ?>` внутри raw Blade echo. При
+компиляции Blade эта строка осталась необработанной в compiled view, после чего PHP
+падал с `ParseError: unexpected identifier "version"`.
+
+CI этого не видел, потому что тестовый PHP запускался с другим значением
+`short_open_tag`. Одновременно исходный sitemap-тест создавал только опубликованный
+`ContentItem`, поэтому ветки Venue/Event/Team/Tournament/SportsSection тоже не были
+покрыты production-shaped данными.
 
 Follow-up исправление:
 
@@ -91,6 +97,10 @@ Follow-up исправление:
 - sitemap сортируется детерминированно после дедупликации;
 - regression-тест создаёт публичные Venue/Event/Team/Tournament/SportsSection и проверяет
   реальные URL каждого типа;
+- XML declaration теперь формируется в обычном PHP-коде контроллера, а не внутри
+  Blade, поэтому Blade compiler не видит `<?xml` как short-open-tag;
+- CI запускается с `short_open_tag=1`, как production PHP-FPM, чтобы такая разница
+  окружений больше не проходила незамеченной;
 - production deploy получает обязательный smoke-check `/sitemap.xml`: HTTP 200,
   `application/xml`, корректный `urlset` и хотя бы один canonical URL `mskba.ru`.
 
