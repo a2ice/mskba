@@ -141,8 +141,6 @@ final class AccountPrivacySettingsTest extends TestCase
             ])
             ->assertRedirect(route('account'));
 
-        $this->withoutExceptionHandling();
-
         $this->actingAs($user)
             ->put(route('account.settings.privacy.update'), $this->privatePayload())
             ->assertRedirect(route('account.settings'))
@@ -164,8 +162,6 @@ final class AccountPrivacySettingsTest extends TestCase
     {
         $user = User::factory()->create();
         $allowedUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
-
-        $this->withoutExceptionHandling();
 
         $response = $this->actingAs($user)->put(route('account.settings.privacy.update'), [
             'privacy' => [

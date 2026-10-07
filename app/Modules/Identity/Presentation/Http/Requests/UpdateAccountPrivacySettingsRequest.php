@@ -34,7 +34,7 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
             ],
             'messenger_notifications' => ['nullable', Rule::enum(UserMessengerNotificationPreferenceEnum::class)],
             'email_notifications' => ['nullable', Rule::enum(UserMessengerNotificationPreferenceEnum::class)],
-            'distribution_consent' => ['nullable', 'accepted'],
+            'distribution_consent' => ['sometimes', 'accepted'],
         ];
     }
 
