@@ -84,6 +84,7 @@ final class SeoFoundationTest extends TestCase
         $this->get(route('seo.sitemap'))
             ->assertOk()
             ->assertHeader('Content-Type', 'application/xml; charset=UTF-8')
+            ->assertSee('<?xml version="1.0" encoding="UTF-8"?>', false)
             ->assertSee(route('welcome'), false)
             ->assertSee(route('news.show', $published->alias), false)
             ->assertDontSee(route('news.show', $draft->alias), false);
