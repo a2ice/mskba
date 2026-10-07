@@ -27,6 +27,7 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, sqlite3, pdo_sqlite, gd
           coverage: none
+          ini-values: short_open_tag=1
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -61,23 +62,3 @@ jobs:
 
       - name: Build frontend
         run: npm run build
-
-
-  diagnose-sitemap:
-    if: github.head_ref == 'fix/280-runtime-diagnostic'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Diagnose sitemap on production
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: deploy
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          command_timeout: 5m
-          script: |
-            set -u
-            cd /var/www/mskba
-            COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
-
-            $COMPOSE exec -T phpfpm php artisan tinker --execute='try { $controller = app(\App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController::class); $response = $controller(); fwrite(STDERR, "SITEMAP_CONTROLLER_OK status=".$response->getStatusCode()." bytes=".strlen($response->getContent())."\n"); } catch (\Throwable $e) { $root = $e; while ($root->getPrevious()) { $root = $root->getPrevious(); } fwrite(STDERR, "SITEMAP_CONTROLLER_ERROR ".get_class($root).": ".$root->getMessage()." @ ".$root->getFile().":".$root->getLine()."\n"); exit(1); }'
