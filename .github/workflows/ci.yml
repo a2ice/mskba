@@ -27,6 +27,7 @@ jobs:
           php-version: '8.4'
           extensions: mbstring, sqlite3, pdo_sqlite, gd
           coverage: none
+          ini-values: short_open_tag=1
 
       - name: Setup Node
         uses: actions/setup-node@v4

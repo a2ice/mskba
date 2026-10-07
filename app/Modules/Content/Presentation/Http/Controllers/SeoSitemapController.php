@@ -99,8 +99,10 @@ final class SeoSitemapController extends Controller
             fn (SportsSection $section): string => route('sports-sections.show', $section->alias),
         );
 
-        return response()
-            ->view('seo.sitemap', ['urls' => $urls->unique('loc')->sortBy('loc')->values()])
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'."\n"
+            .view('seo.sitemap', ['urls' => $urls->unique('loc')->sortBy('loc')->values()])->render();
+
+        return response($xml)
             ->header('Content-Type', 'application/xml; charset=UTF-8');
     }
 
