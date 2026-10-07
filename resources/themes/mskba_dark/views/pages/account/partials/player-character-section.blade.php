@@ -264,6 +264,7 @@
                             </label>
                         @endforeach
                     </div>
+                    <small class="form-text">JPG, PNG или WebP. Большие фото автоматически уменьшаются перед отправкой; итоговый файл — до 5 МБ.</small>
                 </div>
 
                 <div class="account-player-character-configurator__group">

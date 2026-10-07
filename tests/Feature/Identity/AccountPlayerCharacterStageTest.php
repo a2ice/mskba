@@ -48,6 +48,7 @@ final class AccountPlayerCharacterStageTest extends TestCase
             ->assertSee('data-player-character-three', false)
             ->assertSee('data-player-character-height-marker', false)
             ->assertSee('data-player-character-error', false)
+            ->assertSee('Большие фото автоматически уменьшаются перед отправкой; итоговый файл — до 5 МБ.')
             ->assertSee('data-gender="male"', false)
             ->assertSee('data-height="191"', false)
             ->assertSee('data-weight="88"', false)

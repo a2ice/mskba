@@ -104,6 +104,19 @@ final class UpdatePlayerProfileRequest extends FormRequest
         return $rules;
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'face_reference.max' => 'Фото лица должно быть не больше 5 МБ.',
+            'face_reference.mimes' => 'Фото лица должно быть в формате JPG, PNG или WebP.',
+            'generation_face_references.*.max' => 'Каждое фото лица должно быть не больше 5 МБ.',
+            'generation_face_references.*.mimes' => 'Фото лица должно быть в формате JPG, PNG или WebP.',
+        ];
+    }
+
     public function mutation(): ?string
     {
         $mutation = $this->validated('mutation');

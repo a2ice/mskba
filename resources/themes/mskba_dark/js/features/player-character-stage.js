@@ -14,6 +14,12 @@ const DEFAULT_HAIRSTYLE = {
     female: 'female_ponytail',
 };
 
+const FACE_REFERENCE_MAX_BYTES = 5 * 1024 * 1024;
+const FACE_REFERENCE_COMPRESSION_THRESHOLD_BYTES = 1.5 * 1024 * 1024;
+const FACE_REFERENCE_MAX_DIMENSION = 1600;
+const FACE_REFERENCE_JPEG_QUALITY = 0.85;
+const FACE_REFERENCE_FALLBACK_JPEG_QUALITY = 0.72;
+
 function parseNullableNumber(value) {
     if (value === null || value === undefined || value === '') {
         return null;
@@ -472,6 +478,132 @@ function syncFaceValidationNote(form) {
     note.hidden = !hasPending && hasConfirmedSet;
 }
 
+function faceReferenceFileIsSupported(file) {
+    return ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+        || /\.(jpe?g|png|webp)$/i.test(file.name || '');
+}
+
+function loadFaceReferenceImage(file) {
+    if ('createImageBitmap' in window) {
+        return window.createImageBitmap(file)
+            .then((bitmap) => ({
+                width: bitmap.width,
+                height: bitmap.height,
+                draw(context, width, height) {
+                    context.drawImage(bitmap, 0, 0, width, height);
+                },
+                release() {
+                    bitmap.close?.();
+                },
+            }))
+            .catch(() => loadFaceReferenceImageElement(file));
+    }
+
+    return loadFaceReferenceImageElement(file);
+}
+
+function loadFaceReferenceImageElement(file) {
+    return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+            resolve({
+                width: image.naturalWidth,
+                height: image.naturalHeight,
+                draw(context, width, height) {
+                    context.drawImage(image, 0, 0, width, height);
+                },
+                release() {
+                    URL.revokeObjectURL(objectUrl);
+                },
+            });
+        };
+        image.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Не удалось прочитать фото лица. Выберите другое изображение.'));
+        };
+        image.src = objectUrl;
+    });
+}
+
+function canvasToJpegBlob(canvas, quality) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (blob) {
+                resolve(blob);
+                return;
+            }
+
+            reject(new Error('Не удалось подготовить фото лица. Выберите другое изображение.'));
+        }, 'image/jpeg', quality);
+    });
+}
+
+async function prepareFaceReferenceFile(file) {
+    if (!faceReferenceFileIsSupported(file)) {
+        throw new Error('Поддерживаются фотографии JPG, PNG и WebP.');
+    }
+
+    const source = await loadFaceReferenceImage(file);
+    let canvas = null;
+
+    try {
+        const largestDimension = Math.max(source.width, source.height);
+        const needsResize = largestDimension > FACE_REFERENCE_MAX_DIMENSION;
+        const needsCompression = file.size > FACE_REFERENCE_COMPRESSION_THRESHOLD_BYTES;
+
+        if (!needsResize && !needsCompression && file.size <= FACE_REFERENCE_MAX_BYTES) {
+            return file;
+        }
+
+        const scale = largestDimension > FACE_REFERENCE_MAX_DIMENSION
+            ? FACE_REFERENCE_MAX_DIMENSION / largestDimension
+            : 1;
+        const width = Math.max(1, Math.round(source.width * scale));
+        const height = Math.max(1, Math.round(source.height * scale));
+
+        canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+            throw new Error('Не удалось подготовить фото лица. Выберите другое изображение.');
+        }
+
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, width, height);
+        source.draw(context, width, height);
+
+        let blob = await canvasToJpegBlob(canvas, FACE_REFERENCE_JPEG_QUALITY);
+        if (blob.size > FACE_REFERENCE_MAX_BYTES) {
+            blob = await canvasToJpegBlob(canvas, FACE_REFERENCE_FALLBACK_JPEG_QUALITY);
+        }
+
+        if (blob.size > FACE_REFERENCE_MAX_BYTES) {
+            throw new Error('Не удалось уменьшить фото до 5 МБ. Выберите другое изображение.');
+        }
+
+        const baseName = (file.name || 'face-reference')
+            .replace(/\.[^.]+$/, '')
+            .trim() || 'face-reference';
+
+        return new File([blob], baseName + '.jpg', {
+            type: 'image/jpeg',
+            lastModified: file.lastModified || Date.now(),
+        });
+    } finally {
+        source.release();
+        if (canvas) {
+            canvas.width = 1;
+            canvas.height = 1;
+        }
+    }
+}
+
 function previewFaceReference(stage, form, input) {
     const slot = input.dataset.playerCharacterFaceInput;
     const file = input.files?.[0];
@@ -482,6 +614,9 @@ function previewFaceReference(stage, form, input) {
     if (!slot || !file || !card || !image) {
         return;
     }
+
+    delete input._playerCharacterPreparedSource;
+    delete input._playerCharacterPreparedFile;
 
     const previousObjectUrl = card.dataset.faceObjectUrl;
     if (previousObjectUrl) {
@@ -503,6 +638,38 @@ function pendingFaceInputs(form) {
         .filter((input) => input.files?.[0]);
 }
 
+async function preparedFaceReferenceFile(input) {
+    const source = input.files?.[0];
+    if (!source) {
+        return null;
+    }
+
+    if (input._playerCharacterPreparedSource === source && input._playerCharacterPreparedFile instanceof File) {
+        return input._playerCharacterPreparedFile;
+    }
+
+    const prepared = await prepareFaceReferenceFile(source);
+    input._playerCharacterPreparedSource = source;
+    input._playerCharacterPreparedFile = prepared;
+
+    return prepared;
+}
+
+async function prepareGenerationFaceReferences(form) {
+    const references = [];
+
+    for (const input of pendingFaceInputs(form)) {
+        const slot = input.dataset.playerCharacterFaceInput;
+        const file = await preparedFaceReferenceFile(input);
+
+        if (slot && file) {
+            references.push([slot, file]);
+        }
+    }
+
+    return references;
+}
+
 function setPendingFacesBusy(form, busy) {
     pendingFaceInputs(form).forEach((input) => {
         const slot = input.dataset.playerCharacterFaceInput;
@@ -517,7 +684,7 @@ function appendGenerationValue(data, key, value) {
     data.append(key, value === null || value === undefined ? '' : String(value));
 }
 
-function generationRequestData(stage, form) {
+function generationRequestData(stage, form, faceReferences = []) {
     const payload = generationOptionsPayload(stage, form);
     const data = new FormData();
 
@@ -536,27 +703,23 @@ function generationRequestData(stage, form) {
             return;
         }
 
-        appendGenerationValue(data, `character[${key}]`, value);
+        appendGenerationValue(data, 'character[' + key + ']', value);
     });
 
-    pendingFaceInputs(form).forEach((input) => {
-        const slot = input.dataset.playerCharacterFaceInput;
-        const file = input.files?.[0];
-
-        if (slot && file) {
-            data.append(`generation_face_references[${slot}]`, file);
-        }
+    faceReferences.forEach(([slot, file]) => {
+        data.append('generation_face_references[' + slot + ']', file, file.name);
     });
 
     return data;
 }
 
 async function requestGenerationMutation(stage, form) {
+    const faceReferences = await prepareGenerationFaceReferences(form);
     const response = await fetch(stage.dataset.characterMutationUrl, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
-        body: generationRequestData(stage, form),
+        body: generationRequestData(stage, form, faceReferences),
     });
     const data = await response.json().catch(() => ({}));
 
@@ -564,7 +727,10 @@ async function requestGenerationMutation(stage, form) {
         const validationMessage = data.errors
             ? Object.values(data.errors).flat()[0]
             : null;
-        const error = new Error(validationMessage || data.message || 'Не удалось выполнить генерацию.');
+        const fallbackMessage = response.status === 413
+            ? 'Фотографии слишком большие для отправки. Выберите другие фото или уменьшите их размер.'
+            : 'Не удалось выполнить генерацию.';
+        const error = new Error(validationMessage || data.message || fallbackMessage);
         error.status = response.status;
         error.code = data.code || null;
         error.payload = data;
@@ -638,6 +804,8 @@ function applyValidatedFacePreviews(form, previews = {}) {
         image.hidden = false;
         input.disabled = false;
         input.value = '';
+        delete input._playerCharacterPreparedSource;
+        delete input._playerCharacterPreparedFile;
         card.classList.add('is-stored', 'has-preview');
         card.classList.remove('is-preview-unconfirmed', 'is-uploading');
     });
