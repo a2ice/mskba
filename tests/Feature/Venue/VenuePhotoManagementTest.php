@@ -47,8 +47,29 @@ final class VenuePhotoManagementTest extends TestCase
             ->assertSee($photo->publicUrl(), false)
             ->assertSee('data-image-upload-auto-submit', false)
             ->assertSee('Загружаем фотографию…')
+            ->assertSee('до 10 МБ')
             ->assertSee(route('account.venues.photos.activate', [$venue->routeIdentifier(), $photo->id]), false)
             ->assertSee(route('account.venues.photos.destroy', [$venue->routeIdentifier(), $photo->id]), false);
+    }
+
+    public function test_venue_photo_upload_allows_ten_megabytes_and_rejects_larger_files(): void
+    {
+        Storage::fake('public');
+        [$owner, $venue] = $this->ownedVenue();
+
+        $this->actingAs($owner)->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
+            'photo' => UploadedFile::fake()->image('large-court.jpg', 1200, 600)->size(10 * 1024),
+        ])->assertRedirect()->assertSessionDoesntHaveErrors('photo');
+
+        $this->assertSame(1, $venue->media()->where('collection', 'gallery')->count());
+
+        $this->actingAs($owner)->post(route('account.venues.photos.store', $venue->routeIdentifier()), [
+            'photo' => UploadedFile::fake()->image('too-large-court.jpg', 1200, 600)->size((10 * 1024) + 1),
+        ])->assertRedirect()->assertSessionHasErrors([
+            'photo' => 'Изображение должно быть не больше 10 МБ.',
+        ]);
+
+        $this->assertSame(1, $venue->media()->where('collection', 'gallery')->count());
     }
 
     public function test_only_three_photos_are_kept_and_owner_can_activate_and_delete_them(): void
