@@ -108,6 +108,34 @@ Follow-up исправление:
 маршруты и финальный XML всё ещё должны строиться корректно; иначе endpoint продолжит
 падать и post-deploy smoke остановит workflow.
 
+## Follow-up: Yandex Description coverage — 2026-10-07
+
+После исправления sitemap в Яндекс Вебмастере осталась рекомендация
+«Отсутствуют метатеги Description» (последняя старая проверка Яндекса была
+19.08.2026). Аудит текущего `main` показал, что базовый layout умеет выводить
+description, но route-level карта покрывала только основные каталоги, а
+Tournament, SportsSection и публичные профили не имели собственного
+content-aware SEO fallback.
+
+Исправление строится по единой иерархии:
+
+- ручной SEO override остаётся самым приоритетным;
+- Venue/Event/Team/Tournament/SportsSection формируют description из реального
+  публичного содержимого страницы, если редактор не задал текст;
+- Tournament и SportsSection добавлены в существующий `/admin/content/seo`;
+- публичные пользовательские профили формируют description только из уже
+  разрешённых к показу имени/ролей/описания роли;
+- FAQ и юридические информационные страницы получили отдельные route-level
+  descriptions;
+- layout имеет последний общий safety fallback, поэтому страница основной темы
+  больше не может случайно остаться вообще без `<meta name="description">`;
+- `PageSeoResolver` очищает HTML и лишние пробелы и ограничивает
+  автоматический description до 300 символов.
+
+Regression-проверки фиксируют наличие конкретных descriptions на статических
+информационных страницах, content-aware descriptions турнира/секции и
+публичного профиля, а также приоритет ручного override.
+
 ## Следующие задачи программы
 
 - Task 281 — общий publication layer и адаптеры Telegram/VK/Instagram;
