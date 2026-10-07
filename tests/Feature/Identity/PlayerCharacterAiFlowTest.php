@@ -133,6 +133,29 @@ final class PlayerCharacterAiFlowTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_generation_rejects_face_reference_larger_than_five_megabytes_with_clear_message(): void
+    {
+        $user = $this->player();
+
+        $response = $this->actingAs($user)
+            ->withHeader('Accept', 'application/json')
+            ->post(route('account.player-profile.update'), [
+                '_method' => 'PATCH',
+                'mutation' => 'generate_2d',
+                'generation_face_references' => [
+                    'front' => UploadedFile::fake()->image('front.jpg', 1200, 900)->size(5121),
+                ],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['generation_face_references.front']);
+
+        $this->assertSame(
+            'Каждое фото лица должно быть не больше 5 МБ.',
+            $response->json('errors')['generation_face_references.front'][0] ?? null,
+        );
+        $this->assertDatabaseCount('player_character_generations', 0);
+    }
+
     public function test_generation_checks_face_references_before_balance_and_provider(): void
     {
         $gateway = $this->bindGateway();
