@@ -220,6 +220,10 @@ final class UserWalletTransferTest extends TestCase
         $visible = $this->confirmedUser('olsen');
         $hidden = $this->confirmedUser('olsen_hidden');
 
+        $visible->privacySettings()->updateOrCreate(
+            ['type' => UserPrivacySettingTypeEnum::DISCOVERABILITY],
+            ['visibility' => UserPrivacyVisibilityEnum::EVERYONE],
+        );
         $hidden->privacySettings()->updateOrCreate(
             ['type' => UserPrivacySettingTypeEnum::DISCOVERABILITY],
             ['visibility' => UserPrivacyVisibilityEnum::NOBODY],
@@ -234,6 +238,35 @@ final class UserWalletTransferTest extends TestCase
         $this->assertContains($visible->id, $candidateIds);
         $this->assertNotContains($hidden->id, $candidateIds);
         $this->assertNotContains($sender->id, $candidateIds);
+    }
+
+    public function test_wallet_recipient_search_filters_unconfirmed_users_before_limit(): void
+    {
+        $sender = $this->confirmedUser('sender');
+
+        foreach (range(1, 12) as $index) {
+            $user = User::factory()->create([
+                'username' => sprintf('olg_%02d_login', $index),
+                'status' => UserStatusEnum::UNCONFIRMED->value,
+            ]);
+            $user->forceFill(['nickname' => sprintf('olg_%02d', $index)])->save();
+        }
+
+        $recipient = $this->confirmedUser('olgitaa');
+        $recipient->forceFill(['username' => 'olg_99_login'])->save();
+        $recipient->privacySettings()->updateOrCreate(
+            ['type' => UserPrivacySettingTypeEnum::DISCOVERABILITY],
+            ['visibility' => UserPrivacyVisibilityEnum::EVERYONE],
+        );
+
+        $response = $this->actingAs($sender)
+            ->getJson(route('account.wallet.transfer-recipients', ['q' => 'olg']))
+            ->assertOk();
+
+        $candidateIds = collect($response->json('candidates'))->pluck('id')->map('intval')->all();
+
+        $this->assertContains($recipient->id, $candidateIds);
+        $this->assertCount(1, $candidateIds);
     }
 
     public function test_wallet_recipient_predictive_search_respects_selected_users_discoverability(): void
@@ -307,7 +340,8 @@ final class UserWalletTransferTest extends TestCase
             ->assertOk()
             ->assertSee('data-entity-predictive-search', false)
             ->assertSee('name="recipient_user_id"', false)
-            ->assertSee(route('account.wallet.transfer-recipients'), false);
+            ->assertSee(route('account.wallet.transfer-recipients'), false)
+            ->assertSee('Для перевода доступны только подтверждённые пользователи, разрешившие находить себя в поиске.');
     }
 
     public function test_wallet_horizontal_form_rows_use_shared_top_alignment_pattern(): void

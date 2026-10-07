@@ -21,6 +21,7 @@ final class SearchDiscoverableUsers
         array $excludeUserIds = [],
         int $limit = 15,
         ?UserPrivacySettingTypeEnum $requiredAccess = null,
+        ?UserStatusEnum $requiredStatus = null,
     ): Collection {
         $viewer = $viewer->canonical();
         $rawQuery = trim($query);
@@ -30,7 +31,7 @@ final class SearchDiscoverableUsers
             return collect();
         }
 
-        return $this->baseQuery($viewer, $excludeUserIds, $requiredAccess)
+        return $this->baseQuery($viewer, $excludeUserIds, $requiredAccess, $requiredStatus)
             ->where(function (Builder $userQuery) use ($normalizedQuery, $rawQuery): void {
                 $userQuery
                     ->whereRaw('LOWER(username) LIKE ?', ["%{$normalizedQuery}%"])
@@ -54,6 +55,7 @@ final class SearchDiscoverableUsers
         User $viewer,
         int $userId,
         ?UserPrivacySettingTypeEnum $requiredAccess = null,
+        ?UserStatusEnum $requiredStatus = null,
     ): ?User {
         $viewer = $viewer->canonical();
         $candidate = User::query()->find($userId)?->canonical();
@@ -62,7 +64,7 @@ final class SearchDiscoverableUsers
             return null;
         }
 
-        return $this->baseQuery($viewer, [], $requiredAccess)
+        return $this->baseQuery($viewer, [], $requiredAccess, $requiredStatus)
             ->whereKey($candidate->id)
             ->first();
     }
@@ -75,6 +77,7 @@ final class SearchDiscoverableUsers
         User $viewer,
         array $excludeUserIds,
         ?UserPrivacySettingTypeEnum $requiredAccess,
+        ?UserStatusEnum $requiredStatus,
     ): Builder {
         $excludedCanonicalIds = $this->canonicalIds([
             (int) $viewer->id,
@@ -88,7 +91,11 @@ final class SearchDiscoverableUsers
                 $excludedCanonicalIds !== [],
                 fn (Builder $query) => $query->whereNotIn('id', $excludedCanonicalIds),
             )
-            ->where('status', '!=', UserStatusEnum::BLOCKED->value)
+            ->when(
+                $requiredStatus !== null,
+                fn (Builder $query) => $query->where('status', $requiredStatus->value),
+                fn (Builder $query) => $query->where('status', '!=', UserStatusEnum::BLOCKED->value),
+            )
             ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
                 $privacyQuery,
                 $viewer,

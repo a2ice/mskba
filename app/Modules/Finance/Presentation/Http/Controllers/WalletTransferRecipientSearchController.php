@@ -4,6 +4,7 @@ namespace App\Modules\Finance\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\SearchDiscoverableUsers;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,9 +21,12 @@ final class WalletTransferRecipientSearchController extends Controller
         $viewer = $request->user();
         abort_if($viewer === null, 401);
 
-        $candidates = $users->handle($viewer, (string) $validated['q'], limit: 10)
-            ->filter(fn (User $user): bool => $user->isConfirmed())
-            ->map(function (User $user): array {
+        $candidates = $users->handle(
+            $viewer,
+            (string) $validated['q'],
+            limit: 10,
+            requiredStatus: UserStatusEnum::CONFIRMED,
+        )->map(function (User $user): array {
                 $name = trim(implode(' ', array_filter([
                     $user->profile?->first_name,
                     $user->profile?->last_name,
