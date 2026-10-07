@@ -6,6 +6,7 @@ use App\Modules\Identity\Application\Services\PublicUserProfileService;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 final class PublicUserProfileController
 {
@@ -29,9 +30,22 @@ final class PublicUserProfileController
         $viewer = $request->user()?->canonical();
         $isOwnProfile = $viewer !== null && (int) $viewer->id === (int) $canonical->id;
 
+        $selectedRole = collect($data['roles'])->firstWhere('value', $data['role']);
+        $roleNames = collect($data['roles'])->pluck('name')->filter()->implode(', ');
+        $metaTitle = $selectedRole
+            ? $data['name'].' — '.$selectedRole['name'].' · MSKBA'
+            : $data['name'].' · MSKBA';
+        $metaDescription = $selectedRole
+            ? $data['name'].' — '.$selectedRole['name'].' в MSKBA. '.$selectedRole['description']
+            : $data['name'].' — участник баскетбольного сообщества MSKBA'
+                .($roleNames !== '' ? '. Публичные роли: '.$roleNames.'.' : '.');
+
         return ThemeResolver::page('users.show', [
             'publicProfile' => $data,
             'isOwnProfile' => $isOwnProfile,
+            'metaTitle' => $metaTitle,
+            'metaDescription' => Str::limit(trim($metaDescription), 300, '…'),
+            'canonicalUrl' => $profiles->url($canonical, $role),
         ])->header('Cache-Control', 'private, no-store');
     }
 
