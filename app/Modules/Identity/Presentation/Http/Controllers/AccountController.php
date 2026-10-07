@@ -21,6 +21,7 @@ use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
 use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
+use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
 use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
@@ -225,7 +226,7 @@ class AccountController extends Controller
             ->with('status', 'Контакт подтвержден.');
     }
 
-    public function settings(): Response
+    public function settings(PersonalDataDistributionConsentService $distributionConsents): Response
     {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -281,12 +282,20 @@ class AccountController extends Controller
                 ];
             });
 
+        $distributionConsentAllowedTypes = $distributionConsents->allowedTypeValues($user);
+
         return ThemeResolver::page('account.settings', [
             'user' => $user,
             'privacySettingTypes' => UserPrivacySettingTypeEnum::cases(),
             'privacyVisibilities' => UserPrivacyVisibilityEnum::cases(),
             'privacySettings' => $privacySettings,
             'privacyAllowedUsers' => $privacyAllowedUsers,
+            'distributionConsentAllowedTypes' => $distributionConsentAllowedTypes,
+            'distributionConsentEnforced' => $distributionConsents->isEnforcedFor($user),
+            'distributionConsentRequiresRefresh' => $distributionConsents->needsAcceptance(
+                $user,
+                $distributionConsentAllowedTypes,
+            ),
         ]);
     }
 

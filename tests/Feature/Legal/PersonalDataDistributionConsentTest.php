@@ -85,6 +85,31 @@ final class PersonalDataDistributionConsentTest extends TestCase
         $this->assertFalse($privacy->allows($user, null, UserPrivacySettingTypeEnum::PLAYER_TEAMS));
     }
 
+    public function test_distribution_setup_page_is_only_available_during_onboarding(): void
+    {
+        $user = User::factory()->create([
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('account.privacy.distribution'))
+            ->assertRedirect(route('account.settings'));
+
+        $this->actingAs($user)
+            ->put(route('account.privacy.distribution.update'), [
+                'action' => 'save',
+                'public' => ['profile' => '1'],
+                'distribution_consent' => '1',
+            ])
+            ->assertRedirect(route('account.settings'));
+
+        $this->assertDatabaseMissing('user_consents', [
+            'user_id' => $user->id,
+            'type' => UserConsent::TYPE_PERSONAL_DATA_DISTRIBUTION,
+        ]);
+    }
+
     public function test_private_choice_completes_setup_without_distribution_consent(): void
     {
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);

@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserConsent;
 use App\Modules\Identity\Domain\Models\UserPrivacySetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -37,6 +38,124 @@ final class AccountPrivacySettingsTest extends TestCase
         );
         $this->assertDatabaseCount('user_privacy_settings', 0);
         $this->assertDatabaseCount('user_notification_settings', 0);
+    }
+
+    public function test_settings_page_contains_integrated_distribution_consent_ui(): void
+    {
+        $user = User::factory()->create([
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('account.settings'))
+            ->assertOk()
+            ->assertSee('Публичное распространение персональных данных')
+            ->assertSee('отдельного согласия на распространение персональных данных')
+            ->assertDontSee('Изменить перечень публичных данных');
+    }
+
+    public function test_public_distribution_change_requires_consent_on_settings_page(): void
+    {
+        $user = User::factory()->create([
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => now(),
+        ]);
+        $payload = $this->privatePayload();
+        $payload['privacy'][UserPrivacySettingTypeEnum::CONTACTS->value] = [
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE->value,
+        ];
+
+        $this->actingAs($user)
+            ->from(route('account.settings'))
+            ->put(route('account.settings.privacy.update'), $payload)
+            ->assertRedirect(route('account.settings'))
+            ->assertSessionHasErrors('distribution_consent');
+
+        $this->assertDatabaseMissing('user_consents', [
+            'user_id' => $user->id,
+            'type' => UserConsent::TYPE_PERSONAL_DATA_DISTRIBUTION,
+        ]);
+        $this->assertDatabaseMissing('user_privacy_settings', [
+            'user_id' => $user->id,
+            'type' => UserPrivacySettingTypeEnum::CONTACTS->value,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE->value,
+        ]);
+    }
+
+    public function test_settings_save_updates_privacy_and_distribution_consent_without_losing_selected_users(): void
+    {
+        $user = User::factory()->create([
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => now(),
+        ]);
+        $allowedUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $payload = $this->privatePayload();
+        $payload['privacy'][UserPrivacySettingTypeEnum::PROFILE->value] = [
+            'visibility' => UserPrivacyVisibilityEnum::SELECTED_USERS->value,
+            'allowed_user_ids' => [$allowedUser->id],
+        ];
+        $payload['privacy'][UserPrivacySettingTypeEnum::CONTACTS->value] = [
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE->value,
+        ];
+        $payload['distribution_consent'] = '1';
+
+        $this->actingAs($user)
+            ->put(route('account.settings.privacy.update'), $payload)
+            ->assertRedirect(route('account.settings'))
+            ->assertSessionHasNoErrors();
+
+        $consent = $user->consents()
+            ->where('type', UserConsent::TYPE_PERSONAL_DATA_DISTRIBUTION)
+            ->whereNull('revoked_at')
+            ->sole();
+
+        $this->assertSame('public_data_settings', $consent->source);
+        $this->assertSame([UserPrivacySettingTypeEnum::CONTACTS->value], $consent->payload['allowed_types']);
+        $this->assertDatabaseHas('user_privacy_settings', [
+            'user_id' => $user->id,
+            'type' => UserPrivacySettingTypeEnum::PROFILE->value,
+            'visibility' => UserPrivacyVisibilityEnum::SELECTED_USERS->value,
+        ]);
+        $profileSetting = UserPrivacySetting::query()
+            ->where('user_id', $user->id)
+            ->where('type', UserPrivacySettingTypeEnum::PROFILE->value)
+            ->sole();
+        $this->assertDatabaseHas('user_privacy_setting_allowed_users', [
+            'privacy_setting_id' => $profileSetting->id,
+            'allowed_user_id' => $allowedUser->id,
+        ]);
+    }
+
+    public function test_closing_last_public_category_revokes_consent_without_new_acceptance(): void
+    {
+        $user = User::factory()->create([
+            'personal_data_distribution_required_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('account.privacy.distribution.update'), [
+                'action' => 'save',
+                'public' => [UserPrivacySettingTypeEnum::CONTACTS->value => '1'],
+                'distribution_consent' => '1',
+            ])
+            ->assertRedirect(route('account'));
+
+        $this->actingAs($user)
+            ->put(route('account.settings.privacy.update'), $this->privatePayload())
+            ->assertRedirect(route('account.settings'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('user_consents', [
+            'user_id' => $user->id,
+            'type' => UserConsent::TYPE_PERSONAL_DATA_DISTRIBUTION,
+            'revoked_at' => null,
+        ]);
+        $this->assertDatabaseHas('user_privacy_settings', [
+            'user_id' => $user->id,
+            'type' => UserPrivacySettingTypeEnum::CONTACTS->value,
+            'visibility' => UserPrivacyVisibilityEnum::NOBODY->value,
+        ]);
     }
 
     public function test_user_can_update_all_privacy_and_notification_settings_atomically(): void
@@ -149,6 +268,19 @@ final class AccountPrivacySettingsTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['id' => $visibleUser->getKey()])
             ->assertJsonMissing(['id' => $hiddenUser->getKey()]);
+    }
+
+    private function privatePayload(): array
+    {
+        return [
+            'privacy' => collect(UserPrivacySettingTypeEnum::cases())
+                ->mapWithKeys(fn (UserPrivacySettingTypeEnum $type): array => [
+                    $type->value => ['visibility' => UserPrivacyVisibilityEnum::NOBODY->value],
+                ])
+                ->all(),
+            'messenger_notifications' => UserMessengerNotificationPreferenceEnum::ALL->value,
+            'email_notifications' => UserMessengerNotificationPreferenceEnum::ALL->value,
+        ];
     }
 
     private function validPayload(): array

@@ -61,15 +61,46 @@ final class PersonalDataDistributionConsentService
             ? ($consent->payload['allowed_types'] ?? [])
             : [];
 
-        $validValues = collect(UserPrivacySettingTypeEnum::distributionTypes())
-            ->map(fn (UserPrivacySettingTypeEnum $type): string => $type->value)
-            ->all();
+        return $this->allowedTypesCache[(int) $user->id] = $this->normalizeAllowedTypeValues(
+            is_array($allowed) ? $allowed : [],
+        );
+    }
 
-        return $this->allowedTypesCache[(int) $user->id] = collect(is_array($allowed) ? $allowed : [])
-            ->filter(fn (mixed $value): bool => is_string($value) && in_array($value, $validValues, true))
-            ->unique()
-            ->values()
-            ->all();
+    /**
+     * @param  list<string>  $selectedTypeValues
+     */
+    public function needsAcceptance(User $user, array $selectedTypeValues): bool
+    {
+        $user = $user->canonical();
+
+        if (! $this->isEnforcedFor($user)) {
+            return false;
+        }
+
+        $selectedTypeValues = $this->normalizeAllowedTypeValues($selectedTypeValues);
+
+        if ($selectedTypeValues === []) {
+            return false;
+        }
+
+        $consent = $user->consents()
+            ->where('type', UserConsent::TYPE_PERSONAL_DATA_DISTRIBUTION)
+            ->whereNull('revoked_at')
+            ->latest('accepted_at')
+            ->latest('id')
+            ->first();
+
+        if ($consent === null) {
+            return true;
+        }
+
+        $allowed = is_array($consent->payload)
+            ? ($consent->payload['allowed_types'] ?? [])
+            : [];
+        $allowed = $this->normalizeAllowedTypeValues(is_array($allowed) ? $allowed : []);
+
+        return $allowed !== $selectedTypeValues
+            || $consent->document_version !== (string) config('legal.personal_data_distribution_consent_version');
     }
 
     /** @return list<string> */
@@ -146,5 +177,18 @@ final class PersonalDataDistributionConsentService
     public function forget(User $user): void
     {
         unset($this->allowedTypesCache[(int) $user->canonical()->id]);
+    }
+
+    /**
+     * @param  array<int, mixed>  $values
+     * @return list<string>
+     */
+    private function normalizeAllowedTypeValues(array $values): array
+    {
+        return collect(UserPrivacySettingTypeEnum::distributionTypes())
+            ->filter(fn (UserPrivacySettingTypeEnum $type): bool => in_array($type->value, $values, true))
+            ->map(fn (UserPrivacySettingTypeEnum $type): string => $type->value)
+            ->values()
+            ->all();
     }
 }
