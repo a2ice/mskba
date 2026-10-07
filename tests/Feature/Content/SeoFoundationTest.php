@@ -76,13 +76,14 @@ final class SeoFoundationTest extends TestCase
 
     public function test_public_information_pages_have_specific_meta_descriptions(): void
     {
+        $seoPages = config('seo.pages');
         $routes = [
-            ['faq.index', [], config('seo.pages.faq.index.description')],
-            ['faq.welcome', [], config('seo.pages.faq.welcome.description')],
-            ['faq.creation', ['topic' => 'venues'], config('seo.pages.faq.creation.description')],
-            ['privacy.policy', [], config('seo.pages.privacy.policy.description')],
-            ['personal-data.consent', [], config('seo.pages.personal-data.consent.description')],
-            ['personal-data.distribution-consent', [], config('seo.pages.personal-data.distribution-consent.description')],
+            ['faq.index', [], $seoPages['faq.index']['description']],
+            ['faq.welcome', [], $seoPages['faq.welcome']['description']],
+            ['faq.creation', ['topic' => 'venues'], $seoPages['faq.creation']['description']],
+            ['privacy.policy', [], $seoPages['privacy.policy']['description']],
+            ['personal-data.consent', [], $seoPages['personal-data.consent']['description']],
+            ['personal-data.distribution-consent', [], $seoPages['personal-data.distribution-consent']['description']],
         ];
 
         foreach ($routes as [$routeName, $parameters, $description]) {
