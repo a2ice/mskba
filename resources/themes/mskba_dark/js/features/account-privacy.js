@@ -1,4 +1,5 @@
 document.querySelectorAll('[data-privacy-rule]').forEach(initPrivacyRule);
+initDistributionConsentForm(document.querySelector('[data-distribution-consent-form]'));
 
 function initPrivacyRule(rule) {
     const visibility = rule.querySelector('[data-privacy-visibility]');
@@ -243,5 +244,60 @@ function initPrivacyRule(rule) {
 
     function hideResults() {
         results.classList.add('d-none');
+    }
+}
+
+
+function initDistributionConsentForm(form) {
+    if (!form) {
+        return;
+    }
+
+    const panel = form.querySelector('[data-distribution-consent-panel]');
+    const acceptance = form.querySelector('[data-distribution-consent-accept]');
+    const revoke = form.querySelector('[data-distribution-consent-revoke]');
+    const checkbox = form.querySelector('[data-distribution-consent-checkbox]');
+    const rules = [...form.querySelectorAll('[data-distribution-consent-type]')];
+
+    if (!panel || !acceptance || !revoke || !checkbox || rules.length === 0) {
+        return;
+    }
+
+    const current = new Set(
+        (form.dataset.distributionConsentCurrent || '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean),
+    );
+    const requiresRefresh = form.dataset.distributionConsentRefresh === '1';
+
+    rules.forEach((rule) => {
+        rule.querySelector('[data-privacy-visibility]')?.addEventListener('change', updateConsentState);
+    });
+
+    updateConsentState();
+
+    function updateConsentState() {
+        const selected = new Set(
+            rules
+                .filter((rule) => rule.querySelector('[data-privacy-visibility]')?.value === 'everyone')
+                .map((rule) => rule.dataset.distributionConsentType),
+        );
+        const changed = !sameSet(current, selected);
+        const needsAcceptance = selected.size > 0 && (changed || requiresRefresh);
+        const needsRevocation = selected.size === 0 && current.size > 0;
+
+        panel.hidden = !needsAcceptance && !needsRevocation;
+        acceptance.hidden = !needsAcceptance;
+        revoke.hidden = !needsRevocation;
+        checkbox.required = needsAcceptance;
+
+        if (!needsAcceptance) {
+            checkbox.checked = false;
+        }
+    }
+
+    function sameSet(left, right) {
+        return left.size === right.size && [...left].every((value) => right.has(value));
     }
 }

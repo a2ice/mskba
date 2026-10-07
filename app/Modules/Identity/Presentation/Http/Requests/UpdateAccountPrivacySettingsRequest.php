@@ -34,6 +34,7 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
             ],
             'messenger_notifications' => ['nullable', Rule::enum(UserMessengerNotificationPreferenceEnum::class)],
             'email_notifications' => ['nullable', Rule::enum(UserMessengerNotificationPreferenceEnum::class)],
+            'distribution_consent' => ['nullable', 'accepted'],
         ];
     }
 
@@ -62,19 +63,6 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
                     }
 
                     if (
-                        $user !== null
-                        && $distributionConsents->isEnforcedFor($user)
-                        && $type->requiresDistributionConsent()
-                        && ($setting['visibility'] ?? null) === UserPrivacyVisibilityEnum::EVERYONE->value
-                        && ! $distributionConsents->allows($user, $type)
-                    ) {
-                        $validator->errors()->add(
-                            "privacy.{$type->value}.visibility",
-                            'Чтобы открыть эту категорию для всех, сначала добавьте её в отдельное согласие на публичное распространение.',
-                        );
-                    }
-
-                    if (
                         ($setting['visibility'] ?? null) === UserPrivacyVisibilityEnum::SELECTED_USERS->value
                         && empty($setting['allowed_user_ids'])
                     ) {
@@ -93,6 +81,35 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
                         );
                     }
                 }
+
+                if ($user !== null && $distributionConsents->isEnforcedFor($user)) {
+                    $existingSettings = $user->privacySettings()
+                        ->get()
+                        ->keyBy(fn ($setting): string => $setting->type->value);
+
+                    $publicTypeValues = collect(UserPrivacySettingTypeEnum::distributionTypes())
+                        ->filter(function (UserPrivacySettingTypeEnum $type) use ($privacy, $existingSettings): bool {
+                            $submitted = $privacy[$type->value] ?? null;
+                            $visibility = is_array($submitted)
+                                ? ($submitted['visibility'] ?? null)
+                                : ($existingSettings->get($type->value)?->visibility->value ?? $type->defaultVisibility()->value);
+
+                            return $visibility === UserPrivacyVisibilityEnum::EVERYONE->value;
+                        })
+                        ->map(fn (UserPrivacySettingTypeEnum $type): string => $type->value)
+                        ->values()
+                        ->all();
+
+                    if (
+                        $distributionConsents->needsAcceptance($user, $publicTypeValues)
+                        && ! $this->boolean('distribution_consent')
+                    ) {
+                        $validator->errors()->add(
+                            'distribution_consent',
+                            'Подтвердите отдельное согласие на публичное распространение выбранных персональных данных.',
+                        );
+                    }
+                }
             },
         ];
     }
@@ -103,6 +120,11 @@ final class UpdateAccountPrivacySettingsRequest extends FormRequest
         $settings = $this->validated('privacy');
 
         return $settings;
+    }
+
+    public function distributionConsentAccepted(): bool
+    {
+        return $this->boolean('distribution_consent');
     }
 
     public function messengerNotifications(): UserMessengerNotificationPreferenceEnum

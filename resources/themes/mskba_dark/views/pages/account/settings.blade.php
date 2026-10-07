@@ -79,11 +79,18 @@
                 Управляйте своей видимостью, взаимодействиями и доставкой уведомлений.
             </p>
             <p class="text-muted mb-4">
-                Публичный режим «Все» для персональных данных действует только в пределах отдельного согласия.
-                <a href="{{ route('account.privacy.distribution', ['return' => 'settings']) }}">Изменить перечень публичных данных</a>.
+                Для персональных данных режим «Все» означает публичное распространение неограниченному кругу посетителей.
+                Если состав открытых категорий изменится, отдельное согласие подтверждается здесь же перед сохранением.
             </p>
 
-            <form method="POST" action="{{ route('account.settings.privacy.update') }}" class="account-privacy__form">
+            <form
+                method="POST"
+                action="{{ route('account.settings.privacy.update') }}"
+                class="account-privacy__form"
+                data-distribution-consent-form
+                data-distribution-consent-current="{{ implode(',', $distributionConsentAllowedTypes ?? []) }}"
+                data-distribution-consent-refresh="{{ ! empty($distributionConsentRequiresRefresh) ? '1' : '0' }}"
+            >
                 @csrf
                 @method('PUT')
 
@@ -97,7 +104,12 @@
                         $allowedUsers = $privacyAllowedUsers->get($type->value, collect());
                     @endphp
 
-                    <fieldset class="account-privacy__rule" data-privacy-rule data-user-search-url="{{ route('account.settings.privacy.users') }}">
+                    <fieldset
+                        class="account-privacy__rule"
+                        data-privacy-rule
+                        data-user-search-url="{{ route('account.settings.privacy.users') }}"
+                        @if($type->requiresDistributionConsent()) data-distribution-consent-type="{{ $type->value }}" @endif
+                    >
                         <legend>{{ $type->label() }}</legend>
                         <p class="account-privacy__description">{{ $type->description() }}</p>
 
@@ -108,14 +120,7 @@
                             @endforeach
                         </select>
 
-                        @error("privacy.{$type->value}.visibility")
-                            <div class="invalid-feedback d-block">
-                                {{ $message }}
-                                @if($type->requiresDistributionConsent())
-                                    <a href="{{ route('account.privacy.distribution', ['return' => 'settings']) }}" class="ms-1">Настроить публичность</a>
-                                @endif
-                            </div>
-                        @enderror
+                        @error("privacy.{$type->value}.visibility")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
 
                         <div class="account-privacy__users" data-privacy-users @if($visibility !== \App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum::SELECTED_USERS->value) hidden @endif>
                             <label class="form-label" for="privacy-users-{{ $type->value }}">Разрешённые пользователи</label>
@@ -149,6 +154,49 @@
 
                 @include('theme::pages.account.partials.messenger-notifications-setting', ['user' => $user])
                 @include('theme::pages.account.partials.email-notifications-setting', ['user' => $user])
+
+                @if($distributionConsentEnforced ?? false)
+                    <section
+                        class="account-settings-card mb-4"
+                        data-distribution-consent-panel
+                        @if(!$errors->has('distribution_consent')) hidden @endif
+                    >
+                        <h3 class="h4 mb-2">Публичное распространение персональных данных</h3>
+
+                        <div data-distribution-consent-accept>
+                            <p class="text-muted mb-3">
+                                Вы изменяете набор персональных данных, доступных всем посетителям. Для этого требуется отдельное согласие.
+                            </p>
+
+                            <label class="privacy-consent">
+                                <input
+                                    class="privacy-consent__input"
+                                    type="checkbox"
+                                    name="distribution_consent"
+                                    value="1"
+                                    @checked(old('distribution_consent'))
+                                    data-distribution-consent-checkbox
+                                >
+                                <span class="privacy-consent__control" aria-hidden="true"></span>
+                                <span class="privacy-consent__text">
+                                    Я разрешаю MSKBA распространять выбранные выше персональные данные в публичных разделах портала
+                                    на условиях
+                                    <a href="{{ route('personal-data.distribution-consent') }}" target="_blank" rel="noopener">
+                                        отдельного согласия на распространение персональных данных
+                                    </a>.
+                                </span>
+                            </label>
+                        </div>
+
+                        <p class="text-muted mb-0" data-distribution-consent-revoke hidden>
+                            После сохранения действующее согласие на публичное распространение будет отозвано.
+                        </p>
+
+                        @error('distribution_consent')
+                            <div class="invalid-feedback d-block mt-2">{{ $message }}</div>
+                        @enderror
+                    </section>
+                @endif
 
                 <button type="submit" class="btn btn--primary btn--sm">Сохранить настройки</button>
             </form>

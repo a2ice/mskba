@@ -101,13 +101,6 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
 
-            $items[] = [
-                'label' => 'Публичность',
-                'url' => route('account.privacy.distribution', ['return' => 'settings']),
-                'active' => $this->isActiveRoute('account.privacy.distribution'),
-                'visible' => true,
-            ];
-
             if ($user->isConfirmed()) {
                 $items[] = [
                     'label' => 'Контракты',
