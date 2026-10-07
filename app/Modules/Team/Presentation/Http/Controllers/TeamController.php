@@ -273,6 +273,15 @@ final class TeamController extends Controller
                 ]];
             });
 
+        $sportLabels = $item->sportProfiles
+            ->map(fn ($profile): string => $profile->sport_type->label())
+            ->unique()
+            ->implode(', ');
+        $generatedDescription = 'Команда «'.$item->name.'»'
+            .($sportLabels !== '' ? ' — '.$sportLabels : '')
+            .'. Состав, тренеры, площадки, игры и набор игроков на MSKBA.';
+        $seoDescription = $item->description ?: $generatedDescription;
+
         return ThemeResolver::page('teams.show', [
             'team' => $item,
             'coaches' => $coaches,
@@ -298,7 +307,7 @@ final class TeamController extends Controller
                 SeoEntityTypeEnum::TEAM,
                 $item->id,
                 $item->name,
-                $item->description,
+                $seoDescription,
                 route('teams.show', $item->routeIdentifier()),
             ),
         ]);
