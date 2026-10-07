@@ -22,4 +22,6 @@ jobs:
             cd /var/www/mskba
             COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
 
+            $COMPOSE exec -T phpfpm php -r 'fwrite(STDERR, "short_open_tag=".ini_get("short_open_tag").PHP_EOL);'
+            $COMPOSE exec -T phpfpm sh -lc 'echo "--- sitemap source ---" >&2; sed -n "1,3p" resources/views/seo/sitemap.blade.php >&2; echo "--- compiled sitemap candidates ---" >&2; grep -l "sitemaps.org/schemas/sitemap" storage/framework/views/*.php 2>/dev/null | while read file; do echo "FILE $file" >&2; sed -n "1,3p" "$file" >&2; done'
             $COMPOSE exec -T phpfpm php artisan tinker --execute='try { $controller = app(\App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController::class); $response = $controller(); fwrite(STDERR, "SITEMAP_CONTROLLER_OK status=".$response->getStatusCode()." bytes=".strlen($response->getContent())."\n"); } catch (\Throwable $e) { $root = $e; while ($root->getPrevious()) { $root = $root->getPrevious(); } fwrite(STDERR, "SITEMAP_CONTROLLER_ERROR ".get_class($root).": ".$root->getMessage()." @ ".$root->getFile().":".$root->getLine()."\n"); exit(1); }'
