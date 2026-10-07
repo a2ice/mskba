@@ -14,8 +14,11 @@ use App\Modules\Tournament\Domain\Enums\TournamentStatusEnum;
 use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Enums\VenueStatusEnum;
 use App\Modules\Venue\Domain\Models\Venue;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 final class SeoSitemapController extends Controller
 {
@@ -34,62 +37,101 @@ final class SeoSitemapController extends Controller
             $this->entry(route('participants.index')),
         ]);
 
-        $this->append(
+        $this->appendSource(
             $urls,
-            ContentItem::query()->publishedInFeed()->orderBy('id')->get(['id', 'alias', 'updated_at']),
+            'content',
+            ContentItem::query()
+                ->publishedInFeed()
+                ->select(['id', 'alias', 'updated_at'])
+                ->orderBy('id'),
             fn (ContentItem $content): string => route('news.show', $content->alias),
         );
 
-        $this->append(
+        $this->appendSource(
             $urls,
-            Venue::query()->where('status', VenueStatusEnum::CONFIRMED->value)->orderBy('id')->get(['id', 'alias', 'updated_at']),
+            'venues',
+            Venue::query()
+                ->where('status', VenueStatusEnum::CONFIRMED->value)
+                ->whereNull('canonical_venue_id')
+                ->select(['id', 'alias', 'updated_at'])
+                ->orderBy('id'),
             fn (Venue $venue): string => route('venues.show', $venue->routeIdentifier()),
         );
 
-        $this->append(
+        $this->appendSource(
             $urls,
+            'events',
             Event::query()
                 ->where('visibility', EventVisibilityEnum::PUBLIC->value)
                 ->whereIn('status', [EventStatusEnum::PUBLISHED->value, EventStatusEnum::COMPLETED->value])
-                ->orderBy('id')
-                ->get(['id', 'alias', 'updated_at']),
+                ->select(['id', 'alias', 'updated_at'])
+                ->orderBy('id'),
             fn (Event $event): string => route('events.show', $event->routeIdentifier()),
         );
 
-        $this->append(
+        $this->appendSource(
             $urls,
-            Team::query()->competitionEligible()->orderBy('id')->get(['id', 'alias', 'updated_at']),
+            'teams',
+            Team::query()
+                ->competitionEligible()
+                ->select(['id', 'alias', 'updated_at'])
+                ->orderBy('id'),
             fn (Team $team): string => route('teams.show', $team->routeIdentifier()),
         );
 
-        $this->append(
+        $this->appendSource(
             $urls,
-            Tournament::query()->where('status', TournamentStatusEnum::CONFIRMED->value)->orderBy('id')->get(['id', 'alias', 'updated_at']),
+            'tournaments',
+            Tournament::query()
+                ->where('status', TournamentStatusEnum::CONFIRMED->value)
+                ->select(['id', 'alias', 'updated_at'])
+                ->orderBy('id'),
             fn (Tournament $tournament): string => route('tournaments.show', $tournament->routeIdentifier()),
         );
 
-        $this->append(
+        $this->appendSource(
             $urls,
-            SportsSection::query()->where('status', SportsSectionStatusEnum::ACTIVE->value)->orderBy('id')->get(['id', 'alias', 'updated_at']),
+            'sports_sections',
+            SportsSection::query()
+                ->where('status', SportsSectionStatusEnum::ACTIVE->value)
+                ->select(['id', 'alias', 'updated_at'])
+                ->orderBy('id'),
             fn (SportsSection $section): string => route('sports-sections.show', $section->alias),
         );
 
         return response()
-            ->view('seo.sitemap', ['urls' => $urls->unique('loc')->values()])
+            ->view('seo.sitemap', ['urls' => $urls->unique('loc')->sortBy('loc')->values()])
             ->header('Content-Type', 'application/xml; charset=UTF-8');
     }
 
     /**
+     * Dynamic sitemap sources are isolated from one another so one malformed
+     * production record cannot turn the whole sitemap into a 500 response.
+     *
      * @param Collection<int, array{loc: string, lastmod: string|null}> $urls
-     * @param Collection<int, object> $models
      */
-    private function append(Collection $urls, Collection $models, callable $urlResolver): void
+    private function appendSource(Collection $urls, string $source, Builder $query, callable $urlResolver): void
     {
-        foreach ($models as $model) {
-            $urls->push($this->entry(
-                $urlResolver($model),
-                $model->updated_at?->toAtomString(),
-            ));
+        try {
+            foreach ($query->cursor() as $model) {
+                try {
+                    $urls->push($this->entry(
+                        $urlResolver($model),
+                        $model->updated_at?->toAtomString(),
+                    ));
+                } catch (Throwable $exception) {
+                    Log::warning('Sitemap entry skipped because it could not be rendered.', [
+                        'source' => $source,
+                        'model_id' => $model->getKey(),
+                        'exception' => $exception,
+                    ]);
+                }
+            }
+        } catch (Throwable $exception) {
+            Log::error('Sitemap source could not be loaded.', [
+                'source' => $source,
+                'exception' => $exception,
+            ]);
         }
     }
 
