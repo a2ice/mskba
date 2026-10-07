@@ -75,6 +75,29 @@ host-level HTTPS reverse proxy. Эта часть была откатана hotf
 подготовлен `ops/nginx/apply-mskba-prod.sh`. Проверка всех четырёх вариантов адреса —
 `ops/nginx/check-canonical-host.sh`.
 
+## Production hardening sitemap — 2026-10-07
+
+После первого production rollout динамический `/sitemap.xml` начал возвращать 500,
+хотя профильный feature-тест и общий CI оставались зелёными. Причина пробела в проверках:
+тест создавал только опубликованный `ContentItem`, а production sitemap дополнительно
+обходит площадки, мероприятия, команды, турниры и спортивные секции. Ошибка внутри одного
+динамического источника или отдельной production-записи поэтому могла оборвать весь XML.
+
+Follow-up исправление:
+
+- каждый динамический источник sitemap теперь изолирован: сбой запроса одного источника
+  или построения одной записи логируется, но не превращает весь sitemap в HTTP 500;
+- канонизированные дубли площадок (`canonical_venue_id != null`) исключаются из sitemap;
+- sitemap сортируется детерминированно после дедупликации;
+- regression-тест создаёт публичные Venue/Event/Team/Tournament/SportsSection и проверяет
+  реальные URL каждого типа;
+- production deploy получает обязательный smoke-check `/sitemap.xml`: HTTP 200,
+  `application/xml`, корректный `urlset` и хотя бы один canonical URL `mskba.ru`.
+
+Такой fail-soft относится только к динамическим источникам. Статические обязательные
+маршруты и финальный XML всё ещё должны строиться корректно; иначе endpoint продолжит
+падать и post-deploy smoke остановит workflow.
+
 ## Следующие задачи программы
 
 - Task 281 — общий publication layer и адаптеры Telegram/VK/Instagram;
