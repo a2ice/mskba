@@ -123,7 +123,7 @@ final class AccountPrivacySettingsTest extends TestCase
             ->sole();
         $this->assertDatabaseHas('user_privacy_setting_allowed_users', [
             'privacy_setting_id' => $profileSetting->id,
-            'user_id' => $allowedUser->id,
+            'allowed_user_id' => $allowedUser->id,
         ]);
     }
 
@@ -140,6 +140,8 @@ final class AccountPrivacySettingsTest extends TestCase
                 'distribution_consent' => '1',
             ])
             ->assertRedirect(route('account'));
+
+        $this->withoutExceptionHandling();
 
         $this->actingAs($user)
             ->put(route('account.settings.privacy.update'), $this->privatePayload())
@@ -162,6 +164,8 @@ final class AccountPrivacySettingsTest extends TestCase
     {
         $user = User::factory()->create();
         $allowedUser = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+
+        $this->withoutExceptionHandling();
 
         $response = $this->actingAs($user)->put(route('account.settings.privacy.update'), [
             'privacy' => [
