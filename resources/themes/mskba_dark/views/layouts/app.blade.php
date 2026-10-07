@@ -5,9 +5,11 @@
     $pageTitle = isset($metaTitle)
         ? $metaTitle
         : ($routeSeo['title'] ?? (isset($title) ? $title.' · '.config('app.name', 'MSKBA') : config('app.name', 'MSKBA')));
-    $pageDescription = isset($metaDescription)
-        ? trim((string) $metaDescription)
-        : (isset($routeSeo['description']) ? trim((string) $routeSeo['description']) : null);
+    $explicitDescription = isset($metaDescription) ? trim((string) $metaDescription) : '';
+    $routeDescription = isset($routeSeo['description']) ? trim((string) $routeSeo['description']) : '';
+    $pageDescription = $explicitDescription !== ''
+        ? $explicitDescription
+        : ($routeDescription !== '' ? $routeDescription : trim((string) config('seo.default_description', '')));
     $pageKeywords = isset($metaKeywords) ? trim((string) $metaKeywords) : null;
     $pageCanonical = $canonicalUrl ?? url()->current();
     $pageRobots = isset($metaRobots) ? trim((string) $metaRobots) : null;
