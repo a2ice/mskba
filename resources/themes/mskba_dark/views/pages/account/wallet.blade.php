@@ -82,6 +82,7 @@
                         'required' => true,
                     ])
                     @error('recipient_user_id')<div class="form-error">{{ $message }}</div>@enderror
+                    <small class="text-muted">Для перевода доступны только подтверждённые пользователи, разрешившие находить себя в поиске.</small>
                 </div>
 
                 <label>
