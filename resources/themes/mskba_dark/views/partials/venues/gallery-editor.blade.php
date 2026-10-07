@@ -12,7 +12,7 @@
     <div class="venue-gallery-editor__heading">
         <div>
             <h2>Фотографии</h2>
-            <p>До трёх изображений · JPEG, PNG или WebP · до 5 МБ</p>
+            <p>До трёх изображений · JPEG, PNG или WebP · до 10 МБ</p>
         </div>
         <span>{{ $photos->count() }}/3</span>
     </div>
