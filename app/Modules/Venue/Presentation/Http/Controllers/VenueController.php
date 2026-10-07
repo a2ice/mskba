@@ -283,6 +283,12 @@ class VenueController extends Controller
             )
             : [];
 
+        $venueAddress = $venue->address?->display ?: $venue->rawAddress;
+        $generatedDescription = 'Площадка «'.$venue->name.'»'
+            .($venueAddress ? ' по адресу '.$venueAddress : '')
+            .'. Характеристики, расписание, условия доступа и баскетбольные активности на MSKBA.';
+        $seoDescription = $venue->shortDescription ?: $generatedDescription;
+
         return ThemeResolver::page('venues.show', [
             'venue' => $venue,
             'nearbyVenues' => $nearbyVenues,
@@ -290,7 +296,7 @@ class VenueController extends Controller
                 SeoEntityTypeEnum::VENUE,
                 $venue->id,
                 $venue->name,
-                $venue->shortDescription,
+                $seoDescription,
                 route('venues.show', $venue->id.'-'.$venue->alias),
             ),
         ]);
