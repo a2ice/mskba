@@ -108,7 +108,14 @@
                             @endforeach
                         </select>
 
-                        @error("privacy.{$type->value}.visibility")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        @error("privacy.{$type->value}.visibility")
+                            <div class="invalid-feedback d-block">
+                                {{ $message }}
+                                @if($type->requiresDistributionConsent())
+                                    <a href="{{ route('account.privacy.distribution', ['return' => 'settings']) }}" class="ms-1">Настроить публичность</a>
+                                @endif
+                            </div>
+                        @enderror
 
                         <div class="account-privacy__users" data-privacy-users @if($visibility !== \App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum::SELECTED_USERS->value) hidden @endif>
                             <label class="form-label" for="privacy-users-{{ $type->value }}">Разрешённые пользователи</label>

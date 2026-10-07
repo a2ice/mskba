@@ -29,7 +29,9 @@ final class AccountPrivacySettingsTest extends TestCase
             ->assertSee('Кто может писать мне сообщения')
             ->assertSee('Кто может добавлять меня в группы')
             ->assertSee('Уведомления в Telegram')
-            ->assertSee('Все уведомления');
+            ->assertSee('Все уведомления')
+            ->assertSee('Публичность')
+            ->assertSee(route('account.privacy.distribution', ['return' => 'settings']), false);
 
         $this->assertSame(
             UserPrivacyVisibilityEnum::EVERYONE,
@@ -37,6 +39,41 @@ final class AccountPrivacySettingsTest extends TestCase
         );
         $this->assertDatabaseCount('user_privacy_settings', 0);
         $this->assertDatabaseCount('user_notification_settings', 0);
+    }
+
+    public function test_distribution_consent_error_links_to_publicity_settings(): void
+    {
+        $user = User::factory()->create([
+            'personal_data_distribution_required_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('account.settings'))
+            ->put(route('account.settings.privacy.update'), [
+                'privacy' => [
+                    UserPrivacySettingTypeEnum::DISCOVERABILITY->value => [
+                        'visibility' => UserPrivacyVisibilityEnum::NOBODY->value,
+                    ],
+                    UserPrivacySettingTypeEnum::CONTACTS->value => [
+                        'visibility' => UserPrivacyVisibilityEnum::EVERYONE->value,
+                    ],
+                    UserPrivacySettingTypeEnum::MESSAGES->value => [
+                        'visibility' => UserPrivacyVisibilityEnum::NOBODY->value,
+                    ],
+                    UserPrivacySettingTypeEnum::GROUP_INVITATIONS->value => [
+                        'visibility' => UserPrivacyVisibilityEnum::NOBODY->value,
+                    ],
+                ],
+            ]);
+
+        $response
+            ->assertRedirect(route('account.settings'))
+            ->assertSessionHasErrors('privacy.contacts.visibility');
+
+        $this->get(route('account.settings'))
+            ->assertOk()
+            ->assertSee('Настроить публичность')
+            ->assertSee(route('account.privacy.distribution', ['return' => 'settings']), false);
     }
 
     public function test_user_can_update_all_privacy_and_notification_settings_atomically(): void
