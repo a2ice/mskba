@@ -22,8 +22,12 @@ final class PersonalDataDistributionConsentController extends Controller
         Request $request,
         AccountCheckForPresentationService $accountCheck,
         PersonalDataDistributionConsentService $consents,
-    ): Response {
+    ): Response|RedirectResponse {
         $user = $accountCheck->handle($request->user())->canonical();
+
+        if (! $consents->requiresSetup($user)) {
+            return redirect()->route('account.settings');
+        }
 
         if ($request->query('return') === 'settings') {
             $request->session()->put('privacy.distribution.return_to', route('account.settings'));
@@ -55,13 +59,19 @@ final class PersonalDataDistributionConsentController extends Controller
         UpdatePersonalDataDistributionConsentHandler $handler,
     ): RedirectResponse {
         $user = $accountCheck->handle($request->user())->canonical();
+
+        if (! $consents->requiresSetup($user)) {
+            return redirect()
+                ->route('account.settings')
+                ->with('status', 'Публичность настраивается на общей странице настроек.');
+        }
+
         $selectedTypes = $request->selectedTypes();
-        $wasFirstSetup = $consents->requiresSetup($user);
 
         $evidence = $selectedTypes === [] ? null : new PrivacyConsentDTO(
             documentVersion: (string) config('legal.personal_data_distribution_consent_version'),
             acceptedAt: CarbonImmutable::now(),
-            source: $wasFirstSetup ? 'public_data_setup' : 'public_data_settings',
+            source: 'public_data_setup',
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
         );
