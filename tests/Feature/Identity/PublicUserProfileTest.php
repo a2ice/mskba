@@ -119,6 +119,22 @@ final class PublicUserProfileTest extends TestCase
         app(ManageSportsSectionJoinRequestHandler::class)->submit($section, $user);
     }
 
+    public function test_public_profile_meta_description_uses_visible_identity_and_role_content(): void
+    {
+        $user = $this->user('player');
+
+        $this->get('/users/'.$user->username)
+            ->assertOk()
+            ->assertSee('<meta name="description" content="'.$user->username.' — участник баскетбольного сообщества MSKBA', false);
+
+        $user->playerProfile()->create(['comment' => 'Играю разыгрывающим и люблю быстрый баскетбол.']);
+        $this->privacy($user, 'role_player', 'everyone');
+
+        $this->get('/users/'.$user->username.'/player')
+            ->assertOk()
+            ->assertSee('<meta name="description" content="'.$user->username.' — Игрок в MSKBA. Играю разыгрывающим и люблю быстрый баскетбол.', false);
+    }
+
     public function test_own_public_profile_has_account_shortcut_only_for_owner(): void
     {
         $user = $this->user('player');
