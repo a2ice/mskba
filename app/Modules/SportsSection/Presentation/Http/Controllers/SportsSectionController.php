@@ -3,6 +3,8 @@
 namespace App\Modules\SportsSection\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Identity\Application\Services\PublicUserProfileService;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\SportsSection\Application\Services\SportsSectionAccess;
@@ -118,7 +120,12 @@ final class SportsSectionController extends Controller
         ]);
     }
 
-    public function show(Request $request, SportsSection $sportsSection, SportsSectionAccess $access): Response
+    public function show(
+        Request $request,
+        SportsSection $sportsSection,
+        SportsSectionAccess $access,
+        PageSeoResolver $pageSeo,
+    ): Response
     {
         $this->guardFeature();
         abort_unless($sportsSection->status === SportsSectionStatusEnum::ACTIVE, 404);
@@ -187,6 +194,15 @@ final class SportsSectionController extends Controller
         $canManageTrainees = $user !== null && $access->allows($user, $sportsSection, SportsSectionPermissionEnum::MANAGE_TRAINEES);
         $canManageSessions = $user !== null && $access->allows($user, $sportsSection, SportsSectionPermissionEnum::MANAGE_SESSIONS);
 
+        $generatedDescription = sprintf(
+            'Секция «%s»: %s, %s%s. Расписание, тренеры, стоимость и запись на MSKBA.',
+            $sportsSection->name,
+            $sportsSection->game_format->label(),
+            $sportsSection->training_mode->label(),
+            $sportsSection->primaryVenue ? ' на площадке «'.$sportsSection->primaryVenue->name.'»' : '',
+        );
+        $seoDescription = $sportsSection->description ?: $generatedDescription;
+
         return ThemeResolver::page('sports-sections.show', [
             'section' => $sportsSection,
             'contacts' => $contacts,
@@ -197,6 +213,13 @@ final class SportsSectionController extends Controller
             'publicPlayers' => $sportsSection->traineeMemberships->filter(fn ($membership) => $membership->user && app(PublicUserProfileService::class)->canListPlayer($membership->user, $user)),
             'canManageTrainees' => $canManageTrainees,
             'canManageSessions' => $canManageSessions,
+            ...$pageSeo->resolve(
+                SeoEntityTypeEnum::SPORTS_SECTION,
+                $sportsSection->id,
+                $sportsSection->name,
+                $seoDescription,
+                route('sports-sections.show', $sportsSection->alias),
+            ),
         ]);
     }
 

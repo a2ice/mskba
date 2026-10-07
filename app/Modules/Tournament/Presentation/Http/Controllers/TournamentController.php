@@ -3,6 +3,8 @@
 namespace App\Modules\Tournament\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Content\Application\Services\PageSeoResolver;
+use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Contract\Domain\Models\ContractMembership;
 use App\Modules\Event\Domain\Enums\GameFormatEnum;
 use App\Modules\Event\Domain\Enums\GameStatusEnum;
@@ -125,6 +127,7 @@ final class TournamentController extends Controller
         TeamManagementAccess $teamAccess,
         TournamentStandingsService $standings,
         TournamentEntryRosterResolver $entryRosters,
+        PageSeoResolver $pageSeo,
     ): Response {
         $item = Tournament::query()->whereRouteIdentifier($tournament)
             ->with(['createdByActor.user.profile', 'cover', 'entries.team.logo', 'entries.logo', 'entries.members.user.profile', 'matches.entryA', 'matches.entryB', 'matches.game.event.venue', 'matches.game.event.booking', 'matches.game.sides.team.logo'])
@@ -168,6 +171,16 @@ final class TournamentController extends Controller
                 ->filter(fn (Team $team): bool => $teamAccess->allows($team, $actor, TeamPermissionEnum::MANAGE_TOURNAMENT_PARTICIPATION))
                 ->values();
         }
+        $dateLabel = $item->starts_on->format('d.m.Y')
+            .($item->ends_on ? '–'.$item->ends_on->format('d.m.Y') : '');
+        $generatedDescription = sprintf(
+            'Турнир «%s»%s. Даты: %s. Участники, матчи, результаты и турнирная таблица на MSKBA.',
+            $item->title,
+            $item->format ? ' — '.$item->format->label() : '',
+            $dateLabel,
+        );
+        $seoDescription = $item->short_description ?: $item->full_description ?: $generatedDescription;
+
         $publicParticipantCount = $item->recruitment_mode === TournamentRecruitmentModeEnum::INDIVIDUAL_DRAFT
             ? $item->admissions()
                 ->where('status', TournamentAdmissionStatusEnum::ACCEPTED->value)
@@ -192,6 +205,13 @@ final class TournamentController extends Controller
             'myPendingInvitations' => $myPendingInvitations,
             'publicParticipantCount' => $publicParticipantCount,
             'standings' => $standings->build($item),
+            ...$pageSeo->resolve(
+                SeoEntityTypeEnum::TOURNAMENT,
+                $item->id,
+                $item->title,
+                $seoDescription,
+                route('tournaments.show', $item->routeIdentifier()),
+            ),
         ]);
     }
 

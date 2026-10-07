@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Content;
 
+use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
+use App\Modules\Content\Domain\Models\PageSeoSetting;
 use App\Modules\Event\Domain\Enums\EventStatusEnum;
 use App\Modules\Event\Domain\Enums\EventVisibilityEnum;
 use App\Modules\Event\Domain\Models\Event;
@@ -70,6 +72,65 @@ final class SeoFoundationTest extends TestCase
             ->assertSee('"@type":"NewsArticle"', false)
             ->assertSee('"headline":"SEO материал"', false)
             ->assertSee('"mainEntityOfPage"', false);
+    }
+
+    public function test_public_information_pages_have_specific_meta_descriptions(): void
+    {
+        $seoPages = config('seo.pages');
+        $routes = [
+            ['faq.index', [], $seoPages['faq.index']['description']],
+            ['faq.welcome', [], $seoPages['faq.welcome']['description']],
+            ['faq.creation', ['topic' => 'venues'], $seoPages['faq.creation']['description']],
+            ['privacy.policy', [], $seoPages['privacy.policy']['description']],
+            ['personal-data.consent', [], $seoPages['personal-data.consent']['description']],
+            ['personal-data.distribution-consent', [], $seoPages['personal-data.distribution-consent']['description']],
+        ];
+
+        foreach ($routes as [$routeName, $parameters, $description]) {
+            $this->get(route($routeName, $parameters))
+                ->assertOk()
+                ->assertSee('<meta name="description" content="'.$description.'">', false);
+        }
+    }
+
+    public function test_dynamic_tournament_and_section_pages_build_content_aware_descriptions_and_allow_override(): void
+    {
+        config()->set('features.sports_sections.enabled', true);
+        $actor = Actor::factory()->create();
+
+        $tournament = Tournament::factory()->create([
+            'created_by_actor_id' => $actor->id,
+            'title' => 'Кубок Север',
+            'alias' => 'kubok-sever-seo',
+            'status' => TournamentStatusEnum::CONFIRMED,
+            'short_description' => null,
+            'full_description' => null,
+        ]);
+        $section = SportsSection::factory()->create([
+            'created_by_actor_id' => $actor->id,
+            'name' => 'Школа броска SEO',
+            'alias' => 'shkola-broska-seo',
+            'status' => SportsSectionStatusEnum::ACTIVE,
+            'description' => null,
+        ]);
+
+        $this->get(route('tournaments.show', $tournament->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('name="description" content="Турнир «Кубок Север»', false);
+
+        $this->get(route('sports-sections.show', $section))
+            ->assertOk()
+            ->assertSee('name="description" content="Секция «Школа броска SEO»', false);
+
+        PageSeoSetting::query()->create([
+            'entity_type' => SeoEntityTypeEnum::TOURNAMENT->value,
+            'entity_id' => $tournament->id,
+            'meta_description' => 'Ручное SEO-описание турнира для поисковой выдачи.',
+        ]);
+
+        $this->get(route('tournaments.show', $tournament->routeIdentifier()))
+            ->assertOk()
+            ->assertSee('name="description" content="Ручное SEO-описание турнира для поисковой выдачи."', false);
     }
 
     public function test_sitemap_lists_public_feed_material_and_excludes_draft(): void

@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Modules\Content\Domain\Enums\SeoEntityTypeEnum;
 use App\Modules\Content\Domain\Models\PageSeoSetting;
 use App\Modules\Event\Domain\Models\Event;
+use App\Modules\SportsSection\Domain\Models\SportsSection;
 use App\Modules\Team\Domain\Models\Team;
+use App\Modules\Tournament\Domain\Models\Tournament;
 use App\Modules\Venue\Domain\Models\Venue;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Database\Eloquent\Builder;
@@ -86,12 +88,16 @@ final class AdminPageSeoController extends Controller
             SeoEntityTypeEnum::VENUE => Venue::query(),
             SeoEntityTypeEnum::EVENT => Event::query(),
             SeoEntityTypeEnum::TEAM => Team::query()->whereNull('temporary_for_event_id'),
+            SeoEntityTypeEnum::TOURNAMENT => Tournament::query(),
+            SeoEntityTypeEnum::SPORTS_SECTION => SportsSection::query(),
         };
     }
 
     private function titleColumn(SeoEntityTypeEnum $type): string
     {
-        return $type === SeoEntityTypeEnum::EVENT ? 'title' : 'name';
+        return in_array($type, [SeoEntityTypeEnum::EVENT, SeoEntityTypeEnum::TOURNAMENT], true)
+            ? 'title'
+            : 'name';
     }
 
     private function entityTitle(Model $entity, SeoEntityTypeEnum $type): string

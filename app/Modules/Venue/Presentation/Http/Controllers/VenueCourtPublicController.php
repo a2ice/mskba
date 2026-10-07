@@ -45,13 +45,19 @@ final class VenueCourtPublicController extends Controller
             $details->selectedCourt['routeIdentifier'],
         ]);
 
+        $venueAddress = $details->address?->display ?: $details->rawAddress;
+        $generatedDescription = 'Зал «'.$details->selectedCourt['name'].'» площадки «'.$details->name.'»'
+            .($venueAddress ? ' по адресу '.$venueAddress : '')
+            .'. Характеристики, расписание и условия доступа на MSKBA.';
+        $seoDescription = $details->shortDescription ?: $generatedDescription;
+
         return ThemeResolver::page('venues.show', [
             'venue' => $details,
             ...$pageSeo->resolve(
                 SeoEntityTypeEnum::VENUE,
                 $details->id,
                 $details->name.' · '.$details->selectedCourt['name'],
-                $details->shortDescription,
+                $seoDescription,
                 $canonicalUrl,
             ),
         ]);

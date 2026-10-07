@@ -241,6 +241,15 @@ final class EventController extends Controller
                 'B' => $entryRosters->resolveUsers($tournamentMatch->entryB),
             ]);
 
+        $generatedDescription = sprintf(
+            '%s «%s» — %s%s. Участники, место проведения и актуальная информация на MSKBA.',
+            $item->type->label(),
+            $item->title,
+            $item->starts_at->timezone((string) config('app.timezone', 'Europe/Moscow'))->format('d.m.Y H:i'),
+            $item->venue ? ' на площадке «'.$item->venue->name.'»' : '',
+        );
+        $seoDescription = $item->description ?: $generatedDescription;
+
         return ThemeResolver::page($item->type === EventTypeEnum::GAME ? 'events.game-show' : 'events.show', [
             'event' => $item,
             'game' => $item->primaryGame,
@@ -261,7 +270,7 @@ final class EventController extends Controller
                 SeoEntityTypeEnum::EVENT,
                 $item->id,
                 $item->title,
-                $item->description,
+                $seoDescription,
                 route('events.show', $item->routeIdentifier()),
             ),
         ]);
