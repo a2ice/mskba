@@ -1,0 +1,70 @@
+/* MSKBA App unified modal shell — design-system revision proposal, task 011.
+   showModal() puts the dialog in the browser TOP LAYER, above ordinary z-index.
+   No arbitrary per-feature z-index stacking needed. */
+.mskba-modal {
+    position: fixed;
+    inset: 0;
+    box-sizing: border-box;
+    width: min(560px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    max-height: 90vh;
+    max-height: 90dvh;
+    min-width: 0;
+    min-height: 0;
+    margin: auto;
+    transform: none; /* override specimen's dialog translate(-50%, -50%) */
+    padding: 0;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    box-shadow: 0 32px 100px #000b;
+}
+.mskba-modal:not([open]) { display: none; }
+.mskba-modal[open] { display: flex; }
+.mskba-modal::backdrop {
+    background: #000c;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+.mskba-modal__header,
+.mskba-modal__footer { flex: 0 0 auto; }
+.mskba-modal__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+/* Shared scrollbar for modal bodies and other app-owned scroll containers.
+   System-managed/overlay scrollbars may retain OS-level presentation. */
+.mskba-scroll {
+    scrollbar-color: var(--accent) var(--surface-raised);
+    scrollbar-width: thin;
+}
+.mskba-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.mskba-scroll::-webkit-scrollbar-track {
+    background: var(--surface-raised);
+    border-radius: 999px;
+}
+.mskba-scroll::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border: 2px solid var(--surface-raised);
+    border-radius: 999px;
+}
+.mskba-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-hover);
+}
+.mskba-scroll::-webkit-scrollbar-corner { background: var(--surface-raised); }
+@media (max-width: 639px) {
+    .mskba-modal { width: calc(100vw - 16px); max-width: calc(100vw - 16px); border-radius: 20px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+    .mskba-modal[open] { animation: mskba-modal-enter .18s ease-out; }
+    @keyframes mskba-modal-enter {
+        from { opacity: .5; }
+        to { opacity: 1; }
+    }
+}

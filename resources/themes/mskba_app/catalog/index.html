@@ -66,14 +66,14 @@
   <footer class="review-footer"><a class="brand" href="#overview"><img class="brand-logo" src="../assets/images/logo-mark-100.png" width="98" height="100" alt=""><span>MSK<span class="accent">BA</span></span></a><p>Дизайн-система · 1.0 · принята 06.09.2026<br><span>Визуальный эталон. Не рабочая тема.</span></p><a href="#components">Вернуться к компонентам <svg aria-hidden="true"><use href="#arrow-up"/></svg></a></footer>
 </main>
 <nav class="bottom-nav" aria-label="Мобильные разделы образца"><a href="#overview" aria-current="page"><svg><use href="#home"/></svg><span>Главная</span></a><a href="#events"><svg><use href="#ball"/></svg><span>Игры</span></a><a href="#venue-card"><svg><use href="#pin"/></svg><span>Площадки</span></a><a href="#components"><svg><use href="#sliders"/></svg><span>Система</span></a></nav>
-<dialog id="sample-dialog" aria-labelledby="dialog-title" aria-describedby="dialog-description">
-  <header class="dialog-header"><span class="tile-icon"><svg><use href="#ball"/></svg></span><button class="icon-button" id="close-dialog" aria-label="Закрыть образец" autofocus><svg><use href="#close"/></svg></button></header>
-  <div class="dialog-body" tabindex="0" role="region" aria-label="Содержимое образца">
+<dialog id="sample-dialog" class="mskba-modal" aria-labelledby="dialog-title" aria-describedby="dialog-description">
+  <header class="dialog-header mskba-modal__header"><span class="tile-icon"><svg><use href="#ball"/></svg></span><button class="icon-button" id="close-dialog" aria-label="Закрыть образец" autofocus><svg><use href="#close"/></svg></button></header>
+  <div class="dialog-body mskba-modal__body mskba-scroll" tabindex="0" role="region" aria-label="Содержимое образца">
     <p class="eyebrow accent">УВИДИМСЯ НА ПЛОЩАДКЕ</p><h2 id="dialog-title">Ты в одном шаге<br>от игры.</h2>
     <p id="dialog-description" class="section-description">Так выглядит окно действия в новой системе. Это только визуальный образец — заявка не будет отправлена.</p>
     <div class="notice"><svg><use href="#clock"/></svg><div><strong>Вечерний баскетбол 5×5</strong><p>Пример · 19:00 · Парк Горького</p></div></div>
   </div>
-  <footer class="dialog-footer actions"><button class="button secondary" id="cancel-dialog">Назад</button><button class="button primary" id="confirm-dialog">Понятно <svg><use href="#check"/></svg></button></footer>
+  <footer class="dialog-footer actions mskba-modal__footer"><button class="button secondary" id="cancel-dialog">Назад</button><button class="button primary" id="confirm-dialog">Понятно <svg><use href="#check"/></svg></button></footer>
 </dialog>
 <div id="sample-toast" class="toast" role="status" hidden><svg><use href="#check"/></svg><div><strong>Один стиль. В каждом действии.</strong><p>Демонстрационное уведомление.</p></div><button class="icon-button" id="close-toast" aria-label="Закрыть уведомление"><svg><use href="#close"/></svg></button></div>
 </body>

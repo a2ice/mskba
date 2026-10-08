@@ -53,25 +53,41 @@ function selectMode(nextMode) {
     nextTick(() => panel.value?.querySelector('input:not([type="hidden"])')?.focus());
 }
 
-function openDialog(nextMode = 'login') {
+async function openDialog(nextMode = 'login') {
     if (opened.value) {
         selectMode(nextMode);
         return;
     }
     restoreFocus = document.activeElement;
     previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    mode.value = ['login', 'register', 'restore'].includes(nextMode) ? nextMode : 'login';
+    message.value = '';
+    errors.value = {};
     opened.value = true;
-    selectMode(nextMode);
+    await nextTick();
+    if (!panel.value) return;
+    // showModal enters the browser's top layer, above all CSS z-index stacks.
+    panel.value.showModal();
+    document.body.style.overflow = 'hidden';
+    panel.value.querySelector('input:not([type="hidden"])')?.focus();
 }
 
 function closeDialog() {
     if (busy.value) return;
+    if (panel.value?.open) panel.value.close();
     opened.value = false;
     document.body.style.overflow = previousOverflow;
     message.value = '';
     errors.value = {};
     nextTick(() => restoreFocus?.focus?.());
+}
+
+function onDialogBackdropClick(event) {
+    const dialog = panel.value;
+    if (!dialog || event.target !== dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom) closeDialog();
 }
 
 function onDocumentClick(event) {
@@ -83,32 +99,6 @@ function onDocumentClick(event) {
 
 function onDialogEvent(event) {
     openDialog(event.detail?.mode || 'login');
-}
-
-function onDocumentKeydown(event) {
-    if (!opened.value) return;
-    if (event.key === 'Escape') {
-        event.preventDefault();
-        closeDialog();
-        return;
-    }
-    if (event.key !== 'Tab' || !panel.value) return;
-    const focusable = [...panel.value.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled])')]
-        .filter(el => el.getClientRects().length > 0);
-    if (!focusable.length) {
-        event.preventDefault();
-        panel.value.focus();
-        return;
-    }
-    const first = focusable[0];
-    const last = focusable.at(-1);
-    if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-    }
 }
 
 async function post(endpoint, form) {
@@ -197,7 +187,6 @@ watch([opened, mode], async () => {
 
 onMounted(() => {
     document.addEventListener('click', onDocumentClick);
-    document.addEventListener('keydown', onDocumentKeydown);
     window.addEventListener('mskba:auth:open', onDialogEvent);
     window.mskbaAppTelegramAuth = telegramAuth;
     const initial = document.querySelector('[data-auth-open-on-load]');
@@ -206,27 +195,28 @@ onMounted(() => {
 onBeforeUnmount(() => {
     currentRequest?.abort();
     document.removeEventListener('click', onDocumentClick);
-    document.removeEventListener('keydown', onDocumentKeydown);
     window.removeEventListener('mskba:auth:open', onDialogEvent);
     delete window.mskbaAppTelegramAuth;
-    document.body.style.overflow = previousOverflow;
+    if (panel.value?.open) panel.value.close();
+    if (opened.value) document.body.style.overflow = previousOverflow;
 });
 </script>
 
 <template>
     <Teleport to="body">
-        <div v-if="opened" class="mskba-auth-overlay" @pointerdown.self="closeDialog">
-            <section ref="panel" class="mskba-auth-dialog" role="dialog" aria-modal="true"
-                aria-labelledby="mskba-auth-title" :aria-busy="busy" tabindex="-1">
-                <header class="mskba-auth-top">
-                    <h2 id="mskba-auth-title" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
-                    <button type="button" class="icon-button mskba-auth-close" aria-label="Закрыть окно"
-                        :disabled="busy" @click="closeDialog">
-                        <svg aria-hidden="true"><use href="#close" /></svg>
-                    </button>
-                </header>
+        <dialog v-if="opened" ref="panel" class="mskba-modal mskba-auth-dialog"
+            aria-labelledby="mskba-auth-title" :aria-busy="busy"
+            @cancel.prevent="closeDialog" @click="onDialogBackdropClick">
+            <header class="mskba-modal__header mskba-auth-top">
+                <h2 id="mskba-auth-title" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
+                <button type="button" class="icon-button mskba-auth-close" aria-label="Закрыть окно"
+                    :disabled="busy" @click="closeDialog">
+                    <svg aria-hidden="true"><use href="#close" /></svg>
+                </button>
+            </header>
 
-                <form v-if="mode === 'login'" class="mskba-auth-form" @submit.prevent="submitLogin">
+            <form v-if="mode === 'login'" class="mskba-auth-form" @submit.prevent="submitLogin">
+                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Поля входа" tabindex="0">
                     <label>Логин или подтверждённый контакт
                         <input v-model.trim="loginForm.login" type="text" name="login" autocomplete="username"
                             required minlength="3" maxlength="255" :disabled="busy" />
@@ -242,10 +232,6 @@ onBeforeUnmount(() => {
                         <button type="button" class="mskba-auth-link" :disabled="busy" @click="selectMode('restore')">Забыли пароль?</button>
                     </div>
                     <p v-if="message" role="alert" class="mskba-auth-message">{{ message }}</p>
-                    <button class="button primary full" type="submit" :disabled="busy">
-                        <span v-if="busy" class="spinner" aria-hidden="true"></span>{{ busy ? 'Входим…' : 'Войти' }}
-                        <svg v-if="!busy" aria-hidden="true"><use href="#arrow" /></svg>
-                    </button>
                     <template v-if="vkUrl || options.telegramBot">
                         <p class="mskba-auth-separator">или быстрый вход через</p>
                         <div class="mskba-auth-providers">
@@ -253,12 +239,20 @@ onBeforeUnmount(() => {
                             <div v-if="options.telegramBot" ref="telegramContainer" class="mskba-auth-telegram"></div>
                         </div>
                     </template>
+                </div>
+                <footer class="mskba-modal__footer mskba-auth-footer-actions">
+                    <button class="button primary full" type="submit" :disabled="busy">
+                        <span v-if="busy" class="spinner" aria-hidden="true"></span>{{ busy ? 'Входим…' : 'Войти' }}
+                        <svg v-if="!busy" aria-hidden="true"><use href="#arrow" /></svg>
+                    </button>
                     <p class="mskba-auth-footer">Ещё нет аккаунта?
                         <button type="button" class="mskba-auth-link" :disabled="busy" @click="selectMode('register')">Зарегистрироваться</button>
                     </p>
-                </form>
+                </footer>
+            </form>
 
-                <form v-else-if="mode === 'register'" class="mskba-auth-form" @submit.prevent="submitRegister">
+            <form v-else-if="mode === 'register'" class="mskba-auth-form" @submit.prevent="submitRegister">
+                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Поля регистрации" tabindex="0">
                     <label>Логин
                         <input v-model.trim="registerForm.username" type="text" name="username"
                             autocomplete="username" required :disabled="busy" />
@@ -288,15 +282,19 @@ onBeforeUnmount(() => {
                     </label>
                     <p class="mskba-auth-small">Подробнее в <a :href="options.privacyPolicy" target="_blank" rel="noopener">политике конфиденциальности</a>.</p>
                     <p v-if="message" role="alert" class="mskba-auth-message">{{ message }}</p>
+                </div>
+                <footer class="mskba-modal__footer mskba-auth-footer-actions">
                     <button class="button primary full" type="submit" :disabled="busy">
                         <span v-if="busy" class="spinner" aria-hidden="true"></span>{{ busy ? 'Регистрируем…' : 'Создать аккаунт' }}
                     </button>
                     <p class="mskba-auth-footer">Уже есть аккаунт?
                         <button type="button" class="mskba-auth-link" :disabled="busy" @click="selectMode('login')">Войти</button>
                     </p>
-                </form>
+                </footer>
+            </form>
 
-                <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
+            <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
+                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Восстановление доступа" tabindex="0">
                     <label>Email
                         <input v-model.trim="restoreForm.contact" type="email" autocomplete="email"
                             required :disabled="busy" />
@@ -304,14 +302,16 @@ onBeforeUnmount(() => {
                     </label>
                     <p class="mskba-auth-small">Восстановление пока недоступно: сервер предложит обратиться в поддержку.</p>
                     <p v-if="message" role="alert" class="mskba-auth-message">{{ message }}</p>
+                </div>
+                <footer class="mskba-modal__footer mskba-auth-footer-actions">
                     <button class="button primary full" type="submit" :disabled="busy">
                         <span v-if="busy" class="spinner" aria-hidden="true"></span>{{ busy ? 'Проверяем…' : 'Восстановить доступ' }}
                     </button>
                     <p class="mskba-auth-footer">
                         <button type="button" class="mskba-auth-link" :disabled="busy" @click="selectMode('login')">Вернуться ко входу</button>
                     </p>
-                </form>
-            </section>
-        </div>
+                </footer>
+            </form>
+        </dialog>
     </Teleport>
 </template>

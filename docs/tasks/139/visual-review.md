@@ -34,6 +34,7 @@
 - Клавиатура, видимый focus, labels, контраст, reduced motion, отсутствие перекрытий
   sticky-панелями, сохранение scroll/фильтров при переходах и Back/Forward.
 - Для форм: validation, двойная отправка, потеря сети и истечение сессии.
+- **Для любого модального окна MSKBA App (Modal 1.1):** browser top layer через `showModal()` выше искусственно высокого `z-index`, центр viewport на mobile/desktop, высота не более **90vh/90dvh** (включая короткий landscape), неподвижные header/footer и прокрутка только именованного body. Проверять `.mskba-scroll` с токенами темы, Tab/Escape, фокус инициатора и реальный Safari/WebView где доступно. [Правило 011](../../mskba_app/tasks/011/description.md).
 
 ## Как фиксировать результат
 

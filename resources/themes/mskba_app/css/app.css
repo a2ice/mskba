@@ -1,6 +1,7 @@
 @import './fonts.css';
 @import './tokens.css';
 @import './design-system.css';
+@import './modal.css';
 @import './header.css';
 @import './auth-dialog.css';
 

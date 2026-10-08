@@ -1,36 +1,36 @@
-/* MSKBA App auth — follows the accepted UI 1.0 palette and rhythm. */
-.mskba-auth-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 110;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    overflow-y: auto;
-    background: #000c;
-    backdrop-filter: blur(10px);
-}
-.mskba-auth-dialog {
-    position: relative;
-    width: min(100%, 468px);
-    margin: auto;
-    padding: 32px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-card);
-    box-shadow: 0 32px 100px #000b;
-}
+/* Auth dialog extends the single MSKBA App modal shell, task 011. */
+.mskba-auth-dialog { width: min(468px, calc(100vw - 24px)); }
 .mskba-auth-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--line);
 }
 .mskba-auth-heading { text-transform: uppercase; }
 .mskba-auth-close { flex-shrink: 0; }
-.mskba-auth-form { display: grid; gap: 16px; margin-top: 24px; }
-.mskba-auth-form > label:not(.mskba-auth-consent) {
+.mskba-auth-form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+.mskba-auth-scroll {
+    display: grid;
+    align-content: start;
+    gap: 16px;
+    padding: 24px 32px;
+}
+.mskba-auth-footer-actions {
+    display: grid;
+    gap: 12px;
+    padding: 18px 32px 24px;
+    border-top: 1px solid var(--line);
+}
+.mskba-auth-scroll > label:not(.mskba-auth-consent) {
     display: grid;
     gap: 8px;
     color: var(--text);
@@ -52,15 +52,8 @@
     font-size: 16px;
     line-height: 24px;
 }
-/* Preserve the exact native-select treatment approved in design system 1.0.
-   Select options stay browser-native; only the closed control uses Tabler. */
-.mskba-auth-form .select-control select {
-    padding-inline-end: 48px;
-}
-.mskba-auth-form .select-control > svg {
-    width: 20px;
-    height: 20px;
-}
+.mskba-auth-form .select-control select { padding-inline-end: 48px; }
+.mskba-auth-form .select-control > svg { width: 20px; height: 20px; }
 .mskba-auth-form input:focus-visible,
 .mskba-auth-form select:focus-visible {
     border-color: var(--accent);
@@ -107,8 +100,8 @@
 .mskba-auth-link:hover { color: var(--accent-hover); }
 .mskba-auth-dialog a:not(.button) { color: var(--accent); }
 .mskba-auth-dialog a:not(.button):hover { text-decoration: underline; }
-.mskba-auth-form > .button { margin-top: 4px; min-height: 48px; }
-.mskba-auth-form > .button:disabled { opacity: .7; cursor: wait; }
+.mskba-auth-footer-actions > .button { min-height: 48px; }
+.mskba-auth-footer-actions > .button:disabled { opacity: .7; cursor: wait; }
 .mskba-auth-field-error { color: var(--danger); font-size: 12px; font-weight: 500; }
 .mskba-auth-message {
     padding: 12px 14px;
@@ -129,24 +122,12 @@
 .mskba-auth-providers { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
 .mskba-auth-providers .button { flex: 1 1 135px; }
 .mskba-auth-telegram { display: flex; justify-content: center; min-height: 42px; }
-.mskba-auth-footer { text-align: center; color: var(--muted); font-size: 13px; }
+.mskba-auth-footer { text-align: center; color: var(--muted); font-size: 13px; margin:0; }
 .mskba-auth-small { color: var(--muted); font-size: 12px; line-height: 20px; }
 .mskba-auth-consent a, .mskba-auth-small a { text-decoration: underline; }
 @media (max-width: 639px) {
-    .mskba-auth-overlay { padding: 8px; align-items: flex-end; }
-    .mskba-auth-dialog {
-        width: 100%;
-        max-height: calc(100dvh - 16px);
-        padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
-        overflow-y: auto;
-        border-radius: 20px;
-    }
-    .mskba-auth-form { gap: 14px; margin-top: 22px; }
-}
-@media (prefers-reduced-motion: no-preference) {
-    .mskba-auth-dialog { animation: mskba-auth-appear .18s ease-out; }
-    @keyframes mskba-auth-appear {
-        from { opacity: 0; transform: translateY(12px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+    .mskba-auth-dialog { width: calc(100vw - 16px); }
+    .mskba-auth-top { padding: 16px 20px; }
+    .mskba-auth-scroll { padding: 20px; gap: 14px; }
+    .mskba-auth-footer-actions { padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)); }
 }
