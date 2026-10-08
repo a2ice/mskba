@@ -47,6 +47,10 @@ final class TeamSportsServiceProvider extends ServiceProvider
             Route::post('/teams/{team}/join-requests', [TeamJoinRequestController::class, 'store'])
                 ->middleware([EnsureTeamAcceptsJoinRequests::class, 'throttle:5,1'])
                 ->name('teams.join-requests.store');
+            Route::post('/teams/{team}/join-requests/{joinRequest}/messages', [TeamJoinRequestController::class, 'sendMessage'])
+                ->whereNumber('joinRequest')
+                ->middleware('throttle:5,1')
+                ->name('teams.join-requests.messages.store');
             Route::patch('/teams/{team}/join-requests/{joinRequest}', [TeamJoinRequestController::class, 'respond'])
                 ->whereNumber('joinRequest')
                 ->name('teams.join-requests.respond');
@@ -83,7 +87,7 @@ final class TeamSportsServiceProvider extends ServiceProvider
             $identityIds = $actor?->user?->canonical()->identityIds() ?? [];
             $currentJoinRequest = $identityIds === []
                 ? null
-                : $team->joinRequests()->with('hiringPosition')->whereIn('user_id', $identityIds)->latest('id')->first();
+                : $team->joinRequests()->with(['hiringPosition', 'messages.sender.profile'])->whereIn('user_id', $identityIds)->latest('id')->first();
             $isActiveMember = $identityIds !== [] && $team->memberships()
                 ->whereIn('user_id', $identityIds)
                 ->where('invitation_status', TeamInvitationStatusEnum::ACCEPTED->value)

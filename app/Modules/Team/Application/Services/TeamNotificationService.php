@@ -81,6 +81,37 @@ final class TeamNotificationService
         }
     }
 
+    public function joinRequestMessageSent(Team $team, TeamJoinRequest $request, bool $byManager): void
+    {
+        if ($byManager) {
+            $this->create(
+                $request->user_id,
+                'Уточнение по заявке в команду',
+                'Команда «'.$team->name.'» просит ответить на вопрос по вашей заявке.',
+                route('teams.show', $team->routeIdentifier()).'#team-application-conversation',
+                'Ответить на вопрос',
+                'team.join_request.question',
+                ['team_id' => $team->id, 'join_request_id' => $request->id],
+            );
+
+            return;
+        }
+
+        $applicant = $request->user()->with('profile')->first();
+        foreach ($this->joinRequestManagers($team) as $userId) {
+            $this->create(
+                $userId,
+                'Ответ кандидата на заявку',
+                ($applicant ? $this->userName($applicant) : 'Кандидат')
+                    .' ответил на вопрос команды «'.$team->name.'».',
+                route('teams.join-requests.index', $team->routeIdentifier()).'?request='.$request->id.'#join-request-'.$request->id,
+                'Прочитать ответ',
+                'team.join_request.answer',
+                ['team_id' => $team->id, 'join_request_id' => $request->id],
+            );
+        }
+    }
+
     public function joinRequestReviewed(Team $team, TeamJoinRequest $request, string $action): void
     {
         if ($action !== 'unblock') {
