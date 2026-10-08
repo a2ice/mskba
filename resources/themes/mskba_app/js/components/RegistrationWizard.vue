@@ -102,7 +102,7 @@ function submit() {
                         </div>
                     </details>
                     <div v-if="group.roles.includes(form.role)" class="wizard-role-picked">
-                        <small>Выбрано: {{ displayName(form.role) }}</small>
+                        <small>{{ displayName(form.role) }}</small>
                         <button type="button" class="wizard-role-clear" :disabled="busy"
                             :aria-label="'Сбросить роль «' + displayName(form.role) + '»'"
                             @click="clearRole(group.id, changed)">

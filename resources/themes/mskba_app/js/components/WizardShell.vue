@@ -97,8 +97,8 @@ defineExpose({ applyErrors, reset });
 <template>
     <form class="mskba-wizard" novalidate @submit.prevent="forward">
         <header class="mskba-wizard__progress">
-            <span role="status" aria-live="polite">ШАГ {{ index + 1 }} / {{ visibleSteps.length }}</span>
             <progress :value="index + 1" :max="visibleSteps.length" aria-label="Прогресс мастера" />
+            <span role="status" aria-live="polite">ШАГ {{ index + 1 }} / {{ visibleSteps.length }}</span>
         </header>
         <div ref="content" class="mskba-modal__body mskba-scroll mskba-wizard__body" role="region" aria-label="Содержимое шага" tabindex="0">
             <h3 ref="stepTitle" class="wizard-step-title" tabindex="-1">{{ step?.title }}</h3>

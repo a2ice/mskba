@@ -98,7 +98,7 @@ function updateRoleGroupLabels() {
     const selectedText = selected
       ? chosen.closest('label')?.querySelector('strong')?.textContent?.trim()
       : null;
-    summary.textContent = selectedText ? 'Выбрано: ' + selectedText : '';
+    summary.textContent = selectedText || '';
     group.classList.toggle('has-selection', selected);
     const item = group.closest('.wizard-role-item');
     const picked = item.querySelector('[data-role-picked]');

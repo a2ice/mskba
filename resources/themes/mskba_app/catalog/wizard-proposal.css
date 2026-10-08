@@ -33,25 +33,29 @@
 .wizard-role-options { display:grid; gap:12px; border:0; padding:0; margin:0; min-width:0; }
 .wizard-role-item { position:relative; min-width:0; }
 .wizard-role-picked {
-  position:absolute; z-index:1; top:10px; left:108px; right:44px;
-  min-width:0; height:30px; display:flex; gap:6px; align-items:center;
-  justify-content:flex-end; pointer-events:none;
+  position:absolute; z-index:1; top:50%; right:44px;
+  transform:translateY(-50%);
+  display:inline-flex; align-items:center; gap:4px; min-width:0;
+  max-width:calc(100% - 152px); height:26px; padding:2px 3px 2px 9px;
+  background:rgba(255, 121, 0, .09);
+  border:1px solid rgba(255, 121, 0, .28);
+  border-radius:999px;
+  pointer-events:none;
 }
 .wizard-role-picked[hidden] { display:none; }
 .wizard-role-picked small {
-  color:var(--accent); min-width:0; overflow:hidden;
-  white-space:nowrap; text-overflow:ellipsis;
-  font-size:11px; line-height:16px; font-weight:600;
+  min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  color:var(--accent); font-size:11px; line-height:16px; font-weight:600;
 }
 .wizard-role-clear {
-  display:flex; flex:0 0 26px; align-items:center; justify-content:center;
-  width:26px; height:26px; border-radius:var(--radius-control);
-  border:1px solid var(--line); background:var(--surface-raised);
-  color:var(--muted); padding:4px; cursor:pointer; pointer-events:auto;
+  display:flex; flex:0 0 20px; align-items:center; justify-content:center;
+  width:20px; height:20px; padding:4px;
+  border:0; border-radius:50%; background:transparent;
+  color:#fff; cursor:pointer; pointer-events:auto;
 }
-.wizard-role-clear:hover { color:var(--accent); border-color:var(--accent); }
-.wizard-role-clear:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.wizard-role-clear svg { width:15px; height:15px; }
+.wizard-role-clear:hover { background:rgba(255, 121, 0, .16); }
+.wizard-role-clear:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.wizard-role-clear svg { width:12px; height:12px; stroke-width:1.8; }
 .wizard-role-group { min-width:0; border:1px solid var(--line); border-radius:var(--radius-control); background:var(--field); }
 .wizard-role-group[open] { border-color:var(--control-line); }
 .wizard-role-group-toggle {
