@@ -7,6 +7,7 @@ use App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'team_id',
@@ -32,6 +33,11 @@ final class TeamJoinRequest extends Model
     public function hiringPosition(): BelongsTo
     {
         return $this->belongsTo(TeamHiringPosition::class, 'team_hiring_position_id');
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(TeamJoinRequestMessage::class)->orderBy('id');
     }
 
     public function reviewedBy(): BelongsTo

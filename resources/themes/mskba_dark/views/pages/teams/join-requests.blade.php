@@ -30,7 +30,7 @@
     <div class="team-profile__section-heading"><i class="ti ti-user-check"></i><div><span>Новые участники</span><h2>Заявки на вступление</h2></div></div>
     <div class="section-list">
         @forelse($joinRequests as $entry)
-            <article class="section-card team-join-request-card">
+            <article class="section-card team-join-request-card" id="join-request-{{ $entry->id }}">
                 <div class="team-person team-person--manager">
                     <img src="{{ $avatarUrl($entry) }}" alt="Аватар {{ $userName($entry) }}">
                     <div>
@@ -43,6 +43,8 @@
                 @if($entry->review_reason)
                     <div class="alert alert-secondary mt-3 mb-0"><strong>Причина решения:</strong><br>{!! nl2br(e($entry->review_reason)) !!}</div>
                 @endif
+
+                @include('theme::pages.teams.partials.join-request-thread', ['entry' => $entry])
 
                 @if($entry->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::PENDING)
                     <form class="mt-3" method="POST" action="{{ route('teams.join-requests.respond', [$team->routeIdentifier(), $entry->id]) }}" onsubmit="return !event.submitter?.dataset.confirmMessage || confirm(event.submitter.dataset.confirmMessage)">
@@ -57,11 +59,30 @@
                             <button class="btn btn--danger btn--sm" type="submit" name="action" value="block" data-confirm-message="Заблокировать пользователя? Он не сможет отправлять новые заявки, пока его не разблокируют.">Заблокировать</button>
                         </div>
                     </form>
+                    <form class="team-join-thread__form mt-3" method="POST" action="{{ route('teams.join-requests.messages.store', [$team->routeIdentifier(), $entry->id]) }}">
+                        @csrf
+                        <label class="form-label" for="join-request-message-{{ $entry->id }}">Уточнить информацию у кандидата</label>
+                        <textarea class="form-control" id="join-request-message-{{ $entry->id }}" name="body" rows="3" maxlength="2000" required placeholder="Например: расскажите о себе и откуда узнали о команде">{{ old('body') }}</textarea>
+                        @error('body', 'joinMessage'.$entry->id)<div class="form-error mt-2">{{ $message }}</div>@enderror
+                        <button class="btn btn--primary btn--sm mt-3" type="submit">Запросить информацию</button>
+                    </form>
                 @else
+                    @if($entry->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::AWAITING_RESPONSE)
+                        <p class="form-hint mt-3">Вопрос отправлен. Ожидаем ответа кандидата.</p>
+                        <form class="mt-3" method="POST" action="{{ route('teams.join-requests.respond', [$team->routeIdentifier(), $entry->id]) }}" onsubmit="return confirm('Вы уверены, что хотите обработать заявку, не дожидаясь ответа?')">
+                            @csrf
+                            @method('PATCH')
+                            <label class="form-label" for="join-request-wait-reason-{{ $entry->id }}">Причина решения</label>
+                            <textarea class="form-control" id="join-request-wait-reason-{{ $entry->id }}" name="review_reason" rows="2" maxlength="2000" placeholder="Обязательна при отклонении или блокировке"></textarea>
+                            @error('review_reason', 'joinRequest'.$entry->id)<div class="form-error mt-2">{{ $message }}</div>@enderror
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <button class="btn btn--primary btn--sm" type="submit" name="action" value="accept">Принять</button>
+                                <button class="btn btn--secondary btn--sm" type="submit" name="action" value="reject">Отклонить</button>
+                                <button class="btn btn--danger btn--sm" type="submit" name="action" value="block">Заблокировать</button>
+                            </div>
+                        </form>
+                    @endif
                     <div class="d-flex flex-wrap gap-2 mt-3">
-                        @if(in_array($entry->status, [\App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::REJECTED, \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::BLOCKED], true))
-                            <button class="btn btn--secondary btn--sm js-handler" type="button" data-handler="modal" data-modal-action="open" data-modal-target="team-join-request-message">Написать сообщение</button>
-                        @endif
                         @if($entry->status === \App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum::BLOCKED)
                             <form method="POST" action="{{ route('teams.join-requests.respond', [$team->routeIdentifier(), $entry->id]) }}" onsubmit="return confirm('Разблокировать пользователя? Он снова сможет отправить заявку.')">@csrf @method('PATCH')<input type="hidden" name="action" value="unblock"><button class="btn btn--secondary btn--sm" type="submit">Разблокировать</button></form>
                         @endif
@@ -74,8 +95,4 @@
     </div>
 </section>
 
-@component('theme::partials.modal.layout', ['id' => 'team-join-request-message'])
-    <h2 class="modal_title" id="modal-title-team-join-request-message">Сообщение участнику</h2>
-    <p class="modal-description">Личные сообщения по заявкам находятся в разработке.</p>
-@endcomponent
 @endsection
