@@ -1,4 +1,12 @@
 import './header.js';
+import { createApp } from 'vue';
+import AuthDialog from './components/AuthDialog.vue';
 
-// Vue/Inertia bootstrap will be added with the first application route.
-// Keep this entry independent of the legacy theme's DOM enhancers.
+const authRoot = document.querySelector('[data-mskba-auth-dialog]');
+if (authRoot) {
+    const options = JSON.parse(authRoot.dataset.options || '{}');
+    createApp(AuthDialog, { options }).mount(authRoot);
+}
+
+// Inertia is intentionally bootstrapped only on the isolated ui-preview route.
+// Legacy theme DOM enhancers and jQuery are not imported here.

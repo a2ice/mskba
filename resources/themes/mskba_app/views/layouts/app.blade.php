@@ -16,6 +16,7 @@
         <main id="mskba-app" class="app-shell container">
             @yield('content')
         </main>
+        @include('theme::partials.auth-dialog-root')
         @stack('scripts')
     </body>
 </html>

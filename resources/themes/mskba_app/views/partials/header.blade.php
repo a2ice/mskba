@@ -61,7 +61,7 @@
                     </span>
                 </a>
             @else
-                <a class="button secondary app-header-login" href="{{ route('login') }}">Войти</a>
+                <a class="button secondary app-header-login" href="{{ route('login') }}" data-auth-trigger>Войти</a>
             @endauth
         </div>
 
@@ -99,7 +99,7 @@
                         <a href="{{ route('account') }}"><svg aria-hidden="true"><use href="#user"/></svg> Личный кабинет</a>
                         <a href="{{ route('account.notifications') }}"><svg aria-hidden="true"><use href="#bell"/></svg> Уведомления</a>
                     @else
-                        <a href="{{ route('login') }}"><svg aria-hidden="true"><use href="#user"/></svg> Войти в аккаунт</a>
+                        <a href="{{ route('login') }}" data-auth-trigger><svg aria-hidden="true"><use href="#user"/></svg> Войти в аккаунт</a>
                     @endauth
                 </div>
             </nav>
