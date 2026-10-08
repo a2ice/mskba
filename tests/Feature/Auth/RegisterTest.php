@@ -7,12 +7,21 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserConsent;
+use App\Modules\Telegram\Infrastructure\Http\Middleware\RouteScopedThrottleRequests;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class RegisterTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Registration checks are independent of throttle behavior, which has
+        // dedicated tests; keep this suite stable as cases exceed 5/minute.
+        $this->withoutMiddleware(RouteScopedThrottleRequests::class);
+    }
 
     public function test_user_can_register_without_participation_role(): void
     {
@@ -136,6 +145,66 @@ class RegisterTest extends TestCase
         $this->assertDatabaseMissing('users', [
             'username' => 'without_personal_data_consent',
         ]);
+    }
+
+    public function test_player_registration_persists_optional_sport_profile_atomically(): void
+    {
+        $response = $this->postJson(route('auth.register'), $this->registrationPayload([
+            'username' => 'wizard_player_user',
+            'role' => UserParticipationRoleEnum::PLAYER->value,
+            'gender' => 'male',
+            'birth_date' => '2000-03-04',
+            'first_name' => 'Никита',
+            'height_cm' => 181,
+            'weight_kg' => 77,
+            'position' => 'point_guard',
+            'body_type' => 'athletic',
+            'experience_started_year' => now()->year - 12,
+        ]));
+
+        $response->assertCreated()
+            ->assertJsonPath('redirect_url', route('account.privacy.distribution'));
+
+        $user = User::query()->where('username', 'wizard_player_user')->firstOrFail();
+        $this->assertDatabaseHas('player_profiles', [
+            'user_id' => $user->id,
+            'height_cm' => 181,
+            'weight_kg' => 77,
+            'body_type' => 'athletic',
+            'experience_started_year' => now()->year - 12,
+        ]);
+        $player = $user->playerProfile()->firstOrFail();
+        $this->assertDatabaseHas('player_profile_positions', [
+            'player_profile_id' => $player->id,
+            'position' => 'point_guard',
+        ]);
+        $this->assertSame('Никита', $user->profile?->first_name);
+    }
+
+    public function test_nonplayer_registration_ignores_hidden_player_fields(): void
+    {
+        $response = $this->postJson(route('auth.register'), $this->registrationPayload([
+            'username' => 'wizard_coach_user',
+            'role' => 'coach',
+            'height_cm' => 181,
+            'position' => 'center',
+        ]));
+        $response->assertCreated();
+        $user = User::query()->where('username', 'wizard_coach_user')->firstOrFail();
+        $this->assertDatabaseMissing('player_profiles', ['user_id' => $user->id]);
+    }
+
+    public function test_invalid_player_attribute_aborts_registration(): void
+    {
+        $response = $this->postJson(route('auth.register'), $this->registrationPayload([
+            'username' => 'wizard_invalid_player',
+            'role' => 'player',
+            'height_cm' => 300,
+            'position' => 'invalid',
+        ]));
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['height_cm', 'position']);
+        $this->assertDatabaseMissing('users', ['username' => 'wizard_invalid_player']);
     }
 
     /**

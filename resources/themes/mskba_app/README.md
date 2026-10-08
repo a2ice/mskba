@@ -8,6 +8,11 @@
 - Первый рабочий `header` с адаптивной навигацией готов и показан пользователю. По замечанию увеличен desktop-отступ после логотипа на 12 px; окончательная визуальная приёмка ещё ожидается.
 - HTTP 200, ссылки документации, JS syntax и Vite build проверены; сборка предупреждает об уже имеющихся крупных chunks и unresolved `/images/home-court.png`.
 - Vue/Inertia интегрированы в отдельный `/ui-preview`, Vue-попап авторизации работает локально; реальные предметные экраны ещё не перенесены, production остаётся на `mskba_dark`.
+- **Принятый Wizard 1.1 подключён к попапу регистрации**:
+  `js/components/WizardShell.vue` — общие шаги, проверка, прогресс, ошибки;
+  `RegistrationWizard.vue` и `registrationWizardConfig.js` — сценарий регистрации;
+  `css/wizard.css` — визуальный контракт. Сервер сохраняет профиль игрока
+  и спортивные поля в транзакции регистрации. [Задача 010](../../../docs/mskba_app/tasks/010/description.md).
 - **Общая модальная оболочка**: `css/modal.css` — `<dialog>.showModal()` в browser top layer, центрирование, максимум 90vh/90dvh, отдельные header/body/footer, общий тематический scrollbar. [Задача 011](../../../docs/mskba_app/tasks/011/description.md).
 
 Подробности и следующие шаги — в [журнале прогресса](../../../docs/mskba_app/progress.md).
@@ -23,7 +28,7 @@
 - `views/layouts/app.blade.php` — серверная Blade-оболочка с header и Vue AuthDialog mount; `views/layouts/inertia.blade.php` — отдельный Inertia root view с тем же header. В `js/pages/Preview.vue` пока находится интеграционный экран.
 - `views/pages/system/view_not_found.blade.php` — fallback для неперенесённых страниц.
 
-Общая библиотека Vue-компонентов и реальные предметные экраны ещё не реализованы; первый Vue-компонент AuthDialog и интеграционная Inertia-страница уже есть.
+Общие Vue-компоненты WizardShell и AuthDialog теперь реализованы; другие предметные экраны ещё не перенесены.
 Inter поставляется локально в WOFF2 с кириллицей и весами 100–900. Внешних font/CDN-зависимостей нет.
 CSS перенесён полностью из принятого стенда: часть классов описывает его композиции,
 а не готовые Vue-компоненты. Семантические классы `.button`, `.panel`, `.field-group`

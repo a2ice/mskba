@@ -4,5 +4,6 @@
 @import './modal.css';
 @import './header.css';
 @import './auth-dialog.css';
+@import './wizard.css';
 
 .app-shell { min-height: 100dvh; }

@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Application\UseCases;
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
 use App\Modules\Identity\Application\DTO\ProfileDTO;
 use App\Modules\Identity\Application\Services\UserDuplicateDetector;
+use App\Modules\Identity\Domain\Enums\Participation\PlayerPositionEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
@@ -29,8 +30,9 @@ final class RegisterUserHandler
         ?UserParticipationRoleEnum $participantRole = null,
         ?ProfileDTO $profile = null,
         ?PrivacyConsentDTO $privacyConsent = null,
+        array $playerData = [],
     ): User {
-        $user = DB::transaction(function () use ($username, $password, $participantRole, $profile, $privacyConsent): User {
+        $user = DB::transaction(function () use ($username, $password, $participantRole, $profile, $privacyConsent, $playerData): User {
             $user = $this->createUserAccount->handle(
                 username: $username,
                 password: $password,
@@ -54,6 +56,18 @@ final class RegisterUserHandler
                     'assigner' => UserParticipationRoleAssignerEnum::USER,
                     'comment' => 'Выбрана пользователем при регистрации.',
                 ]);
+            }
+
+            // The player profile is created atomically with the account and
+            // participation role so no successful registration loses answers.
+            if ($participantRole === UserParticipationRoleEnum::PLAYER && $playerData !== []) {
+                $attributes = collect($playerData)->except('position')->all();
+                $playerProfile = $user->playerProfile()->create($attributes);
+                if (isset($playerData['position'])) {
+                    $playerProfile->positions()->create([
+                        'position' => PlayerPositionEnum::from($playerData['position']),
+                    ]);
+                }
             }
 
             if ($privacyConsent !== null) {

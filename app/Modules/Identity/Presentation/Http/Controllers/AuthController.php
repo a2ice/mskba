@@ -77,6 +77,7 @@ class AuthController extends Controller
             password: $validated['password'],
             participantRole: $request->participantRole(),
             profile: $request->profile(),
+            playerData: $request->playerData(),
             privacyConsent: new PrivacyConsentDTO(
                 documentVersion: (string) config('legal.personal_data_consent_version'),
                 acceptedAt: CarbonImmutable::now(),

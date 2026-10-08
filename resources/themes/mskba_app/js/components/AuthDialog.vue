@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import RegistrationWizard from './RegistrationWizard.vue';
 
 const props = defineProps({
     options: { type: Object, required: true },
@@ -13,9 +14,6 @@ const busy = ref(false);
 const message = ref('');
 const errors = ref({});
 const loginForm = reactive({ login: '', password: '', remember: false });
-const registerForm = reactive({
-    username: '', password: '', password_confirmation: '', role: '', privacy_consent: false,
-});
 const restoreForm = reactive({ contact: '' });
 let restoreFocus = null;
 let previousOverflow = '';
@@ -153,10 +151,8 @@ async function submitLogin() {
     });
 }
 
-async function submitRegister() {
-    await post(props.options.register, {
-        ...registerForm, privacy_consent: registerForm.privacy_consent ? '1' : '0',
-    });
+async function submitRegister(payload) {
+    await post(props.options.register, payload);
 }
 
 async function submitRestore() {
@@ -204,7 +200,7 @@ onBeforeUnmount(() => {
 
 <template>
     <Teleport to="body">
-        <dialog v-if="opened" ref="panel" class="mskba-modal mskba-auth-dialog"
+        <dialog v-if="opened" ref="panel" class="mskba-modal mskba-auth-dialog" :class="{ 'mskba-auth-register': mode === 'register' }"
             aria-labelledby="mskba-auth-title" :aria-busy="busy"
             @cancel.prevent="closeDialog" @click="onDialogBackdropClick">
             <header class="mskba-modal__header mskba-auth-top">
@@ -251,47 +247,9 @@ onBeforeUnmount(() => {
                 </footer>
             </form>
 
-            <form v-else-if="mode === 'register'" class="mskba-auth-form" @submit.prevent="submitRegister">
-                <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Поля регистрации" tabindex="0">
-                    <label>Логин
-                        <input v-model.trim="registerForm.username" type="text" name="username"
-                            autocomplete="username" required :disabled="busy" />
-                        <span v-if="errors.username" class="mskba-auth-field-error">{{ errors.username[0] }}</span>
-                    </label>
-                    <label>Пароль
-                        <input v-model="registerForm.password" type="password" name="password"
-                            autocomplete="new-password" required :disabled="busy" />
-                        <span v-if="errors.password" class="mskba-auth-field-error">{{ errors.password[0] }}</span>
-                    </label>
-                    <label>Подтвердите пароль
-                        <input v-model="registerForm.password_confirmation" type="password"
-                            name="password_confirmation" autocomplete="new-password" required :disabled="busy" />
-                    </label>
-                    <label>Роль в баскетболе
-                        <span class="select-control">
-                            <select v-model="registerForm.role" name="role" :disabled="busy">
-                                <option value="">Выбрать позже</option>
-                                <option v-for="role in options.roles" :key="role.value" :value="role.value">{{ role.label }}</option>
-                            </select>
-                            <svg aria-hidden="true" focusable="false"><use href="#chevron-down" /></svg>
-                        </span>
-                    </label>
-                    <label class="mskba-auth-consent">
-                        <input v-model="registerForm.privacy_consent" type="checkbox" required :disabled="busy" />
-                        <span>Я даю <a :href="options.consent" target="_blank" rel="noopener">согласие на обработку персональных данных</a>.</span>
-                    </label>
-                    <p class="mskba-auth-small">Подробнее в <a :href="options.privacyPolicy" target="_blank" rel="noopener">политике конфиденциальности</a>.</p>
-                    <p v-if="message" role="alert" class="mskba-auth-message">{{ message }}</p>
-                </div>
-                <footer class="mskba-modal__footer mskba-auth-footer-actions">
-                    <button class="button primary full" type="submit" :disabled="busy">
-                        <span v-if="busy" class="spinner" aria-hidden="true"></span>{{ busy ? 'Регистрируем…' : 'Создать аккаунт' }}
-                    </button>
-                    <p class="mskba-auth-footer">Уже есть аккаунт?
-                        <button type="button" class="mskba-auth-link" :disabled="busy" @click="selectMode('login')">Войти</button>
-                    </p>
-                </footer>
-            </form>
+            <RegistrationWizard v-else-if="mode === 'register'"
+                :options="options" :busy="busy" :server-errors="errors" :message="message"
+                @submit="submitRegister" @login="selectMode('login')" />
 
             <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
                 <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Восстановление доступа" tabindex="0">

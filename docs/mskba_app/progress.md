@@ -192,6 +192,25 @@
 - В этой операции только документально зафиксирована приёмка;
   CSS/JS темы и demo не менялись. Без commit/push/merge/deploy.
 
+## Wizard 1.1 подключён к регистрации — 2026-10-08
+
+- Принятый образец и Modal 1.1 сохранены **локальным коммитом `b178eb08`**.
+- В `mskba_app` реализованы общие `WizardShell.vue`, специализированный
+  `RegistrationWizard.vue`, сценарная конфигурация, CSS общего Wizard 1.1.
+  В `AuthDialog.vue` заменена только вкладка регистрации;
+  login/restore и существующие endpoints сохранены.
+- Laravel RegisterRequest/AuthController/RegisterUserHandler расширены
+  для атомарного сохранения пяти PlayerProfile характеристик и позиции
+  при роли «Игрок», исключают скрытые поля другой роли.
+- PHPUnit: **12/47 PASS** (Register + Inertia) и **9/150 PASS** (legacy redirects с APP_THEME=mskba_dark); Vite build — PASS;
+  Chromium 360/390/440/768/1440 — динамический 3/5 Wizard,
+  Back/Forward, ограничение 90dvh, локальные ошибки;
+  перехваченный 422 вернул на спортивный шаг и сфокусировал поле.
+- **На проверке:** пользователь должен просмотреть настоящий
+  `http://localhost:8000/register`; успешный реальный аккаунт,
+  privacy-distribution redirect, OAuth, iOS Safari/Telegram WebView
+  пока не проверены. **Локально:** без push/PR/merge/deploy.
+
 ## Ключевые решения
 
 1. Тема `mskba_app` самостоятельная, не наследует неперенесённые Blade-страницы из `mskba_dark`.
