@@ -16,7 +16,10 @@
 .mskba-wizard .wizard-role-options { width:100%; }
 .mskba-wizard input, .mskba-wizard select { font:inherit; }
 .mskba-wizard .select-control > svg { width:20px; height:20px; }
-.mskba-wizard .wizard-step label:not(.wizard-choice):not(.mskba-auth-consent) { display:grid; gap:8px; }
+.mskba-wizard .wizard-step .field-group > label {
+    display:inline-flex; align-items:baseline; gap:4px; width:max-content;
+    max-width:100%; line-height:20px;
+}
 @media(max-width:639px) {
  .mskba-wizard__progress { padding:12px 20px; gap:10px; }
  .mskba-wizard__body { padding:20px; }
@@ -87,6 +90,11 @@
 }
 .wizard-choice span strong { display:block; font-size:14px; line-height:20px; }
 .wizard-choice span small { display:block; margin-top:4px; color:var(--muted); font-size:12px; line-height:17px; }
+@media (hover:hover) {
+  .wizard-choice:hover span {
+    border-color:color-mix(in srgb, var(--control-line) 75%, transparent);
+  }
+}
 .wizard-choice input:checked+span { border-color:var(--accent); background:#ff79000f; }
 .wizard-choice input:focus-visible+span { outline:2px solid var(--accent); outline-offset:3px; }
 .wizard-step .field-group label { font-size:13px; font-weight:600; }
@@ -107,26 +115,28 @@
 .wizard-step .error { margin:0; font-size:12px; line-height:18px; }
 .wizard-field-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
 .wizard-required { color:var(--accent); font-weight:800; }
-/* The accepted tooltip interaction (hover/focus/200ms delay) applied to the
-   individual required-field marker. No permanent footer explanation. */
-.wizard-required[data-tooltip] {
-  display:inline-block; position:relative; cursor:help; padding:0 3px;
-  border-radius:3px; outline-offset:2px;
+/* Required help uses full label hover/click, without creating a Tab stop.
+   Native input/checkbox and link retain keyboard focus. */
+.wizard-required { display:inline; padding:0; color:var(--accent); font-weight:800; }
+label.wizard-required-label {
+  position:relative; cursor:help; outline-offset:3px;
 }
-.wizard-required[data-tooltip]:focus-visible { outline:2px solid var(--accent); }
-.wizard-required[data-tooltip]::after {
+label.wizard-required-label::after {
   content:attr(data-tooltip); pointer-events:none; position:absolute;
-  bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
-  width:max-content; max-width:180px; padding:7px 10px;
+  bottom:calc(100% + 7px); left:0;
+  width:max-content; max-width:min(200px, 85vw); padding:7px 10px;
   color:var(--text); background:var(--surface-raised);
   border:1px solid var(--line); border-radius:var(--radius-control);
   font-size:12px; line-height:17px; font-weight:500; white-space:normal;
   box-shadow:0 7px 24px #0008; z-index:10; opacity:0; visibility:hidden;
   transition:opacity .12s ease .2s, visibility 0s linear .32s;
 }
-.wizard-required[data-tooltip]:is(:hover,:focus)::after {
+label.wizard-required-label:is(:hover,.is-tooltip-open)::after {
   opacity:1; visibility:visible;
   transition:opacity .12s ease .2s, visibility 0s;
+}
+label.wizard-required-label.is-tooltip-dismissed::after {
+  opacity:0 !important; visibility:hidden !important; transition:none;
 }
 .wizard-consent { align-items:flex-start; }
 .wizard-consent input { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; margin-top:1px; }
@@ -164,10 +174,10 @@
   transform: skewX(-15deg);
 }
 .mskba-wizard .wizard-actions .wizard-next.is-choice-attention {
-  animation: wizard-next-pulse .7s ease-in-out;
+  animation: wizard-next-pulse .5s ease-in-out;
 }
 .mskba-wizard .wizard-actions .wizard-next.is-choice-attention::before {
-  animation: wizard-next-shine .7s ease-in-out;
+  animation: wizard-next-shine .5s ease-in-out;
 }
 @keyframes wizard-next-pulse {
   0%, 100% { transform: scale(1); }

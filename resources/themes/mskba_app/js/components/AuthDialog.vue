@@ -12,6 +12,7 @@ const panel = ref(null);
 const telegramContainer = ref(null);
 const busy = ref(false);
 const message = ref('');
+const transientMessage = ref(false);
 const errors = ref({});
 const loginForm = reactive({ login: '', password: '', remember: false });
 const restoreForm = reactive({ contact: '' });
@@ -46,6 +47,7 @@ function localRedirect(raw) {
 
 function selectMode(nextMode) {
     mode.value = ['login', 'register', 'restore'].includes(nextMode) ? nextMode : 'login';
+    transientMessage.value = false;
     message.value = '';
     errors.value = {};
     nextTick(() => panel.value?.querySelector('input:not([type="hidden"])')?.focus());
@@ -59,6 +61,7 @@ async function openDialog(nextMode = 'login') {
     restoreFocus = document.activeElement;
     previousOverflow = document.body.style.overflow;
     mode.value = ['login', 'register', 'restore'].includes(nextMode) ? nextMode : 'login';
+    transientMessage.value = false;
     message.value = '';
     errors.value = {};
     opened.value = true;
@@ -75,6 +78,7 @@ function closeDialog() {
     if (panel.value?.open) panel.value.close();
     opened.value = false;
     document.body.style.overflow = previousOverflow;
+    transientMessage.value = false;
     message.value = '';
     errors.value = {};
     nextTick(() => restoreFocus?.focus?.());
@@ -99,9 +103,18 @@ function onDialogEvent(event) {
     openDialog(event.detail?.mode || 'login');
 }
 
+// Errors caused by one submission belong to that attempt, not to the form
+// values. Field-level 422 messages remain in WizardShell until corrected.
+function dismissTransientMessage() {
+    if (!transientMessage.value) return;
+    transientMessage.value = false;
+    message.value = '';
+}
+
 async function post(endpoint, form) {
     if (busy.value) return;
     busy.value = true;
+    transientMessage.value = false;
     message.value = '';
     errors.value = {};
     currentRequest = new AbortController();
@@ -125,17 +138,39 @@ async function post(endpoint, form) {
             return;
         }
         if (response.ok) {
+            transientMessage.value = true;
             message.value = 'Ответ получен, но адрес перехода отсутствует. Обновите страницу.';
             return;
         }
-        errors.value = result.errors || {};
-        message.value = result.message || ({
+
+        // A 422 with field violations describes the entered values and belongs
+        // to WizardShell. Never merge it with a stale submission-level alert.
+        const fieldErrors = response.status === 422 && result.errors &&
+            typeof result.errors === 'object' && !Array.isArray(result.errors)
+            ? result.errors : {};
+        if (Object.keys(fieldErrors).length > 0) {
+            errors.value = fieldErrors;
+            return;
+        }
+
+        transientMessage.value = true;
+        // Never render an upstream/server exception (including SQLSTATE,
+        // stack traces or database details) as user-visible copy.
+        message.value = ({
+            401: 'Неверный логин, контакт или пароль.',
+            403: 'Недостаточно прав для выполнения операции.',
             419: 'Сессия истекла. Обновите страницу и попробуйте снова.',
+            422: 'Не удалось проверить данные. Проверьте введённые значения.',
             429: 'Слишком много попыток. Попробуйте позже.',
-            503: 'Функция пока недоступна. Обратитесь в поддержку.',
-        }[response.status] || 'Не удалось выполнить запрос. Попробуйте ещё раз.');
+            503: 'Сервис временно недоступен. Попробуйте позже.',
+        })[response.status] || (response.status >= 500
+            ? (mode.value === 'register'
+                ? 'Не удалось создать аккаунт. Произошла ошибка на сервере. Введённые данные сохранены. Попробуйте ещё раз позже.'
+                : 'Произошла ошибка на сервере. Попробуйте ещё раз позже.')
+            : 'Не удалось выполнить запрос. Попробуйте ещё раз.');
     } catch (error) {
         if (error.name !== 'AbortError') {
+            transientMessage.value = true;
             message.value = 'Не удалось связаться с сервером. Проверьте подключение.';
         }
     } finally {
@@ -249,7 +284,8 @@ onBeforeUnmount(() => {
 
             <RegistrationWizard v-else-if="mode === 'register'"
                 :options="options" :busy="busy" :server-errors="errors" :message="message"
-                @submit="submitRegister" @login="selectMode('login')" />
+                @submit="submitRegister" @login="selectMode('login')"
+                @step-change="dismissTransientMessage" />
 
             <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
                 <div class="mskba-modal__body mskba-scroll mskba-auth-scroll" role="region" aria-label="Восстановление доступа" tabindex="0">

@@ -61,8 +61,8 @@ const current = () => flowConfig.steps.find(step => step.id === currentStepId);
 const errors = new Map();
 const roleGroups = [...form.querySelectorAll('[data-role-group]')];
 
-// Same 700ms pulse + travelling sheen as the legacy home wizard.
-// Explicit value changes trigger it; Back/Forward and rendering alone never do.
+// Compact pulse + travelling sheen: only when Skip becomes Next.
+// Back/Forward and changing one selected value to another never trigger it.
 function clearNextAttention() {
   els.next.classList.remove('is-choice-attention');
 }
@@ -70,7 +70,6 @@ function highlightNext() {
   if (els.next.disabled || els.next.textContent !== flowConfig.nextLabel ||
       window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   clearNextAttention();
-  // Restart when the user chooses a different option during the animation.
   void els.next.offsetWidth;
   els.next.classList.add('is-choice-attention');
 }
@@ -199,7 +198,8 @@ function validate(step) {
   els.errorSummary.hidden = true;
   return true;
 }
-function updateNextButtonLabel() {
+function updateNextButtonLabel(animateOnTransition = false) {
+  const previousLabel = els.next.textContent.trim();
   const step = current();
   const lastStep = visible().at(-1)?.id === step.id;
   const hasRequired = step.required.length > 0;
@@ -213,6 +213,14 @@ function updateNextButtonLabel() {
     ? flowConfig.submitLabel
     : (hasRequired || hasEnteredValues ? flowConfig.nextLabel : flowConfig.skipLabel);
   if (els.next.textContent !== flowConfig.nextLabel) clearNextAttention();
+  else if (animateOnTransition && previousLabel === flowConfig.skipLabel) highlightNext();
+}
+function updateVisibleStepCount() {
+  const steps = visible(), i = steps.findIndex(s => s.id === currentStepId);
+  els.current.textContent = 'ШАГ ' + (i + 1) + ' / ' + steps.length;
+  els.progress.max = steps.length;
+  els.progress.value = i + 1;
+  els.progress.setAttribute('aria-valuetext', 'Шаг ' + (i + 1) + ' из ' + steps.length);
 }
 function showStep(stepId, focus = false) {
   // A step change is not a selection; no inherited animation on navigation.
@@ -223,10 +231,7 @@ function showStep(stepId, focus = false) {
   const step = current();
   const index = steps.findIndex(s => s.id === stepId);
   for (const section of form.querySelectorAll('[data-step]')) section.hidden = section.dataset.step !== stepId;
-  els.current.textContent = 'ШАГ ' + (index+1) + ' / ' + steps.length;
-  els.progress.max = steps.length;
-  els.progress.value = index+1;
-  els.progress.setAttribute('aria-valuetext', 'Шаг ' + (index+1) + ' из ' + steps.length);
+  updateVisibleStepCount();
   els.title.textContent = step.title;
   els.hint.textContent = step.hint;
   updateNextButtonLabel();
@@ -259,41 +264,56 @@ els.back.addEventListener('click', () => {
 });
 form.addEventListener('input', e => {
   if (!e.target.name) return;
-  const previousLabel = els.next.textContent;
   cleanError(e.target.name);
-  updateNextButtonLabel();
-  // For typed values only the first empty -> filled transition attracts
-  // attention; never animate on every keystroke.
-  const isChoice = e.target.matches('select, input[type="radio"], input[type="checkbox"]');
-  if (!isChoice && previousLabel === flowConfig.skipLabel &&
-      els.next.textContent === flowConfig.nextLabel) highlightNext();
+  updateNextButtonLabel(true);
 });
 form.addEventListener('change', e => {
   if (!e.target.name) return;
   cleanError(e.target.name);
-  updateNextButtonLabel();
+  updateNextButtonLabel(true);
   if (e.target.name === 'role') {
     const group = e.target.closest('[data-role-group]');
-    // Selecting a role closes BOTH groups, revealing the choice as a summary.
+    // The branch count changes, but the current step doesn't. Avoid a
+    // full showStep() redraw which would cancel the just-started animation.
     for (const item of roleGroups) item.open = false;
     updateRoleGroupLabels();
-    showStep(currentStepId);
+    updateVisibleStepCount();
     group?.querySelector('summary')?.focus({ preventScroll: true });
   }
-  // Only actual option selection highlights Next, not clearing a value.
-  const isChoice = e.target.matches('select, input[type="radio"], input[type="checkbox"]');
-  if (isChoice && valueFor(e.target.name) !== '' &&
-      valueFor(e.target.name) !== false) highlightNext();
 });
 form.addEventListener('submit', e=>{e.preventDefault();stepForward();});
-form.addEventListener('keydown', e => {
-  // Escape dismisses keyboard-opened help without losing form values.
-  if (e.key === 'Escape' && e.target.matches('[data-tooltip]')) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.target.blur();
-  }
+// One help trigger per full label (including its wording and asterisk).
+form.addEventListener('click', e => {
+  const label = e.target.closest('label.wizard-required-label');
+  if (!label) return;
+  const open = !label.classList.contains('is-tooltip-open');
+  form.querySelectorAll('.wizard-required-label.is-tooltip-open')
+    .forEach(other => other.classList.remove('is-tooltip-open'));
+  label.classList.remove('is-tooltip-dismissed');
+  label.classList.toggle('is-tooltip-open', open);
 });
+document.addEventListener('pointerdown', e => {
+  if (e.target.closest('label.wizard-required-label')) return;
+  form.querySelectorAll('.wizard-required-label.is-tooltip-open')
+    .forEach(label => label.classList.remove('is-tooltip-open'));
+});
+form.addEventListener('pointerout', e => {
+  const label = e.target.closest('label.wizard-required-label');
+  if (label && !label.contains(e.relatedTarget)) label.classList.remove('is-tooltip-dismissed');
+});
+form.addEventListener('focusin', e => {
+  e.target.closest('label.wizard-required-label')?.classList.remove('is-tooltip-dismissed');
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const label = form.querySelector('.wizard-required-label.is-tooltip-open')
+    || form.querySelector('.wizard-required-label:hover');
+  if (!label) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  label.classList.remove('is-tooltip-open');
+  label.classList.add('is-tooltip-dismissed');
+}, true);
 document.querySelector('#wizard-reset').addEventListener('click',()=>{
   form.reset(); errors.clear(); els.errorSummary.classList.remove('wizard-success-note');
   for (const group of roleGroups) group.open = group.dataset.roleGroup === 'primary';

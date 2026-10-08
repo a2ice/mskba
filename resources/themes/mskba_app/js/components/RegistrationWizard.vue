@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import WizardShell from './WizardShell.vue';
 import { registrationSteps, validateRegistrationField } from './registrationWizardConfig.js';
 
@@ -9,9 +9,39 @@ const props = defineProps({
     message: { type: String, default: '' },
     serverErrors: { type: Object, default: () => ({}) },
 });
-const emit = defineEmits(['submit', 'login']);
+const emit = defineEmits(['submit', 'login', 'step-change']);
 const wizard = ref(null);
 const expandedGroup = ref('primary');
+// The entire label is the help trigger, never the decorative asterisk.
+const openRequiredHint = ref('');
+const dismissedRequiredHint = ref('');
+function toggleRequiredHint(field) {
+    dismissedRequiredHint.value = '';
+    openRequiredHint.value = openRequiredHint.value === field ? '' : field;
+}
+function closeRequiredHintOnEscape(event) {
+    if (event.key !== 'Escape') return;
+    const hovered = document.querySelector('.mskba-wizard .wizard-required-label:hover');
+    const target = openRequiredHint.value || hovered?.dataset.requiredField;
+    if (!target) return; // Let the native modal handle Escape normally.
+    openRequiredHint.value = '';
+    dismissedRequiredHint.value = target;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+}
+function closeRequiredHintOutside(event) {
+    if (!event.target.closest('.mskba-wizard .wizard-required-label')) {
+        openRequiredHint.value = '';
+    }
+}
+onMounted(() => {
+    document.addEventListener('pointerdown', closeRequiredHintOutside);
+    document.addEventListener('keydown', closeRequiredHintOnEscape, true);
+});
+onBeforeUnmount(() => {
+    document.removeEventListener('pointerdown', closeRequiredHintOutside);
+    document.removeEventListener('keydown', closeRequiredHintOnEscape, true);
+});
 const form = reactive({
     role: '', gender: '', birth_date: '', height_cm: '', weight_kg: '',
     position: '', body_type: '', experience_started_year: '',
@@ -71,7 +101,8 @@ function submit() {
 <template>
     <WizardShell ref="wizard" :steps="registrationSteps" :values="form"
         :validate-field="validateRegistrationField" submit-label="Создать аккаунт"
-        :busy="busy" @submit="submit" @invalid="focusInvalid">
+        :busy="busy" @submit="submit" @invalid="focusInvalid"
+        @step-change="id => emit('step-change', id)">
         <template #role="{ changed, errors }">
             <fieldset class="wizard-role-options">
                 <legend class="sr-only">Роль в баскетболе</legend>
@@ -206,34 +237,53 @@ function submit() {
 
         <template #account="{ changed, errors }">
             <div class="field-group">
-                <label for="mskba-register-username">Логин <span class="wizard-required" tabindex="0"
-                    data-tooltip="Обязательное поле" aria-label="Обязательное поле">*</span></label>
+                <label for="mskba-register-username" class="wizard-required-label"
+                    data-tooltip="Обязательное поле" data-required-field="username"
+                    :class="{ 'is-tooltip-open': openRequiredHint === 'username', 'is-tooltip-dismissed': dismissedRequiredHint === 'username' }"
+                    @pointerleave="dismissedRequiredHint = ''"
+                    @click="toggleRequiredHint('username')">
+                    Логин <span class="wizard-required" aria-hidden="true">*</span>
+                </label>
                 <input id="mskba-register-username" v-model="form.username" name="username"
                     autocomplete="username" required minlength="3" maxlength="32"
                     :disabled="busy" :aria-invalid="!!errors.username" @input="changed('username')" />
                 <p v-if="errors.username" class="error" role="alert">{{ errors.username }}</p>
             </div>
             <div class="field-group">
-                <label for="mskba-register-password">Пароль <span class="wizard-required" tabindex="0"
-                    data-tooltip="Обязательное поле" aria-label="Обязательное поле">*</span></label>
+                <label for="mskba-register-password" class="wizard-required-label"
+                    data-tooltip="Обязательное поле" data-required-field="password"
+                    :class="{ 'is-tooltip-open': openRequiredHint === 'password', 'is-tooltip-dismissed': dismissedRequiredHint === 'password' }"
+                    @pointerleave="dismissedRequiredHint = ''"
+                    @click="toggleRequiredHint('password')">
+                    Пароль <span class="wizard-required" aria-hidden="true">*</span>
+                </label>
                 <input id="mskba-register-password" v-model="form.password" name="password"
                     type="password" autocomplete="new-password" required minlength="6"
                     :disabled="busy" :aria-invalid="!!errors.password" @input="changed('password')" />
                 <p v-if="errors.password" class="error" role="alert">{{ errors.password }}</p>
             </div>
             <div class="field-group">
-                <label for="mskba-register-confirm">Подтвердите пароль <span class="wizard-required"
-                    tabindex="0" data-tooltip="Обязательное поле" aria-label="Обязательное поле">*</span></label>
+                <label for="mskba-register-confirm" class="wizard-required-label"
+                    data-tooltip="Обязательное поле" data-required-field="password_confirmation"
+                    :class="{ 'is-tooltip-open': openRequiredHint === 'password_confirmation', 'is-tooltip-dismissed': dismissedRequiredHint === 'password_confirmation' }"
+                    @pointerleave="dismissedRequiredHint = ''"
+                    @click="toggleRequiredHint('password_confirmation')">
+                    Подтвердите пароль <span class="wizard-required" aria-hidden="true">*</span>
+                </label>
                 <input id="mskba-register-confirm" v-model="form.password_confirmation" name="password_confirmation"
                     type="password" autocomplete="new-password" required :disabled="busy"
                     :aria-invalid="!!errors.password_confirmation" @input="changed('password_confirmation')" />
                 <p v-if="errors.password_confirmation" class="error" role="alert">{{ errors.password_confirmation }}</p>
             </div>
-            <label class="mskba-auth-consent">
+            <label class="mskba-auth-consent wizard-required-label"
+                data-tooltip="Обязательное поле" data-required-field="privacy_consent"
+                :class="{ 'is-tooltip-open': openRequiredHint === 'privacy_consent', 'is-tooltip-dismissed': dismissedRequiredHint === 'privacy_consent' }"
+                @pointerleave="dismissedRequiredHint = ''"
+                @click="toggleRequiredHint('privacy_consent')">
                 <input v-model="form.privacy_consent" type="checkbox" name="privacy_consent"
                     required :disabled="busy" @change="changed('privacy_consent', true)" />
                 <span>Я даю <a :href="options.consent" target="_blank" rel="noopener">согласие на обработку персональных данных</a>
-                    <span class="wizard-required" tabindex="0" data-tooltip="Обязательное поле" aria-label="Обязательное поле">*</span></span>
+                    <span class="wizard-required" aria-hidden="true">*</span></span>
             </label>
             <p v-if="errors.privacy_consent" class="error" role="alert">{{ errors.privacy_consent }}</p>
             <p class="mskba-auth-small">Подробнее в <a :href="options.privacyPolicy" target="_blank" rel="noopener">политике конфиденциальности</a>.</p>

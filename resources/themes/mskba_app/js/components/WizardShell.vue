@@ -8,7 +8,7 @@ const props = defineProps({
     submitLabel: { type: String, default: 'Готово' },
     busy: { type: Boolean, default: false },
 });
-const emit = defineEmits(['submit', 'invalid']);
+const emit = defineEmits(['submit', 'invalid', 'step-change']);
 const activeId = ref(props.steps[0]?.id);
 const issues = ref({});
 const content = ref(null);
@@ -26,6 +26,9 @@ const hasValues = computed(() => step.value?.fields?.some(field => {
 }) || false);
 const nextLabel = computed(() => lastStep.value
     ? props.submitLabel : (hasRequired.value || hasValues.value ? 'Далее' : 'Пропустить'));
+// Track the last displayed action within the current step; navigating does not
+// count as an empty -> filled transition.
+let previousNextLabel = nextLabel.value;
 
 watch(visibleSteps, steps => {
     if (!steps.some(s => s.id === activeId.value)) activeId.value = steps[0]?.id;
@@ -33,12 +36,15 @@ watch(visibleSteps, steps => {
 function stopAttention() {
     attention.value = false;
 }
-function valueChanged(field, choice = false) {
+function valueChanged(field) {
     delete issues.value[field];
-    // Called from actual UI interaction, never from step navigation.
-    if (nextLabel.value !== 'Далее') return stopAttention();
-    if (!choice && !hasValues.value) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const label = nextLabel.value;
+    const becameNext = previousNextLabel === 'Пропустить' && label === 'Далее';
+    previousNextLabel = label;
+    if (label !== 'Далее') return stopAttention();
+    // An additional choice/keystroke when the action is already Next is not
+    // a reason to re-run the decorative animation.
+    if (!becameNext || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     stopAttention();
     void nextButton.value?.offsetWidth;
     attention.value = true;
@@ -66,7 +72,9 @@ async function focusError(field) {
 }
 async function go(id) {
     stopAttention();
+    if (activeId.value !== id) emit('step-change', id);
     activeId.value = id;
+    previousNextLabel = nextLabel.value;
     await nextTick();
     if (content.value) content.value.scrollTop = 0;
     stepTitle.value?.focus({ preventScroll: true });
