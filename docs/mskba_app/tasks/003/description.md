@@ -1,25 +1,35 @@
 # 003 — Маршруты и интеграция Vue 3 / Inertia
 
-**Статус:** Запланировано · **Зависит от:** 001–002 как основы, согласования архитектуры.
+**Статус:** На проверке · **Дата:** 2026-10-08 · **Зависит от:** [001](../001/description.md), [002](../002/description.md).
 
 ## Цель
 
-Открывать настоящие Vue/Inertia-экраны `mskba_app` на существующих Laravel web routes без поломки production и дублирования бизнес-логики.
+Подключить Vue 3 и Inertia к `mskba_app` так, чтобы существующие Laravel-маршруты, авторизация, бизнес-сервисы и production-тема сохранились.
 
-## Подлежащие согласованию решения
+## Реализовано локально
 
-- Отдельная web-группа, назначение theme resolver и изолированный локальный preview.
-- Стратегия постепенного переноса URL и сохранения legacy маршрутов.
-- Inertia root view, Vue bootstrap, сборка Vite, управление авторизацией/CSRF.
-- Схема передачи данных из существующих контроллеров/use cases, права доступа и Telegram context.
-- Роль текущего Blade header при переходе на общий Vue layout.
+- Установлены `vue`, `@inertiajs/vue3`, `@vitejs/plugin-vue` и `inertiajs/inertia-laravel`. Обновлены `package*.json`, `composer*.json` и Vite config.
+- Добавлен отдельный web-файл `routes/mskba-app.php` в `bootstrap/app.php`. Первый маршрут **`/ui-preview`** доступен только при `APP_THEME=mskba_app`; активная legacy-тема получает 404.
+- `HandleMskbaAppInertiaRequests` предоставляет root view `theme::layouts.inertia` и серверный проп `auth.user`. Изолированные `js/inertia.js` и Vue `pages/Preview.vue` не запускают jQuery legacy.
+- Существующие страницы продолжают жить на Blade; `header.blade.php` и авторизация размещаются снаружи Inertia root и остаются видимыми при переходе к Vue.
+- Исходный путь `/app-preview` оказался зарезервированным Nginx для WebSocket `location /app`; перенесён на `/ui-preview` без изменения прокси.
 
-## Критерии приёмки
+## Проверки
 
-Первый тестовый реальный route отдаёт Vue/Inertia страницу с серверными данными; сохранены авторизация и доступы; не затронута production-тема; есть инструкции для local run и проверка HMR.
+- GET `/ui-preview`: HTTP 200, HTML с `data-page`; X-Inertia + корректный X-Inertia-Version: JSON 200 с `component: Preview` и props от Laravel.
+- Vue-экран визуально открылся в headless Chromium без ошибок JavaScript.
+- Vite production build успешен во временную директорию (не меняет `public/build`).
+- `tests/Feature/MskbaAppPreviewTest.php`: **2 теста, 4 утверждения — успешно**, legacy guard и приложение.
+- В сборке остаются предупреждения о больших chunks других entrypoints; отдельно `npm audit` отмечает 2 critical в `concurrently` / `shell-quote`. Не исправлялись в этой задаче, до публикации требуют приоритизации.
 
-## Текущий результат
+## Что ещё нужно
 
-Не реализовано. Vue/Inertia ещё не добавлены в текущую тему.
+- Визуальная приёмка browser/mobile пользователем и решение о развитии общего Vue application layout.
+- Перенос настоящих предметных экранов — дальнейшие задачи; GET `/ui-preview` пока только интеграционный тест.
+- При будущем расширении маршрутизации не дублировать domain services, permissions, auth или JSON API без необходимости.
 
-[Прогресс](../../progress.md) · [Реестр](../../tasks.md)
+## Статус Git
+
+Локальная `feature/139`. Push/PR/merge/deploy запрещены до отдельной команды пользователя.
+
+[Прогресс](../../progress.md) · [Реестр](../../tasks.md) · [Следующая задача 008](../008/description.md)

@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "ext-gd": "*",
+        "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^13.8",
         "laravel/reverb": "^1.0",
         "laravel/tinker": "^3.0",
