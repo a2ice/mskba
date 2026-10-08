@@ -139,3 +139,23 @@
     .app-header-account-label, .app-header-notifications { display: none; }
     .app-header-mobile[open] .app-header-mobile-panel { right: 8px; width: calc(100vw - 16px); }
 }
+
+
+/* Task 015. Persistent but restrained account nudge while setup is incomplete. */
+.app-header-account--setup-pending .app-header-avatar {
+    border-color: var(--accent);
+    animation: mskba-onboarding-shake 4.6s ease-in-out infinite;
+    transform-origin: 50% 65%;
+}
+.app-header-account--setup-pending:hover .app-header-avatar { animation-play-state: paused; }
+@keyframes mskba-onboarding-shake {
+    0%, 73%, 100% { transform: rotate(0); }
+    76% { transform: rotate(-11deg); }
+    79% { transform: rotate(10deg); }
+    82% { transform: rotate(-8deg); }
+    85% { transform: rotate(7deg); }
+    88%, 95% { transform: rotate(0); }
+}
+@media(prefers-reduced-motion:reduce) {
+    .app-header-account--setup-pending .app-header-avatar { animation:none; }
+}

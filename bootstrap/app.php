@@ -3,6 +3,7 @@
 use App\Http\Middleware\ShowCreationPageAccess;
 use App\Modules\Event\Infrastructure\Http\Middleware\EnsureGameRosterContainsPlayers;
 use App\Modules\Identity\Infrastructure\Http\Middleware\EnforceCreationOperationalPermissions;
+use App\Modules\Identity\Infrastructure\Http\Middleware\EnsurePersonalDataDistributionSetupCompleted;
 use App\Modules\Identity\Infrastructure\Http\Middleware\RecordBrowserFingerprint;
 use App\Modules\Identity\Infrastructure\Http\Middleware\ResolveCanonicalUserSession;
 use App\Modules\Portal\Infrastructure\Http\Middleware\RecordOnlineUserPresence;
@@ -44,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->appendToGroup('web', [
             ResolveCanonicalUserSession::class,
+            EnsurePersonalDataDistributionSetupCompleted::class,
             ShowCreationPageAccess::class,
             EnforceCreationOperationalPermissions::class,
             RecordBrowserFingerprint::class,

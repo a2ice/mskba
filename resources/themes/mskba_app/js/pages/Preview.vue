@@ -8,6 +8,7 @@ defineProps({
 
 <template>
     <section class="section" aria-labelledby="preview-heading">
+        <div class="container">
         <p class="eyebrow accent">MSKBA APP / ПЕРВЫЙ INERTIA ЭКРАН</p>
         <h1 id="preview-heading">{{ pageTitle }}</h1>
         <p class="section-description">
@@ -18,6 +19,7 @@ defineProps({
             <p><strong>Окружение:</strong> {{ environment }}</p>
             <p><strong>Сессия:</strong> {{ auth?.user?.username ?? 'Гость' }}</p>
             <a class="button secondary" href="/">На главную</a>
+        </div>
         </div>
     </section>
 </template>

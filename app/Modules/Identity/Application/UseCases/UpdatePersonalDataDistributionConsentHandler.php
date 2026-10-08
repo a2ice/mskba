@@ -19,12 +19,13 @@ final class UpdatePersonalDataDistributionConsentHandler
     ) {}
 
     /**
-     * @param list<UserPrivacySettingTypeEnum> $selectedTypes
+     * @param  list<UserPrivacySettingTypeEnum>  $selectedTypes
      */
     public function handle(
         User $user,
         array $selectedTypes,
         ?PrivacyConsentDTO $evidence,
+        array $privacyOptions = [],
     ): void {
         $selectedTypes = collect($selectedTypes)
             ->filter(fn (mixed $type): bool => $type instanceof UserPrivacySettingTypeEnum && $type->requiresDistributionConsent())
@@ -40,7 +41,7 @@ final class UpdatePersonalDataDistributionConsentHandler
             ->map(fn (UserPrivacySettingTypeEnum $type): string => $type->value)
             ->all();
 
-        DB::transaction(function () use ($user, $selectedValues, $evidence): void {
+        DB::transaction(function () use ($user, $selectedValues, $evidence, $privacyOptions): void {
             $lockedUser = User::query()
                 ->whereKey($user->canonical()->getKey())
                 ->lockForUpdate()
@@ -68,6 +69,19 @@ final class UpdatePersonalDataDistributionConsentHandler
                     ],
                 );
 
+                $setting->allowedUsers()->sync([]);
+            }
+
+            foreach ([
+                UserPrivacySettingTypeEnum::DISCOVERABILITY,
+                UserPrivacySettingTypeEnum::MESSAGES,
+                UserPrivacySettingTypeEnum::GROUP_INVITATIONS,
+            ] as $type) {
+                $visibility = $privacyOptions[$type->value] ?? UserPrivacyVisibilityEnum::NOBODY->value;
+                $setting = UserPrivacySetting::query()->updateOrCreate(
+                    ['user_id' => $lockedUser->getKey(), 'type' => $type->value],
+                    ['visibility' => UserPrivacyVisibilityEnum::from($visibility)->value],
+                );
                 $setting->allowedUsers()->sync([]);
             }
 

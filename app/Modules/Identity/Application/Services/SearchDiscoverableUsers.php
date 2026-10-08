@@ -11,6 +11,8 @@ use Illuminate\Support\Collection;
 
 final class SearchDiscoverableUsers
 {
+    public function __construct(private readonly UserPrivacyAccessService $privacy) {}
+
     /**
      * @param  array<int>  $excludeUserIds
      * @return Collection<int, User>
@@ -47,8 +49,15 @@ final class SearchDiscoverableUsers
                     });
             })
             ->orderBy('username')
-            ->limit($limit)
-            ->get();
+            ->limit($limit * 4)
+            ->get()
+            ->filter(fn (User $candidate): bool => $this->privacy->allows(
+                $candidate,
+                $viewer,
+                UserPrivacySettingTypeEnum::DISCOVERABILITY,
+            ))
+            ->take($limit)
+            ->values();
     }
 
     public function findVisibleById(
@@ -64,9 +73,15 @@ final class SearchDiscoverableUsers
             return null;
         }
 
-        return $this->baseQuery($viewer, [], $requiredAccess, $requiredStatus)
+        $found = $this->baseQuery($viewer, [], $requiredAccess, $requiredStatus)
             ->whereKey($candidate->id)
             ->first();
+
+        return $found !== null && $this->privacy->allows(
+            $found,
+            $viewer,
+            UserPrivacySettingTypeEnum::DISCOVERABILITY,
+        ) ? $found : null;
     }
 
     /**
@@ -85,6 +100,10 @@ final class SearchDiscoverableUsers
         ]);
 
         return User::query()
+            ->where(function (Builder $query): void {
+                $query->whereNull('personal_data_distribution_required_at')
+                    ->orWhereNotNull('personal_data_distribution_setup_completed_at');
+            })
             ->with('profile')
             ->whereNull('canonical_user_id')
             ->when(
@@ -100,6 +119,11 @@ final class SearchDiscoverableUsers
                 $privacyQuery,
                 $viewer,
                 UserPrivacySettingTypeEnum::DISCOVERABILITY,
+            ))
+            ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
+                $privacyQuery,
+                $viewer,
+                UserPrivacySettingTypeEnum::PROFILE,
             ))
             ->when($requiredAccess !== null, fn (Builder $userQuery) => $userQuery
                 ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(

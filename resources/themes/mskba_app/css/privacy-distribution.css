@@ -1,0 +1,305 @@
+/* Task 012: onboarding privacy settings. Uses accepted MSKBA App tokens
+   and common .panel, .button, .check-label and .switch-label primitives. */
+.privacy-onboarding {
+  width:100%;
+  min-width:0;
+  padding:0 0 40px;
+}
+.privacy-onboarding__intro { margin-bottom:32px; }
+.privacy-onboarding__intro h1 {
+  margin:12px 0 16px;
+  font-size:clamp(32px,4vw,48px);
+  line-height:1.08;
+  letter-spacing:-.04em;
+}
+.privacy-onboarding__lead { font-size:16px; line-height:1.6; }
+.privacy-onboarding__sub {
+  margin-top:12px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.6;
+}
+.privacy-onboarding__form { gap:24px; }
+.privacy-onboarding__errors { max-width:100%; border-color:var(--danger); }
+.privacy-onboarding__errors strong { color:var(--text); }
+.privacy-onboarding__columns {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  align-items:start;
+  gap:20px;
+}
+.privacy-onboarding__column { display:flex; flex-direction:column; gap:20px; min-width:0; }
+.privacy-onboarding__card {
+  padding:28px;
+  background:var(--surface);
+}
+.privacy-onboarding__card h2 {
+  margin-top:12px;
+  font-size:24px;
+  line-height:1.25;
+}
+.privacy-onboarding__card-description {
+  margin:10px 0 18px;
+  font-size:14px;
+  line-height:1.5;
+  color:var(--muted);
+}
+.privacy-onboarding__options { display:grid; }
+.privacy-onboarding__option {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  min-width:0;
+  min-height:74px;
+  padding:16px 0;
+  cursor:pointer;
+  border-bottom:1px solid var(--line);
+}
+.privacy-onboarding__option:first-child { padding-top:0; }
+.privacy-onboarding__option:last-child { padding-bottom:0; border-bottom:0; }
+.privacy-onboarding__option-copy { min-width:0; display:grid; gap:4px; }
+.privacy-onboarding__option-copy strong {
+  display:block; font-size:14px; line-height:20px; font-weight:700;
+}
+.privacy-onboarding__option-copy small {
+  display:block; font-size:12px; line-height:18px;
+  font-weight:400; color:var(--muted);
+}
+.privacy-onboarding__option input {
+  width:44px; height:24px; flex:0 0 44px; margin:0; cursor:pointer;
+}
+@media (hover:hover) {
+  .privacy-onboarding__option:hover .privacy-onboarding__option-copy strong {
+    color:var(--accent-hover);
+  }
+}
+.privacy-onboarding__consent-label {
+  align-items:flex-start;
+  gap:12px;
+  min-height:44px;
+  font-size:14px;
+  line-height:1.55;
+}
+.privacy-onboarding__consent-label input {
+  margin-top:2px;
+  flex-shrink:0;
+  width:20px; height:20px;
+  accent-color:var(--accent);
+}
+.privacy-onboarding__consent-label input:disabled { opacity:.5; cursor:not-allowed; }
+.privacy-onboarding__consent-label a {
+  color:var(--accent);
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.privacy-onboarding__consent-label a:hover { color:var(--accent-hover); }
+.privacy-onboarding__consent .error { margin-top:8px; }
+.privacy-onboarding__selection {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:14px 16px;
+  margin-top:18px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-control);
+  background:var(--surface-raised);
+}
+.privacy-onboarding__selection .badge {
+  flex-shrink:0;
+  color:var(--accent);
+  background:#ff790016;
+}
+.privacy-onboarding__selection p {
+  font-size:12px; line-height:18px; color:var(--muted);
+}
+.privacy-onboarding__historical {
+  margin-top:16px; font-size:12px; line-height:18px; color:var(--muted);
+}
+.privacy-onboarding__footer {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:24px;
+  padding:24px 28px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius-card);
+}
+.privacy-onboarding__footer-copy { display:grid; gap:4px; font-size:14px; }
+.privacy-onboarding__footer-copy span { font-size:12px; color:var(--muted); }
+.privacy-onboarding__actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+.privacy-onboarding__actions .button { min-height:48px; }
+@media (max-width:1023px) {
+  .privacy-onboarding { padding-top:32px; padding-bottom:56px; }
+  .privacy-onboarding__columns { gap:16px; }
+  .privacy-onboarding__column { gap:16px; }
+  .privacy-onboarding__card { padding:20px; }
+}
+@media (max-width:767px) {
+  .privacy-onboarding__columns { grid-template-columns:1fr; }
+  .privacy-onboarding__intro { margin-bottom:24px; }
+  .privacy-onboarding__footer { padding:20px; }
+}
+@media (max-width:639px) {
+  .privacy-onboarding { padding-top:24px; }
+  .privacy-onboarding__intro h1 { font-size:32px; }
+  .privacy-onboarding__card h2 { font-size:22px; }
+  .privacy-onboarding__selection { align-items:flex-start; flex-direction:column; }
+  .privacy-onboarding__actions { width:100%; }
+  .privacy-onboarding__actions .button { width:100%; }
+}
+
+/* Legal text is reused verbatim from the existing site. Only its layout changes. */
+.privacy-onboarding__legal { width:100%; }
+.privacy-onboarding__legal-document { padding:40px 48px; }
+.privacy-onboarding__legal .legal-document__eyebrow {
+  font-size:12px; line-height:16px; font-weight:700; letter-spacing:.12em;
+  color:var(--accent); text-transform:uppercase;
+}
+.privacy-onboarding__legal .legal-document__header h1 {
+  margin:12px 0 14px;
+  font-size:clamp(30px,4vw,42px);
+  line-height:1.12;
+  letter-spacing:-.035em;
+}
+.privacy-onboarding__legal .legal-document__meta {
+  font-size:12px; line-height:18px; color:var(--faint);
+}
+.privacy-onboarding__legal .legal-document__lead {
+  margin-top:20px; color:var(--muted); line-height:1.65;
+}
+.privacy-onboarding__legal .legal-document__section {
+  margin-top:32px; padding-top:26px; border-top:1px solid var(--line);
+}
+.privacy-onboarding__legal .legal-document__section h2 {
+  font-size:20px; line-height:26px; margin-bottom:12px;
+}
+.privacy-onboarding__legal .legal-document__section p,
+.privacy-onboarding__legal .legal-document__section li {
+  font-size:14px; line-height:1.75; color:var(--muted);
+}
+.privacy-onboarding__legal .legal-document__section p+p { margin-top:12px; }
+.privacy-onboarding__legal .legal-document__section ul { padding-left:20px; margin:12px 0; }
+.privacy-onboarding__legal .legal-document__section li+li { margin-top:6px; }
+.privacy-onboarding__legal a {
+  color:var(--accent); text-decoration:underline; text-underline-offset:2px;
+  overflow-wrap:anywhere;
+}
+@media(max-width:639px) {
+  .privacy-onboarding__legal-document { padding:24px 20px; }
+}
+
+@container (max-width:760px) {
+  .privacy-onboarding__columns { grid-template-columns:minmax(0,1fr); }
+  .privacy-onboarding__footer { align-items:stretch; }
+  .privacy-onboarding__actions { width:100%; }
+  .privacy-onboarding__actions .button { flex:1 1 180px; }
+}
+
+/* Task 015 — two clear root permissions, nested settings and a compact consent. */
+.app-account-onboarding-content { min-width:0; width:100%; }
+.privacy-onboarding--guided { padding-bottom:48px; }
+.privacy-onboarding--guided .privacy-onboarding__intro { margin-bottom:22px; }
+.privacy-onboarding--guided .privacy-onboarding__intro h1 { margin-bottom:12px; }
+.privacy-onboarding__reminder {
+    display:flex; align-items:flex-start; gap:14px;
+    padding:16px 20px; margin-bottom:24px;
+    border:1px solid #ff79004a;
+    border-left:3px solid var(--accent);
+    border-radius:var(--radius-control);
+    background:#ff79000c;
+}
+.privacy-onboarding__reminder > svg { width:22px; height:22px; flex-shrink:0; color:var(--accent); }
+.privacy-onboarding__reminder strong { display:block; font-size:15px; line-height:22px; }
+.privacy-onboarding__reminder p { font-size:13px; line-height:20px; color:var(--muted); margin-top:3px; }
+.privacy-onboarding__group-heading, .privacy-onboarding__consent-header {
+    display:flex; align-items:center; justify-content:space-between; gap:18px;
+}
+.privacy-onboarding__group-heading > div, .privacy-onboarding__consent-header > div { min-width:0; }
+.privacy-onboarding__group-heading .privacy-onboarding__card-description { margin-bottom:0; }
+.privacy-onboarding__root-toggle { flex:0 0 auto; cursor:pointer; }
+.privacy-onboarding__root-toggle input { width:44px; height:24px; cursor:pointer; }
+.privacy-onboarding__children {
+    margin-top:20px;
+    padding-top:18px;
+    border-top:1px solid var(--line);
+}
+.privacy-onboarding__children[hidden],
+.privacy-onboarding__closed-hint[hidden],
+.privacy-onboarding__consent-body[hidden],
+.privacy-onboarding__toast[hidden] { display:none!important; }
+.privacy-onboarding__children-heading {
+    margin-bottom:8px; color:var(--faint); font-size:11px;
+    font-weight:800; text-transform:uppercase; letter-spacing:.07em;
+}
+.privacy-onboarding__closed-hint {
+    margin-top:20px; padding:13px 15px;
+    border:1px dashed var(--line);
+    border-radius:var(--radius-control);
+    color:var(--muted); font-size:13px; line-height:20px;
+}
+.privacy-onboarding__group .privacy-onboarding__option { min-height:66px; }
+.privacy-onboarding__role-details {
+    margin-top:18px; border:1px solid var(--line);
+    border-radius:var(--radius-control);
+}
+.privacy-onboarding__player-toggle { padding:16px!important; border-bottom:0!important; }
+.privacy-onboarding__role-fields { padding:0 16px 12px; border-top:1px solid var(--line); }
+.privacy-onboarding__role-fields[hidden] { display:none!important; }
+.privacy-onboarding__role-fields .privacy-onboarding__option:last-child { padding-bottom:0; }
+.privacy-onboarding__group--inactive {
+    opacity:.52;
+}
+.privacy-onboarding__group--inactive .privacy-onboarding__root-toggle {
+    cursor:not-allowed;
+}
+.privacy-onboarding__selector-field {
+    display:grid; gap:8px;
+    padding:12px 0 16px;
+}
+.privacy-onboarding__selector-field+ .privacy-onboarding__selector-field { border-top:1px solid var(--line); }
+.privacy-onboarding__selector-field label { font-weight:700; font-size:14px; }
+.privacy-onboarding__selector-field select {
+    display:block; width:100%;
+    min-height:48px; font-size:14px;
+}
+.privacy-onboarding__selector-field p, .privacy-onboarding__future {
+    color:var(--muted); font-size:12px; line-height:18px;
+}
+.privacy-onboarding__future { padding:12px; border-radius:var(--radius-control); background:var(--surface-raised); }
+.privacy-onboarding__consent { margin-top:20px; }
+.privacy-onboarding__consent .privacy-onboarding__card-description { margin-bottom:0; }
+.privacy-onboarding__consent-body { margin-top:20px; }
+.privacy-onboarding__consent-header .badge { white-space:nowrap; }
+.privacy-onboarding__consent .privacy-onboarding__closed-hint { margin-top:16px; }
+.privacy-onboarding--guided .privacy-onboarding__footer { margin-top:20px; }
+.privacy-onboarding__toast { z-index:130; }
+.privacy-onboarding__toast > svg { width:22px; height:22px; color:var(--accent); flex:0 0 22px; }
+.privacy-onboarding__toast .icon-button svg { width:16px; height:16px; }
+@media(max-width:767px) {
+    .privacy-onboarding__group-heading { gap:10px; }
+    .privacy-onboarding--guided .privacy-onboarding__card { padding:20px; }
+    .privacy-onboarding__consent-header { align-items:flex-start; flex-direction:column; }
+}
+
+/* Strictly reuse the shared select-control arrow and field tokens. */
+.privacy-onboarding__selector-field .select-control select {
+    appearance:none; -webkit-appearance:none;
+    background:var(--field);
+    border:1px solid var(--control-line);
+    border-radius:var(--radius-control);
+    color:var(--text);
+    padding:11px 48px 11px 14px;
+}
+.privacy-onboarding__selector-field .select-control > svg {
+    display:block;
+    position:absolute;
+    top:50%;
+    inset-inline-end:16px;
+    transform:translateY(-50%);
+    width:18px; height:18px;
+    pointer-events:none;
+    color:var(--muted);
+}

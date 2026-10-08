@@ -13,7 +13,7 @@
     <body>
         @include('theme::partials.icons')
         @include('theme::partials.header')
-        <main id="mskba-app" class="app-shell container">
+        <main id="mskba-app" class="app-shell">
             @yield('content')
         </main>
         @include('theme::partials.auth-dialog-root')

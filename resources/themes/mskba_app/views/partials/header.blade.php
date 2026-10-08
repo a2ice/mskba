@@ -1,6 +1,8 @@
 @php
     $items = app(\App\Presentation\Navigation\MenuResolver::class)->resolve('main');
     $headerUser = auth()->user();
+    $headerNeedsPrivacySetup = $headerUser !== null
+        && app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup($headerUser);
     $profile = $headerUser?->profile;
     $displayName = trim((string) ($profile?->first_name ?: $headerUser?->username ?: ''));
     $initials = $displayName !== '' ? mb_strtoupper(mb_substr($displayName, 0, 2)) : 'MS';
@@ -50,7 +52,10 @@
                 <a class="icon-button app-header-notifications" href="{{ route('account.notifications') }}" aria-label="Уведомления">
                     <svg aria-hidden="true"><use href="#bell"/></svg>
                 </a>
-                <a class="app-header-account" href="{{ route('account') }}" aria-label="Личный кабинет">
+                <a @class(['app-header-account', 'app-header-account--setup-pending' => $headerNeedsPrivacySetup])
+                   href="{{ $headerNeedsPrivacySetup ? route('account.privacy.distribution') : route('account') }}"
+                   aria-label="{{ $headerNeedsPrivacySetup ? 'Завершить регистрацию — настройка приватности' : 'Личный кабинет' }}"
+                   @if ($headerNeedsPrivacySetup ) title="Остался последний шаг регистрации" @endif>
                     <span class="app-header-account-label">{{ $displayName ?: 'Личный кабинет' }}</span>
                     <span class="avatar app-header-avatar">
                         @if ($avatarUrl)
@@ -96,7 +101,7 @@
                 @endforeach
                 <div class="app-header-mobile-account">
                     @auth
-                        <a href="{{ route('account') }}"><svg aria-hidden="true"><use href="#user"/></svg> Личный кабинет</a>
+                        <a href="{{ $headerNeedsPrivacySetup ? route('account.privacy.distribution') : route('account') }}"><svg aria-hidden="true"><use href="#user"/></svg> {{ $headerNeedsPrivacySetup ? 'Завершить регистрацию' : 'Личный кабинет' }}</a>
                         <a href="{{ route('account.notifications') }}"><svg aria-hidden="true"><use href="#bell"/></svg> Уведомления</a>
                     @else
                         <a href="{{ route('login') }}" data-auth-trigger><svg aria-hidden="true"><use href="#user"/></svg> Войти в аккаунт</a>

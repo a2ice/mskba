@@ -12,7 +12,7 @@
 <body>
     @include('theme::partials.icons')
     @include('theme::partials.header')
-    <main class="app-shell container" id="mskba-app-content">
+    <main class="app-shell" id="mskba-app-content">
         @inertia
     </main>
     @include('theme::partials.auth-dialog-root')

@@ -10,6 +10,8 @@ enum UserPrivacySettingTypeEnum: string
     case GROUP_INVITATIONS = 'group_invitations';
     case PROFILE = 'profile';
     case AVATAR = 'avatar';
+    case PROFILE_GENDER = 'profile_gender';
+    case PROFILE_AGE = 'profile_age';
     case ROLE_PLAYER = 'role_player';
     case ROLE_COACH = 'role_coach';
     case ROLE_REFEREE = 'role_referee';
@@ -37,6 +39,8 @@ enum UserPrivacySettingTypeEnum: string
             self::GROUP_INVITATIONS => 'Кто может добавлять меня в группы',
             self::PROFILE => 'Публичная страница профиля',
             self::AVATAR => 'Аватар в публичном профиле',
+            self::PROFILE_GENDER => 'Пол в профиле',
+            self::PROFILE_AGE => 'Возраст в профиле',
             self::ROLE_PLAYER => 'Страница игрока',
             self::ROLE_COACH => 'Страница тренера',
             self::ROLE_REFEREE => 'Страница судьи',
@@ -62,6 +66,8 @@ enum UserPrivacySettingTypeEnum: string
         return match ($this) {
             self::DISCOVERABILITY => 'Кто сможет находить вас в поиске и списках выбора пользователей. Статус аккаунта, подтверждение, блокировка и удаление проверяются отдельно.',
             self::CONTACTS => 'Кому доступны опубликованные вами контактные данные.',
+            self::PROFILE_GENDER => 'Показывать пол на открытой странице профиля.',
+            self::PROFILE_AGE => 'Показывать возраст (не дату рождения) на открытой странице профиля.',
             self::MESSAGES => 'Кто сможет начать с вами личную переписку.',
             self::GROUP_INVITATIONS => 'Кто сможет приглашать вас в команды, чаты и другие группы.',
             self::PROFILE, self::AVATAR, self::ROLE_COACH, self::COACH_SECTIONS => 'Видимость в профиле. Имя, аватар, роль тренера и открытые секции действующего тренера всегда публичны; остальные данные сохраняют свои ограничения.',
@@ -80,6 +86,8 @@ enum UserPrivacySettingTypeEnum: string
             self::CONTACTS,
             self::PROFILE,
             self::AVATAR,
+            self::PROFILE_GENDER,
+            self::PROFILE_AGE,
             self::ROLE_PLAYER,
             self::ROLE_COACH,
             self::ROLE_REFEREE,

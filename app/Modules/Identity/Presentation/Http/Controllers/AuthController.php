@@ -4,6 +4,7 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\DTO\PrivacyConsentDTO;
+use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
 use App\Modules\Identity\Application\UseCases\AuthHandler;
 use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
@@ -19,6 +20,7 @@ class AuthController extends Controller
         LoginRequest $request,
         AuthHandler $authHandler,
         SafeAuthenticationRedirectResolver $redirects,
+        PersonalDataDistributionConsentService $consents,
     ): RedirectResponse|JsonResponse {
         $validated = $request->validated();
 
@@ -40,7 +42,18 @@ class AuthController extends Controller
             return back()->withInput($request->only('login', 'remember'))->withErrors(['login' => $result->message]);
         }
 
-        $redirectTo = $redirects->resolve($request, $validated['redirect_to'] ?? null);
+        $pendingSetup = $request->user() !== null
+            && $consents->requiresSetup($request->user());
+        $redirectTo = $redirects->resolve(
+            $request,
+            $validated['redirect_to'] ?? null,
+            $pendingSetup ? route('account') : null,
+        );
+
+        if ($pendingSetup) {
+            $request->session()->put('privacy.distribution.return_to', $redirectTo);
+            $redirectTo = route('account.privacy.distribution');
+        }
 
         if ($this->shouldReturnJson($request)) {
             return response()->json([
@@ -104,13 +117,13 @@ class AuthController extends Controller
         if ($this->shouldReturnJson($request)) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'Регистрация завершена.',
+                'message' => 'Аккаунт создан. Завершите настройку приватности.',
                 'login' => $user->username,
                 'redirect_url' => $redirectTo,
             ], 201);
         }
 
-        return redirect()->to($redirectTo)->with('success', 'Регистрация завершена.');
+        return redirect()->to($redirectTo)->with('success', 'Аккаунт создан. Завершите настройку приватности.');
     }
 
     public function restore(): void

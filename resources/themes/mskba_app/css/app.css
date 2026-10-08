@@ -5,5 +5,7 @@
 @import './header.css';
 @import './auth-dialog.css';
 @import './wizard.css';
+@import './privacy-distribution.css';
+@import './account-layout.css';
 
 .app-shell { min-height: 100dvh; }

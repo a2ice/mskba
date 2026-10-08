@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Modules\Identity\Infrastructure\Http\Middleware;
+
+use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
+use App\Modules\Identity\Presentation\Http\Support\SafeAuthenticationRedirectResolver;
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+final class EnsurePersonalDataDistributionSetupCompleted
+{
+    public function __construct(
+        private readonly PersonalDataDistributionConsentService $consents,
+        private readonly SafeAuthenticationRedirectResolver $redirects,
+    ) {}
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        $user = $request->user();
+        $route = $request->route();
+
+        if ($user === null || $route === null || ! $this->consents->requiresSetup($user)) {
+            return $next($request);
+        }
+
+        // Public pages and signed integrations are not onboarding-protected.
+        // Only the authenticated portal routes are subject to this checkpoint.
+        $authenticated = collect($route->gatherMiddleware())->contains(
+            static fn (string $middleware): bool => $middleware === 'auth'
+                || str_starts_with($middleware, 'auth:'),
+        );
+
+        if (! $authenticated || $request->routeIs(
+            'account.privacy.distribution',
+            'account.privacy.distribution.update',
+            'auth.logout',
+            'logout',
+        )) {
+            return $next($request);
+        }
+
+        $setupUrl = route('account.privacy.distribution');
+
+        if ($request->isMethod('GET')) {
+            $target = $this->redirects->peek($request, $request->fullUrl());
+            if ($target !== null && ! $request->session()->has('privacy.distribution.return_to')) {
+                $request->session()->put('privacy.distribution.return_to', $target);
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Сначала завершите настройку приватности аккаунта.',
+                'redirect_url' => $setupUrl,
+            ], 409);
+        }
+
+        // Explicit 303 avoids repeating non-GET requests after the redirect.
+        return redirect()->to($setupUrl, 303);
+    }
+}

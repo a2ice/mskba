@@ -1,4 +1,5 @@
 import './header.js';
+import './privacy-distribution.js';
 import { createApp } from 'vue';
 import AuthDialog from './components/AuthDialog.vue';
 

@@ -192,6 +192,14 @@ final class PublicUserProfileService
             );
         });
         abort_if($role !== null && ! $roles->contains(fn ($candidate) => $candidate->value === $role), 404);
+        $subject->loadMissing('profile');
+        $data['demographics'] = $profileAllowed ? array_filter([
+            'gender' => $this->privacy->allows($subject, $viewer, Privacy::PROFILE_GENDER)
+                ? $subject->profile?->gender?->label() : null,
+            'age' => $this->privacy->allows($subject, $viewer, Privacy::PROFILE_AGE)
+                ? $subject->profile?->age : null,
+        ], static fn ($value): bool => $value !== null) : [];
+
         $data['roles'] = $roles->map(fn ($candidate) => [
             'value' => $candidate->value,
             'name' => $candidate->label(),

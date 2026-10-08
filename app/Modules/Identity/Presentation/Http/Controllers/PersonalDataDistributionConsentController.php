@@ -45,6 +45,8 @@ final class PersonalDataDistributionConsentController extends Controller
             'distributionTypes' => UserPrivacySettingTypeEnum::distributionTypes(),
             'selectedTypeValues' => $selectedTypeValues,
             'isFirstSetup' => $consents->requiresSetup($user),
+            'hasPlayerRole' => $user->hasActiveRole('player'),
+            'privacyOptions' => $request->session()->getOldInput('privacy_options') ?? [],
             'hasActiveConsent' => $user->consents()
                 ->where('type', UserConsent::TYPE_PERSONAL_DATA_DISTRIBUTION)
                 ->whereNull('revoked_at')
@@ -76,7 +78,10 @@ final class PersonalDataDistributionConsentController extends Controller
             userAgent: $request->userAgent(),
         );
 
-        $handler->handle($user, $selectedTypes, $evidence);
+        $handler->handle($user, $selectedTypes, $evidence, $request->privacyOptions());
+        // The handler updates a locked copy. Refresh the in-session identity
+        // so this request and subsequent reused guard instances see completion.
+        $request->user()->refresh();
 
         $returnTo = (string) $request->session()->pull(
             'privacy.distribution.return_to',
