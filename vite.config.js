@@ -12,6 +12,8 @@ export default defineConfig({
                 'resources/themes/mskba_dark/js/app.js',
                 'resources/themes/mskba_streetball/css/app.css',
                 'resources/themes/mskba_streetball/js/app.js',
+                'resources/themes/mskba_app/css/app.css',
+                'resources/themes/mskba_app/js/app.js',
                 'resources/themes/blank/css/app.css',
                 'resources/themes/blank/js/app.js',
             ],

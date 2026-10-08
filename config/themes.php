@@ -4,6 +4,9 @@ return [
     'active' => env('APP_THEME', 'mskba_dark'),
 
     'items' => [
+        'mskba_app' => [
+            'name' => 'MSKBA App',
+        ],
         'mskba_dark' => [
             'name' => 'MSKBA Dark',
         ],
