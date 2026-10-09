@@ -45,7 +45,7 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 ## Outbound integration deployment gate
 
 - Staging remains `APP_ENV=staging`, `APP_DEBUG=false`, and `APP_THEME=mskba_app`. Live provider credentials may be configured deliberately for functional testing. The deploy accepts `MAIL_MAILER=log|smtp` and `TELEGRAM_UPDATES_TRANSPORT=disabled|webhook|polling`, but does not configure webhooks or launch workers.
-- No staging workers or scheduler are started by deployment. Payment and other providers still require an application-level audit before creating the bootstrap marker. Do not use real money, actual Telegram bot tokens, or production credentials in staging.
+- No staging workers or scheduler are started by deployment. Payment and other providers still require an application-level audit before creating the bootstrap marker. Shared live integrations are permitted by explicit project decision; test sends must be intentional, with known recipients.
 - This is configuration validation, not a network egress firewall. Verify actual server `.env` and side-effect code paths independently.
 
 ## Shared-provider integration warning
@@ -53,3 +53,11 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 - Using the **same Telegram bot token** in staging and production is not equivalent to running two independent bots. Telegram stores a single webhook URL per bot; setting the dev webhook replaces the prod webhook. Polling against a webhook or competing pollers also interferes with delivery. Keep incoming updates disabled on dev until one deliberate routing strategy is chosen. Outbound test messages through a shared bot can reach real chats.
 - VK ID callback URLs must be permitted by the existing VK application; dev callback / credentials need verification. SMTP credentials can send real mail, so test only with intended recipients.
 - No automated outgoing notifications are tested or triggered by CI; changing these policies only permits configured credentials and does not prove provider connectivity.
+
+## Decision: one shared Telegram bot (temporary; 2026-10-10)
+
+**Accepted temporary architecture:** production (`mskba.ru`) remains the **sole receiver** of Telegram bot updates/webhook. Staging (`dev.mskba.ru`) may use the **same bot token only for manually controlled outgoing Telegram API calls** to explicitly selected test chats/recipients. This does **not** provide full dev validation of inbound callbacks, commands, Telegram login or Mini App flows; those require additional work. Outbound messages are sent by the same bot identity and are visible to recipients as ordinary bot messages.
+
+**Do not:** change the bot's webhook to dev, call `telegram:configure-updates` from dev (the polling mode deletes the current webhook), start dev polling/webhook consumers, or enable background queues/scheduler that can emit uncontrolled bot messages. Keep `TELEGRAM_UPDATES_TRANSPORT=disabled` on dev for the shared-bot phase. Note that `telegram:configure-updates` does not currently implement `disabled` as a safe no-op; never invoke it on dev. Set the dev token only when explicitly testing outgoing messages. Keep secrets only in the server `.env`, not in Git.
+
+**Technical debt — separate inbound integration properly:** design and implement an isolated Telegram bot for dev (preferred) or a deliberate production-to-dev event router with authenticated environment routing, distinct callback handling, idempotency and audit logs. Test Mini App authentication, callbacks, webhooks, and outgoing notifications independently before turning on dev consumers. Review CI's currently permissive `TELEGRAM_UPDATES_TRANSPORT` validation and enforce this decision in deployment protections before automated deploy is enabled.
