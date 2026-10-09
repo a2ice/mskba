@@ -58,6 +58,9 @@ jobs:
       - name: Validate production compose
         run: docker compose -f compose.yaml -f compose.prod.yaml config --quiet
 
+      - name: Validate isolated dev compose
+        run: DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet
+
       - name: Run PHP tests
         run: php artisan test
 
