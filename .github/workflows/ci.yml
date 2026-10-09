@@ -10,6 +10,11 @@ on:
       - dev
   workflow_dispatch:
     inputs:
+      preflight_dev:
+        description: "Run read-only production-safe dev deploy preflight"
+        type: boolean
+        required: false
+        default: false
       test_dev_ssh:
         description: "Run read-only development SSH connectivity check"
         type: boolean
@@ -108,7 +113,7 @@ jobs:
             # A shared Telegram bot cannot have two independent webhook URLs:
             # changing its webhook here would divert production updates.
             grep -Eq '^MAIL_MAILER=(log|smtp)$' .env
-            grep -Eq '^TELEGRAM_UPDATES_TRANSPORT=(disabled|webhook|polling)$' .env
+            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
             # Never auto-configure a Telegram webhook or start consumers from deploy.
             test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
             case "$VERIFIED_SHA" in *[!0-9a-f]*|'') exit 1;; esac
@@ -154,3 +159,38 @@ jobs:
             test -d /var/www/mskba-dev-next/.git
             test -r /var/www/mskba-dev-next/compose.dev.yaml
             echo 'SSH READ-ONLY TEST PASSED'
+
+  preflight_dev:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.preflight_dev && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+    steps:
+      - name: Read-only server deployment readiness
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 90s
+          script: |
+            set -eu
+            cd /var/www/mskba-dev-next
+            test "$(id -un)" = deploy
+            test -f .env
+            test -f compose.dev.local.yaml
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_DEBUG=false' .env
+            grep -qx 'APP_THEME=mskba_app' .env
+            grep -qx 'APP_URL=https://dev.mskba.ru' .env
+            grep -Eq '^MAIL_MAILER=(log|smtp)$' .env
+            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
+            test -z "$(git status --porcelain --untracked-files=no)"
+            docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml config --quiet
+            docker image inspect mskbanew-phpfpm:latest --format '{{.Id}}' >/dev/null
+            test -f public/build/manifest.json
+            test -w storage && test -w bootstrap/cache
+            curl -fsS -o /dev/null --max-time 10 https://dev.mskba.ru/
+            curl -fsS -o /dev/null --max-time 10 https://mskba.ru/
+            echo 'READ-ONLY DEV PREFLIGHT PASSED'
