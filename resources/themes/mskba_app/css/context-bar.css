@@ -7,7 +7,10 @@ html:has(.app-context-bar) {
     position: sticky;
     top: var(--header-height);
     z-index: 19;
-    background: var(--surface);
+    /* Keep the page visible through the sticky breadcrumb row while scrolling. */
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(1.15);
+    backdrop-filter: blur(12px) saturate(1.15);
     border-bottom: 1px solid var(--line);
 }
 .app-context-bar__inner {

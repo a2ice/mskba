@@ -51,3 +51,9 @@
 
 - Chrome headless на CSS, импортированном из реальной темы (контрольный длинный desktop layout): после scrollY=550 header top=0, context bar top=80, sidebar top=140 — PASS. На 768px header top=0, bar top=64; sidebar ожидаемо static с переходом в mobile details. Короткий layout не создаёт искусственной прокрутки при полностью помещающемся контенте. Это CSS fixture, не пользовательская browser acceptance локального аккаунта.
 - Финально 25 PHPUnit / 194 assertions PASS, Laravel Pint, Blade view cache, JS syntax, Vite (изолированный output), `git diff --check` PASS. Vite предупреждает о крупных существующих чанках. Скриншоты пользователя после поправок необходимы перед коммитом.
+
+## Визуальное уточнение: прозрачная полоса breadcrumbs (2026-10-09)
+
+- По скриншоту пользователя sticky app-context-bar получил полупрозрачный фон из действующего design token --surface: цвет смешивается с transparent при 84% непрозрачности. Добавлен backdrop-filter: blur(12px) saturate(1.15) и -webkit-backdrop-filter для Safari.
+- Position sticky, top var(--header-height), z-index 19, border и прежняя минимальная высота остались прежними. Меню «Действия» и breadcrumbs работают по прежней разметке и JS.
+- Chrome DOM-fixture на desktop и mobile подтвердила sticky-положение при scrollY=600 (top 80px и 64px), backdrop-filter и 84% альфа, без горизонтального overflow. Финальная визуальная приёмка на реальном localhost ещё нужна.

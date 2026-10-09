@@ -1,0 +1,145 @@
+/* Task 025: instant role switches using the approved panel, switch and button primitives. */
+/* Keep a 35px gap from the subtitle to the first panel, without the generic 64px. */
+.app-roles-page .app-account-overview {padding-bottom:35px;}
+.app-roles-page .app-account-overview__intro {margin-bottom:0;}
+.app-roles {display:flex;flex-direction:column;gap:20px;min-width:0;}
+.app-roles__feedback {margin:0;min-height:20px;color:var(--muted);font-size:14px;line-height:20px;}
+/* An empty live region must not reserve a flex row or produce a phantom gap. */
+.app-roles__feedback:empty {display:none;}
+/* Screen-reader confirmation stays available without moving the role panels. */
+.app-roles__feedback[data-error="false"]:not(:empty) {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:0;
+  border:0;
+  overflow:hidden;
+  clip-path:inset(50%);
+  white-space:nowrap;
+}
+.app-roles__feedback[data-error="true"] {color:var(--danger);}
+.app-roles__group {padding:24px;min-width:0;border-radius:var(--radius-card);}
+.app-roles__group h2 {margin:0 0 18px;font-size:22px;line-height:28px;}
+.app-roles__grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-width:0;}
+.app-roles__card {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-width:0;
+  /* Size each card by its content now that settings live beside the title. */
+  padding:16px 18px 14px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-control);
+  background:var(--surface-raised);
+  transition:border-color .16s ease-out,background .16s ease-out;
+}
+.app-roles__card:hover {border-color:var(--control-line);}
+.app-roles__card:has(input[type=checkbox]:checked) {
+  border-color:var(--accent);
+  background:#ff79000f;
+}
+.app-roles__choice {display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex:0 0 auto;min-width:0;}
+.app-roles__heading {display:flex;align-items:center;min-width:0;gap:2px;}
+.app-roles__name,.app-roles__description {display:block;min-width:0;cursor:pointer;}
+.app-roles__name strong {line-height:22px;}
+.app-roles__name {overflow-wrap:anywhere;}
+.app-roles__description {margin-top:5px;}
+.app-roles__settings-link {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:44px;
+  height:44px;
+  margin:-11px 0 -11px 0;
+  border:0;
+  background:transparent;
+  color:var(--accent);
+  text-decoration:none;
+  transition:color .16s ease-out;
+}
+.app-roles__settings-link svg {width:14px;height:14px;flex-shrink:0;}
+.app-roles__settings-link:hover {color:#fff;}
+/* Accessible keyboard focus is a small square outline, never a circular hover halo. */
+.app-roles__settings-link:focus-visible {outline:2px solid var(--accent);outline-offset:-4px;border-radius:4px;}
+
+.app-roles__control {
+  position:relative;
+  display:flex;
+  flex:0 0 auto;
+  align-items:flex-start;
+  justify-content:flex-end;
+  min-width:44px;
+}
+.app-roles__control input[type=checkbox] {flex:0 0 auto;width:44px;height:24px;margin:0;cursor:pointer;}
+.app-roles__control input[type=checkbox]:disabled {opacity:.6;cursor:not-allowed;}
+.app-roles__choice:has(input:disabled) {cursor:not-allowed;}
+/* The timer covers only the disabled switch, without altering card geometry. */
+.app-roles__cooldown {
+  position:absolute;
+  inset:0;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  border:1px solid var(--control-line);
+  border-radius:999px;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  color:var(--text);
+  font-size:11px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  line-height:1;
+  white-space:nowrap;
+  pointer-events:none;
+  user-select:none;
+}
+.app-roles__control:has(input:checked) .app-roles__cooldown {
+  border-color:var(--accent);
+  background:color-mix(in srgb, var(--surface) 80%, var(--accent) 20%);
+}
+.app-roles__cooldown[hidden] {display:none;}
+.app-roles__choice input[type=checkbox]:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
+.app-roles__copy {display:block;min-width:0;flex:1;}
+.app-roles__copy strong {display:block;font-size:16px;line-height:22px;overflow-wrap:anywhere;}
+.app-roles__copy small {display:block;color:var(--muted);font-size:10px;line-height:15px;overflow-wrap:anywhere;}
+.app-roles__actions {display:inline-flex;align-items:center;flex:0 0 auto;}
+.app-roles__actions[hidden] {display:none;}
+.app-roles__card.is-loading {pointer-events:none;}
+.app-roles__card.is-loading .app-roles__choice {opacity:.38;}
+.app-roles__loader {
+  position:absolute;
+  inset:0;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  border-radius:inherit;
+  background:#090a0bc9;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+}
+.app-roles__loader[hidden] {display:none;}
+.app-roles__message {padding:18px 20px;border-radius:var(--radius-card);}
+.app-roles__message p {margin:8px 0 0;line-height:1.5;}
+.app-roles__pending .button {display:inline-flex;align-items:center;min-height:44px;margin-top:14px;}
+.app-role-details {padding:24px;border-radius:var(--radius-card);}
+.app-role-details h2 {font-size:22px;line-height:28px;margin:0 0 18px;}
+.app-role-details dl {display:grid;gap:12px;margin:0 0 22px;}
+.app-role-details dl div {display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:10px;}
+.app-role-details dt {color:var(--muted);}
+.app-role-details dd {margin:0;font-weight:700;}
+.app-role-details p {color:var(--muted);font-size:14px;line-height:22px;}
+@container (max-width:640px) {
+  .app-roles__grid {grid-template-columns:minmax(0,1fr);}
+}
+@media (max-width:600px) {
+  .app-roles__group,.app-role-details {padding:18px;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .app-roles__card,.app-roles__settings-link {transition:none;}
+}

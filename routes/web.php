@@ -810,6 +810,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->defaults('breadcrumb', 'Роли в проекте');
         Route::patch('/roles', [AccountParticipationRolesController::class, 'update'])
             ->name('account.roles.update');
+        Route::patch('/roles/{role}', [AccountParticipationRolesController::class, 'updateOne'])
+            ->name('account.roles.update-one');
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
         Route::patch('/participation/player/profile', UpdatePlayerProfileController::class)
