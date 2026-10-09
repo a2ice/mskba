@@ -23,7 +23,7 @@
 ## Deployment rules
 
 - PR -> `dev`: CI; merged push to `dev`: CI and then deploy only if CI succeeds and bootstrap gate is enabled.
-- A newer push invalidates the older CI commit; the workflow compares the verified SHA with current `origin/dev`.
+- A newer push invalidates the older CI commit; the CI `deploy_dev` job (with `needs: test`) compares the verified SHA with current `origin/dev`.
 - `main` production deploy is unchanged. PR `dev` -> `main` is an explicitly approved release.
 - No automated DB seeding, uploads copying, destructive cleanup or Telegram polling in staging.
 - Queue worker and scheduler are optional via `--profile workers` and must not be enabled until external side effects are isolated.
