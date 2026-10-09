@@ -44,6 +44,12 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 
 ## Outbound integration deployment gate
 
-- Staging `.env` is required to use `MAIL_MAILER=log`, `TELEGRAM_UPDATES_TRANSPORT=disabled`, `APP_DEBUG=false`, `APP_ENV=staging`, and blank `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `OPENAI_API_KEY`, `VK_ID_APP_ID`. The gated deploy refuses nonblank values.
+- Staging remains `APP_ENV=staging`, `APP_DEBUG=false`, and `APP_THEME=mskba_app`. Live provider credentials may be configured deliberately for functional testing. The deploy accepts `MAIL_MAILER=log|smtp` and `TELEGRAM_UPDATES_TRANSPORT=disabled|webhook|polling`, but does not configure webhooks or launch workers.
 - No staging workers or scheduler are started by deployment. Payment and other providers still require an application-level audit before creating the bootstrap marker. Do not use real money, actual Telegram bot tokens, or production credentials in staging.
 - This is configuration validation, not a network egress firewall. Verify actual server `.env` and side-effect code paths independently.
+
+## Shared-provider integration warning
+
+- Using the **same Telegram bot token** in staging and production is not equivalent to running two independent bots. Telegram stores a single webhook URL per bot; setting the dev webhook replaces the prod webhook. Polling against a webhook or competing pollers also interferes with delivery. Keep incoming updates disabled on dev until one deliberate routing strategy is chosen. Outbound test messages through a shared bot can reach real chats.
+- VK ID callback URLs must be permitted by the existing VK application; dev callback / credentials need verification. SMTP credentials can send real mail, so test only with intended recipients.
+- No automated outgoing notifications are tested or triggered by CI; changing these policies only permits configured credentials and does not prove provider connectivity.

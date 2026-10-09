@@ -104,11 +104,12 @@ jobs:
             # Explicit fail-closed checks; never print secret values.
             grep -qx 'APP_ENV=staging' .env
             grep -qx 'APP_DEBUG=false' .env
-            grep -qx 'MAIL_MAILER=log' .env
-            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
-            for name in TELEGRAM_BOT_TOKEN TELEGRAM_WEBHOOK_SECRET OPENAI_API_KEY VK_ID_APP_ID; do
-              if grep -Eq "^${name}=.+" .env; then echo "External integration ${name} must be disabled in staging"; exit 1; fi
-            done
+            # Staging may use real provider credentials for supervised integration tests.
+            # A shared Telegram bot cannot have two independent webhook URLs:
+            # changing its webhook here would divert production updates.
+            grep -Eq '^MAIL_MAILER=(log|smtp)$' .env
+            grep -Eq '^TELEGRAM_UPDATES_TRANSPORT=(disabled|webhook|polling)$' .env
+            # Never auto-configure a Telegram webhook or start consumers from deploy.
             test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
             case "$VERIFIED_SHA" in *[!0-9a-f]*|'') exit 1;; esac
             test "${#VERIFIED_SHA}" -eq 40
