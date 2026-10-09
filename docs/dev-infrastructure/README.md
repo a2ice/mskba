@@ -41,3 +41,9 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 - Development environment must contain `DEV_SERVER_HOST` and `DEV_SERVER_SSH_KEY`, and repository variable `ENABLE_DEV_DEPLOY` must stay unset until an authorized manual deployment/rollback trial.
 - The workflow currently deploys tracked `public/build` files; CI's successful Vite build is not uploaded as a deployment artifact. Verify that committed assets correspond to the release; a future revision should deploy immutable CI-built artifacts/images.
 - The first enabled run must be supervised; successful HTTP `/` alone is not sufficient proof of auth, WebSocket, uploads, or side-effect isolation.
+
+## Outbound integration deployment gate
+
+- Staging `.env` is required to use `MAIL_MAILER=log`, `TELEGRAM_UPDATES_TRANSPORT=disabled`, `APP_DEBUG=false`, `APP_ENV=staging`, and blank `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `OPENAI_API_KEY`, `VK_ID_APP_ID`. The gated deploy refuses nonblank values.
+- No staging workers or scheduler are started by deployment. Payment and other providers still require an application-level audit before creating the bootstrap marker. Do not use real money, actual Telegram bot tokens, or production credentials in staging.
+- This is configuration validation, not a network egress firewall. Verify actual server `.env` and side-effect code paths independently.

@@ -101,6 +101,14 @@ jobs:
             grep -qx 'APP_URL=https://dev.mskba.ru' .env
             test -f compose.dev.local.yaml || { echo 'Verified local compose override missing'; exit 1; }
             test "$(stat -c '%a' .env)" = '640' || { echo 'Dev .env must be mode 640'; exit 1; }
+            # Explicit fail-closed checks; never print secret values.
+            grep -qx 'APP_ENV=staging' .env
+            grep -qx 'APP_DEBUG=false' .env
+            grep -qx 'MAIL_MAILER=log' .env
+            grep -qx 'TELEGRAM_UPDATES_TRANSPORT=disabled' .env
+            for name in TELEGRAM_BOT_TOKEN TELEGRAM_WEBHOOK_SECRET OPENAI_API_KEY VK_ID_APP_ID; do
+              if grep -Eq "^${name}=.+" .env; then echo "External integration ${name} must be disabled in staging"; exit 1; fi
+            done
             test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
             case "$VERIFIED_SHA" in *[!0-9a-f]*|'') exit 1;; esac
             test "${#VERIFIED_SHA}" -eq 40
