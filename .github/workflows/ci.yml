@@ -157,7 +157,21 @@ jobs:
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan optimize:clear
             $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx
-            curl --fail --silent --show-error --max-time 20 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ > /dev/null
+            ready=0
+            for attempt in $(seq 1 20); do
+              if curl --fail --silent --show-error --max-time 5 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ > /dev/null 2>&1; then
+                ready=1
+                echo "Dev HTTP ready on attempt $attempt"
+                break
+              fi
+              echo "Dev HTTP not ready ($attempt/20); retrying in 3s"
+              sleep 3
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo 'Dev HTTP failed to become ready'
+              $COMPOSE ps
+              exit 1
+            fi
             echo 'Dev deployment completed; production untouched'
 
   ssh_smoke_dev:
