@@ -10,6 +10,11 @@ on:
       - dev
   workflow_dispatch:
     inputs:
+      diagnose_ssh:
+        description: "Read-only SSH daemon diagnostics"
+        type: boolean
+        required: false
+        default: false
       deploy_dev_now:
         description: "Supervised deploy to staging after backups/marker are verified"
         type: boolean
@@ -206,3 +211,33 @@ jobs:
             curl -fsS -o /dev/null --max-time 10 https://dev.mskba.ru/
             curl -fsS -o /dev/null --max-time 10 https://mskba.ru/
             echo 'READ-ONLY DEV PREFLIGHT PASSED'
+
+  diagnose_ssh:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.diagnose_ssh && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+    steps:
+      - name: Read-only SSH daemon and network diagnostics
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 90s
+          script: |
+            set -u
+            echo '=== SSH DAEMON ==='
+            systemctl is-active ssh || true
+            systemctl show ssh -p ActiveState -p SubState -p MainPID --no-pager || true
+            echo '=== CONNECTIONS ==='
+            ss -tan '( sport = :22 )' | awk 'NR==1 || NR<=25 {print}' || true
+            echo '=== TCP STATES COUNT ==='
+            ss -tan '( sport = :22 )' | awk 'NR>1 {count[$1]++} END {for (state in count) print state, count[state]}' || true
+            echo '=== EFFECTIVE SSH LIMITS ==='
+            /usr/sbin/sshd -T 2>/dev/null | grep -Ei '^(maxstartups|maxsessions|persourcemaxstartups|logingracetime|usepam) ' || true
+            echo '=== MEMORY AND LOAD ==='
+            free -h; uptime; df -h /
+            echo '=== SSH LOGS (REDACTED) ==='
+            journalctl -u ssh --since '2 hours ago' --no-pager -n 80 2>/dev/null | sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/[IP]/g; s/(user |for )[^ ]+/(user )REDACTED/g' | tail -60 || true
+            echo 'READ-ONLY SSH DIAGNOSTICS COMPLETE'
