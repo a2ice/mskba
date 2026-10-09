@@ -10,6 +10,11 @@ on:
       - dev
   workflow_dispatch:
     inputs:
+      deploy_dev_now:
+        description: "Supervised deploy to staging after backups/marker are verified"
+        type: boolean
+        required: false
+        default: false
       preflight_dev:
         description: "Run read-only production-safe dev deploy preflight"
         type: boolean
@@ -84,7 +89,7 @@ jobs:
   deploy_dev:
     needs: test
     if: >-
-      ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' && vars.ENABLE_DEV_DEPLOY == 'true' }}
+      ${{ github.ref == 'refs/heads/dev' && ((github.event_name == 'push' && vars.ENABLE_DEV_DEPLOY == 'true') || (github.event_name == 'workflow_dispatch' && inputs.deploy_dev_now)) }}
     runs-on: ubuntu-latest
     environment: development
     steps:
@@ -118,6 +123,13 @@ jobs:
             test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
             case "$VERIFIED_SHA" in *[!0-9a-f]*|'') exit 1;; esac
             test "${#VERIFIED_SHA}" -eq 40
+            # Verify essential local resources before any tracked file is replaced.
+            test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
+            docker image inspect mskbanew-phpfpm:latest >/dev/null
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE config --quiet
+            test -f public/build/manifest.json
+            test -w storage && test -w bootstrap/cache
             git fetch origin dev
             test "$(git rev-parse origin/dev)" = "$VERIFIED_SHA" || {
               echo 'Verified commit no longer matches dev HEAD; skip older deployment'; exit 0;
@@ -125,11 +137,11 @@ jobs:
             test -z "$(git status --porcelain --untracked-files=no)" || {
               echo 'Server has tracked modifications; manual review required'; exit 1;
             }
+            # No git clean: preserve server-only .env, storage and compose override.
             git reset --hard "$VERIFIED_SHA"
-            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
             $COMPOSE config --quiet
+            test -f public/build/manifest.json
             # This staging VDS has ~2 GiB RAM: never build PHP on the server.
-            test "$(docker image inspect mskbanew-phpfpm:latest --format '{{.Id}}' 2>/dev/null | cut -c1-7)" = 'sha256:' || { echo 'Prebuilt PHP image missing'; exit 1; }
             $COMPOSE up -d --no-build db redis
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
