@@ -1,6 +1,8 @@
 /* Task 021: overview and top-level account section headers. */
-.app-account-overview { width: 100%; min-width: 0; padding-bottom: 64px; }
+/* One shared 35px gap after account page headings; public team headers retain their own spacing. */
+.app-account-overview { width: 100%; min-width: 0; padding-bottom: 35px; }
 .app-account-overview__intro { margin-bottom: 24px; }
+.app-account-overview > .app-account-overview__intro { margin-bottom: 0; }
 .app-account-overview__intro h1 {
     font-size: clamp(30px, 4vw, 48px);
     line-height: 1.1;
@@ -8,6 +10,15 @@
     margin: 0 0 12px;
 }
 .app-account-overview__intro > p { color: var(--muted); line-height: 1.6; }
-.app-account-overview__pending { margin-bottom: 24px; padding: 18px; }
+.app-account-overview__pending { margin-top: 24px; margin-bottom: 24px; padding: 18px; }
 .app-account-overview__pending strong { display: block; margin-bottom: 6px; }
 .app-account-overview__pending p { color: var(--muted); margin-bottom: 14px; }
+.app-account-overview__heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.app-account-overview__heading h1{margin-bottom:0}
+.app-account-overview__confirmation-badge{
+  flex:0 0 auto;display:inline-flex;align-items:center;min-height:32px;padding:5px 10px;
+  border:1px solid var(--line);border-radius:999px;background:var(--surface-raised);
+  font:inherit;font-size:12px;font-weight:700;line-height:18px;color:var(--muted);cursor:pointer;
+}
+.app-account-overview__confirmation-badge:hover{color:var(--text);border-color:var(--accent)}
+.app-account-overview__confirmation-badge:focus-visible{outline:2px solid var(--accent);outline-offset:3px}

@@ -57,3 +57,10 @@
 - По скриншоту пользователя sticky app-context-bar получил полупрозрачный фон из действующего design token --surface: цвет смешивается с transparent при 84% непрозрачности. Добавлен backdrop-filter: blur(12px) saturate(1.15) и -webkit-backdrop-filter для Safari.
 - Position sticky, top var(--header-height), z-index 19, border и прежняя минимальная высота остались прежними. Меню «Действия» и breadcrumbs работают по прежней разметке и JS.
 - Chrome DOM-fixture на desktop и mobile подтвердила sticky-положение при scrollY=600 (top 80px и 64px), backdrop-filter и 84% альфа, без горизонтального overflow. Финальная визуальная приёмка на реальном localhost ещё нужна.
+
+## Дополнение к визуальной приёмке 026: единый отступ заголовков аккаунта (2026-10-09)
+
+- Замечание пользователя: базовый padding-bottom:64px у app-account-overview вынудил два последующих override: 35px в «Ролях» и «Профиле».
+- Перенесли значение **35px в один общий account-overview.css**. Для внутренних заголовков аккаунта прямой intro теперь margin-bottom:0, чтобы 24px не суммировались с 35px.
+- Удалены специальные CSS-правила отступа из account-roles.css и account-profile.css. При этом margin-bottom:24px сохраняется на публичных страницах команд, не вложенных в app-account-overview. У внутренней плашки регистрации на странице «Обзор» собственный margin-top:24px.
+- Chrome fixture с настоящими стилями: для «Ролей» и «Профиля» gap 35px, для «Обзора» от приветствия до внутренней плашки 24px, для публичных команд 24px; desktop 1440/768 и narrow 500px, overflow отсутствует. Новые коммиты и origin-операции не выполнялись.

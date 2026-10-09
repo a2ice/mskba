@@ -13,5 +13,6 @@
 @import './account-overview.css';
 @import './account-teams.css';
 @import './account-roles.css';
+@import './account-profile.css';
 
 .app-shell { min-height: 100dvh; }

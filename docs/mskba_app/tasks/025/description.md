@@ -113,3 +113,7 @@
 ## Compact role cards (2026-10-09)
 
 By visual acceptance, removed the obsolete 116px minimum card height after moving settings into the heading. Card padding is now 16px top, 18px sides, 14px bottom. The role description is 10px (previously 13px; requested ~0.75) with 15px line height; title/description gap 5px. Chrome fixture: 74px standard card vs 116px before, auto-expansion to 89px on wrapping; 1-column mobile layout, no clipping or overflow. Existing role toggling, timer overlay and settings gear untouched. Awaiting final localhost visual approval. Local-only, no commit.
+
+### Актуализация источника 35px после замечания по 026 (2026-10-09)
+
+Историческое описание локального override в разделе выше относится к промежуточному шагу. Сейчас значение 35px перенесено в общий account-overview.css; селекторы .app-roles-page .app-account-overview и .app-roles-page .app-account-overview__intro удалены за ненадобностью. Геометрия страницы «Роли в проекте» осталась 35px, подтверждено Chrome. Принятый локальный коммит 025 fd779d44 не переписывался; улучшение пока в рабочем дереве 026.

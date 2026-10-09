@@ -65,3 +65,30 @@ if (contextBar) {
         }
     });
 }
+
+// Only account pages with an unconfirmed canonical user render this dialog.
+// The Overview badge opens the FAQ; the contextual Actions link opens the confirmation page.
+const accountConfirmationGuide = document.querySelector('[data-account-confirmation-guide-dialog]');
+if (accountConfirmationGuide && contextBar) {
+    let returnFocus = null;
+    contextBar.closest('body').querySelectorAll('[data-account-confirmation-guide-open]').forEach(trigger => {
+        trigger.addEventListener('click', () => {
+            const menu = contextBar.querySelector('[data-app-context-actions]');
+            if (menu?.contains(trigger) && menu.open) {
+                menu.open = false;
+                returnFocus = menu.querySelector('summary');
+            } else {
+                returnFocus = trigger;
+            }
+            accountConfirmationGuide.showModal();
+            accountConfirmationGuide.querySelector('h2[tabindex="-1"]')?.focus({ preventScroll: true });
+        });
+    });
+    accountConfirmationGuide.querySelectorAll('[data-account-confirmation-guide-close]').forEach(button => {
+        button.addEventListener('click', () => accountConfirmationGuide.close());
+    });
+    accountConfirmationGuide.addEventListener('close', () => {
+        if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+        returnFocus = null;
+    });
+}

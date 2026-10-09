@@ -32,6 +32,7 @@ use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRecipientSea
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
+use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
@@ -43,6 +44,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileControll
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
@@ -739,13 +741,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
-        Route::get('/profile', function () {
-            if (app(ThemeResolver::class)->active() !== 'mskba_app') {
-                return redirect()->route('account');
-            }
-
-            return ThemeResolver::page('account.profile');
-        })->name('account.profile')->defaults('breadcrumb', 'Профиль');
+        Route::get('/profile', AccountProfileController::class)
+            ->name('account.profile')->defaults('breadcrumb', 'Профиль');
+        Route::patch('/profile', UpdateAccountProfileController::class)
+            ->middleware('throttle:20,1')
+            ->name('account.profile.update');
         // Role-driven entry points in MSKBA App. Functional screens are introduced
         // incrementally; legacy theme keeps its established account routes.
         foreach ([

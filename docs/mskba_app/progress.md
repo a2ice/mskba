@@ -518,3 +518,22 @@
 - Task 025, дальнейшая визуальная правка: таймер throttling перенесён непосредственно **на поверхность тумблера** (абсолютное наложение 44×24px, без сдвигов), а hover шестерёнки больше не рисует фон-круг — только меняет иконку с оранжевой на белую. Chrome QA подтвердил цвета, размеры, один AJAX PATCH при блокировке и независимость других ролей. Ожидается пользовательский осмотр.
 
 - Task 025 visual revision: reduced role card height by removing obsolete 116px minimum, now content-sized with padding 16/18/14px. Description 13px to 10px (line height 15px), top description gap 5px. Chrome fixture confirmed 74px cards, wrapping when necessary, mobile single column. Logic unchanged; awaits local visual approval. No commit.
+
+## 026 — Аккаунт «Профиль» (2026-10-09)
+
+- Локально зафиксирована принятая задача 025 коммитом fd779d44 (16 файлов), без public/build и без origin операций.
+- Создана задача 026 и реализована вкладка /account/profile только для mskba_app: аватары (до 3, загрузка/основной/удаление через действующий handler), отдельный username/login read-only и публичный nickname с AJAX + URL /users/{nickname} (fallback username/id), ФИО, дата рождения/вычисляемый возраст и пол.
+- У CONFIRMED имя, фамилия, дата рождения, пол неизменяемы даже при прямом HTTP PATCH и входе через identity alias; кнопка запроса показывает нативную информационную модалку (реальные заявки ещё не принимаются). Отчество отдельно редактируемо. Legacy account и публичные профили не менялись.
+- QA 91 PHPUnit / 790 assertions PASS (включая 10 новых profile cases), Laravel Pint, Blade, JS, Vite isolated и git diff --check PASS. Browser fixture desktop/mobile: сетка, avatar auto-upload, nickname 200/422, модалка/focus PASS. Визуальная приёмка localhost открыта, коммита для 026 нет, push/PR/merge/deploy не выполнялись.
+
+- Задачи 021/025/026 (визуальная правка): устранён CSS-долг по padding-bottom:64px у общего app-account-overview. Теперь одно базовое значение 35px и margin-bottom:0 для внутреннего intro; лишние overrides из roles/profile удалены. Внутренняя плашка «Обзора» и публичные страницы команд сохранили своё оформление (24px). Chrome QA: gap 35px на ролях/профиле на 1440/768/500, overflow нет. Локально, без нового коммита.
+
+- Task 026 latest visual feedback: gender select uses the existing design-system control, avatar upload is embedded in the clickable circle with Tabler user placeholder, separate upload button removed. Login username was removed from the Profile page and deferred to future Account/Settings; public nickname remains for the profile URL. Browser QA passed; final regression pending. No commit.
+
+- Task 026 final UI regression after integrated avatar, select styling and removal of login: 91 PHPUnit / 799 assertions PASS; Pint, Blade, JS, isolated Vite, git diff --check PASS. Local changes await visual acceptance; no commit or origin operations.
+
+- Task 026 visual follow-up: avatar upload arrow centered directly under profile icon. Non-confirmed account badge opens accessible FAQ confirmation dialog with live sanitized FAQ welcome section when published, fallback if no record, and no disclosure of drafts. Confirmation state badges other than unconfirmed remain static. Browser QA confirms exact center, modal focus/close and no layout shift. Full related QA 100 PHPUnit / 877 asserts PASS, Pint/Blade/JS/Vite/diff-check PASS. Local-only, awaiting visual approval, no commit.
+
+- Task 026 final visual corrections: verification badge moved from Profile to Account Overview as an FAQ-dialog opener; the Actions verification entry links directly to account.confirmation. Green attention dots now 5px and only on other account pages for UNCONFIRMED canonical accounts, hidden on confirmation itself. Avatar overlay arrow removed, age simplified to calculated `N лет`. Old and new FAQ rendering safeguards retained. Local-only, pending acceptance.
+
+- Task 026 UX micro-polish: green verification pulse now shows on the Actions summary only when closed; opening the details menu hides and stops the summary pulse but preserves the pulse beside the Confirm link inside the menu. Closing restores it. No label shift (reserved 5px layout width), Chrome QA at 1440/768/500px passed. Changes local-only, uncommitted.
