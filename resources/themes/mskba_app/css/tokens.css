@@ -1,0 +1,13 @@
+/* Accepted specimen 002-03, design guideline 1.0. */
+:root {
+  color-scheme: dark;
+  --bg:#090a0b; --surface:#141618; --surface-raised:#1d2023; --field:#0e1012;
+  --text:#f5f6f7; --muted:#adb3bb; --faint:#929aa4;
+  --accent:#ff7900; --accent-hover:#ff922e; --accent-active:#e86c00; --on-accent:#14100a;
+  --line:#30353b; --control-line:#707a86;
+  --success:#7cdcab; --warning:#ffd078; --danger:#ff9398; --info:#8ccbff;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s7:32px; --s8:40px; --s9:48px; --s10:64px;
+  --radius-control:12px; --radius-card:24px; --radius-hero:32px;
+  --header-height:80px; --shadow-accent:0 8px 24px #ff790026;
+  font-family:Inter,Arial,sans-serif; font-synthesis:none;
+}

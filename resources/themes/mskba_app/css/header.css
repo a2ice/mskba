@@ -1,0 +1,161 @@
+/* MSKBA App header: the accepted specimen's primitives with production navigation. */
+.app-site-header { isolation: isolate; }
+.app-header-inner { gap: clamp(16px, 2.2vw, 32px); }
+.app-header-brand { text-decoration: none; }
+@media (min-width: 1280px) {
+    .app-header-brand { margin-right: 12px; }
+}
+.app-header-mark {
+    display: block;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    background: url('../assets/images/logo-mark-100.png') center / contain no-repeat;
+}
+.app-header-nav { gap: clamp(12px, 1.5vw, 24px); min-width: 0; }
+.app-header-nav > a, .app-header-nav-trigger { white-space: nowrap; }
+.app-header-nav-group { display: flex; position: relative; align-items: stretch; }
+.app-header-nav-trigger {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+    height: 100%;
+    cursor: pointer;
+    color: var(--muted);
+    list-style: none;
+}
+.app-header-nav-trigger::-webkit-details-marker,
+.app-header-mobile-toggle::-webkit-details-marker,
+.app-header-mobile-link::-webkit-details-marker { display: none; }
+.app-header-nav-trigger::marker, .app-header-mobile-toggle::marker,
+.app-header-mobile-link::marker { content: ''; }
+.app-header-nav-trigger svg { width: 14px; height: 14px; transition: transform .18s; }
+.app-header-nav-group[open] .app-header-nav-trigger svg { transform: rotate(180deg); }
+.app-header-nav-trigger:hover, .app-header-nav-group[open] .app-header-nav-trigger,
+.app-header-nav-group.is-active .app-header-nav-trigger { color: var(--text); }
+.app-header-nav-group.is-active .app-header-nav-trigger::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0;
+    height: 3px; background: var(--accent); border-radius: 3px;
+}
+.app-header-dropdown {
+    position: absolute;
+    top: calc(100% - 1px);
+    left: -16px;
+    display: grid;
+    min-width: 220px;
+    max-width: 300px;
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 20px 48px #0009;
+}
+.app-header-dropdown a {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+}
+.app-header-dropdown a:hover, .app-header-dropdown a:focus-visible,
+.app-header-dropdown a[aria-current] { background: var(--surface-raised); color: var(--text); }
+/* Specimen underlines top-level active links, not a link inside a dropdown. */
+.app-header-dropdown a[aria-current]::after { content: none; }
+.app-header-divider { height: 1px; background: var(--line); margin: 6px 8px; }
+.app-header-actions { gap: 10px; }
+.app-header-account { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; font-weight: 600; color: var(--text); text-decoration: none; }
+.app-header-account-label { max-width: 115px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-header-avatar { overflow: hidden; flex-shrink: 0; }
+.app-header-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.app-header-notifications svg { width: 20px; height: 20px; }
+.app-header-login { margin: 0; min-height: 42px; text-decoration: none; }
+.app-header-mobile { display: none; margin-left: 0; }
+.app-header-mobile-toggle { cursor: pointer; list-style: none; }
+.app-header-bars, .app-header-bars::before, .app-header-bars::after {
+    display: block; width: 20px; height: 2px; border-radius: 2px; background: var(--text); transition: transform .2s;
+}
+.app-header-bars { position: relative; }
+.app-header-bars::before, .app-header-bars::after { content: ''; position: absolute; left: 0; }
+.app-header-bars::before { top: -6px; }
+.app-header-bars::after { top: 6px; }
+.app-header-mobile[open] .app-header-bars { background: transparent; }
+.app-header-mobile[open] .app-header-bars::before { transform: translateY(6px) rotate(45deg); }
+.app-header-mobile[open] .app-header-bars::after { transform: translateY(-6px) rotate(-45deg); }
+.app-header-mobile-panel { display: none; }
+.app-site-header :is(a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+@media (max-width: 1279px) {
+    .app-header-nav { display: none; }
+    .app-header-mobile { display: block; }
+    .app-header-mobile[open] .app-header-mobile-panel {
+        display: block;
+        position: absolute;
+        top: 100%;
+        right: max(24px, calc((100vw - var(--content-width, 1200px)) / 2));
+        z-index: 30;
+        width: min(380px, calc(100vw - 32px));
+        max-height: calc(100dvh - var(--header-height) - 16px);
+        overflow-y: auto;
+        padding: 12px;
+        background: #141618;
+        border: 1px solid var(--line);
+        border-radius: 0 0 16px 16px;
+        box-shadow: 0 24px 56px #000b;
+    }
+    .app-header-mobile-link, .app-header-mobile-account a {
+        display: flex; align-items: center; justify-content: space-between;
+        width: 100%; min-height: 48px; padding: 12px 14px;
+        border-radius: 10px; font-size: 15px; font-weight: 600;
+        color: var(--text); text-decoration: none; cursor: pointer; list-style: none;
+    }
+    .app-header-mobile-link:hover, .app-header-mobile-link.is-active,
+    .app-header-mobile-link[aria-current], .app-header-mobile-account a:hover {
+        background: var(--surface-raised); color: var(--accent);
+    }
+    .app-header-mobile-link svg, .app-header-mobile-account svg { width: 18px; height: 18px; }
+    .app-header-mobile-group[open] > summary svg { transform: rotate(180deg); }
+    .app-header-mobile-children { display: grid; padding: 0 0 8px 16px; }
+    .app-header-mobile-children a {
+        display: flex; align-items: center; min-height: 42px;
+        padding: 9px 12px; border-radius: 8px; font-size: 14px;
+        color: var(--muted); text-decoration: none;
+    }
+    .app-header-mobile-children a:hover, .app-header-mobile-children a[aria-current] {
+        background: var(--surface-raised); color: var(--text);
+    }
+    .app-header-mobile-account { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .app-header-mobile-account a { justify-content: flex-start; gap: 12px; }
+}
+@media (max-width: 639px) {
+    .app-header-inner { gap: 10px; }
+    .app-header-brand { font-size: 22px; }
+    .app-header-mark { flex-basis: 34px; width: 34px; height: 34px; }
+    .app-header-actions { gap: 8px; }
+    .app-header-account-label, .app-header-notifications { display: none; }
+    .app-header-mobile[open] .app-header-mobile-panel { right: 8px; width: calc(100vw - 16px); }
+}
+
+
+/* Task 015. Persistent but restrained account nudge while setup is incomplete. */
+.app-header-account--setup-pending .app-header-avatar {
+    border-color: var(--accent);
+    animation: mskba-onboarding-shake 4.6s ease-in-out infinite;
+    transform-origin: 50% 65%;
+}
+.app-header-account--setup-pending:hover .app-header-avatar { animation-play-state: paused; }
+@keyframes mskba-onboarding-shake {
+    0%, 73%, 100% { transform: rotate(0); }
+    76% { transform: rotate(-11deg); }
+    79% { transform: rotate(10deg); }
+    82% { transform: rotate(-8deg); }
+    85% { transform: rotate(7deg); }
+    88%, 95% { transform: rotate(0); }
+}
+@media(prefers-reduced-motion:reduce) {
+    .app-header-account--setup-pending .app-header-avatar { animation:none; }
+}

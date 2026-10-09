@@ -6,12 +6,36 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 final class AccountParticipationRolesTest extends TestCase
 {
     use RefreshDatabase;
+
+    private string $previousTheme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousTheme = (string) config('themes.active');
+        $this->switchTheme('mskba_dark');
+    }
+
+    protected function tearDown(): void
+    {
+        $this->switchTheme($this->previousTheme);
+        parent::tearDown();
+    }
+
+    private function switchTheme(string $theme): void
+    {
+        config()->set('themes.active', $theme);
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/'.$theme.'/views'));
+    }
 
     public function test_guest_cannot_open_or_update_account_roles(): void
     {

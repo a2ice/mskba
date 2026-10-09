@@ -1,0 +1,137 @@
+/* Auth dialog extends the single MSKBA App modal shell, task 011. */
+.mskba-auth-dialog { width: min(468px, calc(100vw - 24px)); }
+.mskba-auth-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--line);
+}
+.mskba-auth-heading { text-transform: uppercase; }
+.mskba-auth-close { flex-shrink: 0; }
+.mskba-auth-form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+.mskba-auth-scroll {
+    display: grid;
+    align-content: start;
+    gap: 16px;
+    padding: 24px 32px;
+}
+.mskba-auth-footer-actions {
+    display: grid;
+    gap: 12px;
+    padding: 18px 32px 24px;
+    border-top: 1px solid var(--line);
+}
+.mskba-auth-scroll > label:not(.mskba-auth-consent) {
+    display: grid;
+    gap: 8px;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 13px;
+}
+.mskba-auth-form input:not([type="checkbox"]),
+.mskba-auth-form select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: 11px 12px;
+    color: var(--text);
+    background: var(--field);
+    border: 1px solid var(--control-line);
+    border-radius: var(--radius-control);
+    outline: none;
+    font-size: 16px;
+    line-height: 24px;
+}
+.mskba-auth-form .select-control select { padding-inline-end: 48px; }
+.mskba-auth-form .select-control > svg { width: 20px; height: 20px; }
+.mskba-auth-form input:focus-visible,
+.mskba-auth-form select:focus-visible {
+    border-color: var(--accent);
+    outline: 2px solid #ff790047;
+    outline-offset: 1px;
+}
+.mskba-auth-form input:disabled,
+.mskba-auth-form select:disabled { opacity: .6; cursor: wait; }
+.mskba-auth-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.mskba-auth-remember, .mskba-auth-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
+    cursor: pointer;
+}
+.mskba-auth-options input[type=checkbox],
+.mskba-auth-consent input[type=checkbox] {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin: 1px 0 0;
+    accent-color: var(--accent);
+}
+.mskba-auth-link {
+    background: none;
+    border: 0;
+    padding: 2px 0;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+}
+.mskba-auth-link:hover { color: var(--accent-hover); }
+.mskba-auth-dialog a:not(.button) { color: var(--accent); }
+.mskba-auth-dialog a:not(.button):hover { text-decoration: underline; }
+.mskba-auth-footer-actions > .button { min-height: 48px; }
+.mskba-auth-footer-actions > .button:disabled { opacity: .7; cursor: wait; }
+.mskba-auth-field-error { color: var(--danger); font-size: 12px; font-weight: 500; }
+.mskba-auth-message {
+    padding: 12px 14px;
+    color: var(--danger);
+    border: 1px solid #ff93984a;
+    border-radius: 10px;
+    background: #ff93980e;
+    font-size: 13px;
+    line-height: 20px;
+}
+.mskba-auth-separator {
+    position: relative;
+    margin: 2px 0 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+}
+.mskba-auth-providers { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; }
+.mskba-auth-providers .button { flex: 1 1 135px; }
+.mskba-auth-telegram { display: flex; justify-content: center; min-height: 42px; }
+.mskba-auth-footer { text-align: center; color: var(--muted); font-size: 13px; margin:0; }
+.mskba-auth-small { color: var(--muted); font-size: 12px; line-height: 20px; }
+.mskba-auth-consent a, .mskba-auth-small a { text-decoration: underline; }
+@media (max-width: 639px) {
+    .mskba-auth-dialog { width: calc(100vw - 16px); }
+    .mskba-auth-top { padding: 16px 20px; }
+    .mskba-auth-scroll { padding: 20px; gap: 14px; }
+    .mskba-auth-footer-actions { padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Wider accepted Wizard 1.1 while keeping the same shared 90dvh modal. */
+.mskba-auth-dialog.mskba-auth-register { width: min(548px, calc(100vw - 24px)); }
+@media(max-width:639px) { .mskba-auth-dialog.mskba-auth-register { width:calc(100vw - 16px); } }

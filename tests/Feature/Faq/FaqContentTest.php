@@ -10,15 +10,39 @@ use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Presentation\Theming\ThemeResolver;
 use Database\Seeders\FaqContentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 final class FaqContentTest extends TestCase
 {
     use RefreshDatabase;
+
+    private string $previousTheme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousTheme = (string) config('themes.active');
+        $this->switchTheme('mskba_dark');
+    }
+
+    protected function tearDown(): void
+    {
+        $this->switchTheme($this->previousTheme);
+        parent::tearDown();
+    }
+
+    private function switchTheme(string $theme): void
+    {
+        config()->set('themes.active', $theme);
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/'.$theme.'/views'));
+    }
 
     public function test_editor_can_create_faq_with_tags_and_search_uses_tags_only(): void
     {

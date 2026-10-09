@@ -14,12 +14,36 @@ use App\Modules\SportsSection\Application\UseCases\CreateSportsSectionHandler;
 use App\Modules\SportsSection\Application\UseCases\ManageSportsSectionJoinRequestHandler;
 use App\Modules\SportsSection\Domain\Exceptions\SportsSectionException;
 use App\Modules\SportsSection\Domain\Models\SectionTraineeMembership;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 final class PublicUserProfileTest extends TestCase
 {
     use RefreshDatabase;
+
+    private string $previousTheme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousTheme = (string) config('themes.active');
+        $this->switchTheme('mskba_dark');
+    }
+
+    protected function tearDown(): void
+    {
+        $this->switchTheme($this->previousTheme);
+        parent::tearDown();
+    }
+
+    private function switchTheme(string $theme): void
+    {
+        config()->set('themes.active', $theme);
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/'.$theme.'/views'));
+    }
 
     public function test_closed_profile_and_private_role_do_not_leak_to_guests(): void
     {

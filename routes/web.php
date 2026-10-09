@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminAcquisitionController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
@@ -11,7 +12,6 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
-use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
@@ -32,6 +32,7 @@ use App\Modules\Finance\Presentation\Http\Controllers\WalletTransferRecipientSea
 use App\Modules\Identity\Presentation\Http\Controllers\AccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountController;
 use App\Modules\Identity\Presentation\Http\Controllers\AccountParticipationRolesController;
+use App\Modules\Identity\Presentation\Http\Controllers\AccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\ActivateAccountAvatarController;
 use App\Modules\Identity\Presentation\Http\Controllers\AuthController;
 use App\Modules\Identity\Presentation\Http\Controllers\DeleteAccountAvatarController;
@@ -43,6 +44,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileControll
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPrivacySettingsController;
+use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
@@ -739,6 +741,32 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
+        Route::get('/profile', AccountProfileController::class)
+            ->name('account.profile')->defaults('breadcrumb', 'Профиль');
+        Route::patch('/profile', UpdateAccountProfileController::class)
+            ->middleware('throttle:20,1')
+            ->name('account.profile.update');
+        // Role-driven entry points in MSKBA App. Functional screens are introduced
+        // incrementally; legacy theme keeps its established account routes.
+        foreach ([
+            ['my-games', 'account.my-games', 'Мои игры', 'Игры, в которых ты участвуешь, и новые возможности для игры.'],
+            ['my-trainings', 'account.my-trainings', 'Мои тренировки', 'Твои тренировки и подбор новых занятий.'],
+            ['my-bookings', 'account.my-bookings', 'Бронирования', 'Запросы и бронирования площадок.'],
+            ['venue-schedule', 'account.venue-schedule', 'Расписание', 'Календарь и доступность твоих площадок.'],
+            ['my-events', 'account.my-events', 'Мои мероприятия', 'Мероприятия, в которых ты участвуешь или которые организуешь.'],
+            ['my-tournaments', 'account.my-tournaments', 'Мои турниры', 'Турниры и твоя роль в них.'],
+            ['referee-assignments', 'account.referee-assignments', 'Судейские назначения', 'Матчи, где требуется твоя работа судьи.'],
+            ['statistics', 'account.statistics', 'Статистика', 'Матчи и данные, с которыми ты работаешь.'],
+            ['my-materials', 'account.my-materials', 'Мои материалы', 'Твои публикации, фотографии и видео.'],
+        ] as [$path, $name, $heading, $subtitle]) {
+            Route::get('/'.$path, function () use ($heading, $subtitle) {
+                if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+                    return redirect()->route('account');
+                }
+
+                return ThemeResolver::page('account.role-section', compact('heading', 'subtitle'));
+            })->name($name)->defaults('breadcrumb', $heading);
+        }
         Route::get('/wallet', AccountWalletController::class)
             ->name('account.wallet')
             ->defaults('breadcrumb', 'Кошелёк');
@@ -782,6 +810,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->defaults('breadcrumb', 'Роли в проекте');
         Route::patch('/roles', [AccountParticipationRolesController::class, 'update'])
             ->name('account.roles.update');
+        Route::patch('/roles/{role}', [AccountParticipationRolesController::class, 'updateOne'])
+            ->name('account.roles.update-one');
         Route::get('/participation/{role}', [AccountController::class, 'participationRole'])
             ->name('account.participation-role');
         Route::patch('/participation/player/profile', UpdatePlayerProfileController::class)

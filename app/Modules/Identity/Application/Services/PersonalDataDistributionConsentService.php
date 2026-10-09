@@ -2,7 +2,6 @@
 
 namespace App\Modules\Identity\Application\Services;
 
-use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserConsent;
@@ -108,70 +107,13 @@ final class PersonalDataDistributionConsentService
     {
         $user = $user->canonical();
 
-        if ($user->personal_data_distribution_setup_completed_at !== null) {
-            return $this->allowedTypeValues($user);
+        // Public disclosure must be an affirmative choice during onboarding,
+        // not a set of prechecked checkboxes for newly created accounts.
+        if ($user->personal_data_distribution_setup_completed_at === null) {
+            return [];
         }
 
-        $selected = [
-            UserPrivacySettingTypeEnum::PROFILE->value,
-            UserPrivacySettingTypeEnum::AVATAR->value,
-        ];
-
-        if ($user->hasActiveRole(UserParticipationRoleEnum::PLAYER->value)) {
-            array_push(
-                $selected,
-                UserPrivacySettingTypeEnum::ROLE_PLAYER->value,
-                UserPrivacySettingTypeEnum::PLAYER_CHARACTERISTICS->value,
-                UserPrivacySettingTypeEnum::PLAYER_TEAMS->value,
-                UserPrivacySettingTypeEnum::PLAYER_GAMES->value,
-            );
-        }
-
-        if ($user->hasActiveRole(UserParticipationRoleEnum::COACH->value)) {
-            array_push(
-                $selected,
-                UserPrivacySettingTypeEnum::ROLE_COACH->value,
-                UserPrivacySettingTypeEnum::COACH_SECTIONS->value,
-            );
-        }
-
-        if ($user->hasActiveRole(UserParticipationRoleEnum::REFEREE->value)) {
-            array_push(
-                $selected,
-                UserPrivacySettingTypeEnum::ROLE_REFEREE->value,
-                UserPrivacySettingTypeEnum::REFEREE_EVENTS->value,
-            );
-        }
-
-        if ($user->hasActiveRole(UserParticipationRoleEnum::STATISTICIAN->value)) {
-            array_push(
-                $selected,
-                UserPrivacySettingTypeEnum::ROLE_STATISTICIAN->value,
-                UserPrivacySettingTypeEnum::STATISTICIAN_EVENTS->value,
-            );
-        }
-
-        if ($user->hasActiveRole(UserParticipationRoleEnum::MEDIA->value)) {
-            array_push(
-                $selected,
-                UserPrivacySettingTypeEnum::ROLE_MEDIA->value,
-                UserPrivacySettingTypeEnum::MEDIA_MATERIALS->value,
-            );
-        }
-
-        if ($user->hasActiveRole(UserParticipationRoleEnum::VENUE_RELATED->value)) {
-            array_push(
-                $selected,
-                UserPrivacySettingTypeEnum::ROLE_VENUE_RELATED->value,
-                UserPrivacySettingTypeEnum::VENUE_VENUES->value,
-            );
-        }
-
-        if ($user->hasActiveRole(UserParticipationRoleEnum::ORGANIZER->value)) {
-            $selected[] = UserPrivacySettingTypeEnum::ROLE_ORGANIZER->value;
-        }
-
-        return array_values(array_unique($selected));
+        return $this->allowedTypeValues($user);
     }
 
     public function forget(User $user): void

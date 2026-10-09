@@ -1,0 +1,213 @@
+/* Proposal for design-system revision 1.1 — NOT accepted or imported by app.css. */
+.wizard-proposal-page { min-height:100dvh; background:var(--bg); color:var(--text); }
+.wizard-review-header {
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  max-width:1050px; margin:auto; padding:18px 24px;
+  border-bottom:1px solid var(--line);
+}
+.wizard-review-header .brand { text-decoration:none; }
+.wizard-review-header .brand-logo { width:38px; height:40px; object-fit:contain; }
+.wizard-review-header .draft { white-space:nowrap; font-size:11px; }
+.wizard-review-content { max-width:580px; padding:32px 16px 64px; margin:auto; }
+.wizard-review-meta { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:20px; }
+.wizard-review-meta .eyebrow { margin:0; }
+.wizard-review-meta .caption { margin:0; }
+.wizard-frame { display:flex; flex-direction:column; max-height:90vh; max-height:90dvh; overflow:hidden; box-shadow:0 30px 100px #0007; }
+.wizard-head { flex:0 0 auto; padding:28px 28px 20px; border-bottom:1px solid var(--line); }
+.wizard-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.wizard-heading h1 { margin:0; font-size:12px; font-weight:700; line-height:16px; letter-spacing:.12em; }
+.wizard-step-count { margin:0; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:.07em; }
+.wizard-head progress { display:block; width:100%; height:5px; margin-top:16px; border:0; border-radius:5px; overflow:hidden; background:var(--surface-raised); }
+.wizard-head progress::-webkit-progress-bar { background:var(--surface-raised); }
+.wizard-head progress::-webkit-progress-value { background:var(--accent); border-radius:5px; }
+.wizard-head progress::-moz-progress-bar { background:var(--accent); }
+.wizard-body { flex:1 1 auto; min-height:0; overflow-y:auto; padding:28px; }
+.wizard-step-title { font-size:22px; font-weight:800; line-height:1.25; letter-spacing:-.025em; outline-offset:4px; }
+.wizard-step-hint {
+  color:var(--muted); font-size:13px; line-height:20px;
+  margin:12px 0 24px; padding:12px 14px;
+  border-radius:12px; border-left:3px solid var(--accent);
+  background:var(--surface-raised);
+}
+.wizard-step { display:flex; flex-direction:column; gap:20px; }
+.wizard-role-options { display:grid; gap:12px; border:0; padding:0; margin:0; min-width:0; }
+.wizard-role-item { position:relative; min-width:0; }
+.wizard-role-picked {
+  position:absolute; z-index:1; top:50%; right:44px;
+  transform:translateY(-50%);
+  display:inline-flex; align-items:center; gap:4px; min-width:0;
+  max-width:calc(100% - 152px); height:26px; padding:2px 3px 2px 9px;
+  background:rgba(255, 121, 0, .09);
+  border:1px solid rgba(255, 121, 0, .28);
+  border-radius:999px;
+  pointer-events:none;
+}
+.wizard-role-picked[hidden] { display:none; }
+.wizard-role-picked small {
+  min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  color:var(--accent); font-size:11px; line-height:16px; font-weight:600;
+}
+.wizard-role-clear {
+  display:flex; flex:0 0 20px; align-items:center; justify-content:center;
+  width:20px; height:20px; padding:4px;
+  border:0; border-radius:50%; background:transparent;
+  color:#fff; cursor:pointer; pointer-events:auto;
+}
+.wizard-role-clear:hover { background:rgba(255, 121, 0, .16); }
+.wizard-role-clear:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.wizard-role-clear svg { width:12px; height:12px; stroke-width:1.8; }
+.wizard-role-group { min-width:0; border:1px solid var(--line); border-radius:var(--radius-control); background:var(--field); }
+.wizard-role-group[open] { border-color:var(--control-line); }
+.wizard-role-group-toggle {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  min-height:50px; padding:12px 14px; list-style:none; cursor:pointer;
+  font-size:14px; font-weight:700;
+}
+.wizard-role-group-toggle::-webkit-details-marker { display:none; }
+.wizard-role-group-toggle::marker { content:''; }
+.wizard-role-group-toggle > span { display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:0; }
+.wizard-role-group-toggle small { color:var(--muted); font-size:11px; font-weight:500; }
+.wizard-role-group-toggle svg { width:18px; height:18px; flex:0 0 18px; transform:rotate(0deg); transition:transform .16s; }
+.wizard-role-group[open] .wizard-role-group-toggle svg { transform:rotate(180deg); }
+.wizard-role-group-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:var(--radius-control); }
+.wizard-role-group .wizard-choice-set { padding:0 10px 10px; }
+.wizard-choice-set { display:grid; gap:10px; border:0; padding:0; margin:0; min-width:0; }
+.wizard-choice { cursor:pointer; display:block; position:relative; }
+.wizard-choice input {
+  position:absolute; top:50%; left:14px; transform:translateY(-50%);
+  appearance:none; width:20px; height:20px; border:1px solid var(--control-line);
+  border-radius:100%; background:var(--field); margin:0;
+}
+.wizard-choice input:checked { border:6px solid var(--accent); }
+.wizard-choice span {
+  display:block; padding:14px 14px 14px 48px;
+  border:1px solid var(--line); border-radius:var(--radius-control);
+  background:var(--field); transition:border-color .16s,background .16s;
+}
+.wizard-choice span strong { display:block; font-size:14px; line-height:20px; }
+.wizard-choice span small { display:block; margin-top:4px; color:var(--muted); font-size:12px; line-height:17px; }
+@media (hover:hover) {
+  .wizard-choice:hover span {
+    border-color:color-mix(in srgb, var(--control-line) 75%, transparent);
+  }
+}
+.wizard-choice input:checked+span { border-color:var(--accent); background:#ff79000f; }
+.wizard-choice input:focus-visible+span { outline:2px solid var(--accent); outline-offset:3px; }
+.wizard-step .field-group label { font-size:13px; font-weight:600; }
+.wizard-step .field-group input, .wizard-step .field-group select {
+  width:100%; min-height:48px; font-size:16px; line-height:24px;
+  background:var(--field); color:var(--text); border:1px solid var(--control-line);
+  border-radius:var(--radius-control); padding:10px 12px;
+}
+.wizard-step .select-control { width:100%; display:block; }
+.wizard-step .select-control select { padding-right:48px; }
+.wizard-step .field-group input:focus-visible, .wizard-step .field-group select:focus-visible {
+  outline:2px solid var(--accent); outline-offset:2px; border-color:var(--accent);
+}
+.wizard-step .field-group input[aria-invalid=true], .wizard-step .field-group select[aria-invalid=true] {
+  border-color:var(--danger);
+}
+.wizard-step .helper { margin:0; font-size:12px; }
+.wizard-step .error { margin:0; font-size:12px; line-height:18px; }
+.wizard-field-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.wizard-step .field-group > label {
+  display:inline-flex; align-items:baseline; gap:4px;
+  width:max-content; max-width:100%; line-height:20px;
+}
+/* Required help uses full label hover/click, without creating a Tab stop.
+   Native input/checkbox and link retain keyboard focus. */
+.wizard-required { display:inline; padding:0; color:var(--accent); font-weight:800; }
+label.wizard-required-label {
+  position:relative; cursor:help; outline-offset:3px;
+}
+label.wizard-required-label::after {
+  content:attr(data-tooltip); pointer-events:none; position:absolute;
+  bottom:calc(100% + 7px); left:0;
+  width:max-content; max-width:min(200px, 85vw); padding:7px 10px;
+  color:var(--text); background:var(--surface-raised);
+  border:1px solid var(--line); border-radius:var(--radius-control);
+  font-size:12px; line-height:17px; font-weight:500; white-space:normal;
+  box-shadow:0 7px 24px #0008; z-index:10; opacity:0; visibility:hidden;
+  transition:opacity .12s ease .2s, visibility 0s linear .32s;
+}
+label.wizard-required-label:is(:hover,.is-tooltip-open)::after {
+  opacity:1; visibility:visible;
+  transition:opacity .12s ease .2s, visibility 0s;
+}
+label.wizard-required-label.is-tooltip-dismissed::after {
+  opacity:0 !important; visibility:hidden !important; transition:none;
+}
+.wizard-consent { align-items:flex-start; }
+.wizard-consent input { width:18px; height:18px; accent-color:var(--accent); flex-shrink:0; margin-top:1px; }
+.wizard-foot { flex:0 0 auto; border-top:1px solid var(--line); padding:20px 28px 24px; }
+.wizard-error-summary { color:var(--danger); margin:0 0 14px; font-size:13px; line-height:20px; }
+.wizard-success-note { color:var(--success); }
+.wizard-actions { display:grid; grid-template-columns:1fr 1.5fr; gap:12px; }
+.wizard-actions button { min-height:48px; }
+
+/* Animation proposal copied in timing/feel from the legacy homepage wizard.
+   Scope it to the review's primary Next action; never animate Back or Skip. */
+.wizard-actions #wizard-next {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transform: scale(1);
+  --wizard-next-pulse-scale: 1.07;
+}
+.wizard-actions #wizard-next::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -48%;
+  z-index: 0;
+  width: 35%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,.06) 0%,
+    rgba(255,255,255,.75) 52%,
+    rgba(255,255,255,.12) 100%
+  );
+  transform: skewX(-15deg);
+}
+.wizard-actions #wizard-next.is-choice-attention {
+  animation: wizard-next-pulse .5s ease-in-out;
+}
+.wizard-actions #wizard-next.is-choice-attention::before {
+  animation: wizard-next-shine .5s ease-in-out;
+}
+@keyframes wizard-next-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(var(--wizard-next-pulse-scale)); }
+}
+@keyframes wizard-next-shine {
+  0% { left: -48%; opacity: 0; }
+  8% { opacity: .9; }
+  50% { left: 112%; opacity: .95; }
+  92% { opacity: .85; }
+  100% { left: -48%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wizard-actions #wizard-next.is-choice-attention,
+  .wizard-actions #wizard-next.is-choice-attention::before {
+    animation: none;
+  }
+}
+
+.wizard-review-tools { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:20px 0; }
+.wizard-review-content>.caption { text-align:center; line-height:20px; }
+@media(max-width:480px) {
+  /* Cap the pulse so Next stays clear of the neighbouring Back button. */
+  .wizard-actions #wizard-next { --wizard-next-pulse-scale: 1.06; }
+  .wizard-review-header { padding:14px 16px; }
+  .wizard-review-content { padding:20px 8px 48px; }
+  .wizard-head { padding:22px 18px 18px; }
+  .wizard-body { padding:22px 18px; }
+  .wizard-foot { padding:18px 18px 22px; }
+  .wizard-step-title { font-size:20px; }
+  .wizard-field-pair { gap:10px; }
+  .wizard-actions { grid-template-columns:1fr 1.5fr; gap:10px; }
+  .wizard-review-tools .button { flex:1 1 160px; }
+}

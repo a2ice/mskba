@@ -3,14 +3,38 @@
 namespace Tests\Feature\Identity;
 
 use App\Modules\Identity\Domain\Models\User;
+use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
 class AccountAvatarTest extends TestCase
 {
     use RefreshDatabase;
+
+    private string $previousTheme;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->previousTheme = (string) config('themes.active');
+        $this->switchTheme('mskba_dark');
+    }
+
+    protected function tearDown(): void
+    {
+        $this->switchTheme($this->previousTheme);
+        parent::tearDown();
+    }
+
+    private function switchTheme(string $theme): void
+    {
+        config()->set('themes.active', $theme);
+        app()->forgetInstance(ThemeResolver::class);
+        View::replaceNamespace('theme', resource_path('themes/'.$theme.'/views'));
+    }
 
     public function test_user_can_upload_normalized_profile_avatar(): void
     {
