@@ -1,0 +1,134 @@
+/* Task 023: page-specific compositions of the accepted panel/button/form primitives. */
+.app-team-section {min-width:0; padding-bottom:64px;}
+.app-team-public {padding-top:32px;}
+.app-team-actions {display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:0 0 22px;}
+.app-team-section .button {display:inline-flex; align-items:center; justify-content:center; min-height:44px; text-decoration:none;}
+.app-team-filters {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:20px; margin-bottom:24px; border-radius:18px;}
+.app-team-field {display:flex; flex-direction:column; gap:7px; min-width:0; font-size:14px; font-weight:600; color:var(--muted);}
+.app-team-field :is(input,select,textarea) {width:100%; min-width:0; min-height:44px; border:1px solid var(--control-line); border-radius:var(--radius-control); padding:10px 12px; background:var(--surface-raised); color:var(--text); font:inherit;}
+.app-team-field textarea {min-height:112px; resize:vertical;}
+.app-team-field :is(input,select,textarea):focus-visible {outline:2px solid var(--accent); outline-offset:2px;}
+.app-team-checkbox {display:flex; gap:10px; align-items:center; min-height:44px; font-size:14px; font-weight:600; color:var(--text); cursor:pointer;}
+.app-team-checkbox input {accent-color:var(--accent); width:18px; height:18px; flex:none;}
+.app-team-filter-actions {display:flex; flex-wrap:wrap; gap:12px; align-items:center;}
+.app-team-link {min-height:44px; display:inline-flex; align-items:center; color:var(--muted); font-size:14px;}
+.app-team-link:hover {color:var(--accent);}
+.app-team-grid {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px;}
+.app-team-card {padding:22px; display:flex; flex-direction:column; gap:16px; border-radius:18px;}
+.app-team-card__top {display:flex; align-items:start; gap:16px;}
+.app-team-card__logo {width:58px; height:58px; object-fit:contain; border-radius:12px; flex:none;}
+.app-team-card__title {display:flex; align-items:start; flex-wrap:wrap; justify-content:space-between; gap:12px; min-width:0;}
+.app-team-card__title h2 {font-size:21px; line-height:1.3; margin:0; overflow-wrap:anywhere;}
+.app-team-card__title h2 a {color:var(--text); text-decoration:none;}
+.app-team-card__title h2 a:hover {color:var(--accent);}
+.app-team-card__sports {display:flex; flex-wrap:wrap; gap:8px;}
+.app-team-card__detail {color:var(--muted); line-height:1.6; margin:0;}
+.app-team-card__footer {display:flex; flex-wrap:wrap; gap:10px;}
+.app-team-card > .button {align-self:flex-start; margin-top:auto;}
+.app-team-empty {padding:32px; display:flex; flex-direction:column; align-items:flex-start; gap:14px; border-radius:18px; grid-column:1/-1;}
+.app-team-empty h2 {font-size:23px; line-height:1.3; margin:0;}
+.app-team-empty p {color:var(--muted); max-width:560px; line-height:1.6;}
+.app-team-empty svg {width:38px; height:38px; color:var(--accent);}
+.app-team-profile {display:flex; flex-direction:column; align-items:flex-start; gap:20px; padding:24px; border-radius:18px; max-width:760px;}
+.app-team-profile__header {display:flex; align-items:center; gap:14px;}
+.app-team-create {display:flex; flex-direction:column; gap:20px; max-width:760px; padding:24px; border-radius:18px;}
+.app-team-sports {margin:0; padding:0; border:0; min-width:0;}
+.app-team-sports legend {font-size:14px; font-weight:600; color:var(--muted);}
+.app-team-sports__options {display:flex; flex-wrap:wrap; gap:14px;}
+.app-team-error {color:var(--danger);}
+.app-team-feedback {padding:14px 18px; margin-bottom:16px;}
+.app-team-pagination {margin:24px 0; overflow-x:auto;}
+@media(max-width:720px) {
+  .app-team-grid,.app-team-filters {grid-template-columns:minmax(0,1fr);}
+  .app-team-filters,.app-team-card,.app-team-create {padding:16px;}
+  .app-team-actions .button {flex:1 1 180px;}
+}
+
+/* Task 023 visual acceptance: three account panels, with their own content states. */
+.app-team-panel {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:18px;
+  min-width:0;
+  padding:24px;
+  margin-bottom:20px;
+  border-radius:var(--radius-card);
+}
+.app-team-panel > h2 {font-size:23px;line-height:30px;margin:0;}
+.app-team-panel .app-team-filters {margin:0;padding:16px;background:var(--surface-raised);border:1px solid var(--line);}
+.app-team-panel .app-team-card {border:1px solid var(--line);background:var(--surface-raised);}
+.app-team-panel .app-team-card__title h3 {font-size:19px;line-height:1.3;margin:0;overflow-wrap:anywhere;}
+.app-team-panel .app-team-card__title h3 a {color:var(--text);text-decoration:none;}
+.app-team-panel .app-team-card__title h3 a:hover {color:var(--accent);}
+.app-team-panel__actions {margin:0;}
+.app-team-placeholder-dialog__header {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px 24px 16px;}
+.app-team-placeholder-dialog__header h2 {font-size:24px;line-height:30px;margin:0;}
+.app-team-placeholder-dialog__header h2:focus {outline:none;}
+.app-team-placeholder-dialog__body {padding:0 24px 24px;color:var(--muted);line-height:1.6;}
+.app-team-placeholder-dialog__footer {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:12px;
+  padding:16px 24px 20px;
+  border-top:1px solid var(--line);
+}
+.app-team-placeholder-dialog__footer .button {flex:0 0 auto;}
+@media(max-width:720px){
+  .app-team-panel {padding:18px;}
+  .app-team-panel .app-team-filters {padding:14px;}
+  .app-team-placeholder-dialog__header {padding:20px 16px 14px;}
+  .app-team-placeholder-dialog__body {padding:0 16px 20px;}
+  .app-team-placeholder-dialog__footer {padding:14px 16px 18px;}
+}
+
+/* Task 023: focusable, tappable contextual help inside native modal's scroll body. */
+.app-team-gate-explanation {margin:0;line-height:1.6;}
+.app-team-gate-help-trigger {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  vertical-align:middle;
+  width:24px;
+  height:24px;
+  padding:0;
+  margin-left:6px;
+  border:1px solid var(--accent);
+  border-radius:50%;
+  background:transparent;
+  color:var(--accent);
+  font-family:inherit;
+  font-size:13px;
+  font-weight:700;
+  line-height:1;
+  cursor:help;
+}
+.app-team-gate-help-trigger:hover,
+.app-team-gate-help-trigger[aria-expanded="true"] {
+  background:var(--accent);
+  color:var(--text-on-accent, #111);
+}
+.app-team-gate-help-trigger:focus-visible {
+  outline:2px solid var(--accent);
+  outline-offset:3px;
+}
+.app-team-gate-tooltip {
+  position:absolute;
+  z-index:4;
+  width:max-content;
+  max-width:min(300px, calc(100% - 24px));
+  margin:0;
+  padding:9px 12px;
+  border:1px solid var(--line);
+  border-radius:var(--radius-control);
+  background:var(--surface-raised);
+  color:var(--text);
+  font-size:12px;
+  font-weight:500;
+  line-height:1.5;
+  box-shadow:0 7px 24px #0008;
+  pointer-events:none;
+}
+.app-team-gate-tooltip[hidden] {display:none;}

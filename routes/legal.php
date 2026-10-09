@@ -23,3 +23,8 @@ Route::get('/legal-fragments/personal-data-consent', fn () => view('legal.fragme
 
 Route::get('/legal-fragments/privacy', fn () => view('legal.fragments.privacy'))
     ->name('legal.fragment.privacy');
+
+// The distribution consent is the same legal document shown by the public
+// canonical page; it is never assembled from user-supplied markup.
+Route::get('/legal-fragments/personal-data-distribution-consent', fn () => view('legal.fragments.distribution'))
+    ->name('legal.fragment.distribution');

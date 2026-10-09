@@ -6,7 +6,7 @@
          data-privacy-reminder-toast hidden>
         <svg aria-hidden="true"><use href="#bell"/></svg>
         <div><strong>Остался последний шаг регистрации</strong>
-            <p>Выберите, что будет видно другим участникам, и завершите настройку.</p></div>
+            <p>Выбери, что будет видно другим участникам, и заверши настройку.</p></div>
         <button class="icon-button" type="button" aria-label="Закрыть уведомление"
                 data-privacy-toast-close><svg aria-hidden="true"><use href="#close"/></svg></button>
     </div>

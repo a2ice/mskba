@@ -11,5 +11,6 @@
 @import './privacy-onboarding-dialog.css';
 @import './account-layout.css';
 @import './account-overview.css';
+@import './account-teams.css';
 
 .app-shell { min-height: 100dvh; }

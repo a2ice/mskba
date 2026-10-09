@@ -746,6 +746,27 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
 
             return ThemeResolver::page('account.profile');
         })->name('account.profile')->defaults('breadcrumb', 'Профиль');
+        // Role-driven entry points in MSKBA App. Functional screens are introduced
+        // incrementally; legacy theme keeps its established account routes.
+        foreach ([
+            ['my-games', 'account.my-games', 'Мои игры', 'Игры, в которых ты участвуешь, и новые возможности для игры.'],
+            ['my-trainings', 'account.my-trainings', 'Мои тренировки', 'Твои тренировки и подбор новых занятий.'],
+            ['my-bookings', 'account.my-bookings', 'Бронирования', 'Запросы и бронирования площадок.'],
+            ['venue-schedule', 'account.venue-schedule', 'Расписание', 'Календарь и доступность твоих площадок.'],
+            ['my-events', 'account.my-events', 'Мои мероприятия', 'Мероприятия, в которых ты участвуешь или которые организуешь.'],
+            ['my-tournaments', 'account.my-tournaments', 'Мои турниры', 'Турниры и твоя роль в них.'],
+            ['referee-assignments', 'account.referee-assignments', 'Судейские назначения', 'Матчи, где требуется твоя работа судьи.'],
+            ['statistics', 'account.statistics', 'Статистика', 'Матчи и данные, с которыми ты работаешь.'],
+            ['my-materials', 'account.my-materials', 'Мои материалы', 'Твои публикации, фотографии и видео.'],
+        ] as [$path, $name, $heading, $subtitle]) {
+            Route::get('/'.$path, function () use ($heading, $subtitle) {
+                if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+                    return redirect()->route('account');
+                }
+
+                return ThemeResolver::page('account.role-section', compact('heading', 'subtitle'));
+            })->name($name)->defaults('breadcrumb', $heading);
+        }
         Route::get('/wallet', AccountWalletController::class)
             ->name('account.wallet')
             ->defaults('breadcrumb', 'Кошелёк');

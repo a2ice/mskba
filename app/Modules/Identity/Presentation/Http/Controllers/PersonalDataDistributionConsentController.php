@@ -69,6 +69,10 @@ final class PersonalDataDistributionConsentController extends Controller
                 ->whereNull('revoked_at')
                 ->exists(),
             'notificationContacts' => $contacts,
+            // Last-step onboarding should only ask for mandatory privacy.
+            // Keep the experimental channel preview on the standalone page.
+            'hideNotificationPreview' => $request->boolean('modal')
+                && app(ThemeResolver::class)->active() === 'mskba_app',
         ];
 
         // A fixed fragment endpoint for the shared HTML form. It is

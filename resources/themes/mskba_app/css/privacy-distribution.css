@@ -81,6 +81,14 @@
   font-size:14px;
   line-height:1.55;
 }
+/* A legal-document link is inline copy, not a framed input/label.
+   Keep keyboard focus visible through an underline, never a rectangular ring. */
+.privacy-onboarding__consent-label a[data-distribution-legal-open]:focus-visible {
+  outline:none;
+  text-decoration:underline;
+  text-decoration-thickness:2px;
+  text-underline-offset:4px;
+}
 .privacy-onboarding__consent-label input {
   margin-top:2px;
   flex-shrink:0;
@@ -246,7 +254,7 @@
     border-radius:var(--radius-control);
 }
 .privacy-onboarding__player-toggle { padding:16px!important; border-bottom:0!important; }
-.privacy-onboarding__role-fields { padding:0 16px 12px; border-top:1px solid var(--line); }
+.privacy-onboarding__role-fields { padding:16px 16px 12px; border-top:1px solid var(--line); }
 .privacy-onboarding__role-fields[hidden] { display:none!important; }
 .privacy-onboarding__role-fields .privacy-onboarding__option:last-child { padding-bottom:0; }
 .privacy-onboarding__group--inactive {

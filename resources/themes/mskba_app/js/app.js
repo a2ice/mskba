@@ -2,6 +2,8 @@ import './header.js';
 import './context-bar.js';
 import './privacy-distribution.js';
 import './privacy-onboarding-dialog.js';
+import './distribution-consent-document-dialog.js';
+import './account-team-placeholder.js';
 import { createApp } from 'vue';
 import AuthDialog from './components/AuthDialog.vue';
 

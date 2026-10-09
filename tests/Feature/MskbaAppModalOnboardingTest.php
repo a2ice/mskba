@@ -131,36 +131,70 @@ final class MskbaAppModalOnboardingTest extends TestCase
             ->assertOk()
             ->assertSee('data-privacy-distribution', false)
             ->assertSee('Видимость профиля')
+            ->assertDontSee('Отправлять уведомления на')
+            ->assertDontSee('data-onboarding-notification-preview', false)
+            ->assertDontSee('approved@example.test')
+            ->assertDontSee('Добавить Telegram')
+            ->assertDontSee('Добавить VK')
+            ->getContent();
+
+        $this->assertStringNotContainsString('data-onboarding-pending', $fragment);
+        $this->assertStringNotContainsString('name="notification[', $fragment);
+        // Keep the preview intact on the standalone form for future settings.
+        $this->get(route('account.privacy.distribution'))->assertOk()
             ->assertSee('Отправлять уведомления на')
             ->assertSee('approved@example.test')
             ->assertSee('Добавить Telegram')
             ->assertSee('Добавить VK')
             ->assertDontSee('unverified_channel')
-            ->getContent();
-
-        $this->assertStringNotContainsString('data-onboarding-pending', $fragment);
-        $this->assertStringNotContainsString('name="notification[', $fragment);
-        $this->get(route('account.privacy.distribution'))->assertOk()
-            ->assertSee('Отправлять уведомления на')
             ->assertSee('data-privacy-distribution', false);
     }
 
-    public function test_contact_workspace_starts_hidden_and_exposes_accessible_tabs_without_extra_registration_actions(): void
+    public function test_contact_preview_remains_implemented_but_is_not_part_of_final_registration_step(): void
     {
         $user = $this->pendingUser();
 
         $this->actingAs($user)
             ->get(route('account.privacy.distribution', ['modal' => 1]))
             ->assertOk()
+            ->assertDontSee('data-onboarding-notification-preview', false)
+            ->assertDontSee('data-notification-workspace', false)
+            ->assertSee('Завершить регистрацию')
+            ->assertDontSee('Оставить всё закрытым')
+            ->assertDontSee('Продолжить позже');
+
+        $this->get(route('account.privacy.distribution'))
+            ->assertOk()
             ->assertSee('data-notification-workspace hidden', false)
             ->assertSee('role="tablist"', false)
             ->assertSee('role="tabpanel"', false)
             ->assertSee('data-notification-tab="telegram" hidden', false)
             ->assertSee('data-notification-close="vk"', false)
-            ->assertSee('class="field-group"', false)
-            ->assertSee('Завершить регистрацию')
-            ->assertDontSee('Оставить всё закрытым')
-            ->assertDontSee('Продолжить позже');
+            ->assertSee('class="field-group"', false);
+    }
+
+    public function test_distribution_consent_link_opens_shared_canonical_document_fragment(): void
+    {
+        $user = $this->pendingUser();
+        $this->actingAs($user)
+            ->get(route('account.privacy.distribution', ['modal' => 1]))
+            ->assertOk()
+            ->assertSee('data-distribution-legal-open', false)
+            ->assertSee('data-distribution-legal-fragment="'.route('legal.fragment.distribution').'"', false)
+            ->assertSee('href="'.route('personal-data.distribution-consent').'"', false);
+
+        // One source for the direct page and for the nested legal dialog.
+        $fragment = $this->get(route('legal.fragment.distribution'))->assertOk()
+            ->assertSee('Согласие на обработку персональных данных, разрешённых для распространения')
+            ->assertSee('Возможные категории:')
+            ->assertSee('6. Отдельность согласия')
+            ->assertDontSee('<html', false);
+
+        $canonical = $this->get(route('personal-data.distribution-consent'))->assertOk();
+        foreach (['Согласие на обработку персональных данных, разрешённых для распространения', '1. Оператор и информационный ресурс', '6. Отдельность согласия'] as $text) {
+            $this->assertStringContainsString($text, $fragment->getContent());
+            $this->assertStringContainsString($text, $canonical->getContent());
+        }
     }
 
     public function test_json_onboarding_save_completes_setup_and_lifts_mutation_guard(): void

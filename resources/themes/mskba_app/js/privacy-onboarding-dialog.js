@@ -1,4 +1,4 @@
-import { initPrivacyDistribution, initNotificationPreview } from './privacy-distribution.js';
+import { initPrivacyDistribution } from './privacy-distribution.js';
 
 const root = document.querySelector('[data-onboarding-pending]');
 if (root) {
@@ -17,6 +17,17 @@ if (root) {
     let pending = null;
     let busy = false;
     let loading = null;
+    // A harmless UI continuation after setup; never replay a mutation here.
+    let continuationAction = null;
+
+    function updateFinishLabel() {
+        const button = dialog?.querySelector('button[type="submit"][name="action"][value="save"]');
+        if (button) {
+            button.textContent = continuationAction
+                ? 'Завершить регистрацию...'
+                : 'Завершить регистрацию';
+        }
+    }
 
     const isSetup = url => {
         const path = new URL(url, location.href).pathname;
@@ -37,7 +48,7 @@ if (root) {
             '    <svg aria-hidden="true"><use href="#close"/></svg></button>' +
             '</header>' +
             '<div class="mskba-modal__body mskba-scroll mskba-onboarding-dialog__body"' +
-            ' role="region" aria-label="Настройки приватности и уведомлений" tabindex="0">' +
+            ' role="region" aria-label="Настройки приватности" tabindex="0">' +
             '  <p role="status">Загружаем настройки…</p></div>' +
             '<footer class="mskba-modal__footer mskba-onboarding-dialog__footer"></footer>';
         document.body.append(dialog);
@@ -93,8 +104,8 @@ if (root) {
                     });
                     dialog.querySelector('.mskba-onboarding-dialog__footer').prepend(actions);
                 }
+                updateFinishLabel();
                 initPrivacyDistribution(form);
-                initNotificationPreview(body.querySelector('[data-onboarding-notification-preview]'));
             } catch {
                 showError('Не удалось загрузить настройки. Повторите попытку или откройте отдельную страницу.');
                 const retry = document.createElement('button');
@@ -119,10 +130,12 @@ if (root) {
         return loading;
     }
 
-    function openDialog(trigger = document.activeElement) {
+    function openDialog(trigger = document.activeElement, action = null) {
         if (done) return;
+        if (action === 'find' || action === 'create') continuationAction = action;
         ensureDialog();
         focusTarget = trigger;
+        updateFinishLabel();
         if (dialog.open) return;
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
@@ -135,6 +148,12 @@ if (root) {
         if (!dialog?.open || busy) return;
         dialog.close();
         document.body.style.overflow = previousOverflow;
+        const cancelledContinuation = continuationAction;
+        continuationAction = null;
+        updateFinishLabel();
+        if (cancelledContinuation) {
+            window.dispatchEvent(new CustomEvent('mskba:onboarding-continuation-cancelled'));
+        }
         const queued = pending;
         pending = null;
         queued?.reject?.(new DOMException('Регистрация не завершена', 'AbortError'));
@@ -192,8 +211,17 @@ if (root) {
             });
             const queued = pending;
             pending = null;
-            if (queued) queued.resume();
-            else location.reload();
+            const requestedContinuation = continuationAction;
+            continuationAction = null;
+            if (queued) {
+                queued.resume();
+            } else if (requestedContinuation) {
+                window.dispatchEvent(new CustomEvent('mskba:onboarding-completed', {
+                    detail: { action: requestedContinuation },
+                }));
+            } else {
+                location.reload();
+            }
         } catch {
             showError('Не удалось сохранить настройки. Проверьте соединение и попробуйте ещё раз.');
         } finally {
@@ -244,6 +272,11 @@ if (root) {
         openDialog(trigger);
     });
     window.addEventListener('mskba:onboarding-required', () => openDialog());
+    window.addEventListener('mskba:onboarding-request-action', event => {
+        const action = event.detail?.action;
+        if (action !== 'find' && action !== 'create') return;
+        openDialog(event.detail?.trigger || document.activeElement, action);
+    });
 
     // The onboarding reminder belongs to this page lifecycle, not sessionStorage:
     // duplicated tabs may inherit storage and silently suppress the required dialog.

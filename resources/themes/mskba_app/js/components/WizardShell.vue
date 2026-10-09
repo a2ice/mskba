@@ -115,7 +115,7 @@ defineExpose({ applyErrors, reset });
                 <slot :name="step?.id" :values="values" :errors="issues" :changed="valueChanged" />
             </div>
             <p v-if="Object.keys(issues).some(field => step?.fields.includes(field))"
-                class="mskba-wizard__form-error" role="alert">Проверьте выделенные поля.</p>
+                class="mskba-wizard__form-error" role="alert">Проверь выделенные поля.</p>
         </div>
         <footer class="mskba-modal__footer mskba-wizard__footer">
             <div class="wizard-actions">

@@ -3,6 +3,6 @@
 @section('account-content')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Контракты',
-        'subtitle' => 'Ваши договоры и документы.',
+        'subtitle' => 'Твои договоры и документы.',
     ])
 @endsection
