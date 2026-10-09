@@ -143,12 +143,17 @@ jobs:
               echo 'Server has tracked modifications; manual review required'; exit 1;
             }
             # No git clean: preserve server-only .env, storage and compose override.
+            PREVIOUS_SHA="$(git rev-parse HEAD)"
+            if ! git diff --quiet "$PREVIOUS_SHA" "$VERIFIED_SHA" -- composer.json composer.lock; then
+              echo 'Composer dependency changes require a separate prepared release; refusing in-place install'
+              exit 1
+            fi
             git reset --hard "$VERIFIED_SHA"
             $COMPOSE config --quiet
             test -f public/build/manifest.json
             # This staging VDS has ~2 GiB RAM: never build PHP on the server.
             $COMPOSE up -d --no-build db redis
-            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+            test -f vendor/autoload.php || { echo 'Composer dependencies missing; stop before restarting'; exit 1; }
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan optimize:clear
             $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx
