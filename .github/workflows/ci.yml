@@ -9,6 +9,12 @@ on:
     branches:
       - dev
   workflow_dispatch:
+    inputs:
+      test_dev_ssh:
+        description: "Run read-only development SSH connectivity check"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -117,3 +123,25 @@ jobs:
             $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx
             curl --fail --silent --show-error --max-time 20 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/ > /dev/null
             echo 'Dev deployment completed; production untouched'
+
+  ssh_smoke_dev:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_dev_ssh && github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+    steps:
+      - name: Read-only SSH test
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 60s
+          script: |
+            set -eu
+            test "$(id -un)" = deploy
+            echo "Authenticated user: $(whoami)"
+            hostname
+            test -d /var/www/mskba-dev-next/.git
+            test -r /var/www/mskba-dev-next/compose.dev.yaml
+            echo 'SSH READ-ONLY TEST PASSED'
