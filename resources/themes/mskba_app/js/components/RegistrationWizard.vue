@@ -9,7 +9,7 @@ const props = defineProps({
     message: { type: String, default: '' },
     serverErrors: { type: Object, default: () => ({}) },
 });
-const emit = defineEmits(['submit', 'login', 'step-change']);
+const emit = defineEmits(['submit', 'login', 'step-change', 'legal-open']);
 const wizard = ref(null);
 const expandedGroup = ref('primary');
 // The entire label is the help trigger, never the decorative asterisk.
@@ -20,7 +20,7 @@ function toggleRequiredHint(field) {
     openRequiredHint.value = openRequiredHint.value === field ? '' : field;
 }
 function closeRequiredHintOnEscape(event) {
-    if (event.key !== 'Escape') return;
+    if (event.key !== 'Escape' || document.querySelector('.mskba-legal-dialog[open]')) return;
     const hovered = document.querySelector('.mskba-wizard .wizard-required-label:hover');
     const target = openRequiredHint.value || hovered?.dataset.requiredField;
     if (!target) return; // Let the native modal handle Escape normally.
@@ -282,11 +282,11 @@ function submit() {
                 @click="toggleRequiredHint('privacy_consent')">
                 <input v-model="form.privacy_consent" type="checkbox" name="privacy_consent"
                     required :disabled="busy" @change="changed('privacy_consent', true)" />
-                <span>Я даю <a :href="options.consent" target="_blank" rel="noopener">согласие на обработку персональных данных</a>
+                <span>Я даю <a :href="options.consent" @click.prevent.stop="emit('legal-open', 'consent', $event.currentTarget)">согласие на обработку персональных данных</a>
                     <span class="wizard-required" aria-hidden="true">*</span></span>
             </label>
             <p v-if="errors.privacy_consent" class="error" role="alert">{{ errors.privacy_consent }}</p>
-            <p class="mskba-auth-small">Подробнее в <a :href="options.privacyPolicy" target="_blank" rel="noopener">политике конфиденциальности</a>.</p>
+            <p class="mskba-auth-small">Подробнее в <a :href="options.privacyPolicy" @click.prevent.stop="emit('legal-open', 'privacy', $event.currentTarget)">политике конфиденциальности</a>.</p>
             <p v-if="message" class="mskba-auth-message" role="alert">{{ message }}</p>
         </template>
 

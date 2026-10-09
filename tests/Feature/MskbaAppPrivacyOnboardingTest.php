@@ -63,7 +63,7 @@ final class MskbaAppPrivacyOnboardingTest extends TestCase
         $response->assertSee('name="privacy_options[group_invitations]"', false);
         $response->assertSee('name="distribution_consent"', false);
         $response->assertSee('Завершить регистрацию');
-        $response->assertSee('Оставить всё закрытым');
+        $response->assertDontSee('Оставить всё закрытым');
         $response->assertDontSee('MSKBA App theme');
     }
 

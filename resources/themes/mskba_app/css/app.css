@@ -3,9 +3,13 @@
 @import './design-system.css';
 @import './modal.css';
 @import './header.css';
+@import './context-bar.css';
 @import './auth-dialog.css';
+@import './legal-dialog.css';
 @import './wizard.css';
 @import './privacy-distribution.css';
+@import './privacy-onboarding-dialog.css';
 @import './account-layout.css';
+@import './account-overview.css';
 
 .app-shell { min-height: 100dvh; }

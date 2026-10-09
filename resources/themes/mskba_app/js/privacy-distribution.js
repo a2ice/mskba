@@ -1,7 +1,7 @@
 // Task 015: progressive UI enhancement for server-validated onboarding controls.
-const form = document.querySelector('[data-privacy-distribution]');
-
-if (form) {
+export function initPrivacyDistribution(form) {
+    if (!form || form.dataset.privacyBound === '1') return;
+    form.dataset.privacyBound = '1';
     const profile = form.querySelector('[data-privacy-profile]');
     const search = form.querySelector('[data-privacy-search]');
     const profileChildren = [...form.querySelectorAll('[data-privacy-profile-child]')];
@@ -89,6 +89,8 @@ if (form) {
     updateState();
 }
 
+initPrivacyDistribution(document.querySelector('[data-privacy-distribution]'));
+
 // Toast uses the approved design-system .toast. The static notice remains
 // visible without JavaScript; this nudge is once per tab until next session.
 const reminderToast = document.querySelector('[data-privacy-reminder-toast]');
@@ -109,3 +111,98 @@ if (reminderToast) {
         });
     }
 }
+
+
+/** Task 019 contact preview only: selectable tabs, no persistence or OTP. */
+export function initNotificationPreview(root) {
+    if (!root || root.dataset.notificationBound === '1') return;
+    root.dataset.notificationBound = '1';
+    const workspace = root.querySelector('[data-notification-workspace]');
+    if (!workspace) return;
+
+    const tabs = [...root.querySelectorAll('[data-notification-tab]')];
+    let active = null;
+
+    const tabFor = kind => tabs.find(tab => tab.dataset.notificationTab === kind);
+    const opened = () => tabs.filter(tab => !tab.hidden);
+
+    function activate(kind, focus = false) {
+        active = kind;
+        for (const tab of tabs) {
+            const selected = !tab.hidden && tab.dataset.notificationTab === kind;
+            const button = tab.querySelector('[role="tab"]');
+            button.setAttribute('aria-selected', String(selected));
+            button.tabIndex = selected ? 0 : -1;
+        }
+        root.querySelectorAll('[data-notification-draft]').forEach(panel => {
+            panel.hidden = panel.dataset.notificationDraft !== kind;
+        });
+        if (focus) tabFor(kind)?.querySelector('[role="tab"]')?.focus({ preventScroll: true });
+    }
+
+    root.addEventListener('click', event => {
+        const add = event.target.closest('[data-notification-add]');
+        if (add) {
+            const kind = add.dataset.notificationAdd;
+            const tab = tabFor(kind);
+            if (!tab) return;
+            tab.hidden = false;
+            workspace.hidden = false;
+            activate(kind);
+            // Keep focus on the user's selected action rather than opening
+            // keyboard / browser autocomplete in a new contact input.
+            return;
+        }
+
+        const select = event.target.closest('[data-notification-select]');
+        if (select) {
+            activate(select.dataset.notificationSelect, true);
+            return;
+        }
+
+        const close = event.target.closest('[data-notification-close]');
+        if (!close) return;
+        const kind = close.dataset.notificationClose;
+        const tab = tabFor(kind);
+        if (!tab || tab.hidden) return;
+        const wasActive = kind === active;
+        const closedIndex = tabs.indexOf(tab);
+        tab.hidden = true;
+        // Closing a draft discards only its unsaved local contact input.
+        tab.querySelector('[role="tab"]').setAttribute('aria-selected', 'false');
+        const panel = root.querySelector('[data-notification-draft="' + kind + '"]');
+        panel?.querySelectorAll('input:not([disabled])').forEach(input => { input.value = ''; });
+        if (opened().length === 0) {
+            workspace.hidden = true;
+            active = null;
+            panel.hidden = true;
+            root.querySelector('[data-notification-add="' + kind + '"]')?.focus({ preventScroll: true });
+            return;
+        }
+        if (wasActive) {
+            // Prefer the next visible tab to the right, otherwise the previous.
+            const next = tabs.slice(closedIndex + 1).find(t => !t.hidden)
+                || [...tabs.slice(0, closedIndex)].reverse().find(t => !t.hidden);
+            activate(next.dataset.notificationTab, true);
+        } else {
+            activate(active);
+            tabFor(active)?.querySelector('[role="tab"]')?.focus({ preventScroll: true });
+        }
+    });
+
+    root.addEventListener('keydown', event => {
+        const button = event.target.closest('[role="tab"][data-notification-select]');
+        if (!button || !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+        const items = opened();
+        if (!items.length) return;
+        event.preventDefault();
+        const index = items.findIndex(tab => tab.dataset.notificationTab === button.dataset.notificationSelect);
+        let next;
+        if (event.key === 'Home') next = items[0];
+        else if (event.key === 'End') next = items[items.length - 1];
+        else next = items[(index + (event.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length];
+        activate(next.dataset.notificationTab, true);
+    });
+}
+
+initNotificationPreview(document.querySelector('[data-onboarding-notification-preview]'));

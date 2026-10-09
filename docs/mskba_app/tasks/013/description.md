@@ -58,3 +58,7 @@
 - Chromium: 320, 360, 440, 768, 1024, 1440 px PASS. Root main/section полноширинны, 0 горизонтального overflow; sticky проверен на середине и после выхода за section.
 - PHPUnit 17 тестов и 91 утверждение PASS; Blade view:cache, PHP Pint, Vite build — PASS.
 - Реализация локальная и ожидает визуальной приёмки. Не выполнены commit/push/merge/deploy.
+
+## Уточнение в рамках последующей приёмки 021
+
+Исторический offset `header + 16px` из первоначальной проверки 013 уточнён для новой sticky-полосы задачи 021: desktop sidebar теперь располагается ниже `header + context bar + 16px` и получает min-height родительского grid для коротких страниц. В mobile sidebar по-прежнему раскрываемый, не sticky. См. [021](../021/description.md).

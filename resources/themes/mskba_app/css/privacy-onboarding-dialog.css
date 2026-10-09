@@ -1,0 +1,166 @@
+/* Task 019: modal onboarding reuses the shared top-layer shell. */
+.mskba-onboarding-dialog {
+    width: min(980px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    height: min(850px, 90dvh);
+}
+.mskba-onboarding-dialog__header,
+.mskba-onboarding-dialog__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding: 18px 26px;
+}
+.mskba-onboarding-dialog__header { border-bottom: 1px solid var(--line); }
+.mskba-onboarding-dialog__header h2 { margin-top: 6px; font-size: 22px; line-height: 1.25; }
+/* Programmatically focused heading is not a control; keep focus rings on buttons/fields. */
+.mskba-onboarding-dialog__header h2[tabindex="-1"]:focus { outline: none; }
+.mskba-onboarding-dialog__header .icon-button { flex: 0 0 auto; }
+.mskba-onboarding-dialog__body { padding: 24px 26px; }
+.mskba-onboarding-dialog__body .privacy-onboarding { padding: 0; }
+.mskba-onboarding-dialog__body .privacy-onboarding__intro { display: none; }
+.mskba-onboarding-dialog__body .privacy-onboarding__footer { display: none; }
+.mskba-onboarding-dialog__body .privacy-onboarding__reminder { margin-bottom: 18px; }
+.mskba-onboarding-dialog__body .privacy-onboarding__card { padding: 20px; }
+.mskba-onboarding-dialog__body .privacy-onboarding__card h2 { font-size: 20px; }
+.mskba-onboarding-dialog__body .privacy-onboarding__option { min-height: 54px; }
+.mskba-onboarding-dialog__footer {
+    border-top: 1px solid var(--line);
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.mskba-onboarding-dialog__footer .privacy-onboarding__actions {
+    display: flex;
+    gap: 10px;
+    margin: 0;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    align-items: center;
+}
+.mskba-onboarding-dialog__footer .privacy-onboarding__actions .button { flex: 0 1 auto; min-width: 230px; }
+.mskba-onboarding-dialog__error {
+    padding: 12px 14px; margin-bottom: 16px;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-control);
+    background: #ff42510c;
+    color: var(--text);
+    line-height: 1.5;
+}
+.mskba-onboarding-dialog__fallback { display: block; margin-top: 12px; color: var(--accent); text-decoration: underline; }
+.privacy-onboarding__notifications { margin-top: 20px; }
+.privacy-onboarding__verified-contacts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+.privacy-onboarding__notify-option {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; min-width: 0;
+    padding: 12px 14px; border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+}
+.privacy-onboarding__notify-option span { display: grid; gap: 5px; min-width: 0; }
+.privacy-onboarding__notify-option small { color: var(--muted); overflow-wrap: anywhere; }
+.privacy-onboarding__notify-option input { width: 19px; height: 19px; accent-color: var(--accent); }
+.privacy-onboarding__notification-add-buttons {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px;
+}
+.privacy-onboarding__notification-add-buttons .button {
+    flex: 1 1 160px; min-width: 0;
+}
+.privacy-onboarding__notification-workspace {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-raised);
+}
+.privacy-onboarding__notification-workspace[hidden] { display: none!important; }
+.privacy-onboarding__notification-tabs {
+    display: flex; align-items: center; gap: 4px;
+    overflow-x: auto;
+    padding: 4px;
+    border-radius: var(--radius-control);
+    background: var(--surface);
+}
+.privacy-onboarding__notification-tab {
+    display: inline-flex; align-items: center;
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    color: var(--muted);
+}
+.privacy-onboarding__notification-tab:has([aria-selected="true"]) {
+    border-color: var(--control-line);
+    background: var(--surface-raised);
+    color: var(--text);
+}
+.privacy-onboarding__notification-tab [role="tab"] {
+    display: inline-flex; align-items: center;
+    min-height: 44px;
+    border: 0; padding: 8px 10px;
+    background: transparent; color: inherit;
+    font-size: 14px; line-height: 20px; font-weight: 600;
+}
+.privacy-onboarding__notification-tab [role="tab"][aria-selected="true"] { color: var(--accent); }
+.privacy-onboarding__notification-tab [role="tab"]:hover { color: var(--text); }
+.privacy-onboarding__notification-close {
+    display: grid; place-items: center;
+    flex: 0 0 44px; width: 44px; height: 44px;
+    padding: 0; border: 0; border-radius: 8px;
+    background: transparent; color: var(--text);
+}
+.privacy-onboarding__notification-close:hover {
+    color: var(--accent);
+    background: var(--surface);
+}
+.privacy-onboarding__notification-close svg { width: 14px; height: 14px; }
+.privacy-onboarding__notification-draft {
+    display: grid;
+    gap: 12px;
+    padding: 16px 2px 2px;
+}
+.privacy-onboarding__notification-draft[hidden] { display: none!important; }
+.privacy-onboarding__notification-draft .field-group { gap: 8px; }
+.privacy-onboarding__notification-draft .field-group input {
+    width: 100%; min-width: 0; min-height: 48px;
+    background: var(--field);
+    border: 1px solid var(--control-line);
+    border-radius: var(--radius-control);
+    padding: 11px 12px;
+    color: var(--text);
+    font-size: 16px;
+    line-height: 24px;
+}
+.privacy-onboarding__notification-draft .field-group input::placeholder { color: var(--muted); }
+.privacy-onboarding__notification-draft .helper,
+.privacy-onboarding__notification-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.privacy-onboarding__notification-hint { margin-top: 16px; }
+@media(max-width:767px) {
+    .mskba-onboarding-dialog { width: calc(100vw - 16px); max-width: calc(100vw - 16px); height: 90dvh; }
+    .mskba-onboarding-dialog__header, .mskba-onboarding-dialog__footer { padding: 12px 16px; }
+    .mskba-onboarding-dialog__body { padding: 16px; }
+    .mskba-onboarding-dialog__header h2 { font-size: 18px; }
+    .mskba-onboarding-dialog__footer { flex-wrap: wrap; }
+    .mskba-onboarding-dialog__footer .privacy-onboarding__actions { flex: 1 1 100%; justify-content: stretch; }
+    .mskba-onboarding-dialog__footer .privacy-onboarding__actions .button { flex: 1 1 100%; }
+}
+@media(max-width:370px) {
+    .mskba-onboarding-dialog__footer .privacy-onboarding__actions { flex-wrap: wrap; }
+    .mskba-onboarding-dialog__footer .privacy-onboarding__actions .button { flex: 1 1 100%; }
+}
+
+.privacy-onboarding__otp-preview {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    gap: 10px;
+    align-items: end;
+    padding-top: 6px;
+}
+.privacy-onboarding__otp-preview label { display: grid; gap: 6px; }
+.privacy-onboarding__otp-preview input:disabled { opacity: .55; }
+.privacy-onboarding__otp-preview button:disabled { opacity: .55; cursor: not-allowed; }
+@media(max-width:560px) {
+    .privacy-onboarding__otp-preview { grid-template-columns: 1fr; }
+}

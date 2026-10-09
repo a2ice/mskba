@@ -4,7 +4,9 @@
     $headerNeedsPrivacySetup = $headerUser !== null
         && app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup($headerUser);
     $profile = $headerUser?->profile;
-    $displayName = trim((string) ($profile?->first_name ?: $headerUser?->username ?: ''));
+    $displayName = $headerUser
+        ? app(\App\Presentation\Identity\UserAddressing::class)->greetingName($headerUser)
+        : '';
     $initials = $displayName !== '' ? mb_strtoupper(mb_substr($displayName, 0, 2)) : 'MS';
     $avatarUrl = $profile?->avatarUrl();
 @endphp
@@ -53,9 +55,9 @@
                     <svg aria-hidden="true"><use href="#bell"/></svg>
                 </a>
                 <a @class(['app-header-account', 'app-header-account--setup-pending' => $headerNeedsPrivacySetup])
-                   href="{{ $headerNeedsPrivacySetup ? route('account.privacy.distribution') : route('account') }}"
-                   aria-label="{{ $headerNeedsPrivacySetup ? 'Завершить регистрацию — настройка приватности' : 'Личный кабинет' }}"
-                   @if ($headerNeedsPrivacySetup ) title="Остался последний шаг регистрации" @endif>
+                   href="{{ route('account') }}"
+                   aria-label="Личный кабинет"
+                   @if ($headerNeedsPrivacySetup) title="Остался последний шаг регистрации" @endif>
                     <span class="app-header-account-label">{{ $displayName ?: 'Личный кабинет' }}</span>
                     <span class="avatar app-header-avatar">
                         @if ($avatarUrl)

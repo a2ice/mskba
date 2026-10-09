@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminAcquisitionController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
@@ -11,7 +12,6 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueDuplicatesController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenueOwnershipClaimsController;
-use App\Modules\Acquisition\Presentation\Http\Controllers\ReferralEntryController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
@@ -739,6 +739,13 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
+        Route::get('/profile', function () {
+            if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+                return redirect()->route('account');
+            }
+
+            return ThemeResolver::page('account.profile');
+        })->name('account.profile')->defaults('breadcrumb', 'Профиль');
         Route::get('/wallet', AccountWalletController::class)
             ->name('account.wallet')
             ->defaults('breadcrumb', 'Кошелёк');

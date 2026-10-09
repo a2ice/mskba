@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import RegistrationWizard from './RegistrationWizard.vue';
+import LegalDocumentDialog from './LegalDocumentDialog.vue';
 
 const props = defineProps({
     options: { type: Object, required: true },
@@ -9,7 +10,9 @@ const props = defineProps({
 const opened = ref(false);
 const mode = ref('login');
 const panel = ref(null);
+const dialogHeading = ref(null);
 const telegramContainer = ref(null);
+const legalDialog = ref(null);
 const busy = ref(false);
 const message = ref('');
 const transientMessage = ref(false);
@@ -50,7 +53,8 @@ function selectMode(nextMode) {
     transientMessage.value = false;
     message.value = '';
     errors.value = {};
-    nextTick(() => panel.value?.querySelector('input:not([type="hidden"])')?.focus());
+    // Do not auto-focus inputs: it opens autofill suggestions and the mobile keyboard.
+    nextTick(() => dialogHeading.value?.focus({ preventScroll: true }));
 }
 
 async function openDialog(nextMode = 'login') {
@@ -70,11 +74,17 @@ async function openDialog(nextMode = 'login') {
     // showModal enters the browser's top layer, above all CSS z-index stacks.
     panel.value.showModal();
     document.body.style.overflow = 'hidden';
-    panel.value.querySelector('input:not([type="hidden"])')?.focus();
+    // Native showModal traps focus, while the heading is a neutral initial target.
+    dialogHeading.value?.focus({ preventScroll: true });
+}
+
+function openLegalDocument(kind, trigger) {
+    if (mode.value === 'register' && opened.value && !busy.value) legalDialog.value?.openDocument(kind, trigger);
 }
 
 function closeDialog() {
     if (busy.value) return;
+    legalDialog.value?.closeDocument();
     if (panel.value?.open) panel.value.close();
     opened.value = false;
     document.body.style.overflow = previousOverflow;
@@ -239,7 +249,7 @@ onBeforeUnmount(() => {
             aria-labelledby="mskba-auth-title" :aria-busy="busy"
             @cancel.prevent="closeDialog" @click="onDialogBackdropClick">
             <header class="mskba-modal__header mskba-auth-top">
-                <h2 id="mskba-auth-title" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
+                <h2 id="mskba-auth-title" ref="dialogHeading" tabindex="-1" class="eyebrow accent mskba-auth-heading">{{ title }}</h2>
                 <button type="button" class="icon-button mskba-auth-close" aria-label="Закрыть окно"
                     :disabled="busy" @click="closeDialog">
                     <svg aria-hidden="true"><use href="#close" /></svg>
@@ -285,6 +295,7 @@ onBeforeUnmount(() => {
             <RegistrationWizard v-else-if="mode === 'register'"
                 :options="options" :busy="busy" :server-errors="errors" :message="message"
                 @submit="submitRegister" @login="selectMode('login')"
+                @legal-open="openLegalDocument"
                 @step-change="dismissTransientMessage" />
 
             <form v-else class="mskba-auth-form" @submit.prevent="submitRestore">
@@ -307,5 +318,6 @@ onBeforeUnmount(() => {
                 </footer>
             </form>
         </dialog>
+        <LegalDocumentDialog ref="legalDialog" :options="options" />
     </Teleport>
 </template>

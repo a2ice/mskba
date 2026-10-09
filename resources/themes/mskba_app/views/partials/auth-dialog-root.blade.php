@@ -17,14 +17,14 @@
             'telegramBot' => ltrim(trim((string) config('telegram.bot_username')), '@'),
             'telegramLogin' => route('auth.telegram', [], false),
             'account' => route('account', [], false),
-            // The new theme has not migrated legal pages yet. In local preview,
-            // link to the published canonical documents instead of a fallback page.
-            'privacyPolicy' => app()->environment('local')
-                ? 'https://mskba.ru/privacy'
-                : route('privacy.policy', [], false),
-            'consent' => app()->environment('local')
-                ? 'https://mskba.ru/personal-data-consent'
-                : route('personal-data.consent', [], false),
+            // Both legal pages now exist in MSKBA App and share the content of
+            // legacy pages with their modal fragments.
+            'privacyPolicy' => route('privacy.policy', [], false),
+            'consent' => route('personal-data.consent', [], false),
+            'legalFragments' => [
+                'consent' => route('legal.fragment.consent', [], false),
+                'privacy' => route('legal.fragment.privacy', [], false),
+            ],
             'roles' => $roles,
         ];
     @endphp

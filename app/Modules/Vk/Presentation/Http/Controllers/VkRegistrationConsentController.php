@@ -70,7 +70,9 @@ final class VkRegistrationConsentController extends Controller
         $request->session()->put('privacy.distribution.return_to', (string) $pending['redirect_url']);
 
         return redirect()
-            ->route('account.privacy.distribution')
+            ->route(app(ThemeResolver::class)->active() === 'mskba_app'
+                ? 'account'
+                : 'account.privacy.distribution')
             ->with('success', 'Аккаунт создан. Вы вошли через VK ID. Настройте публичность профиля.');
     }
 

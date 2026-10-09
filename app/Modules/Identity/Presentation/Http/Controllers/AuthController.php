@@ -10,6 +10,7 @@ use App\Modules\Identity\Application\UseCases\RegisterUserHandler;
 use App\Modules\Identity\Presentation\Http\Requests\LoginRequest;
 use App\Modules\Identity\Presentation\Http\Requests\RegisterRequest;
 use App\Modules\Identity\Presentation\Http\Support\SafeAuthenticationRedirectResolver;
+use App\Presentation\Theming\ThemeResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -51,8 +52,12 @@ class AuthController extends Controller
         );
 
         if ($pendingSetup) {
+            // Preserve the requested destination, but avoid redirecting to a
+            // separate mandatory page. The account modal handles onboarding.
             $request->session()->put('privacy.distribution.return_to', $redirectTo);
-            $redirectTo = route('account.privacy.distribution');
+            $redirectTo = app(ThemeResolver::class)->active() === 'mskba_app'
+                ? route('account')
+                : route('account.privacy.distribution');
         }
 
         if ($this->shouldReturnJson($request)) {
@@ -112,7 +117,9 @@ class AuthController extends Controller
             fallbackUrl: route('account'),
         );
         $request->session()->put('privacy.distribution.return_to', $finalRedirectTo);
-        $redirectTo = route('account.privacy.distribution');
+        $redirectTo = app(ThemeResolver::class)->active() === 'mskba_app'
+            ? route('account')
+            : route('account.privacy.distribution');
 
         if ($this->shouldReturnJson($request)) {
             return response()->json([

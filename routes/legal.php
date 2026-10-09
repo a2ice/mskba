@@ -10,9 +10,16 @@ Route::get('/personal-data-consent', function () use ($themeResolver) {
     return $themeResolver->page('legal.personal-data-consent');
 })->name('personal-data.consent')->defaults('breadcrumb', 'Согласие на обработку персональных данных');
 
-
 Route::get('/personal-data-distribution-consent', function () use ($themeResolver) {
     return $themeResolver->page('legal.personal-data-distribution-consent', [
         'distributionTypes' => UserPrivacySettingTypeEnum::distributionTypes(),
     ]);
 })->name('personal-data.distribution-consent')->defaults('breadcrumb', 'Согласие на распространение персональных данных');
+
+// Task 016: public, fixed-path fragments reuse the very same full legal
+// documents shown on the canonical pages. Not user-selectable templates.
+Route::get('/legal-fragments/personal-data-consent', fn () => view('legal.fragments.consent'))
+    ->name('legal.fragment.consent');
+
+Route::get('/legal-fragments/privacy', fn () => view('legal.fragments.privacy'))
+    ->name('legal.fragment.privacy');

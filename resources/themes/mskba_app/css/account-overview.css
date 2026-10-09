@@ -1,0 +1,13 @@
+/* Task 021: overview and top-level account section headers. */
+.app-account-overview { width: 100%; min-width: 0; padding-bottom: 64px; }
+.app-account-overview__intro { margin-bottom: 24px; }
+.app-account-overview__intro h1 {
+    font-size: clamp(30px, 4vw, 48px);
+    line-height: 1.1;
+    letter-spacing: -.04em;
+    margin: 0 0 12px;
+}
+.app-account-overview__intro > p { color: var(--muted); line-height: 1.6; }
+.app-account-overview__pending { margin-bottom: 24px; padding: 18px; }
+.app-account-overview__pending strong { display: block; margin-bottom: 6px; }
+.app-account-overview__pending p { color: var(--muted); margin-bottom: 14px; }

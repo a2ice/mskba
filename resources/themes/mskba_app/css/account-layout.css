@@ -2,6 +2,7 @@
 .app-account-section {
   width:100%;
   min-width:0;
+  min-height:calc(100dvh - var(--header-height) - var(--context-bar-height));
   padding:32px 0 64px;
 }
 .app-account-section__inner { min-width:0; }
@@ -11,10 +12,11 @@
   align-items:start;
   gap:24px;
   min-width:0;
+  min-height:calc(100dvh - var(--header-height) - var(--context-bar-height) - 96px);
 }
 .app-account-layout__aside {
   position:sticky;
-  top:calc(var(--header-height) + 16px);
+  top:calc(var(--header-height) + var(--context-bar-height) + 16px);
   align-self:start;
   min-width:0;
 }
@@ -23,21 +25,11 @@
   container-type:inline-size;
 }
 .app-account-nav { padding:16px; }
-.app-account-nav__heading {
-  padding:8px 10px 16px;
-  margin-bottom:6px;
-  border-bottom:1px solid var(--line);
-}
-.app-account-nav__heading h2 {
-  font-size:20px;
-  line-height:26px;
-  margin-top:8px;
-}
 .app-account-nav__links {
   display:flex;
   flex-direction:column;
   gap:4px;
-  max-height:calc(100dvh - var(--header-height) - 150px);
+  max-height:calc(100dvh - var(--header-height) - var(--context-bar-height) - 56px);
   min-height:0;
   overflow-y:auto;
   overscroll-behavior:contain;
@@ -87,6 +79,7 @@
   .app-account-layout {
     grid-template-columns:minmax(0,1fr);
     gap:16px;
+    min-height:0;
   }
   .app-account-layout__aside { position:static; }
   .app-account-nav--desktop { display:none; }

@@ -6,6 +6,7 @@ use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandl
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
 use App\Presentation\Navigation\MenuHandler;
+use App\Presentation\Theming\ThemeResolver;
 
 final class AccountMenu implements MenuHandler
 {
@@ -22,14 +23,29 @@ final class AccountMenu implements MenuHandler
     {
         $user = request()->user();
 
-        $items = [
-            [
-                'label' => 'Профиль',
-                'url' => $this->routeUrl('account'),
-                'active' => $this->isActiveRoute('account'),
-                'visible' => true,
-            ],
-        ];
+        $items = app(ThemeResolver::class)->active() === 'mskba_app'
+            ? [
+                [
+                    'label' => 'Обзор',
+                    'url' => $this->routeUrl('account'),
+                    'active' => $this->isActiveRoute('account'),
+                    'visible' => true,
+                ],
+                [
+                    'label' => 'Профиль',
+                    'url' => $this->routeUrl('account.profile'),
+                    'active' => $this->isActiveRoute('account.profile'),
+                    'visible' => true,
+                ],
+            ]
+            : [
+                [
+                    'label' => 'Профиль',
+                    'url' => $this->routeUrl('account'),
+                    'active' => $this->isActiveRoute('account'),
+                    'visible' => true,
+                ],
+            ];
 
         if ($user) {
             $newNotificationsCount = app(CountNewUserNotificationsHandler::class)->handle($user);
