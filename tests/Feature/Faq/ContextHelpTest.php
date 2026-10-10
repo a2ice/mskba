@@ -59,6 +59,19 @@ final class ContextHelpTest extends TestCase
         $this->faq('venues-public', ContentStatusEnum::PUBLISHED, 'faq.creation.venues');
         $this->faq('venues-private', ContentStatusEnum::DRAFT, 'faq.creation.events');
 
+        // The root has just FAQ in its breadcrumb data. The UI hides this
+        // redundant trail and the section selector, showing section cards.
+        $this->getJson(route('faq.help-content'))
+            ->assertOk()
+            ->assertJsonPath('section', null)
+            ->assertJsonCount(1, 'breadcrumbs')
+            ->assertJsonPath('breadcrumbs.0.label', 'FAQ');
+
+        $this->getJson(route('faq.help-content', ['context' => 'venues']))
+            ->assertOk()
+            ->assertJsonCount(2, 'breadcrumbs')
+            ->assertJsonPath('breadcrumbs.1.label', 'Площадки');
+
         $this->getJson(route('faq.help-content', ['context' => 'venues']))
             ->assertOk()->assertJsonPath('section', 'venues')
             ->assertJsonPath('sections.1.key', 'venues')
@@ -67,6 +80,8 @@ final class ContextHelpTest extends TestCase
 
         $this->getJson(route('faq.help-content', ['context' => 'venues', 'section' => 'venues', 'article' => 'venues-public']))
             ->assertOk()->assertJsonPath('article.title', 'Помощь по площадкам')
+            ->assertJsonCount(3, 'breadcrumbs')
+            ->assertJsonPath('breadcrumbs.2.label', 'Помощь по площадкам')
             ->assertJsonPath('article.html', '<p>Открытый материал</p>');
 
         $this->getJson(route('faq.help-content', ['context' => 'venues', 'section' => 'events', 'article' => 'venues-public']))

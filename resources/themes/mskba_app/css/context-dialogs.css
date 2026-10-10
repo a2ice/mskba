@@ -23,6 +23,7 @@
 .app-context-help__option:is(:hover, [aria-selected="true"]) { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 .app-context-help__options p { padding: 9px 12px; margin: 0; font-size: 13px; color: var(--muted); }
 .app-context-help__lookup [hidden] { display: none !important; }
+.app-context-help__lookup[hidden], .app-context-help__breadcrumbs[hidden] { display: none !important; }
 .app-context-help__lookup input, .app-context-help__ask :is(select,textarea) { width: 100%; min-height: 44px; padding: 11px 12px; border: 1px solid var(--control-line); border-radius: 10px; background: var(--field); color: var(--text); font: inherit; font-size: 15px; }
 .app-context-help__lookup input { padding-right: 45px; }
 .app-context-help__lookup.has-clear input { padding-right: 79px; }
@@ -39,7 +40,7 @@
     font-weight: 500; line-height: 18px; cursor: pointer;
 }
 .app-context-help__breadcrumb:hover { color: var(--accent); }
-.app-context-help__breadcrumb[aria-current] { color: var(--text); }
+.app-context-help__breadcrumb[aria-current] { color: var(--text); cursor: default; }
 .app-context-help__crumb-divider { display: inline-block; flex: 0 0 auto; color: var(--faint); line-height: 18px; }
 .app-context-help__articles { display: grid; align-content: start; gap: 10px; min-height: 88px; padding-bottom: 20px; }
 .app-context-help__articles h3 { font-size: 19px; line-height: 25px; }

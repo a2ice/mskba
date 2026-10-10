@@ -115,16 +115,27 @@ if (actions && help) {
     function render() {
         if (!faq) return;
         const groups = faq.sections || [];
+        const isFaqRoot = !faqSection;
+        const sectionSelector = lookup.closest('[data-help-combobox]');
+        // On the root page the section cards are already the navigation.
+        // Neither the duplicate selector nor a one-item breadcrumb is useful.
+        sectionSelector.hidden = isFaqRoot;
+        breadcrumbs.hidden = isFaqRoot;
         lookup.value = groups.find(s => s.key === faqSection)?.label || '';
-        clear.hidden = !faqSection;
-        lookup.closest('[data-help-combobox]').classList.toggle('has-clear', Boolean(faqSection));
+        clear.hidden = isFaqRoot;
+        sectionSelector.classList.toggle('has-clear', !isFaqRoot);
         closeOptions();
         breadcrumbs.replaceChildren();
-        for (const [index, crumb] of (faq.breadcrumbs || []).entries()) {
+        const trail = faq.breadcrumbs || [];
+        for (const [index, crumb] of trail.entries()) {
             if (index) breadcrumbs.append(node('span', '/', 'app-context-help__crumb-divider'));
-            const crumbNode = linkButton(crumb.label, () => load(crumb.section, crumb.article), 'app-context-help__breadcrumb');
-            if (crumb.article === faqArticle && crumb.section === faqSection) crumbNode.setAttribute('aria-current', 'page');
-            breadcrumbs.append(crumbNode);
+            if (index === trail.length - 1) {
+                const current = node('span', crumb.label, 'app-context-help__breadcrumb app-context-help__breadcrumb--current');
+                current.setAttribute('aria-current', 'page');
+                breadcrumbs.append(current);
+            } else {
+                breadcrumbs.append(linkButton(crumb.label, () => load(crumb.section, crumb.article), 'app-context-help__breadcrumb'));
+            }
         }
         articleList.replaceChildren();
         if (faq.article) {

@@ -34,3 +34,11 @@ Visible field labels have been removed in favor of placeholders with accessible 
 ## UX polish 2026-10-10
 
 Breadcrumb buttons use their own inline CSS class and a separate slash element, resulting in a single-line `FAQ / Площадки` trail. The combobox filters sections by starts-with (case-insensitive); the arrow preserves typed query when opening. With no selected section the arrow sits at the right edge; the clear button appears to its right only when a section is selected. Top-level FAQ category cards align their title and article count in the same horizontal row.
+
+## FAQ breadcrumbs: current segment (2026-10-10)
+
+The final breadcrumb segment (whether root `FAQ`, section `Площадки`, or article) renders as a non-interactive `<span aria-current="page">`. Earlier breadcrumb segments remain navigable buttons. The existing horizontal styling is shared so baseline/alignment does not change.
+
+## Root FAQ navigation cleanup (2026-10-10)
+
+At the top-level FAQ index (`section = null`) both the section combobox and breadcrumbs are hidden: category cards provide the only navigation. Opening a section or article restores both controls, with the last breadcrumb rendered as non-clickable text. Returning to FAQ using its breadcrumb hides both controls again; the `Задать вопрос` panel remains available at every level.
