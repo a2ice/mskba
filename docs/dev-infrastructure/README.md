@@ -85,3 +85,10 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 ## Dev FAQ support mail (2026-10-10)
 
 FAQ questions are delivered directly using Laravel `SupportQuestionMail`, without saving them in the application database. The historical `support_questions` table is removed by a safety-checked follow-up migration only if empty. The staging server currently uses `MAIL_MAILER=log` and has no SMTP account configured, so the form responds HTTP 503 instead of claiming mail was sent. To activate real delivery on Dev, provision independently approved SMTP credentials in the VDS `.env` (`MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, and optional `MAIL_SCHEME`), then clear config cache and verify delivery using an approved recipient. Do not reuse production credentials without explicit approval. Recipient configured as `SUPPORT_EMAIL`, default `support@mskba.ru`. No production changes.
+
+## Staging maintenance fallback (2026-10-10)
+
+- Source: `public/maintenance.html` is self-contained HTML (inline styles and SVG) with support, VK and Telegram links copied from the public defaults in `config/support.php` and `config/services.php`. Update this static snapshot whenever contact configuration changes.
+- Dev Nginx integration: `ops/nginx/mskba-dev-maintenance.inc` is a server-level snippet for the **Dev HTTPS vhost only**, not the production host. It returns the static document with HTTP 503 for upstream 502/503/504 and includes cache and indexing safeguards. A code deploy alone does not install it in the host Nginx configuration.
+- Activation: back up the current Dev vhost; verify the active TLS server and readable static file, add this snippet at Dev `server` scope, validate the resulting Nginx configuration before reload, and check normal Dev and Prod URLs. To simulate an upstream failure, use a temporary isolated test listener rather than stopping any live containers. Restore the saved Dev vhost to roll back.
+- This covers upstream failures while host Nginx is running, not outages of DNS/TLS/the entire VDS. The fallback does not resolve the root cause of any 502.
