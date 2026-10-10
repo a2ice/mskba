@@ -92,3 +92,7 @@ FAQ questions are delivered directly using Laravel `SupportQuestionMail`, withou
 - Dev Nginx integration: `ops/nginx/mskba-dev-maintenance.inc` is a server-level snippet for the **Dev HTTPS vhost only**, not the production host. It returns the static document with HTTP 503 for upstream 502/503/504 and includes cache and indexing safeguards. A code deploy alone does not install it in the host Nginx configuration.
 - Activation: back up the current Dev vhost; verify the active TLS server and readable static file, add this snippet at Dev `server` scope, validate the resulting Nginx configuration before reload, and check normal Dev and Prod URLs. To simulate an upstream failure, use a temporary isolated test listener rather than stopping any live containers. Restore the saved Dev vhost to roll back.
 - This covers upstream failures while host Nginx is running, not outages of DNS/TLS/the entire VDS. The fallback does not resolve the root cause of any 502.
+
+### Activation helper
+
+Use `ops/nginx/install-mskba-dev-maintenance.sh` on VDS after review and explicit authorization. It checks the target vhost, makes a backup and applies the Dev-only snippet with configuration validation. In case of a validation failure, it restores the previous configuration. It is idempotent. Do not execute it automatically during CI/deploy.
