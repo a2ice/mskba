@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
+use App\Presentation\Navigation\AdaptiveMenuGroup;
 use App\Presentation\Navigation\MenuHandler;
 use App\Presentation\Theming\ThemeResolver;
 
@@ -138,15 +139,9 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
         }
-        if ($children !== []) {
-            $items[] = [
-                'label' => 'Мой MSKBA',
-                'url' => null,
-                'active' => collect($children)->contains(fn (array $child): bool => $child['active']),
-                'visible' => true,
-                'children' => $children,
-            ];
-        }
+        // A single destination is a plain link; group only when at least two
+        // distinct, visible destinations survive the role/feature checks.
+        array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
 
         $items[] = $this->link('Уведомления', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user));
         $items[] = [

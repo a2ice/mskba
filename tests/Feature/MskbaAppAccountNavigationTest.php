@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Presentation\Navigation\AdaptiveMenuGroup;
 use App\Presentation\Navigation\MenuResolver;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -118,6 +119,33 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $group = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мой MSKBA');
 
         return $group === null ? [] : array_column($group['children'], 'label');
+    }
+
+    public function test_a_single_conditional_destination_is_flat_in_desktop_and_expands_mobile_sidebar_when_active(): void
+    {
+        // Today's roles normally expose >=2 destinations. Render a synthetic
+        // single visible destination to cover the future real one-link case.
+        $soleLink = AdaptiveMenuGroup::wrap('Мой MSKBA', [[
+            'label' => 'Мои игры',
+            'url' => route('account.my-games'),
+            'active' => true,
+            'visible' => true,
+        ]]);
+        $this->app->instance(MenuResolver::class, new class($soleLink) implements MenuResolver {
+            public function __construct(private readonly array $links) {}
+            public function resolve(string $page): array { return $this->links; }
+        });
+
+        $html = view('theme::partials.account.sidebar')->render();
+        self::assertStringNotContainsString('Мой MSKBA', $html);
+        self::assertStringNotContainsString('app-account-nav__group', $html);
+        self::assertSame(2, substr_count($html, 'href="'.route('account.my-games').'"'));
+
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+        self::assertSame(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
+        self::assertSame(2, $xpath->query('//a[@aria-current="page"]')->length);
     }
 
     public function test_account_without_roles_has_no_group_and_wallet_precedes_settings(): void

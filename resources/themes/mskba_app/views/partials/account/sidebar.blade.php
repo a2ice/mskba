@@ -1,6 +1,9 @@
 @php
     $accountItems = app(\App\Presentation\Navigation\MenuResolver::class)->resolve('account');
-    $hasActiveAccountGroup = collect($accountItems)->contains(fn (array $item): bool => ! empty($item['children']) && ($item['active'] ?? false));
+    $hasActiveAccountGroup = collect($accountItems)->contains(
+        fn (array $item): bool => ($item['active'] ?? false)
+            && (! empty($item['children']) || ($item['openMobileOnActive'] ?? false))
+    );
 @endphp
 
 <div class="panel app-account-nav app-account-nav--desktop">
