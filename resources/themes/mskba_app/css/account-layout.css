@@ -104,6 +104,7 @@
 }
 .app-account-nav__label { min-width:0; overflow-wrap:anywhere; }
 .app-account-nav__badge { color:var(--accent); background:#ff790012; }
+.app-account-nav__badge[hidden] { display:none; }
 .app-account-nav__divider {
   height:1px;
   background:var(--line);

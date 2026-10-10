@@ -1,4 +1,11 @@
 {
+  "_realtime-DTw1gOV5.js": {
+    "file": "assets/realtime-DTw1gOV5.js",
+    "name": "realtime",
+    "imports": [
+      "_rolldown-runtime-hePW80VL.js"
+    ]
+  },
   "_rolldown-runtime-hePW80VL.js": {
     "file": "assets/rolldown-runtime-hePW80VL.js",
     "name": "rolldown-runtime"
@@ -61,7 +68,7 @@
     "src": "resources/themes/mskba_app/assets/images/logo-mark-100.png"
   },
   "resources/themes/mskba_app/css/app.css": {
-    "file": "assets/app-D4qV9udN.css",
+    "file": "assets/app-DsJI9dxw.css",
     "name": "app",
     "names": [
       "app.css"
@@ -74,11 +81,12 @@
     ]
   },
   "resources/themes/mskba_app/js/app.js": {
-    "file": "assets/app-B_DJQ39E.js",
+    "file": "assets/app-FsJkKpfp.js",
     "name": "app",
     "src": "resources/themes/mskba_app/js/app.js",
     "isEntry": true,
     "imports": [
+      "_realtime-DTw1gOV5.js",
       "_runtime-dom.esm-bundler-CzVQHx5l.js"
     ]
   },
@@ -114,12 +122,13 @@
     "src": "resources/themes/mskba_dark/images/logo-image-mobile.png"
   },
   "resources/themes/mskba_dark/js/app.js": {
-    "file": "assets/app-umda1Jf2.js",
+    "file": "assets/app-CxJOESgt.js",
     "name": "app",
     "src": "resources/themes/mskba_dark/js/app.js",
     "isEntry": true,
     "imports": [
-      "_rolldown-runtime-hePW80VL.js"
+      "_rolldown-runtime-hePW80VL.js",
+      "_realtime-DTw1gOV5.js"
     ],
     "dynamicImports": [
       "node_modules/three/build/three.module.js",
@@ -136,7 +145,7 @@
     ]
   },
   "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js": {
-    "file": "assets/home-event-discovery-v2-D1B5DDt_.js",
+    "file": "assets/home-event-discovery-v2-ZJpbKX_c.js",
     "name": "home-event-discovery-v2",
     "src": "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
     "isDynamicEntry": true,

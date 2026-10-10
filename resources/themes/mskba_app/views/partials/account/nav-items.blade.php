@@ -17,10 +17,11 @@
                        href="{{ $child['url'] }}"
                        @if ($child['active']) aria-current="page" @endif>
                         <span class="app-account-nav__label">{{ $child['label'] }}</span>
-                        @if (($child['badge'] ?? 0) > 0)
+                        @if (($child['badge'] ?? 0) > 0 || ($child['notificationCounter'] ?? false))
                             <span class="badge app-account-nav__badge"
-                                  @if (! empty($child['badgeAttribute'])) {{ $child['badgeAttribute'] }} @else data-notification-count @endif>
-                                {{ $child['badge'] > 99 ? '99+' : $child['badge'] }}
+                                  @if (! empty($child['badgeAttribute'])) {{ $child['badgeAttribute'] }} @else data-notification-count @endif
+                                  @if (($child['badge'] ?? 0) < 1) hidden @endif>
+                                {{ ($child['badge'] ?? 0) > 99 ? '99+' : ($child['badge'] ?? 0) }}
                             </span>
                         @endif
                     </a>
@@ -32,10 +33,11 @@
            href="{{ $item['url'] }}"
            @if ($item['active']) aria-current="page" @endif>
             <span class="app-account-nav__label">{{ $item['label'] }}</span>
-            @if (($item['badge'] ?? 0) > 0)
+            @if (($item['badge'] ?? 0) > 0 || ($item['notificationCounter'] ?? false))
                 <span class="badge app-account-nav__badge"
-                      @if (! empty($item['badgeAttribute'])) {{ $item['badgeAttribute'] }} @else data-notification-count @endif>
-                    {{ $item['badge'] > 99 ? '99+' : $item['badge'] }}
+                      @if (! empty($item['badgeAttribute'])) {{ $item['badgeAttribute'] }} @else data-notification-count @endif
+                      @if (($item['badge'] ?? 0) < 1) hidden @endif>
+                    {{ ($item['badge'] ?? 0) > 99 ? '99+' : ($item['badge'] ?? 0) }}
                 </span>
             @endif
         </a>

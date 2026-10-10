@@ -19,6 +19,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationChannel;
+use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCountUpdatedBroadcast;
 use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCreatedBroadcast;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -192,6 +193,44 @@ class UserNotificationTest extends TestCase
             ->assertJsonPath('unread_count', 0);
     }
 
+    public function test_marking_a_notification_read_broadcasts_updated_count_for_other_tabs(): void
+    {
+        Event::fake([UserNotificationCountUpdatedBroadcast::class]);
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $notification = UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Realtime count',
+            'body' => 'Проверка.',
+        ]);
+
+        $this->actingAs($user)->patchJson(route('account.notifications.read', $notification))->assertOk();
+        Event::assertDispatched(UserNotificationCountUpdatedBroadcast::class, function ($event) use ($user): bool {
+            return $event->userId === $user->id
+                && $event->unreadCount === 0
+                && $event->broadcastAs() === 'notification.count-updated'
+                && $event->broadcastWith()['unread_count'] === 0;
+        });
+    }
+
+    public function test_marking_all_notifications_read_broadcasts_latest_count(): void
+    {
+        Event::fake([UserNotificationCountUpdatedBroadcast::class]);
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        UserNotification::query()->create([
+            'user_id' => $user->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Unread',
+            'body' => 'Проверка.',
+        ]);
+        $this->actingAs($user)->patchJson(route('account.notifications.read-all'))->assertOk()
+            ->assertJsonPath('unread_count', 0);
+        Event::assertDispatched(UserNotificationCountUpdatedBroadcast::class,
+            fn ($event): bool => $event->userId === $user->id && $event->unreadCount === 0);
+    }
+
     public function test_user_can_synchronize_latest_new_notifications_for_a_new_tab(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
@@ -285,6 +324,9 @@ class UserNotificationTest extends TestCase
 
         $this->assertTrue($channel->join($user, $user->id));
         $this->assertFalse($channel->join($user, $other->id));
+        $alias = User::factory()->create(['canonical_user_id' => $user->id]);
+        $this->assertTrue($channel->join($alias, $user->id));
+        $this->assertFalse($channel->join($alias, $other->id));
     }
 
     public function test_user_can_view_notifications_page(): void

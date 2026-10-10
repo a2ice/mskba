@@ -170,7 +170,10 @@ final class AccountMenu implements MenuHandler
         // The common functional destinations stay grouped and deduplicated.
         array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
 
-        $items[] = $this->link('Уведомления', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user));
+        $items[] = [
+            ...$this->link('Уведомления', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user)),
+            'notificationCounter' => true,
+        ];
         $items[] = [
             'label' => 'Контакты',
             'url' => $this->routeUrl('account.contacts'),

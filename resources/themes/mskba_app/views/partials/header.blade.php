@@ -3,14 +3,17 @@
     $headerUser = auth()->user();
     $headerNeedsPrivacySetup = $headerUser !== null
         && app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup($headerUser);
-    $displayName = $headerUser
-        ? app(\App\Presentation\Identity\UserAddressing::class)->greetingName($headerUser)
-        : '';
-    $headerRoleBadge = $headerUser?->system_role?->avatarBadge();
+    $displayName = $headerUser?->username ?: '';
+    $headerUnreadCount = $headerUser
+        ? app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)->handle($headerUser)
+        : 0;
+    $headerRoleColor = $headerUser?->system_role?->avatarBorderColor();
 @endphp
 
 <a class="skip" href="#mskba-app">К содержимому</a>
-<header class="site-header app-site-header" data-app-header>
+<header class="site-header app-site-header" data-app-header
+    @auth data-notification-user-id="{{ $headerUser->canonical()->id }}"
+          data-notification-sync-url="{{ route('account.notifications.new') }}" @endauth>
     <div class="container header-inner app-header-inner">
         <a class="brand app-header-brand" href="{{ route('welcome') }}" aria-label="MSKBA — главная" title="{{ config('app.name') }}">
             <span class="app-header-mark" aria-hidden="true"></span>
@@ -54,10 +57,10 @@
                 </a>
                 <a @class(['app-header-account', 'app-header-account--setup-pending' => $headerNeedsPrivacySetup])
                    href="{{ route('account') }}"
-                   aria-label="Личный кабинет{{ $headerRoleBadge ? ', роль: '.$headerUser->system_role->label() : '' }}"
+                   aria-label="Личный кабинет{{ $headerRoleColor ? ', роль: '.$headerUser->system_role->label() : '' }}"
                    @if ($headerNeedsPrivacySetup) title="Остался последний шаг регистрации" @endif>
                     <span class="app-header-account-label">{{ $displayName ?: 'Личный кабинет' }}</span>
-                    @include('theme::partials.user-avatar', ['user' => $headerUser, 'class' => 'app-header-avatar'])
+                    @include('theme::partials.user-avatar', ['user' => $headerUser, 'class' => 'app-header-avatar', 'showNotifications' => true, 'unreadCount' => $headerUnreadCount])
                 </a>
             @else
                 <a class="button secondary app-header-login" href="{{ route('login') }}" data-auth-trigger>Войти</a>

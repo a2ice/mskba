@@ -82,29 +82,32 @@
     border-radius: inherit;
 }
 .app-user-avatar__image { display: block; width: 100%; height: 100%; object-fit: cover; }
-.app-user-avatar__role {
+/* Staff status belongs to the avatar ring, not the notification counter. */
+.app-user-avatar[data-avatar-role] {
+    border: 2px solid var(--app-avatar-role-color);
+}
+/* Orange unread marker is 1.25x the former 19px staff marker. */
+.app-user-avatar__unread {
     position: absolute;
-    right: -4px;
-    bottom: -4px;
+    right: -5px;
+    bottom: -5px;
     z-index: 1;
     display: grid;
     place-items: center;
-    width: 19px;
-    height: 19px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 3px;
     border: 2px solid var(--bg);
-    border-radius: 50%;
-    background: var(--app-avatar-role-color);
-    color: #fff;
-    font-size: 8.25px; /* 75% of the original 11px letter */
-    font-weight: 400;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #15110a;
+    font-size: 10px;
+    font-weight: 700;
     line-height: 1;
-    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
     pointer-events: none;
 }
-.app-user-avatar__role-letter {
-    display: block;
-    transform: translateY(-0.5px); /* Optical center of the uppercase glyph */
-}
+.app-user-avatar__unread[hidden] { display:none; }
 .app-header-avatar { flex-shrink: 0; }
 .app-header-notifications svg { width: 20px; height: 20px; }
 .app-header-login { margin: 0; min-height: 42px; text-decoration: none; }

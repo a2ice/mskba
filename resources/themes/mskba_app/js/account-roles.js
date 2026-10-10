@@ -40,6 +40,7 @@ if (editor) {
                 currentAside.innerHTML = updatedAside.innerHTML;
                 const mobile = currentAside.querySelector('.app-account-nav--mobile');
                 if (mobile && wasOpen) mobile.open = true;
+                document.dispatchEvent(new Event('mskba:account-sidebar-updated'));
             }
         } catch (error) {
             if (error.name !== 'AbortError') {

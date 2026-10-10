@@ -7,19 +7,19 @@ use PHPUnit\Framework\TestCase;
 
 final class UserSystemRoleAvatarBadgeTest extends TestCase
 {
-    public function test_only_human_staff_roles_have_distinct_avatar_markers(): void
+    public function test_only_human_staff_roles_have_distinct_avatar_border_colors(): void
     {
         $expected = [
-            'superadmin' => ['initial' => 's', 'color' => '#7c3aed'],
-            'admin' => ['initial' => 'a', 'color' => '#c2410c'],
-            'moderator' => ['initial' => 'm', 'color' => '#1d4ed8'],
-            'editor' => ['initial' => 'e', 'color' => '#0f766e'],
+            'superadmin' => '#7c3aed',
+            'admin' => '#c2410c',
+            'moderator' => '#1d4ed8',
+            'editor' => '#0f766e',
         ];
 
         foreach (UserSystemRoleEnum::cases() as $role) {
-            $this->assertSame($expected[$role->value] ?? null, $role->avatarBadge());
+            $this->assertSame($expected[$role->value] ?? null, $role->avatarBorderColor());
         }
 
-        $this->assertCount(4, array_unique(array_column($expected, 'color')));
+        $this->assertCount(4, array_unique(array_values($expected)));
     }
 }

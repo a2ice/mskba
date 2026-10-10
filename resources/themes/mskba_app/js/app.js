@@ -1,4 +1,5 @@
 import './header.js';
+import './notification-counts.js';
 import './context-bar.js';
 import './context-dialogs.js';
 import './privacy-distribution.js';
