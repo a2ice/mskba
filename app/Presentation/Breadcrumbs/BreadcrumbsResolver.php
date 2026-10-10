@@ -2,6 +2,7 @@
 
 namespace App\Presentation\Breadcrumbs;
 
+use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -18,6 +19,17 @@ final class BreadcrumbsResolver
         $routes = app('router')->getRoutes();
 
         $items = $breadcrumbs;
+
+        if ($items === null && $routeName === 'account.participation-role') {
+            // Participation settings belong to "Роли в проекте" even though
+            // the URL is /account/participation/{role}, not /account/roles/… .
+            $role = UserParticipationRoleEnum::tryFrom((string) request()->route('role'));
+            $items = [
+                ['label' => $routes->getByName('account')?->defaults['breadcrumb'] ?? 'Аккаунт', 'url' => route('account')],
+                ['label' => $routes->getByName('account.roles')?->defaults['breadcrumb'] ?? 'Роли в проекте', 'url' => route('account.roles')],
+                ['label' => $role?->label() ?? $title, 'url' => null],
+            ];
+        }
 
         if ($items === null) {
             $items = [];

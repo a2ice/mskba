@@ -240,6 +240,36 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertSame(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
     }
 
+    public function test_role_parameters_have_roles_page_as_breadcrumb_parent(): void
+    {
+        $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
+        $this->giveRole($user, UserParticipationRoleEnum::PLAYER);
+        $this->giveRole($user, UserParticipationRoleEnum::COACH);
+
+        foreach (['player' => 'Игрок', 'coach' => 'Тренер'] as $role => $label) {
+            $html = $this->actingAs($user)
+                ->get(route('account.participation-role', ['role' => $role]))
+                ->assertOk()
+                ->assertSee('Параметры: '.$label)
+                ->getContent();
+
+            $dom = new \DOMDocument;
+            @$dom->loadHTML($html);
+            $xpath = new \DOMXPath($dom);
+            $crumbs = $xpath->query('//nav[@aria-label="Навигационная цепочка"]/ol/li');
+            $this->assertSame(4, $crumbs->length);
+            foreach (['Главная', 'Аккаунт', 'Роли в проекте', $label] as $index => $expected) {
+                $this->assertSame($expected, trim($crumbs->item($index)->textContent));
+            }
+            $this->assertSame(route('welcome'), $xpath->query('./a', $crumbs->item(0))->item(0)->getAttribute('href'));
+            $this->assertSame(route('account'), $xpath->query('./a', $crumbs->item(1))->item(0)->getAttribute('href'));
+            $this->assertSame(route('account.roles'), $xpath->query('./a', $crumbs->item(2))->item(0)->getAttribute('href'));
+            $this->assertSame(0, $xpath->query('./a', $crumbs->item(3))->length);
+            $this->assertSame(1, $xpath->query('./span[@aria-current="page"]', $crumbs->item(3))->length);
+            $this->assertSame(1, $xpath->query('//button[@data-app-context-back][@data-fallback="'.route('account.roles').'"]')->length);
+        }
+    }
+
     public function test_venue_representative_sees_sections_before_owning_a_venue(): void
     {
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
