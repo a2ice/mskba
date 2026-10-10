@@ -7,7 +7,8 @@ const header = document.querySelector('[data-app-header][data-notification-user-
 
 if (header) {
     const countBadge = header.querySelector('.app-user-avatar__unread[data-notification-count]');
-    let latestCount = Math.max(0, Number(countBadge?.textContent || 0) || 0);
+    // The visual value can be ∞; initialize from the uncapped server count.
+    let latestCount = Math.max(0, Number(countBadge?.dataset.unreadCount || 0) || 0);
     let revision = 0;
 
     const render = (value) => {
@@ -16,7 +17,10 @@ if (header) {
         latestCount = Math.floor(count);
         revision += 1;
         document.querySelectorAll('[data-notification-count]').forEach((badge) => {
-            badge.textContent = latestCount > 99 ? '99+' : String(latestCount);
+            badge.textContent = badge === countBadge
+                ? (latestCount > 9 ? '∞' : String(latestCount))
+                : (latestCount > 99 ? '99+' : String(latestCount));
+            if (badge === countBadge) badge.dataset.unreadCount = String(latestCount);
             badge.hidden = latestCount === 0;
             badge.setAttribute('aria-label', `Непрочитанных уведомлений: ${latestCount}`);
         });

@@ -73,6 +73,8 @@ final class MskbaAppHeaderAvatarTest extends TestCase
                 ->assertSee('class="app-header-account-label">'.$user->username.'</span>', false)
                 ->assertSee('aria-label="Личный кабинет, роль: '.$role->label().'"', false)
                 ->assertDontSee('app-user-avatar__role-letter')
+                ->assertSee('class="app-user-avatar__placeholder"', false)
+                ->assertSee('<use href="#user"/>', false)
                 ->assertSee('data-notification-count', false)
                 ->assertSee('aria-label="Непрочитанных уведомлений: 0"', false);
             $this->assertSame(1, substr_count($response->getContent(), 'data-avatar-role='));
@@ -126,6 +128,32 @@ final class MskbaAppHeaderAvatarTest extends TestCase
         $this->assertSame(0, $xpath->query('//*[@data-notification-count][@hidden]')->length);
         $this->assertSame(3, $xpath->query('//*[@data-notification-count][normalize-space(.)="2"]')->length);
         $this->assertStringContainsString('class="app-header-account-label">my_login</span>', $html);
+    }
+
+    public function test_avatar_uses_infinity_only_after_nine_unread_notifications(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'overflow_login',
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+        $this->createNotifications($user, 9);
+        $response = $this->actingAs($user)->get(route('account.profile'))->assertOk();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($dom);
+        $this->assertSame(1, $xpath->query('//*[contains(@class, "app-user-avatar__unread")][@data-unread-count="9" and normalize-space(.)="9"]')->length);
+        $this->assertSame(2, $xpath->query('//*[@data-notification-count][not(contains(@class, "app-user-avatar__unread"))][normalize-space(.)="9"]')->length);
+
+        $this->createNotifications($user, 1);
+        app(UserNotificationCounterStore::class)->forget($user->id);
+        $response = $this->get(route('account.profile'))->assertOk();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($dom);
+        $this->assertSame(1, $xpath->query('//*[contains(@class, "app-user-avatar__unread")][@data-unread-count="10" and normalize-space(.)="∞"]')->length);
+        $this->assertSame(2, $xpath->query('//*[@data-notification-count][not(contains(@class, "app-user-avatar__unread"))][normalize-space(.)="10"]')->length);
+        $this->assertSame(1, $xpath->query('//*[contains(@class, "app-user-avatar__unread")][@aria-label="Непрочитанных уведомлений: 10"]')->length);
     }
 
     public function test_guest_does_not_render_account_notification_tracking(): void
