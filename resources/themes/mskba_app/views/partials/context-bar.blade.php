@@ -25,32 +25,40 @@
                     @endforeach
                 </ol>
             </nav>
-            <details class="app-context-actions" data-app-context-actions>
-                <summary>
-                    @if ($showAccountConfirmation)
-                        <span class="app-context-actions__attention" aria-hidden="true"></span>
-                    @endif
-                    Действия
-                    <svg aria-hidden="true"><use href="#chevron-down"/></svg>
-                </summary>
-                <div class="app-context-actions__menu" aria-label="Контекстные действия">
-                    @if ($showAccountConfirmation)
-                        <a class="app-context-actions__verify" href="{{ route('account.confirmation') }}"
-                           aria-label="Подтвердить аккаунт">
+            <div class="app-context-bar__controls">
+                <button type="button" class="app-context-back" data-app-context-back
+                        data-fallback="{{ $parentUrl }}" aria-label="Назад" title="Назад">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+                         stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m14 6-6 6 6 6" />
+                    </svg>
+                </button>
+                <details class="app-context-actions" data-app-context-actions>
+                    <summary>
+                        @if ($showAccountConfirmation)
                             <span class="app-context-actions__attention" aria-hidden="true"></span>
-                            Подтвердить акк...
-                        </a>
-                        <div class="app-context-actions__separator" role="separator"></div>
-                    @endif
-                    @if ($contextItems !== [])
-                        @include('theme::partials.context-actions-items', ['items' => $contextItems])
-                        <div class="app-context-actions__separator" role="separator"></div>
-                    @endif
-                    <button type="button" data-app-context-back data-fallback="{{ $parentUrl }}">Назад</button>
-                    <button type="button" data-app-context-share>Поделиться</button>
-                    <button type="button" data-context-help data-help-context="{{ app(\App\Presentation\Navigation\FaqContextResolver::class)->context() }}">Помощь</button>
-                </div>
-            </details>
+                        @endif
+                        Действия
+                        <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                    </summary>
+                    <div class="app-context-actions__menu" aria-label="Контекстные действия">
+                        @if ($showAccountConfirmation)
+                            <a class="app-context-actions__verify" href="{{ route('account.confirmation') }}"
+                               aria-label="Подтвердить аккаунт">
+                                <span class="app-context-actions__attention" aria-hidden="true"></span>
+                                Подтвердить акк...
+                            </a>
+                            <div class="app-context-actions__separator" role="separator"></div>
+                        @endif
+                        @if ($contextItems !== [])
+                            @include('theme::partials.context-actions-items', ['items' => $contextItems])
+                            <div class="app-context-actions__separator" role="separator"></div>
+                        @endif
+                        <button type="button" data-app-context-share>Поделиться</button>
+                        <button type="button" data-context-help data-help-context="{{ app(\App\Presentation\Navigation\FaqContextResolver::class)->context() }}">Помощь</button>
+                    </div>
+                </details>
+            </div>
             <span class="app-context-bar__status" role="status" aria-live="polite" data-app-context-status></span>
         </div>
     </div>

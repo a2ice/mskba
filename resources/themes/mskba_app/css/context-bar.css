@@ -56,6 +56,15 @@ html:has(.app-context-bar) {
 .app-context-trail a { color: var(--muted); text-decoration: none; }
 .app-context-trail a:hover { color: var(--accent-hover); }
 .app-context-trail [aria-current="page"] { color: var(--text); }
+.app-context-bar__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.app-context-back {
+    display: grid; place-items: center; flex: 0 0 30px;
+    width: 30px; height: 30px; border: 1px solid var(--line);
+    border-radius: 50%; background: var(--surface-raised); color: var(--text);
+    padding: 0; cursor: pointer;
+}
+.app-context-back svg { display: block; width: 17px; height: 17px; }
+.app-context-back:hover { border-color: var(--accent); color: var(--accent); }
 .app-context-actions { position: relative; flex: 0 0 auto; }
 .app-context-actions > summary {
     display: flex;

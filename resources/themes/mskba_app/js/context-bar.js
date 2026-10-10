@@ -20,9 +20,9 @@ if (contextBar) {
         }
         event.preventDefault();
     });
-    menu?.querySelector('[data-app-context-back]')?.addEventListener('click', (event) => {
+    contextBar.querySelector('[data-app-context-back]')?.addEventListener('click', (event) => {
         const fallback = event.currentTarget.dataset.fallback;
-        menu.open = false;
+        if (menu?.open) menu.open = false;
         try {
             if (document.referrer && new URL(document.referrer).origin === location.origin) {
                 history.back();

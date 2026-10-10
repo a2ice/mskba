@@ -6,11 +6,17 @@
 .app-context-dialog__header h2:focus { outline: none; }
 .app-context-dialog__header button { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-raised); color: var(--text); font-size: 25px; cursor: pointer; }
 .app-context-dialog__content, .app-context-help__body { padding: 20px 24px; }
-.app-context-help__lookup { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 34px 34px; align-items: center; color: var(--text); }
-.app-context-help__lookup input { grid-column: 1 / -1; grid-row: 1; min-width: 0; padding-right: 78px; }
-.app-context-help__lookup :is(.app-context-help__arrow, .app-context-help__clear) { grid-row: 1; display: grid; place-items: center; width: 34px; height: 38px; padding: 0; margin: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; z-index: 1; }
-.app-context-help__arrow { grid-column: 2; }
-.app-context-help__clear { grid-column: 3; font-size: 22px; line-height: 1; }
+.app-context-help__lookup { position: relative; display: block; color: var(--text); }
+.app-context-help__lookup input { display: block; width: 100%; min-width: 0; }
+.app-context-help__lookup :is(.app-context-help__arrow, .app-context-help__clear) {
+    position: absolute; top: 3px; display: grid; place-items: center;
+    width: 34px; height: 38px; padding: 0; margin: 0;
+    border: 0; background: transparent; color: var(--muted);
+    cursor: pointer; z-index: 1;
+}
+.app-context-help__arrow { right: 4px; }
+.app-context-help__lookup.has-clear .app-context-help__arrow { right: 38px; }
+.app-context-help__clear { right: 4px; font-size: 22px; line-height: 1; }
 .app-context-help__arrow svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .app-context-help__options { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 4; max-height: 240px; overflow-y: auto; padding: 5px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-raised); box-shadow: 0 12px 32px #0008; }
 .app-context-help__option { display: block; width: 100%; min-height: 39px; padding: 9px 12px; border: 0; border-radius: 7px; background: transparent; color: var(--text); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
@@ -18,19 +24,31 @@
 .app-context-help__options p { padding: 9px 12px; margin: 0; font-size: 13px; color: var(--muted); }
 .app-context-help__lookup [hidden] { display: none !important; }
 .app-context-help__lookup input, .app-context-help__ask :is(select,textarea) { width: 100%; min-height: 44px; padding: 11px 12px; border: 1px solid var(--control-line); border-radius: 10px; background: var(--field); color: var(--text); font: inherit; font-size: 15px; }
-.app-context-help__lookup input { padding-right: 78px; }
-.app-context-help__lookup input:focus-visible, .app-context-help__ask :is(select,textarea,button):focus-visible, .app-context-help__link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.app-context-help__breadcrumbs { display: flex; align-items: center; flex-wrap: nowrap; gap: 0; min-height: 28px; overflow-x: auto; margin: 10px 0 12px; font-size: 12px; white-space: nowrap; }
-.app-context-help__breadcrumbs button { display: inline-flex; align-items: center; flex: 0 0 auto; width: auto; min-height: 0; padding: 4px 0; border: 0; border-radius: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 500; cursor: pointer; }
-.app-context-help__breadcrumbs button:not(:first-child)::before { content: '/'; color: var(--faint); padding-right: 7px; }
-.app-context-help__breadcrumbs button[aria-current] { color: var(--text); cursor: default; }
+.app-context-help__lookup input { padding-right: 45px; }
+.app-context-help__lookup.has-clear input { padding-right: 79px; }
+.app-context-help__lookup input:focus-visible, .app-context-help__ask :is(select,textarea,button):focus-visible, .app-context-help__link:focus-visible, .app-context-help__breadcrumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app-context-help__breadcrumbs {
+    display: flex; align-items: center; flex-wrap: nowrap; gap: 7px;
+    min-height: 28px; overflow-x: auto; margin: 10px 0 12px;
+    font-size: 12px; white-space: nowrap;
+}
+.app-context-help__breadcrumb {
+    display: inline-flex; align-items: center; flex: 0 0 auto; width: auto;
+    min-height: 0; padding: 4px 0; border: 0; border-radius: 0;
+    background: transparent; color: var(--muted); font: inherit;
+    font-weight: 500; line-height: 18px; cursor: pointer;
+}
+.app-context-help__breadcrumb:hover { color: var(--accent); }
+.app-context-help__breadcrumb[aria-current] { color: var(--text); }
+.app-context-help__crumb-divider { display: inline-block; flex: 0 0 auto; color: var(--faint); line-height: 18px; }
 .app-context-help__articles { display: grid; align-content: start; gap: 10px; min-height: 88px; padding-bottom: 20px; }
 .app-context-help__articles h3 { font-size: 19px; line-height: 25px; }
 .app-context-help__articles p { color: var(--muted); font-size: 14px; line-height: 22px; }
 .app-context-help__link { display: flex; align-items: flex-start; flex-direction: column; gap: 5px; width: 100%; min-height: 44px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
 .app-context-help__link:hover { border-color: var(--accent); }
 .app-context-help__link small { color: var(--muted); font-size: 12px; font-weight: 400; }
-.app-context-help__count { align-self: flex-end; color: var(--muted); font-size: 12px; }
+.app-context-help__section { flex-direction: row; align-items: center; justify-content: space-between; min-height: 48px; }
+.app-context-help__count { align-self: center; flex: 0 0 auto; color: var(--muted); font-size: 12px; font-weight: 400; }
 .app-context-help__rendered { overflow-wrap: anywhere; font-size: 14px; line-height: 1.65; }
 .app-context-help__rendered :is(p,ul,ol) { margin: 0 0 12px; }
 .app-context-help__rendered a, .app-context-help__mail a { color: var(--accent); text-decoration: underline; }

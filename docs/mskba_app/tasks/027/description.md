@@ -7,7 +7,7 @@
 - `/venues`: `Создать`, `Найти`;
 - `/venues/{alias}` (строго route `venues.show`): `Забронировать`, `Найти похожие`;
 - В качестве действий используются `MenuHandler`, безопасные кнопки `placeholder` с доступным native `<dialog>`, без фиктивных маршрутов;
-- Постоянные `Назад`, `Поделиться`, `Помощь` остаются в меню.
+- В меню остаются общие `Поделиться` и `Помощь`. `Назад` вынесена в отдельную компактную круглую кнопку со стрелкой слева от `Действия`, с доступной подписью и подсказкой «Назад»; прежний JS history/fallback сохраняется.
 
 ## Помощь
 
@@ -30,3 +30,7 @@ Staging may send real support mail once dedicated SMTP is configured on VDS. As 
 ## Follow-up UI refinement 2026-10-10
 
 Visible field labels have been removed in favor of placeholders with accessible `aria-label` values. FAQ breadcrumbs no longer have duplicated navigation text; dropdown arrow precedes the clear control and all are vertically centered. Historical `support_questions` table is removed by a reversible follow-up migration that refuses to delete any nonempty table. Live staging was verified to have zero rows before this change.
+
+## UX polish 2026-10-10
+
+Breadcrumb buttons use their own inline CSS class and a separate slash element, resulting in a single-line `FAQ / Площадки` trail. The combobox filters sections by starts-with (case-insensitive); the arrow preserves typed query when opening. With no selected section the arrow sits at the right edge; the clear button appears to its right only when a section is selected. Top-level FAQ category cards align their title and article count in the same horizontal row.

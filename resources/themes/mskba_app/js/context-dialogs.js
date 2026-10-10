@@ -57,8 +57,8 @@ if (actions && help) {
         if (className) el.className = className;
         return el;
     }
-    function linkButton(text, onClick) {
-        const button = node('button', text, 'app-context-help__link');
+    function linkButton(text, onClick, className = 'app-context-help__link') {
+        const button = node('button', text, className);
         button.type = 'button';
         button.addEventListener('click', onClick);
         return button;
@@ -75,7 +75,7 @@ if (actions && help) {
         lookup.removeAttribute('aria-activedescendant');
         highlightedIndex = -1;
     }
-    function highlight(index) {
+    function highlight(index, scroll = false) {
         highlightedIndex = index;
         [...options.children].forEach((option, i) => {
             option.setAttribute('aria-selected', String(i === index));
@@ -83,7 +83,7 @@ if (actions && help) {
         if (index >= 0) {
             const active = options.children[index];
             lookup.setAttribute('aria-activedescendant', active.id);
-            active.scrollIntoView({ block: 'nearest' });
+            if (scroll) active.scrollIntoView({ block: 'nearest' });
         } else {
             lookup.removeAttribute('aria-activedescendant');
         }
@@ -91,7 +91,7 @@ if (actions && help) {
     function openOptions(query = '') {
         if (!faq) return;
         const normalized = query.trim().toLocaleLowerCase();
-        visibleSections = faq.sections.filter(s => s.label.toLocaleLowerCase().includes(normalized));
+        visibleSections = faq.sections.filter(s => s.label.toLocaleLowerCase().startsWith(normalized));
         options.replaceChildren();
         for (const [i, section] of visibleSections.entries()) {
             const option = node('button', section.label, 'app-context-help__option');
@@ -117,10 +117,12 @@ if (actions && help) {
         const groups = faq.sections || [];
         lookup.value = groups.find(s => s.key === faqSection)?.label || '';
         clear.hidden = !faqSection;
+        lookup.closest('[data-help-combobox]').classList.toggle('has-clear', Boolean(faqSection));
         closeOptions();
         breadcrumbs.replaceChildren();
-        for (const crumb of faq.breadcrumbs || []) {
-            const crumbNode = linkButton(crumb.label, () => load(crumb.section, crumb.article));
+        for (const [index, crumb] of (faq.breadcrumbs || []).entries()) {
+            if (index) breadcrumbs.append(node('span', '/', 'app-context-help__crumb-divider'));
+            const crumbNode = linkButton(crumb.label, () => load(crumb.section, crumb.article), 'app-context-help__breadcrumb');
             if (crumb.article === faqArticle && crumb.section === faqSection) crumbNode.setAttribute('aria-current', 'page');
             breadcrumbs.append(crumbNode);
         }
@@ -135,7 +137,7 @@ if (actions && help) {
         }
         if (!faqSection) {
             for (const group of groups) {
-                const button = linkButton(group.label, () => load(group.key));
+                const button = linkButton(group.label, () => load(group.key), 'app-context-help__link app-context-help__section');
                 button.append(node('span', `${group.articles.length}`, 'app-context-help__count'));
                 articleList.append(button);
             }
@@ -193,7 +195,7 @@ if (actions && help) {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
             if (options.hidden) openOptions('');
-            else if (visibleSections.length) highlight((highlightedIndex + (event.key === 'ArrowDown' ? 1 : -1) + visibleSections.length) % visibleSections.length);
+            else if (visibleSections.length) highlight((highlightedIndex + (event.key === 'ArrowDown' ? 1 : -1) + visibleSections.length) % visibleSections.length, true);
         }
         if (event.key === 'Enter') {
             event.preventDefault();
@@ -204,7 +206,7 @@ if (actions && help) {
     });
     toggle.addEventListener('click', () => {
         if (!options.hidden) closeOptions();
-        else { openOptions(''); lookup.focus({ preventScroll: true }); }
+        else { openOptions(lookup.value); lookup.focus({ preventScroll: true }); }
     });
     clear.addEventListener('click', () => { closeOptions(); load(); lookup.focus({ preventScroll: true }); });
     document.addEventListener('pointerdown', event => {
