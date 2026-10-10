@@ -20,6 +20,6 @@
               data-avatar-role="{{ $role->value }}"
               title="{{ $role->label() }}"
               style="--app-avatar-role-color: {{ $roleBadge['color'] }}"
-              aria-hidden="true">{{ $roleBadge['initial'] }}</span>
+              aria-hidden="true"><span class="app-user-avatar__role-letter">{{ $roleBadge['initial'] }}</span></span>
     @endif
 </span>

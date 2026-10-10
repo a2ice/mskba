@@ -95,11 +95,15 @@
     border-radius: 50%;
     background: var(--app-avatar-role-color);
     color: #fff;
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 8.25px; /* 75% of the original 11px letter */
+    font-weight: 400;
     line-height: 1;
     text-transform: uppercase;
     pointer-events: none;
+}
+.app-user-avatar__role-letter {
+    display: block;
+    transform: translateY(-0.5px); /* Optical center of the uppercase glyph */
 }
 .app-header-avatar { flex-shrink: 0; }
 .app-header-notifications svg { width: 20px; height: 20px; }

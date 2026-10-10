@@ -54,6 +54,7 @@ final class MskbaAppHeaderAvatarTest extends TestCase
                 ->assertSee('data-avatar-role="'.$role->value.'"', false)
                 ->assertSee('title="'.$role->label().'"', false)
                 ->assertSee('--app-avatar-role-color: '.$badge['color'], false)
+                ->assertSee('class="app-user-avatar__role-letter">'.$badge['initial'].'</span>', false)
                 ->assertSee('aria-label="Личный кабинет, роль: '.$role->label().'"', false);
             $this->assertSame(1, substr_count($response->getContent(), 'data-avatar-role='));
         }
