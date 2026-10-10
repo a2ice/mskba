@@ -3,12 +3,10 @@
     $headerUser = auth()->user();
     $headerNeedsPrivacySetup = $headerUser !== null
         && app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup($headerUser);
-    $profile = $headerUser?->profile;
     $displayName = $headerUser
         ? app(\App\Presentation\Identity\UserAddressing::class)->greetingName($headerUser)
         : '';
-    $initials = $displayName !== '' ? mb_strtoupper(mb_substr($displayName, 0, 2)) : 'MS';
-    $avatarUrl = $profile?->avatarUrl();
+    $headerRoleBadge = $headerUser?->system_role?->avatarBadge();
 @endphp
 
 <a class="skip" href="#mskba-app">К содержимому</a>
@@ -56,16 +54,10 @@
                 </a>
                 <a @class(['app-header-account', 'app-header-account--setup-pending' => $headerNeedsPrivacySetup])
                    href="{{ route('account') }}"
-                   aria-label="Личный кабинет"
+                   aria-label="Личный кабинет{{ $headerRoleBadge ? ', роль: '.$headerUser->system_role->label() : '' }}"
                    @if ($headerNeedsPrivacySetup) title="Остался последний шаг регистрации" @endif>
                     <span class="app-header-account-label">{{ $displayName ?: 'Личный кабинет' }}</span>
-                    <span class="avatar app-header-avatar">
-                        @if ($avatarUrl)
-                            <img src="{{ $avatarUrl }}" alt="">
-                        @else
-                            {{ $initials }}
-                        @endif
-                    </span>
+                    @include('theme::partials.user-avatar', ['user' => $headerUser, 'class' => 'app-header-avatar'])
                 </a>
             @else
                 <a class="button secondary app-header-login" href="{{ route('login') }}" data-auth-trigger>Войти</a>

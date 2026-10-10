@@ -23,6 +23,23 @@ enum UserSystemRoleEnum: string
         };
     }
 
+    /**
+     * Small UI-only marker for staff roles, not an authorization mechanism.
+     * Regular users and non-human system accounts have no avatar marker.
+     *
+     * @return array{initial: string, color: string}|null
+     */
+    public function avatarBadge(): ?array
+    {
+        return match ($this) {
+            self::SUPERADMIN => ['initial' => 's', 'color' => '#7c3aed'],
+            self::ADMIN => ['initial' => 'a', 'color' => '#c2410c'],
+            self::MODERATOR => ['initial' => 'm', 'color' => '#1d4ed8'],
+            self::EDITOR => ['initial' => 'e', 'color' => '#0f766e'],
+            self::USER, self::SYSTEM => null,
+        };
+    }
+
     public function numericValue(): int
     {
         return match ($this) {

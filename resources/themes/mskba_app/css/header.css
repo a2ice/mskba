@@ -70,8 +70,38 @@
 .app-header-actions { gap: 10px; }
 .app-header-account { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; font-weight: 600; color: var(--text); text-decoration: none; }
 .app-header-account-label { max-width: 115px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.app-header-avatar { overflow: hidden; flex-shrink: 0; }
-.app-header-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* Reusable MSKBA App avatar. Clip the image, not the staff-role corner marker. */
+.app-user-avatar { position: relative; flex-shrink: 0; overflow: visible; }
+.app-user-avatar__visual {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: inherit;
+}
+.app-user-avatar__image { display: block; width: 100%; height: 100%; object-fit: cover; }
+.app-user-avatar__role {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 19px;
+    height: 19px;
+    border: 2px solid var(--bg);
+    border-radius: 50%;
+    background: var(--app-avatar-role-color);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+.app-header-avatar { flex-shrink: 0; }
 .app-header-notifications svg { width: 20px; height: 20px; }
 .app-header-login { margin: 0; min-height: 42px; text-decoration: none; }
 .app-header-mobile { display: none; margin-left: 0; }
