@@ -13,6 +13,14 @@ final class DevMaintenanceFallbackTest extends TestCase
         foreach (['<script', '<link ', 'src="/'] as $value) {
             $this->assertStringNotContainsString($value, $html);
         }
+        // The logo is the exact image used in the mskba_app header, not an
+        // approximation and not a URL that would require Docker to be alive.
+        $this->assertSame(1, preg_match('~<img src="data:image/png;base64,([A-Za-z0-9+/=]+)"~', $html, $matches));
+        $this->assertSame(
+            file_get_contents(dirname(__DIR__, 3).'/resources/themes/mskba_app/assets/images/logo-mark-100.png'),
+            base64_decode($matches[1], true),
+        );
+
     }
     public function test_only_dev_host_nginx_fallback_is_defined(): void
     {

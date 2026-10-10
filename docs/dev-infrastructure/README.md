@@ -96,3 +96,7 @@ FAQ questions are delivered directly using Laravel `SupportQuestionMail`, withou
 ### Activation helper
 
 Use `ops/nginx/install-mskba-dev-maintenance.sh` on VDS after review and explicit authorization. It checks the target vhost, makes a backup and applies the Dev-only snippet with configuration validation. In case of a validation failure, it restores the previous configuration. It is idempotent. Do not execute it automatically during CI/deploy.
+
+### Branded logo correction (2026-10-10)
+
+The maintenance page embeds the **exact** `resources/themes/mskba_app/assets/images/logo-mark-100.png` from the `mskba_app` header as an inline PNG data URI, rather than a hand-drawn placeholder or an external asset URL. This is intentional: the host Nginx fallback must keep its official logo even when Docker/Laravel is unreachable. A unit test compares the decoded embedded image byte-for-byte with the theme asset, so future changes to the shared logo require updating the embedded static copy too.
