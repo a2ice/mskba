@@ -14,7 +14,7 @@
 <a class="skip" href="#mskba-app">К содержимому</a>
 <header class="site-header app-site-header" data-app-header>
     <div class="container header-inner app-header-inner">
-        <a class="brand app-header-brand" href="{{ route('welcome') }}" aria-label="MSKBA — главная">
+        <a class="brand app-header-brand" href="{{ route('welcome') }}" aria-label="MSKBA — главная" title="{{ config('app.name') }}">
             <span class="app-header-mark" aria-hidden="true"></span>
             <span>MSK<span class="accent">BA</span></span>
         </a>
