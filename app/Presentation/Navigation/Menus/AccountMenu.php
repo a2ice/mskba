@@ -81,12 +81,6 @@ final class AccountMenu implements MenuHandler
         $items = [
             $this->link('Обзор', 'account'),
             $this->link('Профиль', 'account.profile'),
-            [
-                'label' => 'Роли в проекте',
-                'url' => $this->routeUrl('account.roles'),
-                'active' => $this->isActiveRoute('account.roles, account.roles.*'),
-                'visible' => true,
-            ],
         ];
 
         // Navigation is an invitation to participate, not a report of existing relations.
@@ -116,6 +110,40 @@ final class AccountMenu implements MenuHandler
         ];
         $roles = $user->canonical()->participationRoles()->get(['role'])
             ->map(fn ($role): string => $role->role->value)->all();
+
+        // Before the first role, "Роли в проекте" is a direct entry point to
+        // role selection. As soon as a role is active, it becomes a toggle-only
+        // group: "Все роли" leads to selection and each role to its parameters.
+        $roleChildren = [[
+            'label' => 'Все роли',
+            'url' => $this->routeUrl('account.roles'),
+            'active' => $this->isActiveRoute('account.roles, account.roles.*'),
+            'visible' => true,
+        ]];
+        foreach ($roleSections as $roleValue => $_sections) {
+            if (! in_array($roleValue, $roles, true)) {
+                continue;
+            }
+
+            $role = UserParticipationRoleEnum::from($roleValue);
+            $roleChildren[] = [
+                'label' => $role->label(),
+                'url' => route('account.participation-role', ['role' => $roleValue]),
+                'active' => request()->routeIs('account.participation-role')
+                    && request()->route('role') === $roleValue,
+                'visible' => true,
+            ];
+        }
+        $items[] = count($roleChildren) === 1
+            ? $this->link('Роли в проекте', 'account.roles')
+            : [
+                'label' => 'Роли в проекте',
+                'url' => null,
+                'active' => collect($roleChildren)->contains(fn (array $child): bool => $child['active']),
+                'visible' => true,
+                'children' => $roleChildren,
+            ];
+
         $sectionKeys = [];
         foreach ($roleSections as $role => $sections) {
             if (! in_array($role, $roles, true)) {
@@ -139,27 +167,8 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
         }
-        // Group shared destinations exactly once, independently of role links.
-        // Each active role then appears as a separate top-level navigation item
-        // leading to the same parameters page as its gear on /account/roles.
+        // The common functional destinations stay grouped and deduplicated.
         array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
-
-        foreach ($roleSections as $roleValue => $_sections) {
-            if (! in_array($roleValue, $roles, true)) {
-                continue;
-            }
-
-            $role = UserParticipationRoleEnum::from($roleValue);
-            $items[] = [
-                'label' => $role->label(),
-                'url' => route('account.participation-role', ['role' => $roleValue]),
-                'active' => request()->routeIs('account.participation-role')
-                    && request()->route('role') === $roleValue,
-                'visible' => true,
-                // On a role page, the mobile account navigation must expand.
-                'openMobileOnActive' => true,
-            ];
-        }
 
         $items[] = $this->link('Уведомления', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user));
         $items[] = [

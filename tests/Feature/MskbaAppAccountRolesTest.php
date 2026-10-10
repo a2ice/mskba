@@ -144,6 +144,44 @@ final class MskbaAppAccountRolesTest extends TestCase
             ->assertSee('Мои команды');
     }
 
+    public function test_ajax_role_toggle_switches_roles_sidebar_between_direct_link_and_nested_group(): void
+    {
+        $this->actingAs($this->user());
+        $xpathFor = static function (string $html): \DOMXPath {
+            $dom = new \DOMDocument;
+            @$dom->loadHTML($html);
+
+            return new \DOMXPath($dom);
+        };
+        $group = '//nav[@aria-label="Разделы аккаунта"]/descendant::details[summary/span[text()="Роли в проекте"]]';
+        $directLink = '//nav[@aria-label="Разделы аккаунта"]/a[span[text()="Роли в проекте"]]';
+
+        $before = $xpathFor($this->get(route('account.roles'))->assertOk()->getContent());
+        $this->assertSame(0, $before->query($group)->length);
+        $this->assertSame(2, $before->query($directLink)->length);
+
+        $this->toggle('player')->assertOk()->assertJsonPath('enabled', true);
+        $afterPlayer = $xpathFor($this->get(route('account.roles'))->assertOk()->getContent());
+        $this->assertSame(2, $afterPlayer->query($group.'[@open]')->length);
+        $this->assertSame(0, $afterPlayer->query($directLink)->length);
+        $this->assertSame(2, $afterPlayer->query($group.'//a[span[text()="Все роли"]]')->length);
+        $this->assertSame(2, $afterPlayer->query($group.'//a[span[text()="Игрок"]]')->length);
+
+        $this->toggle('coach')->assertOk()->assertJsonPath('enabled', true);
+        $afterCoach = $xpathFor($this->get(route('account.roles'))->assertOk()->getContent());
+        $this->assertSame(2, $afterCoach->query($group.'//a[span[text()="Тренер"]]')->length);
+        $this->travel(6)->seconds();
+        $this->toggle('player', false)->assertOk()->assertJsonPath('enabled', false);
+        $afterDisable = $xpathFor($this->get(route('account.roles'))->assertOk()->getContent());
+        $this->assertSame(0, $afterDisable->query($group.'//a[span[text()="Игрок"]]')->length);
+        $this->assertSame(2, $afterDisable->query($group.'//a[span[text()="Тренер"]]')->length);
+        $this->travel(6)->seconds();
+        $this->toggle('coach', false)->assertOk()->assertJsonPath('enabled', false);
+        $afterLast = $xpathFor($this->get(route('account.roles'))->assertOk()->getContent());
+        $this->assertSame(0, $afterLast->query($group)->length);
+        $this->assertSame(2, $afterLast->query($directLink)->length);
+    }
+
     public function test_cooldown_survives_reload_and_only_disables_the_modified_role(): void
     {
         $this->actingAs($this->user());
