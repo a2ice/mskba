@@ -1,5 +1,7 @@
 # MSKBA development environment — staged rollout
 
+For interactive, password-once SSH access via a connected Mac and Remote Desktop Commander, see [Remote Commander SSH procedure](remote-commander-ssh.md).
+
 ## Safety boundaries
 
 - Production: `/var/www/mskba`, Docker Compose project `mskbanew`, branch `main`, theme `mskba_dark`. Never modify from this workflow.
