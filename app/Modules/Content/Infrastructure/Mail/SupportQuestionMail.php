@@ -2,7 +2,6 @@
 
 namespace App\Modules\Content\Infrastructure\Mail;
 
-use App\Modules\Content\Domain\Models\SupportQuestion;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -14,13 +13,15 @@ final class SupportQuestionMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public readonly SupportQuestion $question,
+        public readonly int $userId,
         public readonly string $topicLabel,
+        public readonly string $sourcePath,
+        public readonly string $questionBody,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'MSKBA — вопрос #'.$this->question->id);
+        return new Envelope(subject: 'MSKBA — вопрос в поддержку');
     }
 
     public function content(): Content

@@ -3,7 +3,6 @@
 namespace App\Modules\Content\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Content\Domain\Models\SupportQuestion;
 use App\Modules\Content\Infrastructure\Mail\SupportQuestionMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,42 +18,39 @@ final class SupportQuestionController extends Controller
         $data = $request->validate([
             'topic' => ['required', 'string', Rule::in(array_keys(config('support.question_topics', [])))],
             'message' => ['required', 'string', 'min:10', 'max:5000'],
-            'source_path' => ['required', 'string', 'max:255', 'regex:#^/(?!/)[^\\x00-\\x1f]*$#'],
-        ]);
-        $question = SupportQuestion::query()->create([
-            'user_id' => $request->user()->id,
-            'topic' => $data['topic'],
-            'source_path' => $data['source_path'],
-            'body' => $data['message'],
+            'source_path' => ['required', 'string', 'max:255', 'regex:#^/(?!/)[^\x00-\x1f]*$#'],
         ]);
 
-        // Persist first: delivery failures must not lose a user's question.
-        if (! config('support.deliver_email')) {
+        // Do not acknowledge success when the configured driver only logs or
+        // discards email. The UI can suggest the configured mailto fallback.
+        if (in_array(config('mail.default'), ['log', 'array'], true)) {
             return response()->json([
-                'status' => 'saved',
-                'message' => 'Тестовый вопрос сохранён в Dev. Отправка почты здесь отключена.',
-                'question_id' => $question->id,
-            ], 201);
+                'message' => 'Отправка писем на этом сервере пока не настроена. Напишите на почту поддержки.',
+            ], 503);
         }
 
-        $deliveryFailed = false;
         try {
             Mail::to(config('support.email'))->send(new SupportQuestionMail(
-                $question,
-                config('support.question_topics.'.$data['topic']),
+                userId: (int) $request->user()->id,
+                topicLabel: (string) config('support.question_topics.'.$data['topic']),
+                sourcePath: $data['source_path'],
+                questionBody: $data['message'],
             ));
-            $question->forceFill(['emailed_at' => now()])->save();
-        } catch (Throwable $e) {
-            $deliveryFailed = true;
-            Log::warning('Support question email delivery failed', ['question_id' => $question->id, 'exception' => $e::class]);
+        } catch (Throwable $exception) {
+            // Never log the submitted message or transport credentials.
+            Log::warning('Support question mail submission failed', [
+                'user_id' => (int) $request->user()->id,
+                'exception' => $exception::class,
+            ]);
+
+            return response()->json([
+                'message' => 'Не удалось отправить вопрос. Попробуйте позже или напишите на почту поддержки.',
+            ], 503);
         }
 
         return response()->json([
-            'status' => 'saved',
-            'message' => $deliveryFailed
-                ? 'Вопрос сохранён, но уведомление по почте временно не отправлено.'
-                : 'Вопрос отправлен в поддержку. Спасибо!',
-            'question_id' => $question->id,
-        ], 201);
+            'status' => 'sent',
+            'message' => 'Вопрос отправлен в поддержку. Спасибо!',
+        ], 200);
     }
 }

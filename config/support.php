@@ -2,8 +2,6 @@
 
 return [
     'email' => env('SUPPORT_EMAIL', 'support@mskba.ru'),
-    // Staging keeps submitted questions but never sends external mail by default.
-    'deliver_email' => env('SUPPORT_EMAIL_DELIVERY_ENABLED', env('APP_ENV') === 'production'),
     // FAQ does not yet have a persisted category tree. These virtual sections
     // group published FAQ materials by stable system keys or editor-managed tags.
     'faq_sections' => [

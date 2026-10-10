@@ -41,11 +41,15 @@ if (actions && help) {
     const articleList = help.querySelector('[data-help-articles]');
     const lookup = help.querySelector('[data-help-search]');
     const options = help.querySelector('[data-help-options]');
+    const toggle = help.querySelector('[data-help-toggle]');
+    const clear = help.querySelector('[data-help-clear]');
     const breadcrumbs = help.querySelector('[data-help-breadcrumbs]');
     const form = help.querySelector('[data-help-form]');
     const guest = help.querySelector('[data-help-guest]');
     const feedback = help.querySelector('[data-help-form-status]');
     let requestId = 0;
+    let highlightedIndex = -1;
+    let visibleSections = [];
 
     function node(tag, text, className = '') {
         const el = document.createElement(tag);
@@ -64,16 +68,56 @@ if (actions && help) {
         form.hidden = !authenticated;
         guest.hidden = authenticated;
     }
+    function closeOptions() {
+        options.hidden = true;
+        lookup.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-expanded', 'false');
+        lookup.removeAttribute('aria-activedescendant');
+        highlightedIndex = -1;
+    }
+    function highlight(index) {
+        highlightedIndex = index;
+        [...options.children].forEach((option, i) => {
+            option.setAttribute('aria-selected', String(i === index));
+        });
+        if (index >= 0) {
+            const active = options.children[index];
+            lookup.setAttribute('aria-activedescendant', active.id);
+            active.scrollIntoView({ block: 'nearest' });
+        } else {
+            lookup.removeAttribute('aria-activedescendant');
+        }
+    }
+    function openOptions(query = '') {
+        if (!faq) return;
+        const normalized = query.trim().toLocaleLowerCase();
+        visibleSections = faq.sections.filter(s => s.label.toLocaleLowerCase().includes(normalized));
+        options.replaceChildren();
+        for (const [i, section] of visibleSections.entries()) {
+            const option = node('button', section.label, 'app-context-help__option');
+            option.type = 'button';
+            option.id = `context-help-choice-${i}`;
+            option.setAttribute('role', 'option');
+            option.setAttribute('aria-selected', 'false');
+            option.addEventListener('click', () => {
+                closeOptions();
+                load(section.key);
+                lookup.focus({ preventScroll: true });
+            });
+            options.append(option);
+        }
+        if (!visibleSections.length) options.append(node('p', 'Раздел не найден'));
+        options.hidden = false;
+        lookup.setAttribute('aria-expanded', 'true');
+        toggle.setAttribute('aria-expanded', 'true');
+        highlight(visibleSections.length ? 0 : -1);
+    }
     function render() {
         if (!faq) return;
         const groups = faq.sections || [];
-        options.replaceChildren();
-        for (const group of groups) {
-            const option = node('option');
-            option.value = group.label;
-            options.append(option);
-        }
         lookup.value = groups.find(s => s.key === faqSection)?.label || '';
+        clear.hidden = !faqSection;
+        closeOptions();
         breadcrumbs.replaceChildren();
         for (const crumb of faq.breadcrumbs || []) {
             const crumbNode = linkButton(crumb.label, () => load(crumb.section, crumb.article));
@@ -83,15 +127,13 @@ if (actions && help) {
         articleList.replaceChildren();
         if (faq.article) {
             articleList.append(node('h3', faq.article.title));
-            if (faq.article.description) articleList.append(node('p', faq.article.description));
             const content = node('div', null, 'app-context-help__rendered');
-            // This HTML comes from the existing server-side sanitized ContentBodyRenderer.
+            // The existing server-side ContentBodyRenderer sanitizes this HTML.
             content.innerHTML = faq.article.html;
             articleList.append(content);
             return;
         }
         if (!faqSection) {
-            articleList.append(node('p', 'Выберите раздел, чтобы найти нужную информацию.'));
             for (const group of groups) {
                 const button = linkButton(group.label, () => load(group.key));
                 button.append(node('span', `${group.articles.length}`, 'app-context-help__count'));
@@ -105,9 +147,7 @@ if (actions && help) {
             return;
         }
         for (const item of section.articles) {
-            const button = linkButton(item.title, () => load(faqSection, item.alias));
-            if (item.description) button.append(node('small', item.description));
-            articleList.append(button);
+            articleList.append(linkButton(item.title, () => load(faqSection, item.alias)));
         }
     }
     async function load(section = null, article = null, usePageContext = false) {
@@ -134,12 +174,42 @@ if (actions && help) {
     function chooseSection() {
         if (!faq) return;
         const value = lookup.value.trim().toLocaleLowerCase();
-        if (!value) return load();
+        if (!value) { closeOptions(); return load(); }
         const section = faq.sections.find(s => s.label.toLocaleLowerCase() === value || s.key === value);
-        if (section) load(section.key);
+        if (section) { closeOptions(); return load(section.key); }
+        openOptions(value);
     }
-    lookup.addEventListener('change', chooseSection);
-    lookup.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); chooseSection(); } });
+    lookup.addEventListener('input', () => openOptions(lookup.value));
+    lookup.addEventListener('change', () => {
+        // Native change can fire on blur; never reopen dropdown unexpectedly.
+        const value = lookup.value.trim().toLocaleLowerCase();
+        const match = faq?.sections?.find(section => section.label.toLocaleLowerCase() === value);
+        if (options.hidden && match && match.key !== faqSection) load(match.key);
+    });
+    lookup.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !options.hidden) {
+            closeOptions(); event.preventDefault(); event.stopPropagation(); return;
+        }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (options.hidden) openOptions('');
+            else if (visibleSections.length) highlight((highlightedIndex + (event.key === 'ArrowDown' ? 1 : -1) + visibleSections.length) % visibleSections.length);
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (!options.hidden && highlightedIndex >= 0 && visibleSections[highlightedIndex]) {
+                closeOptions(); load(visibleSections[highlightedIndex].key);
+            } else chooseSection();
+        }
+    });
+    toggle.addEventListener('click', () => {
+        if (!options.hidden) closeOptions();
+        else { openOptions(''); lookup.focus({ preventScroll: true }); }
+    });
+    clear.addEventListener('click', () => { closeOptions(); load(); lookup.focus({ preventScroll: true }); });
+    document.addEventListener('pointerdown', event => {
+        if (!options.hidden && !event.target.closest('[data-help-combobox]')) closeOptions();
+    });
     actions.querySelector('[data-context-help]')?.addEventListener('click', (event) => {
         helpContext = event.currentTarget.dataset.helpContext || '';
         waitingForAuth = false;
@@ -177,7 +247,12 @@ if (actions && help) {
             if (response.status === 401) { updateAuth(false); throw new Error('Авторизуйтесь и повторите попытку.'); }
             if (response.status === 419) throw new Error('Сессия истекла. Обновите страницу.');
             if (response.status === 429) throw new Error('Слишком много вопросов. Попробуйте позже.');
-            if (!response.ok) throw new Error('Не удалось сохранить вопрос. Проверьте поля и попробуйте ещё раз.');
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(response.status === 503
+                    ? (error.message || 'Служба отправки почты временно недоступна.')
+                    : 'Не удалось отправить вопрос. Проверьте поля и попробуйте ещё раз.');
+            }
             const result = await response.json();
             feedback.textContent = result.message;
             form.reset();

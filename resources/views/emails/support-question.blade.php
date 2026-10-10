@@ -1,6 +1,6 @@
-Вопрос #{{ $question->id }}
-Пользователь: {{ $question->user_id }}
+Новый вопрос в поддержку MSKBA
+Пользователь: {{ $userId }}
 Тема: {{ $topicLabel }}
-Страница: {{ $question->source_path }}
+Страница: {{ $sourcePath }}
 
-{{ $question->body }}
+{{ $questionBody }}

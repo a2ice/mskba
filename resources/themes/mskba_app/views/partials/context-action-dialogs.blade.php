@@ -17,11 +17,19 @@
         <button type="button" data-context-help-close aria-label="Закрыть">×</button>
     </header>
     <div class="mskba-modal__body mskba-scroll app-context-help__body">
-        <label class="app-context-help__lookup" for="context-help-section">Раздел FAQ
-            <input type="search" id="context-help-section" data-help-search list="context-help-options"
-                   placeholder="Выберите раздел или начните вводить название" autocomplete="off">
-            <datalist id="context-help-options" data-help-options></datalist>
-        </label>
+        <div class="app-context-help__lookup" data-help-combobox>
+            <input type="text" id="context-help-section" data-help-search
+                   role="combobox" aria-label="Выбрать раздел FAQ" aria-autocomplete="list"
+                   aria-haspopup="listbox" aria-expanded="false" aria-controls="context-help-options"
+                   placeholder="Выберите раздел FAQ" autocomplete="off">
+            <button type="button" class="app-context-help__arrow" data-help-toggle
+                    aria-label="Показать разделы FAQ" aria-controls="context-help-options" aria-expanded="false">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
+            </button>
+            <button type="button" class="app-context-help__clear" data-help-clear aria-label="Сбросить раздел FAQ" hidden>×</button>
+            <div id="context-help-options" class="app-context-help__options" data-help-options
+                 role="listbox" aria-label="Разделы FAQ" hidden></div>
+        </div>
         <nav class="app-context-help__breadcrumbs" aria-label="Навигация внутри FAQ" data-help-breadcrumbs></nav>
         <div class="app-context-help__articles" data-help-articles role="status" aria-live="polite">Загружаем ответы…</div>
         <details class="app-context-help__ask" data-help-ask>
@@ -32,17 +40,14 @@
                     <button type="button" class="button primary" data-help-auth>Авторизоваться</button>
                 </div>
                 <form data-help-form hidden>
-                    <label>Тема вопроса
-                        <select name="topic" required>
-                            <option value="">Выберите тему</option>
-                            @foreach (config('support.question_topics', []) as $topic => $label)
-                                <option value="{{ $topic }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    <label>Ваш вопрос
-                        <textarea name="message" rows="5" required minlength="10" maxlength="5000" placeholder="Опишите ситуацию и что нужно уточнить"></textarea>
-                    </label>
+                    <select name="topic" required aria-label="Тема вопроса">
+                        <option value="">Выберите тему</option>
+                        @foreach (config('support.question_topics', []) as $topic => $label)
+                            <option value="{{ $topic }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <textarea name="message" rows="5" required minlength="10" maxlength="5000"
+                              aria-label="Ваш вопрос" placeholder="Опишите ситуацию и что нужно уточнить"></textarea>
                     <p role="status" aria-live="polite" data-help-form-status></p>
                     <button type="submit" class="button primary">Отправить вопрос</button>
                 </form>
