@@ -5,7 +5,9 @@
     @endif
 
     @if (! empty($item['children']))
-        <details class="app-account-nav__group" @if ($item['active']) open @endif>
+        <details class="app-account-nav__group{{ ($item['groupType'] ?? null) === 'participation-role' ? ' app-account-nav__group--role' : '' }}"
+                 @if (isset($item['role'])) data-account-role-group="{{ $item['role'] }}" @endif
+                 @if ($item['active']) open @endif>
             <summary class="app-account-nav__link app-account-nav__group-trigger{{ $item['active'] ? ' is-active' : '' }}">
                 <span class="app-account-nav__label">{{ $item['label'] }}</span>
                 <svg aria-hidden="true"><use href="#chevron-down"/></svg>
