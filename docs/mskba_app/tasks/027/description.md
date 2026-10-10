@@ -42,3 +42,7 @@ The final breadcrumb segment (whether root `FAQ`, section `Площадки`, or
 ## Root FAQ navigation cleanup (2026-10-10)
 
 At the top-level FAQ index (`section = null`) both the section combobox and breadcrumbs are hidden: category cards provide the only navigation. Opening a section or article restores both controls, with the last breadcrumb rendered as non-clickable text. Returning to FAQ using its breadcrumb hides both controls again; the `Задать вопрос` panel remains available at every level.
+
+## FAQ topic selector alignment — 2026-10-10
+
+The support question `topic` select now reuses the theme-wide `.select-control` with the standard icon position (16px from the right edge, matching other fields). Its accessible name, choices, validation and API payload stay unchanged.

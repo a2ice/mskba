@@ -40,12 +40,18 @@
                     <button type="button" class="button primary" data-help-auth>Авторизоваться</button>
                 </div>
                 <form data-help-form hidden>
+                    <span class="select-control app-context-help__topic-control">
                     <select name="topic" required aria-label="Тема вопроса">
                         <option value="">Выберите тему</option>
                         @foreach (config('support.question_topics', []) as $topic => $label)
                             <option value="{{ $topic }}">{{ $label }}</option>
                         @endforeach
                     </select>
+                        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"
+                             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </span>
                     <textarea name="message" rows="5" required minlength="10" maxlength="5000"
                               aria-label="Ваш вопрос" placeholder="Опишите ситуацию и что нужно уточнить"></textarea>
                     <p role="status" aria-live="polite" data-help-form-status></p>

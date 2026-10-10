@@ -101,6 +101,7 @@ final class ContextHelpTest extends TestCase
             ->assertSee('data-help-toggle', false)
             ->assertSee('data-help-clear', false)
             ->assertSee('aria-label="Выбрать раздел FAQ"', false)
+            ->assertSee('class="select-control app-context-help__topic-control"', false)
             ->assertSee('aria-label="Тема вопроса"', false)
             ->assertSee('aria-label="Ваш вопрос"', false)
             ->assertDontSee('data-help-options></datalist>', false)

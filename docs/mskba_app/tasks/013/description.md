@@ -62,3 +62,9 @@
 ## Уточнение в рамках последующей приёмки 021
 
 Исторический offset `header + 16px` из первоначальной проверки 013 уточнён для новой sticky-полосы задачи 021: desktop sidebar теперь располагается ниже `header + context bar + 16px` и получает min-height родительского grid для коротких страниц. В mobile sidebar по-прежнему раскрываемый, не sticky. См. [021](../021/description.md).
+
+## Layout refinement 2026-10-10: heading above sidebar + content
+
+The shared `theme::layouts.account` now renders an optional `@section('account-heading')` above `.app-account-layout` (the `aside + content` grid), spanning the entire `.container` width. Account pages declare their title/subtitle in that slot, using `theme::pages.account.partials.section-heading` or their existing custom intro. This avoids duplicated heading markup inside the content column. First-time privacy onboarding remains a separate full-width shell without the sidebar and keeps its existing behavior. No changes to `MenuResolver` or role-driven sidebar update JS.
+
+Desktop sidebar still uses CSS `position:sticky; top:calc(var(--header-height) + var(--context-bar-height) + 16px)` inside the grid. The heading now precedes the grid, so it naturally scrolls away before sticky engages; the aside scroll container and mobile non-sticky accordion remain as before. Common heading margin is applied by `.app-account-section__heading` with mobile adjustment. Recheck sticky by scrolling on a long account page after staging deploy.

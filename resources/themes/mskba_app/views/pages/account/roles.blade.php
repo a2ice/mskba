@@ -1,11 +1,15 @@
 @extends('theme::layouts.account', ['title' => 'Роли в проекте'])
 
-@section('account-content')
-    <div class="app-roles-page">
+@section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Роли в проекте',
         'subtitle' => 'Выбери, как ты хочешь участвовать в жизни MSKBA. Можно выбрать сразу несколько ролей.',
     ])
+@endsection
+
+@section('account-content')
+    <div class="app-roles-page">
+
 
     @php
         $roleGroups = [

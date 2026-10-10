@@ -1,11 +1,15 @@
 @extends('theme::layouts.account', ['title' => 'Мои команды'])
 
-@section('account-content')
-    <section class="app-team-section" aria-labelledby="account-teams-heading" data-app-team-actions>
-        <header class="app-account-overview__intro">
+@section('account-heading')
+<header class="app-account-overview__intro">
             <h1 id="account-teams-heading">Мои команды</h1>
             <p>Твои команды, приглашения и поиск новых возможностей для игры.</p>
         </header>
+@endsection
+
+@section('account-content')
+    <section class="app-team-section" aria-labelledby="account-teams-heading" data-app-team-actions>
+
 
         <section class="panel app-team-panel" aria-labelledby="account-my-teams-title">
             <h2 id="account-my-teams-title">Мои команды</h2>

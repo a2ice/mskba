@@ -8,6 +8,11 @@
                     @yield('account-content')
                 </div>
             @else
+                @hasSection('account-heading')
+                    <div class="app-account-section__heading">
+                        @yield('account-heading')
+                    </div>
+                @endif
                 <div class="app-account-layout">
                     <aside class="app-account-layout__aside" aria-label="Навигация аккаунта">
                         @include('theme::partials.account.sidebar')

@@ -1,10 +1,14 @@
 @extends('theme::layouts.account', ['title' => isset($role) ? 'Параметры: '.$role->label() : 'Параметры роли'])
 
-@section('account-content')
+@section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => isset($role) ? 'Параметры: '.$role->label() : 'Параметры роли',
         'subtitle' => isset($role) ? $role->description() : 'Информация о твоём участии в проекте.',
     ])
+@endsection
+
+@section('account-content')
+
 
     @if (isset($error))
         <div class="notice" role="alert">{{ $error['message'] }}</div>
