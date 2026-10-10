@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleAssignerEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use App\Presentation\Navigation\AdaptiveMenuGroup;
 use App\Presentation\Navigation\MenuResolver;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -112,130 +113,161 @@ final class MskbaAppAccountNavigationTest extends TestCase
         ]);
     }
 
-    /** @return array<string, mixed>|null */
-    private function roleGroup(UserParticipationRoleEnum $role): ?array
+    /** @return array<int, string> */
+    private function childLabels(): array
     {
-        return collect(app(MenuResolver::class)->resolve('account'))
-            ->first(fn (array $item): bool => ($item['role'] ?? null) === $role->value);
-    }
-
-    /** @return list<string> */
-    private function roleLinks(UserParticipationRoleEnum $role): array
-    {
-        $group = $this->roleGroup($role);
+        $group = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мой MSKBA');
 
         return $group === null ? [] : array_column($group['children'], 'label');
     }
 
-    public function test_account_without_roles_has_no_participation_groups_and_wallet_precedes_settings(): void
+    public function test_a_single_conditional_destination_is_flat_in_desktop_and_expands_mobile_sidebar_when_active(): void
     {
-        $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
+        // Today's roles normally expose >=2 destinations. Render a synthetic
+        // single visible destination to cover the future real one-link case.
+        $soleLink = AdaptiveMenuGroup::wrap('Мой MSKBA', [[
+            'label' => 'Мои игры',
+            'url' => route('account.my-games'),
+            'active' => true,
+            'visible' => true,
+        ]]);
+        $this->app->instance(MenuResolver::class, new class($soleLink) implements MenuResolver
+        {
+            public function __construct(private readonly array $links) {}
+
+            public function resolve(string $page): array
+            {
+                return $this->links;
+            }
+        });
+
+        $html = view('theme::partials.account.sidebar')->render();
+        self::assertStringNotContainsString('Мой MSKBA', $html);
+        self::assertStringNotContainsString('app-account-nav__group', $html);
+        self::assertSame(2, substr_count($html, 'href="'.route('account.my-games').'"'));
+
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+        self::assertSame(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
+        self::assertSame(2, $xpath->query('//a[@aria-current="page"]')->length);
+    }
+
+    public function test_account_without_roles_has_no_group_and_wallet_precedes_settings(): void
+    {
+        $user = User::factory()->create([
+            'personal_data_distribution_required_at' => now(),
+            'personal_data_distribution_setup_completed_at' => null,
+        ]);
         $this->actingAs($user)->get(route('account'))->assertOk()
-            ->assertDontSee('data-account-role-group=', false)
             ->assertDontSee('Мой MSKBA')
             ->assertSee('Здесь ты можешь управлять');
 
-        $this->assertSame([], array_filter(app(MenuResolver::class)->resolve('account'), fn ($item) => isset($item['role'])));
+        $this->assertSame([], $this->childLabels());
         $labels = array_column(app(MenuResolver::class)->resolve('account'), 'label');
         $this->assertSame(array_search('Кошелёк', $labels, true) + 1, array_search('Настройки', $labels, true));
     }
 
-    public function test_player_role_has_its_own_group_with_settings_even_without_related_objects(): void
+    public function test_player_role_shows_all_destinations_without_any_team_or_games(): void
     {
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
         $this->giveRole($user, UserParticipationRoleEnum::PLAYER);
+
         $this->actingAs($user)->get(route('account'))->assertOk()
-            ->assertSee('data-account-role-group="player"', false)
-            ->assertDontSee('Мой MSKBA');
+            ->assertSee('Мой MSKBA')
+            ->assertSee('Мои команды')
+            ->assertSee('Мои игры')
+            ->assertSee('Мои тренировки');
+        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки', 'Параметры: Игрок'], $this->childLabels());
 
-        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки', 'Параметры'], $this->roleLinks(UserParticipationRoleEnum::PLAYER));
-        $group = $this->roleGroup(UserParticipationRoleEnum::PLAYER);
-        $this->assertSame('Игрок', $group['label']);
-        $this->assertSame(route('account.participation-role', ['role' => 'player']), $group['children'][3]['url']);
-        $this->assertFalse($group['active']);
-
-        $this->get(route('account.my-games'))->assertOk()->assertSee('id="account-section-title"', false);
+        $this->get(route('account.my-games'))->assertOk()
+            ->assertSee('id="account-section-title"', false);
         $this->get(route('account.my-trainings'))->assertOk();
         $this->get(route('account.teams'))->assertOk();
     }
 
-    public function test_role_settings_page_opens_correct_group_and_highlights_only_its_settings(): void
-    {
-        $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
-        $this->giveRole($user, UserParticipationRoleEnum::PLAYER);
-        $this->giveRole($user, UserParticipationRoleEnum::REFEREE);
-
-        $response = $this->actingAs($user)->get(route('account.participation-role', ['role' => 'player']))->assertOk();
-        $html = $response->getContent();
-        $dom = new \DOMDocument;
-        @$dom->loadHTML($html);
-        $xpath = new \DOMXPath($dom);
-        $this->assertSame(2, $xpath->query('//details[@data-account-role-group="player"][@open]')->length);
-        $this->assertSame(2, $xpath->query('//details[@data-account-role-group="referee"][not(@open)]')->length);
-        $this->assertSame(2, $xpath->query('//details[@data-account-role-group="player"]//a[@href="'.route('account.participation-role', ['role' => 'player']).'"][@aria-current="page"]')->length);
-        $this->assertFalse(collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Роли в проекте')['active']);
-        $this->assertTrue($this->roleGroup(UserParticipationRoleEnum::PLAYER)['active']);
-        $this->assertFalse($this->roleGroup(UserParticipationRoleEnum::REFEREE)['active']);
-        $this->assertTrue(collect($this->roleGroup(UserParticipationRoleEnum::PLAYER)['children'])->last()['active']);
-        $this->assertSame(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
-    }
-
-    public function test_multiple_roles_create_separate_groups_with_expected_overlaps_and_stable_order(): void
+    public function test_multiple_roles_share_overlapping_sections_without_duplicates_and_open_active_group(): void
     {
         config()->set('features.sports_sections.enabled', true);
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
         $this->giveRole($user, UserParticipationRoleEnum::PLAYER);
         $this->giveRole($user, UserParticipationRoleEnum::COACH);
         $this->giveRole($user, UserParticipationRoleEnum::REFEREE);
-
         $this->actingAs($user)->get(route('account.my-games'))->assertOk()
-            ->assertSee('data-account-role-group="player"', false)
-            ->assertSee('data-account-role-group="coach"', false)
-            ->assertSee('data-account-role-group="referee"', false);
-        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки', 'Параметры'], $this->roleLinks(UserParticipationRoleEnum::PLAYER));
-        $this->assertSame(['Мои секции', 'Мои тренировки', 'Мои команды', 'Параметры'], $this->roleLinks(UserParticipationRoleEnum::COACH));
-        $this->assertSame(['Мои игры', 'Судейские назначения', 'Параметры'], $this->roleLinks(UserParticipationRoleEnum::REFEREE));
-        $this->assertTrue($this->roleGroup(UserParticipationRoleEnum::PLAYER)['active']);
-        $this->assertFalse($this->roleGroup(UserParticipationRoleEnum::COACH)['active']);
-        $this->assertTrue($this->roleGroup(UserParticipationRoleEnum::REFEREE)['active']);
-        $groupRoles = array_values(array_filter(array_column(app(MenuResolver::class)->resolve('account'), 'role')));
-        $this->assertSame(['player', 'coach', 'referee'], $groupRoles);
+            ->assertSee('app-account-nav__group', false);
+
+        $this->assertSame([
+            'Мои команды', 'Мои игры', 'Мои тренировки',
+            'Мои секции', 'Судейские назначения',
+            'Параметры: Игрок', 'Параметры: Тренер', 'Параметры: Судья',
+        ], $this->childLabels());
+        $group = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мой MSKBA');
+        $this->assertTrue($group['active']);
+        $this->assertSame(1, collect($group['children'])->where('active', true)->count());
     }
 
-    public function test_venue_representative_links_follow_feature_configuration(): void
+    public function test_active_role_parameters_are_single_links_in_shared_group_and_open_the_matching_screen(): void
+    {
+        $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
+        $this->giveRole($user, UserParticipationRoleEnum::PLAYER);
+        $this->giveRole($user, UserParticipationRoleEnum::COACH);
+
+        $html = $this->actingAs($user)
+            ->get(route('account.participation-role', ['role' => 'player']))
+            ->assertOk()->getContent();
+        $items = collect(app(MenuResolver::class)->resolve('account'));
+        $group = $items->firstWhere('label', 'Мой MSKBA');
+        $this->assertNotNull($group);
+        $this->assertTrue($group['active']);
+        $this->assertFalse($items->firstWhere('label', 'Роли в проекте')['active']);
+        $roleChildren = collect($group['children'])->filter(fn (array $link): bool => str_starts_with($link['label'], 'Параметры: '));
+        $this->assertSame(['Параметры: Игрок', 'Параметры: Тренер'], $roleChildren->pluck('label')->all());
+        $this->assertSame([
+            route('account.participation-role', ['role' => 'player']),
+            route('account.participation-role', ['role' => 'coach']),
+        ], $roleChildren->pluck('url')->all());
+        $this->assertSame(1, $roleChildren->where('active', true)->count());
+        $this->assertTrue($roleChildren->first()['active']);
+
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+        $this->assertSame(2, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav__group ")][@open]')->length);
+        $this->assertSame(2, $xpath->query('//a[@href="'.route('account.participation-role', ['role' => 'player']).'"][@aria-current="page"]')->length);
+    }
+
+    public function test_venue_representative_sees_sections_before_owning_a_venue(): void
     {
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
         $this->giveRole($user, UserParticipationRoleEnum::VENUE_RELATED);
         $this->actingAs($user)->get(route('account'))->assertOk();
-        $this->assertSame(['Мои площадки', 'Бронирования', 'Расписание', 'Параметры'], $this->roleLinks(UserParticipationRoleEnum::VENUE_RELATED));
-        $this->assertSame('Представитель площадки', $this->roleGroup(UserParticipationRoleEnum::VENUE_RELATED)['label']);
+        $this->assertSame(['Мои площадки', 'Бронирования', 'Расписание', 'Параметры: Представитель площадки'], $this->childLabels());
+
         $this->get(route('account.my-bookings'))->assertOk();
         $this->get(route('account.venue-schedule'))->assertOk();
     }
 
-    public function test_all_remaining_roles_have_individual_groups(): void
+    public function test_all_remaining_roles_have_agreed_navigation(): void
     {
         foreach ([
-            UserParticipationRoleEnum::ORGANIZER->value => ['Мои мероприятия', 'Мои турниры', 'Параметры'],
-            UserParticipationRoleEnum::REFEREE->value => ['Мои игры', 'Судейские назначения', 'Параметры'],
-            UserParticipationRoleEnum::STATISTICIAN->value => ['Мои игры', 'Статистика', 'Параметры'],
-            UserParticipationRoleEnum::MEDIA->value => ['Мои материалы', 'Мои мероприятия', 'Параметры'],
-        ] as $value => $expected) {
+            UserParticipationRoleEnum::ORGANIZER->value => ['Мои мероприятия', 'Мои турниры', 'Параметры: Организатор мероприятий'],
+            UserParticipationRoleEnum::REFEREE->value => ['Мои игры', 'Судейские назначения', 'Параметры: Судья'],
+            UserParticipationRoleEnum::STATISTICIAN->value => ['Мои игры', 'Статистика', 'Параметры: Статист'],
+            UserParticipationRoleEnum::MEDIA->value => ['Мои материалы', 'Мои мероприятия', 'Параметры: Медиа'],
+        ] as $role => $expected) {
             $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
-            $role = UserParticipationRoleEnum::from($value);
-            $this->giveRole($user, $role);
+            $this->giveRole($user, UserParticipationRoleEnum::from($role));
             $this->actingAs($user)->get(route('account'))->assertOk();
-            $this->assertSame($role->label(), $this->roleGroup($role)['label']);
-            $this->assertSame($expected, $this->roleLinks($role));
+            $this->assertSame($expected, $this->childLabels());
         }
     }
 
-    public function test_inactive_role_does_not_create_group(): void
+    public function test_inactive_role_does_not_add_sections(): void
     {
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
         $this->giveRole($user, UserParticipationRoleEnum::PLAYER, UserParticipationRoleStatusEnum::INACTIVE);
         $this->actingAs($user)->get(route('account'))->assertOk();
-        $this->assertNull($this->roleGroup(UserParticipationRoleEnum::PLAYER));
+        $this->assertSame([], $this->childLabels());
     }
 
     public function test_new_role_pages_do_not_change_legacy_theme(): void

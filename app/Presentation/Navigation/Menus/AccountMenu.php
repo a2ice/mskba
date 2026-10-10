@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Venue\Application\Services\VenueAccessResolver;
 use App\Modules\VenueBooking\Application\Queries\CountActionableVenueBookingRequests;
+use App\Presentation\Navigation\AdaptiveMenuGroup;
 use App\Presentation\Navigation\MenuHandler;
 use App\Presentation\Theming\ThemeResolver;
 
@@ -115,47 +116,50 @@ final class AccountMenu implements MenuHandler
         ];
         $roles = $user->canonical()->participationRoles()->get(['role'])
             ->map(fn ($role): string => $role->role->value)->all();
-        // Each active participation role owns one dedicated sidebar group.
-        // Do not deduplicate sections across roles: the same destination can
-        // intentionally appear under two different participation contexts.
-        foreach ($roleSections as $roleValue => $sections) {
+        $sectionKeys = [];
+        foreach ($roleSections as $role => $sections) {
+            if (! in_array($role, $roles, true)) {
+                continue;
+            }
+            foreach ($sections as $key) {
+                if ($key === 'sections' && ! config('features.sports_sections.enabled')) {
+                    continue;
+                }
+                $sectionKeys[$key] = true;
+            }
+        }
+
+        $children = [];
+        foreach (array_keys($sectionKeys) as $key) {
+            [$label, $route, $activePatterns] = $definitions[$key];
+            $children[] = [
+                'label' => $label,
+                'url' => $this->routeUrl($route),
+                'active' => $this->isActiveRoute($activePatterns),
+                'visible' => true,
+            ];
+        }
+        // Each active role adds its own parameters link after the shared,
+        // deduplicated destination links. This points to the exact same screen
+        // as the gear icon on the corresponding role card.
+        foreach ($roleSections as $roleValue => $_sections) {
             if (! in_array($roleValue, $roles, true)) {
                 continue;
             }
 
             $role = UserParticipationRoleEnum::from($roleValue);
-            $children = [];
-            foreach (array_unique($sections) as $key) {
-                if ($key === 'sections' && ! config('features.sports_sections.enabled')) {
-                    continue;
-                }
-                [$label, $route, $activePatterns] = $definitions[$key];
-                $children[] = [
-                    'label' => $label,
-                    'url' => $this->routeUrl($route),
-                    'active' => $this->isActiveRoute($activePatterns),
-                    'visible' => true,
-                ];
-            }
-
-            $isCurrentRole = request()->routeIs('account.participation-role')
-                && request()->route('role') === $roleValue;
             $children[] = [
-                'label' => 'Параметры',
+                'label' => 'Параметры: '.$role->label(),
                 'url' => route('account.participation-role', ['role' => $roleValue]),
-                'active' => $isCurrentRole,
+                'active' => request()->routeIs('account.participation-role')
+                    && request()->route('role') === $roleValue,
                 'visible' => true,
-            ];
-            $items[] = [
-                'label' => $role->label(),
-                'url' => null,
-                'active' => collect($children)->contains(fn (array $item): bool => $item['active']),
-                'visible' => true,
-                'groupType' => 'participation-role',
-                'role' => $roleValue,
-                'children' => $children,
             ];
         }
+
+        // A single destination is a plain link; group only when at least two
+        // distinct, visible destinations survive the role/feature checks.
+        array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
 
         $items[] = $this->link('Уведомления', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user));
         $items[] = [

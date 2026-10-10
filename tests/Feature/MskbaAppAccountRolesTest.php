@@ -140,32 +140,8 @@ final class MskbaAppAccountRolesTest extends TestCase
             'status' => 'active',
         ]);
         $this->get(route('account.roles'))->assertOk()
-            ->assertSee('data-account-role-group="player"', false)
+            ->assertSee('Мой MSKBA')
             ->assertSee('Мои команды');
-    }
-
-    public function test_ajax_role_changes_rebuild_individual_role_groups_without_a_reload(): void
-    {
-        $this->actingAs($this->user());
-        $this->get(route('account.roles'))->assertOk()
-            ->assertDontSee('data-account-role-group=', false);
-
-        $this->toggle('player')->assertOk()->assertJsonPath('enabled', true);
-        $this->get(route('account.roles'))->assertOk()
-            ->assertSee('data-account-role-group="player"', false)
-            ->assertSee('Мои команды')
-            ->assertSee('Мои тренировки');
-
-        $this->toggle('coach')->assertOk()->assertJsonPath('enabled', true);
-        $this->get(route('account.roles'))->assertOk()
-            ->assertSee('data-account-role-group="player"', false)
-            ->assertSee('data-account-role-group="coach"', false);
-
-        $this->travel(6)->seconds();
-        $this->toggle('player', false)->assertOk()->assertJsonPath('enabled', false);
-        $this->get(route('account.roles'))->assertOk()
-            ->assertDontSee('data-account-role-group="player"', false)
-            ->assertSee('data-account-role-group="coach"', false);
     }
 
     public function test_cooldown_survives_reload_and_only_disables_the_modified_role(): void
@@ -215,8 +191,9 @@ final class MskbaAppAccountRolesTest extends TestCase
 
         $this->get(route('account.roles'))->assertOk()
             ->assertSee('Параметры')
-            ->assertSee('data-account-role-group="coach"', false)
-            ->assertSee('data-account-role-group="media"', false);
+            ->assertSee('Мой MSKBA')
+            ->assertSee('Параметры: Тренер')
+            ->assertSee('Параметры: Медиа');
     }
 
     public function test_repeated_same_role_request_is_throttled_for_five_seconds_then_succeeds(): void
