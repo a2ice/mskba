@@ -192,8 +192,10 @@ final class MskbaAppAccountRolesTest extends TestCase
         $this->get(route('account.roles'))->assertOk()
             ->assertSee('Параметры')
             ->assertSee('Мой MSKBA')
-            ->assertSee('Параметры: Тренер')
-            ->assertSee('Параметры: Медиа');
+            ->assertSee('Тренер')
+            ->assertSee('Медиа')
+            ->assertDontSee('Параметры: Тренер')
+            ->assertDontSee('Параметры: Медиа');
     }
 
     public function test_repeated_same_role_request_is_throttled_for_five_seconds_then_succeeds(): void

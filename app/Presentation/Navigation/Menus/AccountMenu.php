@@ -139,27 +139,27 @@ final class AccountMenu implements MenuHandler
                 'visible' => true,
             ];
         }
-        // Each active role adds its own parameters link after the shared,
-        // deduplicated destination links. This points to the exact same screen
-        // as the gear icon on the corresponding role card.
+        // Group shared destinations exactly once, independently of role links.
+        // Each active role then appears as a separate top-level navigation item
+        // leading to the same parameters page as its gear on /account/roles.
+        array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
+
         foreach ($roleSections as $roleValue => $_sections) {
             if (! in_array($roleValue, $roles, true)) {
                 continue;
             }
 
             $role = UserParticipationRoleEnum::from($roleValue);
-            $children[] = [
-                'label' => 'Параметры: '.$role->label(),
+            $items[] = [
+                'label' => $role->label(),
                 'url' => route('account.participation-role', ['role' => $roleValue]),
                 'active' => request()->routeIs('account.participation-role')
                     && request()->route('role') === $roleValue,
                 'visible' => true,
+                // On a role page, the mobile account navigation must expand.
+                'openMobileOnActive' => true,
             ];
         }
-
-        // A single destination is a plain link; group only when at least two
-        // distinct, visible destinations survive the role/feature checks.
-        array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
 
         $items[] = $this->link('Уведомления', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user));
         $items[] = [

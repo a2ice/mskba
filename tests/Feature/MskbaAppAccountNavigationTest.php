@@ -178,7 +178,8 @@ final class MskbaAppAccountNavigationTest extends TestCase
             ->assertSee('Мои команды')
             ->assertSee('Мои игры')
             ->assertSee('Мои тренировки');
-        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки', 'Параметры: Игрок'], $this->childLabels());
+        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки'], $this->childLabels());
+        $this->assertSame(route('account.participation-role', ['role' => 'player']), collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Игрок')['url']);
 
         $this->get(route('account.my-games'))->assertOk()
             ->assertSee('id="account-section-title"', false);
@@ -199,14 +200,13 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertSame([
             'Мои команды', 'Мои игры', 'Мои тренировки',
             'Мои секции', 'Судейские назначения',
-            'Параметры: Игрок', 'Параметры: Тренер', 'Параметры: Судья',
         ], $this->childLabels());
         $group = collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Мой MSKBA');
         $this->assertTrue($group['active']);
         $this->assertSame(1, collect($group['children'])->where('active', true)->count());
     }
 
-    public function test_active_role_parameters_are_single_links_in_shared_group_and_open_the_matching_screen(): void
+    public function test_role_parameters_are_separate_top_level_links_outside_my_mskba(): void
     {
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
         $this->giveRole($user, UserParticipationRoleEnum::PLAYER);
@@ -218,22 +218,26 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $items = collect(app(MenuResolver::class)->resolve('account'));
         $group = $items->firstWhere('label', 'Мой MSKBA');
         $this->assertNotNull($group);
-        $this->assertTrue($group['active']);
+        $this->assertFalse($group['active']);
         $this->assertFalse($items->firstWhere('label', 'Роли в проекте')['active']);
-        $roleChildren = collect($group['children'])->filter(fn (array $link): bool => str_starts_with($link['label'], 'Параметры: '));
-        $this->assertSame(['Параметры: Игрок', 'Параметры: Тренер'], $roleChildren->pluck('label')->all());
-        $this->assertSame([
-            route('account.participation-role', ['role' => 'player']),
-            route('account.participation-role', ['role' => 'coach']),
-        ], $roleChildren->pluck('url')->all());
-        $this->assertSame(1, $roleChildren->where('active', true)->count());
-        $this->assertTrue($roleChildren->first()['active']);
+        $this->assertSame(['Мои команды', 'Мои игры', 'Мои тренировки', 'Мои секции'], array_column($group['children'], 'label'));
+        $this->assertSame(0, collect($group['children'])->filter(fn (array $link): bool => str_contains($link['label'], 'Параметры'))->count());
+
+        $player = $items->firstWhere('label', 'Игрок');
+        $coach = $items->firstWhere('label', 'Тренер');
+        $this->assertSame(route('account.participation-role', ['role' => 'player']), $player['url']);
+        $this->assertSame(route('account.participation-role', ['role' => 'coach']), $coach['url']);
+        $this->assertTrue($player['active']);
+        $this->assertFalse($coach['active']);
+        $this->assertTrue($player['openMobileOnActive']);
+        $this->assertSame(['Обзор', 'Профиль', 'Роли в проекте', 'Мой MSKBA', 'Игрок', 'Тренер'], array_slice($items->pluck('label')->all(), 0, 6));
 
         $dom = new \DOMDocument;
         @$dom->loadHTML($html);
         $xpath = new \DOMXPath($dom);
-        $this->assertSame(2, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav__group ")][@open]')->length);
+        $this->assertSame(0, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav__group ")][@open]')->length);
         $this->assertSame(2, $xpath->query('//a[@href="'.route('account.participation-role', ['role' => 'player']).'"][@aria-current="page"]')->length);
+        $this->assertSame(1, $xpath->query('//details[contains(concat(" ", normalize-space(@class), " "), " app-account-nav--mobile ")][@open]')->length);
     }
 
     public function test_venue_representative_sees_sections_before_owning_a_venue(): void
@@ -241,7 +245,7 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
         $this->giveRole($user, UserParticipationRoleEnum::VENUE_RELATED);
         $this->actingAs($user)->get(route('account'))->assertOk();
-        $this->assertSame(['Мои площадки', 'Бронирования', 'Расписание', 'Параметры: Представитель площадки'], $this->childLabels());
+        $this->assertSame(['Мои площадки', 'Бронирования', 'Расписание'], $this->childLabels());
 
         $this->get(route('account.my-bookings'))->assertOk();
         $this->get(route('account.venue-schedule'))->assertOk();
@@ -250,15 +254,16 @@ final class MskbaAppAccountNavigationTest extends TestCase
     public function test_all_remaining_roles_have_agreed_navigation(): void
     {
         foreach ([
-            UserParticipationRoleEnum::ORGANIZER->value => ['Мои мероприятия', 'Мои турниры', 'Параметры: Организатор мероприятий'],
-            UserParticipationRoleEnum::REFEREE->value => ['Мои игры', 'Судейские назначения', 'Параметры: Судья'],
-            UserParticipationRoleEnum::STATISTICIAN->value => ['Мои игры', 'Статистика', 'Параметры: Статист'],
-            UserParticipationRoleEnum::MEDIA->value => ['Мои материалы', 'Мои мероприятия', 'Параметры: Медиа'],
+            UserParticipationRoleEnum::ORGANIZER->value => ['Мои мероприятия', 'Мои турниры'],
+            UserParticipationRoleEnum::REFEREE->value => ['Мои игры', 'Судейские назначения'],
+            UserParticipationRoleEnum::STATISTICIAN->value => ['Мои игры', 'Статистика'],
+            UserParticipationRoleEnum::MEDIA->value => ['Мои материалы', 'Мои мероприятия'],
         ] as $role => $expected) {
             $user = User::factory()->create(['personal_data_distribution_required_at' => now()]);
             $this->giveRole($user, UserParticipationRoleEnum::from($role));
             $this->actingAs($user)->get(route('account'))->assertOk();
             $this->assertSame($expected, $this->childLabels());
+            $this->assertSame(route('account.participation-role', ['role' => $role]), collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', UserParticipationRoleEnum::from($role)->label())['url']);
         }
     }
 
@@ -268,6 +273,7 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->giveRole($user, UserParticipationRoleEnum::PLAYER, UserParticipationRoleStatusEnum::INACTIVE);
         $this->actingAs($user)->get(route('account'))->assertOk();
         $this->assertSame([], $this->childLabels());
+        $this->assertNull(collect(app(MenuResolver::class)->resolve('account'))->firstWhere('label', 'Игрок'));
     }
 
     public function test_new_role_pages_do_not_change_legacy_theme(): void
