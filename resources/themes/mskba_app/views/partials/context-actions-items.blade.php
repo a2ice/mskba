@@ -16,6 +16,8 @@
                 @include('theme::partials.context-actions-items', ['items' => $children])
             </div>
         </details>
+    @elseif (! empty($action['placeholder']))
+        <button type="button" data-context-placeholder="{{ $action['placeholder'] }}">{{ $action['label'] }}</button>
     @elseif (! empty($action['url']))
         <a href="{{ $action['url'] }}">{{ $action['label'] }}</a>
     @endif

@@ -1,5 +1,6 @@
 import './header.js';
 import './context-bar.js';
+import './context-dialogs.js';
 import './privacy-distribution.js';
 import './privacy-onboarding-dialog.js';
 import './distribution-consent-document-dialog.js';

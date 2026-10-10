@@ -2,9 +2,13 @@
 
 use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Content\Presentation\Http\Controllers\FaqController;
+use App\Modules\Content\Presentation\Http\Controllers\FaqHelpController;
+use App\Modules\Content\Presentation\Http\Controllers\SupportQuestionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('faq')->group(function (): void {
+    Route::get('/help-content', FaqHelpController::class)->middleware('throttle:60,1')->name('faq.help-content');
+    Route::post('/questions', SupportQuestionController::class)->middleware(['auth', 'throttle:5,10'])->name('faq.questions.store');
     Route::get('/', [FaqController::class, 'index'])
         ->name('faq.index')
         ->defaults('breadcrumb', 'FAQ');

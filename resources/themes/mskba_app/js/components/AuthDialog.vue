@@ -22,6 +22,7 @@ const restoreForm = reactive({ contact: '' });
 let restoreFocus = null;
 let previousOverflow = '';
 let currentRequest = null;
+let inlineAuth = false;
 
 const title = computed(() => ({
     login: 'Вход в аккаунт',
@@ -106,10 +107,12 @@ function onDocumentClick(event) {
     const button = event.target.closest?.('[data-auth-trigger]');
     if (!button || !document.getElementById('mskba-auth-dialog-root')) return;
     event.preventDefault();
+    inlineAuth = false;
     openDialog(button.dataset.authMode || 'login');
 }
 
 function onDialogEvent(event) {
+    inlineAuth = event.detail?.stayOnPage === true;
     openDialog(event.detail?.mode || 'login');
 }
 
@@ -139,11 +142,22 @@ async function post(endpoint, form) {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
             },
-            body: JSON.stringify({ ...form, redirect_to: locationPath() }),
+            body: JSON.stringify({ ...form, redirect_to: locationPath(), inline_auth: inlineAuth && mode.value === 'login' }),
         });
         let result = {};
         try { result = await response.json(); } catch { /* non-JSON upstream error */ }
         if (response.ok && result.redirect_url) {
+            // The help dialog can request an in-place password login. Do not
+            // bypass registration/privacy onboarding or redirect on normal logins.
+            if (mode.value === 'login' && inlineAuth && result.inline_auth && !result.requires_setup) {
+                if (result.csrf_token) document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', result.csrf_token);
+                busy.value = false;
+                loginForm.password = '';
+                closeDialog();
+                inlineAuth = false;
+                window.dispatchEvent(new CustomEvent('mskba:auth:success'));
+                return;
+            }
             window.location.assign(localRedirect(result.redirect_url));
             return;
         }

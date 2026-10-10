@@ -48,6 +48,44 @@ final class ContextSubmenuResolverTest extends TestCase
         self::assertCount(1, $items);
         self::assertSame('Pattern', $items[0]['label']);
     }
+
+    public function test_specific_page_overrides_parent_and_other_paths_fall_back(): void
+    {
+        config()->set('submenu.sections', [
+            'parent' => ['pattern' => '#^/venues(?:/|$)#', 'handler' => EventsPatternSubmenu::class],
+            'child' => ['pattern' => '#^/venues/[^/]+$#', 'parent' => 'parent', 'handler' => ExactSubmenu::class],
+        ]);
+        $this->app->instance('request', Request::create('/venues/test-court'));
+        self::assertSame(['Exact'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
+        $this->app->instance('request', Request::create('/venues/test-court/photos'));
+        self::assertSame(['Pattern'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
+    }
+
+    public function test_child_may_explicitly_include_parent_items(): void
+    {
+        config()->set('submenu.sections', [
+            'parent' => ['pattern' => '#^/venues(?:/|$)#', 'handler' => EventsPatternSubmenu::class],
+            'child' => ['pattern' => '#^/venues/[^/]+$#', 'parent' => 'parent', 'include_parent' => true, 'handler' => ExactSubmenu::class],
+        ]);
+        $this->app->instance('request', Request::create('/venues/test-court'));
+        self::assertSame(['Exact', 'Pattern'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
+    }
+
+    public function test_actual_venue_handlers_expose_expected_placeholder_actions(): void
+    {
+        $this->app->instance('request', Request::create('/venues'));
+        self::assertSame(['Создать', 'Найти'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
+
+        // The child route constraint is important: /venues/create must not be
+        // interpreted as a venue details page, despite matching the URL regex.
+        $request = Request::create('/venues/test-court');
+        $route = new \Illuminate\Routing\Route('GET', '/venues/{alias}', fn () => null);
+        $route->name('venues.show');
+        $request->setRouteResolver(static fn () => $route);
+        $this->app->instance('request', $request);
+        self::assertSame(['Забронировать', 'Найти похожие'], array_column(app(ContextSubmenuResolver::class)->resolve(), 'label'));
+    }
+
 }
 
 final class ExactSubmenu implements MenuHandler

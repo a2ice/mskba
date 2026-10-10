@@ -65,6 +65,9 @@ class AuthController extends Controller
                 'status' => $result->status,
                 'message' => $result->message,
                 'redirect_url' => $redirectTo,
+                'inline_auth' => $request->boolean('inline_auth') && ! $pendingSetup,
+                'requires_setup' => $pendingSetup,
+                'csrf_token' => $request->session()->token(),
             ], $result->httpStatus);
         }
 

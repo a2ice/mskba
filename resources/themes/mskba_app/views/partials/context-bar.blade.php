@@ -48,12 +48,13 @@
                     @endif
                     <button type="button" data-app-context-back data-fallback="{{ $parentUrl }}">Назад</button>
                     <button type="button" data-app-context-share>Поделиться</button>
-                    <a href="{{ url('/faq') }}">Помощь</a>
+                    <button type="button" data-context-help data-help-context="{{ app(\App\Presentation\Navigation\FaqContextResolver::class)->context() }}">Помощь</button>
                 </div>
             </details>
             <span class="app-context-bar__status" role="status" aria-live="polite" data-app-context-status></span>
         </div>
     </div>
+    @include('theme::partials.context-action-dialogs')
     @if ($showOverviewConfirmationGuide)
         @include('theme::partials.account.confirmation-guide-dialog', [
             'accountConfirmationGuideHtml' => app(\App\Modules\Content\Application\Services\WelcomeAccountConfirmationGuide::class)->html(),
