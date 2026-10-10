@@ -6,8 +6,8 @@
 - Staging: `/var/www/mskba-dev-next`, Compose project `mskba-dev`, branch `dev`, theme `mskba_app`.
 - Staging has independent `dev_postgres` and `dev_redis` named volumes. No production network, credentials, uploads, API keys or Telegram webhook are reused.
 - Docker dev nginx listens only on `127.0.0.1:8001`; host Nginx keeps HTTPS and will proxy after manual cutover.
-- There is no automatic deploy until `ENABLE_DEV_DEPLOY=true` is set in GitHub repository variables **and** `.dev-bootstrap-complete` has been created on VDS.
-- Current VDS has ~2 GB RAM and ~8.6 GB free disk. Do not start dev services until resource capacity and backups are reviewed. CI compiles frontend; deploy uses tracked `public/build` artifacts for now.
+- Automatic dev deploy requires repository variable `ENABLE_DEV_DEPLOY=true`, successful same-run CI tests, and the existing `.dev-bootstrap-complete` marker on VDS.
+- VDS has ~2 GB RAM; dev containers are already running. Monitor capacity before introducing new services. CI compiles frontend; deploy currently uses tracked `public/build` artifacts.
 
 ## One-time bootstrap (manual checklist; not executed by GitHub Actions)
 
@@ -37,14 +37,14 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 - Public dev HTTPS is routed to localhost:8001 and renders `mskba_app`; production remains `mskba_dark`.
 - Server `.env` must remain outside Git with `deploy:www-data`, mode `0640`. `storage` and `bootstrap/cache` must be writable by `www-data` without changing production ownership.
 - `compose.dev.local.yaml` must remain server-only (never commit secrets or use a global compose override).
-- Before enabling automation, validate image compatibility with the current `composer.lock`, check outbound messaging/payment integrations are disabled, and confirm WSS route strategy.
-- Development environment must contain `DEV_SERVER_HOST` and `DEV_SERVER_SSH_KEY`, and repository variable `ENABLE_DEV_DEPLOY` must stay unset until an authorized manual deployment/rollback trial.
+- Before changes to image/dependencies or outbound integrations, validate image compatibility, external side effects and WSS route strategy.
+- GitHub `development` environment uses `DEV_SERVER_HOST` and `DEV_SERVER_SSH_KEY`; automatic deploy is gated by repository variable `ENABLE_DEV_DEPLOY`. Disable this variable to halt future automatic deploys.
 - The workflow currently deploys tracked `public/build` files; CI's successful Vite build is not uploaded as a deployment artifact. Verify that committed assets correspond to the release; a future revision should deploy immutable CI-built artifacts/images.
 - The first enabled run must be supervised; successful HTTP `/` alone is not sufficient proof of auth, WebSocket, uploads, or side-effect isolation.
 
 ## Outbound integration deployment gate
 
-- Staging remains `APP_ENV=staging`, `APP_DEBUG=false`, and `APP_THEME=mskba_app`. Live provider credentials may be configured deliberately for functional testing. The deploy accepts `MAIL_MAILER=log|smtp` and `TELEGRAM_UPDATES_TRANSPORT=disabled|webhook|polling`, but does not configure webhooks or launch workers.
+- Staging remains `APP_ENV=staging`, `APP_DEBUG=false`, and `APP_THEME=mskba_app`. Live provider credentials may be configured deliberately for functional testing. The deploy accepts `MAIL_MAILER=log|smtp` and requires `TELEGRAM_UPDATES_TRANSPORT=disabled`; it does not configure webhooks or launch workers.
 - No staging workers or scheduler are started by deployment. Payment and other providers still require an application-level audit before creating the bootstrap marker. Shared live integrations are permitted by explicit project decision; test sends must be intentional, with known recipients.
 - This is configuration validation, not a network egress firewall. Verify actual server `.env` and side-effect code paths independently.
 
@@ -60,4 +60,12 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 
 **Do not:** change the bot's webhook to dev, call `telegram:configure-updates` from dev (the polling mode deletes the current webhook), start dev polling/webhook consumers, or enable background queues/scheduler that can emit uncontrolled bot messages. Keep `TELEGRAM_UPDATES_TRANSPORT=disabled` on dev for the shared-bot phase. Note that `telegram:configure-updates` does not currently implement `disabled` as a safe no-op; never invoke it on dev. Set the dev token only when explicitly testing outgoing messages. Keep secrets only in the server `.env`, not in Git.
 
-**Technical debt — separate inbound integration properly:** design and implement an isolated Telegram bot for dev (preferred) or a deliberate production-to-dev event router with authenticated environment routing, distinct callback handling, idempotency and audit logs. Test Mini App authentication, callbacks, webhooks, and outgoing notifications independently before turning on dev consumers. Review CI's currently permissive `TELEGRAM_UPDATES_TRANSPORT` validation and enforce this decision in deployment protections before automated deploy is enabled.
+**Technical debt — separate inbound integration properly:** design and implement an isolated Telegram bot for dev (preferred) or a deliberate production-to-dev event router with authenticated environment routing, distinct callback handling, idempotency and audit logs. Test Mini App authentication, callbacks, webhooks, and outgoing notifications independently before turning on dev consumers. The CI now enforces `TELEGRAM_UPDATES_TRANSPORT=disabled`; revisit that guard only as part of an explicitly approved Telegram integration redesign.
+
+## Verified first supervised deploy (2026-10-09)
+
+- Manual GitHub Actions run [#37999883228](https://github.com/a2ice/mskba/actions/runs/37999883228) deployed `25254d19` to staging; PHP tests and frontend build passed; `deploy_dev` succeeded.
+- Dev HTTP returned 200, production HTTP returned 200; PostgreSQL reported `Nothing to migrate`. Readiness retry succeeded on attempt 2 after container recreation.
+- Dev DB pre-deploy backup: `/home/deploy/mskba-dev-before-deploy-20261009-220141.dump`, custom format validated with `pg_restore -l`.
+- Limitations: shared PHP image is temporary, Composer dependency upgrades are intentionally rejected during in-place deploy, and the build delivered to staging is the committed `public/build` directory rather than the CI output. WebSocket, authenticated and outbound integration flows need end-to-end checks.
+- Next milestone: enable `ENABLE_DEV_DEPLOY=true`, push a documentation-only commit from the local checkout, and confirm the `push`-triggered test/deploy pipeline reaches Success while both URLs remain HTTP 200.
