@@ -23,7 +23,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-npY91dFv.css",
+    "file": "assets/app-AvmfMxhZ.css",
     "name": "app",
     "names": [
       "app.css"
@@ -38,7 +38,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-3GONXhEs.css",
+    "file": "assets/app-CbgYRwqf.css",
     "name": "app",
     "names": [
       "app.css"
@@ -61,7 +61,7 @@
     "src": "resources/themes/mskba_app/assets/images/logo-mark-100.png"
   },
   "resources/themes/mskba_app/css/app.css": {
-    "file": "assets/app-CYvguJo6.css",
+    "file": "assets/app-CnROcj6o.css",
     "name": "app",
     "names": [
       "app.css"
@@ -74,7 +74,7 @@
     ]
   },
   "resources/themes/mskba_app/js/app.js": {
-    "file": "assets/app-DEcrVM4c.js",
+    "file": "assets/app-C7lssee5.js",
     "name": "app",
     "src": "resources/themes/mskba_app/js/app.js",
     "isEntry": true,
@@ -93,7 +93,7 @@
     ]
   },
   "resources/themes/mskba_dark/css/app.css": {
-    "file": "assets/app-C-iHwbfy.css",
+    "file": "assets/app-D4TTXvpL.css",
     "name": "app",
     "names": [
       "app.css"

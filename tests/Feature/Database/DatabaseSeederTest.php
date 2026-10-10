@@ -17,6 +17,12 @@ class DatabaseSeederTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('seeding.superadmin_password', 'testing-only-superadmin-password');
+    }
+
     public function test_database_seeder_creates_only_base_identity_and_metro_data(): void
     {
         $this->seed(DatabaseSeeder::class);
@@ -25,7 +31,7 @@ class DatabaseSeederTest extends TestCase
             ->where('username', 'superadmin')
             ->firstOrFail();
 
-        $this->assertTrue(Hash::check('F[etyyj!', $superadmin->password));
+        $this->assertTrue(Hash::check('testing-only-superadmin-password', $superadmin->password));
         $this->assertSame(UserSystemRoleEnum::SUPERADMIN, $superadmin->system_role);
         $this->assertSame(UserStatusEnum::CONFIRMED, $superadmin->status);
         $this->assertNotNull($superadmin->profile);

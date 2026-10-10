@@ -119,6 +119,8 @@ jobs:
             # Explicit fail-closed checks; never print secret values.
             grep -qx 'APP_ENV=staging' .env
             grep -qx 'APP_DEBUG=false' .env
+            # Initial superadmin provisioning requires a unique server-only dev secret.
+            grep -Eq '^SUPERADMIN_SEED_PASSWORD=[0-9a-f]{64}$' .env || { echo 'Dev superadmin seed secret missing/invalid'; exit 1; }
             # Staging may use real provider credentials for supervised integration tests.
             # A shared Telegram bot cannot have two independent webhook URLs:
             # changing its webhook here would divert production updates.
@@ -156,6 +158,7 @@ jobs:
             test -f vendor/autoload.php || { echo 'Composer dependencies missing; stop before restarting'; exit 1; }
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan optimize:clear
+            $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
             $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx
             ready=0
             for attempt in $(seq 1 20); do
