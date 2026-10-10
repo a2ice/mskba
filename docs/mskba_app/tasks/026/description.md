@@ -93,3 +93,9 @@ Final UI follow-up QA (2026-10-09): 91 PHPUnit tests / 799 assertions PASS acros
 ## Local commit checkpoint (2026-10-09)
 
 The user authorized a local-only commit of Task 026 and a development pause. This checkpoint includes the final Actions microcopy, profile/avatar/FAQ controls and related corrections. Generated public/build assets are explicitly excluded. No push, PR, merge or deploy is authorized.
+
+### Update: Actions attention dot when expanded (2026-10-10)
+
+This supersedes the previous rule that hid the trigger dot in the open menu. The trigger indicator now stays **visible** next to «Действия» whether the native `<details>` is open or closed. It pulses **only while the menu is closed**; when expanded, its pulse and halo stop, leaving a static green 5px dot. The corresponding menu item keeps its own visible indicator (and pulse); on closing, the trigger resumes pulsing. No layout shift occurs and no JavaScript state synchronization is necessary.
+
+**Theme-level rule for attention markers:** show a small `--success` green dot at the Actions trigger only when at least one currently applicable, explicitly actionable item inside its contextual menu genuinely needs the user's attention. Mark the matching destination(s), not every action. The menu is a navigation hub, so the trigger remains visibly marked while open but is no longer animated in that state. Suppress irrelevant attention on the action's destination page, once resolved, or outside its intended route scope. Support `prefers-reduced-motion`. Markers indicate an outstanding action, not system-role privileges or generic information. **Current concrete case:** an unconfirmed canonical account on account routes other than confirmation. Future attention conditions require explicit visibility rules and test coverage; there is no generic unread counter implemented yet.

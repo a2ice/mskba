@@ -152,6 +152,22 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertDontSee('app-context-actions__attention', false);
     }
 
+    public function test_attention_dot_remains_visible_but_stops_pulsing_when_actions_are_open(): void
+    {
+        $css = file_get_contents(resource_path('themes/mskba_app/css/context-bar.css'));
+        $this->assertIsString($css);
+        $this->assertSame(1, preg_match(
+            '/\.app-context-actions\[open\]\s*>\s*summary\s+\.app-context-actions__attention\s*\{([^}]*)\}/',
+            $css,
+            $matches,
+        ));
+        $this->assertStringContainsString('animation:none', $matches[1]);
+        $this->assertStringContainsString('box-shadow:none', $matches[1]);
+        $this->assertStringNotContainsString('opacity:', $matches[1]);
+        $this->assertStringNotContainsString('display:none', $matches[1]);
+        $this->assertStringContainsString('@media(prefers-reduced-motion:reduce)', $css);
+    }
+
     public function test_confirmed_accounts_have_no_confirmation_attention_on_account_pages(): void
     {
         $user = $this->account(UserStatusEnum::CONFIRMED);

@@ -155,11 +155,12 @@ html:has(.app-context-bar) {
     border-radius:50%;background:var(--success);box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent);
     animation:app-account-confirm-attention 2s ease-out infinite;
 }
-/* The same call to action moves from the menu trigger into its opened menu.
-   Keep the trigger dot's space reserved so "Действия" does not jump. */
+/* Attention rule: one actionable item can mark both the Actions trigger and
+   its destination. The trigger always stays visible; opening the menu freezes
+   its pulse, while the item's own dot keeps drawing attention to the action. */
 .app-context-actions[open] > summary .app-context-actions__attention{
-    opacity:0;
     animation:none;
+    box-shadow:none;
 }
 @keyframes app-account-confirm-attention{
     0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent)}
