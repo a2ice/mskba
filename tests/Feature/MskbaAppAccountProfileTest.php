@@ -112,7 +112,7 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertDontSee('data-account-confirmation-guide-dialog', false);
     }
 
-    public function test_only_unconfirmed_account_pages_except_confirmation_show_direct_link_and_attention_dots(): void
+    public function test_unconfirmed_user_sees_confirmation_action_portal_wide_except_confirmation_page(): void
     {
         $user = $this->account();
 
@@ -157,7 +157,8 @@ final class MskbaAppAccountProfileTest extends TestCase
         $this->get(route('faq.index'))->assertOk()
             ->assertDontSee('data-account-confirmation-guide-open', false)
             ->assertDontSee('data-account-confirmation-guide-dialog', false)
-            ->assertDontSee('app-context-actions__attention', false);
+            ->assertSee('app-context-actions__attention', false)
+            ->assertSee('Подтвердить акк...');
     }
 
     public function test_attention_dot_remains_visible_but_stops_pulsing_when_actions_are_open(): void
