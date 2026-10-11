@@ -34,6 +34,9 @@ final class AdminUpdateUserStatusHandler
             }
 
             $user = $identityUsers->firstWhere('id', $canonicalId) ?? User::query()->findOrFail($canonicalId);
+            if ($status === UserStatusEnum::CONFIRMED && $user->status !== UserStatusEnum::CONFIRMED) {
+                $user->assertAccountConfirmationRequirements();
+            }
             $user->forceFill(['status' => $status])->save();
 
             return $user->refresh();

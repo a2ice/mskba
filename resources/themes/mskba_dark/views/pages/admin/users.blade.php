@@ -11,6 +11,10 @@
         $canManageUsers = auth()->user()?->hasSystemRole(\App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN) ?? false;
     @endphp
 
+    @if ($canManageUsers)
+        <p><a class="btn btn--secondary btn--sm" href="{{ route('admin.profile-change-requests') }}">Заявки на изменение профиля</a></p>
+    @endif
+
     <form method="GET" action="{{ route('admin.users') }}" class="admin-filter">
         <label class="admin-filter__field">
             <span class="admin-filter__label">Поиск</span>

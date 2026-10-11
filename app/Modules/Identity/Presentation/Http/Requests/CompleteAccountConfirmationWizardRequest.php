@@ -4,119 +4,59 @@ namespace App\Modules\Identity\Presentation\Http\Requests;
 
 use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
-use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class CompleteAccountConfirmationWizardRequest extends FormRequest
+final class CompleteAccountConfirmationWizardRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        return $this->user() !== null && ! $this->user()->canonical()->isBlocked();
     }
 
-    /**
-     * @return array<string, mixed>
-     */
     public function rules(): array
     {
         return [
-            'role' => ['nullable', Rule::enum(UserParticipationRoleEnum::class)],
-            'birth_date' => ['nullable', 'date', 'before:today'],
-            'gender' => ['nullable', Rule::enum(UserGenderEnum::class)],
-            'first_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['nullable', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255', function ($attribute, $value, $fail): void {
+                if (trim((string) $value) === '') $fail('Укажи имя.');
+            }],
+            'last_name' => ['required', 'string', 'max:255', function ($attribute, $value, $fail): void {
+                if (trim((string) $value) === '') $fail('Укажи фамилию.');
+            }],
+            'birth_date' => ['required', 'date_format:Y-m-d', 'before:today'],
+            'gender' => ['required', Rule::enum(UserGenderEnum::class)],
         ];
     }
 
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
-            $user = $this->user();
+            $user = $this->user()?->canonical();
+            if ($user === null) return;
 
-            if ($user === null) {
-                return;
-            }
-
-            $wizard = app(AccountConfirmationWizardService::class);
-            $currentRole = $wizard->primaryParticipationRole($user);
-            $submittedRole = $this->role();
-            $role = $currentRole ?? $submittedRole;
-
-            if ($currentRole === null && $submittedRole === null) {
-                $validator->errors()->add('role', 'Выберите роль участия.');
-
-                return;
-            }
-
-            if ($wizard->primaryVerifiedContact($user) === null) {
-                $validator->errors()->add('contact', 'Подтвердите основной контакт.');
-            }
-
-            if ($role !== null && $wizard->roleRequiresBirthDateAndGender($role)) {
-                if (! is_string($this->input('birth_date')) || trim($this->input('birth_date')) === '') {
-                    $validator->errors()->add('birth_date', 'Укажите дату рождения.');
-                }
-
-                if ($this->gender() === null) {
-                    $validator->errors()->add('gender', 'Выберите пол.');
-                }
+            if (app(AccountConfirmationWizardService::class)->primaryVerifiedContact($user) === null) {
+                $validator->errors()->add('contact', 'Подтверди основной контакт.');
             }
         });
     }
 
-    public function role(): ?UserParticipationRoleEnum
+    public function firstName(): string
     {
-        $role = $this->input('role');
-
-        return is_string($role) && $role !== ''
-            ? UserParticipationRoleEnum::tryFrom($role)
-            : null;
+        return trim($this->validated('first_name'));
     }
 
-    public function birthDate(): ?string
+    public function lastName(): string
     {
-        $birthDate = $this->validated('birth_date');
-
-        return is_string($birthDate) && trim($birthDate) !== ''
-            ? $birthDate
-            : null;
+        return trim($this->validated('last_name'));
     }
 
-    public function gender(): ?UserGenderEnum
+    public function birthDate(): string
     {
-        $gender = $this->input('gender');
-
-        return is_string($gender) && $gender !== ''
-            ? UserGenderEnum::tryFrom($gender)
-            : null;
+        return $this->validated('birth_date');
     }
 
-    public function firstName(): ?string
+    public function gender(): UserGenderEnum
     {
-        $firstName = $this->validated('first_name');
-
-        return is_string($firstName) && trim($firstName) !== ''
-            ? trim($firstName)
-            : null;
-    }
-
-    public function lastName(): ?string
-    {
-        $lastName = $this->validated('last_name');
-
-        return is_string($lastName) && trim($lastName) !== ''
-            ? trim($lastName)
-            : null;
-    }
-
-    public function middleName(): ?string
-    {
-        $middleName = $this->validated('middle_name');
-
-        return is_string($middleName) && trim($middleName) !== ''
-            ? trim($middleName)
-            : null;
+        return UserGenderEnum::from($this->validated('gender'));
     }
 }

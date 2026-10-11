@@ -10,79 +10,61 @@ use Illuminate\Support\Collection;
 
 final class AccountConfirmationWizardService
 {
-    /**
-     * @return Collection<int, AccountConfirmationStepDTO>
-     */
+    /** @return Collection<int, AccountConfirmationStepDTO> */
     public function steps(User $user): Collection
     {
-        $user->loadMissing('contacts', 'profile', 'participationRoles');
+        $profile = $user->loadMissing('profile')->profile;
 
-        $role = $this->primaryParticipationRole($user);
-        $profile = $user->profile;
-
-        $steps = collect([
+        return collect([
             new AccountConfirmationStepDTO(
                 key: 'primary_verified_contact',
-                title: 'Подтвердите основной контакт',
-                description: 'Для подтверждения аккаунта нужен подтвержденный основной контакт.',
+                title: 'Подтверди основной контакт',
+                description: 'Основным может быть подтверждённый Email, Telegram или другой поддерживаемый контакт.',
                 required: true,
                 completed: $this->primaryVerifiedContact($user) !== null,
             ),
-        ]);
-
-        if ($role === null) {
-            $steps->push(new AccountConfirmationStepDTO(
-                key: 'participation_role',
-                title: 'Выберите роль участия',
-                description: 'Укажите, как вы участвуете в проекте: игрок, тренер, судья, представитель площадки или другая роль.',
+            new AccountConfirmationStepDTO(
+                key: 'first_name',
+                title: 'Имя',
+                description: 'Укажи своё имя.',
                 required: true,
-                completed: false,
-            ));
-        }
-
-        if ($role !== null && $this->roleRequiresBirthDateAndGender($role)) {
-            $steps->push(new AccountConfirmationStepDTO(
+                completed: filled(trim((string) $profile?->first_name)),
+            ),
+            new AccountConfirmationStepDTO(
+                key: 'last_name',
+                title: 'Фамилия',
+                description: 'Укажи свою фамилию.',
+                required: true,
+                completed: filled(trim((string) $profile?->last_name)),
+            ),
+            new AccountConfirmationStepDTO(
                 key: 'birth_date',
-                title: 'Заполните дату рождения',
-                description: 'Для выбранной роли дата рождения нужна как часть базового профиля.',
+                title: 'Дата рождения',
+                description: 'Укажи дату рождения.',
                 required: true,
                 completed: $profile?->birth_date !== null,
-            ));
-
-            $steps->push(new AccountConfirmationStepDTO(
+            ),
+            new AccountConfirmationStepDTO(
                 key: 'gender',
-                title: 'Укажите пол',
-                description: 'Для выбранной роли пол нужен как часть базового профиля.',
+                title: 'Пол',
+                description: 'Укажи пол.',
                 required: true,
                 completed: $profile?->gender !== null,
-            ));
-        }
-
-        $steps->push(new AccountConfirmationStepDTO(
-            key: 'name',
-            title: 'Представьтесь, пожалуйста',
-            description: 'Можно указать имя и фамилию, чтобы профиль был понятен другим участникам проекта.',
-            required: false,
-            completed: filled($profile?->first_name) && filled($profile?->last_name),
-        ));
-
-        return $steps;
+            ),
+        ]);
     }
 
     public function requiredStepsCompleted(User $user): bool
     {
-        return $this->steps($user)
-            ->filter(fn (AccountConfirmationStepDTO $step): bool => $step->required)
-            ->every(fn (AccountConfirmationStepDTO $step): bool => $step->completed);
+        return $this->steps($user)->every(fn (AccountConfirmationStepDTO $step): bool => $step->completed);
     }
 
+    // Retained for other role-related flows. Roles are not part of account confirmation.
     public function primaryParticipationRole(User $user): ?UserParticipationRoleEnum
     {
         $user->loadMissing('participationRoles');
 
-        return $user->participationRoles
-            ->first()
-            ?->role;
+        return $user->participationRoles->first()?->role;
     }
 
     public function primaryContact(User $user): ?Contact
@@ -91,8 +73,7 @@ final class AccountConfirmationWizardService
             $user->setRelation('contacts', $user->identityContactsQuery()->get());
         }
 
-        return $user->contacts
-            ->first(fn (Contact $contact): bool => $contact->is_primary);
+        return $user->contacts->first(fn (Contact $contact): bool => $contact->is_primary);
     }
 
     public function primaryVerifiedContact(User $user): ?Contact
@@ -104,9 +85,6 @@ final class AccountConfirmationWizardService
 
     public function roleRequiresBirthDateAndGender(UserParticipationRoleEnum $role): bool
     {
-        return in_array($role, [
-            UserParticipationRoleEnum::PLAYER,
-            UserParticipationRoleEnum::COACH,
-        ], true);
+        return in_array($role, [UserParticipationRoleEnum::PLAYER, UserParticipationRoleEnum::COACH], true);
     }
 }

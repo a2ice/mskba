@@ -237,14 +237,33 @@ class User extends Authenticatable
             throw new UserCannotBeChangedException('Подтвердить можно только неподтвержденный аккаунт.');
         }
 
-        if (! $this->hasVerifiedPrimaryContact()) {
-            throw new UserCannotBeChangedException('Для подтверждения аккаунта нужен подтвержденный основной контакт.');
-        }
+        $this->assertAccountConfirmationRequirements();
 
         $this->forceFill([
             'status' => UserStatusEnum::CONFIRMED,
         ])->save();
+    }
 
+    /**
+     * The full account-confirmation invariant also protects administrative status changes.
+     *
+     * @throws UserCannotBeChangedException
+     */
+    public function assertAccountConfirmationRequirements(): void
+    {
+        if (! $this->hasVerifiedPrimaryContact()) {
+            throw new UserCannotBeChangedException('Для подтверждения аккаунта нужен подтвержденный основной контакт.');
+        }
+
+        $profile = $this->profile()->first();
+        if ($profile === null
+            || blank(trim((string) $profile->first_name))
+            || blank(trim((string) $profile->last_name))
+            || $profile->birth_date === null
+            || $profile->birth_date->greaterThanOrEqualTo(today())
+            || $profile->gender === null) {
+            throw new UserCannotBeChangedException('Заполни имя, фамилию, дату рождения и пол перед подтверждением аккаунта.');
+        }
     }
 
     /**

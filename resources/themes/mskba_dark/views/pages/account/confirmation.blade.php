@@ -1,347 +1,98 @@
 @php
-    use App\Modules\Identity\Domain\Enums\UserStatusEnum;
-
     $title = 'Подтверждение аккаунта';
-    $currentRole = $currentParticipationRole ?? null;
-    $selectedRoleValue = old('role', $currentRole?->value);
-    $showRoleDetailsStep = in_array($selectedRoleValue, $rolesRequiringProfileDetails, true);
+    $isConfirmed = $user?->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED;
 @endphp
 
 @extends('theme::layouts.section-sidebar', [
-    'title' => $title,
-    'sectionId' => 'account',
-    'sectionClass' => 'account-section',
-    'contentTitle' => $title,
-    'sidebarLabel' => 'Навигация аккаунта',
-    'wrapSidebarPanel' => false,
+    'title' => $title, 'sectionId' => 'account',
+    'sectionClass' => 'account-section', 'contentTitle' => $title,
+    'sidebarLabel' => 'Навигация аккаунта', 'wrapSidebarPanel' => false,
     'sidebarPartial' => 'theme::partials.account.sidebar',
 ])
 
 @section('section-content')
-    @if(isset($error))
-        <div class="alert alert-danger">
-            {{ $error['message'] }}
-        </div>
-    @endif
+    @if (isset($error)) <div class="alert alert-danger">{{ $error['message'] }}</div> @endif
+    @if (session('status')) <div class="alert alert-success">{{ session('status') }}</div> @endif
+    @if (session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
+    @if (session('info')) <div class="alert alert-info">{{ session('info') }}</div> @endif
 
-    @if(session('status'))
-        <div class="alert alert-success">
-            {{ session('status') }}
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if(session('info'))
-        <div class="alert alert-info">
-            {{ session('info') }}
-        </div>
-    @endif
-
-    @if($user)
-        @if($user->status === UserStatusEnum::CONFIRMED)
-            <div class="alert alert-success">
-                Аккаунт подтвержден.
-            </div>
-        @else
-            <p class="mb-4 d-none">
-                Заполните шаги wizard и отправьте форму в конце. Обязательные шаги отмечены как <span class="fw-bold">(О)</span>, шаги, которые можно пропустить, - как <span class="fw-bold">(Н)</span>.
-            </p>
-
-            <form
-                method="POST"
-                action="{{ route('account.confirmation.complete') }}"
-                class="account-confirmation-wizard"
-                data-account-confirmation-wizard
-                data-existing-role="{{ $currentRole?->value }}"
-                data-existing-role-label="{{ $currentRole?->label() }}"
-                data-role-details-required="{{ implode(',', $rolesRequiringProfileDetails) }}"
-            >
-                @csrf
-
-                @error('contact')
-                    <div class="alert alert-danger">
-                        {{ $message }}
-                    </div>
-                @enderror
-
-                <div class="account-confirmation-wizard__progress mb-4" aria-live="polite">
-                    <span data-wizard-progress-current>1</span>
-                    <span>/</span>
-                    <span data-wizard-progress-total>1</span>
-                </div>
-
-                <section
-                    class="account-confirmation-step"
-                    data-wizard-step
-                    data-step-key="primary_verified_contact"
-                    data-required="true"
-                    data-contact-completed="{{ $primaryVerifiedContact ? 'true' : 'false' }}"
-                >
-                    <div class="mb-3">
-                        <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-visual>*</span>
-                            Подтвердите основной контакт
-                        </h4>
-                        <p class="mb-0">Для подтверждения аккаунта нужен подтвержденный основной контакт.</p>
-                    </div>
-
-                    @if($primaryVerifiedContact)
-                        <div class="account-confirmation-contact account-confirmation-contact--verified">
-                            <span>Основной контакт подтвержден</span>
-                            <strong>{{ $primaryVerifiedContact->type->label() }}: {{ $primaryVerifiedContact->displayValue() }}</strong>
-                        </div>
-                    @elseif($primaryContact)
-                        <div class="account-confirmation-contact">
-                            <span>Основной контакт ожидает подтверждения</span>
-                            <strong>{{ $primaryContact->type->label() }}: {{ $primaryContact->displayValue() }}</strong>
-                        </div>
-
-                        <div class="account-confirmation-contact-actions mt-3">
-                            <button
-                                type="submit"
-                                class="btn btn--secondary btn--sm"
-                                formaction="{{ route('account.confirmation.contacts.verification.store', $primaryContact) }}"
-                                formmethod="POST"
-                                formnovalidate
-                                data-contact-action
-                            >
-                                Отправить код
-                            </button>
-                        </div>
-
-                        @if($primaryContactPendingVerification)
-                            <div class="field mt-3">
-                                <label for="confirmationContactCode" class="form-label">Код подтверждения</label>
-                                <input
-                                    id="confirmationContactCode"
-                                    type="text"
-                                    name="code"
-                                    inputmode="numeric"
-                                    autocomplete="one-time-code"
-                                    class="form-control @error('code') is-invalid @enderror"
-                                    value="{{ old('code') }}"
-                                    placeholder="000000"
-                                >
-                                @error('code')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="account-confirmation-contact-actions mt-3">
-                                <button
-                                    type="submit"
-                                    class="btn btn--primary btn--sm"
-                                    formaction="{{ route('account.confirmation.contacts.verification.confirm', $primaryContact) }}"
-                                    formmethod="POST"
-                                    formnovalidate
-                                    data-contact-action
-                                >
-                                    Подтвердить контакт
-                                </button>
-                            </div>
-                        @endif
-                    @else
-                        <input type="hidden" name="type" value="email">
-                        <div class="field">
-                            <label for="confirmationContactEmail" class="form-label">Email</label>
-                            <input
-                                id="confirmationContactEmail"
-                                type="email"
-                                name="value"
-                                class="form-control @error('value') is-invalid @enderror"
-                                value="{{ old('value') }}"
-                                placeholder="name@example.com"
-                            >
-                            @error('value')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="account-confirmation-contact-actions mt-3">
-                            <button
-                                type="submit"
-                                class="btn btn--primary btn--sm"
-                                formaction="{{ route('account.confirmation.contact.store') }}"
-                                formmethod="POST"
-                                formnovalidate
-                                data-contact-action
-                            >
-                                Добавить и отправить код
-                            </button>
-                        </div>
+    @if ($user && $isConfirmed)
+        <div class="alert alert-success">Аккаунт подтверждён.</div>
+    @elseif ($user)
+        <p>Для подтверждения аккаунта необходимы подтверждённый основной контакт, имя, фамилия, дата рождения и пол. Выбор роли участия не требуется.</p>
+        <section class="panel p-4 mb-3" aria-labelledby="confirmation-contact">
+            <h2 id="confirmation-contact" class="h5 mb-3">Основной контакт</h2>
+            @if ($primaryVerifiedContact)
+                <p class="mb-2"><strong>Основной контакт подтверждён</strong>: {{ $primaryVerifiedContact->type->label() }} — {{ $primaryVerifiedContact->displayValue() }}</p>
+            @elseif ($primaryContact)
+                <p>Основной контакт ожидает подтверждения: {{ $primaryContact->type->label() }} — {{ $primaryContact->displayValue() }}</p>
+                @if ($primaryContact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
+                    <form method="POST" action="{{ route('account.confirmation.contacts.verification.store', $primaryContact) }}">
+                        @csrf
+                        <button type="submit" class="btn btn--secondary btn--sm">Отправить код</button>
+                    </form>
+                    @if ($primaryContactPendingVerification)
+                        <form method="POST" action="{{ route('account.confirmation.contacts.verification.confirm', $primaryContact) }}" class="mt-3">
+                            @csrf
+                            <label for="confirmation-code" class="form-label">Код из письма</label>
+                            <input id="confirmation-code" name="code" class="form-control mb-2" inputmode="numeric" autocomplete="one-time-code" value="{{ old('code') }}" required>
+                            <button type="submit" class="btn btn--primary btn--sm">Подтвердить контакт</button>
+                            @error('code') <small class="text-danger">{{ $message }}</small> @enderror
+                        </form>
                     @endif
-
-                </section>
-
-                @unless($currentRole)
-                    <section
-                        class="account-confirmation-step"
-                        data-wizard-step
-                        data-step-key="participation_role"
-                        data-required="true"
-                    >
-                        <div class="mb-3">
-                            <h4 class="h5 mb-2 align-items-center d-flex">
-                                <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-visual>*</span>
-                                Выберите роль участия
-                            </h4>
-                            <p class="mb-0">Укажите, как вы участвуете в проекте: игрок, тренер, судья, представитель площадки или другая роль.</p>
-                        </div>
-
-                        <div class="field">
-                            <label for="confirmationRole" class="form-label">Роль участия</label>
-                            <select id="confirmationRole" name="role" class="form-select @error('role') is-invalid @enderror" required data-wizard-role>
-                                <option value="">Выберите роль</option>
-                                @foreach($participationRoles as $role)
-                                    <option value="{{ $role->value }}" @selected(old('role') === $role->value)>
-                                        {{ $role->label() }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('role')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </section>
-                @endunless
-
-                @if(!$currentRole || $showRoleDetailsStep)
-                    <section
-                        class="account-confirmation-step"
-                        data-wizard-step
-                        data-step-key="birth_date"
-                        data-required="true"
-                        data-role-dependent="true"
-                        @unless($showRoleDetailsStep) hidden @endunless
-                    >
-                        <div class="mb-3">
-                            <h4 class="h5 mb-2 align-items-center d-flex">
-                                <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-visual>*</span>
-                                Заполните дату рождения
-                            </h4>
-                            <p class="mb-0">Для выбранной роли дата рождения нужна как часть базового профиля.</p>
-                            <div class="account-confirmation-step-summary mt-3" data-wizard-summary hidden></div>
-                        </div>
-
-                        <div class="field">
-                            <label for="confirmationBirthDate" class="form-label">Дата рождения</label>
-                            <input
-                                id="confirmationBirthDate"
-                                type="date"
-                                name="birth_date"
-                                class="form-control @error('birth_date') is-invalid @enderror"
-                                value="{{ old('birth_date', $user->profile?->birth_date?->format('Y-m-d')) }}"
-                                data-role-required-field
-                            >
-                            @error('birth_date')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </section>
-
-                    <section
-                        class="account-confirmation-step"
-                        data-wizard-step
-                        data-step-key="gender"
-                        data-required="true"
-                        data-role-dependent="true"
-                        @unless($showRoleDetailsStep) hidden @endunless
-                    >
-                        <div class="mb-3">
-                            <h4 class="h5 mb-2 align-items-center d-flex">
-                                <span class="badge badge--primary me-2" title="Обязательно к заполнению" data-tooltip-visual>*</span>
-                                Укажите пол
-                            </h4>
-                            <p class="mb-0">Для выбранной роли пол нужен как часть базового профиля.</p>
-                            <div class="account-confirmation-step-summary mt-3" data-wizard-summary hidden></div>
-                        </div>
-
-                        <div class="field">
-                            <label for="confirmationGender" class="form-label">Пол</label>
-                            <select id="confirmationGender" name="gender" class="form-select @error('gender') is-invalid @enderror" data-role-required-field>
-                                <option value="">Выберите пол</option>
-                                @foreach($genders as $gender)
-                                    <option value="{{ $gender->value }}" @selected(old('gender', $user->profile?->gender?->value) === $gender->value)>
-                                        {{ $gender->label() }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('gender')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </section>
                 @endif
+                <p class="mt-3"><a href="{{ route('account.contacts') }}">Управлять контактами и выбрать основной</a></p>
+            @else
+                <form method="POST" action="{{ route('account.confirmation.contact.store') }}">
+                    @csrf
+                    <input type="hidden" name="type" value="email">
+                    <label for="confirmation-email" class="form-label">Email</label>
+                    <input id="confirmation-email" name="value" type="email" class="form-control mb-2" value="{{ old('value') }}" required placeholder="name@example.com">
+                    <button class="btn btn--primary btn--sm" type="submit">Добавить и отправить код</button>
+                    @error('value') <small class="text-danger">{{ $message }}</small> @enderror
+                </form>
+                <p class="mt-3"><a href="{{ route('account.contacts') }}">Другие способы связи (Telegram, VK)</a></p>
+            @endif
+            @error('contact') <p class="text-danger">{{ $message }}</p> @enderror
+        </section>
 
-                <section
-                    class="account-confirmation-step"
-                    data-wizard-step
-                    data-step-key="name"
-                    data-required="false"
-                >
-                    <div class="mb-3">
-                        <h4 class="h5 mb-2 align-items-center d-flex">
-                            <span class="badge badge--primary me-2" title="Можно пропустить" data-tooltip-visual>*</span>
-                            Представьтесь, пожалуйста
-                        </h4>
-                        <p class="mb-0">Можно указать имя и фамилию, чтобы профиль был понятен другим участникам проекта.</p>
-                        <div class="account-confirmation-step-summary mt-3" data-wizard-summary hidden></div>
+        <form method="POST" action="{{ route('account.confirmation.complete') }}">
+            @csrf
+            <section class="panel p-4 mb-3" aria-labelledby="confirmation-identity">
+                <h2 id="confirmation-identity" class="h5 mb-3">Персональные данные</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="confirmation-first" class="form-label">Имя *</label>
+                        <input id="confirmation-first" name="first_name" type="text" class="form-control"
+                               maxlength="255" value="{{ old('first_name', $user->profile?->first_name) }}" required>
+                        @error('first_name') <small class="text-danger">{{ $message }}</small> @enderror
                     </div>
-
-                    <div class="field">
-                        <div class="mb-3">
-                            <label for="confirmationFirstName" class="form-label">Имя</label>
-                            <input
-                                id="confirmationFirstName"
-                                type="text"
-                                name="first_name"
-                                class="form-control @error('first_name') is-invalid @enderror"
-                                value="{{ old('first_name', $user->profile?->first_name) }}"
-                            >
-                            @error('first_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="confirmationLastName" class="form-label">Фамилия</label>
-                            <input
-                                id="confirmationLastName"
-                                type="text"
-                                name="last_name"
-                                class="form-control @error('last_name') is-invalid @enderror"
-                                value="{{ old('last_name', $user->profile?->last_name) }}"
-                            >
-                            @error('last_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="confirmationMiddleName" class="form-label">Отчество</label>
-                            <input
-                                id="confirmationMiddleName"
-                                type="text"
-                                name="middle_name"
-                                class="form-control @error('middle_name') is-invalid @enderror"
-                                value="{{ old('middle_name', $user->profile?->middle_name) }}"
-                            >
-                            @error('middle_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+                    <div class="col-md-6">
+                        <label for="confirmation-last" class="form-label">Фамилия *</label>
+                        <input id="confirmation-last" name="last_name" type="text" class="form-control"
+                               maxlength="255" value="{{ old('last_name', $user->profile?->last_name) }}" required>
+                        @error('last_name') <small class="text-danger">{{ $message }}</small> @enderror
                     </div>
-                </section>
-
-                <div class="account-confirmation-wizard__actions mt-4">
-                    <button type="button" class="btn btn--secondary btn--sm" data-wizard-back>Назад</button>
-                    <button type="button" class="btn btn--primary btn--sm" data-wizard-next>Далее</button>
-                    <button type="submit" class="btn btn--primary btn--sm" data-wizard-submit hidden>Подтвердить аккаунт</button>
+                    <div class="col-md-6">
+                        <label for="confirmation-birth" class="form-label">Дата рождения *</label>
+                        <input id="confirmation-birth" name="birth_date" type="date" class="form-control"
+                               max="{{ now()->subDay()->toDateString() }}" value="{{ old('birth_date', $user->profile?->birth_date?->toDateString()) }}" required>
+                        @error('birth_date') <small class="text-danger">{{ $message }}</small> @enderror
+                    </div>
+                    <div class="col-md-6">
+                        <label for="confirmation-gender" class="form-label">Пол *</label>
+                        <select id="confirmation-gender" name="gender" class="form-select" required>
+                            <option value="">Выбери пол</option>
+                            @foreach ($genders as $gender)
+                                <option value="{{ $gender->value }}" @selected(old('gender', $user->profile?->gender?->value) === $gender->value)>{{ $gender->label() }}</option>
+                            @endforeach
+                        </select>
+                        @error('gender') <small class="text-danger">{{ $message }}</small> @enderror
+                    </div>
                 </div>
-            </form>
-        @endif
+            </section>
+            <p>После подтверждения имя, фамилию, дату рождения и пол можно изменить только по заявке.</p>
+            <button type="submit" class="btn btn--primary btn--sm" @disabled(! $primaryVerifiedContact)>Подтвердить аккаунт</button>
+        </form>
     @endif
 @endsection

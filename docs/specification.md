@@ -126,7 +126,7 @@
 
 ## Подтверждение аккаунта
 
-Техническая модель wizard подтверждения аккаунта описана в [Identity Account Confirmation](specification/identity-account-confirmation.md).
+Подтверждение аккаунта требует подтверждённого основного контакта и заполненных имени, фамилии, даты рождения и пола; роли участия проверяются независимо. Условия, защита данных и заявки на исправления описаны в [Identity Account Confirmation](specification/identity-account-confirmation.md).
 
 ## Профили участия пользователя
 

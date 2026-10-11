@@ -93,23 +93,20 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertDontSee('data-profile-change-request-open', false);
     }
 
-    public function test_overview_badge_opens_faq_while_actions_link_to_confirmation_page(): void
+    public function test_overview_has_status_card_linking_to_confirmation_page(): void
     {
         $user = $this->account();
 
         $this->actingAs($user)->get(route('account'))->assertOk()
-            ->assertSee('data-account-confirmation-guide-open', false)
-            ->assertSee('app-account-overview__confirmation-badge', false)
-            ->assertSee('aria-haspopup="dialog"', false)
-            ->assertSee('data-account-confirmation-guide-dialog', false)
-            ->assertSee('Как подтвердить аккаунт')
-            ->assertSee('Обязательны подтверждённый основной контакт и выбранная роль участия.')
-            ->assertSee('data-account-confirmation-guide-close', false);
+            ->assertSee('Статус пользователя')
+            ->assertSee('app-account-overview__confirmation-action', false)
+            ->assertSee('href="'.route('account.confirmation').'"', false)
+            ->assertDontSee('data-account-confirmation-guide-open', false)
+            ->assertDontSee('app-account-overview__confirmation-badge', false);
 
         $this->get(route('account.profile'))->assertOk()
             ->assertSee('href="'.route('account.confirmation').'"', false)
-            ->assertDontSee('data-account-confirmation-guide-open', false)
-            ->assertDontSee('data-account-confirmation-guide-dialog', false);
+            ->assertDontSee('data-account-confirmation-guide-open', false);
     }
 
     public function test_unconfirmed_user_sees_confirmation_action_portal_wide_except_confirmation_page(): void
@@ -139,11 +136,11 @@ final class MskbaAppAccountProfileTest extends TestCase
         }
 
         $overview = $this->get(route('account'))->assertOk()
-            ->assertSee('app-account-overview__confirmation-badge', false)
-            ->assertSee('Не подтверждён')
-            ->assertSee('data-account-confirmation-guide-open', false)
-            ->assertSee('data-account-confirmation-guide-dialog', false);
-        $this->assertSame(1, substr_count($overview->getContent(), 'data-account-confirmation-guide-open'));
+            ->assertSee('app-account-overview__confirmation-action', false)
+            ->assertSee('app-account-overview__confirmation-dot', false)
+            ->assertSee('Статус пользователя')
+            ->assertSee('Не подтверждён');
+        $this->assertSame(0, substr_count($overview->getContent(), 'data-account-confirmation-guide-open'));
 
         $this->get(route('account.profile'))->assertOk()
             ->assertDontSee('app-account-overview__confirmation-badge', false)
@@ -284,9 +281,10 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertSee('data-profile-change-request-dialog', false)
             ->assertDontSee('data-account-confirmation-guide-open', false)
             ->assertSee('name="middle_name"', false)
-            ->assertDontSee('name="first_name"', false)
-            ->assertDontSee('name="birth_date"', false)
-            ->assertDontSee('name="gender"', false);
+            ->assertSee('action="'.route('account.profile-change-requests.store').'"', false)
+            ->assertSee('name="first_name"', false)
+            ->assertSee('name="birth_date"', false)
+            ->assertSee('name="gender"', false);
 
         $this->patch(route('account.profile.update'), [
             'middle_name' => 'Андреевна',

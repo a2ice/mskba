@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 use App\Modules\Identity\Application\Services\NicknameSuggestionService;
 use App\Modules\Identity\Application\Services\PublicUserProfileService;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
+use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,9 @@ final class AccountProfileController
             'nicknameSuggestion' => $suggestions->suggest($user),
             'genders' => UserGenderEnum::cases(),
             'profileConfirmed' => $user->isConfirmed(),
+            'latestProfileChangeRequest' => ProfileChangeRequest::query()->where('user_id', $user->id)->latest('id')->first(),
+            'activeProfileChangeRequest' => ProfileChangeRequest::query()->where('user_id', $user->id)
+                ->whereIn('status', [ProfileChangeRequest::PENDING, ProfileChangeRequest::BLOCKED])->first(),
         ]);
     }
 }

@@ -9,7 +9,7 @@ use App\Modules\Finance\Domain\Enums\WalletOwnerTypeEnum;
 use App\Modules\Finance\Domain\Models\Wallet;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
-use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Events\UserAccountConfirmed;
@@ -208,12 +208,10 @@ final class RewardMechanismPayoutTest extends TestCase
     {
         return app(CompleteAccountConfirmationWizardHandler::class)->handle(
             user: $user,
-            role: UserParticipationRoleEnum::ORGANIZER,
-            firstName: null,
-            lastName: null,
-            middleName: null,
-            birthDate: null,
-            gender: null,
+            firstName: 'Иван',
+            lastName: 'Иванов',
+            birthDate: '2000-04-10',
+            gender: UserGenderEnum::MALE,
         );
     }
 

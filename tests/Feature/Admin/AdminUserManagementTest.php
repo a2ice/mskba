@@ -19,11 +19,11 @@ final class AdminUserManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_superadmin_can_edit_basic_user_details_and_assign_temporary_password(): void
+    public function test_superadmin_can_edit_basic_unconfirmed_user_details_and_assign_temporary_password(): void
     {
         config()->set('audit.ignore_console', false);
         $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
-        $target = $this->user(UserSystemRoleEnum::USER);
+        $target = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::UNCONFIRMED);
 
         $this->actingAs($superadmin)
             ->get(route('admin.users.edit', $target))
@@ -65,6 +65,50 @@ final class AdminUserManagementTest extends TestCase
             ->latest('id')
             ->firstOrFail();
         $this->assertArrayNotHasKey('password', $userAudit->new_values);
+    }
+
+    public function test_confirmed_user_fields_cannot_be_edited_by_superadmin_outside_moderation(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $target->createProfile([
+            'first_name' => 'Мария',
+            'last_name' => 'Иванова',
+            'birth_date' => '2001-05-20',
+            'gender' => \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE,
+        ]);
+
+        $this->actingAs($superadmin)->get(route('admin.users.edit', $target))
+            ->assertOk()->assertSee('Подтверждённые персональные данные');
+
+        $this->put(route('admin.users.update', $target), [
+            'first_name' => 'Анна',
+            'last_name' => 'Иванова',
+            'birth_date' => '2001-05-20',
+        ])->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHas('error');
+
+        $this->assertSame('Мария', $target->profile->fresh()->first_name);
+
+        $this->put(route('admin.users.update', $target), [
+            'password' => 'OtherStrong1!',
+            'password_confirmation' => 'OtherStrong1!',
+        ])->assertRedirect(route('admin.users.edit', $target))
+            ->assertSessionHas('success');
+
+        $this->assertSame('Мария', $target->profile->fresh()->first_name);
+    }
+
+    public function test_admin_cannot_confirm_user_with_incomplete_identification_data(): void
+    {
+        $superadmin = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::UNCONFIRMED);
+
+        $this->actingAs($superadmin)->post(route('admin.users.status.update', $target), [
+            'status' => UserStatusEnum::CONFIRMED->value,
+        ])->assertRedirect(route('admin.users'))->assertSessionHas('error');
+
+        $this->assertSame(UserStatusEnum::UNCONFIRMED, $target->fresh()->status);
     }
 
     public function test_admin_cannot_open_or_update_basic_user_details(): void

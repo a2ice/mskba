@@ -40,6 +40,20 @@ final class AdminUpdateUserBasicDetailsHandler
                 $profile = $user->profile()->create([]);
             }
 
+            if ($user->isConfirmed()) {
+                foreach (['first_name', 'last_name', 'birth_date'] as $field) {
+                    $current = $field === 'birth_date'
+                        ? $profile->birth_date?->toDateString()
+                        : $profile->{$field};
+
+                    if ($details[$field] !== $current) {
+                        throw new \App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException(
+                            'Подтверждённые персональные данные можно изменить только через заявку.',
+                        );
+                    }
+                }
+            }
+
             $profile->fill([
                 'first_name' => $details['first_name'],
                 'last_name' => $details['last_name'],

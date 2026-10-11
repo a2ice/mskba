@@ -112,14 +112,7 @@ class AccountController extends Controller
             'primaryContact' => $primaryContact,
             'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
             'primaryContactPendingVerification' => $primaryContact?->verifications->first(),
-            'currentParticipationRole' => $wizard->primaryParticipationRole($user),
-            'participationRoles' => UserParticipationRoleEnum::cases(),
             'genders' => UserGenderEnum::cases(),
-            'rolesRequiringProfileDetails' => collect(UserParticipationRoleEnum::cases())
-                ->filter(fn (UserParticipationRoleEnum $role): bool => $wizard->roleRequiresBirthDateAndGender($role))
-                ->map(fn (UserParticipationRoleEnum $role): string => $role->value)
-                ->values()
-                ->all(),
         ]);
     }
 
@@ -131,10 +124,8 @@ class AccountController extends Controller
 
         $updatedUser = $completeAccountConfirmationWizard->handle(
             $user,
-            $request->role(),
             $request->firstName(),
             $request->lastName(),
-            $request->middleName(),
             $request->birthDate(),
             $request->gender(),
         );

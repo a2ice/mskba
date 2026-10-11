@@ -6,6 +6,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminContentController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminPageSeoController;
+use App\Modules\Admin\Presentation\Http\Controllers\AdminProfileChangeRequestsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
@@ -40,6 +41,7 @@ use App\Modules\Identity\Presentation\Http\Controllers\DeleteOwnAccountControlle
 use App\Modules\Identity\Presentation\Http\Controllers\ParticipantCatalogController;
 use App\Modules\Identity\Presentation\Http\Controllers\PersonalDataDistributionConsentController;
 use App\Modules\Identity\Presentation\Http\Controllers\PlayerCharacterFaceReferencePreviewController;
+use App\Modules\Identity\Presentation\Http\Controllers\ProfileChangeRequestController;
 use App\Modules\Identity\Presentation\Http\Controllers\PublicUserProfileController;
 use App\Modules\Identity\Presentation\Http\Controllers\SearchPrivacyUsersController;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountPasswordController;
@@ -273,6 +275,12 @@ Route::prefix('admin')
                 ->whereNumber('campaign')
                 ->name('admin.acquisition.flyer.pdf');
         });
+        Route::get('/profile-change-requests', [AdminProfileChangeRequestsController::class, 'index'])
+            ->middleware('can:manage-users-as-superadmin')
+            ->name('admin.profile-change-requests')->defaults('breadcrumb', 'Заявки на изменение профиля');
+        Route::post('/profile-change-requests/{profileChangeRequest}/review', [AdminProfileChangeRequestsController::class, 'review'])
+            ->middleware('can:manage-users-as-superadmin')
+            ->name('admin.profile-change-requests.review');
         Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
         Route::get('/users/{user}/edit', [AdminUsersController::class, 'edit'])
             ->middleware('can:manage-users-as-superadmin')
@@ -792,6 +800,10 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:20,1')
             ->whereNumber('avatar')
             ->name('account.avatar.destroy');
+        Route::post('/profile/change-requests', [ProfileChangeRequestController::class, 'store'])
+            ->middleware('throttle:10,1')->name('account.profile-change-requests.store');
+        Route::post('/profile/change-requests/{profileChangeRequest}/cancel', [ProfileChangeRequestController::class, 'cancel'])
+            ->middleware('throttle:10,1')->name('account.profile-change-requests.cancel');
         Route::get('/confirmation', [AccountController::class, 'confirmation'])
             ->name('account.confirmation')
             ->defaults('breadcrumb', 'Подтверждение аккаунта');

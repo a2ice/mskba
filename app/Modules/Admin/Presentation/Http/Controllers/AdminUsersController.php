@@ -161,7 +161,12 @@ final class AdminUsersController extends Controller
         AdminUpdateUserBasicDetailsHandler $updateUser,
     ): RedirectResponse {
         $canonical = $user->canonical();
-        $updateUser->handle($request->user(), $canonical->id, $request->details());
+        try {
+            $updateUser->handle($request->user(), $canonical->id, $request->details());
+        } catch (\App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException $exception) {
+            return redirect()->route('admin.users.edit', $canonical)
+                ->with('error', $exception->getMessage());
+        }
 
         return redirect()
             ->route('admin.users.edit', $canonical)
