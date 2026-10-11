@@ -52,9 +52,6 @@
 
         <div class="header-actions app-header-actions">
             @auth
-                <a class="icon-button app-header-notifications" href="{{ route('account.notifications') }}" aria-label="Уведомления">
-                    <svg aria-hidden="true"><use href="#bell"/></svg>
-                </a>
                 <a @class(['app-header-account', 'app-header-account--setup-pending' => $headerNeedsPrivacySetup])
                    href="{{ route('account') }}"
                    aria-label="Личный кабинет{{ $headerRoleColor ? ', роль: '.$headerUser->system_role->label() : '' }}"
@@ -99,7 +96,7 @@
                 <div class="app-header-mobile-account">
                     @auth
                         <a href="{{ $headerNeedsPrivacySetup ? route('account.privacy.distribution') : route('account') }}"><svg aria-hidden="true"><use href="#user"/></svg> {{ $headerNeedsPrivacySetup ? 'Завершить регистрацию' : 'Личный кабинет' }}</a>
-                        <a href="{{ route('account.notifications') }}"><svg aria-hidden="true"><use href="#bell"/></svg> Уведомления</a>
+                        <a href="{{ route('account.notifications') }}"><svg aria-hidden="true"><use href="#message"/></svg> Сообщения</a>
                     @else
                         <a href="{{ route('login') }}" data-auth-trigger><svg aria-hidden="true"><use href="#user"/></svg> Войти в аккаунт</a>
                     @endauth

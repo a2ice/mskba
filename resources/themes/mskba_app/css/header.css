@@ -111,7 +111,6 @@
 }
 .app-user-avatar__unread[hidden] { display:none; }
 .app-header-avatar { flex-shrink: 0; }
-.app-header-notifications svg { width: 20px; height: 20px; }
 .app-header-login { margin: 0; min-height: 42px; text-decoration: none; }
 .app-header-mobile { display: none; margin-left: 0; }
 .app-header-mobile-toggle { cursor: pointer; list-style: none; }
@@ -175,7 +174,7 @@
     .app-header-brand { font-size: 22px; }
     .app-header-mark { flex-basis: 34px; width: 34px; height: 34px; }
     .app-header-actions { gap: 8px; }
-    .app-header-account-label, .app-header-notifications { display: none; }
+    .app-header-account-label { display: none; }
     .app-header-mobile[open] .app-header-mobile-panel { right: 8px; width: calc(100vw - 16px); }
 }
 

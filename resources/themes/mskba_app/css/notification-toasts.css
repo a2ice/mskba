@@ -1,0 +1,68 @@
+/* A scrollable dock holds all unread messages without covering the whole page. */
+.app-message-toast-region {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 115;
+    width: min(390px, calc(100vw - 32px));
+    max-height: min(65dvh, 600px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+.app-message-toast-region[hidden] { display: none !important; }
+.app-message-toast-region .toast {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    align-items: start;
+    gap: 8px 12px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--accent);
+    box-shadow: 0 10px 28px #0006;
+}
+.app-message-toast__heading { min-width: 0; font-size: 14px; line-height: 20px; }
+.app-message-toast__close {
+    width: 26px;
+    height: 26px;
+    margin: -4px -6px 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 21px;
+    line-height: 1;
+}
+.app-message-toast__close:hover { color: var(--text); background: var(--surface); }
+.app-message-toast__close:disabled { opacity: .5; cursor: progress; }
+.app-message-toast__close:focus-visible, .app-message-toast__link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.app-message-toast__body, .app-message-toast__error, .app-message-toast__link {
+    grid-column: 1 / -1;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.app-message-toast__body { color: var(--muted); font-size: 13px; line-height: 19px; }
+.app-message-toast__link { color: var(--accent); font-size: 13px; font-weight: 650; }
+.app-message-toast__error { color: var(--danger); font-size: 12px; }
+@media (max-width: 1023px) {
+    .app-message-toast-region { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 639px) {
+    .app-message-toast-region { right: 16px; left: 16px; width: auto; max-height: min(55dvh, 430px); }
+}

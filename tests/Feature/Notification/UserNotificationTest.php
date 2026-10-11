@@ -267,6 +267,45 @@ class UserNotificationTest extends TestCase
             ->assertJsonPath('notifications.0.title', 'Непрочитанное');
     }
 
+    public function test_unread_sync_uses_cursor_to_deliver_every_toast_without_exposing_others(): void
+    {
+        $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $other = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        for ($i = 1; $i <= 23; $i++) {
+            UserNotification::query()->create([
+                'user_id' => $user->id,
+                'type' => UserNotificationTypeEnum::SYSTEM,
+                'status' => UserNotificationStatusEnum::NEW,
+                'title' => 'Сообщение '.$i,
+                'body' => 'Проверка всех toast',
+            ]);
+        }
+        UserNotification::query()->create([
+            'user_id' => $other->id,
+            'type' => UserNotificationTypeEnum::SYSTEM,
+            'status' => UserNotificationStatusEnum::NEW,
+            'title' => 'Чужое сообщение',
+            'body' => 'Не должно появиться',
+        ]);
+
+        $pageOne = $this->actingAs($user)->getJson(route('account.notifications.new'))
+            ->assertOk()->assertJsonPath('unread_count', 23)->assertJsonCount(20, 'notifications');
+        $cursor = $pageOne->json('next_before_id');
+        $this->assertIsInt($cursor);
+        $pageTwo = $this->getJson(route('account.notifications.new', ['before_id' => $cursor]))
+            ->assertOk()->assertJsonPath('unread_count', 23)
+            ->assertJsonCount(3, 'notifications')
+            ->assertJsonPath('next_before_id', null);
+        $ids = array_merge(array_column($pageOne->json('notifications'), 'id'), array_column($pageTwo->json('notifications'), 'id'));
+        $this->assertCount(23, array_unique($ids));
+        $this->assertSame(23, max($ids) - min($ids) + 1);
+        $this->assertNotContains('Чужое сообщение', array_merge(
+            array_column($pageOne->json('notifications'), 'title'),
+            array_column($pageTwo->json('notifications'), 'title'),
+        ));
+        $this->getJson(route('account.notifications.new', ['before_id' => 'invalid']))->assertUnprocessable();
+    }
+
     public function test_generic_notification_cta_is_exposed_to_sync_and_notification_center(): void
     {
         $user = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);

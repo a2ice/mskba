@@ -346,11 +346,17 @@ class AccountController extends Controller
     ): JsonResponse {
         $user = $this->accountCheckForPresentationService->handle(request()->user());
 
+        // Cursor pagination avoids losing messages when unread notifications
+        // are marked read while the client is loading its toast list.
+        $params = request()->validate(['before_id' => ['sometimes', 'integer', 'min:1']]);
+        $notifications = $listNewUserNotifications->handle($user, 20, $params['before_id'] ?? null);
+
         return response()->json([
-            'notifications' => $listNewUserNotifications->handle($user)
+            'notifications' => $notifications
                 ->map(fn (UserNotification $notification): array => $presenter->present($notification))
                 ->values(),
             'unread_count' => $countNewUserNotifications->handle($user),
+            'next_before_id' => $notifications->count() === 20 ? $notifications->last()->id : null,
         ]);
     }
 

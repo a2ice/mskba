@@ -10,6 +10,7 @@
 @import './wizard.css';
 @import './privacy-distribution.css';
 @import './privacy-onboarding-dialog.css';
+@import './notification-toasts.css';
 @import './account-layout.css';
 @import './account-overview.css';
 @import './account-teams.css';

@@ -17,6 +17,10 @@
         <main id="mskba-app" class="app-shell">
             @yield('content')
         </main>
+        @auth
+            <section class="app-message-toast-region" data-message-toast-region hidden
+                     role="region" aria-label="Непрочитанные сообщения"></section>
+        @endauth
         @include('theme::partials.auth-dialog-root')
         @auth
             @if (app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup(auth()->user()))

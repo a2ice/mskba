@@ -171,7 +171,7 @@ final class AccountMenu implements MenuHandler
         array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
 
         $items[] = [
-            ...$this->link('Уведомления', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user)),
+            ...$this->link('Сообщения', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user)),
             'notificationCounter' => true,
         ];
         $items[] = [

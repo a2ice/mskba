@@ -156,12 +156,34 @@ final class MskbaAppHeaderAvatarTest extends TestCase
         $this->assertSame(1, $xpath->query('//*[contains(@class, "app-user-avatar__unread")][@aria-label="Непрочитанных уведомлений: 10"]')->length);
     }
 
+    public function test_header_removes_bell_and_account_menu_calls_notifications_messages(): void
+    {
+        $user = User::factory()->create([
+            'username' => 'messages_account',
+            'system_role' => UserSystemRoleEnum::USER,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $html = $this->actingAs($user)->get(route('account.profile'))->assertOk()->getContent();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+
+        $this->assertSame(0, $xpath->query('//a[contains(@class,"app-header-notifications")]')->length);
+        $this->assertSame(1, $xpath->query('//section[@data-message-toast-region][@hidden][@aria-label="Непрочитанные сообщения"]')->length);
+        // Account sidebar appears twice in the markup (desktop and mobile).
+        $this->assertSame(2, $xpath->query('//nav[@aria-label="Разделы аккаунта"]//a[@href="'.route('account.notifications').'"][span[text()="Сообщения"]]')->length);
+        $this->assertSame(1, $xpath->query('//a[contains(@class,"app-header-mobile-account")][text()="Сообщения"]')->length +
+            $xpath->query('//div[contains(@class,"app-header-mobile-account")]//a[normalize-space(.)="Сообщения"]')->length);
+    }
+
     public function test_guest_does_not_render_account_notification_tracking(): void
     {
         $this->get(route('welcome'))->assertOk()
             ->assertDontSee('class="avatar app-user-avatar app-header-avatar"', false)
             ->assertDontSee('data-avatar-role=', false)
             ->assertDontSee('data-notification-user-id=', false)
-            ->assertDontSee('data-notification-count', false);
+            ->assertDontSee('data-notification-count', false)
+            ->assertDontSee('data-message-toast-region', false);
     }
 }
