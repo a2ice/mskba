@@ -77,16 +77,16 @@
                         @endif
                     </summary>
                     <div class="app-context-actions__menu" aria-label="Контекстные действия">
+                        @if ($contextItems !== [])
+                            @include('theme::partials.context-actions-items', ['items' => $contextItems])
+                            <div class="app-context-actions__separator" role="separator"></div>
+                        @endif
                         @if ($showAccountConfirmation)
                             <a class="app-context-actions__verify" href="{{ route('account.confirmation') }}"
                                aria-label="Подтвердить аккаунт">
                                 <span class="app-context-actions__attention" aria-hidden="true"></span>
                                 Подтвердить акк...
                             </a>
-                            <div class="app-context-actions__separator" role="separator"></div>
-                        @endif
-                        @if ($contextItems !== [])
-                            @include('theme::partials.context-actions-items', ['items' => $contextItems])
                             <div class="app-context-actions__separator" role="separator"></div>
                         @endif
                         <button type="button" data-app-context-share>Поделиться</button>

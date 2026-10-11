@@ -62,6 +62,64 @@ final class MskbaAppContextBarCompactTest extends TestCase
         $this->assertSame(1, $xpath->query('//button[@data-app-context-share]')->length);
         $this->assertSame(1, $xpath->query('//button[@data-context-help]')->length);
     }
+
+    public function test_confirmation_action_sits_between_contextual_and_system_actions(): void
+    {
+        $user = User::factory()->create([
+            'status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED,
+        ]);
+
+        // Events have a contextual "Играть" action followed by the global links.
+        $html = $this->actingAs($user)->get(route('events.index'))->assertOk()->getContent();
+        $document = new \DOMDocument;
+        @$document->loadHTML($html);
+        $xpath = new \DOMXPath($document);
+        $menu = $xpath->query('//div[contains(@class, "app-context-actions__menu")]')->item(0);
+        $this->assertNotNull($menu);
+
+        $elements = [];
+        foreach ($menu->childNodes as $node) {
+            if ($node instanceof \DOMElement) {
+                $elements[] = $node;
+            }
+        }
+
+        $this->assertCount(6, $elements);
+        $this->assertSame('Играть', trim($elements[0]->textContent));
+        $this->assertSame('app-context-actions__separator', $elements[1]->getAttribute('class'));
+        $this->assertSame('app-context-actions__verify', $elements[2]->getAttribute('class'));
+        $this->assertSame('Подтвердить акк...', trim($elements[2]->textContent));
+        $this->assertSame('app-context-actions__separator', $elements[3]->getAttribute('class'));
+        $this->assertTrue($elements[4]->hasAttribute('data-app-context-share'));
+        $this->assertTrue($elements[5]->hasAttribute('data-context-help'));
+    }
+
+    public function test_confirmation_is_first_when_there_are_no_contextual_actions(): void
+    {
+        $user = User::factory()->create([
+            'status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED,
+        ]);
+        $html = $this->actingAs($user)->get(route('account.roles'))->assertOk()->getContent();
+        $document = new \DOMDocument;
+        @$document->loadHTML($html);
+        $xpath = new \DOMXPath($document);
+        $menu = $xpath->query('//div[contains(@class, "app-context-actions__menu")]')->item(0);
+        $this->assertNotNull($menu);
+
+        $elements = [];
+        foreach ($menu->childNodes as $node) {
+            if ($node instanceof \DOMElement) {
+                $elements[] = $node;
+            }
+        }
+
+        $this->assertCount(4, $elements);
+        $this->assertSame('app-context-actions__verify', $elements[0]->getAttribute('class'));
+        $this->assertSame('app-context-actions__separator', $elements[1]->getAttribute('class'));
+        $this->assertTrue($elements[2]->hasAttribute('data-app-context-share'));
+        $this->assertTrue($elements[3]->hasAttribute('data-context-help'));
+    }
+
     public function test_unconfirmed_member_sees_confirmation_action_across_the_portal(): void
     {
         $user = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED]);
