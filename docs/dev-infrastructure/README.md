@@ -4,6 +4,8 @@ For interactive, password-once SSH access via a connected Mac and Remote Desktop
 
 See [2026-10-11 VDS resource audit and Gotenberg pilot](resource-audit-2026-10-11.md) for current resource findings and safe next steps.
 
+For the limited production Gotenberg optimization and rollback procedure, see [2026-10-11 production Gotenberg rollout](gotenberg-production-2026-10-11.md).
+
 ## Safety boundaries
 
 - Production: `/var/www/mskba`, Docker Compose project `mskbanew`, branch `main`, theme `mskba_dark`. Never modify from this workflow.
