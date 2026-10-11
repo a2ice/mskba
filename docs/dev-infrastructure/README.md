@@ -2,6 +2,8 @@
 
 For interactive, password-once SSH access via a connected Mac and Remote Desktop Commander, see [Remote Commander SSH procedure](remote-commander-ssh.md).
 
+See [2026-10-11 VDS resource audit and Gotenberg pilot](resource-audit-2026-10-11.md) for current resource findings and safe next steps.
+
 ## Safety boundaries
 
 - Production: `/var/www/mskba`, Docker Compose project `mskbanew`, branch `main`, theme `mskba_dark`. Never modify from this workflow.
