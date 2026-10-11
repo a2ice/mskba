@@ -231,7 +231,8 @@ html:has(.app-context-bar) {
 }
 @media (prefers-reduced-motion: reduce) {
     .app-context-quick, .app-context-quick::before, .app-context-quick__label,
-    .app-context-actions__attention { transition: none; }
+    .app-context-actions__attention,
+    .app-context-actions__trigger > .app-context-quick__label { transition: none; }
 }
 /* Task 026: contextual verification entry, shown only for unconfirmed account pages. */
 .app-context-actions__attention{
@@ -239,34 +240,61 @@ html:has(.app-context-bar) {
     border-radius:50%;background:var(--success);box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent);
     animation:app-account-confirm-attention 2s ease-out infinite;
 }
-.app-context-actions > summary .app-context-actions__attention {
-    position:absolute;
-    right:auto;
-    /* In compact mode, keep the marker fully inside the 36px visible pill. */
-    left:30px;
-    top:12px;
-    flex:none;
-    transition:left .2s ease;
+/* The indicator is the next flex child AFTER the progressively revealed
+   label. No fixed x-coordinate: it follows the clipped last visible letter. */
+.app-context-actions__trigger { gap: 0; }
+.app-context-actions__trigger > .app-context-quick__label {
+    flex: 0 0 auto;
+    width: max-content;
+    max-width: 0;
+    overflow: hidden;
+    margin-left: 0;
+    visibility: visible;
+    opacity: 1;
+    transition: max-width .2s ease, margin-left .2s ease;
 }
-/* On desktop hover / keyboard focus it follows the visible word 'Действия',
-   instead of being pinned over the hamburger icon. Mobile remains icon-only. */
+.app-context-actions > summary .app-context-actions__attention {
+    /* Keep an identical vertical offset in compact and expanded states.
+       The natural flex position provides the horizontal offset. */
+    position: relative;
+    top: -7.5px;
+    left: auto;
+    margin-left: 0;
+    transition: margin-left .2s ease;
+}
+/* Keep the Actions pill expanded while its native details menu is open,
+   including after the mouse moves from the trigger to a menu item. */
+@media (min-width: 640px) {
+    .app-context-actions[open] > .app-context-quick {
+        width: 126px;
+        max-width: 126px;
+    }
+    .app-context-actions[open] > summary .app-context-quick__label {
+        max-width: 80px;
+        margin-left: 8px;
+    }
+    .app-context-actions[open] > summary .app-context-actions__attention {
+        margin-left: 4px;
+        animation:none;
+        box-shadow:none;
+    }
+}
 @media (min-width: 640px) and (hover: hover) and (pointer: fine) {
-    .app-context-actions > summary:hover:has(.app-context-actions__attention) {
-        width: 146px;
-        max-width: 146px;
+    .app-context-actions > summary:hover .app-context-quick__label {
+        max-width: 80px;
+        margin-left: 8px;
     }
     .app-context-actions > summary:hover .app-context-actions__attention {
-        /* Only the horizontal coordinate changes; top stays at 12px. */
-        left:calc(100% - 20px);
+        margin-left: 4px;
     }
 }
 @media (min-width: 640px) {
-    .app-context-actions > summary:focus-visible:has(.app-context-actions__attention) {
-        width: 146px;
-        max-width: 146px;
+    .app-context-actions > summary:focus-visible .app-context-quick__label {
+        max-width: 80px;
+        margin-left: 8px;
     }
     .app-context-actions > summary:focus-visible .app-context-actions__attention {
-        left:calc(100% - 20px);
+        margin-left: 4px;
     }
 }
 /* Attention rule: one actionable item can mark both the Actions trigger and

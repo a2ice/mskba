@@ -173,13 +173,18 @@ final class MskbaAppAccountProfileTest extends TestCase
         $this->assertStringContainsString('box-shadow:none', $matches[1]);
         $this->assertStringNotContainsString('opacity:', $matches[1]);
         $this->assertStringNotContainsString('display:none', $matches[1]);
-        // Both collapsed and expanded states share the same absolute top;
-        // changing to relative positioning previously shifted the dot down.
+        // Dot stays in flex flow after the clipped label. No precomputed
+        // position at the right edge of the entire 126px button.
         $this->assertMatchesRegularExpression(
-            '/summary \.app-context-actions__attention\s*\{[^}]*position:absolute;[^}]*top:12px;/s',
+            '/summary \.app-context-actions__attention\s*\{[^}]*position: relative;[^}]*top: -7\.5px;[^}]*left: auto;/s',
             $css,
         );
-        $this->assertSame(2, substr_count($css, 'left:calc(100% - 20px);'));
+        $this->assertStringNotContainsString('left:calc(100% - 20px);', $css);
+        $this->assertStringContainsString('max-width: 0;', $css);
+        $this->assertStringContainsString('max-width: 80px;', $css);
+        $this->assertStringContainsString('.app-context-actions[open] > .app-context-quick', $css);
+        $this->assertStringContainsString('.app-context-actions[open] > summary .app-context-quick__label', $css);
+        $this->assertStringContainsString('.app-context-actions[open] > summary .app-context-actions__attention', $css);
         $this->assertStringNotContainsString('top: auto', $css);
         $this->assertStringContainsString('@media(prefers-reduced-motion:reduce)', $css);
     }
