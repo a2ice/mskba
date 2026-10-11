@@ -57,7 +57,8 @@ html:has(.app-context-bar) {
 .app-context-trail a:hover { color: var(--accent-hover); }
 .app-context-trail [aria-current="page"] { color: var(--text); }
 .app-context-bar__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-/* Same icon-first expanding pill for Back / Actions / small-screen Path. */
+/* Task 030 review: a 44px hit area with a 36px visible control; the sticky
+   bar itself stays 44px high. Labels never bleed out of collapsed controls. */
 .app-context-quick {
     position: relative;
     display: inline-flex;
@@ -65,14 +66,16 @@ html:has(.app-context-bar) {
     justify-content: flex-start;
     gap: 8px;
     box-sizing: border-box;
+    flex: 0 0 auto;
     width: 44px;
+    min-width: 44px;
+    max-width: 44px;
     height: 44px;
     min-height: 44px;
-    max-width: 44px;
-    padding: 0 12px;
-    border: 1px solid var(--line);
+    padding: 0 13px;
+    border: 0;
     border-radius: 999px;
-    background: var(--surface-raised);
+    background: transparent;
     color: var(--text);
     font: inherit;
     font-size: 13px;
@@ -80,30 +83,52 @@ html:has(.app-context-bar) {
     white-space: nowrap;
     overflow: hidden;
     cursor: pointer;
-    transition: max-width .2s ease, width .2s ease, border-color .2s, color .2s;
+    transition: width .2s ease, max-width .2s ease, color .2s;
+}
+.app-context-quick::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-raised);
+    pointer-events: none;
+    transition: border-color .2s;
 }
 .app-context-quick > svg {
+    position: relative;
     display: block;
     flex: 0 0 18px;
     width: 18px;
     height: 18px;
 }
-.app-context-quick__label { white-space: nowrap; }
+.app-context-quick__label {
+    position: relative;
+    visibility: hidden;
+    opacity: 0;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity .1s ease;
+}
 .app-context-quick:hover,
 .app-context-quick:focus-visible,
 .app-context-actions[open] > .app-context-quick,
-.app-context-path details[open] > .app-context-quick {
-    color: var(--accent);
-    border-color: var(--accent);
-}
+.app-context-path details[open] > .app-context-quick { color: var(--accent); }
+.app-context-quick:is(:hover,:focus-visible)::before,
+.app-context-actions[open] > .app-context-quick::before,
+.app-context-path details[open] > .app-context-quick::before { border-color: var(--accent); }
+/* Desktop only: icon-first pill grows on hover, or on keyboard focus.
+   An open details menu is not itself a reason to reveal the label. */
 @media (min-width:640px) and (hover:hover) and (pointer:fine) {
-    .app-context-quick:is(:hover,:focus-visible),
-    .app-context-actions[open] > .app-context-quick { width: 126px; max-width: 126px; }
-    .app-context-back:is(:hover,:focus-visible) { width: 106px; max-width: 106px; }
+    .app-context-quick:hover { width: 126px; max-width: 126px; }
+    .app-context-back:hover { width: 106px; max-width: 106px; }
+    .app-context-quick:hover .app-context-quick__label { visibility: visible; opacity: 1; }
 }
-/* Keyboard focus exposes the label even without a fine pointer. */
-.app-context-quick:focus-visible { width: 126px; max-width: 126px; }
-.app-context-back:focus-visible { width: 106px; max-width: 106px; }
+@media (min-width:640px) {
+    .app-context-quick:focus-visible { width: 126px; max-width: 126px; }
+    .app-context-back:focus-visible { width: 106px; max-width: 106px; }
+    .app-context-quick:focus-visible .app-context-quick__label { visibility: visible; opacity: 1; }
+}
 .app-context-actions { position: relative; flex: 0 0 auto; }
 .app-context-actions > summary { list-style: none; }
 .app-context-actions > summary::-webkit-details-marker,
@@ -116,7 +141,7 @@ html:has(.app-context-bar) {
 .app-context-path__menu {
     position: absolute;
     z-index: 3;
-    top: calc(100% + 6px);
+    top: calc(100% + 2px);
     left: 0;
     display: grid;
     gap: 3px;
@@ -200,14 +225,12 @@ html:has(.app-context-bar) {
     .app-context-bar__inner { gap: 8px; }
     .app-context-trail { display: none; }
     .app-context-path { display: block; flex: 1 1 auto; }
-    .app-context-path .app-context-quick { width: 90px; max-width: 90px; }
     .app-context-bar__controls { gap: 8px; }
-    /* Preserve three controls inside a 320px viewport even with keyboard focus. */
-    .app-context-bar__controls .app-context-quick:focus-visible { width:44px; max-width:44px; }
-    .app-context-path .app-context-quick:focus-visible { width:90px; max-width:90px; }
+    /* Compact icon-only controls on touch/mobile, including when open/focused. */
+    .app-context-quick__label { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .app-context-quick { transition: none; }
+    .app-context-quick, .app-context-quick::before, .app-context-quick__label { transition: none; }
 }
 /* Task 026: contextual verification entry, shown only for unconfirmed account pages. */
 .app-context-actions__attention{
@@ -218,7 +241,7 @@ html:has(.app-context-bar) {
 .app-context-actions > summary .app-context-actions__attention {
     position:absolute;
     right:auto;
-    left:31px;
+    left:30px;
     top:6px;
     flex:none;
 }

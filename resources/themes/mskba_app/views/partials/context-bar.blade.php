@@ -33,7 +33,6 @@
                             <path d="M5 5h6a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h10"/>
                             <circle cx="5" cy="5" r="2"/><circle cx="19" cy="17" r="2"/>
                         </svg>
-                        <span class="app-context-quick__label">Путь</span>
                     </summary>
                     <ol class="app-context-path__menu">
                         @foreach ($trail as $crumb)

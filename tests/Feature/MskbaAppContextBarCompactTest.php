@@ -40,6 +40,7 @@ final class MskbaAppContextBarCompactTest extends TestCase
         $xpath = new \DOMXPath($doc);
 
         $this->assertSame(1, $xpath->query('//nav[@aria-label="Путь страницы"]/details/summary[@aria-label="Показать путь страницы"]')->length);
+        $this->assertSame(0, $xpath->query('//nav[@aria-label="Путь страницы"]//summary/span[contains(@class,"app-context-quick__label")]')->length);
         $this->assertSame(1, $xpath->query('//nav[@aria-label="Навигационная цепочка"]')->length);
         $this->assertSame(3, $xpath->query('//nav[@aria-label="Путь страницы"]//ol/li')->length);
         $this->assertSame(2, $xpath->query('//nav[@aria-label="Путь страницы"]//ol/li/a')->length);
