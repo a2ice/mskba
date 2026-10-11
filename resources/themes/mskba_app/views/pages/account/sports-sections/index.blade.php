@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Мои секции',
-        'subtitle' => 'Секции и тренировки, связанные с твоим аккаунтом.',
+        'intro' => 'Секции и тренировки, связанные с твоим аккаунтом.',
     ])
 @endsection
 

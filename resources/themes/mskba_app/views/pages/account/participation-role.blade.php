@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => isset($role) ? 'Параметры: '.$role->label() : 'Параметры роли',
-        'subtitle' => isset($role) ? $role->description() : 'Информация о твоём участии в проекте.',
+        'intro' => isset($role) ? $role->description() : 'Информация о твоём участии в проекте.',
     ])
 @endsection
 

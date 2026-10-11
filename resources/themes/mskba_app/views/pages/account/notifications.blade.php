@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Уведомления',
-        'subtitle' => 'События, приглашения и сообщения, которые требуют твоего внимания.',
+        'intro' => 'События, приглашения и сообщения, которые требуют твоего внимания.',
     ])
 @endsection
 

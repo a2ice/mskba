@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Настройки',
-        'subtitle' => 'Параметры аккаунта, безопасности и приватности.',
+        'intro' => 'Параметры аккаунта, безопасности и приватности.',
     ])
 @endsection
 

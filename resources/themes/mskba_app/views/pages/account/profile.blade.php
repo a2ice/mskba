@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Профиль',
-        'subtitle' => 'Управляй фотографией, публичным никнеймом и личными данными.',
+        'intro' => 'Управляй аватаром, никнеймом и личными данными.',
     ])
 @endsection
 

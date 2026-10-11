@@ -60,7 +60,7 @@ final class MskbaAppAccountLayoutTest extends TestCase
         $user = User::factory()->create();
         $html = $this->actingAs($user)->get(route('account.profile'))->assertOk()->getContent();
 
-        $document = new \DOMDocument();
+        $document = new \DOMDocument;
         @$document->loadHTML($html);
         $xpath = new \DOMXPath($document);
         $this->assertSame(1, $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " app-account-section__heading ")]//h1[text()="Профиль"]')->length);
@@ -93,6 +93,33 @@ final class MskbaAppAccountLayoutTest extends TestCase
                 $route,
             );
         }
+    }
+
+    public function test_account_intro_is_a_card_above_content_but_below_full_width_heading(): void
+    {
+        $user = User::factory()->create();
+        foreach (['account', 'account.profile', 'account.roles', 'account.notifications'] as $routeName) {
+            $html = $this->actingAs($user)->get(route($routeName))->assertOk()->getContent();
+            $document = new \DOMDocument;
+            @$document->loadHTML($html);
+            $xpath = new \DOMXPath($document);
+
+            $this->assertSame(1, $xpath->query('//div[contains(@class,"app-account-section__heading")]//h1')->length, $routeName);
+            $this->assertSame(0, $xpath->query('//div[contains(@class,"app-account-section__heading")]//p')->length, $routeName);
+            $this->assertSame(1, $xpath->query('//div[contains(@class,"app-account-layout__content")]/section[contains(@class,"app-account-intro") and contains(@class,"panel")]')->length, $routeName);
+            $this->assertSame(1, $xpath->query('//div[contains(@class,"app-account-layout__content")]/*[1][contains(@class,"app-account-intro")]')->length, $routeName);
+            $intro = $xpath->query('//section[contains(@class,"app-account-intro")]/p')->item(0);
+            $this->assertNotNull($intro);
+            $this->assertNotSame('', trim($intro->textContent));
+        }
+    }
+
+    public function test_profile_intro_uses_avatar_and_nickname_not_photograph_description(): void
+    {
+        $user = User::factory()->create();
+        $html = $this->actingAs($user)->get(route('account.profile'))->assertOk()->getContent();
+        $this->assertStringContainsString('Управляй аватаром, никнеймом и личными данными.', $html);
+        $this->assertStringNotContainsString('Управляй фотографией, публичным никнеймом', $html);
     }
 
     public function test_other_pages_keep_section_level_container_without_main_container(): void

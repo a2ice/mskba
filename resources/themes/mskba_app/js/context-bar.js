@@ -5,24 +5,41 @@ if (contextBar) {
     const menu = contextBar.querySelector('[data-app-context-actions]');
     const summary = menu?.querySelector('summary');
     const status = contextBar.querySelector('[data-app-context-status]');
+    const pathMenu = contextBar.querySelector('[data-app-context-path]');
+    const pathSummary = pathMenu?.querySelector('summary');
+
+    // The two menus are mutually exclusive, including on touch screens.
+    pathMenu?.addEventListener('toggle', () => {
+        if (pathMenu.open && menu?.open) menu.open = false;
+    });
+    menu?.addEventListener('toggle', () => {
+        if (menu.open && pathMenu?.open) pathMenu.open = false;
+    });
 
     document.addEventListener('pointerdown', (event) => {
         if (menu?.open && !menu.contains(event.target)) menu.open = false;
+        if (pathMenu?.open && !pathMenu.contains(event.target)) pathMenu.open = false;
     });
     document.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape' || !menu?.open) return;
-        // A nested submenu closes first, otherwise the main menu.
-        const nested = [...menu.querySelectorAll('details[open]')].at(-1);
-        if (nested) nested.open = false;
-        else {
-            menu.open = false;
-            summary?.focus();
-        }
+        if (event.key !== 'Escape') return;
+        if (pathMenu?.open) {
+            pathMenu.open = false;
+            pathSummary?.focus();
+        } else if (menu?.open) {
+            // A nested submenu closes first, otherwise the main menu.
+            const nested = [...menu.querySelectorAll('details[open]')].at(-1);
+            if (nested) nested.open = false;
+            else {
+                menu.open = false;
+                summary?.focus();
+            }
+        } else return;
         event.preventDefault();
     });
     contextBar.querySelector('[data-app-context-back]')?.addEventListener('click', (event) => {
         const fallback = event.currentTarget.dataset.fallback;
         if (menu?.open) menu.open = false;
+        if (pathMenu?.open) pathMenu.open = false;
         try {
             if (document.referrer && new URL(document.referrer).origin === location.origin) {
                 history.back();

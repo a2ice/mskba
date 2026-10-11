@@ -59,7 +59,7 @@ final class MskbaAppAccountNavigationTest extends TestCase
         $this->assertFalse($items[1]['active']);
 
         $profile = $this->actingAs($user)->get(route('account.profile'))->assertOk();
-        $profile->assertSee('Управляй фотографией, публичным никнеймом и личными данными.');
+        $profile->assertSee('Управляй аватаром, никнеймом и личными данными.');
         $this->assertStringContainsString('aria-label="Навигационная цепочка"', $profile->getContent());
 
         $profileItems = app(MenuResolver::class)->resolve('account');

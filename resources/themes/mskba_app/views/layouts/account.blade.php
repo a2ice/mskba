@@ -18,6 +18,7 @@
                         @include('theme::partials.account.sidebar')
                     </aside>
                     <div class="app-account-layout__content">
+                        @stack('account-intro')
                         @yield('account-content')
                     </div>
                 </div>

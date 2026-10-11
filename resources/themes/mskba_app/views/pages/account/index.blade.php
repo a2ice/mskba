@@ -13,10 +13,16 @@
                     </button>
                 @endif
             </div>
-            <p>Привет, {{ app(\App\Presentation\Identity\UserAddressing::class)->greetingName($user ?? auth()->user()) }}! Здесь ты можешь управлять своим профилем, уведомлениями и настройками портала.</p>
+
         </header>
     </section>
 @endsection
+
+@push('account-intro')
+    <section class="panel app-account-intro" aria-label="О разделе">
+        <p>Привет, {{ app(\App\Presentation\Identity\UserAddressing::class)->greetingName($user ?? auth()->user()) }}! Здесь ты можешь управлять своим профилем, сообщениями и настройками портала.</p>
+    </section>
+@endpush
 
 @section('account-content')
     <section class="app-account-overview" aria-label="Обзор аккаунта">

@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Контракты',
-        'subtitle' => 'Твои договоры и документы.',
+        'intro' => 'Твои договоры и документы.',
     ])
 @endsection
 

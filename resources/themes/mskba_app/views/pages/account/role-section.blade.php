@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => $heading,
-        'subtitle' => $subtitle,
+        'intro' => $subtitle,
     ])
 @endsection
 

@@ -26,6 +26,15 @@
   min-width:0;
   container-type:inline-size;
 }
+/* Full-width page heading stays above the grid; introductory copy belongs
+   to the same visual card system as the main content, aligned with its column. */
+.app-account-intro {
+  margin-bottom:20px;
+  padding:20px 24px;
+}
+.app-account-intro p { margin:0; color:var(--muted); font-size:15px; line-height:1.6; }
+@media(max-width:639px) { .app-account-intro { padding:16px 18px; } }
+
 .app-account-nav { padding:16px; }
 .app-account-nav__links {
   display:flex;

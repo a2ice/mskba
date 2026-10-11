@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Роли в проекте',
-        'subtitle' => 'Выбери, как ты хочешь участвовать в жизни MSKBA. Можно выбрать сразу несколько ролей.',
+        'intro' => 'Выбери, как ты хочешь участвовать в жизни MSKBA. Можно выбрать сразу несколько ролей.',
     ])
 @endsection
 

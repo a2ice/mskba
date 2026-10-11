@@ -25,21 +25,48 @@
                     @endforeach
                 </ol>
             </nav>
+            <nav class="app-context-path" aria-label="Путь страницы">
+                <details data-app-context-path>
+                    <summary class="app-context-quick app-context-path__trigger" aria-label="Показать путь страницы">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+                             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 5h6a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h10"/>
+                            <circle cx="5" cy="5" r="2"/><circle cx="19" cy="17" r="2"/>
+                        </svg>
+                        <span class="app-context-quick__label">Путь</span>
+                    </summary>
+                    <ol class="app-context-path__menu">
+                        @foreach ($trail as $crumb)
+                            <li>
+                                @if (! $loop->last && ! empty($crumb['url']))
+                                    <a href="{{ $crumb['url'] }}">{{ $crumb['label'] }}</a>
+                                @else
+                                    <span @if ($loop->last) aria-current="page" @endif>{{ $crumb['label'] }}</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ol>
+                </details>
+            </nav>
             <div class="app-context-bar__controls">
-                <button type="button" class="app-context-back" data-app-context-back
-                        data-fallback="{{ $parentUrl }}" aria-label="Назад" title="Назад">
+                <button type="button" class="app-context-quick app-context-back" data-app-context-back
+                        data-fallback="{{ $parentUrl }}" aria-label="Назад">
                     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
                          stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m14 6-6 6 6 6" />
                     </svg>
+                    <span class="app-context-quick__label">Назад</span>
                 </button>
                 <details class="app-context-actions" data-app-context-actions>
-                    <summary>
+                    <summary class="app-context-quick app-context-actions__trigger" aria-label="Действия">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+                             stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
                         @if ($showAccountConfirmation)
                             <span class="app-context-actions__attention" aria-hidden="true"></span>
                         @endif
-                        Действия
-                        <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                        <span class="app-context-quick__label">Действия</span>
                     </summary>
                     <div class="app-context-actions__menu" aria-label="Контекстные действия">
                         @if ($showAccountConfirmation)

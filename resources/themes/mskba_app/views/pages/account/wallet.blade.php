@@ -3,7 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Кошелёк',
-        'subtitle' => 'Баланс, операции и история начислений.',
+        'intro' => 'Баланс, операции и история начислений.',
     ])
 @endsection
 
