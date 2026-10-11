@@ -43,7 +43,7 @@ final readonly class NotifyVenueOwnershipClaimMessageRecipients
         $recipients->unique()->reject(fn (int $userId): bool => $userId === $author->id)->each(function (int $userId) use ($claim): void {
             $this->notifications->handle(new CreateUserNotificationDTO(
                 userId: $userId,
-                type: UserNotificationTypeEnum::SYSTEM,
+                type: UserNotificationTypeEnum::MESSAGE,
                 title: 'Новое сообщение по подтверждению управления',
                 body: "В заявке по площадке «{$claim->venue->name}» появилось новое сообщение.",
                 actionUrl: route('account.venue-ownership.show', $claim, false).'#ownership-conversation',

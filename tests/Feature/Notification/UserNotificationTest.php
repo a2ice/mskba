@@ -21,6 +21,7 @@ use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationChannel;
 use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCountUpdatedBroadcast;
 use App\Modules\Notification\Infrastructure\Broadcasting\UserNotificationCreatedBroadcast;
+use App\Modules\Notification\Presentation\Presenters\UserNotificationPresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +30,33 @@ use Tests\TestCase;
 class UserNotificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_toast_palette_is_defined_by_notification_type_and_exposed_to_client(): void
+    {
+        $user = User::factory()->create();
+        $presenter = app(UserNotificationPresenter::class);
+        $colors = [];
+
+        foreach (UserNotificationTypeEnum::cases() as $type) {
+            $notification = UserNotification::query()->create([
+                'user_id' => $user->id,
+                'type' => $type,
+                'status' => UserNotificationStatusEnum::NEW,
+                'title' => $type->label(),
+                'body' => 'Тест уведомления.',
+            ]);
+
+            $view = $presenter->present($notification);
+            $this->assertSame($type->value, $view['type']);
+            $this->assertSame($type->toastBorderColor(), $view['type_color']);
+            $this->assertMatchesRegularExpression('/^#[a-f0-9]{6}$/i', $view['type_color']);
+            $colors[] = $view['type_color'];
+        }
+
+        $this->assertCount(count(UserNotificationTypeEnum::cases()), array_unique($colors));
+        $this->assertSame('#ff8a00', UserNotificationTypeEnum::SYSTEM->toastBorderColor());
+        $this->assertSame('#38bdf8', UserNotificationTypeEnum::MESSAGE->toastBorderColor());
+    }
 
     public function test_first_login_creates_welcome_notification(): void
     {

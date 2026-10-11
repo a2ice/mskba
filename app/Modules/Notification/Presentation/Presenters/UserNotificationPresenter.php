@@ -16,6 +16,8 @@ final class UserNotificationPresenter
         return [
             'id' => $notification->id,
             'title' => $notification->title,
+            'type' => $notification->type->value,
+            'type_color' => $notification->type->toastBorderColor(),
             'body' => $notification->body,
             'href' => $notification->action_url ?: route('account.notifications', absolute: false),
             'action_text' => $actions === [] ? $notification->action_text : null,

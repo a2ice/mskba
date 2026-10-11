@@ -37,7 +37,7 @@ final class NotifyVenueBookingMessageRecipients implements ShouldQueue
                 }
                 app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
                     userId: (int) $userId,
-                    type: UserNotificationTypeEnum::SYSTEM,
+                    type: UserNotificationTypeEnum::MESSAGE,
                     title: 'Новое сообщение по аренде',
                     body: 'В переписке по заявке появилось новое сообщение.',
                     actionUrl: route('account.venue-bookings.show', $booking).'#booking-conversation',
