@@ -6,6 +6,8 @@ See [2026-10-11 VDS resource audit and Gotenberg pilot](resource-audit-2026-10-1
 
 For the limited production Gotenberg optimization and rollback procedure, see [2026-10-11 production Gotenberg rollout](gotenberg-production-2026-10-11.md).
 
+See [production Scheduler → host cron migration](production-scheduler-cron-2026-10-11.md) for safety and rollback. GitHub [Issue #308](https://github.com/a2ice/mskba/issues/308) tracks the required Gotenberg main-release checks.
+
 ## Safety boundaries
 
 - Production: `/var/www/mskba`, Docker Compose project `mskbanew`, branch `main`, theme `mskba_dark`. Never modify from this workflow.

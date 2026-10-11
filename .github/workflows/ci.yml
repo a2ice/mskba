@@ -76,8 +76,19 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Validate production compose
-        run: docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+      - name: Validate production compose and Gotenberg release guard
+        run: |
+          docker compose -f compose.yaml -f compose.prod.yaml config --quiet
+          docker compose -f compose.yaml -f compose.prod.yaml config --format json | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)
+          command = data["services"]["gotenberg"].get("command", [])
+          required = ("--chromium-auto-start=false", "--chromium-idle-shutdown-timeout=15s")
+          missing = [flag for flag in required if flag not in command]
+          if missing:
+              sys.exit("Gotenberg lazy Chromium release guard: missing " + ", ".join(missing))
+          print("Gotenberg lazy Chromium flags verified")
+          '
 
       - name: Validate isolated dev compose
         run: DB_PASSWORD=ci-compose-validation-only docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet

@@ -123,6 +123,17 @@ jobs:
             fi
             update_env_value TELEGRAM_UPDATES_TRANSPORT webhook
 
+            # Host cron replaces the long-running scheduler container.
+            # Fail closed before any git reset/build when cron is absent.
+            test -x /home/deploy/bin/mskba-production-cron-tick.sh || {
+              echo "::error::Host production cron tick is not installed" >&2
+              exit 1
+            }
+            crontab -l | grep -Fq '/home/deploy/bin/mskba-production-cron-tick.sh' || {
+              echo "::error::Host production cron entry missing" >&2
+              exit 1
+            }
+
             COMPOSE="docker compose -f compose.yaml -f compose.prod.yaml"
             HOST_UID="$(id -u)"
             HOST_GID="$(id -g)"
@@ -141,7 +152,7 @@ jobs:
 
             mkdir -p bootstrap/cache public/build
 
-            $COMPOSE build phpfpm queue telegram-inbound-queue telegram-background-queue reverb scheduler
+            $COMPOSE build phpfpm queue telegram-inbound-queue telegram-background-queue reverb
             $COMPOSE up -d db redis
 
             $COMPOSE run -T --rm phpfpm composer install \
@@ -202,9 +213,9 @@ jobs:
             # polling container is intentionally left alive until Telegram has
             # accepted the webhook, so failed webhook configuration cannot make
             # inbound bot updates disappear.
-            $COMPOSE up -d --force-recreate phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb scheduler
+            $COMPOSE up -d --force-recreate phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb
 
-            $COMPOSE restart phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb scheduler
+            $COMPOSE restart phpfpm nginx queue telegram-inbound-queue telegram-background-queue reverb
 
             sleep 2
             RUNNING_SERVICES="$($COMPOSE ps --status running --services)"
