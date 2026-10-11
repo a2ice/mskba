@@ -36,3 +36,53 @@
 .app-confirmation__finish .button:disabled{opacity:.45;cursor:not-allowed}
 @container (max-width:700px){.app-confirmation__details-grid,.app-confirmation__name-grid{grid-template-columns:minmax(0,1fr)}.app-confirmation__name-grid .field-group:last-child{grid-column:auto}}
 @media (max-width:639px){.app-confirmation__card{padding:18px}.app-confirmation__field-action{flex-direction:column;align-items:stretch}.app-confirmation__field-action .button,.app-confirmation__finish .button{width:100%}}
+
+/* Verified-contact onboarding dialog. */
+.app-contact-wizard__trigger{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.app-contact-wizard__hint{color:var(--muted);font-size:13px;line-height:1.5;margin:12px 0 0}
+.app-contact-wizard__dialog{box-sizing:border-box;width:min(580px,calc(100vw - 24px));max-height:min(88vh,800px);padding:0;color:var(--text);background:var(--surface,#17191a);border:1px solid var(--line);border-radius:22px;box-shadow:0 25px 80px #0009;overflow:auto}
+.app-contact-wizard__dialog:not([open]){display:none}
+.app-contact-wizard__dialog::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(3px)}
+.app-contact-wizard__header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px 26px 18px;border-bottom:1px solid var(--line)}
+.app-contact-wizard__header h2{font-size:22px;line-height:1.25;margin:4px 0 0}
+.app-contact-wizard__eyebrow{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0}
+.app-contact-wizard__close{width:38px;height:38px;flex:none;display:grid;place-items:center;background:transparent;color:var(--text);border:1px solid var(--line);border-radius:50%;font-size:26px;cursor:pointer}
+.app-contact-wizard__body{padding:22px 26px}
+.app-contact-wizard__body [hidden],.app-contact-wizard__footer [hidden]{display:none!important}
+.app-contact-wizard__body h3{font-size:19px;line-height:1.3;margin:0 0 10px}
+.app-contact-wizard__body section>p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 20px}
+.app-contact-wizard__choices{display:grid;gap:10px}
+.app-contact-wizard__choices label{display:flex;align-items:center;gap:14px;padding:15px;border:1px solid var(--line);border-radius:12px;cursor:pointer;transition:border-color .15s ease;background:rgba(255,255,255,.015)}
+.app-contact-wizard__choices label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.app-contact-wizard__choices input{accent-color:var(--accent);width:18px;height:18px;flex:none}
+.app-contact-wizard__choices strong{display:block;font-size:15px}
+.app-contact-wizard__choices small{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.app-contact-wizard__choices .is-disabled{opacity:.45;cursor:not-allowed}
+.app-contact-wizard__body .field-group{display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:600}
+.app-contact-wizard__body .field-group input{width:100%;min-width:0}
+.app-contact-wizard__telegram{min-height:70px;display:flex;align-items:center}
+.app-contact-wizard__error{color:var(--danger);font-size:14px;line-height:1.5;margin:16px 0 0}
+.app-contact-wizard__feedback{color:var(--success);font-size:14px;line-height:1.5;margin:16px 0 0}
+.app-contact-wizard__resend{border:0;background:transparent;color:var(--accent);font-size:14px;text-decoration:underline;text-underline-offset:3px;padding:8px 0;cursor:pointer}
+.app-contact-wizard__resend:disabled{opacity:.5;cursor:wait}
+.app-contact-wizard__footer{display:flex;justify-content:flex-end;gap:12px;padding:18px 26px 24px;border-top:1px solid var(--line)}
+.app-contact-wizard__footer .button{min-width:100px}
+.app-contact-wizard__footer .button:disabled{opacity:.6;cursor:wait}
+@media(max-width:480px){.app-contact-wizard__header{padding:18px}.app-contact-wizard__body{padding:18px}.app-contact-wizard__footer{padding:16px 18px}.app-contact-wizard__header h2{font-size:20px}.app-contact-wizard__trigger .button{width:100%}}
+
+.app-account-contacts{display:grid;gap:20px}
+.app-account-contacts__panel{padding:24px;min-width:0}
+.app-account-contacts__panel h2{font-size:22px;margin:0 0 14px}
+.app-account-contacts__panel>p{color:var(--muted);font-size:14px;line-height:1.6}
+.app-account-contacts__item{padding:18px 0;border-bottom:1px solid var(--line)}
+.app-account-contacts__item:last-of-type{border-bottom:0}
+.app-account-contacts__meta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;overflow-wrap:anywhere}
+.app-account-contacts__badges,.app-account-contacts__actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.app-account-contacts__actions{margin-top:14px}
+.app-account-contacts__actions form{margin:0}
+.app-account-contacts__verify{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:18px 0 0}
+.app-account-contacts__verify .field-group{display:grid;gap:7px;max-width:250px}
+.app-account-contacts__add{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-top:18px}
+.app-account-contacts__add .field-group{display:grid;gap:7px;min-width:180px;flex:1}
+.app-account-contacts__note{font-size:13px;margin:18px 0 0}
+@media(max-width:639px){.app-account-contacts__panel{padding:18px}.app-account-contacts__actions .button,.app-account-contacts__add .button{width:100%}.app-account-contacts__add .field-group{flex-basis:100%}}

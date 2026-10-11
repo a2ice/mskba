@@ -8,6 +8,7 @@ import './distribution-consent-document-dialog.js';
 import './account-team-placeholder.js';
 import './account-roles.js';
 import './account-profile.js';
+import './account-confirmation-contact-wizard.js';
 import { createApp } from 'vue';
 import AuthDialog from './components/AuthDialog.vue';
 

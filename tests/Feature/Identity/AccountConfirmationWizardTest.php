@@ -162,4 +162,90 @@ final class AccountConfirmationWizardTest extends TestCase
         $this->assertNotNull($contact->fresh()->verified_at);
         $this->assertSame(ContactVerificationStatusEnum::CONFIRMED, $verification->fresh()->status);
     }
+
+    public function test_contact_wizard_ajax_creates_pending_email_and_returns_verification_step(): void
+    {
+        Mail::fake();
+        $user = $this->makeUser();
+        $result = $this->actingAs($user)->postJson(route('account.confirmation.contact.store'), [
+            'type' => 'email', 'value' => '  Wizard@Example.test ',
+        ])->assertOk()->assertJsonStructure(['contact_id', 'value', 'seconds_left']);
+
+        $contact = $user->contacts()->firstOrFail();
+        $this->assertSame((int) $contact->id, (int) $result->json('contact_id'));
+        $this->assertSame('wizard@example.test', $contact->value);
+        $this->assertTrue((bool) $contact->is_primary);
+        $this->assertNull($contact->verified_at);
+        $this->assertSame(1, $contact->verifications()->count());
+    }
+
+    public function test_contact_wizard_ajax_checks_format_and_ownership_before_sending_email(): void
+    {
+        Mail::fake();
+        $firstUser = $this->makeUser();
+        $otherUser = $this->makeUser();
+        $firstUser->contacts()->create(['type' => ContactTypeEnum::EMAIL,
+            'value' => 'occupied@example.test', 'is_primary' => true]);
+
+        $this->actingAs($otherUser)->postJson(route('account.confirmation.contact.store'), [
+            'type' => 'email', 'value' => 'not-an-address',
+        ])->assertUnprocessable()->assertJsonValidationErrors('value');
+
+        $this->postJson(route('account.confirmation.contact.store'), [
+            'type' => 'email', 'value' => 'occupied@example.test',
+        ])->assertUnprocessable()->assertJsonPath('message', 'Этот email уже используется другим пользователем.');
+
+        $this->postJson(route('account.confirmation.contact.store'), [
+            'type' => 'telegram', 'value' => '@someusername',
+        ])->assertUnprocessable();
+        $this->postJson(route('account.confirmation.contact.store'), [
+            'type' => 'phone', 'value' => '+79991112233',
+        ])->assertUnprocessable();
+
+        $this->assertSame(0, $otherUser->contacts()->count());
+    }
+
+    public function test_contact_wizard_ajax_can_resend_and_confirm_only_own_email(): void
+    {
+        Mail::fake();
+        $user = $this->makeUser();
+        $otherUser = $this->makeUser();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'otp@example.test', 'is_primary' => true,
+        ]);
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('123456'), 'sent_to' => 'otp@example.test',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->actingAs($otherUser)->postJson(route('account.confirmation.contacts.verification.confirm', $contact), [
+            'code' => '123456',
+        ])->assertNotFound();
+
+        $this->actingAs($user)->postJson(route('account.confirmation.contacts.verification.confirm', $contact), [
+            'code' => '999999',
+        ])->assertUnprocessable();
+        $this->assertNull($contact->fresh()->verified_at);
+
+        $this->postJson(route('account.confirmation.contacts.verification.confirm', $contact), [
+            'code' => '123456',
+        ])->assertOk()->assertJsonPath('redirect_url', route('account.confirmation'));
+        $this->assertNotNull($contact->fresh()->verified_at);
+        $this->assertSame(ContactVerificationStatusEnum::CONFIRMED, $verification->fresh()->status);
+    }
+
+    public function test_contact_wizard_ajax_resend_observes_cooldown(): void
+    {
+        Mail::fake();
+        $user = $this->makeUser();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'resend@example.test', 'is_primary' => true,
+        ]);
+        $this->actingAs($user)->postJson(route('account.confirmation.contacts.verification.store', $contact))
+            ->assertOk()->assertJsonPath('seconds_left', 60);
+        $this->postJson(route('account.confirmation.contacts.verification.store', $contact))
+            ->assertStatus(429)->assertJsonStructure(['message', 'seconds_left']);
+    }
 }

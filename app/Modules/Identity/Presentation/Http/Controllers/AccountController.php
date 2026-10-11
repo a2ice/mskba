@@ -113,6 +113,8 @@ class AccountController extends Controller
             'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
             'primaryContactPendingVerification' => $primaryContact?->verifications->first(),
             'genders' => UserGenderEnum::cases(),
+            'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
+            'vkEnabled' => trim((string) config('vk.app_id')) !== '',
         ]);
     }
 
@@ -139,82 +141,110 @@ class AccountController extends Controller
         CreateAccountContactRequest $request,
         CreateContactForUserHandler $createContactForUser,
         StartContactVerificationHandler $startContactVerification,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
+        $data = $request->toDTO();
 
-        try {
-            $contact = $createContactForUser->handle($user, $request->toDTO());
-            $startContactVerification->handle($contact);
-        } catch (InvalidArgumentException|ContactVerificationCooldownException|LogicException $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->withInput()
-                ->with('error', $e->getMessage());
-        } catch (\Throwable $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->withInput()
-                ->with('error', $e->getMessage());
+        // Telegram and VK must be verified via their signed identity providers.
+        // Never let a typed username count as a verified login identity.
+        if ($data->type !== ContactTypeEnum::EMAIL) {
+            $message = 'Для Telegram и VK используйте официальную авторизацию. Подтверждение телефона пока недоступно.';
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 422)
+                : redirect()->route('account.confirmation')->with('error', $message);
         }
 
-        return redirect()
-            ->route('account.confirmation')
+        try {
+            $existing = $user->identityContactsQuery()
+                ->where('type', ContactTypeEnum::EMAIL)
+                ->where('value', $data->value)
+                ->first();
+            if ($existing?->hasBeenVerified()) {
+                throw new InvalidArgumentException('Этот Email уже подтверждён в твоём аккаунте.');
+            }
+            $contact = $existing ?? $createContactForUser->handle($user, $data);
+            $startContactVerification->handle($contact);
+        } catch (ContactVerificationCooldownException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'contact_id' => $contact->id,
+                    'seconds_left' => $e->secondsLeft,
+                ], 429);
+            }
+
+            return redirect()->route('account.confirmation')
+                ->with('info', $e->getMessage())
+                ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
+        } catch (InvalidArgumentException|LogicException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.confirmation')->withInput()->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Код подтверждения отправлен.',
+                'contact_id' => $contact->id,
+                'value' => $contact->displayValue(),
+                'seconds_left' => 60,
+            ]);
+        }
+
+        return redirect()->route('account.confirmation')
             ->with('status', 'Контакт добавлен. Код подтверждения отправлен.');
     }
 
     public function startConfirmationContactVerification(
         Contact $contact,
         StartContactVerificationHandler $startContactVerification,
-    ): RedirectResponse {
-        $user = $this->accountCheckForPresentationService->handle(request()->user());
+    ): RedirectResponse|JsonResponse {
+        $request = request();
+        $user = $this->accountCheckForPresentationService->handle($request->user());
 
-        abort_unless(
-            $user->ownsIdentityContact($contact),
-            404,
-        );
+        abort_unless($user->ownsIdentityContact($contact), 404);
+        abort_unless($contact->type === ContactTypeEnum::EMAIL, 422);
 
         try {
             $startContactVerification->handle($contact);
         } catch (ContactVerificationCooldownException $e) {
-            return redirect()
-                ->route('account.confirmation')
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage(), 'seconds_left' => $e->secondsLeft], 429);
+            }
+            return redirect()->route('account.confirmation')
                 ->with('info', $e->getMessage())
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
-        } catch (\Throwable $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->with('error', $e->getMessage());
+        } catch (LogicException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.confirmation')->with('error', $e->getMessage());
         }
 
-        return redirect()
-            ->route('account.confirmation')
-            ->with('status', 'Код подтверждения отправлен.');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Новый код отправлен.', 'seconds_left' => 60])
+            : redirect()->route('account.confirmation')->with('status', 'Код подтверждения отправлен.');
     }
 
     public function confirmConfirmationContactVerification(
         ConfirmContactVerificationRequest $request,
         Contact $contact,
         ConfirmContactVerificationHandler $confirmContactVerification,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
 
-        abort_unless(
-            $user->ownsIdentityContact($contact),
-            404,
-        );
+        abort_unless($user->ownsIdentityContact($contact), 404);
 
         try {
             $confirmContactVerification->handle($contact, $request->toDTO());
         } catch (ContactVerificationException|LogicException $e) {
-            return redirect()
-                ->route('account.confirmation')
-                ->withInput()
-                ->with('error', $e->getMessage());
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.confirmation')->withInput()->with('error', $e->getMessage());
         }
 
-        return redirect()
-            ->route('account.confirmation')
-            ->with('status', 'Контакт подтвержден.');
+        return $request->expectsJson()
+            ? response()->json(['message' => 'Контакт подтверждён.', 'redirect_url' => route('account.confirmation')])
+            : redirect()->route('account.confirmation')->with('status', 'Контакт подтвержден.');
     }
 
     public function settings(PersonalDataDistributionConsentService $distributionConsents): Response

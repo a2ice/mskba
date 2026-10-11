@@ -68,7 +68,7 @@
     "src": "resources/themes/mskba_app/assets/images/logo-mark-100.png"
   },
   "resources/themes/mskba_app/css/app.css": {
-    "file": "assets/app-Ct5xFjk4.css",
+    "file": "assets/app-DYY_RsKN.css",
     "name": "app",
     "names": [
       "app.css"
@@ -81,7 +81,7 @@
     ]
   },
   "resources/themes/mskba_app/js/app.js": {
-    "file": "assets/app-BN2xPvZf.js",
+    "file": "assets/app-BOGZ7MtW.js",
     "name": "app",
     "src": "resources/themes/mskba_app/js/app.js",
     "isEntry": true,

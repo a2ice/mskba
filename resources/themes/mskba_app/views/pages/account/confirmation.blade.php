@@ -45,44 +45,13 @@
 
                 @if ($primaryVerifiedContact)
                     <p class="app-confirmation__value">{{ $primaryVerifiedContact->type->label() }}: {{ $primaryVerifiedContact->displayValue() }}</p>
-                @elseif ($primaryContact)
-                    <p class="app-confirmation__value">{{ $primaryContact->type->label() }}: {{ $primaryContact->displayValue() }} — не подтверждён</p>
-                    @if ($primaryContact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
-                        <div class="app-confirmation__contact-actions">
-                            <form method="POST" action="{{ route('account.confirmation.contacts.verification.store', $primaryContact) }}">
-                                @csrf
-                                <button class="button secondary" type="submit">Отправить код</button>
-                            </form>
-                            @if ($primaryContactPendingVerification)
-                                <form method="POST" action="{{ route('account.confirmation.contacts.verification.confirm', $primaryContact) }}"
-                                      class="app-confirmation__contact-code field-group">
-                                    @csrf
-                                    <label for="confirmation-contact-code">Код из письма</label>
-                                    <div class="app-confirmation__field-action">
-                                        <input id="confirmation-contact-code" name="code" type="text"
-                                               inputmode="numeric" autocomplete="one-time-code"
-                                               placeholder="000000" value="{{ old('code') }}" required>
-                                        <button class="button primary" type="submit">Подтвердить</button>
-                                    </div>
-                                    @error('code') <small class="app-confirmation__error">{{ $message }}</small> @enderror
-                                </form>
-                            @endif
-                        </div>
-                    @endif
-                    <a href="{{ route('account.contacts') }}" class="app-confirmation__contact-link">Управлять контактами и выбрать основной</a>
+                    <a href="{{ route('account.contacts') }}" class="app-confirmation__contact-link">Управлять контактами</a>
                 @else
-                    <form method="POST" action="{{ route('account.confirmation.contact.store') }}" class="app-confirmation__contact-add field-group">
-                        @csrf
-                        <input name="type" type="hidden" value="email">
-                        <label for="confirmation-contact-email">Email</label>
-                        <div class="app-confirmation__field-action">
-                            <input id="confirmation-contact-email" name="value" type="email" required
-                                   placeholder="name@example.com" autocomplete="email" value="{{ old('value') }}">
-                            <button class="button primary" type="submit">Добавить и отправить код</button>
-                        </div>
-                        @error('value') <small class="app-confirmation__error">{{ $message }}</small> @enderror
-                    </form>
-                    <a href="{{ route('account.contacts') }}" class="app-confirmation__contact-link">Другие способы связи (Telegram, VK)</a>
+                    @if ($primaryContact)
+                        <p class="app-confirmation__value">{{ $primaryContact->type->label() }}: {{ $primaryContact->displayValue() }} — не подтверждён</p>
+                    @endif
+                    @include('theme::pages.account.partials.confirmation-contact-dialog')
+                    <a href="{{ route('account.contacts') }}" class="app-confirmation__contact-link">Управлять контактами и выбрать основной</a>
                 @endif
                 @error('contact') <p class="app-confirmation__error" role="alert">{{ $message }}</p> @enderror
             </section>

@@ -93,6 +93,44 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertDontSee('data-profile-change-request-open', false);
     }
 
+    public function test_confirmation_uses_dynamic_contact_wizard_with_identity_providers(): void
+    {
+        $user = $this->account();
+        $this->actingAs($user)->get(route('account.confirmation'))->assertOk()
+            ->assertSee('data-contact-wizard', false)
+            ->assertSee('data-wizard-step="method"', false)
+            ->assertSee('data-wizard-step="email"', false)
+            ->assertSee('data-wizard-step="code"', false)
+            ->assertSee('data-wizard-telegram', false)
+            ->assertSee('data-wizard-step="vk"', false)
+            ->assertSee('SMS-подтверждение скоро появится')
+            ->assertSee('data-wizard-next', false)
+            ->assertDontSee('id="confirmation-contact-email"', false);
+    }
+
+    public function test_contact_management_screen_lists_contacts_and_allows_switching_primary(): void
+    {
+        $user = $this->account();
+        $first = $user->contacts()->create([
+            'type' => \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL,
+            'value' => 'first@example.test', 'is_primary' => true, 'verified_at' => now(),
+        ]);
+        $second = $user->contacts()->create([
+            'type' => \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL,
+            'value' => 'second@example.test', 'is_primary' => false, 'verified_at' => now(),
+        ]);
+
+        $this->actingAs($user)->get(route('account.contacts'))->assertOk()
+            ->assertSee('Мои контакты')
+            ->assertSee('first@example.test')
+            ->assertSee('second@example.test')
+            ->assertSee(route('account.contacts.primary', $second), false);
+
+        $this->patch(route('account.contacts.primary', $second))->assertRedirect(route('account.contacts'));
+        $this->assertFalse((bool) $first->fresh()->is_primary);
+        $this->assertTrue((bool) $second->fresh()->is_primary);
+    }
+
     public function test_overview_has_status_card_linking_to_confirmation_page(): void
     {
         $user = $this->account();
