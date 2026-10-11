@@ -230,7 +230,8 @@ html:has(.app-context-bar) {
     .app-context-quick__label { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .app-context-quick, .app-context-quick::before, .app-context-quick__label { transition: none; }
+    .app-context-quick, .app-context-quick::before, .app-context-quick__label,
+    .app-context-actions__attention { transition: none; }
 }
 /* Task 026: contextual verification entry, shown only for unconfirmed account pages. */
 .app-context-actions__attention{
@@ -245,6 +246,7 @@ html:has(.app-context-bar) {
     left:30px;
     top:12px;
     flex:none;
+    transition:left .2s ease;
 }
 /* On desktop hover / keyboard focus it follows the visible word 'Действия',
    instead of being pinned over the hamburger icon. Mobile remains icon-only. */
@@ -254,10 +256,8 @@ html:has(.app-context-bar) {
         max-width: 146px;
     }
     .app-context-actions > summary:hover .app-context-actions__attention {
-        position: relative;
-        left: auto;
-        top: auto;
-        margin-left: -2px;
+        /* Only the horizontal coordinate changes; top stays at 12px. */
+        left:calc(100% - 20px);
     }
 }
 @media (min-width: 640px) {
@@ -266,10 +266,7 @@ html:has(.app-context-bar) {
         max-width: 146px;
     }
     .app-context-actions > summary:focus-visible .app-context-actions__attention {
-        position: relative;
-        left: auto;
-        top: auto;
-        margin-left: -2px;
+        left:calc(100% - 20px);
     }
 }
 /* Attention rule: one actionable item can mark both the Actions trigger and

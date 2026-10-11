@@ -173,6 +173,14 @@ final class MskbaAppAccountProfileTest extends TestCase
         $this->assertStringContainsString('box-shadow:none', $matches[1]);
         $this->assertStringNotContainsString('opacity:', $matches[1]);
         $this->assertStringNotContainsString('display:none', $matches[1]);
+        // Both collapsed and expanded states share the same absolute top;
+        // changing to relative positioning previously shifted the dot down.
+        $this->assertMatchesRegularExpression(
+            '/summary \.app-context-actions__attention\s*\{[^}]*position:absolute;[^}]*top:12px;/s',
+            $css,
+        );
+        $this->assertSame(2, substr_count($css, 'left:calc(100% - 20px);'));
+        $this->assertStringNotContainsString('top: auto', $css);
         $this->assertStringContainsString('@media(prefers-reduced-motion:reduce)', $css);
     }
 
