@@ -64,7 +64,7 @@ services:
     command:
       - gotenberg
       - --chromium-auto-start=false
-      - --chromium-idle-shutdown-timeout=2m
+      - --chromium-idle-shutdown-timeout=15s
   db:
     image: postgres:17-alpine
     restart: unless-stopped

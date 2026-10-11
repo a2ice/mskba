@@ -14,7 +14,7 @@
 
 ## Gotenberg pilot: staged, not production
 
-The Gotenberg v8 image installed on the VDS supports `--chromium-auto-start=false` and `--chromium-idle-shutdown-timeout=2m`. The Chromium browser starts on first conversion and exits after two minutes of inactivity; the **Gotenberg HTTP container itself does not auto-stop**. A full container-level wake/sleep mechanism would require a separate, privileged supervisor/proxy design; **never mount the Docker socket into Laravel**.
+The Gotenberg v8 image installed on the VDS supports `--chromium-auto-start=false` and `--chromium-idle-shutdown-timeout=15s`. The Chromium browser starts on first conversion and is configured to exit after 15 seconds of inactivity on the staging pilot; the **Gotenberg HTTP container itself does not auto-stop**. A full container-level wake/sleep mechanism would require a separate, privileged supervisor/proxy design; **never mount the Docker socket into Laravel**.
 
 Staging's `compose.dev.yaml` now contains an optional `gotenberg` service behind the `pdf` profile, with `restart: "no"`, so ordinary staging deploy does not keep it running. This is an **operator-triggered** start/stop pilot, not transparent, fully automatic request-triggered container activation.
 
@@ -27,11 +27,11 @@ docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml --p
 docker stats --no-stream mskba-dev-gotenberg-1
 # Staging smoke test; generates a synthetic PDF and does not persist a campaign:
 docker exec mskba-dev-phpfpm-1 php artisan acquisition:documents:smoke
-# Measure RAM during conversion and after >2m idle, then stop staging PDF service:
+# Measure RAM during conversion and after >40 s idle, then stop staging PDF service:
 docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml --profile pdf stop gotenberg
 ```
 
-During the 2026-10-11 staging experiment, the Laravel-specific `acquisition:documents:smoke` command failed *before Gotenberg* because Blade view `documents.acquisition-flyer-a4` exists only in the `mskba_dark` theme, not the staging `mskba_app` theme. A separate direct multipart HTML-to-PDF request from the staging PHP-FPM container succeeded: **cold 7.53 s**, **warm 1.07 s**, both HTTP 200 with valid PDF headers (15,062 bytes). Gotenberg was ~6 MiB before conversion and ~320 MiB immediately afterward, with a 512 MiB memory limit for the temporary pilot container. These figures describe a synthetic HTML document, not the actual flyer. Restore cross-theme access to the document template in a separate, reviewed application change.
+During the 2026-10-11 staging experiment, the Laravel-specific `acquisition:documents:smoke` command failed *before Gotenberg* because Blade view `documents.acquisition-flyer-a4` exists only in the `mskba_dark` theme, not the staging `mskba_app` theme. A separate direct multipart HTML-to-PDF request from the staging PHP-FPM container succeeded: **cold 7.53 s**, **warm 1.07 s**, both HTTP 200 with valid PDF headers (15,062 bytes). Gotenberg was ~6 MiB before conversion and ~320 MiB immediately afterward, with a 512 MiB memory limit for the temporary pilot container. These figures describe a synthetic HTML document, not the actual flyer. In a first run configured with a **2m timeout**, Chromium was still present (~215 MiB, several processes) at the 135-second follow-up; the reason is unresolved. A second, separately controlled test with **15s idle timeout** succeeded: cold **14.26 s**, warm **4.18 s** (HTTP 200, PDFs valid), ~13 MiB before conversion, and **102.7 MiB at 40 seconds idle, with zero Chromium processes**. The pilot was then explicitly stopped and removed. This verifies Chromium-only idle shutdown under the 15s setting; it does not demonstrate full Docker-container-on-demand behaviour or guaranteed 200–300 MiB permanent host-level savings. Restore cross-theme access to the document template in a separate, reviewed application change.
 
 Only run the application smoke test when its document template issue is resolved and capacity is sufficient; abort if production site degrades. The renderer's HTTP timeout is currently 30 seconds; a cold Chromium start plus PDF conversion may exceed that on this 2 GiB VDS. Do not silently increase timeout globally until measured.
 
