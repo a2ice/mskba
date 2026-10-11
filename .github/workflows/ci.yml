@@ -112,6 +112,15 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Preserve verified dev frontend bundle
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-vite-build
+          path: public/build/
+          if-no-files-found: error
+          retention-days: 1
+
   deploy_dev:
     needs: test
     if: >-
@@ -119,6 +128,22 @@ jobs:
     runs-on: ubuntu-latest
     environment: development
     steps:
+      - name: Download verified frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-vite-build
+          path: staged-build
+
+      - name: Stage built assets on development server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: 'staged-build/*'
+          target: '/home/deploy/mskba-dev-assets/${{ github.sha }}'
+          strip_components: 1
+
       - name: Deploy verified commit via SSH
         uses: appleboy/ssh-action@v1.2.0
         env:
@@ -151,6 +176,9 @@ jobs:
             test -f .dev-bootstrap-complete || { echo 'Dev bootstrap marker missing'; exit 1; }
             case "$VERIFIED_SHA" in *[!0-9a-f]*|'') exit 1;; esac
             test "${#VERIFIED_SHA}" -eq 40
+            ASSET_STAGE="/home/deploy/mskba-dev-assets/$VERIFIED_SHA"
+            test -f "$ASSET_STAGE/manifest.json" || { echo 'Verified frontend manifest missing'; exit 1; }
+            test -d "$ASSET_STAGE/assets" || { echo 'Verified frontend assets missing'; exit 1; }
             # Verify essential local resources before any tracked file is replaced.
             test "$(stat -c '%U:%G:%a' .env)" = 'deploy:www-data:640'
             docker image inspect mskbanew-phpfpm:latest >/dev/null
@@ -182,6 +210,12 @@ jobs:
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
             # Staging FAQ defaults: idempotent, never overwrite editorial content.
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\FaqContentSeeder' --force --no-interaction
+            # Copy hashed assets first, then atomically publish the new Vite manifest.
+            # Keep previous hashed assets, so in-flight browser requests remain valid.
+            mkdir -p public/build
+            tar -C "$ASSET_STAGE" --exclude='./manifest.json' -cf - . | tar -C public/build -xf -
+            cp "$ASSET_STAGE/manifest.json" public/build/manifest.json.pending
+            mv -f public/build/manifest.json.pending public/build/manifest.json
             $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue
             ready=0
             for attempt in $(seq 1 20); do
@@ -203,7 +237,8 @@ jobs:
               $COMPOSE logs --tail=50 queue
               exit 1
             fi
-            echo 'Dev deployment completed; production untouched'
+            rm -rf -- "$ASSET_STAGE"
+            echo 'Dev deployment completed with verified frontend assets; production untouched'
 
   ssh_smoke_dev:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_dev_ssh && github.ref == 'refs/heads/dev' }}
