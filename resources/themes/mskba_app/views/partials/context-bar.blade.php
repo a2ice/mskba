@@ -1,17 +1,23 @@
-@unless (request()->routeIs('welcome', 'home'))
+@php
+    $accountIsUnconfirmed = auth()->check()
+        && auth()->user()->canonical()->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED;
+    $isHomePage = request()->routeIs('welcome', 'home');
+@endphp
+{{-- Home keeps its clean header for guests and confirmed users. Only an
+     unconfirmed member gets the minimal contextual Actions bar there. --}}
+@if (! $isHomePage || $accountIsUnconfirmed)
     @php
-        $trail = app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
-        $contextItems = app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve();
+        $trail = $isHomePage ? [] : app(\App\Presentation\Breadcrumbs\BreadcrumbsResolver::class)->resolve($title ?? null, $breadcrumbs ?? null);
+        $contextItems = $isHomePage ? [] : app(\App\Presentation\Navigation\ContextSubmenuResolver::class)->resolve();
         $parentUrl = collect(array_slice($trail, 0, -1))->reverse()->first(fn (array $crumb): bool => ! empty($crumb['url']))['url'] ?? route('welcome');
-        $accountIsUnconfirmed = auth()->check()
-            && auth()->user()->canonical()->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED;
-        $showAccountConfirmation = $accountIsUnconfirmed
-            && request()->routeIs('account', 'account.*')
-            && ! request()->routeIs('account.confirmation');
+        $showAccountConfirmation = $accountIsUnconfirmed && ! request()->routeIs('account.confirmation');
         $showOverviewConfirmationGuide = $accountIsUnconfirmed && request()->routeIs('account');
     @endphp
     <div class="app-context-bar" data-app-context-bar>
         <div class="container app-context-bar__inner">
+            @if ($isHomePage)
+                <span class="app-context-home-label">Главная</span>
+            @else
             <nav class="app-context-trail" aria-label="Навигационная цепочка">
                 <ol>
                     @foreach ($trail as $crumb)
@@ -47,7 +53,9 @@
                     </ol>
                 </details>
             </nav>
+            @endif
             <div class="app-context-bar__controls">
+                @unless ($isHomePage)
                 <button type="button" class="app-context-quick app-context-back" data-app-context-back
                         data-fallback="{{ $parentUrl }}" aria-label="Назад">
                     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
@@ -56,6 +64,7 @@
                     </svg>
                     <span class="app-context-quick__label">Назад</span>
                 </button>
+                @endunless
                 <details class="app-context-actions" data-app-context-actions>
                     <summary class="app-context-quick app-context-actions__trigger" aria-label="Действия">
                         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
@@ -94,4 +103,4 @@
             'accountConfirmationGuideHtml' => app(\App\Modules\Content\Application\Services\WelcomeAccountConfirmationGuide::class)->html(),
         ])
     @endif
-@endunless
+@endif

@@ -21,6 +21,15 @@ html:has(.app-context-bar) {
     min-height: var(--context-bar-height);
 }
 .app-context-trail { min-width: 0; flex: 1 1 auto; }
+/* Home normally has no context bar. Its unconfirmed-only version uses
+   just one label and Actions, without a redundant breadcrumb/back button. */
+.app-context-home-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
 .app-context-trail ol {
     display: flex;
     align-items: center;
@@ -234,7 +243,7 @@ html:has(.app-context-bar) {
     .app-context-actions__attention,
     .app-context-actions__trigger > .app-context-quick__label { transition: none; }
 }
-/* Task 026: contextual verification entry, shown only for unconfirmed account pages. */
+/* Task 026: confirmation entry for unconfirmed users across the portal. */
 .app-context-actions__attention{
     display:inline-block;flex:0 0 5px;width:5px;height:5px;
     border-radius:50%;background:var(--success);box-shadow:0 0 0 0 color-mix(in srgb,var(--success) 55%,transparent);

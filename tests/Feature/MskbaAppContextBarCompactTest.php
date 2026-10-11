@@ -62,4 +62,54 @@ final class MskbaAppContextBarCompactTest extends TestCase
         $this->assertSame(1, $xpath->query('//button[@data-app-context-share]')->length);
         $this->assertSame(1, $xpath->query('//button[@data-context-help]')->length);
     }
+    public function test_unconfirmed_member_sees_confirmation_action_across_the_portal(): void
+    {
+        $user = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED]);
+
+        foreach (['account', 'account.roles', 'events.index', 'venues', 'news.index'] as $name) {
+            $html = $this->actingAs($user)->get(route($name))->assertOk()->getContent();
+            $this->assertSame(1, substr_count($html, 'Подтвердить акк...'), $name);
+            $this->assertSame(2, substr_count($html, 'class="app-context-actions__attention"'), $name);
+            $this->assertStringContainsString('href="'.route('account.confirmation').'"', $html, $name);
+        }
+    }
+
+    public function test_confirmation_page_has_no_confirmation_action_or_indicator(): void
+    {
+        $user = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED]);
+        $html = $this->actingAs($user)->get(route('account.confirmation'))->assertOk()->getContent();
+        $this->assertStringContainsString('data-app-context-actions', $html);
+        $this->assertStringNotContainsString('Подтвердить акк...', $html);
+        $this->assertStringNotContainsString('class="app-context-actions__attention"', $html);
+    }
+
+    public function test_home_keeps_clean_layout_except_for_unconfirmed_member_actions(): void
+    {
+        $guest = $this->get(route('welcome'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('data-app-context-bar', $guest);
+
+        $confirmed = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED]);
+        $confirmedHtml = $this->actingAs($confirmed)->get(route('welcome'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('data-app-context-bar', $confirmedHtml);
+
+        $unconfirmed = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED]);
+        $html = $this->actingAs($unconfirmed)->get(route('welcome'))->assertOk()->getContent();
+        $this->assertSame(1, substr_count($html, 'data-app-context-bar'));
+        $this->assertSame(1, substr_count($html, 'Подтвердить акк...'));
+        $this->assertSame(2, substr_count($html, 'class="app-context-actions__attention"'));
+        $this->assertStringNotContainsString('data-app-context-back', $html);
+        $this->assertStringNotContainsString('aria-label="Навигационная цепочка"', $html);
+    }
+
+    public function test_confirmed_user_and_guest_have_no_confirmation_action(): void
+    {
+        $guestHtml = $this->get(route('news.index'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('Подтвердить акк...', $guestHtml);
+
+        $confirmed = User::factory()->create(['status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED]);
+        $html = $this->actingAs($confirmed)->get(route('events.index'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('Подтвердить акк...', $html);
+        $this->assertStringNotContainsString('class="app-context-actions__attention"', $html);
+    }
+
 }
