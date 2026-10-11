@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Faq;
 
+use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
-use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
 use App\Modules\Content\Infrastructure\Mail\SupportQuestionMail;
 use App\Modules\Identity\Domain\Models\User;
@@ -41,6 +41,7 @@ final class ContextHelpTest extends TestCase
     private function faq(string $alias, ContentStatusEnum $status, string $systemKey): ContentItem
     {
         $author = User::factory()->create();
+
         return ContentItem::query()->create([
             'created_by_user_id' => $author->id,
             'type' => ContentTypeEnum::FAQ,
@@ -94,8 +95,9 @@ final class ContextHelpTest extends TestCase
             ->assertSee('data-context-placeholder="Создание площадки"', false)
             ->assertSee('data-context-placeholder="Поиск площадки"', false)
             ->assertSee('data-app-context-back', false)
-            ->assertSee('class="app-context-back"', false)
-            ->assertSee('aria-label="Назад" title="Назад"', false)
+            ->assertSee('class="app-context-quick app-context-back"', false)
+            ->assertSee('aria-label="Назад"', false)
+            ->assertSee('class="app-context-quick app-context-actions__trigger"', false)
             ->assertSee('data-help-context="venues"', false)
             ->assertSee('data-context-help-dialog', false)
             ->assertSee('data-help-toggle', false)
@@ -127,8 +129,7 @@ final class ContextHelpTest extends TestCase
             'topic' => 'venues', 'source_path' => '/venues/my-court', 'message' => 'Подскажите, как можно забронировать площадку?',
         ])->assertOk()->assertJsonPath('status', 'sent');
 
-        Mail::assertSent(SupportQuestionMail::class, fn (SupportQuestionMail $mail) =>
-            $mail->hasTo('support@example.test')
+        Mail::assertSent(SupportQuestionMail::class, fn (SupportQuestionMail $mail) => $mail->hasTo('support@example.test')
             && $mail->userId === $user->id
             && $mail->topicLabel === 'Площадки и бронирование'
             && $mail->sourcePath === '/venues/my-court'

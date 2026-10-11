@@ -23,3 +23,7 @@
 - [x] Расширенный PHPUnit: 80 tests / 788 assertions, Pint, Blade cache и локальный `npm run build`.
 - [ ] GitHub CI/CD до Dev и подтверждение доступности и ресурсов новой сборки.
 - [ ] Пользовательская визуальная приёмка desktop/mobile, hover, touch, Escape, sticky и overflow.
+
+## CI #1 — регрессии тестов
+
+Первый GitHub full suite: 1216 PASS, 2 FAIL из-за старых дословных ожиданий (`ContextHelpTest`: старый `class="app-context-back"` и атрибут title; `MskbaAppAccountAddressingTest`: устаревшее слово «уведомлениями»). Исправлены только устаревшие ожидания под согласованный новый UI. Путь/Faq resolver и правила обращения без изменений. Повторяем тесты и CI до green.
