@@ -124,6 +124,14 @@ final class MskbaAppAccountProfileTest extends TestCase
                 ->assertSee('aria-label="Подтвердить аккаунт"', false);
 
             $this->assertSame(2, substr_count($response->getContent(), 'class="app-context-actions__attention"'));
+            $html = $response->getContent();
+            $document = new \DOMDocument;
+            @$document->loadHTML($html);
+            $xpath = new \DOMXPath($document);
+            $this->assertSame(1, $xpath->query(
+                '//details[@data-app-context-actions]/summary/span[contains(@class,"app-context-quick__label") and normalize-space(.)="Действия"]/following-sibling::span[contains(@class,"app-context-actions__attention")]',
+            )->length);
+
             if ($routeName !== 'account') {
                 $response->assertDontSee('data-account-confirmation-guide-open', false)
                     ->assertDontSee('data-account-confirmation-guide-dialog', false);

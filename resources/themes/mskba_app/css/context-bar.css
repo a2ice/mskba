@@ -241,9 +241,36 @@ html:has(.app-context-bar) {
 .app-context-actions > summary .app-context-actions__attention {
     position:absolute;
     right:auto;
+    /* In compact mode, keep the marker fully inside the 36px visible pill. */
     left:30px;
-    top:6px;
+    top:12px;
     flex:none;
+}
+/* On desktop hover / keyboard focus it follows the visible word 'Действия',
+   instead of being pinned over the hamburger icon. Mobile remains icon-only. */
+@media (min-width: 640px) and (hover: hover) and (pointer: fine) {
+    .app-context-actions > summary:hover:has(.app-context-actions__attention) {
+        width: 146px;
+        max-width: 146px;
+    }
+    .app-context-actions > summary:hover .app-context-actions__attention {
+        position: relative;
+        left: auto;
+        top: auto;
+        margin-left: -2px;
+    }
+}
+@media (min-width: 640px) {
+    .app-context-actions > summary:focus-visible:has(.app-context-actions__attention) {
+        width: 146px;
+        max-width: 146px;
+    }
+    .app-context-actions > summary:focus-visible .app-context-actions__attention {
+        position: relative;
+        left: auto;
+        top: auto;
+        margin-left: -2px;
+    }
 }
 /* Attention rule: one actionable item can mark both the Actions trigger and
    its destination. The trigger always stays visible; opening the menu freezes

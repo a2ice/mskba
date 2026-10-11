@@ -62,10 +62,10 @@
                              stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
+                        <span class="app-context-quick__label">Действия</span>
                         @if ($showAccountConfirmation)
                             <span class="app-context-actions__attention" aria-hidden="true"></span>
                         @endif
-                        <span class="app-context-quick__label">Действия</span>
                     </summary>
                     <div class="app-context-actions__menu" aria-label="Контекстные действия">
                         @if ($showAccountConfirmation)
