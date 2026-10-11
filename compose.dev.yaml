@@ -40,10 +40,10 @@ services:
     depends_on:
       - phpfpm
       - reverb
+  # Always run the main worker: registration and notification jobs depend on it.
   queue:
     <<: *app
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]
-    profiles: ["workers"]
   scheduler:
     <<: *app
     command: ["php", "artisan", "schedule:work"]
