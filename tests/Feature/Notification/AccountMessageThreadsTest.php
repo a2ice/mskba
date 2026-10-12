@@ -75,7 +75,7 @@ final class AccountMessageThreadsTest extends TestCase
             ->assertDontSee('Непрочитанных сообщений:');
     }
 
-    public function test_thread_is_private_and_displays_complete_messages_in_chronological_order(): void
+    public function test_thread_is_private_and_displays_newest_messages_first(): void
     {
         $user = $this->user();
         $stranger = $this->user();
@@ -91,7 +91,7 @@ final class AccountMessageThreadsTest extends TestCase
             ->assertSee('role="log"', false)
             ->assertSee('data-system-thread-read-url', false)
             ->assertDontSee('Секрет другого пользователя');
-        $response->assertSeeTextInOrder(['Первое сообщение', 'Второе сообщение']);
+        $response->assertSeeTextInOrder(['Второе сообщение', 'Первое сообщение']);
 
         $this->assertSame(2, substr_count($response->getContent(), 'data-conversation-message='));
         $this->patchJson(route('account.notifications.read-all'))->assertOk()
@@ -119,6 +119,7 @@ final class AccountMessageThreadsTest extends TestCase
             ->assertSee('Более ранние')
             ->assertSee('Страница 1 из 2');
         $this->assertSame(20, substr_count($firstPage->getContent(), 'data-conversation-message='));
+        $firstPage->assertSeeTextInOrder(['Сообщение номер 24', 'Сообщение номер 23']);
 
         $secondPage = $this->get(route('account.notifications.threads.system', ['page' => 2]))
             ->assertOk()

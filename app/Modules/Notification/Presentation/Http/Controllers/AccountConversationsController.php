@@ -54,7 +54,9 @@ final class AccountConversationsController extends Controller
 
         return ThemeResolver::page('account.team-request-conversation', [
             'joinRequest' => $joinRequest,
-            'timeline' => $timeline->handle($joinRequest, $user),
+            // Reverse only for presentation: preserve canonical chronological
+            // timeline construction and its original application event.
+            'timeline' => $timeline->handle($joinRequest, $user)->reverse()->values(),
             'canWrite' => $canWrite,
             'viewer' => $user,
             'participants' => $participants,

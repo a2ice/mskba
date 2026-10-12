@@ -19,7 +19,9 @@
 .app-account-overview__status-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 .app-account-overview__status h2{font-size:22px;line-height:28px;margin:0}
 .app-account-overview__status-label{font-size:12px;font-weight:700;color:var(--muted)}
+.app-account-overview__status-label--confirmed{color:var(--success)}
 .app-account-overview__status p{color:var(--muted);font-size:14px;line-height:22px;margin:14px 0 20px}
+.app-account-overview__status p:last-child{margin-bottom:0}
 .app-account-overview__confirmation-action{display:inline-flex;align-items:center;gap:10px;min-height:44px}
 .app-account-overview__confirmation-dot{display:inline-block;flex:0 0 8px;width:8px;height:8px;background:var(--success);border-radius:50%;animation:app-account-confirm-attention 2s ease-out infinite}
 .app-account-overview__confirmation-action:hover .app-account-overview__confirmation-dot{animation-duration:1.5s}

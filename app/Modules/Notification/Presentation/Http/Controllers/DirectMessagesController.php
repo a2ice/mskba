@@ -105,7 +105,6 @@ final class DirectMessagesController extends Controller
         [$viewer, $recipient] = $this->authorizeParticipant($request, $conversation);
         $messages = $conversation->messages()->with('sender.profile')
             ->orderByDesc('created_at')->orderByDesc('id')->paginate(20);
-        $messages->setCollection($messages->getCollection()->reverse()->values());
         $unread = UserNotification::query()->whereIn('user_id', $viewer->identityIds())
             ->where('payload->direct_conversation_id', $conversation->id)
             ->where('status', \App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum::NEW)->count();

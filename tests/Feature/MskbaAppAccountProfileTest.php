@@ -216,6 +216,20 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertDontSee('data-account-confirmation-guide-open', false);
     }
 
+    public function test_confirmed_overview_keeps_status_card_without_confirmation_action(): void
+    {
+        $user = $this->account(UserStatusEnum::CONFIRMED);
+
+        $this->actingAs($user)->get(route('account'))->assertOk()
+            ->assertSee('Статус пользователя')
+            ->assertSee('Подтверждён')
+            ->assertSee('app-account-overview__status-label--confirmed', false)
+            ->assertDontSee('Не подтверждён')
+            ->assertDontSee('app-account-overview__confirmation-action', false)
+            ->assertDontSee('app-account-overview__confirmation-dot', false)
+            ->assertDontSee('Подтвердить аккаунт');
+    }
+
     public function test_unconfirmed_user_sees_confirmation_action_portal_wide_except_confirmation_page(): void
     {
         $user = $this->account();

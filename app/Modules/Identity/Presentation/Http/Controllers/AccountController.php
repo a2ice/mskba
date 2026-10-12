@@ -373,8 +373,7 @@ class AccountController extends Controller
             ->whereNull('payload->join_request_id')
             ->whereNull('payload->direct_conversation_id')
             ->orderByDesc('created_at')->orderByDesc('id')->paginate(20);
-        // Page 1 contains the newest messages; within a page the chat flows top-to-bottom.
-        $notifications->setCollection($notifications->getCollection()->reverse()->values());
+        // Newest messages come first, both across pages and within each page.
 
         return ThemeResolver::page('account.notification-conversation', [
             'notifications' => $notifications,

@@ -149,6 +149,35 @@ final class AccountUnifiedMessagesTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_team_and_direct_threads_display_newest_messages_first(): void
+    {
+        $applicant = $this->user();
+        $request = $this->teamRequest($applicant);
+
+        $this->actingAs($applicant)
+            ->post(route('account.notifications.threads.team.messages', $request->id), ['body' => 'Первый вопрос по заявке'])
+            ->assertRedirect();
+        $this->post(route('account.notifications.threads.team.messages', $request->id), ['body' => 'Второй вопрос по заявке'])
+            ->assertRedirect();
+
+        $this->get(route('account.notifications.threads.team', $request->id))->assertOk()
+            ->assertSeeTextInOrder(['Второй вопрос по заявке', 'Первый вопрос по заявке']);
+
+        $receiver = $this->user();
+        $receiver->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::MESSAGES,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+        $this->postJson(route('account.notifications.direct.send', $receiver), ['body' => 'Первое личное сообщение'])
+            ->assertCreated();
+        $this->postJson(route('account.notifications.direct.send', $receiver), ['body' => 'Второе личное сообщение'])
+            ->assertCreated();
+
+        $conversation = DirectConversation::query()->firstOrFail();
+        $this->get(route('account.notifications.threads.direct', $conversation->id))->assertOk()
+            ->assertSeeTextInOrder(['Второе личное сообщение', 'Первое личное сообщение']);
+    }
+
     public function test_direct_message_composer_respects_privacy_and_creates_separate_conversation(): void
     {
         $sender = $this->user();

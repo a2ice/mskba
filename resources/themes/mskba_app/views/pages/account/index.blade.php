@@ -19,19 +19,24 @@
 
 @section('account-content')
     <section class="app-account-overview" aria-label="Обзор аккаунта">
-        @if (auth()->user()->canonical()->status === \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED)
-            <section class="panel app-account-overview__status" aria-labelledby="app-account-status-heading">
-                <div class="app-account-overview__status-top">
-                    <h2 id="app-account-status-heading">Статус пользователя</h2>
-                    <span class="app-account-overview__status-label">Не подтверждён</span>
-                </div>
+        @php($accountStatus = auth()->user()->canonical()->status)
+        <section class="panel app-account-overview__status" aria-labelledby="app-account-status-heading">
+            <div class="app-account-overview__status-top">
+                <h2 id="app-account-status-heading">Статус пользователя</h2>
+                <span class="app-account-overview__status-label {{ $accountStatus === \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED ? 'app-account-overview__status-label--confirmed' : '' }}">{{ $accountStatus->label() }}</span>
+            </div>
+            @if ($accountStatus === \App\Modules\Identity\Domain\Enums\UserStatusEnum::UNCONFIRMED)
                 <p>Подтверди аккаунт, чтобы получить доступ ко всем возможностям портала.</p>
                 <a class="button secondary app-account-overview__confirmation-action" href="{{ route('account.confirmation') }}">
                     <span class="app-account-overview__confirmation-dot" aria-hidden="true"></span>
                     Подтвердить аккаунт
                 </a>
-            </section>
-        @endif
+            @elseif ($accountStatus === \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED)
+                <p>Аккаунт подтверждён. Теперь доступны возможности портала, для которых требуется подтверждение аккаунта.</p>
+            @else
+                <p>Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.</p>
+            @endif
+        </section>
         @if (app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup(auth()->user()))
             <div class="notice app-account-overview__pending" role="status">
                 <div>
