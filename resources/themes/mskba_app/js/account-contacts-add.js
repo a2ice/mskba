@@ -161,9 +161,12 @@ if (root) {
         setError('');
         try {
             const result = await post(root.dataset.addUrl, { type: kind, value: value.value });
-            await refreshList();
+            let updated = true;
+            try { await refreshList(); } catch { updated = false; }
             success.textContent = (result.contact?.value || value.value)
-                + ' — контакт добавлен. Подтвердить его можно в списке контактов.';
+                + ' — контакт добавлен. ' + (updated
+                    ? 'Подтвердить его можно в списке контактов.'
+                    : 'Не удалось обновить список автоматически. Обнови страницу, чтобы увидеть контакт.');
             showStep('done');
         } catch (exception) {
             // Addition may already have succeeded even if the list-refresh request failed.
@@ -179,8 +182,10 @@ if (root) {
         setError('');
         try {
             const result = await post(root.dataset.telegramUrl, { telegram_user: telegramUser });
-            await refreshList();
-            success.textContent = result.message || 'Telegram подтверждён и добавлен в список.';
+            let updated = true;
+            try { await refreshList(); } catch { updated = false; }
+            success.textContent = (result.message || 'Telegram подтверждён и добавлен в список.')
+                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
             showStep('done');
         } catch (exception) {
             if (exception.data?.status === 'duplicate' && exception.data?.redirect_url) {

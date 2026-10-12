@@ -36,7 +36,7 @@
                             <strong>{{ $contact->type->label() }}: {{ $contact->displayValue() }}</strong>
                             <div class="app-account-contacts__badges">
                                 @if ($contact->is_primary)
-                                    <span class="app-confirmation__state app-confirmation__state--done">Основной</span>
+                                    <span class="app-confirmation__state {{ $contact->is_verified ? 'app-confirmation__state--done' : '' }}">{{ $contact->is_verified ? 'Основной' : 'Ожидает подтверждения для основного' }}</span>
                                 @endif
                                 <span class="app-confirmation__state {{ $contact->is_verified ? 'app-confirmation__state--done' : '' }}">
                                     {{ $contact->is_verified ? 'Подтверждён' : 'Не подтверждён' }}

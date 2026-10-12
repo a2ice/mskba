@@ -133,6 +133,52 @@ final class AccountContactsDialogTest extends TestCase
         $this->assertTrue((bool) $second->fresh()->is_primary);
     }
 
+    public function test_unverified_provisional_primary_can_be_deleted_but_verified_primary_cannot(): void
+    {
+        $user = $this->user();
+        $provisional = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'provisional@example.test', 'is_primary' => true,
+        ]);
+        $this->actingAs($user)->delete(route('account.contacts.destroy', $provisional))
+            ->assertRedirect(route('account.contacts'));
+        $this->assertSoftDeleted('contacts', ['id' => $provisional->id]);
+
+        $verified = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'verified@example.test', 'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+        $this->delete(route('account.contacts.destroy', $verified))
+            ->assertRedirect(route('account.contacts'));
+        $this->assertDatabaseHas('contacts', ['id' => $verified->id, 'deleted_at' => null]);
+    }
+
+    public function test_second_verified_email_does_not_override_existing_verified_primary(): void
+    {
+        $user = $this->user();
+        $first = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'first-verified@example.test',
+            'is_primary' => true, 'verified_at' => now(),
+        ]);
+        $second = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'second-verified@example.test',
+            'is_primary' => false,
+        ]);
+        $second->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('654321'), 'sent_to' => 'second-verified@example.test',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->actingAs($user)->post(route('account.contacts.verification.confirm', $second), [
+            'code' => '654321',
+        ])->assertRedirect(route('account.contacts'));
+        $this->assertTrue((bool) $first->fresh()->is_primary);
+        $this->assertFalse((bool) $second->fresh()->is_primary);
+    }
+
     public function test_verified_telegram_becomes_primary_when_other_contacts_are_unverified(): void
     {
         $user = $this->user();
