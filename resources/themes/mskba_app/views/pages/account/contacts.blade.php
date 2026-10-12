@@ -20,7 +20,7 @@
         @endif
 
         @if ($user)
-            <section class="panel app-account-contacts__panel" data-account-contacts-list>
+            <section class="panel app-account-contacts__panel" data-account-contacts-list data-account-contacts-list-url="{{ route('account.contacts') }}">
                 <div class="app-confirmation__card-heading">
                     <h2>Мои контакты</h2>
                 </div>
@@ -70,12 +70,19 @@
                                 <form method="POST" action="{{ route('account.contacts.verification.store', $contact) }}"
                                       data-contact-resend-form data-cooldown-seconds="{{ $resendSeconds }}">
                                     @csrf
-                                    <button type="submit" class="app-account-contacts__icon-button"
-                                            data-contact-resend-button @disabled($resendSeconds > 0)
-                                            data-tooltip="{{ $resendSeconds > 0 ? 'Ожидайте' : ($pending ? 'Отправить новый код' : 'Отправить код') }}"
-                                            aria-label="{{ $resendSeconds > 0 ? 'Отправка доступна позже' : ($pending ? 'Отправить новый код' : 'Отправить код') }}">
-                                        <svg aria-hidden="true"><use href="#refresh"/></svg>
-                                    </button>
+                                    @if ($pending)
+                                        <button type="submit" class="app-account-contacts__icon-button"
+                                                data-contact-resend-button @disabled($resendSeconds > 0)
+                                                data-tooltip="{{ $resendSeconds > 0 ? 'Ожидайте' : 'Отправить новый код' }}"
+                                                aria-label="{{ $resendSeconds > 0 ? 'Отправка доступна позже' : 'Отправить новый код' }}">
+                                            <svg aria-hidden="true"><use href="#refresh"/></svg>
+                                        </button>
+                                    @else
+                                        <button type="submit" class="button secondary app-account-contacts__start-button"
+                                                data-contact-resend-button>
+                                            <span data-contact-resend-text>Подтвердить</span>
+                                        </button>
+                                    @endif
                                 </form>
                             @endif
 
@@ -97,13 +104,17 @@
                                 </button>
                             </form>
                         </div>
-                        @if ($canConfirmByEmail && $pending)
+                        @if ($canConfirmByEmail)
                             <p class="app-account-contacts__feedback app-account-contacts__resend-hint"
                                data-contact-resend-hint role="status" aria-live="polite"
                                @if ($resendSeconds <= 0) hidden @endif>
                                 Код уже отправлен. Новый код можно запросить через
                                 <span data-contact-resend-countdown>{{ $resendSeconds }}</span> сек.
                             </p>
+                        @endif
+                        @if ($canConfirmByEmail)
+                            <p class="app-account-contacts__feedback app-account-contacts__feedback--error"
+                               data-contact-resend-error role="alert" hidden></p>
                         @endif
                         @if ((int) session('contactVerificationFeedbackContactId') === $contact->id)
                             @if (session('error'))

@@ -117,6 +117,66 @@ final class AccountContactsDialogTest extends TestCase
             ->assertDontSee('id="new-contact-type"', false);
     }
 
+    public function test_unverified_email_without_code_offers_text_confirmation_button(): void
+    {
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'no-code@example.test',
+        ]);
+
+        $this->actingAs($user)->get(route('account.contacts'))->assertOk()
+            ->assertSee('data-account-contacts-list-url=', false)
+            ->assertSee('data-contact-resend-form data-cooldown-seconds="0"', false)
+            ->assertSee('data-contact-resend-text', false)
+            ->assertSee('>Подтвердить</span>', false)
+            ->assertSee('data-contact-resend-error', false)
+            ->assertDontSee('class="app-account-contacts__verify"', false)
+            ->assertDontSee('data-tooltip="Отправить новый код"', false)
+            ->assertSee(route('account.contacts.verification.store', $contact), false);
+    }
+
+    public function test_ajax_verification_start_sends_code_without_redirect_and_returns_server_cooldown(): void
+    {
+        config()->set('mail.default', 'smtp');
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'ajax-code@example.test',
+        ]);
+
+        $url = route('account.contacts.verification.store', $contact);
+        $this->actingAs($user)->postJson($url)->assertOk()
+            ->assertJsonPath('message', 'Код подтверждения отправлен.')
+            ->assertJsonPath('seconds_left', 60);
+
+        $this->assertDatabaseHas('contact_verifications', [
+            'contact_id' => $contact->id,
+            'status' => ContactVerificationStatusEnum::PENDING->value,
+        ]);
+        $this->get(route('account.contacts'))->assertOk()
+            ->assertSee('class="app-account-contacts__verify"', false)
+            ->assertSee('data-cooldown-seconds="60"', false)
+            ->assertDontSee('data-contact-resend-text', false);
+
+        $this->postJson($url)->assertStatus(429)
+            ->assertJsonPath('seconds_left', 60);
+    }
+
+    public function test_ajax_email_start_failure_returns_json_without_page_redirect_or_phantom_code(): void
+    {
+        config()->set('mail.default', 'log');
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'invalid-mailer@example.test',
+        ]);
+
+        $this->actingAs($user)->postJson(route('account.contacts.verification.store', $contact))
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'Отправка писем на этом сервере пока не настроена. Попробуйте позже.');
+        $this->assertDatabaseCount('contact_verifications', 0);
+    }
+
     public function test_pending_email_is_shown_in_one_compact_contact_row_with_accessible_icon_actions(): void
     {
         $user = $this->user();
@@ -186,7 +246,9 @@ final class AccountContactsDialogTest extends TestCase
         $this->assertNotFalse($otherRow);
         $this->assertGreaterThan($firstRow, $feedback);
         $this->assertLessThan($otherRow, $feedback);
-        $this->assertSame(1, substr_count($html, 'Код уже отправлен.'));
+        // The second contact has no pending code; its message exists only in a hidden template.
+        $this->assertSame(2, substr_count($html, 'Код уже отправлен.'));
+        $this->assertSame(2, substr_count($html, 'data-contact-resend-hint'));
     }
 
     public function test_verification_errors_show_beneath_the_corresponding_code_field(): void

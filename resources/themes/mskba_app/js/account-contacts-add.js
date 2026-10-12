@@ -1,4 +1,5 @@
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
+import { refreshAccountContactsList } from './account-contacts-list.js';
 const root = document.querySelector('[data-contacts-add]');
 
 if (root) {
@@ -89,19 +90,7 @@ if (root) {
         return data;
     }
 
-    async function refreshList() {
-        const response = await fetch(root.dataset.listUrl, {
-            headers: { 'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin',
-        });
-        if (!response.ok) throw new Error('Не удалось обновить список контактов.');
-        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-        const updated = page.querySelector('[data-account-contacts-list]');
-        const current = document.querySelector('[data-account-contacts-list]');
-        if (!updated || !current) throw new Error('Не удалось получить обновлённый список контактов.');
-        current.replaceWith(updated);
-        document.dispatchEvent(new Event('mskba:contacts-list-updated'));
-    }
+    const refreshList = refreshAccountContactsList;
 
     const telegramLink = createTelegramContactBotLink({
         root, dialog, post,

@@ -120,6 +120,20 @@
 .app-account-contacts__resend-hint{font-variant-numeric:tabular-nums}
 .app-account-contacts__resend-hint[hidden]{display:none!important}
 .app-account-contacts__icon-button:disabled{opacity:.55;cursor:default}
+.app-account-contacts__start-button{
+    min-height:40px;min-width:120px;padding:8px 14px;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    white-space:nowrap;
+}
+.app-account-contacts__start-button:disabled{opacity:.65;cursor:wait}
+.app-account-contacts__feedback--error[hidden]{display:none!important}
+.app-account-contacts__resend-spinner{
+    display:inline-block;width:16px;height:16px;flex:none;
+    border:2px solid currentColor;border-right-color:transparent;
+    border-radius:50%;animation:app-account-contacts-spin .7s linear infinite;
+}
+@keyframes app-account-contacts-spin{to{transform:rotate(360deg)}}
+
 
 .app-account-contacts__icon-button{
     position:relative;display:grid;place-items:center;flex:none;

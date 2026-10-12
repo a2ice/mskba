@@ -551,8 +551,9 @@ class AccountController extends Controller
     public function startContactVerification(
         Contact $contact,
         StartContactVerificationHandler $startContactVerification,
-    ): RedirectResponse {
-        $user = $this->accountCheckForPresentationService->handle(request()->user());
+    ): RedirectResponse|JsonResponse {
+        $request = request();
+        $user = $this->accountCheckForPresentationService->handle($request->user());
 
         abort_unless(
             $user->ownsIdentityContact($contact),
@@ -560,23 +561,59 @@ class AccountController extends Controller
         );
 
         try {
-            $startContactVerification->handle($contact);
+            $verification = $startContactVerification->handle($contact);
         } catch (ContactVerificationCooldownException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'seconds_left' => $e->secondsLeft,
+                ], 429);
+            }
+
             return redirect()
                 ->route('account.contacts')
                 ->with('info', $e->getMessage())
                 ->with('contactVerificationFeedbackContactId', $contact->id)
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
         } catch (ContactVerificationDeliveryException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 503);
+            }
+
+            return redirect()
+                ->route('account.contacts')
+                ->with('error', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id);
+        } catch (LogicException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
             return redirect()
                 ->route('account.contacts')
                 ->with('error', $e->getMessage())
                 ->with('contactVerificationFeedbackContactId', $contact->id);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Contact verification request failed', [
+                'contact_id' => $contact->id,
+                'exception' => $e::class,
+            ]);
+            $message = 'Не удалось запросить код подтверждения. Попробуйте позже.';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 500);
+            }
+
             return redirect()
                 ->route('account.contacts')
-                ->with('error', $e->getMessage())
+                ->with('error', $message)
                 ->with('contactVerificationFeedbackContactId', $contact->id);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Код подтверждения отправлен.',
+                'seconds_left' => \App\Modules\Contact\Application\Strategies\EmailContactVerificationStrategy::secondsUntilResend($verification),
+            ]);
         }
 
         return redirect()
