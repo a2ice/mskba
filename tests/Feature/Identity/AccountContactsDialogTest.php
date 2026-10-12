@@ -117,6 +117,34 @@ final class AccountContactsDialogTest extends TestCase
             ->assertDontSee('id="new-contact-type"', false);
     }
 
+    public function test_contacts_page_renders_one_shared_delete_confirmation_dialog(): void
+    {
+        $user = $this->user();
+        $first = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'first-to-delete@example.test',
+        ]);
+        $second = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'second-to-delete@example.test',
+        ]);
+
+        $html = $this->actingAs($user)->get(route('account.contacts'))
+            ->assertOk()
+            ->assertSee('Вы уверены, что хотите удалить контакт?')
+            ->assertSee('data-contact-delete-dialog', false)
+            ->assertSee('data-contact-delete-confirm', false)
+            ->assertSee('data-contact-delete-cancel', false)
+            ->assertSee('button danger', false)
+            ->assertSee('data-contact-label="Email: first-to-delete@example.test"', false)
+            ->assertSee('data-contact-label="Email: second-to-delete@example.test"', false)
+            ->assertSee(route('account.contacts.destroy', $first), false)
+            ->assertSee(route('account.contacts.destroy', $second), false)
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, 'data-contact-delete-dialog'));
+        $this->assertSame(2, substr_count($html, 'data-contact-delete-form'));
+        $this->assertDatabaseCount('contacts', 2);
+    }
+
     public function test_unverified_email_without_code_offers_text_confirmation_button(): void
     {
         $user = $this->user();

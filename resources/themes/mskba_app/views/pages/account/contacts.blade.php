@@ -95,7 +95,9 @@
                                 </form>
                             @endif
 
-                            <form method="POST" action="{{ route('account.contacts.destroy', $contact) }}">
+                            <form method="POST" action="{{ route('account.contacts.destroy', $contact) }}"
+                                  data-contact-delete-form
+                                  data-contact-label="{{ $contact->type->label() }}: {{ $contact->displayValue() }}">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="app-account-contacts__icon-button app-account-contacts__icon-button--delete"
                                         data-tooltip="Удалить контакт" aria-label="Удалить контакт">
@@ -132,6 +134,8 @@
                     <p>Контакты пока не добавлены.</p>
                 @endforelse
             </section>
+
+            @include('theme::pages.account.partials.contact-delete-dialog')
 
             <section class="panel app-account-contacts__panel">
                 <h2>Добавить контакт</h2>
