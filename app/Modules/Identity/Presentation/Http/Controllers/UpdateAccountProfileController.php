@@ -6,13 +6,14 @@ use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 final class UpdateAccountProfileController
 {
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(Request $request): RedirectResponse|JsonResponse
     {
         abort_unless(app(ThemeResolver::class)->active() === 'mskba_app', 404);
         $actor = $request->user();
@@ -61,6 +62,13 @@ final class UpdateAccountProfileController
             }
             $profile->fill($data)->save();
         });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Данные профиля сохранены.',
+                'values' => $data,
+            ]);
+        }
 
         return redirect()->route('account.profile')->with('profile_status', 'Данные профиля сохранены.');
     }

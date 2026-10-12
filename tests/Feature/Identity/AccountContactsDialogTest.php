@@ -40,6 +40,8 @@ final class AccountContactsDialogTest extends TestCase
             ->assertSee('data-contact-add-step="method"', false)
             ->assertSee('data-contact-add-step="value"', false)
             ->assertSee('data-contact-add-step="telegram"', false)
+            ->assertSee('data-telegram-start-url', false)
+            ->assertSee('data-bot-link', false)
             ->assertSee('data-contact-add-step="vk"', false)
             ->assertSee('data-contact-add-step="done"', false)
             ->assertSee('data-account-contacts-list', false)

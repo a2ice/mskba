@@ -19,3 +19,11 @@
 @import './account-profile.css';
 
 .app-shell { min-height: 100dvh; }
+
+/* Click focus should not create decorative orange outlines; keep a subtle
+   visible keyboard focus indicator for accessibility. */
+:where(input,select,textarea,button,a,summary,[tabindex]):focus:not(:focus-visible){outline:none!important}
+:where(input,select,textarea,button,a,summary,[tabindex]):focus-visible{
+    outline:1px solid var(--control-line)!important;outline-offset:2px!important;
+    box-shadow:none!important
+}

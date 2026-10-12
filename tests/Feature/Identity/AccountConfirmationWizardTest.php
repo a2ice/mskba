@@ -69,7 +69,7 @@ final class AccountConfirmationWizardTest extends TestCase
             ->assertSee('Фамилия')
             ->assertSee('Дата рождения')
             ->assertSee('Пол')
-            ->assertDontSee('data-wizard-step', false)
+            ->assertDontSee('data-confirmation-profile', false)
             ->assertDontSee('id="confirmationRole"', false);
     }
 
@@ -122,7 +122,7 @@ final class AccountConfirmationWizardTest extends TestCase
         $user = $this->makeUser();
         $contact = $this->verifiedContact($user);
         $this->actingAs($user)->get(route('account.confirmation'))->assertOk()
-            ->assertSee('Основной контакт подтверждён')
+            ->assertSee('Основной контакт')
             ->assertSee($contact->value);
     }
 

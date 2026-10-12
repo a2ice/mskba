@@ -36,6 +36,48 @@ final class TelegramBotLoginChallengeStore
         ];
     }
 
+    /** @return array{token: string, expires_at: int} */
+    public function createLink(string $browserKey, int $initiatorUserId): array
+    {
+        $issued = $this->create($browserKey, '/account/contacts');
+        $challenge = Cache::get($this->key($issued['token']));
+        $challenge['mode'] = 'link';
+        $challenge['initiator_user_id'] = $initiatorUserId;
+        Cache::put($this->key($issued['token']), $challenge, $this->ttl());
+
+        return $issued;
+    }
+
+    /** @param array<string, mixed> $telegramUser */
+    public function approveLink(string $token, array $telegramUser): bool
+    {
+        if (! $this->validToken($token)) {
+            return false;
+        }
+
+        return Cache::lock($this->lockKey($token), 10)->block(3, function () use ($token, $telegramUser): bool {
+            $challenge = $this->find($token);
+            if ($challenge === null
+                || ($challenge['mode'] ?? 'login') !== 'link'
+                || ($challenge['status'] ?? null) !== 'pending'
+                || ! is_numeric($telegramUser['id'] ?? null)) {
+                return false;
+            }
+
+            $challenge['status'] = 'approved';
+            $challenge['telegram_user'] = [
+                'id' => (int) $telegramUser['id'],
+                'username' => is_string($telegramUser['username'] ?? null) ? $telegramUser['username'] : null,
+                'first_name' => is_string($telegramUser['first_name'] ?? null) ? $telegramUser['first_name'] : null,
+                'last_name' => is_string($telegramUser['last_name'] ?? null) ? $telegramUser['last_name'] : null,
+            ];
+            Cache::put($this->key($token), $challenge,
+                max(1, (int) $challenge['expires_at'] - now()->getTimestamp()));
+
+            return true;
+        });
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -74,7 +116,7 @@ final class TelegramBotLoginChallengeStore
         ): bool {
             $challenge = $this->find($token);
 
-            if ($challenge === null || ($challenge['status'] ?? null) !== 'pending') {
+            if ($challenge === null || ($challenge['mode'] ?? 'login') !== 'login' || ($challenge['status'] ?? null) !== 'pending') {
                 return false;
             }
 
@@ -103,6 +145,7 @@ final class TelegramBotLoginChallengeStore
         string $token,
         string $browserKey,
         Closure $consume,
+        string $expectedMode = 'login',
     ): array {
         if (! $this->validToken($token)) {
             return ['status' => 'expired'];
@@ -112,10 +155,12 @@ final class TelegramBotLoginChallengeStore
             $token,
             $browserKey,
             $consume,
+            $expectedMode,
         ): array {
             $challenge = $this->find($token);
 
             if ($challenge === null
+                || ($challenge['mode'] ?? 'login') !== $expectedMode
                 || ! hash_equals(
                     (string) ($challenge['browser_session_hash'] ?? ''),
                     hash('sha256', $browserKey),

@@ -101,11 +101,75 @@ final class MskbaAppAccountProfileTest extends TestCase
             ->assertSee('data-wizard-step="method"', false)
             ->assertSee('data-wizard-step="email"', false)
             ->assertSee('data-wizard-step="code"', false)
-            ->assertSee('data-wizard-telegram', false)
+            ->assertSee('data-telegram-start-url', false)
+            ->assertSee('data-bot-link', false)
             ->assertSee('data-wizard-step="vk"', false)
             ->assertSee('SMS-подтверждение скоро появится')
             ->assertSee('data-wizard-next', false)
             ->assertDontSee('id="confirmation-contact-email"', false);
+    }
+
+    public function test_confirmation_has_single_profile_card_optional_patrimony_and_ajax_saves(): void
+    {
+        $user = $this->account();
+        $response = $this->actingAs($user)->get(route('account.confirmation'))->assertOk()
+            ->assertSee('id="confirmation-profile-title"', false)
+            ->assertSee('name="middle_name"', false)
+            ->assertSee('data-confirmation-save-field', false)
+            ->assertSee('<use href="#save"/>', false)
+            ->assertSee('data-confirmation-save-all', false)
+            ->assertSee('Сохранить всё')
+            ->assertSee('data-confirmation-requirement', false)
+            ->assertSee('Управлять контактами')
+            ->assertDontSee('Управлять контактами и выбрать основной')
+            ->assertDontSee('confirmation-first-title');
+        $html = $response->getContent();
+        $this->assertLessThan(
+            strpos($html, 'id="confirmation-main-contact"'),
+            strpos($html, 'id="confirmation-profile-title"'),
+        );
+        $this->assertSame(5, substr_count($html, 'data-confirmation-save-field'));
+        $this->assertStringNotContainsString('>Имя</h2>', $html);
+    }
+
+    public function test_confirmation_can_save_one_field_as_json_and_then_save_all(): void
+    {
+        $user = $this->account();
+        $this->actingAs($user)->patchJson(route('account.profile.update'), [
+            'first_name' => '  Наталья  ',
+        ])->assertOk()->assertJsonPath('values.first_name', 'Наталья')
+            ->assertJsonPath('message', 'Данные профиля сохранены.');
+        $this->assertSame('Наталья', $user->profile->fresh()->first_name);
+        $this->patchJson(route('account.profile.update'), [
+            'last_name' => 'Смирнова',
+            'middle_name' => 'Игоревна',
+            'birth_date' => '1999-01-12',
+            'gender' => 'female',
+        ])->assertOk()->assertJsonPath('values.middle_name', 'Игоревна')
+            ->assertJsonPath('values.birth_date', '1999-01-12');
+        $profile = $user->profile->fresh();
+        $this->assertSame('Смирнова', $profile->last_name);
+        $this->assertSame('Игоревна', $profile->middle_name);
+        $this->assertSame('1999-01-12', $profile->birth_date->toDateString());
+    }
+
+    public function test_confirmation_ajax_validation_failure_does_not_persist_any_fields(): void
+    {
+        $user = $this->account();
+        $this->actingAs($user)->patchJson(route('account.profile.update'), [
+            'first_name' => 'Изменено',
+            'birth_date' => now()->addDay()->toDateString(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('birth_date');
+        $this->assertSame('Мария', $user->profile->fresh()->first_name);
+    }
+
+    public function test_confirmed_profile_cannot_be_changed_by_confirmation_ajax(): void
+    {
+        $user = $this->account(UserStatusEnum::CONFIRMED);
+        $this->actingAs($user)->patchJson(route('account.profile.update'), [
+            'first_name' => 'Попытка',
+        ])->assertForbidden();
+        $this->assertSame('Мария', $user->profile->fresh()->first_name);
     }
 
     public function test_contact_management_screen_lists_contacts_and_allows_switching_primary(): void

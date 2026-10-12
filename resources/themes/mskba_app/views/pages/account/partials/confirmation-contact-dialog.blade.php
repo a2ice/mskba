@@ -4,6 +4,8 @@
      data-confirm-url="{{ route('account.confirmation.contacts.verification.confirm', ['contact' => '__ID__']) }}"
      data-confirmation-url="{{ route('account.confirmation') }}"
      data-telegram-url="{{ route('account.telegram.link') }}"
+     data-telegram-start-url="{{ route('account.telegram.bot.link.start') }}"
+     data-telegram-status-url="{{ route('account.telegram.bot.link.status') }}"
      data-telegram-bot="{{ $telegramBotUsername }}">
     <div class="app-contact-wizard__trigger">
         @if ($primaryContact && ! $primaryContact->is_verified && $primaryContact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
@@ -17,30 +19,22 @@
     </div>
     <p class="app-contact-wizard__hint">После подтверждения первого контакта он автоматически становится основным. Позже его можно поменять в разделе «Контакты».</p>
 
-    <dialog class="app-contact-wizard__dialog" aria-labelledby="contact-wizard-title">
-        <div class="app-contact-wizard__header">
-            <div>
-                <p class="app-contact-wizard__eyebrow">Подтверждение аккаунта</p>
-                <h2 id="contact-wizard-title">Добавить контакт</h2>
-            </div>
-            <button class="app-contact-wizard__close" type="button" data-wizard-close aria-label="Закрыть">×</button>
-        </div>
-
-        <div class="app-contact-wizard__body">
+    <dialog class="mskba-modal app-contact-wizard__dialog" aria-labelledby="contact-wizard-title">
+        <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
+            <h2 id="contact-wizard-title" tabindex="-1" class="eyebrow accent mskba-auth-heading">Добавить контакт</h2>
+            <button type="button" class="icon-button mskba-auth-close app-contact-wizard__close" data-wizard-close aria-label="Закрыть окно"><svg aria-hidden="true"><use href="#close"/></svg></button>
+        </header>
+        <div class="mskba-modal__body mskba-scroll app-contact-wizard__body">
             <section data-wizard-step="method">
-                <h3>Выбери способ связи</h3>
-                <p>Контакт понадобится для подтверждения аккаунта и восстановления доступа.</p>
                 <div class="app-contact-wizard__choices">
-                    <label><input type="radio" name="confirmation_channel" value="email" checked><span><strong>Email</strong><small>Код подтверждения на почту</small></span></label>
-                    <label><input type="radio" name="confirmation_channel" value="telegram" @disabled($telegramBotUsername === '')><span><strong>Telegram</strong><small>Авторизация через Telegram</small></span></label>
-                    <label><input type="radio" name="confirmation_channel" value="vk" @disabled(! $vkEnabled)><span><strong>VK ID</strong><small>Авторизация через VK</small></span></label>
+                    <label><input type="radio" name="confirmation_channel" value="email" checked><span><strong>Email</strong></span></label>
+                    <label><input type="radio" name="confirmation_channel" value="telegram" @disabled($telegramBotUsername === '')><span><strong>Telegram</strong></span></label>
+                    <label @unless($vkEnabled) title="VK пока недоступен: не настроена авторизация" @endunless><input type="radio" name="confirmation_channel" value="vk" @disabled(! $vkEnabled)><span><strong>VK</strong></span></label>
                     <label class="is-disabled"><input type="radio" name="confirmation_channel" value="phone" disabled><span><strong>Телефон</strong><small>SMS-подтверждение скоро появится</small></span></label>
                 </div>
             </section>
 
             <section data-wizard-step="email" hidden>
-                <h3>Укажи Email</h3>
-                <p>Проверим адрес на сервере, затем отправим шестизначный код.</p>
                 <label class="field-group" for="wizard-email">Адрес электронной почты
                     <input id="wizard-email" data-wizard-email type="email" inputmode="email" maxlength="255"
                            placeholder="name@example.com" autocomplete="email" required>
@@ -58,9 +52,9 @@
             </section>
 
             <section data-wizard-step="telegram" hidden>
-                <h3>Подключи Telegram</h3>
-                <p>Авторизуйся через официальный Telegram. Используем подтверждённый Telegram ID — ввод @username не требуется.</p>
-                <div data-wizard-telegram class="app-contact-wizard__telegram"></div>
+                <p>Для подключения Telegram необходимо перейти в официальный Telegram-бот и там следовать инструкциям.</p>
+                <a data-bot-link href="#" class="button primary" target="_blank" rel="noopener noreferrer" hidden>Перейти в Telegram-бот</a>
+                <p data-bot-status role="status" aria-live="polite"></p>
             </section>
 
             <section data-wizard-step="vk" hidden>
@@ -76,7 +70,7 @@
             <p data-wizard-error class="app-contact-wizard__error" role="alert" hidden></p>
             <p data-wizard-feedback class="app-contact-wizard__feedback" role="status" aria-live="polite" hidden></p>
         </div>
-        <div class="app-contact-wizard__footer">
+        <div class="mskba-modal__footer app-contact-wizard__footer">
             <button type="button" class="button secondary" data-wizard-back hidden>Назад</button>
             <button type="button" class="button primary" data-wizard-next>Далее</button>
         </div>

@@ -2,30 +2,25 @@
      data-add-url="{{ route('account.contacts.store') }}"
      data-list-url="{{ route('account.contacts') }}"
      data-telegram-url="{{ route('account.telegram.link') }}"
+     data-telegram-start-url="{{ route('account.telegram.bot.link.start') }}"
+     data-telegram-status-url="{{ route('account.telegram.bot.link.status') }}"
      data-telegram-bot="{{ $telegramBotUsername }}">
     <button type="button" class="button primary" data-contact-add-open>Добавить контакт</button>
-    <dialog class="app-contact-wizard__dialog" data-contact-add-modal aria-labelledby="contact-add-title">
-        <div class="app-contact-wizard__header">
-            <div>
-                <p class="app-contact-wizard__eyebrow">Контакты</p>
-                <h2 id="contact-add-title">Добавить контакт</h2>
-            </div>
-            <button type="button" class="app-contact-wizard__close" data-contact-add-close aria-label="Закрыть">×</button>
-        </div>
-        <div class="app-contact-wizard__body">
+    <dialog class="mskba-modal app-contact-wizard__dialog" data-contact-add-modal aria-labelledby="contact-add-title">
+        <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
+            <h2 id="contact-add-title" tabindex="-1" class="eyebrow accent mskba-auth-heading">Добавить контакт</h2>
+            <button type="button" class="icon-button mskba-auth-close app-contact-wizard__close" data-contact-add-close aria-label="Закрыть окно"><svg aria-hidden="true"><use href="#close"/></svg></button>
+        </header>
+        <div class="mskba-modal__body mskba-scroll app-contact-wizard__body">
             <section data-contact-add-step="method">
-                <h3>Выбери способ связи</h3>
-                <p>Email и телефон добавляются в список, после чего их можно подтвердить. Telegram и VK подтверждаются во время авторизации.</p>
                 <div class="app-contact-wizard__choices">
-                    <label><input type="radio" name="new_contact_channel" value="email" checked><span><strong>Email</strong><small>Подтверждение кодом из письма</small></span></label>
+                    <label><input type="radio" name="new_contact_channel" value="email" checked><span><strong>Email</strong></span></label>
                     <label><input type="radio" name="new_contact_channel" value="phone"><span><strong>Телефон</strong><small>Можно добавить, SMS-подтверждение пока недоступно</small></span></label>
-                    <label><input type="radio" name="new_contact_channel" value="telegram" @disabled($telegramBotUsername === '')><span><strong>Telegram</strong><small>Официальная авторизация Telegram</small></span></label>
-                    <label><input type="radio" name="new_contact_channel" value="vk" @disabled(! $vkEnabled)><span><strong>VK ID</strong><small>Официальная авторизация VK ID</small></span></label>
+                    <label><input type="radio" name="new_contact_channel" value="telegram" @disabled($telegramBotUsername === '')><span><strong>Telegram</strong></span></label>
+                    <label @unless($vkEnabled) title="VK пока недоступен: не настроена авторизация" @endunless><input type="radio" name="new_contact_channel" value="vk" @disabled(! $vkEnabled)><span><strong>VK</strong></span></label>
                 </div>
             </section>
             <section data-contact-add-step="value" hidden>
-                <h3 data-contact-add-value-title>Новый контакт</h3>
-                <p data-contact-add-value-description>Укажи контакт. Проверим формат и доступность на сервере.</p>
                 <label class="field-group" for="contacts-add-value">
                     <span data-contact-add-value-label>Контакт</span>
                     <input id="contacts-add-value" data-contact-add-value type="email"
@@ -33,9 +28,9 @@
                 </label>
             </section>
             <section data-contact-add-step="telegram" hidden>
-                <h3>Подключи Telegram</h3>
-                <p>Авторизуйся через официальный Telegram. Контакт автоматически подтвердится и появится в списке.</p>
-                <div data-contact-add-telegram class="app-contact-wizard__telegram"></div>
+                <p>Для подключения Telegram необходимо перейти в официальный Telegram-бот и там следовать инструкциям.</p>
+                <a data-bot-link href="#" class="button primary" target="_blank" rel="noopener noreferrer" hidden>Перейти в Telegram-бот</a>
+                <p data-bot-status role="status" aria-live="polite"></p>
             </section>
             <section data-contact-add-step="vk" hidden>
                 <h3>Подключи VK ID</h3>
@@ -54,7 +49,7 @@
             </section>
             <p class="app-contact-wizard__error" data-contact-add-error role="alert" hidden></p>
         </div>
-        <div class="app-contact-wizard__footer" data-contact-add-footer>
+        <div class="mskba-modal__footer app-contact-wizard__footer" data-contact-add-footer>
             <button type="button" class="button secondary" data-contact-add-back hidden>Назад</button>
             <button type="button" class="button primary" data-contact-add-next>Далее</button>
         </div>

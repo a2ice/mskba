@@ -89,3 +89,63 @@
 
 /* The modal footer itself is hidden on OAuth / completion steps. */
 .app-contact-wizard__footer[hidden]{display:none!important}
+
+/* Reuse Modal 1.1 shell and the same eyebrow/close design as AuthDialog. */
+.mskba-modal.app-contact-wizard__dialog{
+    position:fixed;inset:0;margin:auto;transform:none;box-sizing:border-box;
+    display:flex;flex-direction:column;overflow:hidden;width:min(560px,calc(100vw - 24px));
+    max-height:90vh;max-height:90dvh;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius-card);
+}
+.mskba-modal.app-contact-wizard__dialog:not([open]){display:none}
+.app-contact-wizard__header{flex:0 0 auto;padding:20px 32px;align-items:center;border-bottom:1px solid var(--line)}
+.app-contact-wizard__header .mskba-auth-heading{margin:0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.app-contact-wizard__header .mskba-auth-heading:focus{outline:none}
+.app-contact-wizard__header .app-contact-wizard__close{
+    flex-shrink:0;width:44px;height:44px;border-radius:var(--radius-control);
+    background:transparent;color:var(--text);border:1px solid var(--line);font-size:inherit
+}
+.app-contact-wizard__close svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none}
+.app-contact-wizard__body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:24px 32px}
+.app-contact-wizard__footer{flex:0 0 auto;padding:18px 32px 24px;border-top:1px solid var(--line)}
+.app-contact-wizard__body [data-contact-add-step="method"] .app-contact-wizard__choices,
+.app-contact-wizard__body [data-wizard-step="method"] .app-contact-wizard__choices{gap:10px}
+.app-contact-wizard__body [data-contact-add-step="method"] .app-contact-wizard__choices label,
+.app-contact-wizard__body [data-wizard-step="method"] .app-contact-wizard__choices label{padding:14px 16px}
+.app-contact-wizard__body [data-contact-add-step="method"] .app-contact-wizard__choices label strong,
+.app-contact-wizard__body [data-wizard-step="method"] .app-contact-wizard__choices label strong{font-size:14px}
+@media(max-width:639px){
+    .app-contact-wizard__header{padding:16px 20px}
+    .app-contact-wizard__body{padding:18px 20px}
+    .app-contact-wizard__footer{padding:16px 20px}
+}
+/* One profile card with independent AJAX save controls. */
+.app-confirmation__profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;min-width:0}
+.app-confirmation__profile-field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.app-confirmation__profile-field>label{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.app-confirmation__optional{font-size:12px;font-weight:400;color:var(--muted)}
+.app-confirmation__input-row{display:flex;align-items:stretch;gap:8px;min-width:0}
+.app-confirmation__input-row>input,
+.app-confirmation__input-row .app-confirmation__input-wrap{flex:1 1 auto;min-width:0;width:100%;min-height:46px}
+.app-confirmation__input-row select{min-width:0;width:100%;min-height:46px}
+.app-confirmation__save-field{
+    position:relative;display:grid;flex:0 0 46px;place-items:center;
+    min-height:46px;background:var(--surface-raised);color:var(--accent);
+    border:1px solid var(--control-line);border-radius:var(--radius-control);
+    cursor:pointer;transition:color .15s ease,background .15s ease
+}
+.app-confirmation__save-field svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.app-confirmation__save-field:disabled{color:var(--muted);opacity:.5;cursor:default}
+.app-confirmation__save-field:not(:disabled):hover{border-color:var(--accent)}
+.app-confirmation__save-countdown{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--text)}
+.app-confirmation__save-countdown[hidden]{display:none!important}
+.app-confirmation__save-field:has(.app-confirmation__save-countdown:not([hidden])) svg{opacity:.1}
+.app-confirmation__profile-actions{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:18px}
+.app-confirmation__profile-actions p{margin:0;font-size:13px;color:var(--success)}
+.app-confirmation__profile-actions p.is-error{color:var(--danger)}
+.app-confirmation__profile-actions .button:disabled{opacity:.5}
+.app-confirmation__card.is-saving .app-confirmation__input-row input,
+.app-confirmation__card.is-saving .app-confirmation__input-row select{opacity:.6}
+.app-confirmation__finish{padding:4px 0 12px}
+.app-confirmation__finish a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:700px){.app-confirmation__profile-fields{grid-template-columns:1fr}}

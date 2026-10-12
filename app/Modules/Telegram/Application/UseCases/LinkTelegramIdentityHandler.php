@@ -7,6 +7,7 @@ use App\Modules\Identity\Application\Services\UserDuplicateDetector;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserDuplicate;
 use App\Modules\Telegram\Application\Services\TelegramLoginWidgetDataValidator;
+use App\Modules\Telegram\Application\DTO\TelegramLoginWidgetUserDTO;
 use App\Modules\Telegram\Domain\Models\TelegramAccount;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,16 @@ final class LinkTelegramIdentityHandler
      */
     public function handle(User $currentUser, array $payload): array
     {
-        $telegramUser = $this->validator->validate($payload);
+        return $this->linkVerifiedUser($currentUser, $this->validator->validate($payload));
+    }
+
+    /**
+     * Only pass verified identities supplied by Telegram's authenticated bot callback
+     * or by the signed Telegram login widget, never client-authored values.
+     * @return array{status: string, telegram_account: ?TelegramAccount, duplicate: ?UserDuplicate}
+     */
+    public function linkVerifiedUser(User $currentUser, TelegramLoginWidgetUserDTO $telegramUser): array
+    {
         $currentUser = $currentUser->canonical();
 
         return Cache::lock("telegram:user:{$telegramUser->id}", 15)->block(5, function () use ($currentUser, $telegramUser): array {

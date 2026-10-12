@@ -1,3 +1,4 @@
+import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 const root = document.querySelector('[data-contacts-add]');
 
 if (root) {
@@ -6,18 +7,16 @@ if (root) {
     const error = dialog.querySelector('[data-contact-add-error]');
     const value = dialog.querySelector('[data-contact-add-value]');
     const label = dialog.querySelector('[data-contact-add-value-label]');
-    const title = dialog.querySelector('[data-contact-add-value-title]');
-    const description = dialog.querySelector('[data-contact-add-value-description]');
     const success = dialog.querySelector('[data-contact-add-success]');
     const back = dialog.querySelector('[data-contact-add-back]');
     const next = dialog.querySelector('[data-contact-add-next]');
     const footer = dialog.querySelector('[data-contact-add-footer]');
-    const telegram = dialog.querySelector('[data-contact-add-telegram]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     let step = 'method';
     let kind = 'email';
     let busy = false;
     let opener = null;
+    let previousOverflow = '';
 
     const setError = text => {
         error.textContent = text || '';
@@ -35,11 +34,13 @@ if (root) {
         step = target;
         setError('');
         steps.forEach(node => { node.hidden = node.dataset.contactAddStep !== target; });
-        footer.hidden = !['method', 'value'].includes(target);
+        footer.hidden = target === 'done';
+        next.hidden = !['method', 'value'].includes(target);
         back.hidden = target === 'method';
         next.textContent = target === 'value' ? 'Добавить контакт' : 'Далее';
         if (target === 'value') value.focus();
-        if (target === 'telegram') mountTelegram();
+        if (target === 'telegram') telegramLink.start();
+        else telegramLink.stop();
     }
 
     function open() {
@@ -47,16 +48,15 @@ if (root) {
         dialog.querySelector('input[name="new_contact_channel"][value="email"]').checked = true;
         value.value = '';
         kind = 'email';
+        previousOverflow = document.body.style.overflow;
         dialog.showModal();
+        document.body.style.overflow = 'hidden';
+        dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
         showStep('method');
     }
 
     function configureValueField() {
         const isEmail = kind === 'email';
-        title.textContent = isEmail ? 'Укажи Email' : 'Укажи телефон';
-        description.textContent = isEmail
-            ? 'Адрес будет проверен на сервере. Код подтверждения можно отправить после добавления.'
-            : 'Телефон добавится без подтверждения. SMS-подтверждение появится позже.';
         label.textContent = isEmail ? 'Адрес электронной почты' : 'Номер телефона';
         value.type = isEmail ? 'email' : 'tel';
         value.inputMode = isEmail ? 'email' : 'tel';
@@ -82,6 +82,8 @@ if (root) {
             const firstError = Object.values(data.errors || {}).flat().find(Boolean);
             const exception = new Error(firstError || data.message || 'Не удалось добавить контакт.');
             exception.data = data;
+            exception.payload = data;
+            exception.status = response.status;
             throw exception;
         }
         return data;
@@ -100,27 +102,27 @@ if (root) {
         current.replaceWith(updated);
     }
 
-    function mountTelegram() {
-        if (telegram.dataset.mounted === 'true') return;
-        const username = root.dataset.telegramBot;
-        if (!username) { setError('Подключение Telegram сейчас недоступно.'); return; }
-        telegram.dataset.mounted = 'true';
-        const widget = document.createElement('script');
-        widget.async = true;
-        widget.src = 'https://telegram.org/js/telegram-widget.js?22';
-        widget.dataset.telegramLogin = username;
-        widget.dataset.size = 'large';
-        widget.dataset.radius = '10';
-        widget.dataset.userpic = 'false';
-        widget.dataset.onauth = 'mskbaContactsTelegram(user)';
-        telegram.appendChild(widget);
-    }
+    const telegramLink = createTelegramContactBotLink({
+        root, dialog, post,
+        onSuccess: async result => {
+            let updated = true;
+            try { await refreshList(); } catch { updated = false; }
+            success.textContent = (result.message || 'Telegram подтверждён и добавлен в список.')
+                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
+            showStep('done');
+        },
+        onError: message => setError(message),
+    });
 
     root.querySelector('[data-contact-add-open]').addEventListener('click', open);
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
         button.addEventListener('click', () => { if (!busy) dialog.close(); });
     });
-    dialog.addEventListener('close', () => opener?.focus());
+    dialog.addEventListener('close', () => {
+        document.body.style.overflow = previousOverflow;
+        telegramLink.stop();
+        opener?.focus();
+    });
     dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
     dialog.addEventListener('click', event => { if (event.target === dialog && !busy) dialog.close(); });
 
@@ -176,23 +178,4 @@ if (root) {
         }
     });
 
-    window.mskbaContactsTelegram = async telegramUser => {
-        if (busy) return;
-        setBusy(true);
-        setError('');
-        try {
-            const result = await post(root.dataset.telegramUrl, { telegram_user: telegramUser });
-            let updated = true;
-            try { await refreshList(); } catch { updated = false; }
-            success.textContent = (result.message || 'Telegram подтверждён и добавлен в список.')
-                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
-            showStep('done');
-        } catch (exception) {
-            if (exception.data?.status === 'duplicate' && exception.data?.redirect_url) {
-                window.location.assign(exception.data.redirect_url);
-                return;
-            }
-            setError(exception.message || 'Не удалось подключить Telegram.');
-        } finally { setBusy(false); }
-    };
 }

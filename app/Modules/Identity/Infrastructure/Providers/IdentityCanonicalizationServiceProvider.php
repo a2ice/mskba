@@ -11,6 +11,8 @@ use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountNicknameController;
 use App\Modules\Identity\Presentation\Http\Controllers\UserDuplicateController;
 use App\Modules\Telegram\Presentation\Http\Controllers\LinkTelegramIdentityController;
+use App\Modules\Telegram\Presentation\Http\Controllers\StartTelegramBotLinkController;
+use App\Modules\Telegram\Presentation\Http\Controllers\TelegramBotLinkStatusController;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -40,6 +42,13 @@ final class IdentityCanonicalizationServiceProvider extends ServiceProvider
                 Route::get('/telegram', fn () => redirect()->route('account.contacts'))
                     ->name('account.telegram')
                     ->defaults('breadcrumb', 'Telegram');
+                Route::post('/telegram/bot/link/start', StartTelegramBotLinkController::class)
+                    ->middleware('throttle:10,1')
+                    ->name('account.telegram.bot.link.start');
+                Route::post('/telegram/bot/link/status', TelegramBotLinkStatusController::class)
+                    ->middleware('throttle:60,1')
+                    ->name('account.telegram.bot.link.status');
+
                 Route::post('/telegram/link', LinkTelegramIdentityController::class)
                     ->middleware('throttle:10,1')
                     ->name('account.telegram.link');

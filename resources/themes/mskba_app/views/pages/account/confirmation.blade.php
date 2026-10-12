@@ -34,7 +34,84 @@
                 <a class="button secondary" href="{{ route('account.profile') }}">Перейти в профиль</a>
             </section>
         @elseif ($user)
-            <section class="panel app-confirmation__card" aria-labelledby="confirmation-contact-title">
+            @php
+                $profileFields = [
+                    ['name' => 'first_name', 'id' => 'confirmation-first-name', 'label' => 'Имя', 'required' => true, 'inputType' => 'text', 'auto' => 'given-name', 'value' => (string) ($profile?->first_name ?? '')],
+                    ['name' => 'last_name', 'id' => 'confirmation-last-name', 'label' => 'Фамилия', 'required' => true, 'inputType' => 'text', 'auto' => 'family-name', 'value' => (string) ($profile?->last_name ?? '')],
+                    ['name' => 'middle_name', 'id' => 'confirmation-middle-name', 'label' => 'Отчество', 'required' => false, 'inputType' => 'text', 'auto' => 'additional-name', 'value' => (string) ($profile?->middle_name ?? '')],
+                    ['name' => 'birth_date', 'id' => 'confirmation-birth-date', 'label' => 'Дата рождения', 'required' => true, 'inputType' => 'date', 'auto' => 'bday', 'value' => $profile?->birth_date?->toDateString() ?? ''],
+                    ['name' => 'gender', 'id' => 'confirmation-gender', 'label' => 'Пол', 'required' => true, 'inputType' => 'select', 'auto' => 'sex', 'value' => $profile?->gender?->value ?? ''],
+                ];
+                $missingRequired = collect($profileFields)
+                    ->filter(fn (array $field): bool => $field['required'] && blank(trim($field['value'])));
+                $missingTotal = $missingRequired->count() + ($primaryVerifiedContact ? 0 : 1);
+                $firstMissing = $missingRequired->first();
+            @endphp
+
+            <form id="confirmation-complete-form" method="POST" action="{{ route('account.confirmation.complete') }}"
+                  class="app-confirmation__form" data-confirmation-profile
+                  data-save-url="{{ route('account.profile.update') }}"
+                  data-has-verified-contact="{{ $primaryVerifiedContact ? 'true' : 'false' }}">
+                @csrf
+                <section class="panel app-confirmation__card" aria-labelledby="confirmation-profile-title">
+                    <div class="app-confirmation__card-heading">
+                        <h2 id="confirmation-profile-title">Профиль</h2>
+                        <span class="app-confirmation__state {{ $missingRequired->isEmpty() ? 'app-confirmation__state--done' : '' }}" data-confirmation-profile-state>
+                            {{ $missingRequired->isEmpty() ? 'Заполнено' : 'Требует заполнения' }}
+                        </span>
+                    </div>
+                    <div class="app-confirmation__profile-fields">
+                        @foreach ($profileFields as $field)
+                            <div class="app-confirmation__profile-field field-group" data-confirmation-field
+                                 data-field-name="{{ $field['name'] }}"
+                                 data-saved-value="{{ $field['value'] }}"
+                                 data-required="{{ $field['required'] ? 'true' : 'false' }}">
+                                <label for="{{ $field['id'] }}">
+                                    {{ $field['label'] }}
+                                    @unless($field['required'])
+                                        <span class="app-confirmation__optional">Необязательно</span>
+                                    @endunless
+                                </label>
+                                <div class="app-confirmation__input-row">
+                                    @if ($field['inputType'] === 'select')
+                                        <span class="select-control app-confirmation__input-wrap">
+                                            <select id="{{ $field['id'] }}" name="{{ $field['name'] }}" autocomplete="{{ $field['auto'] }}" data-confirmation-input>
+                                                <option value="">Выбери пол</option>
+                                                @foreach ($genders as $gender)
+                                                    <option value="{{ $gender->value }}" @selected($field['value'] === $gender->value)>{{ $gender->label() }}</option>
+                                                @endforeach
+                                            </select>
+                                            <svg aria-hidden="true"><use href="#chevron-down"/></svg>
+                                        </span>
+                                    @else
+                                        <input id="{{ $field['id'] }}" data-confirmation-input name="{{ $field['name'] }}"
+                                               type="{{ $field['inputType'] }}"
+                                               maxlength="{{ $field['inputType'] === 'text' ? '255' : '' }}"
+                                               autocomplete="{{ $field['auto'] }}"
+                                               @if($field['inputType'] === 'date') max="{{ now()->subDay()->toDateString() }}" @endif
+                                               value="{{ old($field['name'], $field['value']) }}">
+                                    @endif
+                                    <button type="button" class="app-confirmation__save-field" data-confirmation-save-field
+                                            aria-label="Сохранить {{ mb_strtolower($field['label']) }}"
+                                            title="Сохранить {{ mb_strtolower($field['label']) }}"
+                                            disabled>
+                                        <svg aria-hidden="true"><use href="#save"/></svg>
+                                        <span class="app-confirmation__save-countdown" data-confirmation-countdown hidden></span>
+                                    </button>
+                                </div>
+                                <small class="app-confirmation__error" data-confirmation-error role="alert" hidden></small>
+                                @error($field['name']) <small class="app-confirmation__error">{{ $message }}</small> @enderror
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="app-confirmation__profile-actions">
+                        <p data-confirmation-feedback role="status" aria-live="polite"></p>
+                        <button class="button secondary" type="button" data-confirmation-save-all disabled>Сохранить всё</button>
+                    </div>
+                </section>
+            </form>
+
+            <section class="panel app-confirmation__card" id="confirmation-main-contact" aria-labelledby="confirmation-contact-title">
                 <div class="app-confirmation__card-heading">
                     <h2 id="confirmation-contact-title">Основной контакт</h2>
                     <span class="app-confirmation__state {{ $primaryVerifiedContact ? 'app-confirmation__state--done' : '' }}">
@@ -42,91 +119,35 @@
                     </span>
                 </div>
                 <p>Достаточно одного подтверждённого <strong>основного</strong> контакта: Email, Telegram или другого поддерживаемого канала.</p>
-
                 @if ($primaryVerifiedContact)
                     <p class="app-confirmation__value">{{ $primaryVerifiedContact->type->label() }}: {{ $primaryVerifiedContact->displayValue() }}</p>
-                    <a href="{{ route('account.contacts') }}" class="app-confirmation__contact-link">Управлять контактами</a>
                 @else
                     @if ($primaryContact)
                         <p class="app-confirmation__value">{{ $primaryContact->type->label() }}: {{ $primaryContact->displayValue() }} — не подтверждён</p>
                     @endif
                     @include('theme::pages.account.partials.confirmation-contact-dialog')
-                    <a href="{{ route('account.contacts') }}" class="app-confirmation__contact-link">Управлять контактами и выбрать основной</a>
                 @endif
+                <a href="{{ route('account.contacts') }}" class="app-confirmation__contact-link">Управлять контактами</a>
                 @error('contact') <p class="app-confirmation__error" role="alert">{{ $message }}</p> @enderror
             </section>
 
-            <form method="POST" action="{{ route('account.confirmation.complete') }}" class="app-confirmation__form">
-                @csrf
-                <section class="panel app-confirmation__card" aria-labelledby="confirmation-first-title">
-                    <div class="app-confirmation__card-heading">
-                        <h2 id="confirmation-first-title">Имя</h2>
-                        <span class="app-confirmation__state {{ filled($profile?->first_name) ? 'app-confirmation__state--done' : '' }}">{{ filled($profile?->first_name) ? 'Заполнено' : 'Обязательно' }}</span>
-                    </div>
-                    <div class="field-group">
-                        <label for="confirmation-first-name">Имя</label>
-                        <input id="confirmation-first-name" type="text" name="first_name" required maxlength="255"
-                               autocomplete="given-name" value="{{ old('first_name', $profile?->first_name) }}">
-                        @error('first_name') <small class="app-confirmation__error">{{ $message }}</small> @enderror
-                    </div>
-                </section>
-
-                <section class="panel app-confirmation__card" aria-labelledby="confirmation-last-title">
-                    <div class="app-confirmation__card-heading">
-                        <h2 id="confirmation-last-title">Фамилия</h2>
-                        <span class="app-confirmation__state {{ filled($profile?->last_name) ? 'app-confirmation__state--done' : '' }}">{{ filled($profile?->last_name) ? 'Заполнено' : 'Обязательно' }}</span>
-                    </div>
-                    <div class="field-group">
-                        <label for="confirmation-last-name">Фамилия</label>
-                        <input id="confirmation-last-name" type="text" name="last_name" required maxlength="255"
-                               autocomplete="family-name" value="{{ old('last_name', $profile?->last_name) }}">
-                        @error('last_name') <small class="app-confirmation__error">{{ $message }}</small> @enderror
-                    </div>
-                </section>
-
-                <div class="app-confirmation__details-grid">
-                    <section class="panel app-confirmation__card" aria-labelledby="confirmation-birth-title">
-                        <div class="app-confirmation__card-heading">
-                            <h2 id="confirmation-birth-title">Дата рождения</h2>
-                            <span class="app-confirmation__state {{ $profile?->birth_date ? 'app-confirmation__state--done' : '' }}">{{ $profile?->birth_date ? 'Заполнено' : 'Обязательно' }}</span>
-                        </div>
-                        <div class="field-group">
-                            <label for="confirmation-birth-date">Дата рождения</label>
-                            <input id="confirmation-birth-date" type="date" name="birth_date" required
-                                   value="{{ old('birth_date', $profile?->birth_date?->toDateString()) }}"
-                                   max="{{ now()->subDay()->toDateString() }}">
-                            @error('birth_date') <small class="app-confirmation__error">{{ $message }}</small> @enderror
-                        </div>
-                    </section>
-                    <section class="panel app-confirmation__card" aria-labelledby="confirmation-gender-title">
-                        <div class="app-confirmation__card-heading">
-                            <h2 id="confirmation-gender-title">Пол</h2>
-                            <span class="app-confirmation__state {{ $profile?->gender ? 'app-confirmation__state--done' : '' }}">{{ $profile?->gender ? 'Заполнено' : 'Обязательно' }}</span>
-                        </div>
-                        <div class="field-group">
-                            <label for="confirmation-gender">Пол</label>
-                            <span class="select-control">
-                                <select id="confirmation-gender" name="gender" required>
-                                    <option value="">Выбери пол</option>
-                                    @foreach ($genders as $gender)
-                                        <option value="{{ $gender->value }}" @selected(old('gender', $profile?->gender?->value) === $gender->value)>{{ $gender->label() }}</option>
-                                    @endforeach
-                                </select>
-                            </span>
-                            @error('gender') <small class="app-confirmation__error">{{ $message }}</small> @enderror
-                        </div>
-                    </section>
-                </div>
-
-                <div class="app-confirmation__finish">
-                    @unless ($primaryVerifiedContact)
-                        <p>Сначала подтверди основной контакт. Заполненные личные данные можно сохранить отдельно в профиле.</p>
+            <div class="app-confirmation__finish">
+                <p data-confirmation-requirement>
+                    @if ($missingTotal)
+                        Для подтверждения аккаунта необходимо
+                        @if ($firstMissing)
+                            <a href="#{{ $firstMissing['id'] }}" data-confirmation-missing-link>заполнить {{ mb_strtolower($firstMissing['label']) }}</a>
+                        @else
+                            <a href="#confirmation-main-contact" data-confirmation-missing-link>подтвердить основной контакт</a>
+                        @endif
+                        @if($missingTotal > 1) и ещё {{ $missingTotal - 1 }}@endif.
                     @else
-                        <p>После подтверждения изменения этих четырёх полей будут доступны только по заявке.</p>
-                    @endunless
-                    <button class="button primary" type="submit" @unless ($primaryVerifiedContact) disabled @endunless>Подтвердить аккаунт</button>
-                </div>
-            </form>
+                        Все обязательные данные заполнены. Теперь можно подтвердить аккаунт.
+                    @endif
+                </p>
+                <button class="button primary" type="submit" form="confirmation-complete-form"
+                        data-confirmation-submit @if($missingTotal) disabled @endif>Подтвердить аккаунт</button>
+            </div>
         @endif
     </div>
 @endsection

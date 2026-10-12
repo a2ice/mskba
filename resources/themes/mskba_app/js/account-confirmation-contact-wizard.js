@@ -1,3 +1,4 @@
+import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 const root = document.querySelector('[data-contact-wizard]');
 
 if (root) {
@@ -10,7 +11,6 @@ if (root) {
     const nextButton = dialog.querySelector('[data-wizard-next]');
     const backButton = dialog.querySelector('[data-wizard-back]');
     const resendButton = dialog.querySelector('[data-wizard-resend]');
-    const telegramContainer = dialog.querySelector('[data-wizard-telegram]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     let step = 'method';
@@ -19,6 +19,7 @@ if (root) {
     let cooldownInterval = null;
     let remainingSeconds = 0;
     let opener = null;
+    let previousOverflow = '';
 
     function setError(message = '') {
         errorNode.textContent = message;
@@ -67,26 +68,8 @@ if (root) {
         nextButton.textContent = step === 'code' ? 'Подтвердить код' : 'Далее';
         if (step === 'email') emailInput.focus();
         if (step === 'code') codeInput.focus();
-        if (step === 'telegram') mountTelegramWidget();
-    }
-
-    function mountTelegramWidget() {
-        if (telegramContainer.dataset.mounted === 'true') return;
-        const username = root.dataset.telegramBot;
-        if (!username) {
-            setError('Подключение Telegram сейчас недоступно.');
-            return;
-        }
-        telegramContainer.dataset.mounted = 'true';
-        const script = document.createElement('script');
-        script.async = true;
-        script.src = 'https://telegram.org/js/telegram-widget.js?22';
-        script.dataset.telegramLogin = username;
-        script.dataset.size = 'large';
-        script.dataset.radius = '10';
-        script.dataset.userpic = 'false';
-        script.dataset.onauth = 'mskbaConfirmationTelegram(user)';
-        telegramContainer.appendChild(script);
+        if (step === 'telegram') telegramLink.start();
+        else telegramLink.stop();
     }
 
     async function post(url, data) {
@@ -112,13 +95,22 @@ if (root) {
         return payload;
     }
 
+    const telegramLink = createTelegramContactBotLink({
+        root, dialog, post,
+        onSuccess: () => window.location.assign(root.dataset.confirmationUrl),
+        onError: message => setError(message),
+    });
+
     function openWizard(trigger) {
         opener = trigger;
         contactId = trigger.dataset.existingContact || null;
         emailInput.value = trigger.dataset.emailValue || '';
         codeInput.value = '';
         cooldown(0);
+        previousOverflow = document.body.style.overflow;
         dialog.showModal();
+        document.body.style.overflow = 'hidden';
+        dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
         showStep(contactId ? 'code' : 'method');
         if (contactId) setFeedback('Если код уже отправлен, введи его. Иначе запроси новый.');
     }
@@ -131,11 +123,13 @@ if (root) {
         button.addEventListener('click', () => dialog.close());
     });
     dialog.addEventListener('close', () => {
+        document.body.style.overflow = previousOverflow;
         cooldown(0);
+        telegramLink.stop();
         opener?.focus();
     });
     dialog.addEventListener('click', event => {
-        if (event.target === dialog) dialog.close();
+        if (event.target === dialog && !isBusy) dialog.close();
     });
 
     backButton.addEventListener('click', () => {
@@ -215,22 +209,4 @@ if (root) {
         } finally { setBusy(false); }
     });
 
-    window.mskbaConfirmationTelegram = async telegramUser => {
-        if (isBusy) return;
-        setBusy(true);
-        setError();
-        setFeedback('Проверяем Telegram...');
-        try {
-            const result = await post(root.dataset.telegramUrl, { telegram_user: telegramUser });
-            setFeedback(result.message || 'Telegram подтверждён.');
-            window.location.assign(root.dataset.confirmationUrl);
-        } catch (error) {
-            if (error.payload?.status === 'duplicate' && error.payload?.redirect_url) {
-                window.location.assign(error.payload.redirect_url);
-                return;
-            }
-            setFeedback();
-            setError(error.message);
-        } finally { setBusy(false); }
-    };
 }

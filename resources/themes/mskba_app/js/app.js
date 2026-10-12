@@ -9,6 +9,7 @@ import './account-team-placeholder.js';
 import './account-roles.js';
 import './account-profile.js';
 import './account-confirmation-contact-wizard.js';
+import './account-confirmation-profile.js';
 import './account-contacts-add.js';
 import { createApp } from 'vue';
 import AuthDialog from './components/AuthDialog.vue';
