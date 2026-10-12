@@ -78,7 +78,8 @@
                                                 data-contact-resend-button @disabled($resendSeconds > 0)
                                                 data-tooltip="{{ $resendSeconds > 0 ? 'Ожидайте' : 'Отправить новый код' }}"
                                                 aria-label="{{ $resendSeconds > 0 ? 'Отправка доступна позже' : 'Отправить новый код' }}">
-                                            <svg aria-hidden="true"><use href="#refresh"/></svg>
+                                            <svg aria-hidden="true" data-contact-resend-icon @if($resendSeconds > 0) hidden @endif><use href="#refresh"/></svg>
+                                            <span data-contact-resend-timer @if($resendSeconds <= 0) hidden @endif>{{ $resendSeconds }}с</span>
                                         </button>
                                     @else
                                         <button type="submit" class="button secondary app-account-contacts__start-button"
@@ -108,17 +109,6 @@
                                 </button>
                             </form>
                         </div>
-                        @if ($canConfirmByEmail && $pending)
-                            <p class="app-account-contacts__feedback" data-contact-code-timer role="status">Код действителен ещё <span data-contact-code-remaining></span></p>
-                        @endif
-                        @if ($canConfirmByEmail)
-                            <p class="app-account-contacts__feedback app-account-contacts__resend-hint"
-                               data-contact-resend-hint role="status" aria-live="polite"
-                               @if ($resendSeconds <= 0) hidden @endif>
-                                Код уже отправлен. Новый код можно запросить через
-                                <span data-contact-resend-countdown>{{ $resendSeconds }}</span> сек.
-                            </p>
-                        @endif
                         @if ($canConfirmByEmail)
                             <p class="app-account-contacts__feedback app-account-contacts__feedback--error"
                                data-contact-resend-error role="alert" hidden></p>

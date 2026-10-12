@@ -17,10 +17,6 @@ function update() {
     for (const form of forms) {
         const deadline = Number(form.dataset.contactCodeExpiresAt) * 1000;
         const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-        const countdown = form.closest('.app-account-contacts__item')?.querySelector('[data-contact-code-remaining]');
-        if (countdown) {
-            countdown.textContent = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
-        }
         if (!seconds) {
             form.querySelectorAll('input, button').forEach(control => { control.disabled = true; });
             expired = true;

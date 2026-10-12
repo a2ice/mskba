@@ -18,10 +18,10 @@ function initContactResendCounters() {
         if (counters.has(form)) return;
         const row = form.closest('.app-account-contacts__item');
         const button = form.querySelector('[data-contact-resend-button]');
-        const hint = row?.querySelector('[data-contact-resend-hint]');
-        const count = hint?.querySelector('[data-contact-resend-countdown]');
+        const timer = button.querySelector('[data-contact-resend-timer]');
+        const icon = button.querySelector('[data-contact-resend-icon]');
         const error = row?.querySelector('[data-contact-resend-error]');
-        if (!row || !button || !hint || !count || !error) return;
+        if (!row || !button || !error) return;
 
         const isResend = button.classList.contains('app-account-contacts__icon-button');
         const initialMarkup = button.innerHTML;
@@ -37,12 +37,12 @@ function initContactResendCounters() {
         };
         const cooldown = createContactResendCooldown(seconds => {
             const waiting = seconds > 0;
-            hint.hidden = !waiting;
-            count.textContent = String(seconds);
+            if (timer) { timer.hidden = !waiting; timer.textContent = seconds + "с"; }
+            if (icon) icon.hidden = waiting;
             button.disabled = waiting || busy;
             if (isResend) {
-                button.dataset.tooltip = waiting ? 'Ожидайте' : 'Отправить новый код';
-                button.setAttribute('aria-label', waiting ? 'Отправка доступна позже' : 'Отправить новый код');
+                button.dataset.tooltip = waiting ? 'Повторная отправка через ' + seconds + ' с' : 'Отправить новый код';
+                button.setAttribute('aria-label', waiting ? 'Повторная отправка через ' + seconds + ' секунд' : 'Отправить новый код');
             }
         });
 
@@ -100,6 +100,8 @@ function initContactResendCounters() {
                 button.innerHTML = initialMarkup;
                 button.removeAttribute('aria-busy');
                 button.disabled = cooldown.secondsLeft > 0;
+                if (timer) { timer.hidden = cooldown.secondsLeft <= 0; timer.textContent = cooldown.secondsLeft + "с"; }
+                if (icon) icon.hidden = cooldown.secondsLeft > 0;
                 // Refresh may replace this row; the countdown of a disconnected
                 // form is disposed by initContactResendCounters().
                 if (isResend) {

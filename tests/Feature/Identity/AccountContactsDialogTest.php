@@ -230,8 +230,8 @@ final class AccountContactsDialogTest extends TestCase
             ->assertSee('aria-label="Шестизначный код из письма для pending@example.test"', false)
             ->assertSee('data-tooltip="Подтвердить код"', false)
             ->assertSee('data-tooltip="Ожидайте"', false)
-            ->assertSee('data-contact-resend-hint', false)
-            ->assertSee('data-contact-resend-countdown', false)
+            ->assertSee('data-contact-resend-timer', false)
+            ->assertDontSee('Код действителен ещё')
             ->assertSee('data-tooltip="Удалить контакт"', false)
             ->assertSee('<use href="#refresh"/>', false)
             ->assertSee('<use href="#close"/>', false)
@@ -269,16 +269,11 @@ final class AccountContactsDialogTest extends TestCase
             ->assertDontSee(':seconds');
         $html = $page->getContent();
         $firstRow = strpos($html, 'first@example.test');
-        $feedback = strpos($html, 'Код уже отправлен.');
         $otherRow = strpos($html, 'other@example.test');
         $this->assertNotFalse($firstRow);
-        $this->assertNotFalse($feedback);
         $this->assertNotFalse($otherRow);
-        $this->assertGreaterThan($firstRow, $feedback);
-        $this->assertLessThan($otherRow, $feedback);
-        // The second contact has no pending code; its message exists only in a hidden template.
-        $this->assertSame(2, substr_count($html, 'Код уже отправлен.'));
-        $this->assertSame(2, substr_count($html, 'data-contact-resend-hint'));
+        $this->assertSame(1, substr_count($html, 'data-contact-resend-timer'));
+        $this->assertStringNotContainsString('Код уже отправлен. Новый код можно запросить через', $html);
     }
 
     public function test_verification_errors_show_beneath_the_corresponding_code_field(): void
@@ -378,7 +373,7 @@ final class AccountContactsDialogTest extends TestCase
         $html = $this->actingAs($user)->get(route('account.contacts'))->assertOk()->getContent();
         preg_match_all('/data-contact-resend-form data-cooldown-seconds="(\d+)"/', $html, $matches);
         $this->assertSame(['60', '18'], $matches[1]);
-        $this->assertSame(2, substr_count($html, 'data-contact-resend-hint'));
+        $this->assertSame(2, substr_count($html, 'data-contact-resend-timer'));
         $this->travel(61)->seconds();
         $page = $this->get(route('account.contacts'))->assertOk();
         $page->assertSee('data-cooldown-seconds="0"', false);
