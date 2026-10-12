@@ -387,6 +387,30 @@ final class AccountContactsDialogTest extends TestCase
         $this->assertSame(0, $requester->contacts()->count());
     }
 
+    public function test_verified_secondary_contact_has_clear_text_action_to_make_primary(): void
+    {
+        $user = $this->user();
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'primary-text@example.test',
+            'is_primary' => true,
+            'verified_at' => now(),
+        ]);
+        $secondary = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'secondary-text@example.test',
+            'is_primary' => false,
+            'verified_at' => now(),
+        ]);
+
+        $this->actingAs($user)->get(route('account.contacts'))->assertOk()
+            ->assertSee(route('account.contacts.primary', $secondary), false)
+            ->assertSee('class="button secondary app-account-contacts__primary-button"', false)
+            ->assertSee('Сделать основным')
+            ->assertDontSee('data-tooltip="Сделать основным"', false)
+            ->assertDontSee('<use href="#check"/>', false);
+    }
+
     public function test_first_verified_email_becomes_primary_even_if_another_unverified_email_was_first(): void
     {
         $user = $this->user();

@@ -126,6 +126,10 @@
     white-space:nowrap;
 }
 .app-account-contacts__start-button:disabled{opacity:.65;cursor:wait}
+.app-account-contacts__controls form>.app-account-contacts__primary-button{
+    min-height:40px;margin:0;padding:8px 12px;
+    font-size:13px;line-height:20px;white-space:nowrap;
+}
 .app-account-contacts__feedback--error[hidden]{display:none!important}
 .app-account-contacts__resend-spinner{
     display:inline-block;width:16px;height:16px;flex:none;
@@ -178,6 +182,7 @@
     }
     .app-account-contacts__controls{justify-content:flex-start}
     .app-account-contacts__icon-button{width:38px;height:38px}
+    .app-account-contacts__controls form>.app-account-contacts__primary-button{min-height:38px;padding:7px 10px;font-size:12px}
     .app-account-contacts__verify input{height:38px}
     .app-account-contacts__add .field-group{flex-basis:100%}
 }

@@ -89,9 +89,8 @@
                             @if (! $contact->is_primary && $contact->is_verified)
                                 <form method="POST" action="{{ route('account.contacts.primary', $contact) }}">
                                     @csrf @method('PATCH')
-                                    <button type="submit" class="app-account-contacts__icon-button"
-                                            data-tooltip="Сделать основным" aria-label="Сделать основным">
-                                        <svg aria-hidden="true"><use href="#check"/></svg>
+                                    <button type="submit" class="button secondary app-account-contacts__primary-button">
+                                        Сделать основным
                                     </button>
                                 </form>
                             @endif
