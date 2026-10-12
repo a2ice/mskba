@@ -10,12 +10,12 @@
 @section('account-content')
     <div class="app-account-contacts">
         @foreach (['status', 'info', 'warning', 'error'] as $noticeType)
-            @if (session($noticeType))
+            @if (session($noticeType) && (! session('contactVerificationFeedbackContactId') || ! in_array($noticeType, ['info', 'error'], true)))
                 <p class="notice {{ $noticeType === 'error' ? 'app-confirmation__notice--error' : '' }}"
                    role="{{ $noticeType === 'error' ? 'alert' : 'status' }}">{{ session($noticeType) }}</p>
             @endif
         @endforeach
-        @if ($errors->any())
+        @if ($errors->any() && ! old('_verification_contact_id'))
             <p class="notice app-confirmation__notice--error" role="alert">{{ $errors->first() }}</p>
         @endif
 
@@ -43,35 +43,64 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="app-account-contacts__actions">
-                            @unless ($contact->is_primary)
-                                @if ($contact->is_verified)
-                                    <form method="POST" action="{{ route('account.contacts.primary', $contact) }}">
-                                        @csrf @method('PATCH')
-                                        <button class="button secondary" type="submit">Сделать основным</button>
-                                    </form>
-                                @endif
-                            @endunless
+
+                        <div class="app-account-contacts__controls">
+                            @if ($canConfirmByEmail && $pending)
+                                <form method="POST" class="app-account-contacts__verify"
+                                      action="{{ route('account.contacts.verification.confirm', $contact) }}">
+                                    @csrf
+                                    <input type="hidden" name="_verification_contact_id" value="{{ $contact->id }}">
+                                    <input id="contact-verify-{{ $contact->id }}" name="code" type="text"
+                                           inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code"
+                                           maxlength="6" placeholder="000000" required
+                                           aria-label="Шестизначный код из письма для {{ $contact->displayValue() }}">
+                                    <button type="submit" class="app-account-contacts__icon-button app-account-contacts__icon-button--confirm"
+                                            data-tooltip="Подтвердить код" aria-label="Подтвердить код">
+                                        <svg aria-hidden="true"><use href="#check"/></svg>
+                                    </button>
+                                </form>
+                            @endif
+
                             @if ($canConfirmByEmail)
                                 <form method="POST" action="{{ route('account.contacts.verification.store', $contact) }}">
                                     @csrf
-                                    <button class="button secondary" type="submit">{{ $pending ? 'Отправить новый код' : 'Отправить код' }}</button>
+                                    <button type="submit" class="app-account-contacts__icon-button"
+                                            data-tooltip="{{ $pending ? 'Отправить новый код' : 'Отправить код' }}"
+                                            aria-label="{{ $pending ? 'Отправить новый код' : 'Отправить код' }}">
+                                        <svg aria-hidden="true"><use href="#refresh"/></svg>
+                                    </button>
                                 </form>
                             @endif
+
+                            @if (! $contact->is_primary && $contact->is_verified)
+                                <form method="POST" action="{{ route('account.contacts.primary', $contact) }}">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="app-account-contacts__icon-button"
+                                            data-tooltip="Сделать основным" aria-label="Сделать основным">
+                                        <svg aria-hidden="true"><use href="#check"/></svg>
+                                    </button>
+                                </form>
+                            @endif
+
                             <form method="POST" action="{{ route('account.contacts.destroy', $contact) }}">
                                 @csrf @method('DELETE')
-                                <button class="button secondary" type="submit">Удалить</button>
+                                <button type="submit" class="app-account-contacts__icon-button app-account-contacts__icon-button--delete"
+                                        data-tooltip="Удалить контакт" aria-label="Удалить контакт">
+                                    <svg aria-hidden="true"><use href="#close"/></svg>
+                                </button>
                             </form>
                         </div>
-                        @if ($canConfirmByEmail && $pending)
-                            <form method="POST" class="app-account-contacts__verify" action="{{ route('account.contacts.verification.confirm', $contact) }}">
-                                @csrf
-                                <label class="field-group" for="contact-verify-{{ $contact->id }}">Код из письма
-                                    <input id="contact-verify-{{ $contact->id }}" name="code" type="text" inputmode="numeric"
-                                           pattern="[0-9]{6}" autocomplete="one-time-code" maxlength="6" placeholder="000000" required>
-                                </label>
-                                <button type="submit" class="button primary">Подтвердить</button>
-                            </form>
+                        @if ((int) session('contactVerificationFeedbackContactId') === $contact->id)
+                            @if (session('error'))
+                                <p class="app-account-contacts__feedback app-account-contacts__feedback--error"
+                                   role="alert">{{ session('error') }}</p>
+                            @elseif (session('info'))
+                                <p class="app-account-contacts__feedback" role="status">{{ session('info') }}</p>
+                            @endif
+                        @endif
+                        @if ((int) old('_verification_contact_id') === $contact->id && $errors->any())
+                            <p class="app-account-contacts__feedback app-account-contacts__feedback--error"
+                               role="alert">{{ $errors->first() }}</p>
                         @endif
                     </article>
                 @empty

@@ -17,7 +17,6 @@
             {{ $primaryContact ? 'Добавить другой контакт' : 'Добавить контакт' }}
         </button>
     </div>
-    <p class="app-contact-wizard__hint">После подтверждения первого контакта он автоматически становится основным. Позже его можно поменять в разделе «Контакты».</p>
 
     <dialog class="mskba-modal app-contact-wizard__dialog" aria-labelledby="contact-wizard-title">
         <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">

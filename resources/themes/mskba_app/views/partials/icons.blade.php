@@ -14,6 +14,7 @@
   <symbol id="user" viewBox="0 0 24 24"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></symbol>
   <symbol id="save" viewBox="0 0 24 24"><path d="M4 3h14l3 3v15H3V3z"/><path d="M7 3v7h10V3"/><path d="M7 21v-8h10v8"/><path d="M14 3v4"/></symbol>
   <symbol id="check" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+  <symbol id="refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0 -2.35 5.65"/><path d="M20 4v7h-7"/></symbol>
   <symbol id="close" viewBox="0 0 24 24"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
   <symbol id="calendar" viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><path d="M11 15h1"/><path d="M12 15v3"/></symbol>
   <symbol id="chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6l6 -6"/></symbol>

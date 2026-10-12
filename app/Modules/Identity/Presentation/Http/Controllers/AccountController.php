@@ -548,11 +548,13 @@ class AccountController extends Controller
             return redirect()
                 ->route('account.contacts')
                 ->with('info', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id)
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
         } catch (\Throwable $e) {
             return redirect()
                 ->route('account.contacts')
-                ->with('error', $e->getMessage());
+                ->with('error', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id);
         }
 
         return redirect()
@@ -578,7 +580,8 @@ class AccountController extends Controller
             return redirect()
                 ->route('account.contacts')
                 ->withInput()
-                ->with('error', $e->getMessage());
+                ->with('error', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id);
         }
 
         return redirect()

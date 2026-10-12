@@ -119,7 +119,6 @@
                         {{ $primaryVerifiedContact ? 'Выполнено' : 'Обязательно' }}
                     </span>
                 </div>
-                <p>Достаточно одного подтверждённого <strong>основного</strong> контакта: Email, Telegram или другого поддерживаемого канала.</p>
                 @if ($primaryVerifiedContact)
                     <p class="app-confirmation__value">{{ $primaryVerifiedContact->type->label() }}: {{ $primaryVerifiedContact->displayValue() }}</p>
                 @else

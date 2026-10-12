@@ -50,6 +50,128 @@ final class AccountContactsDialogTest extends TestCase
             ->assertDontSee('id="new-contact-type"', false);
     }
 
+    public function test_pending_email_is_shown_in_one_compact_contact_row_with_accessible_icon_actions(): void
+    {
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'pending@example.test',
+            'is_primary' => true,
+        ]);
+        $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('123456'),
+            'sent_to' => 'pending@example.test',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->actingAs($user)->get(route('account.contacts'))->assertOk()
+            ->assertSee('class="app-account-contacts__item"', false)
+            ->assertSee('class="app-account-contacts__controls"', false)
+            ->assertSee('class="app-account-contacts__verify"', false)
+            ->assertSee('aria-label="Шестизначный код из письма для pending@example.test"', false)
+            ->assertSee('data-tooltip="Подтвердить код"', false)
+            ->assertSee('data-tooltip="Отправить новый код"', false)
+            ->assertSee('data-tooltip="Удалить контакт"', false)
+            ->assertSee('<use href="#refresh"/>', false)
+            ->assertSee('<use href="#close"/>', false)
+            ->assertSee(route('account.contacts.verification.confirm', $contact), false)
+            ->assertSee(route('account.contacts.verification.store', $contact), false)
+            ->assertSee(route('account.contacts.destroy', $contact), false)
+            ->assertDontSee('class="app-account-contacts__actions"', false)
+            ->assertDontSee('>Отправить новый код</button>', false)
+            ->assertDontSee('>Удалить</button>', false);
+    }
+
+    public function test_cooldown_message_is_scoped_to_its_contact_and_has_real_seconds(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $user = $this->user();
+        $first = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'first@example.test',
+            'is_primary' => true,
+        ]);
+        $other = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'other@example.test',
+        ]);
+        $this->actingAs($user)->post(route('account.contacts.verification.store', $first))
+            ->assertRedirect(route('account.contacts'));
+
+        $retry = $this->post(route('account.contacts.verification.store', $first));
+        $retry->assertRedirect(route('account.contacts'))
+            ->assertSessionHas('contactVerificationFeedbackContactId', $first->id)
+            ->assertSessionHas('info', fn ($text) => str_contains($text, 'через ')
+                && ! str_contains($text, ':seconds'));
+
+        $page = $this->get(route('account.contacts'))->assertOk()
+            ->assertSee('app-account-contacts__feedback', false)
+            ->assertDontSee(':seconds');
+        $html = $page->getContent();
+        $firstRow = strpos($html, 'first@example.test');
+        $feedback = strpos($html, 'Код уже отправлен.');
+        $otherRow = strpos($html, 'other@example.test');
+        $this->assertNotFalse($firstRow);
+        $this->assertNotFalse($feedback);
+        $this->assertNotFalse($otherRow);
+        $this->assertGreaterThan($firstRow, $feedback);
+        $this->assertLessThan($otherRow, $feedback);
+        $this->assertSame(1, substr_count($html, 'Код уже отправлен.'));
+    }
+
+    public function test_verification_errors_show_beneath_the_corresponding_code_field(): void
+    {
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'invalid-code@example.test', 'is_primary' => true,
+        ]);
+        $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('123456'),
+            'sent_to' => 'invalid-code@example.test',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $post = route('account.contacts.verification.confirm', $contact);
+        $this->actingAs($user)->post($post, [
+            'code' => '999999', '_verification_contact_id' => $contact->id,
+        ])->assertRedirect(route('account.contacts'))
+            ->assertSessionHas('contactVerificationFeedbackContactId', $contact->id)
+            ->assertSessionHas('error');
+
+        $this->get(route('account.contacts'))->assertOk()
+            ->assertSee('app-account-contacts__feedback--error', false)
+            ->assertSee('Неверный код');
+
+        $this->post($post, [
+            'code' => '123', '_verification_contact_id' => $contact->id,
+        ])->assertSessionHasErrors('code');
+
+        // Invalid-length codes are also rejected by server-side FormRequest
+        // validation (the browser normally stops them via the input pattern).
+        $this->assertNotNull($contact->fresh());
+
+    }
+
+    public function test_confirmation_contact_panel_omits_duplicate_explanations(): void
+    {
+        $user = $this->user();
+        $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL,
+            'value' => 'waiting@example.test',
+            'is_primary' => true,
+        ]);
+
+        $this->actingAs($user)->get(route('account.confirmation'))->assertOk()
+            ->assertSee('Ввести код подтверждения')
+            ->assertSee('Добавить другой контакт')
+            ->assertSee('Управлять контактами')
+            ->assertDontSee('Достаточно одного подтверждённого')
+            ->assertDontSee('После подтверждения первого контакта он автоматически становится основным.');
+    }
+
     public function test_ajax_email_and_phone_are_added_unverified_and_return_json(): void
     {
         $user = $this->user();
