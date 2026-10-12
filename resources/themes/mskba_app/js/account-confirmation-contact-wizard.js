@@ -1,4 +1,5 @@
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
+import { createContactResendCooldown } from './contact-resend-cooldown.js';
 const root = document.querySelector('[data-contact-wizard]');
 
 if (root) {
@@ -16,7 +17,6 @@ if (root) {
     let step = 'method';
     let contactId = null;
     let isBusy = false;
-    let cooldownInterval = null;
     let remainingSeconds = 0;
     let opener = null;
     let previousOverflow = '';
@@ -39,24 +39,28 @@ if (root) {
         dialog.setAttribute('aria-busy', value ? 'true' : 'false');
     }
 
-    function cooldown(seconds = 0) {
-        if (cooldownInterval) clearInterval(cooldownInterval);
-        remainingSeconds = Math.max(0, Math.ceil(Number(seconds) || 0));
-        const update = () => {
-            resendButton.disabled = isBusy || remainingSeconds > 0;
-            resendButton.textContent = remainingSeconds > 0
-                ? 'Отправить повторно через ' + remainingSeconds + ' с'
-                : 'Отправить новый код';
-        };
-        update();
-        if (remainingSeconds > 0) {
-            cooldownInterval = setInterval(() => {
-                remainingSeconds = Math.max(0, remainingSeconds - 1);
-                update();
-                if (!remainingSeconds) clearInterval(cooldownInterval);
-            }, 1000);
+    const resendCooldown = createContactResendCooldown(secondsLeft => {
+        remainingSeconds = secondsLeft;
+        resendButton.disabled = isBusy || secondsLeft > 0;
+        resendButton.textContent = secondsLeft > 0
+            ? 'Отправить повторно через ' + secondsLeft + ' с'
+            : 'Отправить новый код';
+    });
+    const cooldown = seconds => resendCooldown.set(seconds);
+    // An existing contact can reopen its dialog without reloading the page.
+    // Keep the original absolute deadline so reopening never restarts 60 seconds.
+    const originalDeadlines = new WeakMap();
+    root.querySelectorAll('[data-contact-wizard-open][data-existing-contact]').forEach(trigger => {
+        originalDeadlines.set(trigger,
+            Date.now() + Math.max(0, Number(trigger.dataset.existingCooldownSeconds || 0)) * 1000);
+    });
+    function applyServerCooldown(seconds) {
+        cooldown(seconds);
+        if (opener?.dataset.existingContact && String(opener.dataset.existingContact) === String(contactId)) {
+            originalDeadlines.set(opener, Date.now() + Math.max(0, Number(seconds) || 0) * 1000);
         }
     }
+
 
     function showStep(value) {
         step = value;
@@ -106,13 +110,13 @@ if (root) {
         contactId = trigger.dataset.existingContact || null;
         emailInput.value = trigger.dataset.emailValue || '';
         codeInput.value = '';
-        cooldown(0);
+        const expiresAt = contactId ? (originalDeadlines.get(trigger) || 0) : 0;
+        cooldown(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
         previousOverflow = document.body.style.overflow;
         dialog.showModal();
         document.body.style.overflow = 'hidden';
         dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
         showStep(contactId ? 'code' : 'method');
-        if (contactId) setFeedback('Если код уже отправлен, введи его. Иначе запроси новый.');
     }
 
     root.querySelectorAll('[data-contact-wizard-open]').forEach(trigger => {
@@ -158,14 +162,14 @@ if (root) {
                 });
                 contactId = response.contact_id;
                 showStep('code');
-                cooldown(response.seconds_left || 60);
+                applyServerCooldown(response.seconds_left ?? 60);
                 setFeedback('Код отправлен на ' + (response.value || emailInput.value) + '. Он действует 15 минут.');
             } catch (error) {
                 if (error.status === 429 && error.payload?.contact_id) {
                     contactId = error.payload.contact_id;
                     showStep('code');
-                    cooldown(error.payload.seconds_left || 60);
-                    setFeedback('Код уже был отправлен. Проверь почту.');
+                    applyServerCooldown(error.payload.seconds_left ?? 60);
+                    setFeedback('Код уже отправлен. Введи его из письма.');
                 } else {
                     setError(error.message);
                 }
@@ -201,11 +205,17 @@ if (root) {
         try {
             const url = root.dataset.resendUrl.replace('__ID__', encodeURIComponent(contactId));
             const response = await post(url, {});
-            cooldown(response.seconds_left || 60);
+            applyServerCooldown(response.seconds_left ?? 60);
             setFeedback('Новый код отправлен.');
         } catch (error) {
-            if (error.status === 429) cooldown(error.payload?.seconds_left || 60);
-            setError(error.message);
+            if (error.status === 429 && error.payload?.seconds_left !== undefined) {
+                applyServerCooldown(error.payload.seconds_left);
+                // The server's remaining time belongs in the existing resend link,
+                // not in a second red error message with a duplicate countdown.
+                setFeedback('Код уже отправлен. Введи его из письма.');
+            } else {
+                setError(error.message);
+            }
         } finally { setBusy(false); }
     });
 

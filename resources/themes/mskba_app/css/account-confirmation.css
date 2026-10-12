@@ -117,6 +117,10 @@
     overflow-wrap:anywhere;
 }
 .app-account-contacts__feedback--error{color:var(--danger)}
+.app-account-contacts__resend-hint{font-variant-numeric:tabular-nums}
+.app-account-contacts__resend-hint[hidden]{display:none!important}
+.app-account-contacts__icon-button:disabled{opacity:.55;cursor:default}
+
 .app-account-contacts__icon-button{
     position:relative;display:grid;place-items:center;flex:none;
     width:40px;height:40px;padding:0;

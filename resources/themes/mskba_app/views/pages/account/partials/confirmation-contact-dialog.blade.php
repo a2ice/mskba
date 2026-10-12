@@ -11,7 +11,8 @@
         @if ($primaryContact && ! $primaryContact->is_verified && $primaryContact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
             <button type="button" class="button primary" data-contact-wizard-open
                     data-existing-contact="{{ $primaryContact->id }}"
-                    data-email-value="{{ $primaryContact->value }}">Ввести код подтверждения</button>
+                    data-email-value="{{ $primaryContact->value }}"
+                    data-existing-cooldown-seconds="{{ $primaryContactResendSeconds ?? 0 }}">Ввести код подтверждения</button>
         @endif
         <button type="button" class="button {{ $primaryContact ? 'secondary' : 'primary' }}" data-contact-wizard-open>
             {{ $primaryContact ? 'Добавить другой контакт' : 'Добавить контакт' }}

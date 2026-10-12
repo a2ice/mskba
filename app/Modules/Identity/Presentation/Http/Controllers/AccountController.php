@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Contact\Application\Exceptions\ContactDeletionException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
+use App\Modules\Contact\Application\Strategies\EmailContactVerificationStrategy;
 use App\Modules\Contact\Application\UseCases\ConfirmContactVerificationHandler;
 use App\Modules\Contact\Application\UseCases\CreateContactForUserHandler;
 use App\Modules\Contact\Application\UseCases\DeleteContactHandler;
@@ -114,6 +115,9 @@ class AccountController extends Controller
             'primaryContact' => $primaryContact,
             'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
             'primaryContactPendingVerification' => $primaryContact?->verifications->first(),
+            'primaryContactResendSeconds' => EmailContactVerificationStrategy::secondsUntilResend(
+                $primaryContact?->verifications->first(),
+            ),
             'genders' => UserGenderEnum::cases(),
             'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
             'vkEnabled' => trim((string) config('vk.app_id')) !== '',
@@ -468,6 +472,11 @@ class AccountController extends Controller
                     ContactTypeEnum::VK,
                 ], true),
             )),
+            'contactResendCooldowns' => $user->contacts->mapWithKeys(fn (Contact $contact): array => [
+                $contact->id => EmailContactVerificationStrategy::secondsUntilResend(
+                    $contact->verifications->first(),
+                ),
+            ])->all(),
             'linkedTelegramAccount' => $linkedTelegramAccount,
             'linkedVkAccount' => $linkedVkAccount,
             'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),

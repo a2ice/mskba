@@ -30,6 +30,11 @@
                     @php
                         $pending = $contact->verifications->first();
                         $canConfirmByEmail = $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL && ! $contact->is_verified;
+                        $resendSeconds = (int) ($contactResendCooldowns[$contact->id] ?? 0);
+                        if ((int) session('contactVerificationFeedbackContactId') === $contact->id
+                            && session()->has('contactVerificationCooldownSeconds')) {
+                            $resendSeconds = max($resendSeconds, (int) session('contactVerificationCooldownSeconds'));
+                        }
                     @endphp
                     <article class="app-account-contacts__item">
                         <div class="app-account-contacts__meta">
@@ -62,11 +67,13 @@
                             @endif
 
                             @if ($canConfirmByEmail)
-                                <form method="POST" action="{{ route('account.contacts.verification.store', $contact) }}">
+                                <form method="POST" action="{{ route('account.contacts.verification.store', $contact) }}"
+                                      data-contact-resend-form data-cooldown-seconds="{{ $resendSeconds }}">
                                     @csrf
                                     <button type="submit" class="app-account-contacts__icon-button"
-                                            data-tooltip="{{ $pending ? 'Отправить новый код' : 'Отправить код' }}"
-                                            aria-label="{{ $pending ? 'Отправить новый код' : 'Отправить код' }}">
+                                            data-contact-resend-button @disabled($resendSeconds > 0)
+                                            data-tooltip="{{ $resendSeconds > 0 ? 'Ожидайте' : ($pending ? 'Отправить новый код' : 'Отправить код') }}"
+                                            aria-label="{{ $resendSeconds > 0 ? 'Отправка доступна позже' : ($pending ? 'Отправить новый код' : 'Отправить код') }}">
                                         <svg aria-hidden="true"><use href="#refresh"/></svg>
                                     </button>
                                 </form>
@@ -90,11 +97,19 @@
                                 </button>
                             </form>
                         </div>
+                        @if ($canConfirmByEmail && $pending)
+                            <p class="app-account-contacts__feedback app-account-contacts__resend-hint"
+                               data-contact-resend-hint role="status" aria-live="polite"
+                               @if ($resendSeconds <= 0) hidden @endif>
+                                Код уже отправлен. Новый код можно запросить через
+                                <span data-contact-resend-countdown>{{ $resendSeconds }}</span> сек.
+                            </p>
+                        @endif
                         @if ((int) session('contactVerificationFeedbackContactId') === $contact->id)
                             @if (session('error'))
                                 <p class="app-account-contacts__feedback app-account-contacts__feedback--error"
                                    role="alert">{{ session('error') }}</p>
-                            @elseif (session('info'))
+                            @elseif (session('info') && ! session()->has('contactVerificationCooldownSeconds'))
                                 <p class="app-account-contacts__feedback" role="status">{{ session('info') }}</p>
                             @endif
                         @endif

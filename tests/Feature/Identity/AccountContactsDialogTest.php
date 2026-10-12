@@ -72,7 +72,9 @@ final class AccountContactsDialogTest extends TestCase
             ->assertSee('class="app-account-contacts__verify"', false)
             ->assertSee('aria-label="Шестизначный код из письма для pending@example.test"', false)
             ->assertSee('data-tooltip="Подтвердить код"', false)
-            ->assertSee('data-tooltip="Отправить новый код"', false)
+            ->assertSee('data-tooltip="Ожидайте"', false)
+            ->assertSee('data-contact-resend-hint', false)
+            ->assertSee('data-contact-resend-countdown', false)
             ->assertSee('data-tooltip="Удалить контакт"', false)
             ->assertSee('<use href="#refresh"/>', false)
             ->assertSee('<use href="#close"/>', false)
@@ -153,6 +155,35 @@ final class AccountContactsDialogTest extends TestCase
         // validation (the browser normally stops them via the input pattern).
         $this->assertNotNull($contact->fresh());
 
+    }
+
+    public function test_two_pending_emails_have_independent_server_cooldowns(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $user = $this->user();
+        foreach ([0, 42] as $index => $ageSeconds) {
+            $email = $index === 0 ? 'first-timer@example.test' : 'second-timer@example.test';
+            $contact = $user->contacts()->create([
+                'type' => ContactTypeEnum::EMAIL,
+                'value' => $email,
+                'is_primary' => $index === 0,
+            ]);
+            $verification = $contact->verifications()->create([
+                'channel' => ContactVerificationChannelEnum::EMAIL,
+                'status' => ContactVerificationStatusEnum::PENDING,
+                'code_hash' => bcrypt('123456'),
+                'sent_to' => $email,
+                'expires_at' => now()->addMinutes(15),
+            ]);
+            $verification->forceFill(['created_at' => now()->subSeconds($ageSeconds)])->save();
+        }
+        $html = $this->actingAs($user)->get(route('account.contacts'))->assertOk()->getContent();
+        preg_match_all('/data-contact-resend-form data-cooldown-seconds="(\d+)"/', $html, $matches);
+        $this->assertSame(['60', '18'], $matches[1]);
+        $this->assertSame(2, substr_count($html, 'data-contact-resend-hint'));
+        $this->travel(61)->seconds();
+        $page = $this->get(route('account.contacts'))->assertOk();
+        $page->assertSee('data-cooldown-seconds="0"', false);
     }
 
     public function test_confirmation_contact_panel_omits_duplicate_explanations(): void

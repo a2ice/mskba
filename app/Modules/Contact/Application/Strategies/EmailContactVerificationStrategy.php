@@ -15,7 +15,17 @@ use Illuminate\Support\Facades\Mail;
 
 class EmailContactVerificationStrategy implements ContactVerificationStrategy
 {
-    private const RESEND_COOLDOWN_SECONDS = 60;
+    public const RESEND_COOLDOWN_SECONDS = 60;
+
+    public static function secondsUntilResend(?ContactVerification $verification): int
+    {
+        if ($verification === null || $verification->expires_at === null || $verification->expires_at->isPast()) {
+            return 0;
+        }
+
+        return max(0, $verification->created_at->timestamp
+            + self::RESEND_COOLDOWN_SECONDS - now()->timestamp);
+    }
 
     public function supports(Contact $contact): bool
     {
@@ -32,10 +42,10 @@ class EmailContactVerificationStrategy implements ContactVerificationStrategy
             ->first();
 
         if ($pendingVerification) {
-            $availableAt = $pendingVerification->created_at->copy()->addSeconds(self::RESEND_COOLDOWN_SECONDS);
+            $secondsLeft = self::secondsUntilResend($pendingVerification);
 
-            if ($availableAt->isFuture()) {
-                throw new ContactVerificationCooldownException(now()->diffInSeconds($availableAt));
+            if ($secondsLeft > 0) {
+                throw new ContactVerificationCooldownException($secondsLeft);
             }
 
             $pendingVerification->update([

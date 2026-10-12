@@ -100,6 +100,7 @@ if (root) {
         const current = document.querySelector('[data-account-contacts-list]');
         if (!updated || !current) throw new Error('Не удалось получить обновлённый список контактов.');
         current.replaceWith(updated);
+        document.dispatchEvent(new Event('mskba:contacts-list-updated'));
     }
 
     const telegramLink = createTelegramContactBotLink({
