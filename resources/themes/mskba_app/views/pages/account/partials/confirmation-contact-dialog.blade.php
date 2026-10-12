@@ -9,11 +9,13 @@
      data-telegram-bot="{{ $telegramBotUsername }}"
      @if ($contactEmulationEnabled ?? false) data-emulate-url="{{ route('account.contacts.provider-emulation') }}" @endif>
     <div class="app-contact-wizard__trigger">
-        @if ($primaryContact && ! $primaryContact->is_verified && $primaryContact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
+        @if ($primaryContact && ! $primaryContact->is_verified && $primaryContact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL
+            && ($primaryContactPendingVerification?->expires_at?->isFuture() ?? false))
             <button type="button" class="button primary" data-contact-wizard-open
                     data-existing-contact="{{ $primaryContact->id }}"
                     data-email-value="{{ $primaryContact->value }}"
-                    data-existing-cooldown-seconds="{{ $primaryContactResendSeconds ?? 0 }}">Ввести код подтверждения</button>
+                    data-existing-cooldown-seconds="{{ $primaryContactResendSeconds ?? 0 }}"
+                    data-existing-code-expires-at="{{ $primaryContactPendingVerification->expires_at->timestamp }}">Ввести код подтверждения</button>
         @endif
         <button type="button" class="button {{ $primaryContact ? 'secondary' : 'primary' }}" data-contact-wizard-open>
             {{ $primaryContact ? 'Добавить другой контакт' : 'Добавить контакт' }}
@@ -44,7 +46,7 @@
 
             <section data-wizard-step="code" hidden>
                 <h3>Подтверди Email</h3>
-                <p>Введи код из письма. Код действует 15 минут. Не более пяти попыток ввода.</p>
+                <p>Введи код из письма. Код действует 60 минут. Не более пяти попыток ввода.</p>
                 <label class="field-group" for="wizard-code">Шестизначный код
                     <input id="wizard-code" data-wizard-code type="text" inputmode="numeric"
                            autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000">

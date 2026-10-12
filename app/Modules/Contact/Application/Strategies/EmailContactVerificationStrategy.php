@@ -19,6 +19,7 @@ use Throwable;
 class EmailContactVerificationStrategy implements ContactVerificationStrategy
 {
     public const RESEND_COOLDOWN_SECONDS = 60;
+    public const CODE_TTL_MINUTES = 60;
 
     public static function secondsUntilResend(?ContactVerification $verification): int
     {
@@ -87,7 +88,7 @@ class EmailContactVerificationStrategy implements ContactVerificationStrategy
             'sent_to' => $contact->value,
             'attempts_count' => 0,
             'max_attempts' => 5,
-            'expires_at' => now()->addMinutes(15),
+            'expires_at' => now()->addMinutes(self::CODE_TTL_MINUTES),
         ]);
 
         try {

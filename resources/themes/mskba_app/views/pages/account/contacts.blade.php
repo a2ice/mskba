@@ -24,11 +24,10 @@
                 <div class="app-confirmation__card-heading">
                     <h2>Мои контакты</h2>
                 </div>
-                <p>Первый подтверждённый контакт автоматически становится основным. Остальные подтверждённые контакты можно назначать основными вручную.</p>
 
                 @forelse ($user->contacts as $contact)
                     @php
-                        $pending = $contact->verifications->first();
+                        $pending = $contact->verifications->first(fn ($verification) => $verification->expires_at?->isFuture());
                         $canConfirmByEmail = $contact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL && ! $contact->is_verified;
                         $resendSeconds = (int) ($contactResendCooldowns[$contact->id] ?? 0);
                         if ((int) session('contactVerificationFeedbackContactId') === $contact->id
@@ -55,6 +54,7 @@
                         <div class="app-account-contacts__controls">
                             @if ($canConfirmByEmail && $pending)
                                 <form method="POST" class="app-account-contacts__verify"
+                                      data-contact-code-expires-at="{{ $pending->expires_at->timestamp }}"
                                       action="{{ route('account.contacts.verification.confirm', $contact) }}">
                                     @csrf
                                     <input type="hidden" name="_verification_contact_id" value="{{ $contact->id }}">
@@ -108,6 +108,9 @@
                                 </button>
                             </form>
                         </div>
+                        @if ($canConfirmByEmail && $pending)
+                            <p class="app-account-contacts__feedback" data-contact-code-timer role="status">Код действителен ещё <span data-contact-code-remaining></span></p>
+                        @endif
                         @if ($canConfirmByEmail)
                             <p class="app-account-contacts__feedback app-account-contacts__resend-hint"
                                data-contact-resend-hint role="status" aria-live="polite"

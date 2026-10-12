@@ -888,6 +888,7 @@ class AccountController extends Controller
         $contacts = $user->identityContactsQuery()
             ->with(['verifications' => fn ($query) => $query
                 ->where('status', ContactVerificationStatusEnum::PENDING->value)
+                ->where('expires_at', '>', now())
                 ->latest()])
             ->orderByDesc('is_primary')
             ->orderBy('type')

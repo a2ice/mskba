@@ -51,7 +51,9 @@ if (root) {
     // An existing contact can reopen its dialog without reloading the page.
     // Keep the original absolute deadline so reopening never restarts 60 seconds.
     const originalDeadlines = new WeakMap();
+    const codeDeadlines = new WeakMap();
     root.querySelectorAll('[data-contact-wizard-open][data-existing-contact]').forEach(trigger => {
+        codeDeadlines.set(trigger, Number(trigger.dataset.existingCodeExpiresAt || 0) * 1000);
         originalDeadlines.set(trigger,
             Date.now() + Math.max(0, Number(trigger.dataset.existingCooldownSeconds || 0)) * 1000);
     });
@@ -116,6 +118,10 @@ if (root) {
     function openWizard(trigger) {
         opener = trigger;
         contactId = trigger.dataset.existingContact || null;
+        if (contactId && Date.now() >= (codeDeadlines.get(trigger) || 0)) {
+            window.location.reload();
+            return;
+        }
         emailInput.value = trigger.dataset.emailValue || '';
         codeInput.value = '';
         const expiresAt = contactId ? (originalDeadlines.get(trigger) || 0) : 0;
@@ -127,6 +133,15 @@ if (root) {
         showStep(contactId ? 'code' : 'method');
         emulator.reset();
     }
+
+    // An already open dialog must not accept a code after its deadline.
+    setInterval(() => {
+        if (!dialog.open || !opener?.dataset.existingContact) return;
+        if (Date.now() >= (codeDeadlines.get(opener) || 0)) {
+            dialog.close();
+            window.location.reload();
+        }
+    }, 1000);
 
     root.querySelectorAll('[data-contact-wizard-open]').forEach(trigger => {
         trigger.addEventListener('click', () => openWizard(trigger));
@@ -177,7 +192,7 @@ if (root) {
                 contactId = response.contact_id;
                 showStep('code');
                 applyServerCooldown(response.seconds_left ?? 60);
-                setFeedback('Код отправлен на ' + (response.value || emailInput.value) + '. Он действует 15 минут.');
+                setFeedback('Код отправлен на ' + (response.value || emailInput.value) + '. Он действует 60 минут.');
             } catch (error) {
                 if (error.status === 429 && error.payload?.contact_id) {
                     contactId = error.payload.contact_id;
@@ -207,7 +222,14 @@ if (root) {
                 const response = await post(url, { code });
                 setFeedback(response.message || 'Контакт подтверждён.');
                 window.location.assign(response.redirect_url || window.location.href);
-            } catch (error) { setError(error.message); }
+            } catch (error) {
+                if (/срок действия кода истек|expired|нет активного кода/i.test(error.message)) {
+                    dialog.close();
+                    window.location.reload();
+                } else {
+                    setError(error.message);
+                }
+            }
             finally { setBusy(false); }
         }
     });
@@ -220,6 +242,9 @@ if (root) {
             const url = root.dataset.resendUrl.replace('__ID__', encodeURIComponent(contactId));
             const response = await post(url, {});
             applyServerCooldown(response.seconds_left ?? 60);
+            if (opener?.dataset.existingContact && String(opener.dataset.existingContact) === String(contactId)) {
+                codeDeadlines.set(opener, Date.now() + 60 * 60 * 1000);
+            }
             setFeedback('Новый код отправлен.');
         } catch (error) {
             if (error.status === 429 && error.payload?.seconds_left !== undefined) {

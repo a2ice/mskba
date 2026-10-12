@@ -16,6 +16,7 @@ import './account-direct-messages.js';
 import './account-contacts-add.js';
 import './account-contacts-delete.js';
 import './account-contacts-resend.js';
+import './account-contacts-expiry.js';
 import { createApp } from 'vue';
 import AuthDialog from './components/AuthDialog.vue';
 

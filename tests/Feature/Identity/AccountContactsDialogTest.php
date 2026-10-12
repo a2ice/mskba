@@ -112,6 +112,8 @@ final class AccountContactsDialogTest extends TestCase
             ->assertSee('data-contact-add-step="vk"', false)
             ->assertSee('data-contact-add-step="done"', false)
             ->assertSee('data-account-contacts-list', false)
+            ->assertDontSee('Первый подтверждённый контакт автоматически становится основным')
+            ->assertDontSee('Остальные подтверждённые контакты можно назначать основными вручную')
             ->assertSee('SMS-подтверждение пока недоступно')
             ->assertDontSee('Открыть подтверждение аккаунта')
             ->assertDontSee('id="new-contact-type"', false);
@@ -315,6 +317,44 @@ final class AccountContactsDialogTest extends TestCase
 
     }
 
+    public function test_new_email_code_expires_in_sixty_minutes(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        config()->set('mail.default', 'smtp');
+        \Illuminate\Support\Facades\Mail::fake();
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'sixty-minutes@example.test',
+        ]);
+        $this->actingAs($user)->postJson(route('account.contacts.verification.store', $contact))->assertOk();
+        $this->assertSame(
+            3600.0,
+            now()->diffInSeconds($contact->verifications()->latest()->firstOrFail()->expires_at, false),
+        );
+    }
+
+    public function test_expired_email_code_restores_initial_confirmation_button(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'expired-form@example.test', 'is_primary' => true,
+        ]);
+        $verification = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('123456'),
+            'sent_to' => 'expired-form@example.test',
+            'expires_at' => now()->subSecond(),
+        ]);
+        $this->actingAs($user)->get(route('account.contacts'))->assertOk()
+            ->assertSee('data-contact-resend-text', false)
+            ->assertDontSee('data-contact-code-expires-at', false);
+        $this->get(route('account.confirmation'))->assertOk()
+            ->assertDontSee('Ввести код подтверждения');
+        $this->assertSame(ContactVerificationStatusEnum::PENDING, $verification->fresh()->status);
+    }
+
     public function test_two_pending_emails_have_independent_server_cooldowns(): void
     {
         $this->travelTo(now()->startOfSecond());
@@ -353,8 +393,9 @@ final class AccountContactsDialogTest extends TestCase
             'is_primary' => true,
         ]);
 
+        // No active code means the dialog must not offer stale code input.
         $this->actingAs($user)->get(route('account.confirmation'))->assertOk()
-            ->assertSee('Ввести код подтверждения')
+            ->assertDontSee('Ввести код подтверждения')
             ->assertSee('Добавить другой контакт')
             ->assertSee('Управлять контактами')
             ->assertDontSee('Достаточно одного подтверждённого')
