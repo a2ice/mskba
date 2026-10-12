@@ -332,8 +332,3 @@
     margin:0 0 18px!important;color:var(--muted);font-size:14px;line-height:1.5;
 }
 .app-contact-emulation__run{margin-top:18px}
-[data-provider-emulation-step] .field-group select{
-    width:100%;min-height:44px;border-radius:12px;
-    background:var(--surface,#17191a);color:var(--text);border:1px solid var(--line);
-    padding:10px 12px;
-}

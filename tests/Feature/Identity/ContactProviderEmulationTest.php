@@ -92,6 +92,8 @@ final class ContactProviderEmulationTest extends TestCase
         $this->actingAs($user)->get(route('account.confirmation'))->assertOk()
             ->assertSee('data-emulate-url', false)
             ->assertSee('id="confirmation-provider-emulation-outcome"', false)
+            ->assertSee('class="select-control"', false)
+            ->assertSee('<use href="#chevron-down"/>', false)
             ->assertSee('Тестовый режим')
             ->assertSee('value="telegram"', false)
             ->assertSee('value="vk"', false);
@@ -208,6 +210,8 @@ final class ContactProviderEmulationTest extends TestCase
 
         $this->actingAs($user)->get(route('account.contacts'))->assertOk()
             ->assertSee('data-emulate-url', false)
+            ->assertSee('class="select-control"', false)
+            ->assertSee('<use href="#chevron-down"/>', false)
             ->assertSee('value="telegram"', false)
             ->assertSee('value="vk"', false)
             ->assertSee('Тестовый режим')
