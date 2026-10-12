@@ -3,6 +3,7 @@
 @section('account-heading')
     @include('theme::pages.account.partials.section-heading', [
         'heading' => 'Сообщения',
+        'intro' => 'Системные уведомления, переписки по заявкам и личные сообщения.',
     ])
 @endsection
 
