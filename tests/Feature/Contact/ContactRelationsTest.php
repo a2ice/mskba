@@ -761,6 +761,7 @@ class ContactRelationsTest extends TestCase
             'type' => ContactTypeEnum::EMAIL,
             'value' => 'primary-delete-denied@example.test',
             'is_primary' => true,
+            'verified_at' => now(),
         ]);
 
         $response = $this->actingAs($user)

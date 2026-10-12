@@ -20,11 +20,11 @@
         @endif
 
         @if ($user)
-            <section class="panel app-account-contacts__panel">
+            <section class="panel app-account-contacts__panel" data-account-contacts-list>
                 <div class="app-confirmation__card-heading">
                     <h2>Мои контакты</h2>
                 </div>
-                <p>Первый контакт автоматически становится основным. После подтверждения аккаунта основным можно назначить только подтверждённый контакт.</p>
+                <p>Первый подтверждённый контакт автоматически становится основным. Остальные подтверждённые контакты можно назначать основными вручную.</p>
 
                 @forelse ($user->contacts as $contact)
                     @php
@@ -36,7 +36,7 @@
                             <strong>{{ $contact->type->label() }}: {{ $contact->displayValue() }}</strong>
                             <div class="app-account-contacts__badges">
                                 @if ($contact->is_primary)
-                                    <span class="app-confirmation__state app-confirmation__state--done">Основной</span>
+                                    <span class="app-confirmation__state {{ $contact->is_verified ? 'app-confirmation__state--done' : '' }}">{{ $contact->is_verified ? 'Основной' : 'Ожидает подтверждения для основного' }}</span>
                                 @endif
                                 <span class="app-confirmation__state {{ $contact->is_verified ? 'app-confirmation__state--done' : '' }}">
                                     {{ $contact->is_verified ? 'Подтверждён' : 'Не подтверждён' }}
@@ -45,7 +45,7 @@
                         </div>
                         <div class="app-account-contacts__actions">
                             @unless ($contact->is_primary)
-                                @if (! $user->isConfirmed() || $contact->is_verified)
+                                @if ($contact->is_verified)
                                     <form method="POST" action="{{ route('account.contacts.primary', $contact) }}">
                                         @csrf @method('PATCH')
                                         <button class="button secondary" type="submit">Сделать основным</button>
@@ -81,26 +81,7 @@
 
             <section class="panel app-account-contacts__panel">
                 <h2>Добавить контакт</h2>
-                @unless ($user->isConfirmed())
-                    <p>Для подтверждения первого контакта удобнее использовать пошаговый визард.</p>
-                    <a class="button primary" href="{{ route('account.confirmation') }}">Открыть подтверждение аккаунта</a>
-                @endunless
-                <form method="POST" class="app-account-contacts__add" action="{{ route('account.contacts.store') }}">
-                    @csrf
-                    <div class="field-group">
-                        <label for="new-contact-type">Тип контакта</label>
-                        <select id="new-contact-type" name="type" required>
-                            <option value="email">Email</option>
-                            <option value="phone">Телефон (без SMS-подтверждения)</option>
-                        </select>
-                    </div>
-                    <div class="field-group">
-                        <label for="new-contact-value">Адрес или номер</label>
-                        <input id="new-contact-value" name="value" type="text" maxlength="255" value="{{ old('value') }}" required>
-                    </div>
-                    <button class="button secondary" type="submit">Добавить</button>
-                </form>
-                <p class="app-account-contacts__note">Telegram и VK подтверждаются через официальную авторизацию. Если контакт уже привязан, он появится в списке автоматически.</p>
+                @include('theme::pages.account.partials.contact-add-dialog')
             </section>
         @endif
     </div>

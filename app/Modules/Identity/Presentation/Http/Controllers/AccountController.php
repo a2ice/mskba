@@ -448,21 +448,41 @@ class AccountController extends Controller
     public function storeContact(
         CreateAccountContactRequest $request,
         CreateContactForUserHandler $createContactForUser,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $user = $this->accountCheckForPresentationService->handle($request->user());
+        $contactData = $request->toDTO();
 
-        try {
-            $createContactForUser->handle($user, $request->toDTO());
-        } catch (InvalidArgumentException $e) {
-            return redirect()
-                ->route('account.contacts')
-                ->withInput()
-                ->with('error', $e->getMessage());
+        // Telegram and VK contacts can be created only by their signed identity flows.
+        // User-supplied handles must never enter the identity contact list.
+        if (! in_array($contactData->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
+            $message = 'Telegram и VK добавляются только через официальную авторизацию.';
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 422)
+                : redirect()->route('account.contacts')->with('error', $message);
         }
 
-        return redirect()
-            ->route('account.contacts')
-            ->with('status', 'Контакт добавлен.');
+        try {
+            $contact = $createContactForUser->handle($user, $contactData);
+        } catch (InvalidArgumentException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 422)
+                : redirect()->route('account.contacts')->withInput()->with('error', $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Контакт добавлен.',
+                'contact' => [
+                    'id' => $contact->id,
+                    'type' => $contact->type->value,
+                    'value' => $contact->displayValue(),
+                    'is_verified' => $contact->hasBeenVerified(),
+                    'is_primary' => (bool) $contact->is_primary,
+                ],
+            ], 201);
+        }
+
+        return redirect()->route('account.contacts')->with('status', 'Контакт добавлен.');
     }
 
     public function setPrimaryContact(Contact $contact, SetPrimaryContactForUserHandler $setPrimaryContact): RedirectResponse
