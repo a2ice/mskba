@@ -122,11 +122,21 @@
 .app-account-nav--mobile { display:none; }
 @media(max-width:900px) {
   .app-account-layout {
-    grid-template-columns:minmax(0,1fr);
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
     gap:16px;
     min-height:0;
   }
-  .app-account-layout__aside { position:static; }
+  /* Keep the mobile sidebar in normal page flow until it reaches the fixed
+     context bar, then let it stick beneath that bar. JS only controls density. */
+  .app-account-layout__aside {
+    position:sticky;
+    top:calc(var(--header-height) + var(--context-bar-height));
+    z-index:18;
+    align-self:start;
+    width:100%;
+  }
   .app-account-nav--desktop { display:none; }
   .app-account-nav--mobile { display:block; padding:0; }
   .app-account-nav__mobile-trigger {
@@ -152,6 +162,54 @@
   }
   .app-account-section { padding:16px 0 48px; }
   .app-account-section__heading { margin-bottom:18px; }
+
+  /* Full-bleed compact bar: visually and geometrically spans the viewport,
+     with the same frosted surface as the breadcrumb/action context bar. */
+  .app-account-layout__aside.is-stuck {
+    /* Match the 24px container gutters rather than 100vw, which includes
+       the scrollbar width and can create horizontal overflow. */
+    width:calc(100% + 48px);
+    box-sizing:border-box;
+    margin-inline:-24px;
+    padding:4px 24px;
+    background:color-mix(in srgb, var(--surface) 84%, transparent);
+    -webkit-backdrop-filter:blur(12px) saturate(1.15);
+    backdrop-filter:blur(12px) saturate(1.15);
+    border-bottom:1px solid var(--line);
+  }
+  .app-account-layout__aside.is-stuck .app-account-nav--mobile {
+    position:relative;
+    border-radius:12px;
+  }
+  .app-account-layout__aside.is-stuck .app-account-nav__mobile-trigger {
+    min-height:35px;
+    padding:7px 12px;
+    font-size:13px;
+    line-height:20px;
+  }
+  .app-account-layout__aside.is-stuck .app-account-nav--mobile[open] .app-account-nav__links {
+    position:absolute;
+    top:calc(100% + 5px);
+    left:0;
+    right:0;
+    max-height:min(62dvh,calc(100dvh - var(--header-height) - var(--context-bar-height) - 60px));
+    overflow-y:auto;
+    padding:10px 12px 12px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--surface);
+    box-shadow:0 16px 35px #0009;
+  }
+  html:has(.app-account-layout__aside.is-stuck) {
+    scroll-padding-top:calc(var(--header-height) + var(--context-bar-height) + 60px);
+  }
+}
+@media (max-width:639px) {
+  .app-account-layout__aside.is-stuck {
+    width:calc(100% + 32px);
+    margin-inline:-16px;
+    padding-inline:16px;
+  }
 }
 @media(prefers-reduced-motion:reduce) {
   .app-account-nav__link,.app-account-nav__mobile-trigger svg { transition:none; }

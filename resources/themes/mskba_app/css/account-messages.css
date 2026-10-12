@@ -1,0 +1,114 @@
+/* Account messages: same palette and compact cards as notification toasts,
+   with space for future peer conversations (outgoing / incoming alignment). */
+.app-messages{display:grid;gap:14px;min-width:0}
+.app-messages__conversation{
+    display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:14px;
+    padding:18px 20px;border:1px solid var(--line);border-left:3px solid var(--conversation-accent,var(--accent));
+    border-radius:var(--radius-card);background:var(--surface);color:var(--text);
+    box-shadow:0 10px 28px #0004;text-decoration:none;min-width:0;transition:background .15s,border-color .15s
+}
+.app-messages__conversation:hover{background:var(--surface-raised);border-color:var(--control-line);border-left-color:var(--conversation-accent,var(--accent))}
+.app-messages__avatar{display:grid;place-items:center;width:44px;height:44px;background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 50%,var(--line));border-radius:14px;color:var(--accent);flex:none}
+.app-messages__avatar svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.7;fill:none}
+.app-messages__summary{display:grid;gap:4px;min-width:0}
+.app-messages__heading{display:flex;justify-content:space-between;gap:12px;align-items:start}
+.app-messages__heading strong{font-size:15px}
+.app-messages__heading time{font-size:12px;color:var(--muted);white-space:nowrap}
+.app-messages__subject{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__excerpt{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__meta{display:flex;align-items:center;gap:10px;color:var(--muted)}
+.app-messages__meta svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;transform:rotate(-90deg)}
+.app-messages__unread{display:grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--accent);font-weight:700;font-size:12px;color:var(--on-accent);font-variant-numeric:tabular-nums}
+.app-messages__empty{padding:24px}
+.app-messages__empty h2{font-size:20px;margin:0 0 8px}
+.app-messages__empty p{font-size:14px;color:var(--muted);margin:0}
+.app-messages--thread{max-width:900px;gap:18px}
+.app-messages__thread-header{display:grid;gap:14px;border-bottom:1px solid var(--line);padding-bottom:18px}
+.app-messages__back{display:inline-flex;align-items:center;gap:8px;width:max-content;text-decoration:none;color:var(--muted);font-size:14px}
+.app-messages__back:hover{color:var(--accent)}
+.app-messages__back svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;transform:rotate(180deg)}
+.app-messages__thread-contact{display:flex;align-items:center;gap:12px}
+.app-messages__thread-contact h2{font-size:21px;margin:0 0 3px}
+.app-messages__thread-contact p{font-size:13px;color:var(--muted);margin:0}
+.app-messages__history{display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0}
+.app-messages__bubble{display:flex;flex-direction:column;align-self:flex-start;width:max-content;max-width:80%;min-width:min(260px,100%);gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 18px 6px;padding:14px 16px;overflow-wrap:anywhere}
+.app-messages__bubble--incoming{border-left:3px solid #ff8a00}
+.app-messages__bubble--outgoing{align-self:flex-end;border-radius:18px 18px 6px 18px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 11%,var(--surface))}
+.app-messages__bubble-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.app-messages__bubble-head strong{font-size:14px;line-height:1.4}
+.app-messages__new-label{font-size:11px;font-weight:650;color:var(--accent)}
+.app-messages__bubble-body{font-size:13px;line-height:1.5;color:var(--muted);margin:0;white-space:pre-wrap}
+.app-messages__timestamp{font-size:11px;color:var(--faint);align-self:flex-end;font-variant-numeric:tabular-nums}
+.app-messages__action{color:var(--accent);text-decoration:underline;text-underline-offset:3px;font-size:13px;font-weight:650;align-self:flex-start}
+.app-messages__action-form{margin:0}
+.app-messages__action-form .button{font-size:12px;padding:8px 12px}
+.app-messages__pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-top:1px solid var(--line);font-size:13px}
+.app-messages__pagination a{color:var(--accent);text-decoration:none}
+.app-messages__pagination span{color:var(--muted)}
+.app-messages__thread-empty{color:var(--muted);font-size:14px}
+.app-messages__read-error{color:var(--danger);font-size:13px}
+.app-messages__read-error[hidden]{display:none}
+@media(max-width:680px){
+    .app-messages__conversation{grid-template-columns:40px minmax(0,1fr) auto;padding:14px 12px;gap:10px;border-radius:18px}
+    .app-messages__avatar{height:40px;width:40px}
+    .app-messages__heading{flex-wrap:wrap;gap:4px}
+    .app-messages__heading strong{font-size:14px}
+    .app-messages__heading time{font-size:11px}
+    .app-messages__meta{gap:5px}
+    .app-messages__meta svg{display:none}
+    .app-messages__bubble{max-width:94%;padding:12px 13px}
+    .app-messages__pagination{flex-wrap:wrap;font-size:12px}
+}
+
+.app-messages__support{padding:18px 20px;display:grid;gap:8px;max-width:700px}
+.app-messages__support strong{font-size:15px}
+.app-messages__support p{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.app-messages__support a{color:var(--accent);font-size:13px;width:fit-content;display:inline-flex;gap:6px;align-items:center}
+.app-messages__support a svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.7}
+
+.app-messages__bubble--system{align-self:center;max-width:85%;border:1px solid color-mix(in srgb,#ff8a00 40%,var(--line));border-radius:14px;background:color-mix(in srgb,#ff8a00 7%,var(--surface))}
+.app-messages__bubble--system .app-messages__bubble-head strong{color:var(--accent)}
+.app-messages__participants{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.app-messages__participant{display:inline;background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:650;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.app-messages__compose{border-top:1px solid var(--line);padding-top:17px;display:grid;gap:10px;max-width:700px}
+.app-messages__compose label{font-size:13px;font-weight:600}
+.app-messages__compose textarea,.app-messages__direct-dialog textarea{width:100%;min-height:85px;background:var(--surface);color:var(--text);border:1px solid var(--control-line);border-radius:var(--radius-control);resize:vertical;padding:12px}
+.app-messages__compose button{justify-self:end}
+.app-messages__closed{font-size:13px;color:var(--muted);border:1px solid var(--line);padding:14px;border-radius:12px}
+.app-messages__direct-name{font-size:16px;font-weight:700;margin:0 0 12px}
+.app-messages__direct-dialog [data-direct-form]{display:grid;gap:15px}
+.app-messages__direct-dialog [data-direct-form][hidden]{display:none}
+.app-messages__direct-dialog [data-direct-form] button{justify-self:end}
+.app-messages__direct-dialog [data-direct-error]{color:var(--danger)}
+.app-messages__direct-dialog [data-direct-success]{color:var(--success)}
+.app-messages__direct-dialog [hidden]{display:none!important}
+.app-messages__pagination [aria-disabled="true"]{opacity:.4;pointer-events:none}
+
+
+/* System notices reuse the toast language, not incoming-person bubble corners. */
+.app-messages--system .app-messages__bubble--notification{
+    width:min(100%,640px);
+    max-width:100%;
+    border:1px solid var(--line);
+    border-left:3px solid #ff8a00;
+    border-radius:16px;
+    padding:12px 14px;
+    gap:5px;
+    background:var(--surface);
+}
+.app-messages--system .app-messages__support{
+    width:min(100%,640px);
+    max-width:100%;
+    box-sizing:border-box;
+    border-radius:16px;
+    padding:16px;
+    gap:7px;
+}
+@media(max-width:680px){
+    .app-messages--system .app-messages__bubble--notification{
+        padding:11px 12px;
+    }
+    .app-messages--system .app-messages__support{
+        padding:14px 12px;
+    }
+}

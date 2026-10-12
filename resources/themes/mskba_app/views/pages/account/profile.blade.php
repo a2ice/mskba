@@ -124,66 +124,80 @@
             @if ($profileConfirmed)
                 <p class="app-profile__support-copy">Твои имя, фамилия, дата рождения и пол уже подтверждены. Для их изменения нужно отправить заявку.</p>
             @endif
-            <form method="POST" action="{{ route('account.profile.update') }}" class="app-profile__personal-form">
+            @php
+                $personalFields = [
+                    ['name' => 'first_name', 'id' => 'app-profile-first-name', 'label' => 'Имя', 'type' => 'text',
+                     'auto' => 'given-name', 'value' => (string) ($profile?->first_name ?? '')],
+                    ['name' => 'last_name', 'id' => 'app-profile-last-name', 'label' => 'Фамилия', 'type' => 'text',
+                     'auto' => 'family-name', 'value' => (string) ($profile?->last_name ?? '')],
+                    ['name' => 'middle_name', 'id' => 'app-profile-middle-name', 'label' => 'Отчество', 'type' => 'text',
+                     'auto' => 'additional-name', 'value' => (string) ($profile?->middle_name ?? '')],
+                    ['name' => 'birth_date', 'id' => 'app-profile-birth-date', 'label' => 'Дата рождения', 'type' => 'date',
+                     'auto' => 'bday', 'value' => $profile?->birth_date?->toDateString() ?? ''],
+                    ['name' => 'gender', 'id' => 'app-profile-gender', 'label' => 'Пол', 'type' => 'select',
+                     'auto' => 'sex', 'value' => $profile?->gender?->value ?? ''],
+                ];
+            @endphp
+            <form method="POST" action="{{ route('account.profile.update') }}"
+                  class="app-profile__personal-form" data-profile-personal-form
+                  data-save-url="{{ route('account.profile.update') }}">
                 @csrf
                 @method('PATCH')
                 <div class="app-profile__field-grid">
-                    <div class="field-group">
-                        <label for="app-profile-first-name">Имя</label>
-                        <input id="app-profile-first-name" type="text" maxlength="255"
-                               @if (! $profileConfirmed) name="first_name" @endif
-                               value="{{ $profileConfirmed ? $profile?->first_name : old('first_name', $profile?->first_name) }}"
-                               @readonly($profileConfirmed)>
-                        @error('first_name') <small class="app-profile__error">{{ $message }}</small> @enderror
-                    </div>
-                    <div class="field-group">
-                        <label for="app-profile-last-name">Фамилия</label>
-                        <input id="app-profile-last-name" type="text" maxlength="255"
-                               @if (! $profileConfirmed) name="last_name" @endif
-                               value="{{ $profileConfirmed ? $profile?->last_name : old('last_name', $profile?->last_name) }}"
-                               @readonly($profileConfirmed)>
-                        @error('last_name') <small class="app-profile__error">{{ $message }}</small> @enderror
-                    </div>
-                    <div class="field-group">
-                        <label for="app-profile-middle-name">Отчество</label>
-                        <input id="app-profile-middle-name" type="text" name="middle_name" maxlength="255"
-                               value="{{ old('middle_name', $profile?->middle_name) }}">
-                        @error('middle_name') <small class="app-profile__error">{{ $message }}</small> @enderror
-                    </div>
-                    <div class="field-group">
-                        <label for="app-profile-birth-date">Дата рождения</label>
-                        <input id="app-profile-birth-date" type="date" max="{{ now()->subDay()->toDateString() }}"
-                               @if (! $profileConfirmed) name="birth_date" @endif
-                               value="{{ $profileConfirmed ? $profile?->birth_date?->toDateString() : old('birth_date', $profile?->birth_date?->toDateString()) }}"
-                               @readonly($profileConfirmed)>
-                        @if ($profile?->age !== null)
-                            <small>{{ $profile->age }} лет</small>
-                        @endif
-                        @error('birth_date') <small class="app-profile__error">{{ $message }}</small> @enderror
-                    </div>
-                    <div class="field-group">
-                        <label for="app-profile-gender">Пол</label>
-                        <span class="select-control">
-                            <select id="app-profile-gender" @if (! $profileConfirmed) name="gender" @endif
-                                    @disabled($profileConfirmed)>
-                                <option value="">Не указан</option>
-                                @foreach ($genders as $gender)
-                                    <option value="{{ $gender->value }}" @selected(old('gender', $profile?->gender?->value) === $gender->value)>{{ $gender->label() }}</option>
-                                @endforeach
-                            </select>
-                            <svg width="20" height="20" viewBox="0 0 24 24"
-                                 stroke="currentColor" stroke-width="2" fill="none"
-                                 stroke-linecap="round" stroke-linejoin="round"
-                                 aria-hidden="true" focusable="false"><use href="#chevron-down"/></svg>
-                        </span>
-                        @error('gender') <small class="app-profile__error">{{ $message }}</small> @enderror
-                    </div>
+                    @foreach ($personalFields as $field)
+                        @php($locked = $profileConfirmed && $field['name'] !== 'middle_name')
+                        <div class="field-group" @unless($locked)
+                             data-inline-profile-field data-field-name="{{ $field['name'] }}"
+                             data-saved-value="{{ $field['value'] }}"
+                             @endunless>
+                            <label for="{{ $field['id'] }}">{{ $field['label'] }}</label>
+                            <div class="app-confirmation__input-row">
+                                <span class="app-confirmation__input-wrap {{ $field['type'] === 'select' ? 'select-control' : '' }} {{ $field['type'] === 'date' ? 'app-confirmation__input-wrap--date' : '' }} {{ $locked ? 'app-profile__locked-wrap' : '' }}">
+                                    @if ($field['type'] === 'select')
+                                        <select id="{{ $field['id'] }}" autocomplete="{{ $field['auto'] }}"
+                                                @unless($locked) name="{{ $field['name'] }}" data-inline-profile-input @endunless
+                                                @disabled($locked)>
+                                            <option value="">Не указан</option>
+                                            @foreach ($genders as $gender)
+                                                <option value="{{ $gender->value }}" @selected(old($field['name'], $field['value']) === $gender->value)>{{ $gender->label() }}</option>
+                                            @endforeach
+                                        </select>
+                                        <svg class="app-confirmation__select-arrow" aria-hidden="true"><use href="#chevron-down"/></svg>
+                                    @else
+                                        <input id="{{ $field['id'] }}" type="{{ $field['type'] }}"
+                                               autocomplete="{{ $field['auto'] }}"
+                                               @if ($field['type'] === 'text') maxlength="255" @endif
+                                               @if ($field['type'] === 'date') max="{{ now()->subDay()->toDateString() }}" @endif
+                                               @unless($locked) name="{{ $field['name'] }}" data-inline-profile-input @endunless
+                                               value="{{ $locked ? $field['value'] : old($field['name'], $field['value']) }}"
+                                               @readonly($locked)>
+                                    @endif
+                                    @unless($locked)
+                                        <button type="button" class="app-confirmation__save-field"
+                                                data-inline-profile-save
+                                                aria-label="Сохранить {{ mb_strtolower($field['label']) }}"
+                                                title="Сохранить {{ mb_strtolower($field['label']) }}"
+                                                disabled>
+                                            <svg class="app-confirmation__save-icon" aria-hidden="true"><use href="#save"/></svg>
+                                            <span class="app-confirmation__save-loader" data-inline-profile-loading aria-hidden="true" hidden></span>
+                                            <span class="app-confirmation__save-cooldown" data-inline-profile-cooldown aria-hidden="true" hidden></span>
+                                        </button>
+                                    @endunless
+                                </span>
+                            </div>
+                            @unless($locked)
+                                <small class="app-profile__error" data-inline-profile-error role="alert" hidden></small>
+                            @endunless
+                            @error($field['name']) <small class="app-profile__error">{{ $message }}</small> @enderror
+                        </div>
+                    @endforeach
                 </div>
                 <div class="app-profile__form-actions">
-                    <button type="submit" class="button primary">Сохранить данные</button>
+                    <button type="submit" class="button primary" data-inline-profile-save-all disabled>Сохранить всё</button>
                     @if ($profileConfirmed && $activeProfileChangeRequest === null)
                         <button type="button" class="button secondary" data-profile-change-request-open>Запросить изменение подтверждённых данных</button>
                     @endif
+                    <p class="app-profile__save-feedback" data-inline-profile-feedback role="status" aria-live="polite"></p>
                 </div>
             </form>
         </section>

@@ -26,7 +26,7 @@
                     <span class="app-account-overview__status-label">Не подтверждён</span>
                 </div>
                 <p>Подтверди аккаунт, чтобы получить доступ ко всем возможностям портала.</p>
-                <a class="button primary app-account-overview__confirmation-action" href="{{ route('account.confirmation') }}">
+                <a class="button secondary app-account-overview__confirmation-action" href="{{ route('account.confirmation') }}">
                     <span class="app-account-overview__confirmation-dot" aria-hidden="true"></span>
                     Подтвердить аккаунт
                 </a>

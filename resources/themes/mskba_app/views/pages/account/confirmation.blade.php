@@ -62,7 +62,7 @@
                     </div>
                     <div class="app-confirmation__profile-fields">
                         @foreach ($profileFields as $field)
-                            <div class="app-confirmation__profile-field field-group" data-confirmation-field
+                            <div class="app-confirmation__profile-field field-group" data-confirmation-field data-inline-profile-field
                                  data-field-name="{{ $field['name'] }}"
                                  data-saved-value="{{ $field['value'] }}"
                                  data-required="{{ $field['required'] ? 'true' : 'false' }}">
@@ -73,40 +73,41 @@
                                     @endunless
                                 </label>
                                 <div class="app-confirmation__input-row">
-                                    @if ($field['inputType'] === 'select')
-                                        <span class="select-control app-confirmation__input-wrap">
-                                            <select id="{{ $field['id'] }}" name="{{ $field['name'] }}" autocomplete="{{ $field['auto'] }}" data-confirmation-input>
+                                    <span class="app-confirmation__input-wrap {{ $field['inputType'] === 'select' ? 'select-control' : '' }} {{ $field['inputType'] === 'date' ? 'app-confirmation__input-wrap--date' : '' }}">
+                                        @if ($field['inputType'] === 'select')
+                                            <select id="{{ $field['id'] }}" name="{{ $field['name'] }}" autocomplete="{{ $field['auto'] }}" data-confirmation-input data-inline-profile-input>
                                                 <option value="">Выбери пол</option>
                                                 @foreach ($genders as $gender)
                                                     <option value="{{ $gender->value }}" @selected($field['value'] === $gender->value)>{{ $gender->label() }}</option>
                                                 @endforeach
                                             </select>
-                                            <svg aria-hidden="true"><use href="#chevron-down"/></svg>
-                                        </span>
-                                    @else
-                                        <input id="{{ $field['id'] }}" data-confirmation-input name="{{ $field['name'] }}"
-                                               type="{{ $field['inputType'] }}"
-                                               maxlength="{{ $field['inputType'] === 'text' ? '255' : '' }}"
-                                               autocomplete="{{ $field['auto'] }}"
-                                               @if($field['inputType'] === 'date') max="{{ now()->subDay()->toDateString() }}" @endif
-                                               value="{{ old($field['name'], $field['value']) }}">
-                                    @endif
-                                    <button type="button" class="app-confirmation__save-field" data-confirmation-save-field
-                                            aria-label="Сохранить {{ mb_strtolower($field['label']) }}"
-                                            title="Сохранить {{ mb_strtolower($field['label']) }}"
-                                            disabled>
-                                        <svg aria-hidden="true"><use href="#save"/></svg>
-                                        <span class="app-confirmation__save-countdown" data-confirmation-countdown hidden></span>
-                                    </button>
+                                            <svg class="app-confirmation__select-arrow" aria-hidden="true"><use href="#chevron-down"/></svg>
+                                        @else
+                                            <input id="{{ $field['id'] }}" data-confirmation-input data-inline-profile-input name="{{ $field['name'] }}"
+                                                   type="{{ $field['inputType'] }}"
+                                                   @if ($field['inputType'] === 'text') maxlength="255" @endif
+                                                   autocomplete="{{ $field['auto'] }}"
+                                                   @if($field['inputType'] === 'date') max="{{ now()->subDay()->toDateString() }}" @endif
+                                                   value="{{ old($field['name'], $field['value']) }}">
+                                        @endif
+                                        <button type="button" class="app-confirmation__save-field" data-confirmation-save-field data-inline-profile-save
+                                                aria-label="Сохранить {{ mb_strtolower($field['label']) }}"
+                                                title="Сохранить {{ mb_strtolower($field['label']) }}"
+                                                disabled>
+                                            <svg class="app-confirmation__save-icon" aria-hidden="true"><use href="#save"/></svg>
+                                            <span class="app-confirmation__save-loader" aria-hidden="true" data-confirmation-loading data-inline-profile-loading hidden></span>
+                                            <span class="app-confirmation__save-cooldown" data-inline-profile-cooldown aria-hidden="true" hidden></span>
+                                        </button>
+                                    </span>
                                 </div>
-                                <small class="app-confirmation__error" data-confirmation-error role="alert" hidden></small>
+                                <small class="app-confirmation__error" data-confirmation-error data-inline-profile-error role="alert" hidden></small>
                                 @error($field['name']) <small class="app-confirmation__error">{{ $message }}</small> @enderror
                             </div>
                         @endforeach
                     </div>
                     <div class="app-confirmation__profile-actions">
-                        <p data-confirmation-feedback role="status" aria-live="polite"></p>
-                        <button class="button secondary" type="button" data-confirmation-save-all disabled>Сохранить всё</button>
+                        <p data-confirmation-feedback data-inline-profile-feedback role="status" aria-live="polite"></p>
+                        <button class="button secondary" type="button" data-confirmation-save-all data-inline-profile-save-all disabled>Сохранить всё</button>
                     </div>
                 </section>
             </form>

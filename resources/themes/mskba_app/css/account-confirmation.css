@@ -124,22 +124,80 @@
 .app-confirmation__profile-field{display:flex;flex-direction:column;gap:8px;min-width:0}
 .app-confirmation__profile-field>label{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px;font-weight:600}
 .app-confirmation__optional{font-size:12px;font-weight:400;color:var(--muted)}
-.app-confirmation__input-row{display:flex;align-items:stretch;gap:8px;min-width:0}
-.app-confirmation__input-row>input,
-.app-confirmation__input-row .app-confirmation__input-wrap{flex:1 1 auto;min-width:0;width:100%;min-height:46px}
-.app-confirmation__input-row select{min-width:0;width:100%;min-height:46px}
-.app-confirmation__save-field{
-    position:relative;display:grid;flex:0 0 46px;place-items:center;
-    min-height:46px;background:var(--surface-raised);color:var(--accent);
-    border:1px solid var(--control-line);border-radius:var(--radius-control);
-    cursor:pointer;transition:color .15s ease,background .15s ease
+/* Inline save affordance, inside the same border as the input. */
+.app-confirmation__input-row{min-width:0}
+.app-confirmation__input-wrap{
+    display:block;position:relative;width:100%;min-width:0;
 }
-.app-confirmation__save-field svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.app-confirmation__input-wrap>input,
+.app-confirmation__input-wrap>select{
+    display:block;width:100%;min-width:0;min-height:46px;
+    padding-inline-end:52px;
+}
+.app-confirmation__input-wrap.select-control>select{
+    padding-inline-end:86px;
+}
+.app-confirmation__input-wrap.select-control>.app-confirmation__select-arrow{
+    inset-inline-end:51px;
+}
+.app-confirmation__input-wrap--date>input{
+    padding-inline-end:86px;
+}
+.app-confirmation__input-wrap--date>input::-webkit-calendar-picker-indicator{
+    margin-inline-end:3px;
+}
+.app-confirmation__save-field{
+    position:absolute;inset-inline-end:6px;top:50%;transform:translateY(-50%);
+    z-index:2;display:grid;place-items:center;width:34px;height:34px;
+    padding:0;background:transparent;border:0;border-radius:8px;
+    color:var(--accent);cursor:pointer;
+    transition:color .15s ease,background .15s ease;
+}
+.app-confirmation__save-field .app-confirmation__save-icon{
+    width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round
+}
 .app-confirmation__save-field:disabled{color:var(--muted);opacity:.5;cursor:default}
-.app-confirmation__save-field:not(:disabled):hover{border-color:var(--accent)}
-.app-confirmation__save-countdown{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--text)}
-.app-confirmation__save-countdown[hidden]{display:none!important}
-.app-confirmation__save-field:has(.app-confirmation__save-countdown:not([hidden])) svg{opacity:.1}
+.app-confirmation__save-field.is-loading{opacity:1;color:var(--accent)}
+.app-confirmation__save-field:not(:disabled):hover{background:var(--surface-raised)}
+.app-confirmation__save-field .app-confirmation__save-loader{
+    width:17px;height:17px;border:2px solid color-mix(in srgb,var(--accent) 24%,transparent);
+    border-top-color:var(--accent);border-radius:50%;
+    animation:app-confirmation-save-spin .7s linear infinite
+}
+.app-confirmation__save-loader[hidden]{display:none!important}
+.app-confirmation__save-cooldown{
+    display:grid;place-items:center;width:30px;height:30px;
+    color:var(--accent);font-size:12px;font-weight:700;
+    font-variant-numeric:tabular-nums;line-height:1;
+}
+.app-confirmation__save-cooldown[hidden]{display:none!important}
+.app-confirmation__save-field.is-cooling{opacity:1;color:var(--accent);cursor:default}
+.app-confirmation__save-field.is-cooling:hover{background:transparent}
+/* Show on the whole editable control, not just the save icon.
+   This is immediate and works even while a cooldown blocks saving. */
+.app-confirmation__input-wrap[data-cooldown-tooltip]::after{
+    content:attr(data-cooldown-tooltip);
+    position:absolute;inset-inline-end:4px;bottom:calc(100% + 6px);z-index:8;
+    width:max-content;max-width:calc(100vw - 48px);
+    padding:5px 9px;border:1px solid var(--control-line);
+    border-radius:8px;background:var(--surface-raised);color:var(--text);
+    box-shadow:0 6px 18px #0007;
+    font-size:12px;font-weight:500;line-height:16px;letter-spacing:normal;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity 100ms ease-out,visibility 100ms ease-out;
+}
+.app-confirmation__input-wrap[data-cooldown-tooltip]:is(:hover,:focus-within)::after{
+    opacity:1;visibility:visible;
+}
+
+.app-confirmation__save-field.is-cooling .app-confirmation__save-icon{display:none}
+
+.app-confirmation__save-field.is-loading .app-confirmation__save-icon{display:none}
+@keyframes app-confirmation-save-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){
+    .app-confirmation__save-field .app-confirmation__save-loader{animation-duration:1.8s}
+}
 .app-confirmation__profile-actions{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;border-top:1px solid var(--line);padding-top:18px}
 .app-confirmation__profile-actions p{margin:0;font-size:13px;color:var(--success)}
 .app-confirmation__profile-actions p.is-error{color:var(--danger)}

@@ -68,6 +68,17 @@ final class TeamNotificationService
     public function joinRequestSubmitted(Team $team, TeamJoinRequest $request): void
     {
         $applicant = $request->user()->with('profile')->first();
+        // The submitter also needs a persisted opening system notification
+        // so both parties see it as the first message of the application thread.
+        $this->create(
+            (int) $request->user_id,
+            'Заявка отправлена',
+            'Ваша заявка на вступление в команду «'.$team->name.'» отправлена.',
+            route('teams.show', $team->routeIdentifier()),
+            'Просмотреть заявку',
+            'team.join_request.submitted',
+            ['team_id' => $team->id, 'join_request_id' => $request->id],
+        );
         foreach ($this->joinRequestManagers($team) as $userId) {
             $this->create(
                 $userId,
@@ -176,7 +187,7 @@ final class TeamNotificationService
     }
 
     /** @return Collection<int, int> */
-    private function joinRequestManagers(Team $team): Collection
+    public function joinRequestManagers(Team $team): Collection
     {
         $creatorId = $team->createdByActor()->value('user_id');
         $memberIds = $team->memberships()

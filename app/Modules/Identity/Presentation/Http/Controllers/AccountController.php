@@ -35,6 +35,8 @@ use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
+use App\Modules\Notification\Application\UseCases\GetSystemConversationPreviewHandler;
+use App\Modules\Notification\Application\UseCases\ListAccountConversationsHandler;
 use App\Modules\Notification\Application\UseCases\ListNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\ListUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\MarkAllUserNotificationsAsReadHandler;
@@ -323,6 +325,9 @@ class AccountController extends Controller
     public function notifications(
         ListUserNotificationsHandler $listUserNotifications,
         CountNewUserNotificationsHandler $countNewUserNotifications,
+        GetSystemConversationPreviewHandler $systemConversation,
+        ListAccountConversationsHandler $conversations,
+        \App\Modules\Identity\Application\Services\CurrentActorResolver $actors,
     ): Response {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -336,6 +341,31 @@ class AccountController extends Controller
         return ThemeResolver::page('account.notifications', [
             'notifications' => $listUserNotifications->handle($user),
             'newNotificationsCount' => $countNewUserNotifications->handle($user),
+            'systemConversation' => $systemConversation->handle($user),
+            'applicationConversations' => $conversations->handle($user, $actors->resolveForRequest(request())),
+        ]);
+    }
+
+    public function systemNotificationConversation(
+        ListUserNotificationsHandler $listUserNotifications,
+        GetSystemConversationPreviewHandler $systemConversation,
+    ): Response|RedirectResponse {
+        if (app(ThemeResolver::class)->active() !== 'mskba_app') {
+            return redirect()->route('account.notifications');
+        }
+
+        $user = $this->accountCheckForPresentationService->handle(request()->user());
+        $notifications = \App\Modules\Notification\Domain\Models\UserNotification::query()
+            ->whereIn('user_id', $user->identityIds())
+            ->whereNull('payload->join_request_id')
+            ->whereNull('payload->direct_conversation_id')
+            ->orderByDesc('created_at')->orderByDesc('id')->paginate(20);
+        // Page 1 contains the newest messages; within a page the chat flows top-to-bottom.
+        $notifications->setCollection($notifications->getCollection()->reverse()->values());
+
+        return ThemeResolver::page('account.notification-conversation', [
+            'notifications' => $notifications,
+            'systemConversation' => $systemConversation->handle($user),
         ]);
     }
 

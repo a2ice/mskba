@@ -55,3 +55,13 @@
 .app-profile__request-footer{border-bottom:0;border-top:1px solid var(--line);justify-content:flex-end}
 @container (max-width:640px){.app-profile__field-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.app-profile__panel{padding:18px}.app-profile__avatar-row{gap:16px}.app-profile__nickname-line{flex-wrap:wrap}.app-profile__nickname-line button{width:100%}.app-profile__form-actions .button{width:100%}}
+
+/* Locked fields retain native read-only styling, without an empty save-icon slot. */
+.app-profile__locked-wrap>input { padding-inline-end:16px }
+.app-profile__locked-wrap.select-control>select { padding-inline-end:48px }
+.app-profile__locked-wrap.select-control>.app-confirmation__select-arrow { inset-inline-end:16px }
+.app-profile__locked-wrap.app-confirmation__input-wrap--date>input { padding-inline-end:42px }
+.app-profile__save-feedback{margin:0;color:var(--success);font-size:13px;line-height:20px}
+.app-profile__save-feedback.is-error{color:var(--danger)}
+.app-profile__save-feedback:empty{display:none}
+.app-profile__personal-form .app-confirmation__save-field{min-height:0}

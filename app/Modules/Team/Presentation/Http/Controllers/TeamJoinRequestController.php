@@ -149,20 +149,20 @@ final class TeamJoinRequestController extends Controller
             Team::query()->lockForUpdate()->findOrFail($item->id);
             $lockedEntry = TeamJoinRequest::query()->where('team_id', $item->id)
                 ->whereKey($entry->id)->lockForUpdate()->firstOrFail();
-            $requiredStatus = $managerMessage
-                ? TeamJoinRequestStatusEnum::PENDING
-                : TeamJoinRequestStatusEnum::AWAITING_RESPONSE;
-            abort_if($lockedEntry->status !== $requiredStatus, 422, 'Сейчас нельзя отправить сообщение по этой заявке.');
+            abort_if(in_array($lockedEntry->status, [
+                TeamJoinRequestStatusEnum::ACCEPTED, TeamJoinRequestStatusEnum::BLOCKED,
+            ], true), 422, 'Переписка по этой заявке закрыта.');
 
             $lockedEntry->messages()->create([
                 'sender_user_id' => $user->id,
                 'body' => trim($data['body']),
             ]);
-            $lockedEntry->update([
-                'status' => $managerMessage
-                    ? TeamJoinRequestStatusEnum::AWAITING_RESPONSE
-                    : TeamJoinRequestStatusEnum::PENDING,
-            ]);
+            if ($managerMessage && $lockedEntry->status === TeamJoinRequestStatusEnum::PENDING) {
+                $lockedEntry->update(['status' => TeamJoinRequestStatusEnum::AWAITING_RESPONSE]);
+            } elseif (! $managerMessage && $lockedEntry->status === TeamJoinRequestStatusEnum::AWAITING_RESPONSE) {
+                $lockedEntry->update(['status' => TeamJoinRequestStatusEnum::PENDING]);
+            }
+            // REJECTED remains REJECTED even when parties continue discussing it.
         });
 
         $teamNotifications->joinRequestMessageSent($item, $entry, $managerMessage);

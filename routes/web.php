@@ -845,7 +845,25 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/settings/privacy/users', SearchPrivacyUsersController::class)
             ->middleware('throttle:60,1')
             ->name('account.settings.privacy.users');
-        Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications');
+        Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications')->defaults('breadcrumb', 'Сообщения');
+        Route::get('/notifications/users/{user}/message-access', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'access'])
+            ->middleware('throttle:60,1')->name('account.notifications.direct.access');
+        Route::post('/notifications/users/{user}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'send'])
+            ->middleware('throttle:20,1')->name('account.notifications.direct.send');
+        Route::get('/notifications/threads/direct/{conversation}', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'show'])
+            ->name('account.notifications.threads.direct')->defaults('breadcrumb', 'Личная переписка');
+        Route::patch('/notifications/threads/direct/{conversation}/read', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'read'])
+            ->name('account.notifications.threads.direct.read');
+        Route::get('/notifications/threads/team/{joinRequest}', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'team'])
+            ->name('account.notifications.threads.team')->defaults('breadcrumb', 'Переписка по заявке');
+        Route::post('/notifications/threads/team/{joinRequest}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'sendTeam'])
+            ->middleware('throttle:20,1')->name('account.notifications.threads.team.messages');
+        Route::patch('/notifications/threads/team/{joinRequest}/read', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'readTeam'])
+            ->name('account.notifications.threads.team.read');
+        Route::patch('/notifications/threads/system/read', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'readSystem'])
+            ->name('account.notifications.threads.system.read');
+        Route::get('/notifications/threads/system', [AccountController::class, 'systemNotificationConversation'])
+            ->name('account.notifications.threads.system')->defaults('breadcrumb', 'Система MSKBA');
         Route::get('/notifications/new', [AccountController::class, 'newNotifications'])
             ->name('account.notifications.new');
         Route::patch('/notifications/read-all', [AccountController::class, 'readAllNotifications'])

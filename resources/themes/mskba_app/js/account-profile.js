@@ -1,3 +1,5 @@
+import { initProfileInlineSave } from './profile-inline-save.js';
+
 // Task 026: use existing avatar forms, nickname JSON endpoint and Modal 1.1 shell.
 const profileRoot = document.querySelector('[data-account-profile]');
 
@@ -11,6 +13,16 @@ if (profileRoot) {
         // Native multipart/form POST: server validates and processes the image.
         uploadForm.submit();
     });
+
+    const personalForm = profileRoot.querySelector('[data-profile-personal-form]');
+    if (personalForm) {
+        const editor = initProfileInlineSave(personalForm);
+        personalForm.addEventListener('submit', event => {
+            event.preventDefault();
+            if (editor.busy()) return;
+            void editor.save(editor.states.filter(editor.dirty), true);
+        });
+    }
 
     const nicknameForm = profileRoot.querySelector('[data-profile-nickname-form]');
     if (nicknameForm) {
