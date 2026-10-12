@@ -86,3 +86,6 @@
 .app-account-contacts__add .field-group{display:grid;gap:7px;min-width:180px;flex:1}
 .app-account-contacts__note{font-size:13px;margin:18px 0 0}
 @media(max-width:639px){.app-account-contacts__panel{padding:18px}.app-account-contacts__actions .button,.app-account-contacts__add .button{width:100%}.app-account-contacts__add .field-group{flex-basis:100%}}
+
+/* The modal footer itself is hidden on OAuth / completion steps. */
+.app-contact-wizard__footer[hidden]{display:none!important}
