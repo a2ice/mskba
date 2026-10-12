@@ -32,6 +32,73 @@ final class AccountContactsDialogTest extends TestCase
         return $user;
     }
 
+    public function test_log_mailer_rejects_delivery_without_creating_a_pending_code(): void
+    {
+        config()->set('mail.default', 'log');
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'unavailable@example.test',
+        ]);
+        $response = $this->actingAs($user)
+            ->post(route('account.contacts.verification.store', $contact));
+        $response->assertRedirect(route('account.contacts'))
+            ->assertSessionHas('contactVerificationFeedbackContactId', $contact->id)
+            ->assertSessionHas('error', 'Отправка писем на этом сервере пока не настроена. Попробуйте позже.');
+        $this->assertDatabaseCount('contact_verifications', 0);
+
+        $json = $this->postJson(route('account.confirmation.contacts.verification.store', $contact));
+        $json->assertStatus(503)->assertJsonPath(
+            'message', 'Отправка писем на этом сервере пока не настроена. Попробуйте позже.',
+        );
+        $this->assertDatabaseCount('contact_verifications', 0);
+    }
+
+    public function test_email_creation_returns_503_without_phantom_code_when_log_mailer_is_used(): void
+    {
+        config()->set('mail.default', 'log');
+        $user = $this->user();
+        $this->actingAs($user)->postJson(route('account.confirmation.contact.store'), [
+            'type' => 'email', 'value' => 'just-added@example.test',
+        ])->assertStatus(503)->assertJsonPath(
+            'message', 'Отправка писем на этом сервере пока не настроена. Попробуйте позже.',
+        );
+        $this->assertDatabaseHas('contacts', ['value' => 'just-added@example.test']);
+        $this->assertDatabaseCount('contact_verifications', 0);
+    }
+
+    public function test_failed_smtp_delivery_keeps_existing_code_and_does_not_leak_transport_error(): void
+    {
+        config()->set('mail.default', 'smtp');
+        $user = $this->user();
+        $contact = $user->contacts()->create([
+            'type' => ContactTypeEnum::EMAIL, 'value' => 'smtp-failure@example.test',
+        ]);
+        $previous = $contact->verifications()->create([
+            'channel' => ContactVerificationChannelEnum::EMAIL,
+            'status' => ContactVerificationStatusEnum::PENDING,
+            'code_hash' => bcrypt('123456'),
+            'sent_to' => 'smtp-failure@example.test',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+        $previous->forceFill(['created_at' => now()->subSeconds(61)])->save();
+
+        $pendingMail = \Mockery::mock();
+        $pendingMail->shouldReceive('send')->once()->andThrow(new \RuntimeException('SECRET SMTP FAILURE'));
+        \Illuminate\Support\Facades\Mail::shouldReceive('to')
+            ->once()->with('smtp-failure@example.test')->andReturn($pendingMail);
+
+        $this->actingAs($user)->postJson(route('account.confirmation.contacts.verification.store', $contact))
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'Не удалось отправить код на почту. Попробуйте позже.')
+            ->assertDontSee('SECRET SMTP FAILURE');
+
+        $this->assertDatabaseCount('contact_verifications', 1);
+        $this->assertDatabaseHas('contact_verifications', [
+            'id' => $previous->id,
+            'status' => ContactVerificationStatusEnum::PENDING->value,
+        ]);
+    }
+
     public function test_contacts_page_has_modal_channels_and_no_manual_social_username_fields(): void
     {
         $user = $this->user();
@@ -88,6 +155,7 @@ final class AccountContactsDialogTest extends TestCase
 
     public function test_cooldown_message_is_scoped_to_its_contact_and_has_real_seconds(): void
     {
+        config()->set('mail.default', 'smtp');
         \Illuminate\Support\Facades\Mail::fake();
         $user = $this->user();
         $first = $user->contacts()->create([

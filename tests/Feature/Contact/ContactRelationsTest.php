@@ -326,6 +326,7 @@ class ContactRelationsTest extends TestCase
 
     public function test_user_can_start_email_contact_verification(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
 
         $user = User::factory()->create([
@@ -361,6 +362,7 @@ class ContactRelationsTest extends TestCase
 
     public function test_user_cannot_request_new_email_code_during_cooldown(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
 
         $user = User::factory()->create([
@@ -391,6 +393,7 @@ class ContactRelationsTest extends TestCase
 
     public function test_user_can_request_new_email_code_after_cooldown(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
 
         $user = User::factory()->create([
@@ -431,6 +434,7 @@ class ContactRelationsTest extends TestCase
 
     public function test_user_cannot_start_verification_for_another_users_contact(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
 
         $owner = User::factory()->create([
@@ -464,6 +468,7 @@ class ContactRelationsTest extends TestCase
 
     public function test_user_cannot_start_verification_for_unsupported_contact_type(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
 
         $user = User::factory()->create([

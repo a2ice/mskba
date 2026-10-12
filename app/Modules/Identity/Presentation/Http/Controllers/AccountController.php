@@ -5,6 +5,7 @@ namespace App\Modules\Identity\Presentation\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Modules\Contact\Application\Exceptions\ContactDeletionException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationCooldownException;
+use App\Modules\Contact\Application\Exceptions\ContactVerificationDeliveryException;
 use App\Modules\Contact\Application\Exceptions\ContactVerificationException;
 use App\Modules\Contact\Application\Strategies\EmailContactVerificationStrategy;
 use App\Modules\Contact\Application\UseCases\ConfirmContactVerificationHandler;
@@ -182,6 +183,10 @@ class AccountController extends Controller
             return redirect()->route('account.confirmation')
                 ->with('info', $e->getMessage())
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
+        } catch (ContactVerificationDeliveryException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 503)
+                : redirect()->route('account.confirmation')->with('error', $e->getMessage());
         } catch (InvalidArgumentException|LogicException $e) {
             return $request->expectsJson()
                 ? response()->json(['message' => $e->getMessage()], 422)
@@ -220,6 +225,10 @@ class AccountController extends Controller
             return redirect()->route('account.confirmation')
                 ->with('info', $e->getMessage())
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
+        } catch (ContactVerificationDeliveryException $e) {
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage()], 503)
+                : redirect()->route('account.confirmation')->with('error', $e->getMessage());
         } catch (LogicException $e) {
             return $request->expectsJson()
                 ? response()->json(['message' => $e->getMessage()], 422)
@@ -559,6 +568,11 @@ class AccountController extends Controller
                 ->with('info', $e->getMessage())
                 ->with('contactVerificationFeedbackContactId', $contact->id)
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
+        } catch (ContactVerificationDeliveryException $e) {
+            return redirect()
+                ->route('account.contacts')
+                ->with('error', $e->getMessage())
+                ->with('contactVerificationFeedbackContactId', $contact->id);
         } catch (\Throwable $e) {
             return redirect()
                 ->route('account.contacts')

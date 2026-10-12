@@ -90,7 +90,15 @@ Prior to first cutover preserve old dev directory and host Nginx config; revert 
 
 ## Dev FAQ support mail (2026-10-10)
 
-FAQ questions are delivered directly using Laravel `SupportQuestionMail`, without saving them in the application database. The historical `support_questions` table is removed by a safety-checked follow-up migration only if empty. The staging server currently uses `MAIL_MAILER=log` and has no SMTP account configured, so the form responds HTTP 503 instead of claiming mail was sent. To activate real delivery on Dev, provision independently approved SMTP credentials in the VDS `.env` (`MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`, and optional `MAIL_SCHEME`), then clear config cache and verify delivery using an approved recipient. Do not reuse production credentials without explicit approval. Recipient configured as `SUPPORT_EMAIL`, default `support@mskba.ru`. No production changes.
+FAQ questions are delivered directly using Laravel `SupportQuestionMail`, without saving them in the application database. The historical `support_questions` table is removed by a safety-checked follow-up migration only if empty. Previously Dev used the log mailer and did not deliver letters. On 2026-10-12, after user approval, Dev was configured with real SMTP from the site@mskba.ru sender. No production configuration was edited and no credentials were committed. A test message submitted from the Dev PHP container to the approved Yandex address was accepted by the SMTP relay; final inbox delivery requires recipient confirmation. The original Dev environment file was backed up on the VDS. Because Dev and production now share an SMTP credential, prefer issuing a separate Dev credential for the same sender when supported by the provider. Recipient configured as SUPPORT_EMAIL, default support@mskba.ru.
+
+The Email contact-verification flow also requires a delivering mail transport. With
+MAIL_MAILER=log|array, or a failover transport that can silently fall back
+to one of those, verification requests fail closed rather than claiming to send
+mail or starting a false 60-second resend countdown. On an SMTP exception,
+the unsent verification token is discarded; any preceding active token stays
+valid. This is a transport-acceptance check, not proof of final inbox delivery.
+Use only an approved SMTP sender; never commit its password or print it in diagnostics. After updating Dev environment config, clear Laravel's configuration cache in the Dev PHP container and check a real mailbox to confirm final delivery. On 2026-10-12 the Dev container was verified to load the SMTP transport and site@mskba.ru sender.
 
 ## Staging maintenance fallback (2026-10-10)
 

@@ -128,6 +128,7 @@ final class AccountConfirmationWizardTest extends TestCase
 
     public function test_confirmation_page_can_add_primary_email_contact_and_start_verification(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
         $user = $this->makeUser();
         $this->actingAs($user)->post(route('account.confirmation.contact.store'), [
@@ -165,6 +166,7 @@ final class AccountConfirmationWizardTest extends TestCase
 
     public function test_contact_wizard_ajax_creates_pending_email_and_returns_verification_step(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
         $user = $this->makeUser();
         $result = $this->actingAs($user)->postJson(route('account.confirmation.contact.store'), [
@@ -181,6 +183,7 @@ final class AccountConfirmationWizardTest extends TestCase
 
     public function test_contact_wizard_ajax_checks_format_and_ownership_before_sending_email(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
         $firstUser = $this->makeUser();
         $otherUser = $this->makeUser();
@@ -207,6 +210,7 @@ final class AccountConfirmationWizardTest extends TestCase
 
     public function test_contact_wizard_ajax_can_resend_and_confirm_only_own_email(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
         $user = $this->makeUser();
         $otherUser = $this->makeUser();
@@ -238,6 +242,7 @@ final class AccountConfirmationWizardTest extends TestCase
 
     public function test_contact_wizard_ajax_resend_observes_cooldown(): void
     {
+        config()->set('mail.default', 'smtp');
         Mail::fake();
         $user = $this->makeUser();
         $contact = $user->contacts()->create([
