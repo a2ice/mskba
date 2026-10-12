@@ -39,6 +39,9 @@
                     <article class="app-account-contacts__item">
                         <div class="app-account-contacts__meta">
                             <strong>{{ $contact->type->label() }}: {{ $contact->displayValue() }}</strong>
+                            @if (($contact->meta['is_emulated'] ?? false) === true)
+                                <span class="app-confirmation__state">Тестовый контакт</span>
+                            @endif
                             <div class="app-account-contacts__badges">
                                 @if ($contact->is_primary)
                                     <span class="app-confirmation__state {{ $contact->is_verified ? 'app-confirmation__state--done' : '' }}">{{ $contact->is_verified ? 'Основной' : 'Ожидает подтверждения для основного' }}</span>

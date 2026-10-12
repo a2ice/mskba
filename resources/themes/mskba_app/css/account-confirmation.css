@@ -324,3 +324,16 @@
 .app-confirmation__finish{padding:4px 0 12px}
 .app-confirmation__finish a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 @media(max-width:700px){.app-confirmation__profile-fields{grid-template-columns:1fr}}
+
+
+/* Explicitly labelled, staging-only third-party provider simulation. */
+.app-contact-emulation__notice{
+    padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+    margin:0 0 18px!important;color:var(--muted);font-size:14px;line-height:1.5;
+}
+.app-contact-emulation__run{margin-top:18px}
+[data-provider-emulation-step] .field-group select{
+    width:100%;min-height:44px;border-radius:12px;
+    background:var(--surface,#17191a);color:var(--text);border:1px solid var(--line);
+    padding:10px 12px;
+}

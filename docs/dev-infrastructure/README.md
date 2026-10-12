@@ -114,3 +114,14 @@ Use `ops/nginx/install-mskba-dev-maintenance.sh` on VDS after review and explici
 ### Branded logo correction (2026-10-10)
 
 The maintenance page embeds the **exact** `resources/themes/mskba_app/assets/images/logo-mark-100.png` from the `mskba_app` header as an inline PNG data URI, rather than a hand-drawn placeholder or an external asset URL. This is intentional: the host Nginx fallback must keep its official logo even when Docker/Laravel is unreachable. A unit test compares the decoded embedded image byte-for-byte with the theme asset, so future changes to the shared logo require updating the embedded static copy too.
+
+### Эмуляция внешних контактов на dev (2026-10-12)
+
+В MSKBA есть временный тестовый механизм Telegram/VK для проверки интерфейсов
+без реального OAuth/webhook. В приватном .env staging устанавливается
+CONTACT_PROVIDER_EMULATION_ENABLED=true только после локальной приёмки;
+production-конфигурации не меняются. Серверный API закрыт для production
+по окружению и разрешённым хостам. Тестовые контакты с префиксом
+test_emulate_ и meta.is_emulated нельзя переносить в production.
+Подробные сценарии в docs/specification/identity-account-confirmation.md.
+Незакрыто: реальный Telegram webhook/proxy и VK ID OAuth для dev.

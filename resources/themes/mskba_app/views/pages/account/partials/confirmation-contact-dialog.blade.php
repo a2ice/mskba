@@ -6,7 +6,8 @@
      data-telegram-url="{{ route('account.telegram.link') }}"
      data-telegram-start-url="{{ route('account.telegram.bot.link.start') }}"
      data-telegram-status-url="{{ route('account.telegram.bot.link.status') }}"
-     data-telegram-bot="{{ $telegramBotUsername }}">
+     data-telegram-bot="{{ $telegramBotUsername }}"
+     @if ($contactEmulationEnabled ?? false) data-emulate-url="{{ route('account.contacts.provider-emulation') }}" @endif>
     <div class="app-contact-wizard__trigger">
         @if ($primaryContact && ! $primaryContact->is_verified && $primaryContact->type === \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL)
             <button type="button" class="button primary" data-contact-wizard-open
@@ -28,8 +29,8 @@
             <section data-wizard-step="method">
                 <div class="app-contact-wizard__choices">
                     <label><input type="radio" name="confirmation_channel" value="email" checked><span><strong>Email</strong></span></label>
-                    <label><input type="radio" name="confirmation_channel" value="telegram" @disabled($telegramBotUsername === '')><span><strong>Telegram</strong></span></label>
-                    <label @unless($vkEnabled) title="VK пока недоступен: не настроена авторизация" @endunless><input type="radio" name="confirmation_channel" value="vk" @disabled(! $vkEnabled)><span><strong>VK</strong></span></label>
+                    <label><input type="radio" name="confirmation_channel" value="telegram" @disabled($telegramBotUsername === '' && ! ($contactEmulationEnabled ?? false))><span><strong>Telegram</strong></span></label>
+                    <label @unless($vkEnabled || ($contactEmulationEnabled ?? false)) title="VK пока недоступен: не настроена авторизация" @endunless><input type="radio" name="confirmation_channel" value="vk" @disabled(! $vkEnabled && ! ($contactEmulationEnabled ?? false))><span><strong>VK</strong></span></label>
                     <label class="is-disabled"><input type="radio" name="confirmation_channel" value="phone" disabled><span><strong>Телефон</strong><small>SMS-подтверждение скоро появится</small></span></label>
                 </div>
             </section>
@@ -66,6 +67,12 @@
                     <p>Сейчас VK ID недоступен.</p>
                 @endif
             </section>
+
+            @if ($contactEmulationEnabled ?? false)
+                <div data-wizard-step="emulation" hidden>
+                    @include('theme::pages.account.partials.contact-provider-emulation', ['emulationOutcomeId' => 'confirmation-provider-emulation-outcome'])
+                </div>
+            @endif
 
             <p data-wizard-error class="app-contact-wizard__error" role="alert" hidden></p>
             <p data-wizard-feedback class="app-contact-wizard__feedback" role="status" aria-live="polite" hidden></p>

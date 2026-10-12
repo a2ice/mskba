@@ -4,7 +4,8 @@
      data-telegram-url="{{ route('account.telegram.link') }}"
      data-telegram-start-url="{{ route('account.telegram.bot.link.start') }}"
      data-telegram-status-url="{{ route('account.telegram.bot.link.status') }}"
-     data-telegram-bot="{{ $telegramBotUsername }}">
+     data-telegram-bot="{{ $telegramBotUsername }}"
+     @if ($contactEmulationEnabled ?? false) data-emulate-url="{{ route('account.contacts.provider-emulation') }}" @endif>
     <button type="button" class="button primary" data-contact-add-open>Добавить контакт</button>
     <dialog class="mskba-modal app-contact-wizard__dialog" data-contact-add-modal aria-labelledby="contact-add-title">
         <header class="mskba-modal__header mskba-auth-top app-contact-wizard__header">
@@ -16,8 +17,8 @@
                 <div class="app-contact-wizard__choices">
                     <label><input type="radio" name="new_contact_channel" value="email" checked><span><strong>Email</strong></span></label>
                     <label><input type="radio" name="new_contact_channel" value="phone"><span><strong>Телефон</strong><small>Можно добавить, SMS-подтверждение пока недоступно</small></span></label>
-                    <label><input type="radio" name="new_contact_channel" value="telegram" @disabled($telegramBotUsername === '')><span><strong>Telegram</strong></span></label>
-                    <label @unless($vkEnabled) title="VK пока недоступен: не настроена авторизация" @endunless><input type="radio" name="new_contact_channel" value="vk" @disabled(! $vkEnabled)><span><strong>VK</strong></span></label>
+                    <label><input type="radio" name="new_contact_channel" value="telegram" @disabled($telegramBotUsername === '' && ! ($contactEmulationEnabled ?? false))><span><strong>Telegram</strong></span></label>
+                    <label @unless($vkEnabled || ($contactEmulationEnabled ?? false)) title="VK пока недоступен: не настроена авторизация" @endunless><input type="radio" name="new_contact_channel" value="vk" @disabled(! $vkEnabled && ! ($contactEmulationEnabled ?? false))><span><strong>VK</strong></span></label>
                 </div>
             </section>
             <section data-contact-add-step="value" hidden>
@@ -39,6 +40,11 @@
                     <a class="button primary" href="{{ route('account.vk.link', ['redirect_to' => route('account.contacts')]) }}">Продолжить через VK ID</a>
                 @endif
             </section>
+            @if ($contactEmulationEnabled ?? false)
+                <div data-contact-add-step="emulation" hidden>
+                    @include('theme::pages.account.partials.contact-provider-emulation', ['emulationOutcomeId' => 'contacts-provider-emulation-outcome'])
+                </div>
+            @endif
             <section data-contact-add-step="done" hidden>
                 <h3>Контакт добавлен</h3>
                 <p data-contact-add-success>Новый контакт появился в списке ниже. Подтверждение можно выполнить отдельно.</p>

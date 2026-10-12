@@ -872,6 +872,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.notifications.read');
         Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
         Route::post('/contacts', [AccountController::class, 'storeContact'])->name('account.contacts.store');
+        Route::post('/contacts/provider-emulation', \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::class)
+            ->middleware('throttle:12,1')->name('account.contacts.provider-emulation');
         Route::patch('/contacts/{contact}/primary', [AccountController::class, 'setPrimaryContact'])
             ->name('account.contacts.primary');
         Route::delete('/contacts/{contact}', [AccountController::class, 'destroyContact'])

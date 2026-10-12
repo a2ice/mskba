@@ -1,3 +1,4 @@
+import { createContactProviderEmulation } from './contact-provider-emulation.js';
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 import { refreshAccountContactsList } from './account-contacts-list.js';
 const root = document.querySelector('[data-contacts-add]');
@@ -54,6 +55,7 @@ if (root) {
         document.body.style.overflow = 'hidden';
         dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
         showStep('method');
+        emulator.reset();
     }
 
     function configureValueField() {
@@ -104,6 +106,19 @@ if (root) {
         onError: message => setError(message),
     });
 
+    const emulator = createContactProviderEmulation({
+        root, dialog, post,
+        onBusy: setBusy,
+        onError: setError,
+        onSuccess: async result => {
+            let updated = true;
+            try { await refreshList(); } catch { updated = false; }
+            success.textContent = result.message
+                + (updated ? '' : ' Обнови страницу, чтобы увидеть контакт.');
+            showStep('done');
+        },
+    });
+
     root.querySelector('[data-contact-add-open]').addEventListener('click', open);
     dialog.querySelectorAll('[data-contact-add-close]').forEach(button => {
         button.addEventListener('click', () => { if (!busy) dialog.close(); });
@@ -130,6 +145,9 @@ if (root) {
             if (kind === 'email' || kind === 'phone') {
                 configureValueField();
                 showStep('value');
+            } else if (emulator.available && ['telegram', 'vk'].includes(kind)) {
+                emulator.choose(kind);
+                showStep('emulation');
             } else {
                 showStep(kind);
             }

@@ -1,3 +1,4 @@
+import { createContactProviderEmulation } from './contact-provider-emulation.js';
 import { createTelegramContactBotLink } from './telegram-contact-bot-link.js';
 import { createContactResendCooldown } from './contact-resend-cooldown.js';
 const root = document.querySelector('[data-contact-wizard]');
@@ -105,6 +106,13 @@ if (root) {
         onError: message => setError(message),
     });
 
+    const emulator = createContactProviderEmulation({
+        root, dialog, post,
+        onBusy: setBusy,
+        onError: setError,
+        onSuccess: () => window.location.assign(root.dataset.confirmationUrl),
+    });
+
     function openWizard(trigger) {
         opener = trigger;
         contactId = trigger.dataset.existingContact || null;
@@ -117,6 +125,7 @@ if (root) {
         document.body.style.overflow = 'hidden';
         dialog.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
         showStep(contactId ? 'code' : 'method');
+        emulator.reset();
     }
 
     root.querySelectorAll('[data-contact-wizard-open]').forEach(trigger => {
@@ -148,7 +157,12 @@ if (root) {
             const method = dialog.querySelector('input[name="confirmation_channel"]:checked')?.value;
             if (!method) { setError('Выбери способ связи.'); return; }
             if (method === 'phone') { setError('SMS-подтверждение пока недоступно.'); return; }
-            showStep(method);
+            if (emulator.available && ['telegram', 'vk'].includes(method)) {
+                emulator.choose(method);
+                showStep('emulation');
+            } else {
+                showStep(method);
+            }
             return;
         }
         if (step === 'email') {

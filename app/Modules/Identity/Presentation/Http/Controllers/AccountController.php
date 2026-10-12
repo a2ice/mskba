@@ -122,6 +122,7 @@ class AccountController extends Controller
             'genders' => UserGenderEnum::cases(),
             'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
             'vkEnabled' => trim((string) config('vk.app_id')) !== '',
+            'contactEmulationEnabled' => \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::enabled(),
         ]);
     }
 
@@ -489,6 +490,7 @@ class AccountController extends Controller
             'linkedVkAccount' => $linkedVkAccount,
             'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
             'vkEnabled' => trim((string) config('vk.app_id')) !== '',
+            'contactEmulationEnabled' => \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::enabled(),
         ]);
     }
 
