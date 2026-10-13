@@ -1,0 +1,262 @@
+<?php
+
+namespace App\Modules\Notification\Presentation\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\Services\AccountConversationRail;
+use App\Modules\Notification\Application\Services\SupportTicketAccess;
+use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
+use App\Modules\Notification\Application\UseCases\MarkConversationNotificationsReadHandler;
+use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
+use App\Modules\Notification\Domain\Enums\UserNotificationTypeEnum;
+use App\Modules\Notification\Domain\Models\RequestThread;
+use App\Modules\Notification\Domain\Models\SupportTicket;
+use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Infrastructure\Broadcasting\ConversationChangedBroadcast;
+use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+
+final class SupportTicketsController extends Controller
+{
+    public function start(Request $request, AccountConversationRail $rail): Response
+    {
+        $this->ensureActive($request->user());
+
+        return ThemeResolver::page('account.support-ticket-create', [
+            'conversationCards' => $rail->items($request->user(), $request),
+            'activeConversationId' => '',
+        ]);
+    }
+
+    public function store(Request $request, SupportTicketAccess $access, CreateUserNotificationHandler $notifications): RedirectResponse
+    {
+        $user = $request->user()->canonical();
+        $this->ensureActive($user);
+        $data = $request->validate([
+            'subject' => ['required', 'string', 'max:150'],
+            'body' => ['required', 'string', 'max:2000'],
+        ]);
+        abort_unless(trim($data['subject']) !== '' && trim($data['body']) !== '', 422);
+
+        [$ticket, $thread] = DB::transaction(function () use ($user, $data, $access): array {
+            $lead = User::query()->where('system_role', UserSystemRoleEnum::SUPERADMIN->value)
+                ->where('status', 'confirmed')->orderBy('id')->get()
+                ->first(fn (User $candidate) => $access->isAgent($candidate) && $access->afterId($candidate) !== null);
+            $ticket = SupportTicket::query()->create([
+                'user_id' => $user->id, 'subject' => trim($data['subject']), 'status' => 'open',
+            ]);
+            $thread = RequestThread::query()->create([
+                'type' => 'support', 'subject_id' => $ticket->id, 'lead_user_id' => $lead?->id,
+            ]);
+            if ($lead) {
+                $thread->memberships()->create(['user_id' => $lead->id, 'joined_at' => now()]);
+            }
+            $thread->messages()->create(['sender_user_id' => $user->id, 'body' => trim($data['body'])]);
+
+            return [$ticket, $thread];
+        });
+        $this->notifyOtherSide($ticket, $thread, $user, $data['body'], $notifications);
+        $this->broadcast($thread);
+
+        return redirect()->route('account.notifications.threads.support', $ticket);
+    }
+
+    public function show(Request $request, SupportTicket $ticket, SupportTicketAccess $access): Response
+    {
+        $viewer = $request->user()->canonical();
+        $thread = $ticket->thread()->with('lead')->firstOrFail();
+        abort_unless($access->canRead($viewer, $ticket, $thread), 403);
+        $page = $this->page($thread);
+        $unread = UserNotification::query()->whereIn('user_id', $viewer->identityIds())
+            ->where('payload->support_ticket_id', $ticket->id)->where('status', UserNotificationStatusEnum::NEW)->count();
+
+        $isLead = $access->isAgent($viewer) && (int) $thread->lead_user_id === $viewer->id;
+        $availableAgents = collect();
+        if ($isLead && $ticket->status === 'open') {
+            // Two indexed branches instead of a multi-table JOIN. Confirmed,
+            // permitted staff only; server validates again when transferring.
+            $availableAgents = User::query()->where('status', 'confirmed')
+                ->whereKeyNot($viewer->id)->whereKeyNot($ticket->user_id)
+                ->where(fn ($q) => $q->where('system_role', UserSystemRoleEnum::SUPERADMIN->value)
+                    ->orWhereHas('operationalPermissions', fn ($p) => $p
+                        ->where('permission', 'support.ticket.handle')->where('is_allowed', true)))
+                ->orderBy('username')->limit(30)->get()
+                ->filter(fn (User $candidate) => $access->isAgent($candidate))->values();
+        }
+
+        return ThemeResolver::page('account.support-ticket-conversation', [
+            'ticket' => $ticket, 'thread' => $thread, 'viewer' => $viewer,
+            'messages' => $page['entries'], 'nextBefore' => $page['next_before'],
+            'canSend' => $access->canWrite($viewer, $ticket, $thread), 'unread' => $unread,
+            'isAgent' => $access->isAgent($viewer),
+            'isLead' => $isLead, 'availableAgents' => $availableAgents,
+            'conversationCards' => app(AccountConversationRail::class)->items($viewer, $request),
+            'activeConversationId' => 'support-'.$ticket->id,
+        ]);
+    }
+
+    public function history(Request $request, SupportTicket $ticket, SupportTicketAccess $access): JsonResponse
+    {
+        $viewer = $request->user()->canonical();
+        $thread = $ticket->thread()->firstOrFail();
+        abort_unless($access->canRead($viewer, $ticket, $thread), 403);
+        $before = $request->query('before');
+        abort_unless($before === null || (is_string($before) && ctype_digit($before) && (int) $before > 0), 422);
+        $page = $this->page($thread, $before !== null ? (int) $before : null);
+
+        return response()->json([
+            'html' => $page['entries']->map(fn ($message) => view('theme::pages.account.partials.chat-bubble', [
+                'entry' => ['kind' => 'message', 'id' => 'message-'.$message->id,
+                    'text' => $message->body, 'at' => $message->created_at, 'sender' => $message->sender],
+                'viewer' => $viewer,
+            ])->render())->implode(''),
+            'next_before' => $page['next_before'],
+        ]);
+    }
+
+    public function read(Request $request, SupportTicket $ticket, SupportTicketAccess $access,
+        MarkConversationNotificationsReadHandler $read): JsonResponse
+    {
+        $viewer = $request->user()->canonical();
+        abort_unless($access->canRead($viewer, $ticket, $ticket->thread), 403);
+
+        return response()->json(['unread_count' => $read->handle($viewer, supportTicketId: $ticket->id)]);
+    }
+
+    public function message(Request $request, SupportTicket $ticket, SupportTicketAccess $access,
+        CreateUserNotificationHandler $notifications): JsonResponse
+    {
+        $actor = $request->user()->canonical();
+        $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
+        abort_unless(trim($data['body']) !== '', 422);
+        $thread = DB::transaction(function () use ($ticket, $actor, $access, $data): RequestThread {
+            $ticket = SupportTicket::query()->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            $thread = $ticket->thread()->firstOrFail();
+            abort_unless($access->canWrite($actor, $ticket, $thread), 403);
+            $thread->messages()->create(['sender_user_id' => $actor->id, 'body' => trim($data['body'])]);
+            $thread->touch();
+            $ticket->touch();
+
+            return $thread;
+        });
+        $this->notifyOtherSide($ticket, $thread, $actor, $data['body'], $notifications);
+        $this->broadcast($thread);
+
+        return response()->json(['message' => 'Отправлено.'], 201);
+    }
+
+    public function claim(Request $request, SupportTicket $ticket, SupportTicketAccess $access): RedirectResponse
+    {
+        $actor = $request->user()->canonical();
+        DB::transaction(function () use ($actor, $ticket, $access): void {
+            $thread = $ticket->thread()->lockForUpdate()->firstOrFail();
+            abort_unless($ticket->status === 'open' && $thread->lead_user_id === null &&
+                $access->isAgent($actor) && $access->canRead($actor, $ticket, $thread), 403);
+            $thread->update(['lead_user_id' => $actor->id]);
+            $thread->memberships()->firstOrCreate(['user_id' => $actor->id], ['joined_at' => now()]);
+        });
+
+        return redirect()->route('account.notifications.threads.support', $ticket);
+    }
+
+    public function transfer(Request $request, SupportTicket $ticket, SupportTicketAccess $access): RedirectResponse
+    {
+        $data = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id']]);
+        $actor = $request->user()->canonical();
+        DB::transaction(function () use ($ticket, $access, $actor, $data): void {
+            $thread = $ticket->thread()->lockForUpdate()->firstOrFail();
+            abort_unless($ticket->status === 'open' && (int) $thread->lead_user_id === $actor->id
+                && $access->isAgent($actor), 403);
+            $target = User::query()->findOrFail($data['user_id'])->canonical();
+            abort_unless($target->id !== $actor->id && $access->isAgent($target), 422);
+            // A transfer is an explicit invitation to this particular historical ticket.
+            $member = $thread->memberships()->where('user_id', $target->id)->first();
+            abort_if($member?->removed_at !== null, 403, 'Исключённый участник требует отдельного восстановления.');
+            $thread->memberships()->firstOrCreate(['user_id' => $target->id],
+                ['joined_at' => now(), 'invited_by_user_id' => $actor->id]);
+            $thread->update(['lead_user_id' => $target->id]);
+        });
+        $this->broadcast($ticket->thread, true);
+        app(CreateUserNotificationHandler::class)->handle(new CreateUserNotificationDTO(
+            userId: (int) $data['user_id'], type: UserNotificationTypeEnum::SYSTEM,
+            title: 'Техподдержка №'.$ticket->id.' — назначен главный',
+            body: 'Вам передали ведение обращения №'.$ticket->id.'.',
+            actionUrl: route('account.notifications.threads.support', $ticket),
+            actionText: 'Открыть обращение',
+            payload: ['source' => 'support.lead_transferred', 'support_ticket_id' => $ticket->id],
+        ));
+
+        return redirect()->route('account.notifications.threads.support', $ticket);
+    }
+
+    public function close(Request $request, SupportTicket $ticket, SupportTicketAccess $access): RedirectResponse
+    {
+        $actor = $request->user()->canonical();
+        DB::transaction(function () use ($ticket, $actor, $access): void {
+            $thread = $ticket->thread()->lockForUpdate()->firstOrFail();
+            abort_unless($ticket->status === 'open' && (int) $thread->lead_user_id === $actor->id
+                && $access->isAgent($actor), 403);
+            $ticket->update(['status' => 'closed']);
+        });
+        $this->broadcast($ticket->thread, true);
+
+        return redirect()->route('account.notifications.threads.support', $ticket);
+    }
+
+    private function page(RequestThread $thread, ?int $before = null): array
+    {
+        $query = $thread->messages()->with('sender')->orderByDesc('id');
+        if ($before !== null) {
+            $query->where('id', '<', $before);
+        }
+        $found = $query->limit(11)->get();
+        $page = $found->take(10);
+
+        return ['entries' => $page->reverse()->values(),
+            'next_before' => $found->count() > 10 ? (string) $page->last()->id : null];
+    }
+
+    private function ensureActive(User $user): void
+    {
+        abort_if($user->canonical()->isBlocked() || $user->canonical()->trashed(), 403);
+    }
+
+    private function notifyOtherSide(SupportTicket $ticket, RequestThread $thread, User $actor,
+        string $body, CreateUserNotificationHandler $notifications): void
+    {
+        $recipients = collect([$ticket->user_id, $thread->lead_user_id])->filter()
+            ->unique()->reject(fn ($id) => (int) $id === $actor->id);
+        foreach ($recipients as $id) {
+            if ((int) $id !== (int) $ticket->user_id) {
+                $target = User::query()->find($id);
+                if ($target === null || ! app(SupportTicketAccess::class)->canRead($target, $ticket, $thread)) {
+                    continue;
+                }
+            }
+            $notifications->handle(new CreateUserNotificationDTO(
+                userId: (int) $id, type: UserNotificationTypeEnum::SYSTEM,
+                title: 'Новое сообщение техподдержки №'.$ticket->id,
+                body: mb_strimwidth(trim($body), 0, 180, '…'),
+                actionUrl: route('account.notifications.threads.support', $ticket),
+                actionText: 'Открыть переписку',
+                payload: ['source' => 'support.message', 'support_ticket_id' => $ticket->id],
+            ));
+        }
+    }
+
+    private function broadcast(RequestThread $thread, bool $accessChanged = false): void
+    {
+        try {
+            ConversationChangedBroadcast::dispatch('support', $thread->id, $accessChanged);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+}

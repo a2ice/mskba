@@ -849,6 +849,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:60,1')
             ->name('account.settings.privacy.users');
         Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications')->defaults('breadcrumb', 'Сообщения');
+        Route::get('/notifications/rail', \App\Modules\Notification\Presentation\Http\Controllers\AccountConversationRailController::class)->middleware('throttle:30,1')->name('account.notifications.rail');
         Route::get('/notifications/users/{user}/message-access', [DirectMessagesController::class, 'access'])
             ->middleware('throttle:60,1')->name('account.notifications.direct.access');
         Route::post('/notifications/users/{user}/messages', [DirectMessagesController::class, 'send'])
@@ -876,6 +877,16 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:20,1')->name('account.notifications.threads.team.messages');
         Route::patch('/notifications/threads/team/{joinRequest}/read', [AccountConversationsController::class, 'readTeam'])
             ->name('account.notifications.threads.team.read');
+        Route::get('/notifications/support/start', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'start'])->name('account.notifications.support.start');
+        Route::post('/notifications/support', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'store'])->middleware('throttle:5,1')->name('account.notifications.support.store');
+        Route::get('/notifications/threads/support/{ticket}', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'show'])->name('account.notifications.threads.support')->defaults('breadcrumb', 'Техподдержка');
+        Route::get('/notifications/threads/support/{ticket}/history', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.support.history');
+        Route::patch('/notifications/threads/support/{ticket}/read', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'read'])->name('account.notifications.threads.support.read');
+        Route::post('/notifications/threads/support/{ticket}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.support.messages');
+        Route::post('/notifications/threads/support/{ticket}/claim', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'claim'])->middleware('throttle:10,1')->name('account.notifications.threads.support.claim');
+        Route::post('/notifications/threads/support/{ticket}/transfer', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.support.transfer');
+        Route::post('/notifications/threads/support/{ticket}/close', [\App\Modules\Notification\Presentation\Http\Controllers\SupportTicketsController::class, 'close'])->middleware('throttle:10,1')->name('account.notifications.threads.support.close');
+        Route::get('/notifications/threads/system/history', [AccountConversationsController::class, 'historySystem'])->middleware('throttle:60,1')->name('account.notifications.threads.system.history');
         Route::patch('/notifications/threads/system/read', [AccountConversationsController::class, 'readSystem'])
             ->name('account.notifications.threads.system.read');
         Route::get('/notifications/threads/system', [AccountController::class, 'systemNotificationConversation'])

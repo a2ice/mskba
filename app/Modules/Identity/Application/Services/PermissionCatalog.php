@@ -20,7 +20,8 @@ final class PermissionCatalog
 
         return [
             'creation' => ['label' => 'Создание', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::USER, 'permissions' => $global->filter(fn ($p) => str_ends_with($p->value, '.create'))->values()->all()],
-            'security' => ['label' => 'Администрирование пользователей', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::ADMIN, 'permissions' => $global->reject(fn ($p) => str_ends_with($p->value, '.create'))->values()->all()],
+            'security' => ['label' => 'Администрирование пользователей', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::ADMIN, 'permissions' => $global->reject(fn ($p) => str_ends_with($p->value, '.create') || $p === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS)->values()->all()],
+            'support' => ['label' => 'Техподдержка', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::USER, 'permissions' => [UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS]],
             'team' => ['label' => 'Команды', 'scope' => 'team', 'permissions' => TeamPermissionEnum::cases()],
             'venue' => ['label' => 'Площадки', 'scope' => 'venue', 'permissions' => VenuePermissionEnum::cases()],
             'event' => ['label' => 'Мероприятия и мини-игры', 'scope' => 'event', 'permissions' => EventResponsibilityPermissionEnum::cases()],

@@ -388,11 +388,35 @@ final class ProfileRequestThreadPilotTest extends TestCase
         $this->get(route('account.notifications.threads.profile', $request))->assertOk()
             ->assertSee('data-chat-root', false)
             ->assertSee('data-chat-history', false)
+            ->assertSee('app-account-layout--compact-sidebar', false)
+            ->assertSee('data-conversation-rail', false)
+            ->assertSee('data-chat-date=', false)
             ->assertSee('app-context-quick app-context-actions__trigger app-messages__actions-trigger', false)
             ->assertSee('app-context-quick__label', false)
             ->assertSee('app-messages__compose-footer', false)
             ->assertSee('data-chat-send', false)
             ->assertSee('aria-current="page"', false);
+    }
+
+    public function test_profile_rail_preview_refreshes_from_last_persisted_message_and_title_starts_with_section(): void
+    {
+        $applicant = $this->account();
+        $reviewer = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $request = $this->change($applicant);
+        $this->actingAs($reviewer)->post(route('account.notifications.threads.profile.claim', $request))
+            ->assertRedirect();
+        $this->actingAs($applicant)->get(route('account.notifications.threads.profile', $request))
+            ->assertOk()->assertSee('<title>Сообщения — Изменение данных №'.$request->id.' · MSKBA</title>', false);
+        $this->postJson(route('account.notifications.threads.profile.messages', $request),
+            ['body' => 'Первый текст в переписке'])->assertCreated();
+        $url = route('account.notifications.rail').'?active=profile-'.$request->id;
+        $previous = $this->getJson($url)->assertOk()->json('html');
+        $this->assertStringContainsString('Вы: Первый текст в переписке', $previous);
+        $this->postJson(route('account.notifications.threads.profile.messages', $request),
+            ['body' => 'Новый текст для колонки сообщений'])->assertCreated();
+        $next = $this->getJson($url)->assertOk()->json('html');
+        $this->assertStringContainsString('Вы: Новый текст для колонки сообщений', $next);
+        $this->assertStringNotContainsString('Вы: Первый текст в переписке', $next);
     }
 
     public function test_visibility_uses_exists_instead_of_join_multiplication(): void

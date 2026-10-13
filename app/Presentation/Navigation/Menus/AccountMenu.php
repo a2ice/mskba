@@ -15,6 +15,31 @@ final class AccountMenu implements MenuHandler
 {
     use MenuHelper;
 
+    /** Stable route-based sprite configuration for the opt-in compact sidebar. */
+    private const APP_ICONS = [
+        'account' => 'home',
+        'account.profile' => 'user',
+        'account.roles' => 'people',
+        'account.teams' => 'people',
+        'account.my-games' => 'ball',
+        'account.my-trainings' => 'clock',
+        'account.sports-sections.index' => 'people',
+        'account.venues' => 'pin',
+        'account.my-bookings' => 'calendar',
+        'account.venue-schedule' => 'calendar',
+        'account.my-events' => 'calendar',
+        'account.my-tournaments' => 'cup',
+        'account.referee-assignments' => 'check',
+        'account.statistics' => 'sliders',
+        'account.my-materials' => 'save',
+        'account.notifications' => 'message',
+        'account.contacts' => 'contact-mail',
+        'account.wallet' => 'save',
+        'account.settings' => 'sliders',
+        'account.contracts' => 'save',
+        'auth.logout' => 'arrow-up-right',
+    ];
+
     public function __construct(
         private readonly VenueAccessResolver $venueAccessResolver,
     ) {}
@@ -116,6 +141,7 @@ final class AccountMenu implements MenuHandler
         // group: "Все роли" leads to selection and each role to its parameters.
         $roleChildren = [[
             'label' => 'Все роли',
+            'icon' => self::APP_ICONS['account.roles'],
             'url' => $this->routeUrl('account.roles'),
             'active' => $this->isActiveRoute('account.roles, account.roles.*'),
             'visible' => true,
@@ -128,6 +154,7 @@ final class AccountMenu implements MenuHandler
             $role = UserParticipationRoleEnum::from($roleValue);
             $roleChildren[] = [
                 'label' => $role->label(),
+                'icon' => 'user',
                 'url' => route('account.participation-role', ['role' => $roleValue]),
                 'active' => request()->routeIs('account.participation-role')
                     && request()->route('role') === $roleValue,
@@ -138,6 +165,7 @@ final class AccountMenu implements MenuHandler
             ? $this->link('Роли в проекте', 'account.roles')
             : [
                 'label' => 'Роли в проекте',
+                'icon' => 'people',
                 'url' => null,
                 'active' => collect($roleChildren)->contains(fn (array $child): bool => $child['active']),
                 'visible' => true,
@@ -162,13 +190,17 @@ final class AccountMenu implements MenuHandler
             [$label, $route, $activePatterns] = $definitions[$key];
             $children[] = [
                 'label' => $label,
+                'icon' => self::APP_ICONS[$route] ?? 'ball',
                 'url' => $this->routeUrl($route),
                 'active' => $this->isActiveRoute($activePatterns),
                 'visible' => true,
             ];
         }
         // The common functional destinations stay grouped and deduplicated.
-        array_push($items, ...AdaptiveMenuGroup::wrap('Мой MSKBA', $children));
+        foreach (AdaptiveMenuGroup::wrap('Мой MSKBA', $children) as $groupItem) {
+            $groupItem['icon'] ??= 'ball';
+            $items[] = $groupItem;
+        }
 
         $items[] = [
             ...$this->link('Сообщения', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user)),
@@ -177,6 +209,7 @@ final class AccountMenu implements MenuHandler
         ];
         $items[] = [
             'label' => 'Контакты',
+            'icon' => 'contact-mail',
             'url' => $this->routeUrl('account.contacts'),
             'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
             'visible' => true,
@@ -196,6 +229,7 @@ final class AccountMenu implements MenuHandler
     {
         return [
             'label' => $label,
+            'icon' => self::APP_ICONS[$route] ?? 'ball',
             'url' => $this->routeUrl($route),
             'active' => $this->isActiveRoute($route),
             'visible' => true,

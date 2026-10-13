@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use App\Modules\Notification\Application\Services\RequestThreadMembershipManager;
+use App\Modules\Notification\Application\Services\SupportTicketAccess;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
@@ -68,6 +69,15 @@ final class AdminUpdateUserOperationalPermissionsHandler
                     // an old membership silently. Subquery avoids a large permission JOIN.
                     app(RequestThreadMembershipManager::class)
                         ->revokeForUser($target, $actor);
+                }
+                if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && $enabled && ! $wasEnabled) {
+                    app(SupportTicketAccess::class)->setGrantCursor($target);
+                }
+                // Revoking the permission instantly blocks history, POST and
+                // private websocket authorization. Old explicit memberships do
+                // not override the checker on future regrants.
+                if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && ! $enabled && $wasEnabled) {
+                    app(SupportTicketAccess::class)->revokeForUser($target, $actor);
                 }
                 // Unchanged values must not reset the original grant timestamp.
             }

@@ -10,6 +10,7 @@ enum UserOperationalPermissionEnum: string
     case CREATE_TOURNAMENT = 'tournament.create';
     case MANAGE_SYSTEM_ROLES = 'user.system_role.manage';
     case REVIEW_PROFILE_CHANGES = 'identity.profile_change.review';
+    case HANDLE_SUPPORT_TICKETS = 'support.ticket.handle';
 
     public function label(): string
     {
@@ -20,20 +21,21 @@ enum UserOperationalPermissionEnum: string
             self::CREATE_TOURNAMENT => 'Создание турниров',
             self::MANAGE_SYSTEM_ROLES => 'Управление системными ролями',
             self::REVIEW_PROFILE_CHANGES => 'Рассматривать изменения подтверждённых данных',
+            self::HANDLE_SUPPORT_TICKETS => 'Обрабатывать обращения в техподдержку',
         };
     }
 
     public function defaultAllowed(): bool
     {
         return match ($this) {
-            self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES => false,
+            self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS => false,
             default => true,
         };
     }
 
     public function defaultAllowedFor(UserSystemRoleEnum $systemRole): bool
     {
-        if (in_array($this, [self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES], true)) {
+        if (in_array($this, [self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS], true)) {
             return $systemRole === UserSystemRoleEnum::SUPERADMIN;
         }
 

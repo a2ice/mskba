@@ -1,7 +1,9 @@
-@extends('theme::layouts.account', ['title' => 'Личная переписка'])
+@extends('theme::layouts.account', ['title' => 'Сообщения — Личная переписка с '.($recipient->username ?: 'участником'), 'compactSidebar' => true])
 
 @section('account-content')
 @php($contactName = $recipient->username ?: (trim(($recipient->profile?->first_name ?? '').' '.($recipient->profile?->last_name ?? '')) ?: 'Участник'))
+<div class="app-message-workspace">
+@include('theme::pages.account.partials.conversation-rail')
 <section class="app-messages app-messages--thread" data-chat-root
     data-chat-history-url="{{ route('account.notifications.threads.direct.history', $conversation->id) }}"
     data-chat-channel="direct-conversations.{{ $conversation->id }}"
@@ -56,4 +58,5 @@
     @endif
     <div data-conversation-read-url="{{ route('account.notifications.threads.direct.read', $conversation->id) }}" data-unread-count="{{ $unread }}"></div>
 </section>
+</div>
 @endsection

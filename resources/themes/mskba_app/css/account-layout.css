@@ -33,6 +33,14 @@
   padding:20px 24px;
 }
 .app-account-intro p { margin:0; color:var(--muted); font-size:15px; line-height:1.6; }
+.app-account-intro--with-action {
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+}
+.app-account-intro--with-action p { flex:1 1 260px;min-width:0; }
+.app-account-intro__action { flex:0 0 auto; }
+@media(max-width:639px){
+  .app-account-intro--with-action .app-account-intro__action{max-width:100%;}
+}
 @media(max-width:639px) { .app-account-intro { padding:16px 18px; } }
 
 .app-account-nav { padding:16px; }
@@ -78,6 +86,7 @@
   border-color:#ff79004a;
   background:#ff790012;
 }
+
 /* Nested group uses the same link primitive and native details toggle as the header. */
 .app-account-nav__group > summary {
   cursor:pointer;
@@ -85,14 +94,14 @@
 }
 .app-account-nav__group > summary::-webkit-details-marker { display:none; }
 .app-account-nav__group > summary::marker { content:''; }
-.app-account-nav__group-trigger svg {
+.app-account-nav__group-trigger > svg:not(.app-account-nav__icon) {
   width:16px;
   height:16px;
   flex-shrink:0;
   color:var(--muted);
   transition:transform .16s;
 }
-.app-account-nav__group[open] > summary svg { transform:rotate(180deg); }
+.app-account-nav__group[open] > summary > svg:not(.app-account-nav__icon) { transform:rotate(180deg); }
 .app-account-nav__group-trigger.is-active {
   background:var(--surface-raised);
   color:var(--text);
@@ -111,7 +120,11 @@
   outline:2px solid var(--accent);
   outline-offset:2px;
 }
-.app-account-nav__label { min-width:0; overflow-wrap:anywhere; }
+.app-account-nav__icon {
+  display:block;width:19px;height:19px;flex:0 0 19px;
+  stroke:currentColor;stroke-width:1.8;fill:none;
+}
+.app-account-nav__label { min-width:0; flex:1 1 auto; overflow-wrap:anywhere; }
 .app-account-nav__badge { color:var(--accent); background:#ff790012; }
 .app-account-nav__badge[hidden] { display:none; }
 .app-account-nav__divider {
@@ -213,4 +226,56 @@
 }
 @media(prefers-reduced-motion:reduce) {
   .app-account-nav__link,.app-account-nav__mobile-trigger svg { transition:none; }
+}
+
+/* Opt-in compact account navigation: MenuResolver provides icons; the grid
+   remains stable while the navigation expands above the content on hover. */
+@media (min-width:901px) {
+  .app-account-layout--compact-sidebar {
+    grid-template-columns:72px minmax(0,1fr);
+    gap:16px;
+  }
+  .app-account-layout--compact-sidebar .app-account-layout__aside {
+    z-index:19;
+    width:72px;
+  }
+  .app-account-layout--compact-sidebar .app-account-nav--desktop {
+    width:72px;
+    padding:8px;
+    box-sizing:border-box;
+    overflow:hidden;
+    transition:width .2s ease,box-shadow .2s ease;
+  }
+  .app-account-layout--compact-sidebar .app-account-layout__aside:is(:hover,:focus-within) .app-account-nav--desktop {
+    width:260px;
+    box-shadow:0 18px 38px #0009;
+  }
+  .app-account-layout--compact-sidebar .app-account-nav__links {overflow-x:hidden}
+  .app-account-layout--compact-sidebar .app-account-nav__link {
+    gap:10px;justify-content:flex-start;white-space:nowrap;padding:10px 16px;
+  }
+  .app-account-layout--compact-sidebar .app-account-nav__icon {
+    width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;
+  }
+  .app-account-layout--compact-sidebar .app-account-nav__label {
+    opacity:0;visibility:hidden;flex:0 0 0;max-width:0;overflow:hidden;
+    transition:opacity .12s ease;
+  }
+  .app-account-layout--compact-sidebar .app-account-nav__link>.app-account-nav__badge {
+    position:absolute;top:4px;right:4px;width:9px;min-width:9px;height:9px;padding:0;
+    font-size:0;color:transparent;
+  }
+  .app-account-layout--compact-sidebar .app-account-nav__link {position:relative}
+  .app-account-layout--compact-sidebar .app-account-nav__group-trigger>svg:not(.app-account-nav__icon),
+  .app-account-layout--compact-sidebar .app-account-nav__children {display:none}
+  .app-account-layout--compact-sidebar .app-account-layout__aside:is(:hover,:focus-within) .app-account-nav__label {
+    opacity:1;visibility:visible;flex:1 1 auto;max-width:none;
+  }
+  .app-account-layout--compact-sidebar .app-account-layout__aside:is(:hover,:focus-within) .app-account-nav__group-trigger>svg:not(.app-account-nav__icon) {display:block}
+  .app-account-layout--compact-sidebar .app-account-layout__aside:is(:hover,:focus-within) .app-account-nav__group[open] .app-account-nav__children {display:flex}
+  .app-account-layout--compact-sidebar .app-account-layout__aside:is(:hover,:focus-within) .app-account-nav__link>.app-account-nav__badge {
+    position:static;min-width:20px;width:auto;height:20px;padding:0 6px;
+    color:var(--accent);font-size:12px;
+  }
+  .app-account-layout--compact-sidebar .app-account-nav__divider {margin-inline:6px}
 }

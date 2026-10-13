@@ -18,6 +18,10 @@ final class UserOperationalPermissionChecker
             return false;
         }
 
+        if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && ! $user->isConfirmed()) {
+            return false;
+        }
+
         if ($user->isBlocked() || $user->trashed()) {
             return false;
         }

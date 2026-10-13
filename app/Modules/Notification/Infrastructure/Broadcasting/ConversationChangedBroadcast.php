@@ -18,7 +18,11 @@ final class ConversationChangedBroadcast implements ShouldBroadcastNow
 
     public function broadcastOn(): PrivateChannel
     {
-        return new PrivateChannel(($this->type === 'profile' ? 'request-threads.' : 'direct-conversations.').$this->id);
+        return new PrivateChannel(match ($this->type) {
+            'profile' => 'request-threads.',
+            'support' => 'support-tickets.',
+            default => 'direct-conversations.',
+        }.$this->id);
     }
 
     public function broadcastAs(): string

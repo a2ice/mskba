@@ -13,3 +13,5 @@ Broadcast::channel('venue-booking-conversations.{publicId}', VenueBookingConvers
 // Server-authorized subscriptions; events themselves never include private bodies.
 Broadcast::channel('request-threads.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'profile']);
 Broadcast::channel('direct-conversations.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'direct']);
+
+Broadcast::channel('support-tickets.{id}', [\App\Modules\Notification\Infrastructure\Broadcasting\ConversationChannel::class, 'support']);

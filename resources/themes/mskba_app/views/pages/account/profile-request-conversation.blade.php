@@ -1,6 +1,8 @@
-@extends('theme::layouts.account', ['title' => 'Изменение данных — сообщения'])
+@extends('theme::layouts.account', ['title' => 'Сообщения — Изменение данных №'.$changeRequest->id, 'compactSidebar' => true])
 
 @section('account-content')
+<div class="app-message-workspace">
+@include('theme::pages.account.partials.conversation-rail')
 <section class="app-messages app-messages--thread" aria-label="Обсуждение изменения данных"
     @if($canRead) data-chat-root data-chat-history-url="{{ route('account.notifications.threads.profile.history', $changeRequest->id) }}"
         data-chat-channel="request-threads.{{ $thread->id }}"
@@ -151,4 +153,5 @@
         @endif
     @endif
 </section>
+</div>
 @endsection

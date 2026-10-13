@@ -1,4 +1,19 @@
 {
+  "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-DeUDHqRc.js",
+    "name": "three.module",
+    "src": "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
+  "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/examples/jsm/loaders/GLTFLoader.js": {
+    "file": "assets/GLTFLoader-ZImk_JXA.js",
+    "name": "GLTFLoader",
+    "src": "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js"
+    ]
+  },
   "_realtime-CGmwhT5L.js": {
     "file": "assets/realtime-CGmwhT5L.js",
     "name": "realtime",
@@ -14,23 +29,8 @@
     "file": "assets/runtime-dom.esm-bundler-CzVQHx5l.js",
     "name": "runtime-dom.esm-bundler"
   },
-  "node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-DeUDHqRc.js",
-    "name": "three.module",
-    "src": "node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
-  },
-  "node_modules/three/examples/jsm/loaders/GLTFLoader.js": {
-    "file": "assets/GLTFLoader-ZImk_JXA.js",
-    "name": "GLTFLoader",
-    "src": "node_modules/three/examples/jsm/loaders/GLTFLoader.js",
-    "isDynamicEntry": true,
-    "imports": [
-      "node_modules/three/build/three.module.js"
-    ]
-  },
   "resources/css/app.css": {
-    "file": "assets/app-DuvSl6K7.css",
+    "file": "assets/app-CammuCzD.css",
     "name": "app",
     "names": [
       "app.css"
@@ -45,7 +45,7 @@
     "isEntry": true
   },
   "resources/themes/blank/css/app.css": {
-    "file": "assets/app-Bv5WbDTu.css",
+    "file": "assets/app-DTWnPUs_.css",
     "name": "app",
     "names": [
       "app.css"
@@ -68,7 +68,7 @@
     "src": "resources/themes/mskba_app/assets/images/logo-mark-100.png"
   },
   "resources/themes/mskba_app/css/app.css": {
-    "file": "assets/app-ypW2mMXV.css",
+    "file": "assets/app--Ee01Su5.css",
     "name": "app",
     "names": [
       "app.css"
@@ -81,7 +81,7 @@
     ]
   },
   "resources/themes/mskba_app/js/app.js": {
-    "file": "assets/app-CNptRMok.js",
+    "file": "assets/app-D2twCgnY.js",
     "name": "app",
     "src": "resources/themes/mskba_app/js/app.js",
     "isEntry": true,
@@ -131,8 +131,8 @@
       "_realtime-CGmwhT5L.js"
     ],
     "dynamicImports": [
-      "node_modules/three/build/three.module.js",
-      "node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+      "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js",
+      "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
       "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
       "resources/themes/mskba_dark/js/features/home-event-empty-create-cta.js"
     ],

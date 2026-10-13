@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\Services\AccountConversationRail;
 use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
 use App\Modules\Notification\Application\Services\ProfileThreadTimeline;
 use App\Modules\Notification\Application\Services\RequestThreadMembershipManager;
@@ -39,6 +40,8 @@ final class ProfileRequestThreadController extends Controller
             // Never load history or private request values for excluded reviewers.
             return ThemeResolver::page('account.profile-request-conversation', [
                 'changeRequest' => $changeRequest, 'canRead' => false, 'thread' => $thread,
+                'conversationCards' => app(AccountConversationRail::class)->items($user, $request),
+                'activeConversationId' => 'profile-'.$changeRequest->id,
                 'removedReason' => $member?->removal_reason === 'excluded'
                     ? 'Ты был исключён из участия в рассмотрении этой заявки.'
                     : 'Доступ к заявке прекращён: у тебя больше нет соответствующего разрешения.',
@@ -56,6 +59,8 @@ final class ProfileRequestThreadController extends Controller
         return ThemeResolver::page('account.profile-request-conversation', [
             'changeRequest' => $changeRequest, 'canRead' => true, 'thread' => $thread,
             'timeline' => $timeline, 'nextBefore' => $page['next_before'], 'participants' => $participants,
+            'conversationCards' => app(AccountConversationRail::class)->items($user, $request),
+            'activeConversationId' => 'profile-'.$changeRequest->id,
             'canReview' => $access->isReviewer($user) && ! $access->isApplicant($user, $changeRequest),
             'isLead' => (int) $thread->lead_user_id === (int) $user->id,
             'isMember' => $member !== null && $member->removed_at === null,

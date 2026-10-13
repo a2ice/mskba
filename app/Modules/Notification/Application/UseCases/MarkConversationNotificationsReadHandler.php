@@ -13,7 +13,7 @@ final class MarkConversationNotificationsReadHandler
     public function __construct(private readonly UserNotificationCounterStore $counts) {}
 
     public function handle(User $user, ?int $joinRequestId = null, ?int $directConversationId = null,
-        ?int $profileChangeRequestId = null): int
+        ?int $profileChangeRequestId = null, ?int $supportTicketId = null): int
     {
         $canonical = $user->canonical();
         $query = UserNotification::query()
@@ -26,9 +26,11 @@ final class MarkConversationNotificationsReadHandler
             $query->where('payload->direct_conversation_id', $directConversationId);
         } elseif ($profileChangeRequestId !== null) {
             $query->where('payload->profile_change_request_id', $profileChangeRequestId);
+        } elseif ($supportTicketId !== null) {
+            $query->where('payload->support_ticket_id', $supportTicketId);
         } else {
             $query->whereNull('payload->join_request_id')->whereNull('payload->direct_conversation_id')
-                ->whereNull('payload->profile_change_request_id');
+                ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id');
         }
 
         $updated = $query->update([

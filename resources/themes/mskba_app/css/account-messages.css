@@ -221,3 +221,121 @@
         flex:1 1 auto;
     }
 }
+
+/* Task 037: date grouping and updated contrast for the chat's message types. */
+.app-messages--thread .app-messages__day{
+    align-self:center;position:relative;z-index:1;
+    display:flex;align-items:center;justify-content:center;
+    padding:5px 12px;border-radius:999px;
+    background:var(--surface-raised);color:var(--muted);
+    font-size:12px;font-weight:650;text-align:center;
+}
+/* Low-contrast body background; the outline communicates who sent it.
+   System events behave like incoming bubbles, with a stronger orange fill. */
+.app-messages--thread .app-messages__bubble--outgoing{
+    align-self:flex-end;border:1px solid var(--line);
+    background:transparent;
+}
+.app-messages--thread .app-messages__bubble--incoming{
+    align-self:flex-start;border:1px solid color-mix(in srgb,var(--accent) 75%,var(--line));
+    background:transparent;
+}
+.app-messages--thread .app-messages__bubble--system{
+    box-sizing:border-box;align-self:flex-start;width:max-content;max-width:min(80%,620px);min-width:0;
+    border:1px solid color-mix(in srgb,var(--accent) 60%,var(--line));
+    border-radius:18px 18px 18px 6px;
+    background:color-mix(in srgb,var(--accent) 16%,var(--surface));
+}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__bubble--system{max-width:94%}
+}
+
+/* Messenger workspace: conversation + independent, scrollable inbox preview. */
+.app-message-workspace{
+    display:grid;grid-template-columns:minmax(235px,270px) minmax(0,1fr);
+    gap:16px;min-width:0;min-height:0;flex:1 1 auto;
+}
+.app-message-workspace>.app-messages--thread{min-width:0}
+.app-messages__rail{
+    min-width:0;min-height:0;display:flex;flex-direction:column;
+    padding:0;overflow:hidden;
+}
+.app-messages__rail-header{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:16px;border-bottom:1px solid var(--line);font-size:14px;
+}
+.app-messages__rail-header a{color:var(--accent);font-size:12px}
+.app-messages__rail-list{
+    flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+    display:flex;flex-direction:column;gap:6px;padding:10px;
+    scrollbar-width:thin;scrollbar-color:var(--control-line) transparent;
+}
+.app-messages__rail-item{
+    display:flex;flex-direction:column;gap:5px;min-width:0;
+    padding:12px;border:1px solid transparent;border-radius:12px;
+    color:var(--text);text-decoration:none;
+}
+.app-messages__rail-item:is(:hover,:focus-visible){background:var(--surface-raised);border-color:var(--line)}
+.app-messages__rail-item.is-active{
+    background:color-mix(in srgb,var(--accent) 9%,var(--surface));
+    border-color:color-mix(in srgb,var(--accent) 35%,var(--line));
+}
+.app-messages__rail-heading{display:flex;justify-content:space-between;align-items:center;gap:7px;min-width:0}
+.app-messages__rail-heading strong{font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__rail-item .app-messages__unread{min-width:19px;height:19px;font-size:11px;flex:none}
+.app-messages__rail-excerpt{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages__rail-item time{font-size:11px;color:var(--faint);align-self:flex-end}
+.app-messages__rail-empty{padding:12px;font-size:12px;color:var(--muted)}
+@media(max-width:1199px){
+    .app-message-workspace{grid-template-columns:minmax(0,1fr)}
+    .app-messages__rail{display:none}
+}
+@media(max-width:900px){
+    .app-message-workspace{display:flex;flex-direction:column}
+}
+
+/* The system channel uses the same two-column messenger, but remains read-only. */
+.app-messages--system .app-messages__bubble--notification{
+    box-sizing:border-box;align-self:flex-start;width:max-content;max-width:min(80%,620px);min-width:0;
+    border:1px solid color-mix(in srgb,var(--accent) 70%,var(--line));
+    border-radius:18px 18px 18px 6px;
+    background:color-mix(in srgb,var(--accent) 14%,var(--surface));
+}
+.app-messages__system-footer{
+    display:flex!important;flex-direction:row;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:14px!important;padding:14px 16px!important;
+}
+.app-messages__system-footer p{margin:0;font-size:12px;color:var(--muted);flex:1 1 230px}
+.app-messages__system-footer .button{flex:none}
+@media(max-width:680px){.app-messages--system .app-messages__bubble--notification{max-width:94%}}
+
+/* New private support request form — reuses the account panel primitives. */
+.app-messages__support-form{display:grid;gap:14px;max-width:740px;padding:24px}
+.app-message-workspace--support-create>.app-messages__support-form{
+    width:100%;max-width:none;min-width:0;align-self:start;
+}
+.app-messages__support-form .app-messages__compose-footer{
+    display:flex;justify-content:flex-end;align-items:center;gap:8px;width:100%;padding:4px 0 0;
+}
+.app-messages__support-email{
+    margin:0;text-align:right;color:var(--muted);font-size:13px;line-height:1.6;
+}
+.app-messages__support-email a{color:var(--accent);text-underline-offset:2px}
+@media(max-width:680px){
+    .app-messages__support-form{padding:18px}
+    .app-messages__support-form .app-messages__compose-footer{flex-wrap:wrap}
+}
+.app-messages__support-form h1{font-size:26px;margin:0}
+.app-messages__support-form>p{margin:0;color:var(--muted)}
+.app-messages__support-form form{display:grid;gap:12px}
+.app-messages__support-form form label{font-weight:650;font-size:13px}
+.app-messages__support-form :is(input,textarea){width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-control);padding:13px;color:var(--text)}
+
+
+.app-messages__actions .app-messages__support-transfer-label{
+    display:block;padding:8px 12px 0;color:var(--muted);font-size:12px;
+}
+.app-messages__actions select{
+    display:block;width:calc(100% - 20px);margin:5px 10px;padding:10px;
+    background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-control);color:var(--text);
+}

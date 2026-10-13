@@ -8,8 +8,11 @@
 </section>
 @if (filled($intro ?? null))
     @push('account-intro')
-        <section class="panel app-account-intro" aria-label="О разделе">
+        <section class="panel app-account-intro{{ filled($introActionUrl ?? null) && filled($introActionLabel ?? null) ? ' app-account-intro--with-action' : '' }}" aria-label="О разделе">
             <p>{{ $intro }}</p>
+            @if (filled($introActionUrl ?? null) && filled($introActionLabel ?? null))
+                <a class="button primary app-account-intro__action" href="{{ $introActionUrl }}">{{ $introActionLabel }}</a>
+            @endif
         </section>
     @endpush
 @endif

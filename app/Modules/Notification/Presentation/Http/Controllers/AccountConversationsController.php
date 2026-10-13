@@ -4,6 +4,8 @@ namespace App\Modules\Notification\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Identity\Application\Services\CurrentActorResolver;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\Services\SystemNotificationTimeline;
 use App\Modules\Notification\Application\UseCases\BuildTeamRequestTimelineHandler;
 use App\Modules\Notification\Application\UseCases\MarkConversationNotificationsReadHandler;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
@@ -48,7 +50,7 @@ final class AccountConversationsController extends Controller
 
         $members = $notifications->joinRequestManagers($joinRequest->team)
             ->push((int) $joinRequest->user_id)->unique()->values();
-        $participants = \App\Modules\Identity\Domain\Models\User::query()
+        $participants = User::query()
             ->whereIn('id', $members)->with('profile')->get()
             ->filter(fn ($participant): bool => ! $user->isSameIdentity($participant));
 
@@ -93,8 +95,23 @@ final class AccountConversationsController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Сообщение отправлено.']);
         }
+
         return redirect()->route('account.notifications.threads.team', $joinRequest->id)
             ->with('status', 'Сообщение отправлено.');
+    }
+
+    public function historySystem(Request $request, SystemNotificationTimeline $timeline): JsonResponse
+    {
+        $before = $request->query('before');
+        abort_unless($before === null || (is_string($before) && ctype_digit($before) && (int) $before > 0), 422);
+        $page = $timeline->page($request->user(), $before !== null ? (int) $before : null);
+
+        return response()->json([
+            'html' => $page['entries']->map(fn ($notification) => view('theme::pages.account.partials.system-notification-bubble', [
+                'notification' => $notification,
+            ])->render())->implode(''),
+            'next_before' => $page['next_before'],
+        ]);
     }
 
     public function readSystem(Request $request, MarkConversationNotificationsReadHandler $read): JsonResponse
@@ -107,6 +124,7 @@ final class AccountConversationsController extends Controller
         MarkConversationNotificationsReadHandler $read): JsonResponse
     {
         [$user] = $this->authorizeTeamRequest($request, $joinRequest, $actors, $permissions);
+
         return response()->json(['unread_count' => $read->handle($user, $joinRequest->id)]);
     }
 }

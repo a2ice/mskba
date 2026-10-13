@@ -273,6 +273,44 @@ final class AccountUnifiedMessagesTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_compact_direct_chat_shows_only_authorized_conversations_in_side_rail(): void
+    {
+        $viewer = $this->user();
+        $peer = $this->user();
+        $other = $this->user();
+        $stranger = $this->user();
+        $ownThread = DirectConversation::query()->create([
+            'user_low_id' => min($viewer->id, $peer->id),
+            'user_high_id' => max($viewer->id, $peer->id),
+        ]);
+        $ownThread->messages()->create(['sender_user_id' => $peer->id, 'body' => 'Публично только участникам']);
+        $otherThread = DirectConversation::query()->create([
+            'user_low_id' => min($other->id, $stranger->id),
+            'user_high_id' => max($other->id, $stranger->id),
+        ]);
+        $otherThread->messages()->create(['sender_user_id' => $stranger->id, 'body' => 'Секрет третьего лица']);
+
+        $url = route('account.notifications.rail');
+        $response = $this->actingAs($viewer)->get(route('account.notifications.threads.direct', $ownThread))->assertOk()
+            ->assertSee('app-account-layout--compact-sidebar', false)
+            ->assertSee('app-account-nav__icon', false)
+            ->assertSee('data-conversation-rail', false)
+            ->assertSee('data-chat-date=', false)
+            ->assertSee('data-rail-conversation="direct-'.$ownThread->id.'"', false)
+            ->assertDontSee('Секрет третьего лица');
+        $this->assertSame(1, substr_count($response->getContent(), 'data-rail-conversation="direct-'.$ownThread->id.'"'));
+        $markup = $response->getContent();
+        $this->assertLessThan(strpos($markup, '<section class="app-messages app-messages--thread"'),
+            strpos($markup, '<aside class="panel app-messages__rail"'),
+            'The conversation rail must precede the chat in DOM order.');
+        $list = $this->getJson($url.'?active=direct-'.$ownThread->id)->assertOk();
+        $this->assertStringContainsString('Публично только участникам', $list->json('html'));
+        $this->assertStringNotContainsString('Секрет третьего лица', $list->json('html'));
+        $this->getJson($url.'?active=<img>')->assertUnprocessable();
+        $this->actingAs($stranger)->getJson($url)->assertOk()
+            ->assertDontSee('Публично только участникам');
+    }
+
     public function test_direct_history_uses_private_cursor_pagination_by_tens(): void
     {
         $first = $this->user();

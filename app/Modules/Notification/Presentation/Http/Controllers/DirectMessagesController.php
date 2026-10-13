@@ -7,6 +7,7 @@ use App\Modules\Identity\Application\Services\UserPrivacyAccessService;
 use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
+use App\Modules\Notification\Application\Services\AccountConversationRail;
 use App\Modules\Notification\Application\Services\DirectMessageBlockService;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Application\UseCases\MarkConversationNotificationsReadHandler;
@@ -133,7 +134,10 @@ final class DirectMessagesController extends Controller
             ->where('payload->direct_conversation_id', $conversation->id)
             ->where('status', UserNotificationStatusEnum::NEW)->count();
 
-        return ThemeResolver::page('account.direct-conversation', compact('conversation', 'viewer', 'recipient', 'messages', 'unread', 'nextBefore', 'canSend', 'blockedByMe'));
+        $conversationCards = app(AccountConversationRail::class)->items($viewer, $request);
+        $activeConversationId = 'direct-'.$conversation->id;
+
+        return ThemeResolver::page('account.direct-conversation', compact('conversation', 'viewer', 'recipient', 'messages', 'unread', 'nextBefore', 'canSend', 'blockedByMe', 'conversationCards', 'activeConversationId'));
     }
 
     public function block(Request $request, User $user, DirectMessageBlockService $blocks): RedirectResponse

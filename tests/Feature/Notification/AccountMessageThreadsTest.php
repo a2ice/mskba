@@ -75,7 +75,7 @@ final class AccountMessageThreadsTest extends TestCase
             ->assertDontSee('Непрочитанных сообщений:');
     }
 
-    public function test_thread_is_private_and_displays_newest_messages_first(): void
+    public function test_system_thread_is_private_and_displays_chronological_chat_history(): void
     {
         $user = $this->user();
         $stranger = $this->user();
@@ -86,14 +86,14 @@ final class AccountMessageThreadsTest extends TestCase
         $response = $this->actingAs($user)->get(route('account.notifications.threads.system'))
             ->assertOk()
             ->assertSee('Система MSKBA')
-            ->assertSee('<a href="'.route('account.notifications').'">Сообщения</a>', false)
+            ->assertSee('aria-label="Все сообщения"', false)
             ->assertDontSee('Notifications')
             ->assertSee('role="log"', false)
-            ->assertSee('data-system-thread-read-url', false)
+            ->assertSee('data-chat-read-url', false)
             ->assertDontSee('Секрет другого пользователя');
-        $response->assertSeeTextInOrder(['Второе сообщение', 'Первое сообщение']);
+        $response->assertSeeTextInOrder(['Первое сообщение', 'Второе сообщение']);
 
-        $this->assertSame(2, substr_count($response->getContent(), 'data-conversation-message='));
+        $this->assertSame(2, substr_count($response->getContent(), 'data-chat-entry='));
         $this->patchJson(route('account.notifications.read-all'))->assertOk()
             ->assertJsonPath('unread_count', 0);
         $this->assertDatabaseHas('user_notifications', [
@@ -104,7 +104,7 @@ final class AccountMessageThreadsTest extends TestCase
             ->assertDontSee('Непрочитанных сообщений:');
     }
 
-    public function test_thread_has_simple_pagination_with_latest_page_first(): void
+    public function test_system_thread_has_private_keyset_pagination_by_tens(): void
     {
         $user = $this->user();
         for ($i = 1; $i <= 24; $i++) {
@@ -116,18 +116,16 @@ final class AccountMessageThreadsTest extends TestCase
             ->get(route('account.notifications.threads.system'))->assertOk()
             ->assertSee('Сообщение номер 24')
             ->assertDontSee('>Сообщение номер 1</strong>', false)
-            ->assertSee('Более ранние')
-            ->assertSee('Страница 1 из 2');
-        $this->assertSame(20, substr_count($firstPage->getContent(), 'data-conversation-message='));
-        $firstPage->assertSeeTextInOrder(['Сообщение номер 24', 'Сообщение номер 23']);
-
-        $secondPage = $this->get(route('account.notifications.threads.system', ['page' => 2]))
-            ->assertOk()
-            ->assertSee('Сообщение номер 1')
-            ->assertDontSee('Сообщение номер 24')
-            ->assertSee('Более новые')
-            ->assertSee('Страница 2 из 2');
-        $this->assertSame(4, substr_count($secondPage->getContent(), 'data-conversation-message='));
+            ->assertSee('data-chat-history', false);
+        $this->assertSame(10, substr_count($firstPage->getContent(), 'data-chat-entry='));
+        $firstPage->assertSeeTextInOrder(['Сообщение номер 15', 'Сообщение номер 24']);
+        $history = route('account.notifications.threads.system.history');
+        $latest = $this->getJson($history)->assertOk();
+        $this->assertSame(10, substr_count($latest->json('html'), 'data-chat-entry='));
+        $older = $this->getJson($history.'?before='.$latest->json('next_before'))->assertOk();
+        $this->assertSame(10, substr_count($older->json('html'), 'data-chat-entry='));
+        $this->assertStringContainsString('Сообщение номер 5', $older->json('html'));
+        $this->assertStringNotContainsString('Сообщение номер 24', $older->json('html'));
     }
 
     public function test_guest_does_not_get_access_to_messages(): void

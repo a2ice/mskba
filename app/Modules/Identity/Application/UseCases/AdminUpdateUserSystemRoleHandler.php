@@ -9,6 +9,7 @@ use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Domain\Models\UserOperationalPermission;
 use App\Modules\Notification\Application\Services\RequestThreadMembershipManager;
+use App\Modules\Notification\Application\Services\SupportTicketAccess;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
@@ -40,9 +41,16 @@ final class AdminUpdateUserSystemRoleHandler
                 return;
             }
 
+            $hadSupport = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS);
             $hadProfileReview = $this->permissionChecker->allows($target, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
             $target->update(['system_role' => $role]);
             $hasProfileReview = $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES);
+            if (! $hadSupport && $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS)) {
+                app(SupportTicketAccess::class)->setGrantCursor($target);
+            }
+            if ($hadSupport && ! $this->permissionChecker->allows($target->fresh(), UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS)) {
+                app(SupportTicketAccess::class)->revokeForUser($target, $lockedActor);
+            }
             if (! $hadProfileReview && $hasProfileReview) {
                 // Role promotion is a new grant; never expose older requests.
                 DB::table('review_permission_cursors')->updateOrInsert(

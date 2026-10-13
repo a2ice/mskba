@@ -369,17 +369,13 @@ class AccountController extends Controller
         }
 
         $user = $this->accountCheckForPresentationService->handle(request()->user());
-        $notifications = \App\Modules\Notification\Domain\Models\UserNotification::query()
-            ->whereIn('user_id', $user->identityIds())
-            ->whereNull('payload->join_request_id')
-            ->whereNull('payload->direct_conversation_id')
-            ->whereNull('payload->profile_change_request_id')
-            ->orderByDesc('created_at')->orderByDesc('id')->paginate(20);
-        // Newest messages come first, both across pages and within each page.
+        $page = app(\App\Modules\Notification\Application\Services\SystemNotificationTimeline::class)->page($user);
 
         return ThemeResolver::page('account.notification-conversation', [
-            'notifications' => $notifications,
+            'notifications' => $page['entries'], 'nextBefore' => $page['next_before'],
             'systemConversation' => $systemConversation->handle($user),
+            'conversationCards' => app(\App\Modules\Notification\Application\Services\AccountConversationRail::class)->items($user, request()),
+            'activeConversationId' => 'system',
         ]);
     }
 

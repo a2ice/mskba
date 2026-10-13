@@ -48,10 +48,14 @@ final class MskbaAppAccountNavigationTest extends TestCase
 
         $overview = $this->actingAs($user)->get(route('account'))->assertOk();
         $overview->assertSee('Привет,');
+        $overview->assertSee('class="app-account-nav__icon"', false)
+            ->assertSee('<use href="#home"/>', false)
+            ->assertSee('<use href="#contact-mail"/>', false);
         $this->assertStringContainsString('aria-current="page"', $overview->getContent());
 
         $items = app(MenuResolver::class)->resolve('account');
         $this->assertSame('Обзор', $items[0]['label']);
+        $this->assertSame('home', $items[0]['icon']);
         $this->assertSame(route('account'), $items[0]['url']);
         $this->assertTrue($items[0]['active']);
         $this->assertSame('Профиль', $items[1]['label']);

@@ -37,7 +37,8 @@
 | [030](tasks/030/description.md) | Intro-карточки и компактный контекстный бар | На проверке | Title / optional subtitle / intro-card; общие кнопки «Назад» и «Действия»; мобильное меню «Путь» |
 | [035](tasks/035/description.md) | Группированный единый каталог прав и делегирование | На визуальной приёмке | Pilot: catalog, scoped enums unchanged, profile-review delegation |
 | [036](tasks/036/description.md) | Общие треды заявок: профиль, lead, приглашения, отзыв | На визуальной приёмке | Pilot: ProfileChangeRequest, lead/invite/transfer/tombstone; venue next |
-| [037](tasks/037/description.md) | UX чатов, история по 10, Reverb, приватность сообщений | На визуальной приёмке | Компактный chat UI, фоновые сообщения, контролируемое read, direct blacklist |
+| [037](tasks/037/description.md) | Интерфейс чатов: бабблы, composer, трёхколоночная раскладка | На визуальной приёмке | Компактное меню и иконки, rail слева, группировка по дням, Reverb, обновление превью |
+| [038](tasks/038/description.md) | Системная лента и отдельная переписка с техподдержкой | На визуальной приёмке | Отдельный `support.ticket.handle`, курсор истории, приватный Reverb, lead/transfer/close; миграция только local |
 
 ## Порядок работы
 

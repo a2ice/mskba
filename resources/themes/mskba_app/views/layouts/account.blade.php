@@ -13,7 +13,7 @@
                         @yield('account-heading')
                     </div>
                 @endif
-                <div class="app-account-layout">
+                <div class="app-account-layout{{ ($compactSidebar ?? false) ? ' app-account-layout--compact-sidebar' : '' }}">
                     <aside class="app-account-layout__aside" aria-label="Навигация аккаунта">
                         @include('theme::partials.account.sidebar')
                     </aside>

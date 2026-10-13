@@ -6,8 +6,10 @@ use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
+use App\Modules\Notification\Application\Services\SupportTicketAccess;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Models\DirectConversation;
+use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -21,6 +23,7 @@ final class ListAccountConversationsHandler
     public function __construct(
         private readonly TeamManagementAccess $teamAccess,
         private readonly ProfileRequestThreadAccess $profileAccess,
+        private readonly SupportTicketAccess $supportAccess,
     ) {}
 
     /** @return Collection<int, array<string, mixed>> */
@@ -154,7 +157,32 @@ final class ListAccountConversationsHandler
             ];
         });
 
+        $tickets = $this->supportAccess->visible($user)
+            ->with(['user', 'thread' => fn ($q) => $q->with('latestMessage.sender')])
+            ->orderByDesc('id')->limit(100)->get();
+        $supportUnread = UserNotification::query()->whereIn('user_id', $identityIds)
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->whereIn('payload->support_ticket_id', $tickets->pluck('id'))
+            ->get(['id', 'payload'])
+            ->groupBy(fn (UserNotification $notice) => (int) ($notice->payload['support_ticket_id'] ?? 0));
+        $supportConversations = $tickets->map(function (SupportTicket $ticket) use ($user, $supportUnread): array {
+            $last = $ticket->thread?->latestMessage;
+            $author = $last ? ((int) $last->sender_user_id === $user->id
+                ? 'Вы' : ($last->sender?->username ?? 'Техподдержка')) : null;
+
+            return [
+                'id' => 'support-'.$ticket->id,
+                'name' => 'Техподдержка №'.$ticket->id.' — '.$ticket->subject,
+                'preview' => $last ? $author.': '.$last->body : 'Обращение в техподдержку',
+                'unread_count' => $supportUnread->get($ticket->id, collect())->count(),
+                'date' => $last?->created_at ?? $ticket->created_at,
+                'status' => $ticket->status === 'open' ? 'Открыто' : 'Завершено',
+                'url' => route('account.notifications.threads.support', $ticket),
+            ];
+        });
+
         return $teamConversations->concat($directConversations)
-            ->concat($profileConversations)->sortByDesc('date')->values();
+            ->concat($profileConversations)->concat($supportConversations)
+            ->sortByDesc('date')->values();
     }
 }

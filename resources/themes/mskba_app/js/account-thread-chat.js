@@ -61,6 +61,30 @@ if (root) {
         if (!response.ok) throw new Error('Не удалось загрузить сообщения.');
         return response.json();
     };
+    // Derive daily boundaries from the messages present in the DOM. Recompute
+    // after each keyset prepend and realtime append so page boundaries never
+    // create duplicate or missing day separators.
+    const renderDays = () => {
+        if (!log) return;
+        log.querySelectorAll('[data-chat-day]').forEach(separator => separator.remove());
+        let previous = null;
+        const formatter = new Intl.DateTimeFormat('ru-RU', {
+            day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+        });
+        for (const entry of log.querySelectorAll('[data-chat-entry][data-chat-date]')) {
+            const day = entry.dataset.chatDate;
+            if (!day || day === previous) continue;
+            const separator = document.createElement('div');
+            separator.className = 'app-messages__day';
+            separator.dataset.chatDay = day;
+            separator.textContent = formatter.format(new Date(`${day}T12:00:00Z`));
+            separator.setAttribute('role', 'separator');
+            separator.setAttribute('aria-label', separator.textContent);
+            entry.before(separator);
+            previous = day;
+        }
+    };
+    renderDays();
     const parse = html => {
         const template = document.createElement('template');
         template.innerHTML = html;
@@ -82,6 +106,7 @@ if (root) {
             const existing = new Set([...log.children].map(node => node.dataset.chatEntry));
             const entries = parse(page.html).filter(node => !existing.has(node.dataset.chatEntry));
             log.prepend(...entries);
+            renderDays();
             before = page.next_before;
             log.dataset.nextBefore = before || '';
             viewport.scrollTop = top + (viewport.scrollHeight - height);
@@ -102,7 +127,9 @@ if (root) {
             if (token !== serial) return;
             const existing = new Set([...log.children].map(node => node.dataset.chatEntry));
             const incoming = parse(page.html).filter(node => !existing.has(node.dataset.chatEntry));
+            if (incoming.length > 0) log.querySelector('.app-messages__thread-empty')?.remove();
             log.append(...incoming);
+            if (incoming.length > 0) renderDays();
             if (incoming.length > 0) { unreadPossible = true; readRevision += 1; }
             if (!before) {
                 before = page.next_before;
@@ -161,6 +188,10 @@ if (root) {
                 }
                 textarea.value = '';
                 await refresh();
+                // The author does not receive an unread notification for their
+                // own message. Always sync the server-side inbox preview after
+                // a successful POST, independently of Reverb or read events.
+                void refreshRail();
                 bottom();
             } catch (error) { showError(error.message); }
             finally { send.disabled = false; }
@@ -195,18 +226,58 @@ if (root) {
     dialog?.querySelector('[data-review-dialog-close]')?.addEventListener('click', () => dialog.close());
     dialog?.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
 
+    // Refresh the inbox rail with its existing authorization model rather than
+    // deriving private previews from raw realtime payloads.
+    const rail = document.querySelector('[data-conversation-rail]');
+    const railList = rail?.querySelector('[data-rail-list]');
+    let railBusy = false;
+    let railQueued = false;
+    const refreshRail = async () => {
+        if (!rail || !railList || railBusy || rail.hidden || getComputedStyle(rail).display === 'none') {
+            if (railBusy) railQueued = true;
+            return;
+        }
+        railBusy = true;
+        try {
+            const url = new URL(rail.dataset.railUrl, window.location.origin);
+            url.searchParams.set('active', rail.dataset.railActive);
+            const response = await fetch(url, { credentials:'same-origin',
+                headers:{ Accept:'application/json','X-Requested-With':'XMLHttpRequest' } });
+            if (!response.ok) return;
+            const data = await response.json();
+            railList.innerHTML = data.html;
+        } catch (_error) { /* Retain the last authorized list until connectivity resumes. */ }
+        finally {
+            railBusy = false;
+            if (railQueued) { railQueued = false; void refreshRail(); }
+        }
+    };
+    document.addEventListener('notification:count-changed', () => void refreshRail());
+    // The current thread channel only covers this one conversation. Other
+    // conversations still generate private user notifications, so refresh the
+    // left inbox rail for any notified conversation without exposing its body
+    // in the websocket payload. The read-only system stream also refreshes.
+    const notificationHeader = document.querySelector('[data-app-header][data-notification-user-id]');
+    if (notificationHeader) subscribePrivate(`users.${notificationHeader.dataset.notificationUserId}`,
+        '.notification.created', () => {
+            if (root.hasAttribute('data-chat-system-notifications')) void refresh();
+            void refreshRail();
+        });
     const channel = root.dataset.chatChannel;
     if (channel) subscribePrivate(channel, '.conversation.changed', payload => {
         if (payload?.access_changed) { window.location.reload(); return; }
         unreadPossible = true;
         readRevision += 1;
         void refresh();
+        void refreshRail();
     });
     // Returning to a background window also reconciles notifications that
     // arrived while inactive. read acknowledgement waits for this fetch.
-    window.addEventListener('focus', () => void refresh());
+    window.addEventListener('focus', () => { void refresh(); void refreshRail(); });
     window.addEventListener('mskba:realtime-state', event => {
-        if (event.detail?.state === 'connected') void refresh();
+        if (event.detail?.state === 'connected') { void refresh(); void refreshRail(); }
     });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) void refresh(); });
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) { void refresh(); void refreshRail(); }
+    });
 }

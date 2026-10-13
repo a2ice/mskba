@@ -21,7 +21,7 @@ final class GetSystemConversationPreviewHandler
         $base = UserNotification::query()->whereIn('user_id', $identityIds)
             ->whereNull('payload->join_request_id')
             ->whereNull('payload->direct_conversation_id')
-            ->whereNull('payload->profile_change_request_id');
+            ->whereNull('payload->profile_change_request_id')->whereNull('payload->support_ticket_id');
 
         $last = (clone $base)->orderByDesc('created_at')->orderByDesc('id')->first();
         if ($last === null) {
