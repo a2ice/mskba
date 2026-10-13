@@ -140,7 +140,7 @@ final class MskbaAppAccountRolesTest extends TestCase
             'status' => 'active',
         ]);
         $this->get(route('account.roles'))->assertOk()
-            ->assertSee('Мой MSKBA')
+            ->assertSee('Участие')
             ->assertSee('Мои команды');
     }
 
@@ -229,7 +229,7 @@ final class MskbaAppAccountRolesTest extends TestCase
 
         $this->get(route('account.roles'))->assertOk()
             ->assertSee('Параметры')
-            ->assertSee('Мой MSKBA')
+            ->assertSee('Участие')
             ->assertSee('Тренер')
             ->assertSee('Медиа')
             ->assertDontSee('Параметры: Тренер')

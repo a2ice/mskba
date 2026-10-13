@@ -197,7 +197,7 @@ final class AccountMenu implements MenuHandler
             ];
         }
         // The common functional destinations stay grouped and deduplicated.
-        foreach (AdaptiveMenuGroup::wrap('Мой MSKBA', $children) as $groupItem) {
+        foreach (AdaptiveMenuGroup::wrap('Участие', $children) as $groupItem) {
             $groupItem['icon'] ??= 'ball';
             $items[] = $groupItem;
         }
