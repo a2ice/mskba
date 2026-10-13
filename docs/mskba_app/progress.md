@@ -645,3 +645,9 @@
 - По итогам пользовательского подтверждения четыре локальные визуальные задачи подготовлены к отдельному коммиту в `dev`: деликатные градиенты, статусные модалки и GIF success/error, полировка профиля/контактов, отступ карточки заявки. Ранее добавленная группа «Участие» уже доставлена в `dev` отдельным коммитом `533041c4`; повторной правки меню не требуется.
 - Историческое расследование в 034 о ещё не реализованном треде относится к состоянию **до** 035–037; приватные треды изменения профиля уже включены в `dev` коммитами 6884c889/5ff26154. Этот пакет не добавляет второй вариант функциональности.
 - Нерелевантные форматирующие изменения `AccountController`, `routes/web.php` и `identity-account-confirmation.md` остаются вне коммита, пока не будут проанализированы отдельно.
+
+## 038 — neutral system notification bubbles (2026-10-13)
+
+- The dev screenshot highlighted unintended orange outlines/fills caused by a later CSS override. Corrected only system notices to a neutral surface and thin grey border; headings use the normal white text color; only links keep accent orange. Removed the obsolete duplicate CSS selector. Changes remain isolated from other chat kinds, read-state and gradient panels. Local acceptance followed by a separate dev commit/push.
+
+- Follow-up from UI review: read-only system notification titles are white; orange action links no longer use underlines, including hover. Other chat bubbles and links remain unchanged.

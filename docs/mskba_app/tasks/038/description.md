@@ -34,3 +34,9 @@
 - Новый Feature-тест проверяет отсутствие старой отдельной кнопки, наличие intro CTA, компактного макета, реального rail с авторизованным обращением, DOM-порядок rail/form/button/mailto, конфигурационный e-mail; первоначальный прогон 5 тестов / 79 assertions PASS.
 - Только локальный вариант для визуальной приёмки; без commit/push/deploy.
 - Финальная регрессия после UI follow-up: **110 PHPUnit тестов / 1028 assertions PASS**, `pint --test` для контроллера и теста PASS, Blade compilation PASS, Vite build PASS, `git diff --check` PASS. В headless Chrome с собранными CSS проверены ширины 1440/900/500px: rail виден слева при 1440px (270px), скрывается при 900/500px, форма занимает оставшуюся ширину без горизонтального overflow; CTA внутри интро, кнопка отправки прижата к правой внутренней границе формы. Это проверка геометрии в CSS-фикстуре; пользовательская визуальная приёмка localhost остаётся открытой.
+
+## UI refinement: neutral system notifications (2026-10-13)
+
+Following the approved first screenshot, read-only system notifications now use `background:var(--surface)` and `border:1px solid var(--line)`, without orange outlines or tinted fills. System notification headings use `var(--text)` (white in the dark theme); orange is reserved for action links. Left alignment, time labels, date separators, cursor pagination, message widths, and mobile padding are unchanged. Removed an earlier CSS block that contradicted the final selector. Scope: `.app-messages--system .app-messages__bubble--notification` only, without changing support messages, request events, or the shared surface glow.
+
+- Additional acceptance: notification headings use normal white text (`var(--text)`); notification action links are orange **without underline**, including hover. Hover slightly softens the accent without changing cursor, focus access or unrelated links. This is scoped to the system notification card only.
