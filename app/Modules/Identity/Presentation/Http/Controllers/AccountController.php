@@ -16,6 +16,7 @@ use App\Modules\Contact\Application\UseCases\StartContactVerificationHandler;
 use App\Modules\Contact\Domain\Enums\ContactTypeEnum;
 use App\Modules\Contact\Domain\Enums\ContactVerificationStatusEnum;
 use App\Modules\Contact\Domain\Models\Contact;
+use App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController;
 use App\Modules\Contact\Presentation\Http\Requests\ConfirmContactVerificationRequest;
 use App\Modules\Contact\Presentation\Http\Requests\CreateAccountContactRequest;
 use App\Modules\Contract\Application\UseCases\ListAccountContractsHandler;
@@ -23,6 +24,7 @@ use App\Modules\Contract\Application\UseCases\ShowAccountContractHandler;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Application\Services\AccountCheckForPresentationService;
 use App\Modules\Identity\Application\Services\AccountConfirmationWizardService;
+use App\Modules\Identity\Application\Services\CurrentActorResolver;
 use App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService;
 use App\Modules\Identity\Application\UseCases\CompleteAccountConfirmationWizardHandler;
 use App\Modules\Identity\Domain\Enums\Participation\PlayerBodyTypeEnum;
@@ -36,6 +38,8 @@ use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
 use App\Modules\Identity\Domain\Models\Participation\PlayerSelfAssessment;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Identity\Presentation\Http\Requests\CompleteAccountConfirmationWizardRequest;
+use App\Modules\Notification\Application\Services\AccountConversationRail;
+use App\Modules\Notification\Application\Services\SystemNotificationTimeline;
 use App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler;
 use App\Modules\Notification\Application\UseCases\GetSystemConversationPreviewHandler;
 use App\Modules\Notification\Application\UseCases\ListAccountConversationsHandler;
@@ -63,6 +67,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use LogicException;
 
@@ -122,7 +127,7 @@ class AccountController extends Controller
             'genders' => UserGenderEnum::cases(),
             'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
             'vkEnabled' => trim((string) config('vk.app_id')) !== '',
-            'contactEmulationEnabled' => \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::enabled(),
+            'contactEmulationEnabled' => EmulateSocialContactController::enabled(),
         ]);
     }
 
@@ -157,6 +162,7 @@ class AccountController extends Controller
         // Never let a typed username count as a verified login identity.
         if ($data->type !== ContactTypeEnum::EMAIL) {
             $message = 'Для Telegram и VK используйте официальную авторизацию. Подтверждение телефона пока недоступно.';
+
             return $request->expectsJson()
                 ? response()->json(['message' => $message], 422)
                 : redirect()->route('account.confirmation')->with('error', $message);
@@ -223,6 +229,7 @@ class AccountController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage(), 'seconds_left' => $e->secondsLeft], 429);
             }
+
             return redirect()->route('account.confirmation')
                 ->with('info', $e->getMessage())
                 ->with('contactVerificationCooldownSeconds', $e->secondsLeft);
@@ -341,7 +348,7 @@ class AccountController extends Controller
         CountNewUserNotificationsHandler $countNewUserNotifications,
         GetSystemConversationPreviewHandler $systemConversation,
         ListAccountConversationsHandler $conversations,
-        \App\Modules\Identity\Application\Services\CurrentActorResolver $actors,
+        CurrentActorResolver $actors,
     ): Response {
         try {
             $user = $this->accountCheckForPresentationService->handle(request()->user());
@@ -369,12 +376,12 @@ class AccountController extends Controller
         }
 
         $user = $this->accountCheckForPresentationService->handle(request()->user());
-        $page = app(\App\Modules\Notification\Application\Services\SystemNotificationTimeline::class)->page($user);
+        $page = app(SystemNotificationTimeline::class)->page($user);
 
         return ThemeResolver::page('account.notification-conversation', [
             'notifications' => $page['entries'], 'nextBefore' => $page['next_before'],
             'systemConversation' => $systemConversation->handle($user),
-            'conversationCards' => app(\App\Modules\Notification\Application\Services\AccountConversationRail::class)->items($user, request()),
+            'conversationCards' => app(AccountConversationRail::class)->items($user, request()),
             'activeConversationId' => 'system',
         ]);
     }
@@ -487,7 +494,7 @@ class AccountController extends Controller
             'linkedVkAccount' => $linkedVkAccount,
             'telegramBotUsername' => ltrim(trim((string) config('telegram.bot_username')), '@'),
             'vkEnabled' => trim((string) config('vk.app_id')) !== '',
-            'contactEmulationEnabled' => \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::enabled(),
+            'contactEmulationEnabled' => EmulateSocialContactController::enabled(),
         ]);
     }
 
@@ -502,6 +509,7 @@ class AccountController extends Controller
         // User-supplied handles must never enter the identity contact list.
         if (! in_array($contactData->type, [ContactTypeEnum::EMAIL, ContactTypeEnum::PHONE], true)) {
             $message = 'Telegram и VK добавляются только через официальную авторизацию.';
+
             return $request->expectsJson()
                 ? response()->json(['message' => $message], 422)
                 : redirect()->route('account.contacts')->with('error', $message);
@@ -593,7 +601,7 @@ class AccountController extends Controller
                 ->with('error', $e->getMessage())
                 ->with('contactVerificationFeedbackContactId', $contact->id);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Contact verification request failed', [
+            Log::error('Contact verification request failed', [
                 'contact_id' => $contact->id,
                 'exception' => $e::class,
             ]);
@@ -611,7 +619,7 @@ class AccountController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Код подтверждения отправлен.',
-                'seconds_left' => \App\Modules\Contact\Application\Strategies\EmailContactVerificationStrategy::secondsUntilResend($verification),
+                'seconds_left' => EmailContactVerificationStrategy::secondsUntilResend($verification),
             ]);
         }
 
