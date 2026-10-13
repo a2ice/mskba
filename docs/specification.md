@@ -1177,6 +1177,7 @@ Production compose добавлен отдельно и содержит `phpfpm
 
 ## Связанные документы
 
+- [Подготовка разработчика к собеседованию по реальному коду MSKBA](dev_profile/README.md) — учебный путеводитель, не нормативная спецификация.
 - [Продуктовая документация](project.md)
 - [Agent Rules](specification/agent-rules.md)
 - [Docker Environment](specification/docker-environment.md)
