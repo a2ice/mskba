@@ -1,19 +1,4 @@
 {
-  "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js": {
-    "file": "assets/three.module-DeUDHqRc.js",
-    "name": "three.module",
-    "src": "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js",
-    "isDynamicEntry": true
-  },
-  "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/examples/jsm/loaders/GLTFLoader.js": {
-    "file": "assets/GLTFLoader-ZImk_JXA.js",
-    "name": "GLTFLoader",
-    "src": "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
-    "isDynamicEntry": true,
-    "imports": [
-      "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js"
-    ]
-  },
   "_realtime-CGmwhT5L.js": {
     "file": "assets/realtime-CGmwhT5L.js",
     "name": "realtime",
@@ -28,6 +13,21 @@
   "_runtime-dom.esm-bundler-CzVQHx5l.js": {
     "file": "assets/runtime-dom.esm-bundler-CzVQHx5l.js",
     "name": "runtime-dom.esm-bundler"
+  },
+  "node_modules/three/build/three.module.js": {
+    "file": "assets/three.module-DeUDHqRc.js",
+    "name": "three.module",
+    "src": "node_modules/three/build/three.module.js",
+    "isDynamicEntry": true
+  },
+  "node_modules/three/examples/jsm/loaders/GLTFLoader.js": {
+    "file": "assets/GLTFLoader-ZImk_JXA.js",
+    "name": "GLTFLoader",
+    "src": "node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "node_modules/three/build/three.module.js"
+    ]
   },
   "resources/css/app.css": {
     "file": "assets/app-CammuCzD.css",
@@ -84,7 +84,7 @@
     "src": "resources/themes/mskba_app/assets/images/mskba-success-static.png"
   },
   "resources/themes/mskba_app/css/app.css": {
-    "file": "assets/app-DhR_F6sz.css",
+    "file": "assets/app-CDsQdtZ_.css",
     "name": "app",
     "names": [
       "app.css"
@@ -151,8 +151,8 @@
       "_realtime-CGmwhT5L.js"
     ],
     "dynamicImports": [
-      "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/build/three.module.js",
-      "../../../Users/dmitrylosev/Projects/mskbabrandnew/site/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+      "node_modules/three/build/three.module.js",
+      "node_modules/three/examples/jsm/loaders/GLTFLoader.js",
       "resources/themes/mskba_dark/js/features/home-event-discovery-v2.js",
       "resources/themes/mskba_dark/js/features/home-event-empty-create-cta.js"
     ],

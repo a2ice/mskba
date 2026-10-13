@@ -108,9 +108,12 @@
   transition:transform .16s;
 }
 .app-account-nav__group[open] > summary > svg:not(.app-account-nav__icon) { transform:rotate(180deg); }
-.app-account-nav__group-trigger.is-active {
-  color:var(--accent);
-  border-color:#ff79004a;
+/* A current parent only guides the eye; reserve the orange card for the active child. */
+.app-account-nav__group-trigger.is-active,
+.app-account-nav__group-trigger.is-active:hover {
+  color:var(--text);
+  border-color:transparent;
+  background:none;
 }
 .app-account-nav__children {
   display:flex;
