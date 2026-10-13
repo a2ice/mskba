@@ -3,6 +3,7 @@
 namespace App\Modules\Notification\Application\Services;
 
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Domain\Models\DirectConversation;
 use Illuminate\Support\Facades\DB;
 
 /** Personal direct-message blacklist, independent of account-level moderation. */
@@ -26,24 +27,44 @@ final class DirectMessageBlockService
         })->exists();
     }
 
-    public function update(User $viewer, User $other, bool $blocked): void
+    /** Persist exactly one timeline event for each actual state transition. */
+    public function update(User $viewer, User $other, bool $blocked): bool
     {
         $viewer = $viewer->canonical();
         $other = $other->canonical();
         abort_if($viewer->id === $other->id || $viewer->isBlocked() || $viewer->trashed(), 403);
-        DB::transaction(function () use ($viewer, $other, $blocked): void {
-            User::query()->whereIn('id', [$viewer->id, $other->id])->orderBy('id')
-                ->lockForUpdate()->get(['id']);
+
+        return DB::transaction(function () use ($viewer, $other, $blocked): bool {
+            $ids = [(int) $viewer->id, (int) $other->id];
+            sort($ids);
+            // Same deterministic user-row locks as the message sender.
+            User::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id']);
             if ($blocked) {
-                DB::table('direct_message_blocks')->insertOrIgnore([
+                $changed = DB::table('direct_message_blocks')->insertOrIgnore([
                     'blocker_user_id' => $viewer->id, 'blocked_user_id' => $other->id,
                     'created_at' => now(), 'updated_at' => now(),
-                ]);
+                ]) > 0;
             } else {
-                DB::table('direct_message_blocks')
+                $changed = DB::table('direct_message_blocks')
                     ->where('blocker_user_id', $viewer->id)
-                    ->where('blocked_user_id', $other->id)->delete();
+                    ->where('blocked_user_id', $other->id)->delete() > 0;
             }
+            if (! $changed) {
+                return false;
+            }
+            $conversation = DirectConversation::query()->where('user_low_id', $ids[0])
+                ->where('user_high_id', $ids[1])->first();
+            // Blocking before the first message must not create an empty conversation.
+            if ($conversation !== null) {
+                $conversation->messages()->create([
+                    'sender_user_id' => $viewer->id,
+                    'kind' => $blocked ? 'blocked' : 'unblocked',
+                    'body' => $blocked ? 'Пользователь заблокирован' : 'Блокировка снята',
+                ]);
+                $conversation->touch();
+            }
+
+            return true;
         });
     }
 }

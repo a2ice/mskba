@@ -7,6 +7,7 @@ use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Domain\Models\DirectConversation;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Infrastructure\Broadcasting\ConversationChangedBroadcast;
 use App\Modules\Team\Application\Services\TeamNotificationService;
 use App\Modules\Team\Domain\Enums\TeamJoinRequestStatusEnum;
 use App\Modules\Team\Domain\Models\Team;
@@ -14,6 +15,7 @@ use App\Modules\Team\Domain\Models\TeamJoinRequest;
 use App\Presentation\Theming\ThemeResolver;
 use Database\Seeders\GameLifecycleDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
@@ -240,6 +242,294 @@ final class AccountUnifiedMessagesTest extends TestCase
         $this->assertSame(0, UserNotification::query()->where('user_id', $receiver->id)
             ->where('status', 'new')->where('payload->direct_conversation_id', $thread->id)->count());
         $this->patchJson($url)->assertOk()->assertJsonPath('unread_count', 0);
+    }
+
+    public function test_temporary_direct_entry_is_feature_gated_and_does_not_create_empty_conversations(): void
+    {
+        $sender = $this->user();
+        $this->actingAs($sender);
+        config()->set('features.direct_messages.test_entry', false);
+        $this->get(route('account.notifications'))->assertOk()
+            ->assertDontSee('data-direct-test-open', false)
+            ->assertDontSee('data-direct-test-search', false);
+        $this->getJson(route('account.notifications.direct.test.users', ['q' => 'pla']))
+            ->assertNotFound();
+
+        config()->set('features.direct_messages.test_entry', true);
+        $this->get(route('account.notifications'))->assertOk()
+            ->assertSee('Новое сообщение · тест')
+            ->assertSee('data-direct-test-open', false)
+            ->assertSee('data-direct-test-search', false)
+            ->assertSee(route('account.notifications.direct.test.users'), false);
+        $this->getJson(route('account.notifications.direct.test.users', ['q' => 'a']))
+            ->assertOk()->assertJsonPath('users', []);
+        $this->assertSame(0, DirectConversation::query()->count());
+    }
+
+    public function test_temporary_direct_search_respects_discoverability_privacy_and_blacklist(): void
+    {
+        config()->set('features.direct_messages.test_entry', true);
+        $sender = $this->user();
+        $receiver = $this->user();
+        $receiver->update(['username' => 'qa_direct_target', 'status' => 'unconfirmed']);
+        $sender->update(['status' => 'unconfirmed']);
+        foreach ([UserPrivacySettingTypeEnum::PROFILE, UserPrivacySettingTypeEnum::MESSAGES] as $type) {
+            $receiver->privacySettings()->create([
+                'type' => $type,
+                'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+            ]);
+        }
+        $search = route('account.notifications.direct.test.users', ['q' => 'qa_direct_target']);
+        // Neither participant has a confirmed account: this is intentionally
+        // allowed for a private message when the recipient consents.
+        $this->assertSame('unconfirmed', $sender->fresh()->status->value);
+        $this->assertSame('unconfirmed', $receiver->fresh()->status->value);
+        $this->actingAs($sender)->getJson($search)->assertOk()
+            ->assertJsonCount(1, 'users')->assertJsonPath('users.0.id', $receiver->id);
+        $this->getJson(route('account.notifications.direct.access', $receiver))
+            ->assertOk()->assertJsonPath('can_message', true);
+        $this->assertSame(0, DirectConversation::query()->count());
+        $this->postJson(route('account.notifications.direct.send', $receiver), ['body' => 'QA первое сообщение'])
+            ->assertCreated();
+        $this->post(route('account.notifications.direct.block', $receiver))->assertRedirect();
+        $this->getJson($search)->assertOk()->assertJsonPath('users', []);
+        $this->actingAs($receiver)->postJson(route('account.notifications.direct.send', $sender), [
+            'body' => 'Запрет должен остаться двусторонним',
+        ])->assertForbidden();
+        $this->actingAs($sender)->delete(route('account.notifications.direct.unblock', $receiver))
+            ->assertRedirect();
+        $this->getJson($search)->assertOk()->assertJsonCount(1, 'users');
+        $receiver->privacySettings()->where('type', UserPrivacySettingTypeEnum::MESSAGES->value)
+            ->update(['visibility' => UserPrivacyVisibilityEnum::NOBODY->value]);
+        $this->getJson($search)->assertOk()->assertJsonPath('users', []);
+    }
+
+    public function test_outgoing_message_grants_the_peer_a_reply_even_when_incoming_is_set_to_nobody(): void
+    {
+        $olsen = $this->user();
+        $simple = $this->user();
+        $simple->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::MESSAGES,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+        // Olsen still has NOBODY by default: others cannot initiate a chat with Olsen.
+        $this->actingAs($simple)->getJson(route('account.notifications.direct.access', $olsen))
+            ->assertOk()->assertJsonPath('can_message', false);
+        $this->postJson(route('account.notifications.direct.send', $olsen), ['body' => 'До приглашения'])
+            ->assertForbidden();
+
+        $this->actingAs($olsen)->postJson(route('account.notifications.direct.send', $simple), [
+            'body' => 'Привет, simple!',
+        ])->assertCreated();
+        $thread = DirectConversation::query()->firstOrFail();
+        $this->actingAs($simple)->getJson(route('account.notifications.direct.access', $olsen))
+            ->assertOk()->assertJsonPath('can_message', true);
+        $this->getJson(route('account.notifications.threads.direct.state', $thread))
+            ->assertOk()->assertJsonPath('can_send', true);
+        $this->get(route('account.notifications.threads.direct', $thread))->assertOk()
+            ->assertDontSee('hidden placeholder="Введите сообщение…"', false);
+        $this->postJson(route('account.notifications.direct.send', $olsen), [
+            'body' => 'Привет! Теперь я могу ответить.',
+        ])->assertCreated();
+
+        // After simple has replied, Olsen is likewise explicitly allowed to reply,
+        // even if simple subsequently closes messages to everyone.
+        $simple->privacySettings()->where('type', UserPrivacySettingTypeEnum::MESSAGES->value)
+            ->update(['visibility' => UserPrivacyVisibilityEnum::NOBODY->value]);
+        $this->actingAs($olsen)->postJson(route('account.notifications.direct.send', $simple), [
+            'body' => 'Спасибо!',
+        ])->assertCreated();
+        $this->assertSame(3, $thread->messages()->count());
+        $this->assertDatabaseMissing('user_privacy_settings', [
+            'user_id' => $olsen->id, 'type' => UserPrivacySettingTypeEnum::MESSAGES->value,
+        ]);
+        $this->assertDatabaseHas('user_privacy_settings', [
+            'user_id' => $simple->id, 'type' => UserPrivacySettingTypeEnum::MESSAGES->value,
+            'visibility' => UserPrivacyVisibilityEnum::NOBODY->value,
+        ]);
+    }
+
+    public function test_qa_search_shows_only_discoverable_recipients_who_permit_first_contact_or_issued_reply(): void
+    {
+        config()->set('features.direct_messages.test_entry', true);
+        $olsen = $this->user();
+        $simple = $this->user();
+        $outsider = $this->user();
+        $olsen->update(['username' => 'qa_reply_olsen']);
+        foreach ([$olsen, $simple] as $user) {
+            $user->privacySettings()->create([
+                'type' => UserPrivacySettingTypeEnum::PROFILE,
+                'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+            ]);
+        }
+        $simple->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::MESSAGES,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+        $query = route('account.notifications.direct.test.users', ['q' => 'qa_reply_olsen']);
+        $this->actingAs($simple)->getJson($query)->assertOk()->assertJsonPath('users', []);
+        $this->actingAs($olsen)->postJson(route('account.notifications.direct.send', $simple), [
+            'body' => 'Теперь можешь отвечать',
+        ])->assertCreated();
+        $this->actingAs($simple)->getJson($query)->assertOk()
+            ->assertJsonPath('users.0.id', $olsen->id);
+        $this->actingAs($outsider)->getJson($query)->assertOk()->assertJsonPath('users', []);
+        $this->actingAs($simple)->postJson(route('account.notifications.direct.block', $olsen))
+            ->assertOk();
+        $this->getJson($query)->assertOk()->assertJsonPath('users', []);
+    }
+
+    public function test_existing_conversation_without_recipient_outbound_message_is_not_an_invitation(): void
+    {
+        $olsen = $this->user();
+        $simple = $this->user();
+        $simple->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::MESSAGES,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+        $this->actingAs($olsen)->postJson(route('account.notifications.direct.send', $simple), [
+            'body' => 'Первое сообщение',
+        ])->assertCreated();
+        $simple->privacySettings()->where('type', UserPrivacySettingTypeEnum::MESSAGES->value)
+            ->update(['visibility' => UserPrivacyVisibilityEnum::NOBODY->value]);
+        $this->postJson(route('account.notifications.direct.send', $simple), [
+            'body' => 'Попытка продолжить без приглашения от simple',
+        ])->assertForbidden();
+        $this->actingAs($simple)->getJson(route('account.notifications.direct.access', $olsen))
+            ->assertOk()->assertJsonPath('can_message', true);
+        $this->actingAs($olsen)->postJson(route('account.notifications.direct.block', $simple))
+            ->assertOk();
+        $this->actingAs($simple)->postJson(route('account.notifications.direct.send', $olsen), [
+            'body' => 'Нельзя обойти блокировку',
+        ])->assertForbidden();
+        $this->assertDatabaseHas('direct_messages', [
+            'kind' => 'blocked', 'sender_user_id' => $olsen->id,
+        ]);
+        $this->actingAs($olsen)->deleteJson(route('account.notifications.direct.unblock', $simple))
+            ->assertOk();
+        $this->actingAs($simple)->postJson(route('account.notifications.direct.send', $olsen), [
+            'body' => 'Теперь можно ответить',
+        ])->assertCreated();
+    }
+
+    public function test_block_and_unblock_emit_persisted_ordered_events_and_realtime_state_for_both_sides(): void
+    {
+        $olsen = $this->user();
+        $simple = $this->user();
+        foreach ([$olsen, $simple] as $user) {
+            $user->privacySettings()->create([
+                'type' => UserPrivacySettingTypeEnum::MESSAGES,
+                'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+            ]);
+        }
+        $this->actingAs($olsen)->postJson(route('account.notifications.direct.send', $simple), [
+            'body' => 'hi',
+        ])->assertCreated();
+        $thread = DirectConversation::query()->firstOrFail();
+        $state = route('account.notifications.threads.direct.state', $thread);
+        Event::fake([ConversationChangedBroadcast::class]);
+        $this->actingAs($simple)->postJson(route('account.notifications.direct.block', $olsen))
+            ->assertOk();
+        // Repeating an already-applied action must not create a duplicate timeline event.
+        $this->postJson(route('account.notifications.direct.block', $olsen))->assertOk();
+        $this->assertDatabaseHas('direct_messages', [
+            'direct_conversation_id' => $thread->id, 'kind' => 'blocked', 'sender_user_id' => $simple->id,
+        ]);
+        $this->assertSame(1, $thread->messages()->where('kind', 'blocked')->count());
+        $this->getJson($state)->assertOk()
+            ->assertJsonPath('can_send', false)->assertJsonPath('blocked_by_me', true);
+        $this->get(route('account.notifications.threads.direct', $thread))->assertOk()
+            ->assertSee('Вы заблокировали пользователя.')
+            ->assertSee('data-direct-unblock-action', false);
+        $this->actingAs($olsen)->getJson($state)->assertOk()
+            ->assertJsonPath('can_send', false)->assertJsonPath('blocked_by_me', false);
+        $this->get(route('account.notifications.threads.direct', $thread))->assertOk()
+            ->assertSee('Пользователь заблокировал вас.')
+            ->assertSee('data-chat-direct-state-url', false)
+            ->assertSee('hidden placeholder="Введите сообщение…"', false)
+            ->assertSeeInOrder(['data-chat-direct-status', 'app-messages__compose-footer'], false)
+            ->assertDontSee('placeholder="Отправка сообщений недоступна"', false);
+        $this->postJson(route('account.notifications.direct.send', $simple), ['body' => 'forbidden'])
+            ->assertForbidden();
+        $this->actingAs($simple)->deleteJson(route('account.notifications.direct.unblock', $olsen))
+            ->assertOk();
+        $this->deleteJson(route('account.notifications.direct.unblock', $olsen))->assertOk();
+        $this->assertSame(1, $thread->messages()->where('kind', 'unblocked')->count());
+        Event::assertDispatchedTimes(ConversationChangedBroadcast::class, 2);
+        Event::assertDispatched(ConversationChangedBroadcast::class,
+            fn (ConversationChangedBroadcast $event): bool => $event->type === 'direct'
+                && $event->id === $thread->id && $event->accessChanged);
+        $this->getJson($state)->assertOk()
+            ->assertJsonPath('can_send', true)->assertJsonPath('blocked_by_me', false);
+        $this->actingAs($olsen)->getJson($state)->assertOk()
+            ->assertJsonPath('can_send', true);
+        $this->get(route('account.notifications.threads.direct', $thread))->assertOk()
+            ->assertSee('data-chat-direct-status', false)
+            ->assertSeeInOrder(['data-chat-direct-status', 'app-messages__compose-footer'], false);
+        $history = $this->getJson(route('account.notifications.threads.direct.history', $thread))->assertOk();
+        $this->assertStringContainsString('Пользователь заблокировал вас.', $history->json('html'));
+        $this->assertStringContainsString('Пользователь снял блокировку.', $history->json('html'));
+        $this->assertStringContainsString('app-messages__direct-event--blocked', $history->json('html'));
+        $this->assertStringContainsString('app-messages__direct-event--unblocked', $history->json('html'));
+        $this->postJson(route('account.notifications.direct.send', $simple), ['body' => 'После разблокировки'])
+            ->assertCreated();
+        $outsider = $this->user();
+        $this->actingAs($outsider)->getJson($state)->assertForbidden();
+        $this->getJson(route('account.notifications.threads.direct.history', $thread))->assertForbidden();
+    }
+
+    public function test_direct_messages_have_200_character_limit_for_first_and_followup_messages(): void
+    {
+        $sender = $this->user();
+        $receiver = $this->user();
+        $receiver->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::MESSAGES,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+        $this->actingAs($sender);
+        $endpoint = route('account.notifications.direct.send', $receiver);
+        $this->postJson($endpoint, ['body' => str_repeat('я', 201)])
+            ->assertUnprocessable()->assertJsonValidationErrors('body');
+        $this->assertSame(0, DirectConversation::query()->count());
+        $this->postJson($endpoint, ['body' => str_repeat('я', 200)])
+            ->assertCreated();
+        $this->postJson($endpoint, ['body' => str_repeat('я', 201)])
+            ->assertUnprocessable()->assertJsonValidationErrors('body');
+        $this->assertDatabaseCount('direct_messages', 1);
+        $page = $this->get(route('account.notifications.threads.direct', DirectConversation::query()->firstOrFail()))
+            ->assertOk()->assertSee('maxlength="200"', false);
+        $this->assertSame(1, substr_count($page->getContent(), 'maxlength="200"'));
+    }
+
+    public function test_direct_rate_limit_allows_three_messages_per_ten_seconds_per_sender_across_recipients(): void
+    {
+        $sender = $this->user();
+        $first = $this->user();
+        $second = $this->user();
+        foreach ([$first, $second] as $recipient) {
+            $recipient->privacySettings()->create([
+                'type' => UserPrivacySettingTypeEnum::MESSAGES,
+                'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+            ]);
+        }
+        $this->actingAs($sender);
+        $firstEndpoint = route('account.notifications.direct.send', $first);
+        $secondEndpoint = route('account.notifications.direct.send', $second);
+        $this->postJson($firstEndpoint, ['body' => 'раз'])->assertCreated();
+        $this->postJson($firstEndpoint, ['body' => 'два'])->assertCreated();
+        $this->postJson($secondEndpoint, ['body' => 'три'])->assertCreated();
+        $limitResponse = $this->postJson($secondEndpoint, ['body' => 'четыре'])
+            ->assertStatus(429)->assertJsonPath('message', 'Можно отправить не более 3 личных сообщений за 10 секунд. Повторите попытку через 10 сек.');
+        $this->assertGreaterThan(0, (int) $limitResponse->headers->get('Retry-After'));
+        $this->assertDatabaseCount('direct_messages', 3);
+        // A different sender has its own quota, even while the first is throttled.
+        $otherSender = $this->user();
+        $this->actingAs($otherSender)->postJson($secondEndpoint, ['body' => 'другой участник'])
+            ->assertCreated();
+        $this->actingAs($sender);
+        $this->travel(11)->seconds();
+        $this->postJson($secondEndpoint, ['body' => 'после ожидания'])->assertCreated();
+        $this->assertDatabaseCount('direct_messages', 5);
     }
 
     public function test_direct_message_blacklist_is_bilateral_and_reversible(): void

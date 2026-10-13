@@ -7,6 +7,7 @@ if (root) {
     const loader = root.querySelector('[data-chat-load]');
     const form = root.querySelector('[data-chat-compose]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const directStateUrl = root.dataset.chatDirectStateUrl || null;
     let before = log?.dataset.nextBefore || null;
     let loading = false;
     let latestPending = false;
@@ -130,7 +131,10 @@ if (root) {
             if (incoming.length > 0) log.querySelector('.app-messages__thread-empty')?.remove();
             log.append(...incoming);
             if (incoming.length > 0) renderDays();
-            if (incoming.length > 0) { unreadPossible = true; readRevision += 1; }
+            if (incoming.some(node => node.dataset.chatKind !== 'event')) {
+                unreadPossible = true;
+                readRevision += 1;
+            }
             if (!before) {
                 before = page.next_before;
                 log.dataset.nextBefore = before || '';
@@ -157,11 +161,77 @@ if (root) {
         });
     }
 
+    const textarea = form?.querySelector('textarea[name="body"]');
+    const charCount = form?.querySelector('[data-direct-char-count]');
+    if (directStateUrl && textarea && charCount) {
+        const updateCount = () => { charCount.textContent = `${textarea.value.length} / 200`; };
+        textarea.addEventListener('input', updateCount);
+        updateCount();
+    }
+    // The Actions flyout also contains submit buttons for *other* forms.
+    const send = form?.querySelector('[data-chat-send]');
+    const directStatus = root.querySelector('[data-chat-direct-status]');
+    const blockAction = root.querySelector('[data-direct-block-action]');
+    const unblockAction = root.querySelector('[data-direct-unblock-action]');
+    let canSendDirect = textarea ? !textarea.disabled : false;
+    let sendingDirect = false;
+    let stateSerial = 0;
+    const refreshDirectState = async () => {
+        if (!directStateUrl) return;
+        const current = ++stateSerial;
+        try {
+            const response = await fetch(directStateUrl, {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (response.status === 403 || response.status === 404) {
+                window.location.reload();
+                return;
+            }
+            if (!response.ok) throw new Error('Не удалось обновить доступ к переписке.');
+            const data = await response.json();
+            if (current !== stateSerial) return;
+            canSendDirect = Boolean(data.can_send);
+            if (textarea) {
+                textarea.disabled = !canSendDirect;
+                textarea.hidden = !canSendDirect;
+                textarea.placeholder = 'Введите сообщение…';
+            }
+            if (charCount) charCount.hidden = !canSendDirect;
+            if (send) send.disabled = !canSendDirect || sendingDirect;
+            if (blockAction) blockAction.hidden = Boolean(data.blocked_by_me);
+            if (unblockAction) unblockAction.hidden = !data.blocked_by_me;
+            if (directStatus) {
+                directStatus.textContent = data.status || '';
+                directStatus.hidden = canSendDirect;
+            }
+            if (canSendDirect) showError('');
+        } catch (error) {
+            showError(error.message || 'Не удалось обновить доступ.');
+        }
+    };
+    if (directStateUrl) {
+        root.querySelectorAll('[data-direct-block-form]').forEach(blockForm => {
+            blockForm.addEventListener('submit', async event => {
+                event.preventDefault();
+                const button = root.querySelector(`[form="${blockForm.id}"]`);
+                if (button) button.disabled = true;
+                try {
+                    const response = await fetch(blockForm.action, {
+                        method: blockForm.querySelector('[name="_method"]')?.value || 'POST',
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf },
+                    });
+                    if (!response.ok) throw new Error('Не удалось изменить блокировку пользователя.');
+                    root.querySelector('[data-chat-actions]')?.removeAttribute('open');
+                    await Promise.all([refreshDirectState(), refresh(), refreshRail()]);
+                } catch (error) { showError(error.message); }
+                finally { if (button) button.disabled = false; }
+            });
+        });
+    }
+
     if (form) {
-        const textarea = form.querySelector('textarea[name="body"]');
-        // The Actions flyout also contains submit buttons for *other* forms.
-        // Only the dedicated composer submitter can be disabled while sending.
-        const send = form.querySelector('[data-chat-send]');
         textarea?.addEventListener('keydown', event => {
             if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.isComposing) {
                 event.preventDefault();
@@ -172,6 +242,7 @@ if (root) {
             event.preventDefault();
             if (!textarea.value.trim() || send.disabled) return;
             const message = textarea.value.trim();
+            sendingDirect = true;
             send.disabled = true;
             showError('');
             try {
@@ -183,10 +254,12 @@ if (root) {
                 });
                 if (!response.ok) {
                     const payload = await response.json().catch(() => ({}));
-                    if (response.status === 403 || response.status === 404) window.location.reload();
+                    if (response.status === 403 && directStateUrl) void refreshDirectState();
+                    else if (response.status === 403 || response.status === 404) window.location.reload();
                     throw new Error(Object.values(payload.errors || {}).flat()[0] || payload.message || 'Сообщение не отправлено.');
                 }
                 textarea.value = '';
+                textarea.dispatchEvent(new Event('input'));
                 await refresh();
                 // The author does not receive an unread notification for their
                 // own message. Always sync the server-side inbox preview after
@@ -194,7 +267,7 @@ if (root) {
                 void refreshRail();
                 bottom();
             } catch (error) { showError(error.message); }
-            finally { send.disabled = false; }
+            finally { sendingDirect = false; send.disabled = directStateUrl ? !canSendDirect : false; }
         });
     }
 
@@ -265,19 +338,28 @@ if (root) {
         });
     const channel = root.dataset.chatChannel;
     if (channel) subscribePrivate(channel, '.conversation.changed', payload => {
-        if (payload?.access_changed) { window.location.reload(); return; }
+        if (payload?.access_changed) {
+            if (!directStateUrl) { window.location.reload(); return; }
+            void refreshDirectState();
+            void refresh();
+            void refreshRail();
+            return;
+        }
         unreadPossible = true;
         readRevision += 1;
+        // A new outgoing message can grant the other participant the right
+        // to reply even if the sender's privacy is set to NOBODY.
+        void refreshDirectState();
         void refresh();
         void refreshRail();
     });
     // Returning to a background window also reconciles notifications that
     // arrived while inactive. read acknowledgement waits for this fetch.
-    window.addEventListener('focus', () => { void refresh(); void refreshRail(); });
+    window.addEventListener('focus', () => { void refreshDirectState(); void refresh(); void refreshRail(); });
     window.addEventListener('mskba:realtime-state', event => {
-        if (event.detail?.state === 'connected') { void refresh(); void refreshRail(); }
+        if (event.detail?.state === 'connected') { void refreshDirectState(); void refresh(); void refreshRail(); }
     });
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) { void refresh(); void refreshRail(); }
+        if (!document.hidden) { void refreshDirectState(); void refresh(); void refreshRail(); }
     });
 }

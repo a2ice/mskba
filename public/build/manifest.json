@@ -84,7 +84,7 @@
     "src": "resources/themes/mskba_app/assets/images/mskba-success-static.png"
   },
   "resources/themes/mskba_app/css/app.css": {
-    "file": "assets/app-CDsQdtZ_.css",
+    "file": "assets/app-DggP1rwI.css",
     "name": "app",
     "names": [
       "app.css"
@@ -101,7 +101,7 @@
     ]
   },
   "resources/themes/mskba_app/js/app.js": {
-    "file": "assets/app-D8Qld_Sb.js",
+    "file": "assets/app-CbU_NOvr.js",
     "name": "app",
     "src": "resources/themes/mskba_app/js/app.js",
     "isEntry": true,

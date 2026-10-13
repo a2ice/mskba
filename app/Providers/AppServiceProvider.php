@@ -26,7 +26,10 @@ use App\Modules\Venue\Infrastructure\Observers\VenueSearchCacheObserver;
 use App\Presentation\Navigation\ConfigMenuResolver;
 use App\Presentation\Navigation\MenuResolver;
 use App\Presentation\Theming\ThemeResolver;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event as EventFacade;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -50,6 +53,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Applied per authenticated canonical user across ALL direct-message recipients.
+        // Count attempts before dispatch so parallel requests cannot bypass the cap.
+        RateLimiter::for('direct-messages', static fn (Request $request) => Limit::perSecond(3, 10)
+            ->by('user:'.($request->user()?->canonical()->getKey() ?? $request->ip()))
+            ->response(static fn (Request $request, array $headers) => response()->json([
+                'message' => 'Можно отправить не более 3 личных сообщений за 10 секунд. Повторите попытку через '.($headers['Retry-After'] ?? 10).' сек.',
+            ], 429, $headers)));
+
         EventFacade::listen(
             GameStatisticsConfirmed::class,
             RecalculatePlayerObjectiveAssessments::class,

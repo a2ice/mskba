@@ -6,6 +6,7 @@ use App\Modules\Identity\Domain\Enums\UserPrivacySettingTypeEnum;
 use App\Modules\Identity\Domain\Enums\UserPrivacyVisibilityEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Models\User;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -24,6 +25,7 @@ final class SearchDiscoverableUsers
         int $limit = 15,
         ?UserPrivacySettingTypeEnum $requiredAccess = null,
         ?UserStatusEnum $requiredStatus = null,
+        ?Closure $alternateRequiredAccess = null,
     ): Collection {
         $viewer = $viewer->canonical();
         $rawQuery = trim($query);
@@ -33,7 +35,7 @@ final class SearchDiscoverableUsers
             return collect();
         }
 
-        return $this->baseQuery($viewer, $excludeUserIds, $requiredAccess, $requiredStatus)
+        return $this->baseQuery($viewer, $excludeUserIds, $requiredAccess, $requiredStatus, $alternateRequiredAccess)
             ->where(function (Builder $userQuery) use ($normalizedQuery, $rawQuery): void {
                 $userQuery
                     ->whereRaw('LOWER(username) LIKE ?', ["%{$normalizedQuery}%"])
@@ -93,6 +95,7 @@ final class SearchDiscoverableUsers
         array $excludeUserIds,
         ?UserPrivacySettingTypeEnum $requiredAccess,
         ?UserStatusEnum $requiredStatus,
+        ?Closure $alternateRequiredAccess = null,
     ): Builder {
         $excludedCanonicalIds = $this->canonicalIds([
             (int) $viewer->id,
@@ -126,11 +129,18 @@ final class SearchDiscoverableUsers
                 UserPrivacySettingTypeEnum::PROFILE,
             ))
             ->when($requiredAccess !== null, fn (Builder $userQuery) => $userQuery
-                ->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
-                    $privacyQuery,
-                    $viewer,
-                    $requiredAccess,
-                )));
+                ->where(function (Builder $accessQuery) use ($viewer, $requiredAccess, $alternateRequiredAccess): void {
+                    $accessQuery->where(fn (Builder $privacyQuery) => $this->applyPrivacyFilter(
+                        $privacyQuery,
+                        $viewer,
+                        $requiredAccess,
+                    ));
+                    if ($alternateRequiredAccess !== null) {
+                        // Caller-supplied EXISTS alternative is strictly grouped with the
+                        // permission filter; it cannot bypass profile/discoverability.
+                        $accessQuery->orWhere($alternateRequiredAccess);
+                    }
+                }));
     }
 
     /**

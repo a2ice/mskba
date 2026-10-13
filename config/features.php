@@ -1,6 +1,14 @@
 <?php
 
 return [
+    // Temporary manual QA entry to personal chats. Not a general messenger feature.
+    // Override explicitly with FEATURE_DIRECT_MESSAGE_TEST_ENTRY in any environment.
+    'direct_messages' => [
+        'test_entry' => (bool) env('FEATURE_DIRECT_MESSAGE_TEST_ENTRY', in_array(
+            parse_url((string) env('APP_URL', ''), PHP_URL_HOST),
+            ['localhost', '127.0.0.1', 'dev.mskba.ru'], true,
+        )),
+    ],
     'sports_sections' => [
         'enabled' => (bool) env('FEATURE_SPORTS_SECTIONS', true),
     ],

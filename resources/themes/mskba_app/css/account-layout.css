@@ -38,6 +38,8 @@
 }
 .app-account-intro--with-action p { flex:1 1 260px;min-width:0; }
 .app-account-intro__action { flex:0 0 auto; }
+.app-account-intro__actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;min-width:0}
+
 @media(max-width:639px){
   .app-account-intro--with-action .app-account-intro__action{max-width:100%;}
 }

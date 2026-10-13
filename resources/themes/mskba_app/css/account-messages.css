@@ -337,3 +337,37 @@
     display:block;width:calc(100% - 20px);margin:5px 10px;padding:10px;
     background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-control);color:var(--text);
 }
+
+/* Temporary test-only contact picker. Reuses the existing direct-message modal. */
+.app-messages__direct-search{display:grid;gap:12px}
+.app-messages__direct-search p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.app-messages__direct-search label{font-weight:650;font-size:13px}
+.app-messages__direct-search input{width:100%;min-width:0;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);color:var(--text);padding:12px}
+.app-messages__direct-search-results{display:grid;gap:6px;max-height:260px;overflow-y:auto}
+.app-messages__direct-candidate{width:100%;padding:11px 12px;text-align:left;color:var(--text);background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--radius-control);cursor:pointer}
+.app-messages__direct-candidate:hover,.app-messages__direct-candidate:focus-visible{border-color:var(--accent);color:var(--accent)}
+.app-messages__direct-back{margin-bottom:10px}
+
+/* Persistent direct-message moderation events, quiet and accessible. */
+.app-messages__direct-event{align-self:center;max-width:96%;display:flex;gap:8px;align-items:baseline;justify-content:center;flex-wrap:wrap;text-align:center;font-size:12px;line-height:1.5;padding:4px 8px}
+.app-messages__direct-event time{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.app-messages__direct-event--blocked span{color:#ec9db7}
+.app-messages__direct-event--unblocked span{color:#8cdbaf}
+/* Replace, rather than duplicate, the composer textarea while sending is forbidden.
+   Keep the notice inside the shared panel and above the action buttons. */
+.app-messages--thread .app-messages__compose .app-messages__direct-status{
+    display:flex;align-items:center;box-sizing:border-box;min-height:66px;
+    margin:0;padding:16px 18px 8px;
+    color:var(--muted);font-size:14px;line-height:1.5;
+}
+.app-messages__direct-status[hidden],.app-messages__actions [hidden]{display:none!important}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__compose .app-messages__direct-status{
+        min-height:56px;padding:12px 14px 6px;font-size:13px;
+    }
+}
+
+/* Quiet direct-message length indicator; hidden together with a locked composer. */
+.app-messages__char-count{display:block;font-size:11px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.app-messages__compose-footer>.app-messages__char-count{margin-right:auto;padding-left:6px}
+.app-messages__char-count[hidden]{display:none!important}

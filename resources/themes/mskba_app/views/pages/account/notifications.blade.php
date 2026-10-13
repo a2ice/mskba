@@ -1,12 +1,18 @@
 @extends('theme::layouts.account', ['title' => 'Сообщения'])
 
 @section('account-heading')
-    @include('theme::pages.account.partials.section-heading', [
-        'heading' => 'Сообщения',
-        'intro' => 'Системные уведомления, переписки по заявкам и личные сообщения.',
-        'introActionUrl' => route('account.notifications.support.start'),
-        'introActionLabel' => 'Написать в техподдержку',
-    ])
+    @include('theme::pages.account.partials.section-heading', ['heading' => 'Сообщения'])
+    @push('account-intro')
+        <section class="panel app-account-intro app-account-intro--with-action" aria-label="О разделе">
+            <p>Системные уведомления, переписки по заявкам и личные сообщения.</p>
+            <div class="app-account-intro__actions">
+                <a class="button primary app-account-intro__action" href="{{ route('account.notifications.support.start') }}">Написать в техподдержку</a>
+                @if (config('features.direct_messages.test_entry'))
+                    <button type="button" class="button secondary" data-direct-test-open>Новое сообщение · тест</button>
+                @endif
+            </div>
+        </section>
+    @endpush
 @endsection
 
 @section('account-content')
@@ -63,4 +69,7 @@
             @endforelse
         @endif
     </section>
+    @if (config('features.direct_messages.test_entry'))
+        @include('theme::pages.account.partials.direct-message-dialog', ['directTestEntry' => true])
+    @endif
 @endsection

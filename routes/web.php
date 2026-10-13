@@ -17,6 +17,7 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminVenuesController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationImageController;
 use App\Modules\Ai\Presentation\Http\Controllers\PlayerCharacterGenerationStatusController;
 use App\Modules\Audit\Presentation\Http\Controllers\AdminAuditController;
+use App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController;
 use App\Modules\Content\Presentation\Http\Controllers\NewsController;
 use App\Modules\Content\Presentation\Http\Controllers\SeoSitemapController;
 use App\Modules\Coordination\Presentation\Http\Controllers\CoordinationController;
@@ -850,10 +851,11 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.settings.privacy.users');
         Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications')->defaults('breadcrumb', 'Сообщения');
         Route::get('/notifications/rail', \App\Modules\Notification\Presentation\Http\Controllers\AccountConversationRailController::class)->middleware('throttle:30,1')->name('account.notifications.rail');
+        Route::get('/notifications/direct/test/users', [DirectMessagesController::class, 'testCandidates'])->middleware('throttle:30,1')->name('account.notifications.direct.test.users');
         Route::get('/notifications/users/{user}/message-access', [DirectMessagesController::class, 'access'])
             ->middleware('throttle:60,1')->name('account.notifications.direct.access');
         Route::post('/notifications/users/{user}/messages', [DirectMessagesController::class, 'send'])
-            ->middleware('throttle:20,1')->name('account.notifications.direct.send');
+            ->middleware('throttle:direct-messages')->name('account.notifications.direct.send');
         Route::get('/notifications/threads/profile/{changeRequest}', [ProfileRequestThreadController::class, 'show'])->name('account.notifications.threads.profile')->defaults('breadcrumb', 'Изменение данных');
         Route::get('/notifications/threads/profile/{changeRequest}/history', [ProfileRequestThreadController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.history');
         Route::patch('/notifications/threads/profile/{changeRequest}/read', [ProfileRequestThreadController::class, 'read'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.read');
@@ -868,6 +870,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.notifications.threads.direct')->defaults('breadcrumb', 'Личная переписка');
         Route::post('/notifications/users/{user}/block', [DirectMessagesController::class, 'block'])->middleware('throttle:10,1')->name('account.notifications.direct.block');
         Route::delete('/notifications/users/{user}/block', [DirectMessagesController::class, 'unblock'])->middleware('throttle:10,1')->name('account.notifications.direct.unblock');
+        Route::get('/notifications/threads/direct/{conversation}/state', [DirectMessagesController::class, 'state'])->name('account.notifications.threads.direct.state');
         Route::get('/notifications/threads/direct/{conversation}/history', [DirectMessagesController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.direct.history');
         Route::patch('/notifications/threads/direct/{conversation}/read', [DirectMessagesController::class, 'read'])
             ->name('account.notifications.threads.direct.read');
@@ -899,7 +902,7 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->name('account.notifications.read');
         Route::get('/contacts', [AccountController::class, 'contacts'])->name('account.contacts');
         Route::post('/contacts', [AccountController::class, 'storeContact'])->name('account.contacts.store');
-        Route::post('/contacts/provider-emulation', \App\Modules\Contact\Presentation\Http\Controllers\EmulateSocialContactController::class)
+        Route::post('/contacts/provider-emulation', EmulateSocialContactController::class)
             ->middleware('throttle:12,1')->name('account.contacts.provider-emulation');
         Route::patch('/contacts/{contact}/primary', [AccountController::class, 'setPrimaryContact'])
             ->name('account.contacts.primary');

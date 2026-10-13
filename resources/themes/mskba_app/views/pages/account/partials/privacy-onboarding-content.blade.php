@@ -150,7 +150,7 @@
                                 <option value="nobody" @selected(($privacyOptions['messages'] ?? 'nobody') === 'nobody')>Никто</option>
                                 <option value="everyone" @selected(($privacyOptions['messages'] ?? 'nobody') === 'everyone')>Все участники портала</option>
                             </select><svg aria-hidden="true"><use href="#chevron-down"/></svg></span>
-                            <p>Настройка для личной переписки, когда этот функционал станет доступен.</p>
+                            <p>Если вы сами напишете участнику, он сможет ответить вам даже при выборе «Никто». Чёрный список всегда имеет приоритет.</p>
                         </div>
                         <div class="privacy-onboarding__selector-field">
                             <label for="privacy-invitations">Кто может приглашать меня в группы</label>
