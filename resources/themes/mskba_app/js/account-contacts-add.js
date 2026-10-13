@@ -23,6 +23,7 @@ if (root) {
     const setError = text => {
         error.textContent = text || '';
         error.hidden = !text;
+        dialog.dataset.surfaceTone = text ? 'error' : (step === 'done' ? 'success' : 'neutral');
     };
 
     const setBusy = enabled => {
@@ -36,6 +37,7 @@ if (root) {
         step = target;
         setError('');
         steps.forEach(node => { node.hidden = node.dataset.contactAddStep !== target; });
+        if (target === 'done') dialog.querySelector('.mskba-modal__body')?.scrollTo(0, 0);
         footer.hidden = target === 'done';
         next.hidden = !['method', 'value'].includes(target);
         back.hidden = target === 'method';

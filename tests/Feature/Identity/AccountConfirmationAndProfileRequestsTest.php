@@ -8,6 +8,7 @@ use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
@@ -136,6 +137,24 @@ final class AccountConfirmationAndProfileRequestsTest extends TestCase
         $this->assertDatabaseHas('profile_change_request_events', ['profile_change_request_id' => $pending->id, 'action' => 'approve']);
     }
 
+    public function test_pending_profile_change_request_card_keeps_shared_profile_stack_spacing(): void
+    {
+        $user = $this->account(UserStatusEnum::CONFIRMED);
+        $this->actingAs($user)->post(route('account.profile-change-requests.store'), $this->proposed())
+            ->assertRedirect(route('account.profile'));
+
+        $html = $this->get(route('account.profile'))->assertOk()
+            ->assertSee('Заявка на изменение данных №1')
+            ->getContent();
+
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($html);
+        $xpath = new \DOMXPath($dom);
+        $requestWithinStack = '//h2[@id="profile-request-status"]/parent::section/parent::div['
+            .'contains(concat(" ", normalize-space(@class), " "), " app-profile ")]';
+        $this->assertSame(1, $xpath->query($requestWithinStack)->length);
+    }
+
     public function test_reject_allows_retry_but_block_denies_retry_until_admin_unblocks(): void
     {
         $user = $this->account(UserStatusEnum::CONFIRMED);
@@ -203,7 +222,7 @@ final class AccountConfirmationAndProfileRequestsTest extends TestCase
             ->assertRedirect(route('account.profile'));
         $change = ProfileChangeRequest::query()->sole();
 
-        $notification = \App\Modules\Notification\Domain\Models\UserNotification::query()
+        $notification = UserNotification::query()
             ->where('user_id', $admin->id)->latest('id')->firstOrFail();
 
         $this->assertStringNotContainsString('Анна', $notification->body);

@@ -67,8 +67,24 @@
     "file": "assets/logo-mark-100--FePTRLm.png",
     "src": "resources/themes/mskba_app/assets/images/logo-mark-100.png"
   },
+  "resources/themes/mskba_app/assets/images/mskba-error-once.gif": {
+    "file": "assets/mskba-error-once-9Rv1i8i5.gif",
+    "src": "resources/themes/mskba_app/assets/images/mskba-error-once.gif"
+  },
+  "resources/themes/mskba_app/assets/images/mskba-error-static.png": {
+    "file": "assets/mskba-error-static-BiCfvZmF.png",
+    "src": "resources/themes/mskba_app/assets/images/mskba-error-static.png"
+  },
+  "resources/themes/mskba_app/assets/images/mskba-success-once.gif": {
+    "file": "assets/mskba-success-once-BFUTJjR4.gif",
+    "src": "resources/themes/mskba_app/assets/images/mskba-success-once.gif"
+  },
+  "resources/themes/mskba_app/assets/images/mskba-success-static.png": {
+    "file": "assets/mskba-success-static-CK9EOgay.png",
+    "src": "resources/themes/mskba_app/assets/images/mskba-success-static.png"
+  },
   "resources/themes/mskba_app/css/app.css": {
-    "file": "assets/app--Ee01Su5.css",
+    "file": "assets/app-BijV9uzF.css",
     "name": "app",
     "names": [
       "app.css"
@@ -77,11 +93,15 @@
     "isEntry": true,
     "assets": [
       "assets/InterVariable-DiVDrmQJ.woff2",
+      "assets/mskba-success-once-BFUTJjR4.gif",
+      "assets/mskba-error-once-9Rv1i8i5.gif",
+      "assets/mskba-success-static-CK9EOgay.png",
+      "assets/mskba-error-static-BiCfvZmF.png",
       "assets/logo-mark-100--FePTRLm.png"
     ]
   },
   "resources/themes/mskba_app/js/app.js": {
-    "file": "assets/app-D2twCgnY.js",
+    "file": "assets/app-D8Qld_Sb.js",
     "name": "app",
     "src": "resources/themes/mskba_app/js/app.js",
     "isEntry": true,

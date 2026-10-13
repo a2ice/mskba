@@ -76,7 +76,7 @@
   transition:background .16s,border-color .16s,color .16s;
 }
 .app-account-nav__link:hover {
-  background:var(--surface-raised);
+  background:var(--surface-corner-layer),var(--surface-raised);
   color:var(--text);
   border-color:var(--line);
 }
@@ -84,7 +84,13 @@
 .app-account-nav__link[aria-current=page] {
   color:var(--accent);
   border-color:#ff79004a;
-  background:#ff790012;
+  background:var(--surface-corner-layer),#ff790012;
+}
+.app-account-nav__link:is(.is-active,[aria-current=page]):hover { border-color:#ff79004a; color:var(--accent); }
+.app-account-nav__link:is(:hover,.is-active,[aria-current=page]) {
+  background-size:min(35%, 200px) min(35%, 100px),auto;
+  background-position:100% 100%,0 0;
+  background-repeat:no-repeat;
 }
 
 /* Nested group uses the same link primitive and native details toggle as the header. */
@@ -103,9 +109,8 @@
 }
 .app-account-nav__group[open] > summary > svg:not(.app-account-nav__icon) { transform:rotate(180deg); }
 .app-account-nav__group-trigger.is-active {
-  background:var(--surface-raised);
-  color:var(--text);
-  border-color:transparent;
+  color:var(--accent);
+  border-color:#ff79004a;
 }
 .app-account-nav__children {
   display:flex;

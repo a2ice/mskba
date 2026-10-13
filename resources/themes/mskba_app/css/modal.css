@@ -17,11 +17,21 @@
     flex-direction: column;
     overflow: hidden;
     color: var(--text);
-    background: var(--surface);
+    background:
+        var(--surface-corner-layer),
+        var(--surface);
+    background-size: min(35%, 200px) min(35%, 100px), auto;
+    background-position: 100% 100%, 0 0;
+    background-repeat: no-repeat;
     border: 1px solid var(--line);
     border-radius: var(--radius-card);
     box-shadow: 0 32px 100px #000b;
 }
+/* One surface, one glow: status is assigned to the dialog root.
+   Header, scrolled body and footer keep transparent backgrounds. */
+.mskba-modal[data-surface-tone="success"] { --surface-glow:var(--surface-corner-glow-success); }
+.mskba-modal[data-surface-tone="error"] { --surface-glow:var(--surface-corner-glow-error); }
+.mskba-modal .mskba-modal__footer { background:transparent; }
 .mskba-modal:not([open]) { display: none; }
 .mskba-modal[open] { display: flex; }
 .mskba-modal::backdrop {
@@ -38,6 +48,36 @@
     overflow-y: auto;
     overscroll-behavior: contain;
 }
+/* Task 033: a paired success/miss animation above the result text.
+   Apply only to explicit operation outcome statuses; the GIFs play once and
+   hold their final check / cross. No extra markup inside feature dialogs. */
+.mskba-modal:is([data-surface-tone="success"],[data-surface-tone="error"]) > .mskba-modal__body::before {
+    content: "";
+    display: block;
+    flex: 0 0 auto;
+    width: 58px;
+    height: 49px;
+    margin: 0 auto 10px;
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+    pointer-events: none;
+}
+.mskba-modal[data-surface-tone="success"] > .mskba-modal__body::before {
+    background-image: url('../assets/images/mskba-success-once.gif');
+}
+.mskba-modal[data-surface-tone="error"] > .mskba-modal__body::before {
+    background-image: url('../assets/images/mskba-error-once.gif');
+}
+@media (prefers-reduced-motion: reduce) {
+    .mskba-modal[data-surface-tone="success"] > .mskba-modal__body::before {
+        background-image: url('../assets/images/mskba-success-static.png');
+    }
+    .mskba-modal[data-surface-tone="error"] > .mskba-modal__body::before {
+        background-image: url('../assets/images/mskba-error-static.png');
+    }
+}
+
 /* Shared scrollbar for modal bodies and other app-owned scroll containers.
    System-managed/overlay scrollbars may retain OS-level presentation. */
 .mskba-scroll {

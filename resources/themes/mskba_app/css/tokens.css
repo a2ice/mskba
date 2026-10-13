@@ -9,5 +9,9 @@
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s7:32px; --s8:40px; --s9:48px; --s10:64px;
   --radius-control:12px; --radius-card:24px; --radius-hero:32px;
   --header-height:80px; --shadow-accent:0 8px 24px #ff790026;
+  /* Task 031: restrained glow radiating from the inside bottom-right corner. */
+  --surface-corner-glow:#ff79001e;
+  --surface-corner-glow-success:#35cb7922;
+  --surface-corner-glow-error:#ff545e22;
   font-family:Inter,Arial,sans-serif; font-synthesis:none;
 }

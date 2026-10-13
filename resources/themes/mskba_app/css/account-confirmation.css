@@ -40,7 +40,7 @@
 /* Verified-contact onboarding dialog. */
 .app-contact-wizard__trigger{display:flex;align-items:center;flex-wrap:wrap;gap:12px 14px;margin-top:16px}
 .app-contact-wizard__hint{color:var(--muted);font-size:13px;line-height:1.5;margin:12px 0 0}
-.app-contact-wizard__dialog{box-sizing:border-box;width:min(580px,calc(100vw - 24px));max-height:min(88vh,800px);padding:0;color:var(--text);background:var(--surface,#17191a);border:1px solid var(--line);border-radius:22px;box-shadow:0 25px 80px #0009;overflow:auto}
+.app-contact-wizard__dialog{box-sizing:border-box;width:min(580px,calc(100vw - 24px));max-height:min(88vh,800px);padding:0;color:var(--text);border:1px solid var(--line);border-radius:22px;box-shadow:0 25px 80px #0009;overflow:auto}
 .app-contact-wizard__dialog:not([open]){display:none}
 .app-contact-wizard__dialog::backdrop{background:rgba(0,0,0,.78);backdrop-filter:blur(3px)}
 .app-contact-wizard__header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px 26px 18px;border-bottom:1px solid var(--line)}
@@ -87,6 +87,9 @@
     min-width:0;flex-wrap:wrap;overflow-wrap:anywhere;
 }
 .app-account-contacts__meta>strong{font-size:14px;line-height:1.5}
+.app-account-contacts__value{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.app-account-contacts__value>span:last-child{min-width:0;overflow-wrap:anywhere}
+.app-account-contacts__type-icon{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .app-account-contacts__badges{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
 .app-account-contacts__badges .app-confirmation__state{
     font-size:11px;padding:4px 8px;line-height:16px;
@@ -198,7 +201,7 @@
 .mskba-modal.app-contact-wizard__dialog{
     position:fixed;inset:0;margin:auto;transform:none;box-sizing:border-box;
     display:flex;flex-direction:column;overflow:hidden;width:min(560px,calc(100vw - 24px));
-    max-height:90vh;max-height:90dvh;background:var(--surface);
+    max-height:90vh;max-height:90dvh; /* unified background lives on .mskba-modal */
     border:1px solid var(--line);border-radius:var(--radius-card);
 }
 .mskba-modal.app-contact-wizard__dialog:not([open]){display:none}

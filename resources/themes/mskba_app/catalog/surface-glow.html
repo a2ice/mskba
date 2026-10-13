@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>MSKBA App — Corner glow / 031</title>
+  <link rel="stylesheet" href="../css/app.css">
+  <style>
+    .glow-catalog{padding:32px 0 64px}
+    .glow-layout{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);gap:24px;align-items:start}
+    .glow-content{display:grid;gap:20px;min-width:0}
+    .glow-content .panel{padding:24px}
+    .glow-content p{color:var(--muted);margin-top:8px}
+    .glow-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+    .glow-demo-modal__header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--line)}
+    .glow-demo-modal__body{padding:24px}
+    .glow-demo-modal__footer{padding:18px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+    @media(max-width:900px){.glow-layout{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main class="container glow-catalog">
+  <p class="eyebrow accent">MSKBA APP / UI 031</p>
+  <h1 style="font-size:40px;line-height:1.2;margin:14px 0 28px">Угловое свечение</h1>
+  <div class="glow-layout">
+    <aside class="panel app-account-nav" aria-label="Образец sidebar">
+      <nav class="app-account-nav__links" aria-label="Состояния sidebar">
+        <a href="#cards" class="app-account-nav__link">Обзор</a>
+        <a href="#cards" class="app-account-nav__link is-active" aria-current="page">Контакты (active)</a>
+        <a href="#cards" class="app-account-nav__link">Настройки (наведи)</a>
+      </nav>
+    </aside>
+    <div class="glow-content" id="cards">
+      <section class="panel"><h2 style="font-size:20px">Обычная плашка</h2><p>Оранжевый градиент мягко выходит из правого нижнего угла, не отвлекая от текста.</p></section>
+      <section class="panel"><h2 style="font-size:20px">Модальное окно — единая плашка</h2><p>Переключай статусы. Градиент располагается на dialog, а не отдельно на header/body/footer.</p>
+        <div class="glow-actions"><button class="button secondary" data-open-tone="neutral">Нейтральный</button><button class="button secondary" data-open-tone="success">Успех</button><button class="button secondary" data-open-tone="error">Ошибка</button></div>
+      </section>
+      <a class="button ghost" href="index.html">← К основному каталогу</a>
+    </div>
+  </div>
+</main>
+<dialog class="mskba-modal app-contact-wizard__dialog glow-demo-modal" data-glow-dialog aria-labelledby="glow-modal-title">
+  <header class="mskba-modal__header glow-demo-modal__header"><strong class="eyebrow accent">ПРИМЕР ДЕЙСТВИЯ</strong><button class="icon-button" data-glow-close aria-label="Закрыть">×</button></header>
+  <div class="mskba-modal__body mskba-scroll glow-demo-modal__body"><h2 id="glow-modal-title">Статус действия</h2><p data-glow-message style="color:var(--muted);margin-top:10px">Градиент у всей модалки один.</p></div>
+  <footer class="mskba-modal__footer glow-demo-modal__footer"><button class="button primary" data-glow-close>Закрыть</button></footer>
+</dialog>
+<script>
+  const dialog=document.querySelector('[data-glow-dialog]');
+  const messages={neutral:'Нейтральная модалка: мягкий оранжевый угол.',success:'Контакт добавлен: одно деликатное зелёное свечение.',error:'Ошибка добавления: одно деликатное красное свечение.'};
+  document.querySelectorAll('[data-open-tone]').forEach(button=>button.addEventListener('click',()=>{
+    const tone=button.dataset.openTone;
+    dialog.dataset.surfaceTone=tone;
+    dialog.querySelector('[data-glow-message]').textContent=messages[tone];
+    dialog.showModal();
+  }));
+  dialog.querySelectorAll('[data-glow-close]').forEach(button=>button.addEventListener('click',()=>dialog.close()));
+  dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
+  const previewTone=new URLSearchParams(location.search).get('tone');
+  if(Object.hasOwn(messages,previewTone))document.querySelector('[data-open-tone="'+previewTone+'"]').click();
+</script>
+
+</body>
+</html>

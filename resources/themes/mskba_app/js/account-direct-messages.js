@@ -33,13 +33,15 @@ if (modalRoot) {
     let opener = null;
 
     const urlFor = (key, id) => modalRoot.dataset[key].replace('__USER__', encodeURIComponent(id));
-    const showError = text => { error.textContent = text; error.hidden = !text; };
+    const showError = text => { error.textContent = text; error.hidden = !text; dialog.dataset.surfaceTone = text ? 'error' : 'neutral'; };
     document.querySelectorAll('[data-direct-message-open]').forEach(button => {
         button.addEventListener('click', async () => {
             opener = button;
             recipient = button.dataset.recipientId;
             const current = ++serial;
             name.textContent = button.dataset.recipientName || 'Участник';
+            name.hidden = false;
+            dialog.dataset.surfaceTone = 'neutral';
             check.textContent = 'Проверяем возможность отправки…';
             check.hidden = false;
             form.hidden = true;
@@ -81,6 +83,8 @@ if (modalRoot) {
             form.hidden = true;
             success.hidden = false;
             success.textContent = 'Сообщение отправлено.';
+            name.hidden = true;
+            dialog.dataset.surfaceTone = 'success';
         } catch (exception) {
             showError(exception.message);
         } finally {

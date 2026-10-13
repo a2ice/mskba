@@ -37,7 +37,18 @@
                     @endphp
                     <article class="app-account-contacts__item">
                         <div class="app-account-contacts__meta">
-                            <strong>{{ $contact->type->label() }}: {{ $contact->displayValue() }}</strong>
+                            <strong class="app-account-contacts__value">
+                                @php($contactIcon = match ($contact->type) {
+                                    \App\Modules\Contact\Domain\Enums\ContactTypeEnum::EMAIL => 'contact-mail',
+                                    \App\Modules\Contact\Domain\Enums\ContactTypeEnum::PHONE => 'contact-phone',
+                                    \App\Modules\Contact\Domain\Enums\ContactTypeEnum::TELEGRAM => 'contact-telegram',
+                                    \App\Modules\Contact\Domain\Enums\ContactTypeEnum::VK => 'contact-vk',
+                                    default => 'user',
+                                })
+                                <svg class="app-account-contacts__type-icon" aria-hidden="true"><use href="#{{ $contactIcon }}"/></svg>
+                                <span class="sr-only">{{ $contact->type->label() }}: </span>
+                                <span>{{ $contact->displayValue() }}</span>
+                            </strong>
                             @if (($contact->meta['is_emulated'] ?? false) === true)
                                 <span class="app-confirmation__state">Тестовый контакт</span>
                             @endif

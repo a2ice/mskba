@@ -538,6 +538,40 @@
 
 - Task 026 UX micro-polish: green verification pulse now shows on the Actions summary only when closed; opening the details menu hides and stops the summary pulse but preserves the pulse beside the Confirm link inside the menu. Closing restores it. No label shift (reserved 5px layout width), Chrome QA at 1440/768/500px passed. Changes local-only, uncommitted.
 
+## 031 — деликатные градиенты поверхностей (2026-10-13)
+
+- Принят визуальный контракт: обычная `.panel` получает очень слабый оранжевый градиент только из правого нижнего угла; размеры зоны ограничены 35% и 200×100 px. Обновлён [основной гайдлайн](../specification/ui-design-system.md#деликатная-угловая-подсветка-поверхностей--2026-10-13).
+- Единая `.mskba-modal`: neutral/green-success/red-error задаются атрибутом на root dialog; footer прозрачен и не создаёт собственного свечения. JS добавления контактов меняет тон при error и done, не трогая HTTP flow.
+- Sidebar account: active/hover используют общий геометрический эффект, без дублирования по страницам. Фотографические карточки сохраняют свои фоновые правила.
+- Каталог состояния: `resources/themes/mskba_app/catalog/surface-glow.html`; локальный HTTP `127.0.0.1:8014`. Скриншоты Chromium обычного экрана и success/error показывают непрерывный фон и отсутствие жёстких границ.
+- QA: Vite build PASS (`/tmp`), `node --check` PASS, `git diff --check` PASS; real contacts требует логина, mobile/hover и реальный flow оставлены для пользовательской визуальной приёмки.
+- **Изменения только локально в `dev`, без commit/push/PR/deploy**, незакоммиченный сторонний файл документации сохранён.
+
+## 032 — форма изменения данных, группа «Участие», иконки каналов (2026-10-13)
+
+- В форме заявки на изменение подтверждённых данных сокращён заголовок до «Изменение данных», селектор пола использует штатный `.select-control` и SVG `#chevron-down`. Кнопка отправки с атрибутом `form` теперь находится в фиксированном modal footer рядом с «Отмена», HTML POST/CSRF и нативная browser validation сохранены.
+- Меню `mskba_app` переименовало только группу `AccountMenu` («Мой MSKBA» → «Участие»), дети/разрешения/URL не изменены, legacy `mskba_dark` без изменений.
+- В списке контактов видимые префиксы Email/Phone/Telegram/VK заменены на оригинальные Tabler Icons Outline 3.46.0 (`mail`, `phone`, `brand-telegram`, `brand-vk`), тип OTHER использует существующий `user`. Скрытый текст `sr-only` сохраняет доступное описание типа; AJAX обновление списка использует тот же Blade шаблон.
+- Исправление по приёмке 031: устаревший `background` `.app-contact-wizard__dialog` перекрывал единый фон `.mskba-modal`, теперь статусное свечение применимо к целой modal.
+- Локальная реализация; пользовательская визуальная приёмка ожидается. Commit/push/PR/deploy не выполнять до подтверждения.
+
+**QA 032 (локально):** 46 PHPUnit / 465 assertions (навигация, роли, контакты) и 30 PHPUnit / 338 assertions (профиль, заявки) PASS; Blade view:cache PASS, Vite build PASS (`/tmp`, исходные warning о крупных чанках), diff-check PASS. Реальная визуальная приёмка modals/desktop/mobile ожидается. Без commit/push.
+
+## 033 — анимации исхода модалки (2026-10-13)
+
+- Одобрена ранее нарисованная анимация успеха и найден парный GIF промаха `mskba-error-v2-right-rim-hit.gif` на локальном Mac. У обоих 18 кадров / 1040 мс; исходные кадры без изменений, бесконечный loop удалён, финальный кадр экспортирован в PNG.
+- По обратной связи размер уменьшен ровно вдвое, с 116×98 до **58×49 px**. Вся анимация находится внутри scrollable body над результатом через общий CSS, без разметки по отдельным диалогам. Success зелёный, error красный, neutral без картинки.
+- Модалка личных сообщений после успешного/ошибочного ответа теперь также выставляет root status и сбрасывает его при повторном открытии; модалка добавления контакта уже использует этот контракт.
+- Chrome desktop: оба статуса отображаются, градиент сохраняется; `prefers-reduced-motion` получает отдельные статичные изображения.
+- **QA:** 76 тестов / 803 проверки PASS, `php artisan view:cache` PASS, Vite PASS (только прежние предупреждения чанков), `node --check` и `git diff --check` PASS. Local-only, визуальная приёмка пользователя ожидается, без commit/push/PR/deploy.
+
+## 034 — отдельная карточка заявки на профиль и аудит диалогов (2026-10-13)
+
+- Плашка «Заявка на изменение данных №N» стояла за пределами `.app-profile` и не получала его `gap:20px`. Вернули её в существующий вертикальный stack (перенесли одну закрывающую `</div>` в Blade), без новых `margin` и без изменения логики. DOM regression тест создан. Blade cache PASS, 31 профильный тест / 343 утверждения PASS, git diff --check PASS.
+- POST формирует настоящую модель `ProfileChangeRequest` и журнал событий; уведомления идут подтверждённым супер-администраторам и ведут в `/admin/profile-change-requests`. Review доступен только superadmin, самоодобрение запрещено.
+- Коммит `e1ba8d26` (единые сообщения, 12.10) создал отдельный тред для `TeamJoinRequest` и direct chat. У `ProfileChangeRequest` пока нет собственных сообщений/timeline и маршрута в `ListAccountConversationsHandler`; payload `profile_change_request_id` не распознаётся как тред, поэтому уведомления идут в read-only «Система MSKBA». Это требующая отдельного согласования функциональность, не часть данной CSS-правки.
+- Оставлено локально без commit/push/PR/deploy, ждём визуальную приёмку и решения по тредам.
+
 ## Tasks 035-036: local architecture pilot (2026-10-13)
 
 - Reviewed all original global and scoped permission enum sets. The central `PermissionCatalog` aggregates without replacing domain-owned ACL; new sensitive `identity.profile_change.review` supports explicit admin delegation, role constraints and a monotonic request-ID boundary on late grant.
@@ -605,3 +639,9 @@
 - Создание обращения переведено на compact-sidebar + auth-aware rail слева от формы (как в переписках). Кнопки выровнены вправо, ниже добавлен mailto из существующего `support.email` (`SUPPORT_EMAIL`). UI адаптивен через общее правило workspace.
 - Добавлен интеграционный DOM/контроллер тест на конфигурационный e-mail, интро CTA, карточки разрешённых диалогов и порядок. Изменения ожидают визуальной приёмки; commit/push не выполнялись.
 - Финальный чекпоинт по интро/support-create UI: 110 PHPUnit / 1028 assertions PASS, Vite/Blade/Pint PASS. CSS headless Chrome 1440/900/500: rail слева, адаптивное скрытие, кнопки справа, без горизонтального overflow. Local-only; ждём визуальную приёмку.
+
+## Публикация визуального пакета 031–034 (2026-10-13)
+
+- По итогам пользовательского подтверждения четыре локальные визуальные задачи подготовлены к отдельному коммиту в `dev`: деликатные градиенты, статусные модалки и GIF success/error, полировка профиля/контактов, отступ карточки заявки. Ранее добавленная группа «Участие» уже доставлена в `dev` отдельным коммитом `533041c4`; повторной правки меню не требуется.
+- Историческое расследование в 034 о ещё не реализованном треде относится к состоянию **до** 035–037; приватные треды изменения профиля уже включены в `dev` коммитами 6884c889/5ff26154. Этот пакет не добавляет второй вариант функциональности.
+- Нерелевантные форматирующие изменения `AccountController`, `routes/web.php` и `identity-account-confirmation.md` остаются вне коммита, пока не будут проанализированы отдельно.

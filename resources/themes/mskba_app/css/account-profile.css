@@ -52,7 +52,7 @@
 .app-profile__dialog-close{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:1px solid var(--control-line);border-radius:12px;color:var(--text);background:transparent;cursor:pointer;font-size:24px}
 .app-profile__request-body{padding:22px 24px;color:var(--muted);font-size:14px;line-height:23px}
 .app-profile__request-body p{margin:0 0 14px}
-.app-profile__request-footer{border-bottom:0;border-top:1px solid var(--line);justify-content:flex-end}
+.app-profile__request-footer{border-bottom:0;border-top:1px solid var(--line);justify-content:flex-end;flex-wrap:wrap}
 @container (max-width:640px){.app-profile__field-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){.app-profile__panel{padding:18px}.app-profile__avatar-row{gap:16px}.app-profile__nickname-line{flex-wrap:wrap}.app-profile__nickname-line button{width:100%}.app-profile__form-actions .button{width:100%}}
 
