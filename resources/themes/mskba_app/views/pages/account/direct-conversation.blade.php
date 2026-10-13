@@ -28,11 +28,11 @@
     <form class="panel app-messages__compose" action="{{ route('account.notifications.direct.send', $recipient->id) }}" method="POST" data-chat-compose>
         @csrf
         <label class="sr-only" for="direct-thread-message">Сообщение</label>
-        <textarea id="direct-thread-message" name="body" rows="3" maxlength="200" required
+        <textarea id="direct-thread-message" name="body" rows="3" maxlength="500" required
             @disabled(!$canSend) {{ $canSend ? '' : 'hidden' }} placeholder="Введите сообщение…"></textarea>
         <p class="app-messages__direct-status" data-chat-direct-status role="status" aria-live="polite" {{ $canSend ? 'hidden' : '' }}>{{ $blockedByMe ? 'Вы заблокировали пользователя.' : 'Отправка личных сообщений недоступна.' }}</p>
         <div class="app-messages__compose-footer">
-            <span class="app-messages__char-count" data-direct-char-count {{ $canSend ? '' : 'hidden' }}>0 / 200</span>
+            <span class="app-messages__char-count" data-direct-char-count {{ $canSend ? '' : 'hidden' }}>0 / 500</span>
             <details class="app-context-actions app-messages__actions" data-chat-actions>
                 @include('theme::pages.account.partials.chat-actions-trigger', ['ariaLabel' => 'Действия с перепиской'])
                 <div class="app-context-actions__menu" aria-label="Действия с перепиской">

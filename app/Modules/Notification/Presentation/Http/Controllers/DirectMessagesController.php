@@ -112,7 +112,7 @@ final class DirectMessagesController extends Controller
         abort_unless(! $blocks->blockedBetween($viewer, $recipient)
             && $recipientAccess->allows($recipient, $viewer),
             403, 'Отправка личных сообщений недоступна.');
-        $data = $request->validate(['body' => ['required', 'string', 'max:200']]);
+        $data = $request->validate(['body' => ['required', 'string', 'max:500']]);
         $ids = [(int) $viewer->id, (int) $recipient->id];
         sort($ids);
 

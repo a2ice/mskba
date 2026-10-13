@@ -260,6 +260,8 @@ final class AccountUnifiedMessagesTest extends TestCase
             ->assertSee('Новое сообщение · тест')
             ->assertSee('data-direct-test-open', false)
             ->assertSee('data-direct-test-search', false)
+            ->assertSee('maxlength="500"', false)
+            ->assertSee('0 / 500')
             ->assertSee(route('account.notifications.direct.test.users'), false);
         $this->getJson(route('account.notifications.direct.test.users', ['q' => 'a']))
             ->assertOk()->assertJsonPath('users', []);
@@ -478,7 +480,7 @@ final class AccountUnifiedMessagesTest extends TestCase
         $this->getJson(route('account.notifications.threads.direct.history', $thread))->assertForbidden();
     }
 
-    public function test_direct_messages_have_200_character_limit_for_first_and_followup_messages(): void
+    public function test_direct_messages_have_500_character_limit_for_first_and_followup_messages(): void
     {
         $sender = $this->user();
         $receiver = $this->user();
@@ -488,17 +490,17 @@ final class AccountUnifiedMessagesTest extends TestCase
         ]);
         $this->actingAs($sender);
         $endpoint = route('account.notifications.direct.send', $receiver);
-        $this->postJson($endpoint, ['body' => str_repeat('я', 201)])
+        $this->postJson($endpoint, ['body' => str_repeat('я', 501)])
             ->assertUnprocessable()->assertJsonValidationErrors('body');
         $this->assertSame(0, DirectConversation::query()->count());
-        $this->postJson($endpoint, ['body' => str_repeat('я', 200)])
+        $this->postJson($endpoint, ['body' => str_repeat('я', 500)])
             ->assertCreated();
-        $this->postJson($endpoint, ['body' => str_repeat('я', 201)])
+        $this->postJson($endpoint, ['body' => str_repeat('я', 501)])
             ->assertUnprocessable()->assertJsonValidationErrors('body');
         $this->assertDatabaseCount('direct_messages', 1);
         $page = $this->get(route('account.notifications.threads.direct', DirectConversation::query()->firstOrFail()))
-            ->assertOk()->assertSee('maxlength="200"', false);
-        $this->assertSame(1, substr_count($page->getContent(), 'maxlength="200"'));
+            ->assertOk()->assertSee('maxlength="500"', false);
+        $this->assertSame(1, substr_count($page->getContent(), 'maxlength="500"'));
     }
 
     public function test_direct_rate_limit_allows_three_messages_per_ten_seconds_per_sender_across_recipients(): void

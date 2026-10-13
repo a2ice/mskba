@@ -24,8 +24,8 @@
             <p role="status" data-direct-check>Проверяем возможность отправки сообщения…</p>
             <form data-direct-form hidden>
                 <label class="field-group">Сообщение
-                    <textarea name="body" rows="4" maxlength="200" placeholder="Введите текст сообщения…" required></textarea>
-                    <small class="app-messages__char-count" data-direct-char-count>0 / 200</small>
+                    <textarea name="body" rows="4" maxlength="500" placeholder="Введите текст сообщения…" required></textarea>
+                    <small class="app-messages__char-count" data-direct-char-count>0 / 500</small>
                 </label>
                 <button type="submit" class="button primary">Отправить сообщение</button>
             </form>

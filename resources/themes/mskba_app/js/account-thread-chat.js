@@ -164,7 +164,7 @@ if (root) {
     const textarea = form?.querySelector('textarea[name="body"]');
     const charCount = form?.querySelector('[data-direct-char-count]');
     if (directStateUrl && textarea && charCount) {
-        const updateCount = () => { charCount.textContent = `${textarea.value.length} / 200`; };
+        const updateCount = () => { charCount.textContent = `${textarea.value.length} / 500`; };
         textarea.addEventListener('input', updateCount);
         updateCount();
     }

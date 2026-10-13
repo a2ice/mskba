@@ -27,7 +27,7 @@ if (modalRoot) {
     const textarea = form.querySelector('textarea');
     const send = form.querySelector('button[type="submit"]');
     const charCount = form.querySelector('[data-direct-char-count]');
-    const updateCharCount = () => { if (charCount) charCount.textContent = `${textarea.value.length} / 200`; };
+    const updateCharCount = () => { if (charCount) charCount.textContent = `${textarea.value.length} / 500`; };
     textarea.addEventListener('input', updateCharCount);
     updateCharCount();
     const success = dialog.querySelector('[data-direct-success]');
