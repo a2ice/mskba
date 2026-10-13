@@ -33,6 +33,7 @@ final class AccountUnifiedMessagesTest extends TestCase
     {
         $user = User::factory()->create();
         $user->createProfile([]);
+
         return $user;
     }
 
@@ -40,6 +41,7 @@ final class AccountUnifiedMessagesTest extends TestCase
     {
         $this->seed(GameLifecycleDemoSeeder::class);
         $team = Team::query()->where('alias', 'demo-red')->firstOrFail();
+
         return TeamJoinRequest::query()->create([
             'team_id' => $team->id,
             'user_id' => $applicant->id,
@@ -64,7 +66,6 @@ final class AccountUnifiedMessagesTest extends TestCase
         $this->actingAs($owner)->get(route('account.notifications.threads.team', $request->id))
             ->assertOk()->assertSee('Новая заявка в команду');
     }
-
 
     public function test_two_team_applications_are_two_threads_and_system_notifications_are_not_duplicates(): void
     {
@@ -149,7 +150,7 @@ final class AccountUnifiedMessagesTest extends TestCase
         ])->assertForbidden();
     }
 
-    public function test_team_and_direct_threads_display_newest_messages_first(): void
+    public function test_team_thread_stays_newest_first_and_direct_chat_displays_chronological_messages(): void
     {
         $applicant = $this->user();
         $request = $this->teamRequest($applicant);
@@ -175,7 +176,7 @@ final class AccountUnifiedMessagesTest extends TestCase
 
         $conversation = DirectConversation::query()->firstOrFail();
         $this->get(route('account.notifications.threads.direct', $conversation->id))->assertOk()
-            ->assertSeeTextInOrder(['Второе личное сообщение', 'Первое личное сообщение']);
+            ->assertSeeTextInOrder(['Первое личное сообщение', 'Второе личное сообщение']);
     }
 
     public function test_direct_message_composer_respects_privacy_and_creates_separate_conversation(): void
@@ -202,12 +203,98 @@ final class AccountUnifiedMessagesTest extends TestCase
         $this->actingAs($receiver)->get(route('account.notifications'))->assertOk()
             ->assertSee('Привет!')
             ->assertSee($result->json('conversation_url'), false);
-        $this->get($result->json('conversation_url'))->assertOk()->assertSee('Привет!');
+        $this->get($result->json('conversation_url'))->assertOk()->assertSee('Привет!')
+            ->assertSee('app-context-quick app-context-actions__trigger app-messages__actions-trigger', false)
+            ->assertSee('app-context-quick__label', false)
+            ->assertSee('app-messages__compose-footer', false)
+            ->assertSee('data-chat-send', false);
         $this->patchJson(route('account.notifications.threads.direct.read', $conversation->id))
             ->assertOk()->assertJsonPath('unread_count', 0);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $receiver->id, 'status' => 'read',
         ]);
+    }
+
+    public function test_direct_chat_acks_notifications_arriving_after_initial_page_load(): void
+    {
+        $sender = $this->user();
+        $receiver = $this->user();
+        $outsider = $this->user();
+        $receiver->privacySettings()->create([
+            'type' => UserPrivacySettingTypeEnum::MESSAGES,
+            'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+        ]);
+        $this->actingAs($sender)->postJson(route('account.notifications.direct.send', $receiver), [
+            'body' => 'Первая реплика',
+        ])->assertCreated();
+        $thread = DirectConversation::query()->firstOrFail();
+        $url = route('account.notifications.threads.direct.read', $thread);
+        $this->actingAs($receiver)->get(route('account.notifications.threads.direct', $thread))
+            ->assertOk()->assertSee('data-chat-read-url="'.$url.'"', false);
+        $this->patchJson($url)->assertOk()->assertJsonPath('unread_count', 0);
+        $this->actingAs($sender)->postJson(route('account.notifications.direct.send', $receiver), [
+            'body' => 'Реплика, доставленная в уже открытый чат',
+        ])->assertCreated();
+        $this->actingAs($outsider)->patchJson($url)->assertForbidden();
+        $this->actingAs($receiver)->patchJson($url)->assertOk()->assertJsonPath('unread_count', 0);
+        $this->assertSame(0, UserNotification::query()->where('user_id', $receiver->id)
+            ->where('status', 'new')->where('payload->direct_conversation_id', $thread->id)->count());
+        $this->patchJson($url)->assertOk()->assertJsonPath('unread_count', 0);
+    }
+
+    public function test_direct_message_blacklist_is_bilateral_and_reversible(): void
+    {
+        $sender = $this->user();
+        $receiver = $this->user();
+        foreach ([$sender, $receiver] as $user) {
+            $user->privacySettings()->create([
+                'type' => UserPrivacySettingTypeEnum::MESSAGES,
+                'visibility' => UserPrivacyVisibilityEnum::EVERYONE,
+            ]);
+        }
+        $this->actingAs($sender)->postJson(route('account.notifications.direct.send', $receiver), [
+            'body' => 'До блокировки',
+        ])->assertCreated();
+        $conversation = DirectConversation::query()->firstOrFail();
+        $this->post(route('account.notifications.direct.block', $receiver))->assertRedirect();
+        $this->assertDatabaseHas('direct_message_blocks', [
+            'blocker_user_id' => $sender->id, 'blocked_user_id' => $receiver->id,
+        ]);
+        $this->postJson(route('account.notifications.direct.send', $receiver), ['body' => 'Заблокировано'])
+            ->assertForbidden();
+        $this->actingAs($receiver)->postJson(route('account.notifications.direct.send', $sender), [
+            'body' => 'Ответ заблокирован',
+        ])->assertForbidden();
+        $this->get(route('account.notifications.threads.direct', $conversation))->assertOk()
+            ->assertSee('До блокировки'); // Old correspondence is still accessible.
+        $this->actingAs($sender)->delete(route('account.notifications.direct.unblock', $receiver))
+            ->assertRedirect();
+        $this->postJson(route('account.notifications.direct.send', $receiver), ['body' => 'После разблокировки'])
+            ->assertCreated();
+    }
+
+    public function test_direct_history_uses_private_cursor_pagination_by_tens(): void
+    {
+        $first = $this->user();
+        $second = $this->user();
+        $outsider = $this->user();
+        $conversation = DirectConversation::query()->create([
+            'user_low_id' => min($first->id, $second->id),
+            'user_high_id' => max($first->id, $second->id),
+        ]);
+        foreach (range(1, 24) as $i) {
+            $conversation->messages()->create(['sender_user_id' => $first->id, 'body' => 'Message '.str_pad((string) $i, 2, '0', STR_PAD_LEFT)]);
+        }
+        $url = route('account.notifications.threads.direct.history', $conversation);
+        $this->actingAs($outsider)->getJson($url)->assertForbidden();
+        $response = $this->actingAs($first)->getJson($url)->assertOk();
+        $this->assertSame(10, substr_count($response->json('html'), 'data-chat-entry='));
+        $this->assertStringContainsString('Message 24', $response->json('html'));
+        $this->assertStringNotContainsString('Message 14', $response->json('html'));
+        $older = $this->getJson($url.'?before='.$response->json('next_before'))->assertOk();
+        $this->assertSame(10, substr_count($older->json('html'), 'data-chat-entry='));
+        $this->assertStringContainsString('Message 05', $older->json('html'));
+        $this->assertStringNotContainsString('Message 15', $older->json('html'));
     }
 
     public function test_direct_message_is_private_and_locks_when_receiver_disables_messages(): void

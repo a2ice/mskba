@@ -172,6 +172,7 @@ final class AccountMenu implements MenuHandler
 
         $items[] = [
             ...$this->link('Сообщения', 'account.notifications', app(CountNewUserNotificationsHandler::class)->handle($user)),
+            'active' => $this->isActiveRoute('account.notifications, account.notifications.*'),
             'notificationCounter' => true,
         ];
         $items[] = [

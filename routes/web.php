@@ -50,6 +50,9 @@ use App\Modules\Identity\Presentation\Http\Controllers\UpdateAccountProfileContr
 use App\Modules\Identity\Presentation\Http\Controllers\UpdatePlayerProfileController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressReverseGeocodeController;
 use App\Modules\Location\Presentation\Http\Controllers\AddressSuggestController;
+use App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController;
+use App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController;
+use App\Modules\Notification\Presentation\Http\Controllers\ProfileRequestThreadController;
 use App\Modules\Portal\Presentation\Http\Controllers\SiteSummaryController;
 use App\Modules\Pricing\Presentation\Http\Controllers\AdminPricingController;
 use App\Modules\Rewards\Presentation\Http\Controllers\AdminRewardsController;
@@ -276,10 +279,10 @@ Route::prefix('admin')
                 ->name('admin.acquisition.flyer.pdf');
         });
         Route::get('/profile-change-requests', [AdminProfileChangeRequestsController::class, 'index'])
-            ->middleware('can:manage-users-as-superadmin')
+            ->middleware('can:review-profile-changes')
             ->name('admin.profile-change-requests')->defaults('breadcrumb', 'Заявки на изменение профиля');
         Route::post('/profile-change-requests/{profileChangeRequest}/review', [AdminProfileChangeRequestsController::class, 'review'])
-            ->middleware('can:manage-users-as-superadmin')
+            ->middleware('can:review-profile-changes')
             ->name('admin.profile-change-requests.review');
         Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users')->defaults('breadcrumb', 'Пользователи');
         Route::get('/users/{user}/edit', [AdminUsersController::class, 'edit'])
@@ -846,21 +849,34 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
             ->middleware('throttle:60,1')
             ->name('account.settings.privacy.users');
         Route::get('/notifications', [AccountController::class, 'notifications'])->name('account.notifications')->defaults('breadcrumb', 'Сообщения');
-        Route::get('/notifications/users/{user}/message-access', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'access'])
+        Route::get('/notifications/users/{user}/message-access', [DirectMessagesController::class, 'access'])
             ->middleware('throttle:60,1')->name('account.notifications.direct.access');
-        Route::post('/notifications/users/{user}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'send'])
+        Route::post('/notifications/users/{user}/messages', [DirectMessagesController::class, 'send'])
             ->middleware('throttle:20,1')->name('account.notifications.direct.send');
-        Route::get('/notifications/threads/direct/{conversation}', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'show'])
+        Route::get('/notifications/threads/profile/{changeRequest}', [ProfileRequestThreadController::class, 'show'])->name('account.notifications.threads.profile')->defaults('breadcrumb', 'Изменение данных');
+        Route::get('/notifications/threads/profile/{changeRequest}/history', [ProfileRequestThreadController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.history');
+        Route::patch('/notifications/threads/profile/{changeRequest}/read', [ProfileRequestThreadController::class, 'read'])->middleware('throttle:60,1')->name('account.notifications.threads.profile.read');
+        Route::post('/notifications/threads/profile/{changeRequest}/rescue', [ProfileRequestThreadController::class, 'rescue'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.rescue');
+        Route::post('/notifications/threads/profile/{changeRequest}/claim', [ProfileRequestThreadController::class, 'claim'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.claim');
+        Route::get('/notifications/threads/profile/{changeRequest}/candidates', [ProfileRequestThreadController::class, 'candidates'])->middleware('throttle:30,1')->name('account.notifications.threads.profile.candidates');
+        Route::post('/notifications/threads/profile/{changeRequest}/invite', [ProfileRequestThreadController::class, 'invite'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.invite');
+        Route::post('/notifications/threads/profile/{changeRequest}/transfer', [ProfileRequestThreadController::class, 'transfer'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.transfer');
+        Route::post('/notifications/threads/profile/{changeRequest}/remove', [ProfileRequestThreadController::class, 'remove'])->middleware('throttle:10,1')->name('account.notifications.threads.profile.remove');
+        Route::post('/notifications/threads/profile/{changeRequest}/messages', [ProfileRequestThreadController::class, 'message'])->middleware('throttle:20,1')->name('account.notifications.threads.profile.messages');
+        Route::get('/notifications/threads/direct/{conversation}', [DirectMessagesController::class, 'show'])
             ->name('account.notifications.threads.direct')->defaults('breadcrumb', 'Личная переписка');
-        Route::patch('/notifications/threads/direct/{conversation}/read', [\App\Modules\Notification\Presentation\Http\Controllers\DirectMessagesController::class, 'read'])
+        Route::post('/notifications/users/{user}/block', [DirectMessagesController::class, 'block'])->middleware('throttle:10,1')->name('account.notifications.direct.block');
+        Route::delete('/notifications/users/{user}/block', [DirectMessagesController::class, 'unblock'])->middleware('throttle:10,1')->name('account.notifications.direct.unblock');
+        Route::get('/notifications/threads/direct/{conversation}/history', [DirectMessagesController::class, 'history'])->middleware('throttle:60,1')->name('account.notifications.threads.direct.history');
+        Route::patch('/notifications/threads/direct/{conversation}/read', [DirectMessagesController::class, 'read'])
             ->name('account.notifications.threads.direct.read');
-        Route::get('/notifications/threads/team/{joinRequest}', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'team'])
+        Route::get('/notifications/threads/team/{joinRequest}', [AccountConversationsController::class, 'team'])
             ->name('account.notifications.threads.team')->defaults('breadcrumb', 'Переписка по заявке');
-        Route::post('/notifications/threads/team/{joinRequest}/messages', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'sendTeam'])
+        Route::post('/notifications/threads/team/{joinRequest}/messages', [AccountConversationsController::class, 'sendTeam'])
             ->middleware('throttle:20,1')->name('account.notifications.threads.team.messages');
-        Route::patch('/notifications/threads/team/{joinRequest}/read', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'readTeam'])
+        Route::patch('/notifications/threads/team/{joinRequest}/read', [AccountConversationsController::class, 'readTeam'])
             ->name('account.notifications.threads.team.read');
-        Route::patch('/notifications/threads/system/read', [\App\Modules\Notification\Presentation\Http\Controllers\AccountConversationsController::class, 'readSystem'])
+        Route::patch('/notifications/threads/system/read', [AccountConversationsController::class, 'readSystem'])
             ->name('account.notifications.threads.system.read');
         Route::get('/notifications/threads/system', [AccountController::class, 'systemNotificationConversation'])
             ->name('account.notifications.threads.system')->defaults('breadcrumb', 'Система MSKBA');

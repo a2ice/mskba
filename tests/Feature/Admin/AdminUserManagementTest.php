@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Modules\Audit\Domain\Models\AuditLog;
 use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -75,7 +76,7 @@ final class AdminUserManagementTest extends TestCase
             'first_name' => 'Мария',
             'last_name' => 'Иванова',
             'birth_date' => '2001-05-20',
-            'gender' => \App\Modules\Identity\Domain\Enums\UserGenderEnum::FEMALE,
+            'gender' => UserGenderEnum::FEMALE,
         ]);
 
         $this->actingAs($superadmin)->get(route('admin.users.edit', $target))
@@ -469,10 +470,12 @@ final class AdminUserManagementTest extends TestCase
             ->assertRedirect(route('admin.users.edit', ['user' => $target, 'tab' => 'roles']))
             ->assertSessionHas('success');
 
-        $this->assertDatabaseHas('user_operational_permissions', [
+        // Default-allowed rights remain effective without redundant snapshots.
+        $this->assertTrue(app(UserOperationalPermissionChecker::class)
+            ->allows($target, UserOperationalPermissionEnum::CREATE_TEAM));
+        $this->assertDatabaseMissing('user_operational_permissions', [
             'user_id' => $target->id,
             'permission' => UserOperationalPermissionEnum::CREATE_TEAM->value,
-            'is_allowed' => true,
         ]);
         $this->assertDatabaseHas('user_operational_permissions', [
             'user_id' => $target->id,

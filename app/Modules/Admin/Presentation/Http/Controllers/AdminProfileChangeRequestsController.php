@@ -2,9 +2,10 @@
 
 namespace App\Modules\Admin\Presentation\Http\Controllers;
 
-use App\Modules\Identity\Application\Services\ProfileChangeRequestService;
 use App\Modules\Identity\Application\Services\ProfileChangeRequestNotificationService;
+use App\Modules\Identity\Application\Services\ProfileChangeRequestService;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
+use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,10 +14,14 @@ use Illuminate\Validation\Rule;
 
 final class AdminProfileChangeRequestsController
 {
-    public function index(): Response
+    public function index(Request $request,
+        ProfileRequestThreadAccess $access): Response
     {
         return ThemeResolver::page('admin.profile-change-requests', [
-            'requests' => ProfileChangeRequest::query()
+            'requests' => $access->visibleRequests($request->user())
+                ->where('user_id', '<>', $request->user()->canonical()->id)
+                ->whereDoesntHave('thread.memberships', fn ($m) => $m
+                    ->where('user_id', $request->user()->canonical()->id)->whereNotNull('removed_at'))
                 ->with('user')
                 ->orderByRaw("CASE status WHEN 'pending' THEN 0 WHEN 'blocked' THEN 1 ELSE 2 END")
                 ->latest('id')
@@ -39,6 +44,9 @@ final class AdminProfileChangeRequestsController
 
         $notifications->reviewed($profileChangeRequest->fresh(), $data['action']);
 
-        return redirect()->route('admin.profile-change-requests')->with('success', 'Решение по заявке сохранено.');
+        return redirect()->route(
+            $request->input('return_to') === 'thread' ? 'account.notifications.threads.profile' : 'admin.profile-change-requests',
+            $request->input('return_to') === 'thread' ? ['changeRequest' => $profileChangeRequest->id] : []
+        )->with('success', 'Решение по заявке сохранено.');
     }
 }

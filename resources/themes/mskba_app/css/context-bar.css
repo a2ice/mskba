@@ -98,11 +98,12 @@ html:has(.app-context-bar) {
     content: '';
     position: absolute;
     inset: 4px;
-    border: 1px solid var(--line);
+    /* Idle: no visible background or frame, but retain the full hit area. */
+    border: 1px solid transparent;
     border-radius: 999px;
-    background: var(--surface-raised);
+    background: transparent;
     pointer-events: none;
-    transition: border-color .2s;
+    transition: background-color .2s;
 }
 .app-context-quick > svg {
     position: relative;
@@ -123,9 +124,13 @@ html:has(.app-context-bar) {
 .app-context-quick:focus-visible,
 .app-context-actions[open] > .app-context-quick,
 .app-context-path details[open] > .app-context-quick { color: var(--accent); }
+/* Hover, keyboard focus and expanded Actions restore ONLY the background.
+   The border remains fully transparent in every state, also in chat composers. */
 .app-context-quick:is(:hover,:focus-visible)::before,
 .app-context-actions[open] > .app-context-quick::before,
-.app-context-path details[open] > .app-context-quick::before { border-color: var(--accent); }
+.app-context-path details[open] > .app-context-quick::before {
+    background: var(--surface-raised);
+}
 /* Desktop only: icon-first pill grows on hover, or on keyboard focus.
    An open details menu is not itself a reason to reveal the label. */
 @media (min-width:640px) and (hover:hover) and (pointer:fine) {

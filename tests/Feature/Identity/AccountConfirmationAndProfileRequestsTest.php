@@ -112,6 +112,7 @@ final class AccountConfirmationAndProfileRequestsTest extends TestCase
 
     public function test_change_request_can_be_cancelled_resubmitted_and_approved_without_mutating_before_approval(): void
     {
+        $admin = $this->account(UserStatusEnum::CONFIRMED, UserSystemRoleEnum::SUPERADMIN);
         $user = $this->account(UserStatusEnum::CONFIRMED);
         $this->actingAs($user)->post(route('account.profile-change-requests.store'), $this->proposed())
             ->assertRedirect(route('account.profile'));
@@ -127,7 +128,6 @@ final class AccountConfirmationAndProfileRequestsTest extends TestCase
         $this->post(route('account.profile-change-requests.store'), $this->proposed())
             ->assertRedirect(route('account.profile'));
         $pending = ProfileChangeRequest::query()->latest('id')->firstOrFail();
-        $admin = $this->account(UserStatusEnum::CONFIRMED, UserSystemRoleEnum::SUPERADMIN);
         $this->actingAs($admin)->post(route('admin.profile-change-requests.review', $pending), ['action' => 'approve'])
             ->assertRedirect(route('admin.profile-change-requests'));
 

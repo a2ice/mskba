@@ -32,7 +32,7 @@
 .app-messages__thread-contact p{font-size:13px;color:var(--muted);margin:0}
 .app-messages__history{display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0}
 .app-messages__bubble{display:flex;flex-direction:column;align-self:flex-start;width:max-content;max-width:80%;min-width:min(260px,100%);gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:18px 18px 18px 6px;padding:14px 16px;overflow-wrap:anywhere}
-.app-messages__bubble--incoming{border-left:3px solid #ff8a00}
+.app-messages__bubble--incoming{border-left:1px solid var(--line)}
 .app-messages__bubble--outgoing{align-self:flex-end;border-radius:18px 18px 6px 18px;border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 11%,var(--surface))}
 .app-messages__bubble-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .app-messages__bubble-head strong{font-size:14px;line-height:1.4}
@@ -110,5 +110,114 @@
     }
     .app-messages--system .app-messages__support{
         padding:14px 12px;
+    }
+}
+/* Pilot 036: compact, responsive reviewer-management controls. */
+.app-profile-thread__management{display:grid;gap:14px;margin-top:16px}
+.app-profile-thread__management form[data-profile-thread-invite]{display:grid;gap:10px}
+.app-profile-thread__management input[type=search]{width:100%;min-height:44px}
+.app-profile-thread__participant{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px}
+.app-profile-thread__participant strong{flex:1 1 140px}
+[data-profile-thread-results]{display:grid;gap:4px}
+[data-profile-thread-results] button{width:100%;text-align:left;padding:10px;border:1px solid var(--line);border-radius:var(--radius-control);background:var(--surface);color:var(--text)}
+
+.app-profile-thread__closed{padding:24px}
+.app-profile-thread__closed .muted{margin-top:12px}
+.app-profile-thread__reviewers{padding:20px;margin-bottom:20px}
+.app-profile-thread__lead{margin:8px 0 16px;color:var(--muted)}
+
+/* Messenger v2: consistent compact cards and a self-contained, scrollable log. */
+.app-messages--thread{width:100%;max-width:none;gap:12px;min-height:0}
+.app-messages--thread .app-messages__thread-header{
+    display:flex;align-items:center;gap:12px;padding:12px 16px;
+    border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);
+}
+.app-messages--thread .app-messages__back{
+    display:grid;place-items:center;flex:none;width:36px;height:36px;
+    border:1px solid var(--line);border-radius:50%;color:var(--text)
+}
+.app-messages--thread .app-messages__thread-header .app-messages__avatar{width:36px;height:36px;border-radius:12px}
+.app-messages--thread .app-messages__thread-contact{display:grid;gap:2px;min-width:0}
+.app-messages--thread .app-messages__thread-contact h2{font-size:16px;line-height:1.3;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-messages--thread .app-messages__thread-contact p{font-size:12px;margin:0}
+/* A thread fills the available account viewport; only its messages scroll.
+   The layout already subtracts the sticky header, breadcrumbs and page padding.
+   Keep a readable minimum for short landscape screens and long sidebars. */
+.app-account-section:has(.app-messages--thread) .app-account-layout{
+    align-items:stretch;
+}
+.app-account-section:has(.app-messages--thread) .app-account-layout__content{
+    display:flex;flex-direction:column;min-height:0;
+}
+.app-messages--thread{
+    flex:1 1 auto;display:flex;flex-direction:column;min-height:0;
+}
+.app-messages--thread>.app-messages__thread-header,
+.app-messages--thread>.app-messages__compose{flex:0 0 auto}
+.app-messages__chat-log{
+    display:flex;flex:1 1 0;flex-direction:column;gap:10px;padding:16px;
+    height:auto;min-height:220px;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-color:var(--control-line) transparent;scrollbar-width:thin;
+}
+.app-messages__chat-log:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app-messages__chat-log .app-messages__history{gap:12px}
+.app-messages__load{min-height:34px;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:12px}
+.app-messages__load[hidden]{display:none}
+.app-messages__load .spinner{width:18px;height:18px;flex:none}
+/* One composer outline for both textarea and its actions, no nested input border. */
+.app-messages--thread .app-messages__compose{
+    display:grid;gap:0;max-width:none;width:100%;padding:0;
+    border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface);
+    transition:border-color .2s ease;
+}
+.app-messages--thread .app-messages__compose:focus-within{border-color:var(--control-line)}
+.app-messages--thread .app-messages__compose textarea{
+    display:block;box-sizing:border-box;width:100%;max-width:none;
+    min-height:90px;resize:vertical;padding:16px 18px 12px;
+    color:var(--text);background:transparent;border:0;border-radius:var(--radius-card);
+    outline:none;box-shadow:none;
+}
+/* The theme-wide :focus-visible rule uses !important; scope the override to
+   this borderless textarea only. The shared composer border remains the focus cue. */
+.app-messages--thread .app-messages__compose textarea:focus-visible{
+    outline:none!important;box-shadow:none!important;
+}
+.app-messages__compose-footer{
+    display:flex;justify-content:flex-end;align-items:center;gap:6px;
+    min-width:0;padding:8px 12px 10px;
+}
+.app-messages__compose-footer>.button{margin-left:0;flex:none}
+.app-messages__actions{position:relative;flex:0 0 auto;min-width:0}
+/* The same icon-first, expanding Actions control as in the site context bar.
+   Keep its shared hover/focus/open styling; only relocate the flyout upward. */
+.app-messages__actions>.app-context-actions__menu{
+    top:auto;bottom:calc(100% + 6px);right:0;left:auto;z-index:15;
+}
+.app-messages__actions>.app-context-actions__menu :is(button,a){font-size:13px}
+.app-messages--thread .app-profile-thread__reviewers{margin:0;padding:18px}
+.app-messages--thread [hidden]{display:none!important}
+.app-messages__review-dialog{width:min(500px,calc(100vw - 32px));max-width:100%;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface-raised);color:var(--text);padding:24px;box-shadow:0 22px 60px #000a}
+.app-messages__review-dialog::backdrop{background:#000a}
+.app-messages__review-dialog form{display:grid;gap:14px}
+.app-messages__review-dialog h3{margin:0}
+.app-messages__review-dialog textarea{width:100%;min-height:100px;color:var(--text);background:var(--surface);border:1px solid var(--control-line);border-radius:var(--radius-control);padding:12px}
+@media(max-width:680px){
+    .app-messages--thread .app-messages__thread-header{gap:9px;padding:10px 12px}
+    .app-messages--thread .app-messages__thread-contact h2{font-size:14px}
+    .app-messages__chat-log{min-height:220px;padding:12px}
+    .app-messages--thread .app-messages__compose textarea{padding:12px 14px}
+    .app-messages__compose-footer{gap:6px;padding:6px 8px 8px}
+}
+
+.app-messages__chat-log .app-messages__history{margin-top:auto}
+
+/* Small screens: preserve viewport filling below the mobile account nav, without
+   forcing fixed heights that would hide the composer behind keyboard/safe areas. */
+@media(max-width:900px){
+    .app-account-section:has(.app-messages--thread) .app-account-layout{
+        min-height:calc(100dvh - var(--header-height) - var(--context-bar-height) - 64px);
+    }
+    .app-account-section:has(.app-messages--thread) .app-account-layout__content{
+        flex:1 1 auto;
     }
 }

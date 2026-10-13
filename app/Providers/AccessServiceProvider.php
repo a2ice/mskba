@@ -67,6 +67,9 @@ class AccessServiceProvider extends ServiceProvider
             fn (User $user): bool => app(UserOperationalPermissionChecker::class)
                 ->allows($user, UserOperationalPermissionEnum::CREATE_TOURNAMENT),
         );
+        Gate::define('review-profile-changes',
+            fn (User $user): bool => app(UserOperationalPermissionChecker::class)
+                ->allows($user, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES));
         Gate::define(
             'edit-venues-as-superadmin',
             fn (User $user): bool => $user->isConfirmed() && $user->hasSystemRole(UserSystemRoleEnum::SUPERADMIN),

@@ -20,6 +20,7 @@
                     'rejected' => 'Отклонена', 'blocked' => 'Заблокирована',
                     'cancelled' => 'Отменена',
                 ][$item->status] ?? $item->status }}</p>
+                <p><a class="button secondary" href="{{ route('account.notifications.threads.profile', $item->id) }}">Открыть обсуждение</a></p>
                 <p><strong>Причина заявителя:</strong> {{ $item->reason }}</p>
                 @if ($item->review_reason)
                     <p><strong>Решение модератора:</strong> {{ $item->review_reason }}</p>

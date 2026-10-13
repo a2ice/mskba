@@ -11,12 +11,14 @@ import './account-profile.js';
 import './account-confirmation-contact-wizard.js';
 import './account-confirmation-profile.js';
 import './account-messages.js';
+import './account-thread-chat.js';
 import './account-mobile-sticky.js';
 import './account-direct-messages.js';
 import './account-contacts-add.js';
 import './account-contacts-delete.js';
 import './account-contacts-resend.js';
 import './account-contacts-expiry.js';
+import './profile-thread-invite.js';
 import { createApp } from 'vue';
 import AuthDialog from './components/AuthDialog.vue';
 

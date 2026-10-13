@@ -1,14 +1,16 @@
 // Persist read state for a single conversation and reconcile realtime counters.
 const thread = document.querySelector('[data-system-thread-read-url], [data-conversation-read-url]');
 
-if (thread && Number(thread.dataset.page || 1) === 1) {
+if (thread && !document.querySelector('[data-chat-root]') && Number(thread.dataset.page || 1) === 1) {
     // A messenger opens on the most recent message, at the end of page 1.
     document.querySelector('.app-messages__bubble:last-child')?.scrollIntoView({
         block: 'end', behavior: 'auto',
     });
 }
 
-if (thread && (Number(thread.dataset.unreadCount || 0) > 0 || thread.hasAttribute('data-conversation-read-url'))) {
+// The live messenger has its own visibility-aware acknowledgement lifecycle.
+if (thread && !document.querySelector('[data-chat-root]')
+    && (Number(thread.dataset.unreadCount || 0) > 0 || thread.hasAttribute('data-conversation-read-url'))) {
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     const error = document.querySelector('[data-message-read-error]');
     const read = async () => {

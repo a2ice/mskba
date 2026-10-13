@@ -2,7 +2,7 @@
 
 Этот реестр **вложен в общую задачу [#139](../tasks/139/description.md)**. Номера `001–026` действуют только внутри `docs/mskba_app` и не равны глобальным задачам из `docs/tasks.md` или подзадачам `docs/tasks/139/subtasks`.
 
-**Последнее обновление:** 2026-10-11. [Прогресс](progress.md) · [Начать здесь](start_here.md).
+**Последнее обновление:** 2026-10-13. [Прогресс](progress.md) · [Начать здесь](start_here.md).
 
 | № | Задача | Статус | Примечание |
 | --- | --- | --- | --- |
@@ -35,6 +35,9 @@
 | [028](tasks/028/description.md) | Цвет staff-роли по рамке аватара + realtime-счётчики уведомлений | Визуально принято | Оранжевый бейдж аватара 21.6px при unread>0; sidebar/header на Reverb; username в шапке |
 | [029](tasks/029/description.md) | Сообщения в sidebar и toast вместо колокольчика | На проверке | Без колокольчика; один persistent toast на каждое непрочитанное сообщение, Reverb и курсорная загрузка |
 | [030](tasks/030/description.md) | Intro-карточки и компактный контекстный бар | На проверке | Title / optional subtitle / intro-card; общие кнопки «Назад» и «Действия»; мобильное меню «Путь» |
+| [035](tasks/035/description.md) | Группированный единый каталог прав и делегирование | На визуальной приёмке | Pilot: catalog, scoped enums unchanged, profile-review delegation |
+| [036](tasks/036/description.md) | Общие треды заявок: профиль, lead, приглашения, отзыв | На визуальной приёмке | Pilot: ProfileChangeRequest, lead/invite/transfer/tombstone; venue next |
+| [037](tasks/037/description.md) | UX чатов, история по 10, Reverb, приватность сообщений | На визуальной приёмке | Компактный chat UI, фоновые сообщения, контролируемое read, direct blacklist |
 
 ## Порядок работы
 

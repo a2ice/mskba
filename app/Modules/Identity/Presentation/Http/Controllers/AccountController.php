@@ -373,6 +373,7 @@ class AccountController extends Controller
             ->whereIn('user_id', $user->identityIds())
             ->whereNull('payload->join_request_id')
             ->whereNull('payload->direct_conversation_id')
+            ->whereNull('payload->profile_change_request_id')
             ->orderByDesc('created_at')->orderByDesc('id')->paginate(20);
         // Newest messages come first, both across pages and within each page.
 

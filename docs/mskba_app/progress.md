@@ -537,3 +537,43 @@
 - Task 026 final visual corrections: verification badge moved from Profile to Account Overview as an FAQ-dialog opener; the Actions verification entry links directly to account.confirmation. Green attention dots now 5px and only on other account pages for UNCONFIRMED canonical accounts, hidden on confirmation itself. Avatar overlay arrow removed, age simplified to calculated `N лет`. Old and new FAQ rendering safeguards retained. Local-only, pending acceptance.
 
 - Task 026 UX micro-polish: green verification pulse now shows on the Actions summary only when closed; opening the details menu hides and stops the summary pulse but preserves the pulse beside the Confirm link inside the menu. Closing restores it. No label shift (reserved 5px layout width), Chrome QA at 1440/768/500px passed. Changes local-only, uncommitted.
+
+## Tasks 035-036: local architecture pilot (2026-10-13)
+
+- Reviewed all original global and scoped permission enum sets. The central `PermissionCatalog` aggregates without replacing domain-owned ACL; new sensitive `identity.profile_change.review` supports explicit admin delegation, role constraints and a monotonic request-ID boundary on late grant.
+- Added `RequestThread` envelope for profile data change requests, with membership/lead/audit events, contextual messages, permission-aware access and persistent read-only tombstone after removal or revocation. Existing domain request models and business actions remain authoritative.
+- Local PostgreSQL migration applied only to Mac's Docker database, after data-only SQL backup of profile requests and events saved privately at `/tmp/mskba-036-local-profile-backup-20261013.sql`. Previous local request #1 remains intact and now has a thread. Baseline 0 granted to one preexisting confirmed SUPERADMIN; later role/permission grants do not expose earlier requests.
+- SQL: correlated EXISTS and eager WHERE IN avoid large joins; 24-thread regression checks bounded queries. Pilot inbox cap 100; cursor pagination and broader domain support deliberately deferred.
+- Tests: 111 relevant PHPUnit tests / 1029 assertions PASS with correct legacy theme config; later security tests for new SUPERADMIN and role/permission revocation PASS; Blade cache and isolated Vite PASS. Local browser visual review outstanding. No commit/push/PR/deploy.
+
+## 035-036 - final local QA checkpoint after chat recovery (2026-10-13)
+
+- Regrant history cutoffs, idempotent claim, targeted membership notices and read-only tombstone acknowledgement hardened and covered by tests.
+- Reviewer claim now shares the request-decision transaction; a failed decision does not leave a lead or membership. Legacy admin Blade parsing error fixed.
+- Final suite: 97 PHPUnit tests / 829 assertions PASS (`APP_THEME=mskba_dark`), dedicated pilot 11 tests / 113 assertions PASS, Blade view compilation PASS.
+- Authenticated browser/device acceptance pending. All changes are in the local `dev` working tree; neither production nor remote development data was migrated.
+
+## 037 — корректировка composer UI по скриншотам (2026-10-13)
+
+- В profile и direct-чате composer теперь единая плашка с textarea без собственного бордера и рядом кнопок внутри одной рамки; кнопки сгруппированы у правого края.
+- Триггер «Действия» унифицирован с Actions под header: та же SVG, иконка в исходном состоянии, раскрытие при hover/focus, открытый native details удерживает широкую кнопку после клика, меню раскрывается вверх. Используется общая Blade partial вместо независимых кнопок. Визуальная приёмка открыта.
+- Для этой корректировки Blade compile и Vite сборка PASS, тематическая регрессия 42 теста / 428 assertions PASS (включая HTML-проверки общего компонента). Исправлен селектор `data-chat-send` для Ajax-отправки в форме с контекстными action-кнопками. Локальная ветка dev, без commit/push.
+
+## 037 — размер переписки и поле ввода (2026-10-13)
+
+- Исправлена двойная рамка на фокусе textarea через узкий override к глобальному `focus-visible !important`; сохранён единый focus-within на compose-card. У входящих сообщений нет оранжевой левой полосы (обычная граница).
+- Шапка, scrollable история и панель ввода заполняют высоту аккаунтной области под sticky header/context bar; flex-history забирает оставшееся место вместо фиксированного `vh`, мобильный layout учитывает компактную навигацию и минимальную высоту истории.
+- CSS геометрия и фокус проверены в headless Chrome на desktop/mobile fixture; регрессия 42 теста / 428 asserts PASS, Vite + Blade PASS. Визуальная приёмка в реальном пользовательском браузере ещё открыта. Только local dev, без commit/push/deploy.
+
+## 037 — Reverb background delivery + read/toast sync (2026-10-13)
+
+- Устранено `document.hidden` блокирование live refresh: другой браузер получает новые сообщения без ручного возврата фокуса. При этом background arrival не отмечает уведомления прочитанными.
+- Единый focus-aware read receipt в профильном и direct-чате: видимое окно + прокрутка вниз + успешно загруженная история. Профиль получил серверный PATCH с повторной ACL-проверкой; существующий direct PATCH переиспользован. После read запускается сверка счётчиков и тостов на всех пользовательских сессиях. Устаревший direct auto-read для нового чата отключён.
+- 103 теста / 911 assertions PASS, Vite / Blade / JS syntax / Pint PASS. Headless Chrome fixture: фоневая доставка да, фоновое прочтение нет, при фокусе PATCH и событие обновления счётчика — да. Живая двухбраузерная приёмка ещё требуется. Local only, без commit/push/deploy.
+
+## 037 — прозрачные idle-кнопки контекстного бара и чата (2026-10-13)
+
+- У общего `app-context-quick` убран видимый фон и бордер в idle; при hover/focus или `details[open]` возвращаются фоновая плашка и акцентная рамка. Охватывает Back/Actions под шапкой и Actions во всех новых чатах без дублирования CSS; поведение dropdown/анимации сохранено.
+- Проверены вычисленные состояния в headless Chrome, Vite build PASS, PHPUnit 39 tests / 404 assertions PASS. Только локальный dev, без commit/push/deploy.
+
+- Уточнение мини-правки по UI: у общего `app-context-quick` **рамка всегда прозрачная**, в том числе hover/focus и open; при наведении и раскрытии возвращается **только фон**. Верхний бар и чат используют один CSS-компонент. Последняя коррекция пользователя имеет приоритет над прежним описанием акцентной рамки.

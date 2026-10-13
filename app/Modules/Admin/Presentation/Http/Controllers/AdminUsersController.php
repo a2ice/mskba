@@ -3,14 +3,15 @@
 namespace App\Modules\Admin\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
 use App\Modules\Admin\Application\UseCases\ListAdminUsersHandler;
 use App\Modules\Admin\Presentation\Http\Requests\BulkChangeUsersRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserBasicDetailsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserOperationalPermissionsRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserStatusRequest;
 use App\Modules\Admin\Presentation\Http\Requests\UpdateUserSystemRoleRequest;
-use App\Modules\Acquisition\Domain\Models\AcquisitionVisit;
 use App\Modules\Audit\Domain\Models\AuditLog;
+use App\Modules\Identity\Application\Services\PermissionCatalog;
 use App\Modules\Identity\Application\UseCases\AdminBulkChangeUserDeletionStateHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserBasicDetailsHandler;
 use App\Modules\Identity\Application\UseCases\AdminUpdateUserOperationalPermissionsHandler;
@@ -19,6 +20,7 @@ use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Portal\Application\Services\OnlineUserPresence;
 use App\Modules\Portal\Application\Services\SiteSummaryService;
@@ -43,6 +45,7 @@ final class AdminUsersController extends Controller
             'statuses' => UserStatusEnum::cases(),
             'roles' => UserSystemRoleEnum::cases(),
             'operationalPermissions' => UserOperationalPermissionEnum::cases(),
+            'permissionGroups' => app(PermissionCatalog::class)->userGroups(),
             'onlinePresence' => $presence->snapshot(),
             'onlineSummary' => $summary->get(),
         ]);
@@ -152,6 +155,7 @@ final class AdminUsersController extends Controller
             'acquisitionVisits' => $acquisitionVisits,
             'auditLogs' => $auditLogs,
             'operationalPermissions' => UserOperationalPermissionEnum::cases(),
+            'permissionGroups' => app(PermissionCatalog::class)->userGroups(),
         ]);
     }
 
@@ -163,7 +167,7 @@ final class AdminUsersController extends Controller
         $canonical = $user->canonical();
         try {
             $updateUser->handle($request->user(), $canonical->id, $request->details());
-        } catch (\App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException $exception) {
+        } catch (UserCannotBeChangedException $exception) {
             return redirect()->route('admin.users.edit', $canonical)
                 ->with('error', $exception->getMessage());
         }

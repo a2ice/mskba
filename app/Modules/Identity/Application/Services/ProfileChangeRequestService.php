@@ -3,15 +3,21 @@
 namespace App\Modules\Identity\Application\Services;
 
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
-use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\Profile;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
+use App\Modules\Notification\Application\Services\RequestThreadMembershipManager;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class ProfileChangeRequestService
 {
+    public function __construct(
+        private readonly ProfileRequestThreadAccess $threadAccess,
+        private readonly RequestThreadMembershipManager $members,
+    ) {}
+
     private const FIELDS = ['first_name', 'last_name', 'birth_date', 'gender'];
 
     /** @return array<string, string|null> */
@@ -48,6 +54,7 @@ final class ProfileChangeRequestService
                 throw ValidationException::withMessages(['reason' => 'Укажи хотя бы одно изменение в данных профиля.']);
             }
 
+            $this->threadAccess->initializeNewSuperadminCursors();
             $request = ProfileChangeRequest::query()->create([
                 'user_id' => $user->id,
                 'status' => ProfileChangeRequest::PENDING,
@@ -56,6 +63,7 @@ final class ProfileChangeRequestService
                 'reason' => $reason,
             ]);
             $this->record($request, $user, 'submit', $reason);
+            $this->threadAccess->thread($request);
 
             return $request;
         });
@@ -79,11 +87,15 @@ final class ProfileChangeRequestService
         abort_unless(in_array($action, ['approve', 'reject', 'block'], true), 422);
         $this->assertReviewer($reviewer);
         $reviewer = $reviewer->canonical();
+        $thread = $this->threadAccess->thread($request);
+        abort_unless($this->threadAccess->canRead($reviewer, $request, $thread), 403);
 
         DB::transaction(function () use ($reviewer, $request, $action, $reason): void {
             $user = User::query()->whereKey($request->user_id)->lockForUpdate()->firstOrFail();
             abort_if($reviewer->id === $user->id, 403, 'Нельзя рассматривать собственную заявку.');
+            $reviewerLocked = User::query()->whereKey($reviewer->id)->lockForUpdate()->firstOrFail();
             $locked = ProfileChangeRequest::query()->whereKey($request->id)->lockForUpdate()->firstOrFail();
+            abort_unless($this->threadAccess->canRead($reviewerLocked, $locked, $this->threadAccess->thread($locked)), 403);
             abort_unless($locked->status === ProfileChangeRequest::PENDING, 422, 'Заявка уже рассмотрена.');
 
             if (in_array($action, ['reject', 'block'], true) && blank(trim((string) $reason))) {
@@ -96,6 +108,12 @@ final class ProfileChangeRequestService
                 if ($this->snapshot($profile) !== $locked->original_data) {
                     throw ValidationException::withMessages(['review_reason' => 'Профиль изменился после подачи заявки. Нельзя применить устаревшие значения.']);
                 }
+            }
+
+            // Claim and decision belong to the same outer transaction: a failed
+            // validation or decision must not appoint a lead or create an audit event.
+            $this->members->claim($reviewerLocked, $locked);
+            if ($action === 'approve') {
                 $profile->fill($locked->proposed_data)->save();
             }
 
@@ -122,7 +140,9 @@ final class ProfileChangeRequestService
         DB::transaction(function () use ($reviewer, $request): void {
             $user = User::query()->whereKey($request->user_id)->lockForUpdate()->firstOrFail();
             abort_if($reviewer->id === $user->id, 403);
+            $reviewerLocked = User::query()->whereKey($reviewer->id)->lockForUpdate()->firstOrFail();
             $locked = ProfileChangeRequest::query()->whereKey($request->id)->lockForUpdate()->firstOrFail();
+            abort_unless($this->threadAccess->canRead($reviewerLocked, $locked, $this->threadAccess->thread($locked)), 403);
             abort_unless($locked->status === ProfileChangeRequest::BLOCKED, 422, 'Заявка не заблокирована.');
             $locked->forceFill([
                 'status' => ProfileChangeRequest::REJECTED,
@@ -136,7 +156,7 @@ final class ProfileChangeRequestService
     private function assertReviewer(User $reviewer): void
     {
         $canonical = $reviewer->canonical();
-        abort_unless($canonical->isConfirmed() && $canonical->hasSystemRole(UserSystemRoleEnum::SUPERADMIN), 403);
+        abort_unless($canonical->isConfirmed() && $this->threadAccess->isReviewer($canonical), 403);
     }
 
     private function record(ProfileChangeRequest $request, User $actor, string $action, ?string $reason = null): void

@@ -2,11 +2,12 @@
 
 namespace App\Modules\Notification\Application\UseCases;
 
-use App\Modules\Contract\Domain\Enums\ContractMembershipScopeTypeEnum;
 use App\Modules\Contract\Domain\Enums\ContractStatusEnum;
 use App\Modules\Identity\Domain\Models\Actor;
 use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Notification\Application\Services\ProfileRequestThreadAccess;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
+use App\Modules\Notification\Domain\Models\DirectConversation;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
@@ -17,7 +18,10 @@ use Illuminate\Support\Collection;
 
 final class ListAccountConversationsHandler
 {
-    public function __construct(private readonly TeamManagementAccess $teamAccess) {}
+    public function __construct(
+        private readonly TeamManagementAccess $teamAccess,
+        private readonly ProfileRequestThreadAccess $profileAccess,
+    ) {}
 
     /** @return Collection<int, array<string, mixed>> */
     public function handle(User $user, ?Actor $actor): Collection
@@ -76,7 +80,7 @@ final class ListAccountConversationsHandler
             ];
         })->values();
 
-        $direct = \App\Modules\Notification\Domain\Models\DirectConversation::query()
+        $direct = DirectConversation::query()
             ->where(fn ($q) => $q->whereIn('user_low_id', $identityIds)
                 ->orWhereIn('user_high_id', $identityIds))
             ->with(['lowUser.profile', 'highUser.profile', 'latestMessage'])->get();
@@ -85,8 +89,7 @@ final class ListAccountConversationsHandler
             ->whereIn('user_id', $identityIds)
             ->whereNotNull('payload->direct_conversation_id')
             ->orderByDesc('created_at')->orderByDesc('id')->get()
-            ->groupBy(fn (UserNotification $notification): int =>
-                (int) ($notification->payload['direct_conversation_id'] ?? 0));
+            ->groupBy(fn (UserNotification $notification): int => (int) ($notification->payload['direct_conversation_id'] ?? 0));
 
         $directConversations = $direct->map(function ($conversation) use ($identityIds, $directNotifications): array {
             $contact = in_array((int) $conversation->user_low_id, $identityIds, true)
@@ -97,10 +100,14 @@ final class ListAccountConversationsHandler
             $notices = $directNotifications->get((int) $conversation->id, collect());
             $unread = $notices->where('status', UserNotificationStatusEnum::NEW);
             $preview = $unread->first();
+            $lastMessage = $conversation->latestMessage;
+            $author = $lastMessage && in_array((int) $lastMessage->sender_user_id, $identityIds, true)
+                ? 'Вы' : $name;
+
             return [
                 'id' => 'direct-'.$conversation->id,
                 'name' => $name,
-                'preview' => $preview?->body ?? $conversation->latestMessage?->body ?? 'Личная переписка',
+                'preview' => $lastMessage ? $author.': '.$lastMessage->body : ($preview?->body ?? 'Личная переписка'),
                 'unread_count' => $unread->count(),
                 'date' => $preview?->created_at ?? $conversation->latestMessage?->created_at ?? $conversation->created_at,
                 'status' => null,
@@ -108,6 +115,46 @@ final class ListAccountConversationsHandler
             ];
         });
 
-        return $teamConversations->concat($directConversations)->sortByDesc('date')->values();
+        // Correlated EXISTS on (thread, member) instead of multiplying rows with large JOINs.
+        $profileRequests = $this->profileAccess->visibleRequests($user)
+            ->with(['thread' => fn ($q) => $q->with(['memberships' => fn ($m) => $m->where('user_id', $user->id), 'latestMessage.sender'])])
+            ->latest('id')->limit(100)->get();
+        $profileUnread = UserNotification::query()
+            ->whereIn('user_id', $identityIds)
+            ->where('status', UserNotificationStatusEnum::NEW)
+            ->whereIn('payload->profile_change_request_id', $profileRequests->pluck('id'))
+            ->get(['id', 'payload'])
+            ->groupBy(fn (UserNotification $n) => (int) ($n->payload['profile_change_request_id'] ?? 0));
+        $afterId = $this->profileAccess->eligibleAfterId($user);
+        $profileConversations = $profileRequests->map(function ($profile) use ($user, $afterId, $profileUnread): array {
+            $member = $profile->thread?->memberships->firstWhere('user_id', $user->id);
+            $open = $profile->user_id === $user->id || ($afterId !== null
+                && $member?->removed_at === null
+                && ($member !== null || $profile->id > $afterId));
+            $lastMessage = $open ? $profile->thread?->latestMessage : null;
+            $author = $lastMessage ? ((int) $lastMessage->sender_user_id === (int) $user->id
+                ? 'Вы' : ($lastMessage->sender?->username ?? 'Участник')) : null;
+            $status = $open ? match ($profile->status) {
+                'pending' => 'На рассмотрении', 'approved' => 'Одобрена',
+                'rejected' => 'Отклонена', 'blocked' => 'Заблокирована',
+                'cancelled' => 'Отменена', default => 'Заявка',
+            } : 'Доступ прекращён';
+
+            return [
+                'id' => 'profile-'.$profile->id,
+                'name' => 'Изменение данных №'.$profile->id,
+                'preview' => $open
+                    ? ($lastMessage ? $author.': '.$lastMessage->body : 'Заявка отправлена на рассмотрение.')
+                    : ($member?->removal_reason === 'excluded' ? 'Ты был исключён из рассмотрения заявки.'
+                        : 'Доступ к обсуждению заявки прекращён.'),
+                'unread_count' => $open ? $profileUnread->get($profile->id, collect())->count() : 0,
+                'date' => $lastMessage?->created_at ?? $profile->updated_at,
+                'status' => $status,
+                'url' => route('account.notifications.threads.profile', $profile->id),
+            ];
+        });
+
+        return $teamConversations->concat($directConversations)
+            ->concat($profileConversations)->sortByDesc('date')->values();
     }
 }

@@ -1,45 +1,59 @@
 @extends('theme::layouts.account', ['title' => 'Личная переписка'])
 
-@section('account-heading')
-    @include('theme::pages.account.partials.section-heading', ['heading' => 'Сообщения'])
-@endsection
-
 @section('account-content')
-    @php($contactName = $recipient->username ?: (trim(($recipient->profile?->first_name ?? '').' '.($recipient->profile?->last_name ?? '')) ?: 'Участник'))
-    <section class="app-messages app-messages--thread" aria-label="Личная переписка">
-        <header class="app-messages__thread-header">
-            <a class="app-messages__back" href="{{ route('account.notifications') }}"><svg aria-hidden="true"><use href="#arrow"/></svg>Все сообщения</a>
-            <div class="app-messages__thread-contact">
-                <span class="app-messages__avatar" aria-hidden="true"><svg><use href="#message"/></svg></span>
-                <div><h2>{{ $contactName }}</h2><p>Личная переписка</p></div>
-            </div>
-        </header>
-        <div class="app-messages__history" role="log" aria-label="История переписки">
+@php($contactName = $recipient->username ?: (trim(($recipient->profile?->first_name ?? '').' '.($recipient->profile?->last_name ?? '')) ?: 'Участник'))
+<section class="app-messages app-messages--thread" data-chat-root
+    data-chat-history-url="{{ route('account.notifications.threads.direct.history', $conversation->id) }}"
+    data-chat-channel="direct-conversations.{{ $conversation->id }}"
+    data-chat-read-url="{{ route('account.notifications.threads.direct.read', $conversation->id) }}"
+    data-chat-unread-initial="{{ $unread }}" aria-label="Личная переписка">
+    <header class="panel app-messages__thread-header">
+        <a class="app-messages__back" href="{{ route('account.notifications') }}" aria-label="Все сообщения"><svg aria-hidden="true"><use href="#arrow"/></svg></a>
+        <span class="app-messages__avatar" aria-hidden="true"><svg><use href="#message"/></svg></span>
+        <div class="app-messages__thread-contact"><h2>{{ $contactName }}</h2><p>Личная переписка</p></div>
+    </header>
+    <div class="panel app-messages__chat-log" data-chat-scroll role="region" aria-label="Прокручиваемая история переписки" tabindex="0">
+        <div class="app-messages__load" data-chat-load aria-live="polite" hidden>
+            <span class="spinner" aria-hidden="true"></span><span>Загружаем историю…</span>
+        </div>
+        <div class="app-messages__history" data-chat-history data-next-before="{{ $nextBefore }}" role="log" aria-live="polite" aria-label="История переписки">
             @foreach ($messages as $message)
-                @php($mine = $viewer->isSameIdentity((int) $message->sender_user_id))
-                <article class="app-messages__bubble {{ $mine ? 'app-messages__bubble--outgoing' : 'app-messages__bubble--incoming' }}">
-                    <div class="app-messages__bubble-head"><strong>{{ $mine ? 'Вы' : $contactName }}</strong></div>
-                    <p class="app-messages__bubble-body">{{ $message->body }}</p>
-                    <time class="app-messages__timestamp" datetime="{{ $message->created_at?->toIso8601String() }}">{{ $message->created_at?->format('d.m.Y H:i') }}</time>
-                </article>
+                @include('theme::pages.account.partials.chat-bubble', ['entry' => [
+                    'kind' => 'message', 'id' => 'message-'.$message->id,
+                    'text' => $message->body, 'at' => $message->created_at, 'sender' => $message->sender,
+                ], 'viewer' => $viewer])
             @endforeach
         </div>
-        @if ($messages->hasPages())
-            <nav class="app-messages__pagination" aria-label="Страницы переписки">
-                <a href="{{ $messages->previousPageUrl() ?: '#' }}" @if(!$messages->previousPageUrl()) aria-disabled="true" @endif>← Более новые</a>
-                <span>Страница {{ $messages->currentPage() }} из {{ $messages->lastPage() }}</span>
-                <a href="{{ $messages->nextPageUrl() ?: '#' }}" @if(!$messages->nextPageUrl()) aria-disabled="true" @endif>Более ранние →</a>
-            </nav>
-        @endif
-        <form class="app-messages__compose" data-direct-thread-compose
-              data-recipient-id="{{ $recipient->id }}"
-              data-send-url="{{ route('account.notifications.direct.send', $recipient->id) }}">
-            <label for="direct-thread-message">Написать сообщение</label>
-            <textarea id="direct-thread-message" name="body" rows="3" maxlength="2000" required></textarea>
-            <button class="button primary" type="submit">Отправить</button>
-            <p data-direct-thread-error role="alert" hidden></p>
+    </div>
+    <form class="panel app-messages__compose" action="{{ route('account.notifications.direct.send', $recipient->id) }}" method="POST" data-chat-compose>
+        @csrf
+        <label class="sr-only" for="direct-thread-message">Сообщение</label>
+        <textarea id="direct-thread-message" name="body" rows="3" maxlength="2000" required
+            @disabled(!$canSend) placeholder="{{ $canSend ? 'Введите сообщение…' : 'Отправка сообщений недоступна' }}"></textarea>
+        <div class="app-messages__compose-footer">
+            <details class="app-context-actions app-messages__actions" data-chat-actions>
+                @include('theme::pages.account.partials.chat-actions-trigger', ['ariaLabel' => 'Действия с перепиской'])
+                <div class="app-context-actions__menu" aria-label="Действия с перепиской">
+                    @if ($blockedByMe)
+                        <button type="submit" form="direct-thread-unblock">Разблокировать пользователя</button>
+                    @else
+                        <button type="submit" form="direct-thread-block">Заблокировать пользователя</button>
+                    @endif
+                    <a href="{{ route('account.notifications') }}">Все сообщения</a>
+                    <a href="{{ route('account.settings') }}">Настройки приватности</a>
+                </div>
+            </details>
+            <button class="button primary" type="submit" data-chat-send @disabled(!$canSend)>Отправить</button>
+        </div>
+        <p class="app-messages__read-error" data-chat-error role="alert" hidden></p>
+    </form>
+    @if ($blockedByMe)
+        <form id="direct-thread-unblock" method="POST" action="{{ route('account.notifications.direct.unblock', $recipient->id) }}">
+            @csrf @method('DELETE')
         </form>
-        <div data-conversation-read-url="{{ route('account.notifications.threads.direct.read', $conversation->id) }}"
-             data-unread-count="{{ $unread }}"></div>
-    </section>
+    @else
+        <form id="direct-thread-block" method="POST" action="{{ route('account.notifications.direct.block', $recipient->id) }}">@csrf</form>
+    @endif
+    <div data-conversation-read-url="{{ route('account.notifications.threads.direct.read', $conversation->id) }}" data-unread-count="{{ $unread }}"></div>
+</section>
 @endsection

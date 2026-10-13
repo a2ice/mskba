@@ -2,8 +2,8 @@
 
 namespace App\Modules\Identity\Presentation\Http\Controllers;
 
-use App\Modules\Identity\Application\Services\ProfileChangeRequestService;
 use App\Modules\Identity\Application\Services\ProfileChangeRequestNotificationService;
+use App\Modules\Identity\Application\Services\ProfileChangeRequestService;
 use App\Modules\Identity\Domain\Enums\UserGenderEnum;
 use App\Modules\Identity\Domain\Models\ProfileChangeRequest;
 use Illuminate\Http\RedirectResponse;
@@ -38,10 +38,15 @@ final class ProfileChangeRequestController
         return redirect()->route('account.profile')->with('profile_status', 'Заявка на изменение данных отправлена на рассмотрение.');
     }
 
-    public function cancel(Request $request, ProfileChangeRequest $profileChangeRequest, ProfileChangeRequestService $requests): RedirectResponse
+    public function cancel(Request $request, ProfileChangeRequest $profileChangeRequest, ProfileChangeRequestService $requests,
+        ProfileChangeRequestNotificationService $notifications): RedirectResponse
     {
         $requests->cancel($request->user(), $profileChangeRequest);
+        $notifications->notifyThreadChanged($profileChangeRequest, true);
 
-        return redirect()->route('account.profile')->with('profile_status', 'Заявка отменена. Ты можешь отправить новую.');
+        return redirect()->route(
+            $request->input('return_to') === 'thread' ? 'account.notifications.threads.profile' : 'account.profile',
+            $request->input('return_to') === 'thread' ? ['changeRequest' => $profileChangeRequest->id] : []
+        )->with('profile_status', 'Заявка отменена. Ты можешь отправить новую.');
     }
 }

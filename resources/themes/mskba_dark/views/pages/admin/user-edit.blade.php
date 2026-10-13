@@ -329,7 +329,14 @@
                     @csrf
                     <input type="hidden" name="return_to" value="user-edit">
 
-                    @foreach($operationalPermissions as $permission)
+                    @foreach($permissionGroups as $group)
+                        <fieldset class="admin-permission-editor__group">
+                            <legend>{{ $group['label'] }}</legend>
+                            <p class="admin-muted">Доступность: от роли {{ $group['min_role']->label() }}. Конкретные полномочия и ограничения проверяются сервером.</p>
+                            @php
+                                $groupEligible = $editedUser->system_role->atLeast($group['min_role']);
+                            @endphp
+                            @foreach($group['permissions'] as $permission)
                         @php
                             $isAllowed = $permissionSnapshot->get($permission->value)?->is_allowed
                                 ?? $permission->defaultAllowedFor($editedUser->system_role);
@@ -344,11 +351,14 @@
                                     type="checkbox"
                                     name="permissions[]"
                                     value="{{ $permission->value }}"
-                                    @checked($isAllowed)
+                                    @checked($isAllowed && $groupEligible)
+                                    @disabled(! $groupEligible)
                                 >
                                 <span aria-hidden="true"></span>
                             </span>
                         </label>
+                            @endforeach
+                        </fieldset>
                     @endforeach
 
                     <div class="admin-permission-editor__actions">
@@ -357,7 +367,9 @@
                 </form>
             @else
                 <ul class="admin-user-role-list">
-                    @foreach($operationalPermissions as $permission)
+                    @foreach($permissionGroups as $group)
+                        <li class="admin-user-role-list__item"><strong>{{ $group['label'] }}</strong></li>
+                        @foreach($group['permissions'] as $permission)
                         @php
                             $isAllowed = $permissionSnapshot->get($permission->value)?->is_allowed
                                 ?? $permission->defaultAllowedFor($editedUser->system_role);
@@ -366,6 +378,7 @@
                             <span>{{ $permission->label() }}</span>
                             <span class="admin-badge">{{ $isAllowed ? 'Разрешено' : 'Запрещено' }}</span>
                         </li>
+                        @endforeach
                     @endforeach
                 </ul>
             @endif

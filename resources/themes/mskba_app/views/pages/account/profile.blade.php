@@ -223,6 +223,7 @@
                     Ты можешь отправить новую заявку.
                 @endif
             </p>
+            <a class="button secondary" href="{{ route('account.notifications.threads.profile', $latestProfileChangeRequest) }}">Открыть обсуждение</a>
             @if ($latestProfileChangeRequest->status === 'pending')
                 <form method="POST" action="{{ route('account.profile-change-requests.cancel', $latestProfileChangeRequest) }}">
                     @csrf
