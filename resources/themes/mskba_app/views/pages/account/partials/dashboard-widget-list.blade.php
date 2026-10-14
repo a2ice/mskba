@@ -7,14 +7,18 @@
         </div>
         @switch($widget->kind)
             @case('account_status')
-                <p>Статус: <strong>{{ $dashboardUser->status->label() }}</strong>.</p>
+                <div class="app-account-overview__status-top">
+                    <span class="app-account-overview__status-label {{ $dashboardUser->isConfirmed() ? 'app-account-overview__status-label--confirmed' : '' }}">{{ $dashboardUser->status->label() }}</span>
+                </div>
                 @if (! $dashboardUser->isConfirmed() && ! $dashboardUser->isBlocked())
-                    <p>Подтверди аккаунт, чтобы получить доступ к дополнительным возможностям портала.</p>
-                    <a class="button secondary" href="{{ route('account.confirmation') }}">Подтвердить аккаунт</a>
+                    <p>Подтверди аккаунт, чтобы получить доступ ко всем возможностям портала.</p>
+                    <a class="button secondary app-account-overview__confirmation-action" href="{{ route('account.confirmation') }}">
+                        <span class="app-account-overview__confirmation-dot" aria-hidden="true"></span>Подтвердить аккаунт
+                    </a>
                 @elseif ($dashboardUser->isConfirmed())
-                    <p>Аккаунт подтверждён. Возможности портала доступны согласно твоим ролям.</p>
+                    <p>Аккаунт подтверждён. Теперь доступны возможности портала, для которых требуется подтверждение аккаунта.</p>
                 @else
-                    <p>Аккаунт заблокирован. По вопросам обратись в техподдержку.</p>
+                    <p>Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.</p>
                 @endif
                 @break
             @case('getting_started')

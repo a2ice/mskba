@@ -22,7 +22,7 @@
             @if (app(\App\Modules\Identity\Application\Services\PersonalDataDistributionConsentService::class)->requiresSetup(auth()->user()))
                 <div class="notice app-account-overview__pending" role="status">
                     <div><strong>Остался последний шаг регистрации</strong>
-                        <p>Заверши регистрацию, чтобы пользоваться возможностями портала.</p>
+                        <p>Чтобы начать пользоваться возможностями портала, заверши регистрацию, а пока можешь осмотреться.</p>
                         <a class="button primary" href="{{ route('account.privacy.distribution') }}" data-open-onboarding>Завершить регистрацию</a>
                     </div>
                 </div>
