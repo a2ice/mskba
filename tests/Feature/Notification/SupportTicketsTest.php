@@ -258,8 +258,8 @@ final class SupportTicketsTest extends TestCase
 
         $this->get(route('account.notifications.threads.support', $ticket))
             ->assertOk()->assertSee($link, false)->assertSee('Помогите изменить данные моего аккаунта');
-        $this->getJson(route('account.notifications.threads.support.history', $ticket))
-            ->assertOk()->assertSee($link, false);
+        $history = $this->getJson(route('account.notifications.threads.support.history', $ticket))->assertOk();
+        $this->assertStringContainsString($link, $history->json('html'));
         $this->actingAs($agent)->get(route('account.notifications.threads.support', $ticket))
             ->assertOk()->assertSee($link, false);
 
