@@ -141,12 +141,17 @@ final class BackofficeUserResource extends Resource
                 ->schema([
                     Placeholder::make('global_sources')
                         ->label('Текущие назначения')
-                        ->content(fn (?User $record): string => $record === null
-                            ? 'Выберите пользователя.'
-                            : implode(' | ', array_map(
-                                static fn (Permission $p): string => $p->label().': '.($global->sources($record)[$p->value] ?? '—'),
+                        ->content(function (?User $record) use ($global): string {
+                            if ($record === null) {
+                                return 'Выберите пользователя.';
+                            }
+                            $sources = $global->sources($record);
+
+                            return implode(' | ', array_map(
+                                static fn (Permission $p): string => $p->label().': '.($sources[$p->value] ?? '—'),
                                 array_merge($global->creationPermissions(), $global->privilegedPermissions()),
-                            ))),
+                            ));
+                        }),
                 ]),
         ]);
     }
