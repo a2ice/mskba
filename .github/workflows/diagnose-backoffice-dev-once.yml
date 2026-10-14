@@ -1,0 +1,47 @@
+name: One-time dev backoffice read-only diagnosis
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - .github/workflows/diagnose-backoffice-dev-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    environment: development
+    timeout-minutes: 5
+    steps:
+      - name: Read-only inspection of dev Filament errors
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          command_timeout: 90s
+          script: |
+            set -euo pipefail
+            cd /var/www/mskba-dev-next
+            echo 'DEV HEAD'
+            git rev-parse --short HEAD
+            echo 'Recent exception classes only'
+            find storage/logs -maxdepth 1 -name '*.log' -type f -mtime -1 -print0 |
+              xargs -0 -r grep -hE '^\[[^]]+\] .*\.ERROR: ' |
+              tail -n 100 |
+              grep -Eo '([A-Za-z_]+Exception|[A-Za-z_]+Error|SQLSTATE\[[A-Z0-9]+\])' |
+              sort | uniq -c | sort -nr | head -n 30 || true
+            echo 'Recent sanitized error headlines'
+            find storage/logs -maxdepth 1 -name '*.log' -type f -mtime -1 -print0 |
+              xargs -0 -r grep -hE '^\[[^]]+\] .*\.ERROR: ' |
+              tail -n 18 |
+              sed -E 's@https?://[^ ]+@[url]@g; s/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[email]/g; s/(password|token|secret|authorization)[^ ,}]*/[redacted]/Ig; s/(.{230}).*/\1.../' || true
+            echo 'Filament/Livewire nginx HTTP statuses'
+            COMPOSE='docker compose --env-file .env -f compose.dev.yaml -f compose.dev.local.yaml'
+            $COMPOSE logs --since=2h --no-color nginx 2>/dev/null |
+              grep -E '(/livewire/|/backoffice/)' |
+              sed -E 's/\?[^ "]+//g' |
+              sed -nE 's@.*"(GET|POST) (/livewire/[^ ]*|/backoffice/[^ ]*) HTTP/[0-9.]+" ([0-9]{3}).*@\1 \2 \3@p' |
+              sort | uniq -c | sort -nr | head -n 25 || true
