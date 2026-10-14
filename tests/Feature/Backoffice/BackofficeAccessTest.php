@@ -213,6 +213,7 @@ final class BackofficeAccessTest extends TestCase
         $admin = $this->account(UserSystemRoleEnum::ADMIN);
         $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
         $this->actingAs($admin)->get('/backoffice/dashboard-button-styles')->assertForbidden();
+        $this->flushSession();
         $this->actingAs($super)->get('/backoffice/dashboard-button-styles')->assertOk();
 
         Filament::setCurrentPanel(Filament::getPanel('backoffice'));
