@@ -26,7 +26,7 @@ final class BackofficePanelProvider extends PanelProvider
             ->path('backoffice')
             ->brandName('MSKBA · Управление')
             ->authGuard('web')
-            ->bootUsing(fn (): bool => app()->setLocale('ru'))
+            ->bootUsing(fn () => app()->setLocale('ru'))
             ->unsavedChangesAlerts()
             ->databaseTransactions()
             ->colors(['primary' => Color::Orange])
