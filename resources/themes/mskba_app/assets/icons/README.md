@@ -11,6 +11,8 @@ stroke-linecap/linejoin round. Служебные метаданные ориг�
 
 | Symbol ID | Исходный файл .svg |
 | --- | --- |
+| currency-ruble | currency-ruble |
+| file-description | file-description |
 | ball | ball-basketball |
 | arrow | arrow-right |
 | pin | map-pin |

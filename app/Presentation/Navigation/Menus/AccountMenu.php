@@ -34,9 +34,9 @@ final class AccountMenu implements MenuHandler
         'account.my-materials' => 'save',
         'account.notifications' => 'message',
         'account.contacts' => 'contact-mail',
-        'account.wallet' => 'save',
+        'account.wallet' => 'currency-ruble',
         'account.settings' => 'sliders',
-        'account.contracts' => 'save',
+        'account.contracts' => 'file-description',
         'auth.logout' => 'arrow-up-right',
     ];
 
@@ -91,10 +91,10 @@ final class AccountMenu implements MenuHandler
             'active' => $this->isActiveRoute('account.contacts, account.contacts.*, account.telegram, account.telegram.*, account.vk, account.vk.*'),
             'visible' => true,
         ];
-        $items[] = $this->link('Настройки', 'account.settings');
         if ($user->isConfirmed()) {
             $items[] = $this->link('Контракты', 'account.contracts');
         }
+        $items[] = $this->link('Настройки', 'account.settings');
         $items[] = $this->link('Выйти', 'auth.logout', 0, true);
 
         return $items;
@@ -215,10 +215,10 @@ final class AccountMenu implements MenuHandler
             'visible' => true,
         ];
         $items[] = $this->link('Кошелёк', 'account.wallet');
-        $items[] = $this->link('Настройки', 'account.settings');
         if ($user->isConfirmed()) {
             $items[] = $this->link('Контракты', 'account.contracts');
         }
+        $items[] = $this->link('Настройки', 'account.settings');
         $items[] = $this->link('Выйти', 'auth.logout', 0, true);
 
         return $items;
