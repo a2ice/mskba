@@ -129,7 +129,7 @@ final class BackofficePermissionsTest extends TestCase
         $this->actingAs($editor)->get('/backoffice/dashboard-button-styles/'.$style->id.'/edit')->assertOk();
     }
 
-    public function test_fillet_permission_editor_writes_only_backoffice_snapshots(): void
+    public function test_filament_permission_editor_writes_only_backoffice_snapshots(): void
     {
         $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
         $target = $this->user(UserSystemRoleEnum::USER);
@@ -188,4 +188,34 @@ final class BackofficePermissionsTest extends TestCase
         $this->expectException(AuthorizationException::class);
         $manager->sync($super, $otherSuper, []);
     }
+
+    public function test_blocked_account_and_unconfirmed_account_cannot_use_granted_backoffice_permissions(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $blocked = $this->user(UserSystemRoleEnum::EDITOR);
+        $unconfirmed = $this->user(UserSystemRoleEnum::MODERATOR);
+
+        foreach ([$blocked, $unconfirmed] as $target) {
+            $this->grant($super, $target, [
+                Permission::BACKOFFICE_ACCESS, Permission::BACKOFFICE_WIDGET_VIEW,
+            ]);
+        }
+        $blocked->update(['status' => UserStatusEnum::BLOCKED]);
+        $unconfirmed->update(['status' => UserStatusEnum::UNCONFIRMED]);
+
+        $this->assertFalse($blocked->fresh()->canAccessPanel(app(Panel::class)->id('backoffice')));
+        $this->assertFalse($unconfirmed->fresh()->canAccessPanel(app(Panel::class)->id('backoffice')));
+    }
+
+    public function test_superadmin_cannot_be_locked_out_even_by_explicit_denial_snapshot(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        UserOperationalPermission::query()->create([
+            'user_id' => $super->id,
+            'permission' => Permission::BACKOFFICE_ACCESS,
+            'is_allowed' => false,
+        ]);
+        $this->assertTrue($super->canAccessPanel(app(Panel::class)->id('backoffice')));
+    }
+
 }
