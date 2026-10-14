@@ -153,7 +153,7 @@ final class ContextHelpTest extends TestCase
             'sender_user_id' => $customer->id,
             'body' => "Страница обращения: /venues/my-court\n\nПодскажите, как можно забронировать площадку?",
         ]);
-        $response->assertJsonPath('redirect_url', route('account.notifications.threads.support', $ticket));
+        $response->assertJsonPath('redirect_url', route('account.notifications.threads.support', $ticket, false));
         $this->get(route('account.notifications.threads.support', $ticket))
             ->assertOk()->assertSee('Подскажите, как можно забронировать площадку?');
         $this->actingAs($lead)->get(route('account.notifications'))

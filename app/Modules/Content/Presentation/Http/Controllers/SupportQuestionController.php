@@ -28,7 +28,7 @@ final class SupportQuestionController extends Controller
         return response()->json([
             'status' => 'created',
             'message' => 'Обращение создано. Открываем переписку…',
-            'redirect_url' => route('account.notifications.threads.support', $ticket),
+            'redirect_url' => route('account.notifications.threads.support', $ticket, false),
         ], 201);
     }
 }
