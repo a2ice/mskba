@@ -6,6 +6,8 @@ use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\CreateAccoun
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountDashboardWidget;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\ListAccountDashboardWidgets;
 use App\Modules\Dashboard\Application\Services\AccountDashboardService;
+use App\Modules\Dashboard\Application\Services\DashboardWidgetActions;
+use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
 use App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -15,6 +17,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\Select;
@@ -94,9 +97,9 @@ final class AccountDashboardWidgetResource extends Resource
                                     ->helperText('По умолчанию: Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.'),
                             ]),
                         TextInput::make('link_url')->label('Ссылка')->rule(new DashboardWidgetLinkRule())->maxLength(500)
-                            ->required(fn (Get $get): bool => $get('kind') === 'advertisement')
+                            ->required(fn (Get $get): bool => $get('kind') === 'advertisement' && empty($get('actions')))
                             ->placeholder('/partners или https://mskba.ru/partners')
-                            ->helperText('Внутренняя ссылка начинается с /, например /partners. Внешняя — полный HTTPS/HTTP адрес. Реклама обязательно содержит ссылку.')
+                            ->helperText('Совместимость с прежним редактором: ссылка первой кнопки. Дополнительные кнопки настраиваются во вкладке «Действия».')
                             ->visible(fn (Get $get): bool => in_array($get('kind'), ['information', 'advertisement'], true)),
                         TextInput::make('link_label')->label('Текст кнопки')->maxLength(100)
                             ->visible(fn (Get $get): bool => in_array($get('kind'), ['information', 'advertisement'], true)),
@@ -105,6 +108,43 @@ final class AccountDashboardWidgetResource extends Resource
                             ->visible(fn (Get $get): bool => $get('kind') === 'advertisement'),
                     ]),
                 ]),
+                Tab::make('Действия')->icon('heroicon-o-cursor-arrow-rays')
+                    ->visible(fn (Get $get): bool => $get('kind') !== 'custom_html')
+                    ->schema([
+                        Section::make('Кнопки виджета')
+                            ->description('Добавляй кнопки, меняй порядок перетаскиванием, указывай ссылку и CSS-классы. Все стандартные кнопки редактируются здесь. Никакого HTML писать не нужно.')
+                            ->schema([
+                                Repeater::make('actions')->label('Список кнопок')
+                                    ->schema([
+                                        TextInput::make('label')->label('Надпись на кнопке')
+                                            ->required()->maxLength(100)->columnSpan(2),
+                                        TextInput::make('url')->label('Ссылка')
+                                            ->required()->maxLength(500)
+                                            ->rule(new DashboardWidgetLinkRule())
+                                            ->placeholder('/account/roles или https://example.com')
+                                            ->columnSpan(2),
+                                        Select::make('appearance')->label('Стандартное оформление')
+                                            ->options(['primary' => 'Основная (оранжевая)', 'secondary' => 'Второстепенная'])
+                                            ->default('secondary')->required(),
+                                        Select::make('visibility')->label('Когда показывать')
+                                            ->options([
+                                                'always' => 'Всегда',
+                                                'confirmed' => 'Аккаунт подтверждён',
+                                                'unconfirmed' => 'Аккаунт не подтверждён',
+                                                'blocked' => 'Аккаунт заблокирован',
+                                            ])->default('always')->required(),
+                                        Select::make('classes')->label('Дополнительные CSS-классы')
+                                            ->options(fn (): array => DashboardButtonStyle::query()
+                                                ->where('enabled', true)->orderBy('name')
+                                                ->pluck('name', 'class_name')->all())
+                                            ->multiple()->searchable()->preload()
+                                            ->helperText('Стили из раздела «Стили кнопок»; можно комбинировать несколько.')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2)->defaultItems(0)->collapsible()->reorderable()
+                                    ->maxItems(12)->addActionLabel('Добавить кнопку'),
+                            ]),
+                    ]),
                 Tab::make('Аудитория')->icon('heroicon-o-user-group')->schema([
                     Section::make('Кому показывать')->description('Пустое условие означает всех. Между типами условий — И, внутри выбранных ролей — ИЛИ.')->columns(2)->schema([
                         CheckboxList::make('account_statuses')->label('Статусы аккаунта')
@@ -178,8 +218,30 @@ final class AccountDashboardWidgetResource extends Resource
         abort_if(($data['kind'] ?? $previous?->kind) === 'custom_html' && ! self::isSuperadmin(), 403);
         abort_if($previous?->kind === 'custom_html' && ! self::isSuperadmin(), 403);
 
-        if (($data['kind'] ?? null) === 'advertisement' && blank($data['link_url'] ?? null)) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['data.link_url' => 'Для рекламы нужна ссылка.']);
+        $kind = (string) ($data['kind'] ?? $previous?->kind ?? '');
+        $actionsService = app(DashboardWidgetActions::class);
+        $actions = $data['actions'] ?? [];
+        if ($kind === 'custom_html') {
+            $data['actions'] = [];
+        } else {
+            if (! is_array($actions)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'data.actions' => 'Некорректный список действий.',
+                ]);
+            }
+            if ($previous === null && $actions === []) {
+                $actions = $actionsService->defaults(
+                    $kind, $data['link_url'] ?? null, $data['link_label'] ?? null,
+                );
+            }
+
+            $data['actions'] = $actionsService->validate($actions, $kind);
+            // Keep the two old columns in sync with the primary action so that
+            // the former admin editor and existing integrations remain usable.
+            if (in_array($kind, ['information', 'advertisement'], true)) {
+                $data['link_url'] = $data['actions'][0]['url'] ?? null;
+                $data['link_label'] = $data['actions'][0]['label'] ?? null;
+            }
         }
 
         if (filled($data['link_url'] ?? null)
