@@ -13,6 +13,8 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\CodeEditor;
+use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -68,9 +70,27 @@ final class AccountDashboardWidgetResource extends Resource
                             ->required()->live()->native(false)
                             ->helperText('Функциональные карточки подключены к данным портала. Реклама и информация управляются контентом.'),
                         TextInput::make('title')->label('Название')->required()->maxLength(150),
-                        Textarea::make('body')->label('Содержимое')->rows(4)->maxLength(10000)
+                        CodeEditor::make('body')->label('HTML-содержимое')->language(Language::Html)
+                            ->maxLength(10000)->columnSpanFull()
+                            ->helperText('Текст, <p>, <strong>, <ul>, <li>, ссылки и кнопки: <a href="/account/roles" class="button secondary">Мои роли</a>. Для счётчика сообщений: {{ unread_count }}. Пустое поле — стандартный текст.')
+                            ->visible(fn (Get $get): bool => in_array($get('kind'), [
+                                'information', 'advertisement', 'getting_started', 'message_summary',
+                            ], true)),
+                        Section::make('Тексты для разных статусов аккаунта')
+                            ->description('Каждое состояние имеет собственное содержание. Пустое поле оставит стандартный текст. Статус и системную кнопку подтверждения портал сохраняет.')
                             ->columnSpanFull()
-                            ->visible(fn (Get $get): bool => in_array($get('kind'), ['information', 'advertisement'], true)),
+                            ->visible(fn (Get $get): bool => $get('kind') === 'account_status')
+                            ->schema([
+                                CodeEditor::make('status_confirmed_html')->label('Аккаунт подтверждён')
+                                    ->language(Language::Html)->maxLength(10000)
+                                    ->helperText('По умолчанию: Аккаунт подтверждён. Теперь доступны возможности портала, для которых требуется подтверждение аккаунта.'),
+                                CodeEditor::make('status_unconfirmed_html')->label('Аккаунт не подтверждён')
+                                    ->language(Language::Html)->maxLength(10000)
+                                    ->helperText('По умолчанию: Подтверди аккаунт, чтобы получить доступ ко всем возможностям портала.'),
+                                CodeEditor::make('status_blocked_html')->label('Аккаунт заблокирован')
+                                    ->language(Language::Html)->maxLength(10000)
+                                    ->helperText('По умолчанию: Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.'),
+                            ]),
                         TextInput::make('link_url')->label('Ссылка')->url()->rule('url:http,https')->maxLength(500)
                             ->required(fn (Get $get): bool => $get('kind') === 'advertisement')
                             ->helperText('HTTPS предпочтительнее. Реклама обязательно содержит ссылку.')

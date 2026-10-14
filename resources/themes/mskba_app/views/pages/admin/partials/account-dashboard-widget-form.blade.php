@@ -28,6 +28,17 @@
         <label class="app-dashboard-admin__wide">Описание / содержание
             <textarea name="body" rows="3" maxlength="10000">{{ $widget->body }}</textarea>
         </label>
+        @if ($widget->kind === 'account_status' || $isNew)
+            <div class="app-dashboard-admin__wide app-dashboard-admin__sandbox-explain">
+                Для типа «Статус аккаунта» доступны три HTML-текста. Пустое поле означает стандартный текст.
+                Разрешены ссылки вида &lt;a class="button secondary" href="/account/roles"&gt;Мои роли&lt;/a&gt;.
+            </div>
+            @foreach (['status_confirmed_html' => 'Подтверждён', 'status_unconfirmed_html' => 'Не подтверждён', 'status_blocked_html' => 'Заблокирован'] as $htmlField => $htmlLabel)
+                <label class="app-dashboard-admin__wide">HTML: {{ $htmlLabel }}
+                    <textarea name="{{ $htmlField }}" rows="4" maxlength="10000">{{ $widget->{$htmlField} }}</textarea>
+                </label>
+            @endforeach
+        @endif
         <label>Ссылка (HTTPS/HTTP)
             <input name="link_url" type="url" maxlength="500" value="{{ $widget->link_url }}" placeholder="https://example.com">
         </label>
