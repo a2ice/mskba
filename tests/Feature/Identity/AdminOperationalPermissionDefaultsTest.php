@@ -30,7 +30,7 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
 
         foreach (UserOperationalPermissionEnum::cases() as $permission) {
             $this->assertSame(
-                ! in_array($permission, [UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS], true),
+                $permission->defaultAllowedFor(UserSystemRoleEnum::ADMIN),
                 $checker->allows($admin, $permission),
                 "admin default mismatch for {$permission->value}.",
             );
@@ -112,7 +112,7 @@ final class AdminOperationalPermissionDefaultsTest extends TestCase
 
         foreach (UserOperationalPermissionEnum::cases() as $permission) {
             $this->assertSame(
-                ! in_array($permission, [UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES, UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES, UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS], true),
+                $permission->defaultAllowedFor(UserSystemRoleEnum::ADMIN),
                 (bool) $adminPermissions->get($permission->value)->is_allowed,
             );
         }

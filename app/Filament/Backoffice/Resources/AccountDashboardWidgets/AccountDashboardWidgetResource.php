@@ -38,6 +38,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 final class AccountDashboardWidgetResource extends Resource
 {
@@ -63,6 +64,17 @@ final class AccountDashboardWidgetResource extends Resource
     private static function options(array $cases): array
     {
         return collect($cases)->mapWithKeys(fn ($role) => [$role->value => $role->label()])->all();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (! self::isSuperadmin()) {
+            $query->where('kind', '!=', 'custom_html');
+        }
+
+        return $query;
     }
 
     public static function form(Schema $schema): Schema
