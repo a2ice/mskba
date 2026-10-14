@@ -14,66 +14,126 @@ final class DashboardButtonStyleCompiler
         'line-height', 'padding', 'padding-left', 'padding-right', 'padding-top',
         'padding-bottom', 'text-decoration', 'text-transform', 'opacity',
         'outline', 'outline-color', 'transition', 'transform',
+        'overflow', 'pointer-events', 'position', 'top', 'left', 'right',
+        'bottom', 'width', 'height', 'content',
     ];
 
-    /** @return array<string, string> */
+    /**
+     * Accept a single named class, multiple blocks, optional state pseudoclasses
+     * and ::before/::after. This is a restricted language, NOT general CSS.
+     *
+     * @return list<array{selector: string, declarations: array<string, string>}>
+     */
     public function parse(string $class, string $css): array
     {
         if (! preg_match('/\A[a-z][a-z0-9_-]{1,39}\z/D', $class)
-            || mb_strlen($css) > 3000
-            || ! preg_match('/\A\s*\.([a-z][a-z0-9_-]{1,39})\s*\{([^{}]+)\}\s*\z/Ds', $css, $matches)
-            || $matches[1] !== $class) {
-            throw ValidationException::withMessages([
-                'data.css_code' => 'Нужен один CSS-класс, например .bg-green { background-color: green !important; }',
-            ]);
+            || mb_strlen($css) > 3000 || trim($css) === '') {
+            $this->invalid('Укажи один CSS-класс и правила для него (до 3000 символов).');
         }
 
-        $declarations = [];
-        foreach (explode(';', $matches[2]) as $segment) {
-            $segment = trim($segment);
-            if ($segment === '') {
-                continue;
+        $css = trim($css);
+        $length = strlen($css);
+        $offset = 0;
+        $rules = [];
+        $pattern = '/\G\s*\.([a-z][a-z0-9_-]{1,39})(:(?:hover|focus-visible|focus|active))?(::?(?:before|after))?\s*\{([^{}]+)\}\s*/';
+
+        while ($offset < $length) {
+            if (! preg_match($pattern, $css, $parts, 0, $offset)
+                || $parts[1] !== $class || count($rules) >= 12) {
+                $this->invalid('Разрешены до 12 правил для одного класса: .'.$class.', :hover, :focus-visible, ::before, ::after (можно сочетать).');
             }
-            if (! str_contains($segment, ':')) {
-                throw ValidationException::withMessages(['data.css_code' => 'Некорректное CSS-свойство.']);
+
+            $offset += strlen($parts[0]);
+            $state = $parts[2] ?? '';
+            $pseudo = $parts[3] ?? '';
+            if ($pseudo !== '') {
+                $pseudo = '::'.ltrim($pseudo, ':');
             }
-            [$property, $value] = array_map('trim', explode(':', $segment, 2));
-            $property = strtolower($property);
-            // Explicit allowlist blocks @import, url(), CSS escape sequences, selectors,
-            // arbitrary variables and markup break-out from the generated <style>.
-            if (! in_array($property, self::PROPERTIES, true)
-                || $value === ''
-                || ! preg_match('/\A[a-zA-Z0-9#.%(),\s!+\-\/]+\z/D', $value)
-                || preg_match('/(?:url|expression|image-set|attr|var|behavior)\s*\(/i', $value)) {
-                throw ValidationException::withMessages([
-                    'data.css_code' => 'Разрешены только безопасные свойства и значения оформления кнопки, без URL и исполняемых конструкций.',
-                ]);
+            $isPseudo = $pseudo !== '';
+            $declarations = [];
+
+            foreach (explode(';', $parts[4]) as $segment) {
+                $segment = trim($segment);
+                if ($segment === '') {
+                    continue;
+                }
+                if (! str_contains($segment, ':')) {
+                    $this->invalid('Некорректное CSS-свойство.');
+                }
+                [$property, $value] = array_map('trim', explode(':', $segment, 2));
+                $property = strtolower($property);
+
+                if (! in_array($property, self::PROPERTIES, true) || $value === '') {
+                    $this->invalid('Это свойство не разрешено для оформления кнопок.');
+                }
+
+                if ($property === 'content') {
+                    if (! $isPseudo || ! in_array($value, ['""', "''"], true)) {
+                        $this->invalid('Для псевдоэлемента допускается только пустой content: "".');
+                    }
+                    $value = '""';
+                } else {
+                    if (! preg_match('/\A[a-zA-Z0-9#.%(),\s!+\-\/]+\z/D', $value)
+                        || preg_match('/(?:url|expression|image-set|attr|var|behavior)\s*\(/i', $value)) {
+                        $this->invalid('В CSS запрещены внешние ресурсы, скрипты, переменные и управляющие конструкции.');
+                    }
+                }
+
+                if ($property === 'position' && ! ($isPseudo ? $value === 'absolute' : $value === 'relative')) {
+                    $this->invalid('На кнопке допускается position: relative, на ::before/::after — position: absolute.');
+                }
+                if ($property === 'overflow' && ($isPseudo || ! in_array($value, ['hidden', 'clip'], true))) {
+                    $this->invalid('Поддерживается только overflow: hidden или clip на самой кнопке.');
+                }
+                if ($property === 'pointer-events' && (! $isPseudo || $value !== 'none')) {
+                    $this->invalid('Для псевдоэлементов допускается только pointer-events: none.');
+                }
+                if (in_array($property, ['top', 'left', 'right', 'bottom', 'width', 'height'], true)
+                    && (! $isPseudo || ! preg_match('/\A(?:0|100%|[0-9]{1,2}%|[0-9]{1,3}px)\z/D', $value))) {
+                    $this->invalid('Размеры и координаты задаются только псевдоэлементам: 0, 0–100%, либо до 999px.');
+                }
+
+                $declarations[$property] = $value;
             }
-            $declarations[$property] = $value;
+
+            if ($declarations === []) {
+                $this->invalid('Добавь хотя бы одно CSS-свойство в каждое правило.');
+            }
+            // Decorative overlays must never intercept mouse/touch interaction.
+            if ($isPseudo) {
+                $declarations['pointer-events'] = 'none';
+            }
+
+            $rules[] = [
+                'selector' => '.'.$class.$state.$pseudo,
+                'declarations' => $declarations,
+            ];
         }
 
-        if ($declarations === []) {
-            throw ValidationException::withMessages(['data.css_code' => 'Добавь хотя бы одно CSS-свойство.']);
-        }
+        return $rules;
+    }
 
-        return $declarations;
+    private function invalid(string $message): never
+    {
+        throw ValidationException::withMessages(['data.css_code' => $message]);
     }
 
     public function compile(DashboardButtonStyle $style): string
     {
         try {
-            $declarations = $this->parse((string) $style->class_name, (string) $style->css_code);
+            $rules = $this->parse((string) $style->class_name, (string) $style->css_code);
         } catch (ValidationException) {
             return '';
         }
 
-        $body = implode(' ', array_map(
-            fn (string $prop, string $value) => $prop.':'.$value.';',
-            array_keys($declarations), array_values($declarations),
-        ));
+        return implode("\n", array_map(static function (array $rule): string {
+            $body = implode(' ', array_map(
+                static fn (string $prop, string $value): string => $prop.':'.$value.';',
+                array_keys($rule['declarations']), array_values($rule['declarations']),
+            ));
 
-        return '.app-dashboard-grid .app-dashboard-widget a.button.'.
-            $style->class_name.' { '.$body.' }';
+            return '.app-dashboard-grid .app-dashboard-widget a.button'.$rule['selector'].' { '.$body.' }';
+        }, $rules));
     }
 
     /** @param Collection<int, \App\Modules\Dashboard\Domain\Models\AccountDashboardWidget> $widgets */

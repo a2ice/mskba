@@ -105,6 +105,76 @@ final class DashboardWidgetActionsAndStylesTest extends TestCase
         }
     }
 
+    public function test_multi_rule_pseudo_classes_and_pseudo_elements_are_compiled_only_for_widget_buttons(): void
+    {
+        $compiler = app(DashboardButtonStyleCompiler::class);
+        $css = <<<'CSS'
+.cta-button-01 {
+    background-color: purple !important;
+    position: relative;
+    overflow: hidden;
+}
+.cta-button-01:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,.5);
+}
+.cta-button-01:hover::before {
+    opacity: .25;
+}
+.cta-button-01:focus-visible {
+    outline: 2px solid white;
+}
+CSS;
+
+        $parsed = $compiler->parse('cta-button-01', $css);
+        $this->assertCount(4, $parsed);
+
+        $style = DashboardButtonStyle::query()->create([
+            'name' => 'CTA-кнопка', 'class_name' => 'cta-button-01',
+            'css_code' => $css, 'enabled' => true,
+        ]);
+        $compiled = $compiler->compile($style);
+        $root = '.app-dashboard-grid .app-dashboard-widget a.button.cta-button-01';
+        $this->assertStringContainsString($root.' {', $compiled);
+        $this->assertStringContainsString($root.'::before {', $compiled);
+        $this->assertStringContainsString($root.':hover::before {', $compiled);
+        $this->assertStringContainsString($root.':focus-visible {', $compiled);
+        $this->assertStringContainsString('pointer-events:none;', $compiled);
+        $this->assertStringContainsString('content:"";', $compiled);
+        $this->assertStringNotContainsString("\nbody", $compiled);
+        $this->assertStringNotContainsString("\n.cta-button-01", $compiled);
+    }
+
+    public function test_css_pseudo_selectors_cannot_escape_widget_scope_or_load_external_content(): void
+    {
+        $compiler = app(DashboardButtonStyleCompiler::class);
+        foreach ([
+            '.cta-button-01:hover, body {color:red;}',
+            '.cta-button-01::before { content: "Untrusted text"; }',
+            '.cta-button-01::before { position: fixed; }',
+            '.cta-button-01::before { background: url(https://evil.example/x); }',
+            '.cta-button-01::before { width: 100vw; }',
+            '.cta-button-01::before { pointer-events: auto; }',
+            '.cta-button-01:hover a {color:red;}',
+            '.cta-button-01:not(.other) {color:red;}',
+            '.cta-button-01::first-letter {color:red;}',
+            '.cta-button-01 {color:red;} .other {color:blue;}',
+            '.cta-button-01 { color:red; } @import url(https://evil.example/x);',
+        ] as $unsafe) {
+            try {
+                $compiler->parse('cta-button-01', $unsafe);
+                $this->fail('Unsafe CSS was accepted: '.$unsafe);
+            } catch (ValidationException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
     public function test_button_links_are_always_validated_and_conditionally_visible(): void
     {
         $svc = app(DashboardWidgetActions::class);
