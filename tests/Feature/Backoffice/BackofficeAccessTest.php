@@ -3,6 +3,9 @@
 namespace Tests\Feature\Backoffice;
 
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
+use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\CreateAccountDashboardWidget;
+use Filament\Facades\Filament;
+use Livewire\Livewire;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
@@ -66,4 +69,39 @@ final class BackofficeAccessTest extends TestCase
         $this->assertSame(2, AccountDashboardWidget::query()
             ->whereIn('id', [$widget->id, $custom->id])->count());
     }
+    public function test_filament_can_create_targeted_advertisement_without_replacing_existing_data(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateAccountDashboardWidget::class)
+            ->fillForm([
+                'kind' => 'advertisement',
+                'title' => 'Баскетбольный магазин',
+                'body' => 'Товары и услуги для игроков',
+                'link_url' => 'https://example.org/catalog',
+                'link_label' => 'Перейти в магазин',
+                'image_url' => 'https://example.org/banner.jpg',
+                'sort_order' => 15,
+                'size' => 'half',
+                'enabled' => true,
+                'can_hide' => true,
+                'contact_filter' => 'any',
+                'account_statuses' => ['confirmed'],
+                'system_roles' => [],
+                'participation_roles' => [],
+                'include_user_ids' => '10, 11',
+                'exclude_user_ids' => '7',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $widget = AccountDashboardWidget::query()->where('title', 'Баскетбольный магазин')->firstOrFail();
+        $this->assertSame('advertisement', $widget->kind);
+        $this->assertSame(['confirmed'], $widget->account_statuses);
+        $this->assertSame([10, 11], $widget->include_user_ids);
+        $this->assertSame([7], $widget->exclude_user_ids);
+    }
+
 }
