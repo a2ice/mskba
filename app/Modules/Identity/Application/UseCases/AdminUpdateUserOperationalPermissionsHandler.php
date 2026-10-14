@@ -40,6 +40,13 @@ final class AdminUpdateUserOperationalPermissionsHandler
                 ->flip();
 
             foreach (UserOperationalPermissionEnum::cases() as $permission) {
+                // Legacy admins may manage ordinary operational rights, but must
+                // never grant or revoke Filament privileges, including by omitting
+                // fields from an HTML form.
+                if ($permission->isBackoffice()
+                    && $actor->system_role !== UserSystemRoleEnum::SUPERADMIN) {
+                    continue;
+                }
                 $enabled = $allowed->has($permission->value);
                 $current = UserOperationalPermission::query()
                     ->where('user_id', $target->id)->where('permission', $permission->value)->first();

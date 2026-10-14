@@ -12,6 +12,33 @@ enum UserOperationalPermissionEnum: string
     case REVIEW_PROFILE_CHANGES = 'identity.profile_change.review';
     case HANDLE_SUPPORT_TICKETS = 'support.ticket.handle';
 
+    case BACKOFFICE_ACCESS = 'backoffice.access';
+    case BACKOFFICE_WIDGET_VIEW = 'backoffice.widget.view';
+    case BACKOFFICE_WIDGET_CREATE = 'backoffice.widget.create';
+    case BACKOFFICE_WIDGET_EDIT = 'backoffice.widget.edit';
+    case BACKOFFICE_WIDGET_DELETE = 'backoffice.widget.delete';
+    case BACKOFFICE_STYLE_VIEW = 'backoffice.button_style.view';
+    case BACKOFFICE_STYLE_MANAGE = 'backoffice.button_style.manage';
+
+    /** @return list<self> */
+    public static function backofficeCases(): array
+    {
+        return [
+            self::BACKOFFICE_ACCESS,
+            self::BACKOFFICE_WIDGET_VIEW,
+            self::BACKOFFICE_WIDGET_CREATE,
+            self::BACKOFFICE_WIDGET_EDIT,
+            self::BACKOFFICE_WIDGET_DELETE,
+            self::BACKOFFICE_STYLE_VIEW,
+            self::BACKOFFICE_STYLE_MANAGE,
+        ];
+    }
+
+    public function isBackoffice(): bool
+    {
+        return in_array($this, self::backofficeCases(), true);
+    }
+
     public function label(): string
     {
         return match ($this) {
@@ -22,11 +49,22 @@ enum UserOperationalPermissionEnum: string
             self::MANAGE_SYSTEM_ROLES => 'Управление системными ролями',
             self::REVIEW_PROFILE_CHANGES => 'Рассматривать изменения подтверждённых данных',
             self::HANDLE_SUPPORT_TICKETS => 'Обрабатывать обращения в техподдержку',
+            self::BACKOFFICE_ACCESS => 'Вход в Filament /backoffice',
+            self::BACKOFFICE_WIDGET_VIEW => 'Просмотр виджетов дашборда',
+            self::BACKOFFICE_WIDGET_CREATE => 'Создание виджетов дашборда',
+            self::BACKOFFICE_WIDGET_EDIT => 'Изменение виджетов дашборда',
+            self::BACKOFFICE_WIDGET_DELETE => 'Удаление виджетов дашборда',
+            self::BACKOFFICE_STYLE_VIEW => 'Просмотр справочника CSS-классов',
+            self::BACKOFFICE_STYLE_MANAGE => 'Создание, изменение и удаление CSS-классов',
         };
     }
 
     public function defaultAllowed(): bool
     {
+        if ($this->isBackoffice()) {
+            return false;
+        }
+
         return match ($this) {
             self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS => false,
             default => true,
@@ -35,6 +73,20 @@ enum UserOperationalPermissionEnum: string
 
     public function defaultAllowedFor(UserSystemRoleEnum $systemRole): bool
     {
+        if ($this->isBackoffice()) {
+            if ($systemRole === UserSystemRoleEnum::SUPERADMIN) {
+                return true;
+            }
+
+            // Existing confirmed admins retain their previous entry, widget
+            // viewing/creation/editing permissions. Deletions/styles are opt-in.
+            return $systemRole === UserSystemRoleEnum::ADMIN
+                && in_array($this, [
+                    self::BACKOFFICE_ACCESS, self::BACKOFFICE_WIDGET_VIEW,
+                    self::BACKOFFICE_WIDGET_CREATE, self::BACKOFFICE_WIDGET_EDIT,
+                ], true);
+        }
+
         if (in_array($this, [self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS], true)) {
             return $systemRole === UserSystemRoleEnum::SUPERADMIN;
         }

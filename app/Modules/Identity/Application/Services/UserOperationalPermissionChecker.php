@@ -26,6 +26,17 @@ final class UserOperationalPermissionChecker
             return false;
         }
 
+        if ($permission->isBackoffice()) {
+            if (! $user->isConfirmed() || $user->system_role === UserSystemRoleEnum::SYSTEM) {
+                return false;
+            }
+            // Recovery invariant: a superadmin cannot revoke their own
+            // ability to administer the backoffice.
+            if ($user->system_role === UserSystemRoleEnum::SUPERADMIN) {
+                return true;
+            }
+        }
+
         $snapshot = $user->operationalPermissions()
             ->where('permission', $permission->value)
             ->first();
