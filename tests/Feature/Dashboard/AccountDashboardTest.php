@@ -153,9 +153,14 @@ final class AccountDashboardTest extends TestCase
             ->assertDontSee('Доступ ограничен.');
         $blocked = $this->user();
         $blocked->update(['status' => UserStatusEnum::BLOCKED]);
-        $this->actingAs($blocked)->get(route('account'))->assertOk()
-            ->assertSee('Доступ ограничен.')
-            ->assertDontSee('<em>подтвердите аккаунт</em>', false);
+        $this->actingAs($blocked)->get(route('account'))->assertForbidden();
+        $fragment = view('theme::pages.account.partials.dashboard-widget-list', [
+            'dashboardWidgets' => collect([$widget->fresh()]),
+            'dashboardUser' => $blocked,
+            'dashboardUnread' => 0,
+        ])->render();
+        $this->assertStringContainsString('Доступ ограничен.', $fragment);
+        $this->assertStringNotContainsString('<em>подтвердите аккаунт</em>', $fragment);
     }
 
     public function test_functional_widget_html_and_dynamic_unread_placeholder_render_in_refresh(): void
