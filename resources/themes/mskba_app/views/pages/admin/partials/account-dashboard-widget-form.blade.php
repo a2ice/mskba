@@ -19,6 +19,9 @@
                 <option value="full" @selected($widget->size === 'full')>Вся ширина</option>
             </select>
         </label>
+        <label>Цвет градиента (пусто — по умолчанию)
+            <input type="text" name="gradient_color" maxlength="7" pattern="#[a-fA-F0-9]{6}" placeholder="#ff7900" value="{{ $widget->gradient_color }}">
+        </label>
         <label>Показывать
             <select name="enabled"><option value="1" @selected($widget->enabled)>Да</option><option value="0" @selected(! $widget->enabled)>Нет</option></select>
         </label>

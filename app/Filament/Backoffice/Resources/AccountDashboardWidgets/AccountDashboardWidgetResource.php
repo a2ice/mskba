@@ -13,6 +13,7 @@ use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\Select;
@@ -134,6 +135,10 @@ final class AccountDashboardWidgetResource extends Resource
                         Select::make('size')->label('Ширина карточки')->options([
                             'half' => 'Половина ряда', 'full' => 'На всю ширину',
                         ])->default('half')->required(),
+                        ColorPicker::make('gradient_color')->label('Цвет подсветки карточки')
+                            ->nullable()->regex('/^#[0-9a-fA-F]{6}$/D')
+                            ->helperText('Пустое поле — текущий фирменный оранжевый градиент. Цвет применяется к мягкому свечению в правом нижнем углу, остальной фон не меняется.')
+                            ->columnSpanFull(),
                         Toggle::make('enabled')->label('Публиковать')->default(true),
                         Toggle::make('can_hide')->label('Можно скрыть пользователю')->default(true)
                             ->helperText('Обязательные виджеты нельзя будет скрывать в настройках аккаунта.'),
@@ -173,6 +178,13 @@ final class AccountDashboardWidgetResource extends Resource
 
         if (($data['kind'] ?? null) === 'advertisement' && blank($data['link_url'] ?? null)) {
             throw \Illuminate\Validation\ValidationException::withMessages(['data.link_url' => 'Для рекламы нужна ссылка.']);
+        }
+
+        if (filled($data['gradient_color'] ?? null)
+            && ! preg_match('/^#[0-9a-fA-F]{6}$/D', (string) $data['gradient_color'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'data.gradient_color' => 'Цвет градиента должен быть в формате #RRGGBB.',
+            ]);
         }
 
         foreach (['body', 'status_confirmed_html', 'status_unconfirmed_html', 'status_blocked_html'] as $field) {

@@ -77,6 +77,7 @@ final class AdminAccountDashboardController extends Controller
             'js_code' => ['nullable', 'string', 'max:20000'],
             'iframe_height' => ['required', 'integer', 'between:120,900'],
             'sort_order' => ['required', 'integer', 'between:0,9999'],
+            'gradient_color' => ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/D'],
             'size' => ['required', Rule::in(['half', 'full'])],
             'enabled' => ['required', 'boolean'],
             'can_hide' => ['required', 'boolean'],

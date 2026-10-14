@@ -2,8 +2,16 @@
     $dashboardHtml = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetHtmlRenderer::class);
 @endphp
 @forelse ($dashboardWidgets as $widget)
+    @php
+        // Explicit HEX validation before writing a CSS variable prevents CSS injection.
+        $color = $widget->gradient_color;
+        $gradientGlow = is_string($color) && preg_match('/^#[0-9a-fA-F]{6}$/D', $color)
+            ? $color.'1e'
+            : null;
+    @endphp
     <article class="panel app-dashboard-widget app-dashboard-widget--{{ $widget->size === 'full' ? 'full' : 'half' }}"
-             data-dashboard-widget="{{ $widget->id }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}">
+             data-dashboard-widget="{{ $widget->id }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}"
+             @if ($gradientGlow) style="--surface-glow: {{ $gradientGlow }}" @endif>
         <div class="app-dashboard-widget__header">
             <h2>{{ $widget->title }}</h2>
             @if ($widget->kind === 'advertisement')<span class="app-dashboard-widget__ad-label">Реклама</span>@endif
