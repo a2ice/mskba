@@ -9,7 +9,8 @@ use App\Modules\Dashboard\Application\Services\DashboardButtonStyleCompiler;
 use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\CodeEditor;
+use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -41,7 +42,7 @@ final class DashboardButtonStyleResource extends Resource
                         ->required()->maxLength(40)->regex('/\A[a-z][a-z0-9_-]{1,39}\z/D')
                         ->unique(ignoreRecord: true)->placeholder('bg-green')
                         ->helperText('Например: bg-green. Применяется в разделе «Действия» виджета.'),
-                    Textarea::make('css_code')->label('CSS-правило')->rows(8)
+                    CodeEditor::make('css_code')->label('CSS-правило')->language(Language::Css)
                         ->required()->maxLength(3000)->columnSpanFull()
                         ->default('.bg-green { background-color: green !important; }')
                         ->helperText('Один класс, разрешённые свойства цветов, рамок, отступов и типографики. Скрипты, url(), @import и произвольные селекторы запрещены.'),
