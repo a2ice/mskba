@@ -150,6 +150,66 @@ CSS;
         $this->assertStringNotContainsString("\n.cta-button-01", $compiled);
     }
 
+    public function test_hover_pseudo_element_accepts_css_comments_and_typographic_minus(): void
+    {
+        $compiler = app(DashboardButtonStyleCompiler::class);
+        $css = <<<'CSS'
+.cta-button-01 {
+    background-color: orange !important;
+    position: relative;
+    overflow: hidden;
+}
+.cta-button-01::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,.5);
+    transform: translateX(−100%) skewX(−30deg);
+    transition: transform .5s ease;
+}
+.cta-button-01:hover::before {
+    /* Перемещаем блик вправо за пределы кнопки */
+    transform: translateX(100%) skewX(−30deg);
+}
+CSS;
+
+        $rules = $compiler->parse('cta-button-01', $css);
+        $this->assertCount(3, $rules);
+        $this->assertSame('.cta-button-01:hover::before', $rules[2]['selector']);
+        $this->assertSame('translateX(100%) skewX(-30deg)', $rules[2]['declarations']['transform']);
+
+        $style = DashboardButtonStyle::query()->create([
+            'name' => 'Блик при наведении',
+            'class_name' => 'cta-button-01',
+            'css_code' => $css,
+            'enabled' => true,
+        ]);
+        $compiled = $compiler->compile($style);
+        $this->assertStringContainsString('a.button.cta-button-01:hover::before {', $compiled);
+        $this->assertStringContainsString('transform:translateX(-100%) skewX(-30deg);', $compiled);
+        $this->assertStringContainsString('transition:transform .5s ease;', $compiled);
+        $this->assertStringNotContainsString('Перемещаем блик', $compiled);
+    }
+
+    public function test_unclosed_css_comments_are_rejected(): void
+    {
+        $compiler = app(DashboardButtonStyleCompiler::class);
+        foreach ([
+            '.cta-button-01:hover::before { /* unfinished transform:translateX(100%); }',
+            '.cta-button-01:hover::before { transform: translateX(100%); } */',
+        ] as $css) {
+            try {
+                $compiler->parse('cta-button-01', $css);
+                $this->fail('Malformed CSS comment must be rejected');
+            } catch (ValidationException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
     public function test_css_pseudo_selectors_cannot_escape_widget_scope_or_load_external_content(): void
     {
         $compiler = app(DashboardButtonStyleCompiler::class);

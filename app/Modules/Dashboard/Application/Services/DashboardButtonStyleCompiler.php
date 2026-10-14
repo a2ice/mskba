@@ -2,6 +2,7 @@
 
 namespace App\Modules\Dashboard\Application\Services;
 
+use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +32,21 @@ final class DashboardButtonStyleCompiler
             $this->invalid('Укажи один CSS-класс и правила для него (до 3000 символов).');
         }
 
+        // CSS comments are valid inside rule bodies (including before a
+        // declaration). Strip them before the strict property parser; only
+        // validated declarations are emitted by compile().
+        $css = preg_replace('~/\*.*?\*/~s', '', $css);
+        if ($css === null || str_contains($css, '/*') || str_contains($css, '*/')) {
+            $this->invalid('Некорректный CSS-комментарий.');
+        }
+
+        // Pasted CSS may use the mathematical minus symbol in a negative
+        // length/angle. Normalize it; the existing value allowlist still
+        // rejects unsupported properties, units and functions.
+        $css = preg_replace('/\x{2212}(?=[0-9])/u', '-', $css);
+        if ($css === null || trim($css) === '') {
+            $this->invalid('Добавь хотя бы одно CSS-правило.');
+        }
         $css = trim($css);
         $length = strlen($css);
         $offset = 0;
@@ -136,7 +152,7 @@ final class DashboardButtonStyleCompiler
         }, $rules));
     }
 
-    /** @param Collection<int, \App\Modules\Dashboard\Domain\Models\AccountDashboardWidget> $widgets */
+    /** @param Collection<int, AccountDashboardWidget> $widgets */
     public function cssForWidgets(Collection $widgets): string
     {
         $names = [];
