@@ -41,16 +41,34 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      vendor_bundle_needed: ${{ steps.composer_change.outputs.changed }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Composer changes in this dev push
+        id: composer_change
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="${{ github.event.before }}"
+          if git rev-parse --verify "$before^{commit}" >/dev/null 2>&1 \
+             && git diff --quiet "$before" HEAD -- composer.json composer.lock; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, sqlite3, pdo_sqlite, gd
+          extensions: mbstring, sqlite3, pdo_sqlite, gd, intl, zip
           coverage: none
           ini-values: short_open_tag=1
 
@@ -70,6 +88,25 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Archive tested PHP dependencies (Composer change only)
+        if: steps.composer_change.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p verified-php-dependencies
+          tar -czf verified-php-dependencies/vendor.tar.gz vendor
+          sha256sum verified-php-dependencies/vendor.tar.gz | cut -d ' ' -f 1 > verified-php-dependencies/vendor.sha256
+          cp composer.lock verified-php-dependencies/composer.lock
+
+      - name: Upload tested PHP dependencies
+        if: steps.composer_change.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-verified-php-dependencies
+          path: verified-php-dependencies/
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Prepare application
         run: |
@@ -147,6 +184,24 @@ jobs:
           name: dev-vite-build
           path: staged-build
 
+      - name: Download tested PHP dependencies
+        if: needs.test.outputs.vendor_bundle_needed == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: dev-verified-php-dependencies
+          path: verified-php-dependencies
+
+      - name: Stage tested PHP dependencies on development server
+        if: needs.test.outputs.vendor_bundle_needed == 'true'
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_SERVER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEV_SERVER_SSH_KEY }}
+          source: 'verified-php-dependencies/*'
+          target: '/home/deploy/mskba-dev-vendor/${{ github.sha }}'
+          strip_components: 1
+
       - name: Stage built assets on development server
         uses: appleboy/scp-action@v1
         with:
@@ -161,11 +216,12 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           VERIFIED_SHA: ${{ github.sha }}
+          VENDOR_BUNDLE_NEEDED: ${{ needs.test.outputs.vendor_bundle_needed }}
         with:
           host: ${{ secrets.DEV_SERVER_HOST }}
           username: deploy
           key: ${{ secrets.DEV_SERVER_SSH_KEY }}
-          envs: VERIFIED_SHA
+          envs: VERIFIED_SHA,VENDOR_BUNDLE_NEEDED
           command_timeout: 30m
           script: |
             set -euo pipefail
@@ -212,16 +268,60 @@ jobs:
             fi
             # No git clean: preserve server-only .env, storage and compose override.
             PREVIOUS_SHA="$(git rev-parse HEAD)"
+            # No dependency resolution or PHP builds take place on this low-RAM VDS.
+            # The CI-tested vendor tarball is used only for a verified Composer change.
+            COMPOSER_CHANGED=0
             if ! git diff --quiet "$PREVIOUS_SHA" "$VERIFIED_SHA" -- composer.json composer.lock; then
-              echo 'Composer dependency changes require a separate prepared release; refusing in-place install'
-              exit 1
+              COMPOSER_CHANGED=1
+              test "$VENDOR_BUNDLE_NEEDED" = 'true' || {
+                echo 'Composer changed, but this verified push has no tested vendor artifact'; exit 1;
+              }
+              VENDOR_STAGE="/home/deploy/mskba-dev-vendor/$VERIFIED_SHA"
+              test -f "$VENDOR_STAGE/vendor.tar.gz"
+              test -f "$VENDOR_STAGE/vendor.sha256"
+              test -f "$VENDOR_STAGE/composer.lock"
+              test "$(sha256sum "$VENDOR_STAGE/vendor.tar.gz" | cut -d ' ' -f 1)" = "$(cat "$VENDOR_STAGE/vendor.sha256")"
+              git show "$VERIFIED_SHA:composer.lock" | cmp - "$VENDOR_STAGE/composer.lock"
+              test ! -e "vendor.rollback.$VERIFIED_SHA"
+              test ! -e "vendor.prepared.$VERIFIED_SHA"
+              mkdir "vendor.prepared.$VERIFIED_SHA"
+              tar -xzf "$VENDOR_STAGE/vendor.tar.gz" --no-same-owner -C "vendor.prepared.$VERIFIED_SHA"
+              test -f "vendor.prepared.$VERIFIED_SHA/vendor/autoload.php"
             fi
+
+            ROLLBACK_ARMED=0
+            rollback_if_needed() {
+              code=$?
+              trap - EXIT
+              if [ "$code" -ne 0 ] && [ "$ROLLBACK_ARMED" -eq 1 ]; then
+                echo 'Deploy failed: restoring previous source and PHP dependencies'
+                if [ -d "vendor.rollback.$VERIFIED_SHA" ]; then
+                  if [ -e vendor ]; then mv vendor "vendor.failed.$VERIFIED_SHA"; fi
+                  mv "vendor.rollback.$VERIFIED_SHA" vendor
+                fi
+                git reset --hard "$PREVIOUS_SHA" || true
+                $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue || true
+              fi
+              exit "$code"
+            }
+            trap rollback_if_needed EXIT
+
             git reset --hard "$VERIFIED_SHA"
+            ROLLBACK_ARMED=1
+            if [ "$COMPOSER_CHANGED" -eq 1 ]; then
+              mv vendor "vendor.rollback.$VERIFIED_SHA"
+              mv "vendor.prepared.$VERIFIED_SHA/vendor" vendor
+              rmdir "vendor.prepared.$VERIFIED_SHA"
+            fi
             $COMPOSE config --quiet
             test -f public/build/manifest.json
             # This staging VDS has ~2 GiB RAM: never build PHP on the server.
             $COMPOSE up -d --no-build db redis
             test -f vendor/autoload.php || { echo 'Composer dependencies missing; stop before restarting'; exit 1; }
+            if [ "$COMPOSER_CHANGED" -eq 1 ]; then
+              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan package:discover --ansi
+              $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan filament:assets --no-interaction
+            fi
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan migrate --force --no-interaction
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan optimize:clear
             $COMPOSE run --rm -T --no-deps --user "$(id -u):$(id -g)" phpfpm php artisan db:seed --class='Database\Seeders\SuperadminSeeder' --force --no-interaction
@@ -255,6 +355,10 @@ jobs:
               exit 1
             fi
             rm -rf -- "$ASSET_STAGE"
+            if [ "$COMPOSER_CHANGED" -eq 1 ]; then
+              rm -rf -- "vendor.rollback.$VERIFIED_SHA" "$VENDOR_STAGE"
+            fi
+            ROLLBACK_ARMED=0
             echo 'Dev deployment completed with verified frontend assets; production untouched'
 
   ssh_smoke_dev:
