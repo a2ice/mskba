@@ -43,7 +43,7 @@ final class DashboardButtonStyleResource extends Resource
                         ->unique(ignoreRecord: true)->placeholder('bg-green')
                         ->helperText('Например: bg-green. Применяется в разделе «Действия» виджета.'),
                     CodeEditor::make('css_code')->label('CSS-правило')->language(Language::Css)
-                        ->required()->maxLength(3000)->columnSpanFull()
+                        ->required()->columnSpanFull()
                         ->default('.bg-green { background-color: green !important; }')
                         ->helperText('Один класс, разрешённые свойства цветов, рамок, отступов и типографики. Скрипты, url(), @import и произвольные селекторы запрещены.'),
                     Toggle::make('enabled')->label('Доступен для кнопок')->default(true),
