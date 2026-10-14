@@ -21,10 +21,24 @@ final class ConversationGroupPresenterTest extends TestCase
         ]);
 
         $groups = $presenter->groups($cards);
-        self::assertSame(['support', 'requests', 'direct', 'system'], array_column($groups, 'key'));
+        self::assertSame(['requests', 'support', 'direct', 'system'], array_column($groups, 'key'));
         self::assertSame([3, 3, 0, 4], array_column($groups, 'unread_count'));
-        self::assertSame(['support-2', 'support-1'], $groups[0]['items']->pluck('id')->all());
-        self::assertSame(['profile-5', 11], $groups[1]['items']->pluck('id')->all());
+        self::assertSame(['profile-5', 11], $groups[0]['items']->pluck('id')->all());
+        self::assertSame(['support-2', 'support-1'], $groups[1]['items']->pluck('id')->all());
         self::assertSame(6, array_sum(array_map(fn (array $group): int => $group['items']->count(), $groups)));
+    }
+
+    public function test_first_group_changes_with_newest_message_without_changing_unread_totals(): void
+    {
+        $presenter = new ConversationGroupPresenter();
+        $cards = collect([
+            ['id' => 'support-2', 'date' => CarbonImmutable::parse('2026-10-14 14:00:00'), 'unread_count' => 3],
+            ['id' => 'direct-7', 'date' => CarbonImmutable::parse('2026-10-14 15:00:00'), 'unread_count' => 0],
+            ['id' => 'system', 'date' => CarbonImmutable::parse('2026-10-14 13:00:00'), 'unread_count' => 1],
+        ]);
+        $groups = $presenter->groups($cards);
+        self::assertSame(['direct', 'support', 'system'], array_column($groups, 'key'));
+        self::assertSame([0, 3, 1], array_column($groups, 'unread_count'));
+        self::assertSame('direct-7', $groups[0]['items']->first()['id']);
     }
 }

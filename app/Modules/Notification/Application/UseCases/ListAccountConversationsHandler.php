@@ -66,17 +66,18 @@ final class ListAccountConversationsHandler
             $items = $notifications->get((int) $request->id, collect());
             $unread = $items->where('status', UserNotificationStatusEnum::NEW);
             $latestMessage = $request->messages->last();
-            $preview = $unread->first();
-            $date = $preview?->created_at
-                ?? $latestMessage?->created_at
-                ?? $items->first()?->created_at
-                ?? $request->updated_at;
+            $latestNotice = $items->first();
+            // An old unread notification must not hide a newer reply (sent or received).
+            $messageIsNewest = $latestMessage !== null && ($latestNotice === null
+                || $latestMessage->created_at->greaterThanOrEqualTo($latestNotice->created_at));
+            $date = $messageIsNewest ? $latestMessage->created_at
+                : ($latestNotice?->created_at ?? $request->updated_at);
 
             return [
                 'id' => $request->id,
                 'name' => 'Заявка в команду «'.$request->team->name.'»',
-                'preview' => $preview?->body ?? $latestMessage?->body
-                    ?? $items->first()?->body ?? 'Заявка отправлена.',
+                'preview' => $messageIsNewest ? $latestMessage->body
+                    : ($latestNotice?->body ?? 'Заявка отправлена.'),
                 'unread_count' => $unread->count(),
                 'date' => $date,
                 'status' => $request->status->label(),
@@ -113,7 +114,7 @@ final class ListAccountConversationsHandler
                 'name' => $name,
                 'preview' => $lastMessage ? $author.': '.$lastMessage->body : ($preview?->body ?? 'Личная переписка'),
                 'unread_count' => $unread->count(),
-                'date' => $preview?->created_at ?? $conversation->latestMessage?->created_at ?? $conversation->created_at,
+                'date' => $lastMessage?->created_at ?? $notices->first()?->created_at ?? $conversation->created_at,
                 'status' => null,
                 'url' => route('account.notifications.threads.direct', $conversation->id),
             ];

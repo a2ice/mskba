@@ -1,13 +1,17 @@
 @php
     $conversationGroups = app(\App\Modules\Notification\Presentation\Presenters\ConversationGroupPresenter::class)
         ->groups(collect($conversationCards));
+    $hasActiveConversation = collect($conversationCards)->contains(
+        fn (array $item): bool => (string) $item['id'] === (string) $activeConversationId
+    );
 @endphp
 @forelse ($conversationGroups as $group)
     @php
         $hasActive = $group['items']->contains(fn (array $item): bool => (string) $item['id'] === (string) $activeConversationId);
     @endphp
     <details class="app-messages__rail-group" data-conversation-group="{{ $group['key'] }}"
-             data-group-active="{{ $hasActive ? 'true' : 'false' }}" open>
+             data-group-active="{{ $hasActive ? 'true' : 'false' }}"
+             @if ($hasActive || (! $hasActiveConversation && $loop->first)) open @endif>
         <summary class="app-messages__rail-group-summary">
             <span class="app-messages__rail-group-label">{{ $group['label'] }} <span class="app-messages__group-count">{{ $group['items']->count() }}</span></span>
             @if ($group['unread_count'] > 0)

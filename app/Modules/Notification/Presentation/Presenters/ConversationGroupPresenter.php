@@ -39,7 +39,9 @@ final class ConversationGroupPresenter
             ];
         }
 
-        return $groups;
+        // The first group is the one with the newest activity, not a fixed
+        // category. Grouping does not alter the underlying conversation order.
+        return collect($groups)->sortByDesc(fn (array $group) => $group['items']->first()['date'])->values()->all();
     }
 
     private function keyFor(array $card): string

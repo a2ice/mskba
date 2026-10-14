@@ -230,6 +230,9 @@ final class SupportTicketsTest extends TestCase
             ->assertSee('data-conversation="support-'.$second->id.'"', false)
             ->assertSee('Непрочитанных сообщений в группе: 1');
         $this->assertSame(1, substr_count($page->getContent(), 'data-conversation-group="support"'));
+        preg_match_all('/<details class="app-messages__group"[^>]*>/', $page->getContent(), $details);
+        $this->assertCount(1, array_filter($details[0], fn (string $tag): bool => str_contains($tag, ' open')));
+        $this->assertStringContainsString(' open', $details[0][0]);
         $this->assertSame(2, SupportTicket::query()->count());
 
         $threadPage = $this->get(route('account.notifications.threads.support', $first))->assertOk()
@@ -237,6 +240,8 @@ final class SupportTicketsTest extends TestCase
             ->assertSee('data-rail-conversation="support-'.$first->id.'"', false)
             ->assertSee('data-rail-conversation="support-'.$second->id.'"', false);
         $this->assertSame(1, substr_count($threadPage->getContent(), 'data-conversation-group="support"'));
+        preg_match_all('/<details class="app-messages__rail-group"[^>]*>/', $threadPage->getContent(), $railDetails);
+        $this->assertCount(1, array_filter($railDetails[0], fn (string $tag): bool => str_contains($tag, ' open')));
         $rail = $this->getJson(route('account.notifications.rail', [
             'active' => 'support-'.$first->id,
         ]))->assertOk();

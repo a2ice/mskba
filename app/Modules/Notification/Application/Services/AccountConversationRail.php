@@ -31,7 +31,7 @@ final class AccountConversationRail
                 'name' => 'Система MSKBA',
                 'preview' => $preview->title.' — '.$preview->body,
                 'unread_count' => $system['unread_count'],
-                'date' => $preview->created_at,
+                'date' => $system['last']->created_at,
                 'status' => null,
                 'url' => route('account.notifications.threads.system'),
             ]);

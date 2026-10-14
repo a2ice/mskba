@@ -29,7 +29,7 @@
                         'name' => 'Система MSKBA',
                         'preview' => $preview->title.' — '.$preview->body,
                         'unread_count' => $systemConversation['unread_count'],
-                        'date' => $preview->created_at,
+                        'date' => $systemConversation['last']->created_at,
                         'status' => null,
                         'url' => route('account.notifications.threads.system'),
                     ]);
@@ -39,7 +39,7 @@
                     ->groups($conversationCards);
             @endphp
             @forelse ($conversationGroups as $group)
-                <details class="app-messages__group" data-conversation-group="{{ $group['key'] }}" open>
+                <details class="app-messages__group" data-conversation-group="{{ $group['key'] }}" @if ($loop->first) open @endif>
                     <summary class="app-messages__group-summary">
                         <span class="app-messages__group-label">{{ $group['label'] }} <span class="app-messages__group-count">{{ $group['items']->count() }}</span></span>
                         @if ($group['unread_count'] > 0)
