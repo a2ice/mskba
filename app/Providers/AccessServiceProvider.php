@@ -7,6 +7,8 @@ use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
+use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
+use App\Policies\DashboardButtonStylePolicy;
 use App\Policies\AccountDashboardWidgetPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -27,6 +29,7 @@ class AccessServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(AccountDashboardWidget::class, AccountDashboardWidgetPolicy::class);
+        Gate::policy(DashboardButtonStyle::class, DashboardButtonStylePolicy::class);
         Gate::define('access-admin-panel', fn (User $user): bool => $user->isAdmin());
         Gate::define(
             'manage-content',

@@ -10,6 +10,31 @@ use Illuminate\Validation\ValidationException;
 
 final class DashboardWidgetActions
 {
+    /** Preserve existing buttons when editing; create reasonable initial actions. */
+    public function defaults(string $kind, ?string $url = null, ?string $label = null): array
+    {
+        return match ($kind) {
+            'account_status' => [[
+                'label' => 'Подтвердить аккаунт', 'url' => '/account/confirmation',
+                'appearance' => 'secondary', 'visibility' => 'unconfirmed', 'classes' => [],
+            ]],
+            'getting_started' => [[
+                'label' => 'Мои роли', 'url' => '/account/roles',
+                'appearance' => 'secondary', 'visibility' => 'always', 'classes' => [],
+            ]],
+            'message_summary' => [[
+                'label' => 'Открыть сообщения', 'url' => '/account/notifications',
+                'appearance' => 'secondary', 'visibility' => 'always', 'classes' => [],
+            ]],
+            'advertisement', 'information' => filled($url) ? [[
+                'label' => $label ?: 'Подробнее', 'url' => $url,
+                'appearance' => $kind === 'advertisement' ? 'primary' : 'secondary',
+                'visibility' => 'always', 'classes' => [],
+            ]] : [],
+            default => [],
+        };
+    }
+
     public function validate(array $actions, string $kind): array
     {
         if (count($actions) > 12) {
@@ -57,11 +82,11 @@ final class DashboardWidgetActions
         return $result;
     }
 
-    public function forUser(AccountDashboardWidget $widget, User $user): array
+    public function forUser(AccountDashboardWidget $widget, User $user, ?array $registered = null): array
     {
         $user = $user->canonical();
         $state = $user->isBlocked() ? 'blocked' : ($user->isConfirmed() ? 'confirmed' : 'unconfirmed');
-        $registered = DashboardButtonStyle::query()->where('enabled', true)->pluck('class_name')->all();
+        $registered ??= DashboardButtonStyle::query()->where('enabled', true)->pluck('class_name')->all();
 
         $result = [];
         foreach ($widget->actions ?? [] as $action) {
