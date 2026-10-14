@@ -1,4 +1,6 @@
-@php($dashboardHtml = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetHtmlRenderer::class))
+@php
+    $dashboardHtml = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetHtmlRenderer::class);
+@endphp
 @forelse ($dashboardWidgets as $widget)
     <article class="panel app-dashboard-widget app-dashboard-widget--{{ $widget->size === 'full' ? 'full' : 'half' }}"
              data-dashboard-widget="{{ $widget->id }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}">
@@ -31,7 +33,9 @@
                 <a class="button secondary" href="{{ route('account.roles') }}">Мои роли</a>
                 @break
             @case('message_summary')
-                @php($messagesDefault = '<p>Непрочитанных сообщений и уведомлений: <strong>'.e($dashboardUnread).'</strong></p>')
+                @php
+                    $messagesDefault = '<p>Непрочитанных сообщений и уведомлений: <strong>'.e($dashboardUnread).'</strong></p>';
+                @endphp
                 <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body ?: $messagesDefault, ['unread_count' => $dashboardUnread]) !!}</div>
                 <a class="button secondary" href="{{ route('account.notifications') }}">Открыть сообщения</a>
                 @break
