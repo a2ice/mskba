@@ -37,6 +37,9 @@
                         srcdoc="{{ $document }}"></iframe>
                 @break
             @default
+                @if ($widget->kind === 'advertisement' && $widget->image_url)
+                    <img class="app-dashboard-widget__ad-image" src="{{ $widget->image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
+                @endif
                 @if ($widget->body)<p class="app-dashboard-widget__body">{{ $widget->body }}</p>@endif
                 @if ($widget->link_url)
                     <a class="button {{ $widget->kind === 'advertisement' ? 'primary' : 'secondary' }}"

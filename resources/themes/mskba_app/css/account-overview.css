@@ -62,3 +62,5 @@
  .app-dashboard-widget--full,.app-dashboard-admin__wide{grid-column:auto}
  .app-dashboard-widget{padding:18px}
 }
+
+.app-dashboard-widget__ad-image{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:12px;aspect-ratio:16/8}

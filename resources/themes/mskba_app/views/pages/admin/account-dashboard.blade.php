@@ -15,10 +15,13 @@
         @endif
         <details class="panel app-dashboard-admin__item" open>
             <summary><strong>Создать виджет</strong></summary>
-            @include('theme::pages.admin.partials.account-dashboard-widget-form', ['widget' => new \App\Modules\Dashboard\Domain\Models\AccountDashboardWidget([
-                'kind' => 'information', 'size' => 'half', 'sort_order' => 100, 'enabled' => true,
-                'can_hide' => true, 'contact_filter' => 'any', 'iframe_height' => 260,
-            ]), 'isNew' => true])
+            @php
+                $newWidget = new \App\Modules\Dashboard\Domain\Models\AccountDashboardWidget([
+                    'kind' => 'information', 'size' => 'half', 'sort_order' => 100, 'enabled' => true,
+                    'can_hide' => true, 'contact_filter' => 'any', 'iframe_height' => 260,
+                ]);
+            @endphp
+            @include('theme::pages.admin.partials.account-dashboard-widget-form', ['widget' => $newWidget, 'isNew' => true])
         </details>
         <h2>Размещённые виджеты ({{ $widgets->count() }})</h2>
         @foreach ($widgets as $widget)

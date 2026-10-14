@@ -12,6 +12,7 @@ return new class extends Migration {
             $table->string('title', 150);
             $table->text('body')->nullable();
             $table->string('link_url', 500)->nullable();
+            $table->string('image_url', 500)->nullable();
             $table->string('link_label', 100)->nullable();
             $table->longText('html_code')->nullable();
             $table->longText('css_code')->nullable();

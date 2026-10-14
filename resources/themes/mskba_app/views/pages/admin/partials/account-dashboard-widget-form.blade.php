@@ -31,6 +31,9 @@
         <label>Ссылка (HTTPS/HTTP)
             <input name="link_url" type="url" maxlength="500" value="{{ $widget->link_url }}" placeholder="https://example.com">
         </label>
+        <label>Изображение для рекламной карточки (HTTPS/HTTP)
+            <input name="image_url" type="url" maxlength="500" value="{{ $widget->image_url }}" placeholder="https://example.com/promo.jpg">
+        </label>
         <label>Текст кнопки
             <input name="link_label" maxlength="100" value="{{ $widget->link_label }}" placeholder="Подробнее">
         </label>

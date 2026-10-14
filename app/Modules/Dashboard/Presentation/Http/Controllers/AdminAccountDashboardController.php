@@ -67,6 +67,7 @@ final class AdminAccountDashboardController extends Controller
             'title' => ['required', 'string', 'max:150'],
             'body' => ['nullable', 'string', 'max:10000'],
             'link_url' => ['nullable', 'string', 'max:500', 'url:http,https'],
+            'image_url' => ['nullable', 'string', 'max:500', 'url:http,https'],
             'link_label' => ['nullable', 'string', 'max:100'],
             'html_code' => ['nullable', 'string', 'max:40000'],
             'css_code' => ['nullable', 'string', 'max:20000'],
