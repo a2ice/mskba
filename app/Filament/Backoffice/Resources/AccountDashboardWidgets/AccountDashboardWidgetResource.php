@@ -7,6 +7,8 @@ use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountD
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\ListAccountDashboardWidgets;
 use App\Modules\Dashboard\Application\Services\AccountDashboardService;
 use App\Modules\Dashboard\Application\Services\DashboardWidgetActions;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as BackofficePermission;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
 use App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
@@ -36,6 +38,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 final class AccountDashboardWidgetResource extends Resource
 {
@@ -61,6 +64,17 @@ final class AccountDashboardWidgetResource extends Resource
     private static function options(array $cases): array
     {
         return collect($cases)->mapWithKeys(fn ($role) => [$role->value => $role->label()])->all();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (! self::isSuperadmin()) {
+            $query->where('kind', '!=', 'custom_html');
+        }
+
+        return $query;
     }
 
     public static function form(Schema $schema): Schema
@@ -214,7 +228,15 @@ final class AccountDashboardWidgetResource extends Resource
 
     public static function assertSafeData(array &$data, ?AccountDashboardWidget $previous = null): void
     {
-        abort_unless(auth('web')->user()?->canonical()->isAdmin(), 403);
+        $actor = auth('web')->user();
+        $permission = $previous === null
+            ? BackofficePermission::BACKOFFICE_WIDGET_CREATE
+            : BackofficePermission::BACKOFFICE_WIDGET_EDIT;
+        $checker = app(BackofficePermissionManager::class);
+        abort_unless($actor
+            && $checker->allows($actor, BackofficePermission::BACKOFFICE_ACCESS)
+            && $checker->allows($actor, BackofficePermission::BACKOFFICE_WIDGET_VIEW)
+            && $checker->allows($actor, $permission), 403);
         abort_if(($data['kind'] ?? $previous?->kind) === 'custom_html' && ! self::isSuperadmin(), 403);
         abort_if($previous?->kind === 'custom_html' && ! self::isSuperadmin(), 403);
 

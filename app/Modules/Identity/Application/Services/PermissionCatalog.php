@@ -20,7 +20,8 @@ final class PermissionCatalog
 
         return [
             'creation' => ['label' => 'Создание', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::USER, 'permissions' => $global->filter(fn ($p) => str_ends_with($p->value, '.create'))->values()->all()],
-            'security' => ['label' => 'Администрирование пользователей', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::ADMIN, 'permissions' => $global->reject(fn ($p) => str_ends_with($p->value, '.create') || $p === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS)->values()->all()],
+            'security' => ['label' => 'Администрирование пользователей', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::ADMIN, 'permissions' => $global->reject(fn ($p) => str_ends_with($p->value, '.create') || $p === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS || $p->isBackoffice())->values()->all()],
+            'backoffice' => ['label' => 'Filament — доступ и разделы', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::USER, 'permissions' => UserOperationalPermissionEnum::backofficeCases()],
             'support' => ['label' => 'Техподдержка', 'scope' => 'user', 'min_role' => UserSystemRoleEnum::USER, 'permissions' => [UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS]],
             'team' => ['label' => 'Команды', 'scope' => 'team', 'permissions' => TeamPermissionEnum::cases()],
             'venue' => ['label' => 'Площадки', 'scope' => 'venue', 'permissions' => VenuePermissionEnum::cases()],
@@ -33,6 +34,6 @@ final class PermissionCatalog
     /** @return array<string, array{label:string, scope:string, permissions:array, min_role?:mixed}> */
     public function userGroups(): array
     {
-        return array_filter($this->groups(), fn ($group) => $group['scope'] === 'user');
+        return array_filter($this->groups(), fn ($group, $key) => $group['scope'] === 'user' && $key !== 'backoffice', ARRAY_FILTER_USE_BOTH);
     }
 }

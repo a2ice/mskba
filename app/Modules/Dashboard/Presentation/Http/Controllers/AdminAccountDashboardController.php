@@ -3,6 +3,8 @@ namespace App\Modules\Dashboard\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Dashboard\Application\Services\AccountDashboardService;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as BackofficePermission;
 use App\Modules\Dashboard\Application\Services\DashboardWidgetActions;
 use App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
@@ -22,7 +24,7 @@ final class AdminAccountDashboardController extends Controller
 {
     public function index(Request $request): Response
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeWidgetAction($request, BackofficePermission::BACKOFFICE_WIDGET_VIEW);
         abort_unless(app(ThemeResolver::class)->active() === 'mskba_app', 404);
         return ThemeResolver::page('admin.account-dashboard', [
             'widgets' => AccountDashboardWidget::query()->orderBy('sort_order')->orderBy('id')->get(),
@@ -36,7 +38,7 @@ final class AdminAccountDashboardController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeWidgetAction($request, BackofficePermission::BACKOFFICE_WIDGET_CREATE);
         $data = $this->validated($request);
         DB::transaction(fn () => AccountDashboardWidget::query()->create($data));
         $this->changed();
@@ -45,7 +47,8 @@ final class AdminAccountDashboardController extends Controller
 
     public function update(Request $request, AccountDashboardWidget $widget): RedirectResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeWidgetAction($request, BackofficePermission::BACKOFFICE_WIDGET_EDIT);
+        abort_unless($request->user()?->can('update', $widget), 403);
         $data = $this->validated($request, $widget);
         DB::transaction(fn () => $widget->update($data));
         $this->changed();
@@ -54,8 +57,8 @@ final class AdminAccountDashboardController extends Controller
 
     public function destroy(Request $request, AccountDashboardWidget $widget): RedirectResponse
     {
-        $this->authorizeAdmin($request);
-        abort_unless($this->isSuperadmin($request), 403);
+        $this->authorizeWidgetAction($request, BackofficePermission::BACKOFFICE_WIDGET_DELETE);
+        abort_unless($request->user()?->can('delete', $widget), 403);
         $widget->delete();
         $this->changed();
         return back()->with('status', 'Виджет удалён.');
@@ -146,9 +149,15 @@ final class AdminAccountDashboardController extends Controller
         return $data;
     }
 
-    private function authorizeAdmin(Request $request): void
+    private function authorizeWidgetAction(Request $request, BackofficePermission $permission): void
     {
-        abort_unless($request->user()?->canonical()->isAdmin(), 403);
+        $user = $request->user();
+        $checker = app(BackofficePermissionManager::class);
+
+        abort_unless($user && $user->canonical()->isAdmin()
+            && $checker->allows($user, BackofficePermission::BACKOFFICE_ACCESS)
+            && $checker->allows($user, BackofficePermission::BACKOFFICE_WIDGET_VIEW)
+            && $checker->allows($user, $permission), 403);
     }
 
     private function isSuperadmin(Request $request): bool

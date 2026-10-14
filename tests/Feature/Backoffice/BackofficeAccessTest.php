@@ -61,8 +61,9 @@ final class BackofficeAccessTest extends TestCase
             ->assertOk()->assertSee('Виджеты дашборда');
         $this->get('/backoffice/account-dashboard-widgets/'.$widget->id.'/edit')
             ->assertOk();
+        // Unauthorized custom_html records are excluded from the resource query.
         $this->get('/backoffice/account-dashboard-widgets/'.$custom->id.'/edit')
-            ->assertForbidden();
+            ->assertNotFound();
         // Filament's AuthenticateSession checks the current session identity.
         // Reset the test session before switching from admin to superadmin.
         $this->flushSession();
