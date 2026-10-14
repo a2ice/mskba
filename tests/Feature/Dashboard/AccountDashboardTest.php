@@ -191,4 +191,32 @@ final class AccountDashboardTest extends TestCase
             ->assertSee('Подтверди аккаунт, чтобы получить доступ');
     }
 
+
+    public function test_custom_corner_glow_is_scoped_to_one_widget_and_default_is_unchanged(): void
+    {
+        $user = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $widget = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $widget->update(['gradient_color' => '#17B9ED']);
+        $html = $this->actingAs($user)->getJson(route('account.dashboard.widgets'))->assertOk()->json('html');
+
+        $this->assertStringContainsString('--surface-glow: #17B9ED1e', $html);
+        $this->assertSame(1, substr_count($html, '--surface-glow:'));
+        $this->assertStringContainsString('data-dashboard-widget="1"', $html);
+        $this->assertSame('#17B9ED', $widget->fresh()->gradient_color);
+    }
+
+    public function test_invalid_custom_glow_is_rejected_through_legacy_admin_endpoint(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::SUPERADMIN, UserStatusEnum::CONFIRMED);
+        $widget = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $payload = $this->payload([
+            'kind' => 'getting_started',
+            'gradient_color' => 'red;--surface:transparent',
+            'link_url' => null,
+        ]);
+        $this->actingAs($admin)->put(route('admin.account-dashboard.widgets.update', $widget), $payload)
+            ->assertSessionHasErrors(['gradient_color']);
+        $this->assertNull($widget->fresh()->gradient_color);
+    }
+
 }

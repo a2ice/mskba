@@ -84,6 +84,7 @@ final class BackofficeAccessTest extends TestCase
                 'link_url' => 'https://example.org/catalog',
                 'link_label' => 'Перейти в магазин',
                 'image_url' => 'https://example.org/banner.jpg',
+                'gradient_color' => '#22CC88',
                 'sort_order' => 15,
                 'size' => 'half',
                 'enabled' => true,
@@ -100,6 +101,7 @@ final class BackofficeAccessTest extends TestCase
 
         $widget = AccountDashboardWidget::query()->where('title', 'Баскетбольный магазин')->firstOrFail();
         $this->assertSame('advertisement', $widget->kind);
+        $this->assertSame('#22CC88', $widget->gradient_color);
         $this->assertSame(['confirmed'], $widget->account_statuses);
         $this->assertSame([10, 11], $widget->include_user_ids);
         $this->assertSame([7], $widget->exclude_user_ids);
@@ -126,6 +128,31 @@ final class BackofficeAccessTest extends TestCase
         $this->assertStringContainsString('Готово!', $widget->status_confirmed_html);
         $this->assertStringContainsString('подтвердите аккаунт', $widget->status_unconfirmed_html);
         $this->assertStringContainsString('поддержку', $widget->status_blocked_html);
+    }
+
+
+    public function test_repair_migration_restores_historical_missing_image_column_and_is_idempotent(): void
+    {
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasColumn('account_dashboard_widgets', 'image_url'));
+
+        \Illuminate\Support\Facades\Schema::table('account_dashboard_widgets', function (\Illuminate\Database\Schema\Blueprint $table): void {
+            $table->dropColumn('image_url');
+        });
+        $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('account_dashboard_widgets', 'image_url'));
+
+        $migration = require database_path('migrations/2026_10_14_230000_repair_dashboard_widget_image_url_column.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasColumn('account_dashboard_widgets', 'image_url'));
+        $widget = AccountDashboardWidget::query()->create([
+            'kind' => 'advertisement', 'title' => 'Проверка изображения',
+            'image_url' => 'https://example.org/image.jpg',
+            'link_url' => 'https://example.org',
+            'enabled' => true, 'can_hide' => true, 'size' => 'half',
+            'contact_filter' => 'any', 'sort_order' => 20,
+        ]);
+        $this->assertSame('https://example.org/image.jpg', $widget->fresh()->image_url);
     }
 
 }
