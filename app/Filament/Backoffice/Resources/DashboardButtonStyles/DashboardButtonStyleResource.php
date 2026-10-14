@@ -47,7 +47,7 @@ final class DashboardButtonStyleResource extends Resource
                     CodeEditor::make('css_code')->label('CSS-правило')->language(Language::Css)
                         ->required()->columnSpanFull()
                         ->default('.bg-green { background-color: green !important; }')
-                        ->helperText('Один класс, разрешённые свойства цветов, рамок, отступов и типографики. Скрипты, url(), @import и произвольные селекторы запрещены.'),
+                        ->helperText('Допускаются несколько правил одного класса: .bg-green, .bg-green:hover, .bg-green::before, .bg-green:hover::after. Для декоративных псевдоэлементов доступны content: "", position: absolute, размеры и координаты. Глобальные селекторы, url() и @import запрещены.'),
                     Toggle::make('enabled')->label('Доступен для кнопок')->default(true),
                 ]),
         ]);
