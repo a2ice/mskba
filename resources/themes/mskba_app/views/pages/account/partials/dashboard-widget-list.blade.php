@@ -65,9 +65,13 @@
                 @if ($widget->body)
                     <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body) !!}</div>
                 @endif
-                @if ($widget->link_url)
+                @if ($widget->link_url && \App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule::isValid($widget->link_url))
+                    @php
+                        $widgetExternalLink = ! str_starts_with($widget->link_url, '/');
+                    @endphp
                     <a class="button {{ $widget->kind === 'advertisement' ? 'primary' : 'secondary' }}"
-                       href="{{ $widget->link_url }}" target="_blank"
+                       href="{{ $widget->link_url }}"
+                       @if ($widgetExternalLink) target="_blank" @endif
                        rel="{{ $widget->kind === 'advertisement' ? 'sponsored noopener noreferrer' : 'noopener noreferrer' }}">
                         {{ $widget->link_label ?: 'Подробнее' }}
                     </a>

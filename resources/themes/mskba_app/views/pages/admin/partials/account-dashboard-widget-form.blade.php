@@ -42,8 +42,8 @@
                 </label>
             @endforeach
         @endif
-        <label>Ссылка (HTTPS/HTTP)
-            <input name="link_url" type="url" maxlength="500" value="{{ $widget->link_url }}" placeholder="https://example.com">
+        <label>Ссылка (внутренняя /... или внешняя HTTPS/HTTP)
+            <input name="link_url" type="text" maxlength="500" value="{{ $widget->link_url }}" placeholder="/partners или https://example.com">
         </label>
         <label>Изображение для рекламной карточки (HTTPS/HTTP)
             <input name="image_url" type="url" maxlength="500" value="{{ $widget->image_url }}" placeholder="https://example.com/promo.jpg">

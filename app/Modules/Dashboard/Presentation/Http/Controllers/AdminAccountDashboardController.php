@@ -3,6 +3,7 @@ namespace App\Modules\Dashboard\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Dashboard\Application\Services\AccountDashboardService;
+use App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardChangedBroadcast;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
@@ -69,7 +70,7 @@ final class AdminAccountDashboardController extends Controller
             'status_confirmed_html' => ['nullable', 'string', 'max:10000'],
             'status_unconfirmed_html' => ['nullable', 'string', 'max:10000'],
             'status_blocked_html' => ['nullable', 'string', 'max:10000'],
-            'link_url' => ['nullable', 'string', 'max:500', 'url:http,https'],
+            'link_url' => ['nullable', 'string', 'max:500', new DashboardWidgetLinkRule()],
             'image_url' => ['nullable', 'string', 'max:500', 'url:http,https'],
             'link_label' => ['nullable', 'string', 'max:100'],
             'html_code' => ['nullable', 'string', 'max:40000'],

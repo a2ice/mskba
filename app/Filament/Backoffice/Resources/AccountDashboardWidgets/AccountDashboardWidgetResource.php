@@ -6,6 +6,7 @@ use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\CreateAccoun
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountDashboardWidget;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\ListAccountDashboardWidgets;
 use App\Modules\Dashboard\Application\Services\AccountDashboardService;
+use App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Identity\Domain\Enums\UserParticipationRoleEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -92,9 +93,10 @@ final class AccountDashboardWidgetResource extends Resource
                                     ->language(Language::Html)
                                     ->helperText('По умолчанию: Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.'),
                             ]),
-                        TextInput::make('link_url')->label('Ссылка')->url()->rule('url:http,https')->maxLength(500)
+                        TextInput::make('link_url')->label('Ссылка')->rule(new DashboardWidgetLinkRule())->maxLength(500)
                             ->required(fn (Get $get): bool => $get('kind') === 'advertisement')
-                            ->helperText('HTTPS предпочтительнее. Реклама обязательно содержит ссылку.')
+                            ->placeholder('/partners или https://mskba.ru/partners')
+                            ->helperText('Внутренняя ссылка начинается с /, например /partners. Внешняя — полный HTTPS/HTTP адрес. Реклама обязательно содержит ссылку.')
                             ->visible(fn (Get $get): bool => in_array($get('kind'), ['information', 'advertisement'], true)),
                         TextInput::make('link_label')->label('Текст кнопки')->maxLength(100)
                             ->visible(fn (Get $get): bool => in_array($get('kind'), ['information', 'advertisement'], true)),
@@ -178,6 +180,13 @@ final class AccountDashboardWidgetResource extends Resource
 
         if (($data['kind'] ?? null) === 'advertisement' && blank($data['link_url'] ?? null)) {
             throw \Illuminate\Validation\ValidationException::withMessages(['data.link_url' => 'Для рекламы нужна ссылка.']);
+        }
+
+        if (filled($data['link_url'] ?? null)
+            && ! DashboardWidgetLinkRule::isValid((string) $data['link_url'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'data.link_url' => 'Допустимы только внутренние ссылки /... или внешние HTTPS/HTTP адреса.',
+            ]);
         }
 
         if (filled($data['gradient_color'] ?? null)
