@@ -5,17 +5,90 @@ namespace App\Filament\Backoffice\Resources\BackofficeUsers\Pages;
 use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
-use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
-use Illuminate\Support\Facades\DB;
+use App\Modules\Identity\Application\UseCases\AdminUpdateUserSystemRoleHandler;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
 use App\Modules\Identity\Domain\Models\User;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class EditBackofficeUser extends EditRecord
 {
     protected static string $resource = BackofficeUserResource::class;
+
+    /** Role changes intentionally have their own save operation. Changing role
+     * defaults must not accidentally persist stale permission checkboxes. */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('changeSystemRole')
+                ->label('Изменить системную роль')
+                ->icon('heroicon-o-user-circle')
+                ->visible(fn (): bool => auth('web')->user()?->can(
+                    'manage-user-system-role', $this->getRecord(),
+                ) ?? false)
+                ->modalHeading('Назначение системной роли')
+                ->modalDescription('Можно назначить только роль ниже собственной. Роль «Пользователь» снимает административную роль. Глобальные права сохраняются отдельно.')
+                ->modalSubmitActionLabel('Сохранить роль')
+                ->fillForm(fn (): array => [
+                    'new_system_role' => $this->getRecord()->system_role->value,
+                ])
+                ->schema([
+                    Select::make('new_system_role')
+                        ->label('Новая системная роль')
+                        ->options(function (): array {
+                            $actorRole = auth('web')->user()?->canonical()->system_role;
+                            if ($actorRole === null) {
+                                return [];
+                            }
+
+                            $roles = [];
+                            foreach (UserSystemRoleEnum::cases() as $role) {
+                                // A service/system account must never be assigned
+                                // accidentally through the human user editor.
+                                if ($role !== UserSystemRoleEnum::SUPERADMIN
+                                    && $role !== UserSystemRoleEnum::SYSTEM
+                                    && $role->numericValue() < $actorRole->numericValue()) {
+                                    $roles[$role->value] = $role->label();
+                                }
+                            }
+
+                            return $roles;
+                        })
+                        ->native(false)
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth('web')->user()?->canonical();
+                    $target = $this->getRecord();
+                    abort_unless($actor !== null && $actor->can('manage-user-system-role', $target), 403);
+
+                    $role = UserSystemRoleEnum::tryFrom((string) ($data['new_system_role'] ?? ''));
+                    if ($role === null
+                        || in_array($role, [
+                            UserSystemRoleEnum::SUPERADMIN,
+                            UserSystemRoleEnum::SYSTEM,
+                        ], true)
+                        || $role->numericValue() >= $actor->system_role->numericValue()) {
+                        throw ValidationException::withMessages([
+                            'new_system_role' => 'Недопустимая системная роль.',
+                        ]);
+                    }
+
+                    // Reuse the existing production use case to preserve role
+                    // hierarchy, history grants, revocations and audit events.
+                    app(AdminUpdateUserSystemRoleHandler::class)
+                        ->handle($actor, $target->id, $role);
+
+                    // Reload effective defaults after changing the user's role.
+                    $this->redirect(BackofficeUserResource::getUrl('edit', ['record' => $target]));
+                }),
+        ];
+    }
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
