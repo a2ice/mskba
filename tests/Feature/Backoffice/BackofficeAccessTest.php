@@ -57,6 +57,9 @@ final class BackofficeAccessTest extends TestCase
             ->assertOk();
         $this->get('/backoffice/account-dashboard-widgets/'.$custom->id.'/edit')
             ->assertForbidden();
+        // Filament's AuthenticateSession checks the current session identity.
+        // Reset the test session before switching from admin to superadmin.
+        $this->flushSession();
         $this->actingAs($super)
             ->get('/backoffice/account-dashboard-widgets/'.$custom->id.'/edit')
             ->assertOk();
