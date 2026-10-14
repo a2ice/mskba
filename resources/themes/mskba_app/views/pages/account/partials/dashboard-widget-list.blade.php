@@ -1,3 +1,4 @@
+@php($dashboardHtml = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetHtmlRenderer::class))
 @forelse ($dashboardWidgets as $widget)
     <article class="panel app-dashboard-widget app-dashboard-widget--{{ $widget->size === 'full' ? 'full' : 'half' }}"
              data-dashboard-widget="{{ $widget->id }}" data-widget-can-hide="{{ $widget->can_hide ? '1' : '0' }}">
@@ -10,23 +11,28 @@
                 <div class="app-account-overview__status-top">
                     <span class="app-account-overview__status-label {{ $dashboardUser->isConfirmed() ? 'app-account-overview__status-label--confirmed' : '' }}">{{ $dashboardUser->status->label() }}</span>
                 </div>
+                @php
+                    $statusField = $dashboardUser->isConfirmed() ? 'status_confirmed_html' : ($dashboardUser->isBlocked() ? 'status_blocked_html' : 'status_unconfirmed_html');
+                    $statusDefault = match ($statusField) {
+                        'status_confirmed_html' => '<p>Аккаунт подтверждён. Теперь доступны возможности портала, для которых требуется подтверждение аккаунта.</p>',
+                        'status_blocked_html' => '<p>Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.</p>',
+                        default => '<p>Подтверди аккаунт, чтобы получить доступ ко всем возможностям портала.</p>',
+                    };
+                @endphp
+                <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->{$statusField} ?: $statusDefault) !!}</div>
                 @if (! $dashboardUser->isConfirmed() && ! $dashboardUser->isBlocked())
-                    <p>Подтверди аккаунт, чтобы получить доступ ко всем возможностям портала.</p>
                     <a class="button secondary app-account-overview__confirmation-action" href="{{ route('account.confirmation') }}">
                         <span class="app-account-overview__confirmation-dot" aria-hidden="true"></span>Подтвердить аккаунт
                     </a>
-                @elseif ($dashboardUser->isConfirmed())
-                    <p>Аккаунт подтверждён. Теперь доступны возможности портала, для которых требуется подтверждение аккаунта.</p>
-                @else
-                    <p>Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.</p>
                 @endif
                 @break
             @case('getting_started')
-                <p>Добавь роли участия, следи за играми и площадками, общайся с другими участниками MSKBA.</p>
+                <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body ?: '<p>Добавь роли участия, следи за играми и площадками, общайся с другими участниками MSKBA.</p>') !!}</div>
                 <a class="button secondary" href="{{ route('account.roles') }}">Мои роли</a>
                 @break
             @case('message_summary')
-                <p>Непрочитанных сообщений и уведомлений: <strong>{{ $dashboardUnread }}</strong></p>
+                @php($messagesDefault = '<p>Непрочитанных сообщений и уведомлений: <strong>'.e($dashboardUnread).'</strong></p>')
+                <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body ?: $messagesDefault, ['unread_count' => $dashboardUnread]) !!}</div>
                 <a class="button secondary" href="{{ route('account.notifications') }}">Открыть сообщения</a>
                 @break
             @case('custom_html')
@@ -44,7 +50,9 @@
                 @if ($widget->kind === 'advertisement' && $widget->image_url)
                     <img class="app-dashboard-widget__ad-image" src="{{ $widget->image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">
                 @endif
-                @if ($widget->body)<p class="app-dashboard-widget__body">{{ $widget->body }}</p>@endif
+                @if ($widget->body)
+                    <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body) !!}</div>
+                @endif
                 @if ($widget->link_url)
                     <a class="button {{ $widget->kind === 'advertisement' ? 'primary' : 'secondary' }}"
                        href="{{ $widget->link_url }}" target="_blank"

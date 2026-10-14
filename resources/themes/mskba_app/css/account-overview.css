@@ -67,3 +67,14 @@
 
 .app-account-intro .app-dashboard-admin__shortcut{margin-top:8px}
 .app-dashboard-admin__shortcut a{font-size:13px;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+
+/* Safe admin-authored HTML content: typeset within the widget only. */
+.app-dashboard-widget__richtext{width:100%;min-width:0;color:var(--muted);font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.app-dashboard-widget__richtext :is(p,ul,ol,blockquote){margin:0 0 10px}
+.app-dashboard-widget__richtext :is(p,ul,ol,blockquote):last-child{margin-bottom:0}
+.app-dashboard-widget__richtext :is(ul,ol){padding-inline-start:24px}
+.app-dashboard-widget__richtext li+li{margin-top:5px}
+.app-dashboard-widget__richtext :is(strong,b){color:var(--text);font-weight:700}
+.app-dashboard-widget__richtext :is(a:not(.button)){color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.app-dashboard-widget__richtext a.button{display:inline-flex;align-items:center;margin-top:8px}
+.app-dashboard-widget__richtext blockquote{padding-inline-start:12px;border-inline-start:2px solid var(--accent)}
