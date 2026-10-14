@@ -212,4 +212,70 @@ final class SupportTicketsTest extends TestCase
             'body' => 'Позднее сообщение',
         ])->assertForbidden();
     }
+    public function test_support_conversations_are_visually_grouped_without_merging_tickets(): void
+    {
+        $customer = $this->user();
+        $agent = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $first = $this->createTicket($customer);
+        $second = $this->createTicket($customer);
+
+        $this->actingAs($agent)->postJson(route('account.notifications.threads.support.messages', $second), [
+            'body' => 'Ответ по второму обращению',
+        ])->assertCreated();
+        $this->actingAs($customer);
+        $page = $this->get(route('account.notifications'))->assertOk()
+            ->assertSee('data-conversation-group="support"', false)
+            ->assertSee('Техподдержка')
+            ->assertSee('data-conversation="support-'.$first->id.'"', false)
+            ->assertSee('data-conversation="support-'.$second->id.'"', false)
+            ->assertSee('Непрочитанных сообщений в группе: 1');
+        $this->assertSame(1, substr_count($page->getContent(), 'data-conversation-group="support"'));
+        $this->assertSame(2, SupportTicket::query()->count());
+
+        $threadPage = $this->get(route('account.notifications.threads.support', $first))->assertOk()
+            ->assertSee('data-group-active="true"', false)
+            ->assertSee('data-rail-conversation="support-'.$first->id.'"', false)
+            ->assertSee('data-rail-conversation="support-'.$second->id.'"', false);
+        $this->assertSame(1, substr_count($threadPage->getContent(), 'data-conversation-group="support"'));
+        $rail = $this->getJson(route('account.notifications.rail', [
+            'active' => 'support-'.$first->id,
+        ]))->assertOk();
+        $this->assertStringContainsString('data-conversation-group="support"', $rail->json('html'));
+        $this->assertStringContainsString('data-group-active="true"', $rail->json('html'));
+    }
+
+    public function test_faq_source_is_a_clickable_internal_link_in_support_history_for_both_sides(): void
+    {
+        $customer = $this->user();
+        $agent = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($customer)->postJson(route('faq.questions.store'), [
+            'topic' => 'account',
+            'source_path' => '/account',
+            'message' => 'Помогите изменить данные моего аккаунта',
+        ])->assertCreated();
+        $ticket = SupportTicket::query()->latest('id')->firstOrFail();
+        $link = 'href="/account" target="_blank" rel="noopener noreferrer"';
+
+        $this->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()->assertSee($link, false)->assertSee('Помогите изменить данные моего аккаунта');
+        $this->getJson(route('account.notifications.threads.support.history', $ticket))
+            ->assertOk()->assertSee($link, false);
+        $this->actingAs($agent)->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()->assertSee($link, false);
+
+        // The preview shows the question, not a raw internal path.
+        $this->actingAs($customer)->get(route('account.notifications'))
+            ->assertOk()->assertSee('Помогите изменить данные моего аккаунта')
+            ->assertDontSee('Страница обращения: /account');
+
+        // Protocol-relative external URLs are never promoted to clickable links.
+        $this->actingAs($customer)->post(route('account.notifications.support.store'), [
+            'subject' => 'Проверка ссылки',
+            'body' => "Страница обращения: //example.com\\n\\nОбычный текст",
+        ])->assertRedirect();
+        $other = SupportTicket::query()->latest('id')->firstOrFail();
+        $this->get(route('account.notifications.threads.support', $other))
+            ->assertOk()->assertDontSee('href="//example.com"', false);
+    }
+
 }
