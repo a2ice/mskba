@@ -107,7 +107,7 @@ final class AccountDashboardTest extends TestCase
         ]))->assertForbidden();
 
         $this->actingAs($admin)->post(route('admin.account-dashboard.widgets.store'), $this->payload([
-            'kind' => 'custom_html', 'link_url' => null,
+            'kind' => 'custom_html', 'link_url' => null, 'account_statuses' => [],
             'title' => 'Промо HTML',
             'html_code' => '<div id="promo">Индивидуальная реклама</div>',
             'css_code' => '#promo{color:orange}',
@@ -126,8 +126,10 @@ final class AccountDashboardTest extends TestCase
         $admin = $this->user(UserSystemRoleEnum::SUPERADMIN, UserStatusEnum::CONFIRMED);
         $this->actingAs($admin)->post(route('admin.account-dashboard.widgets.store'), $this->payload([
             'link_url' => 'javascript:alert(1)',
+        ]))->assertSessionHasErrors(['link_url']);
+        $this->post(route('admin.account-dashboard.widgets.store'), $this->payload([
             'include_user_ids' => '1, 2, invalid',
-        ]))->assertSessionHasErrors(['link_url', 'include_user_ids']);
+        ]))->assertSessionHasErrors(['include_user_ids']);
         $this->assertSame(0, AccountDashboardWidget::query()->where('kind', 'advertisement')->count());
     }
 }
