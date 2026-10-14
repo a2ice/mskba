@@ -1,0 +1,152 @@
+<?php
+
+namespace Tests\Feature\Backoffice;
+
+use App\Filament\Backoffice\Resources\BackofficeUsers\Pages\EditBackofficeUser;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Application\Services\GlobalOperationalPermissionManager;
+use App\Modules\Identity\Application\Services\UserOperationalPermissionChecker;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Identity\Domain\Models\UserOperationalPermission;
+use Filament\Facades\Filament;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+final class UnifiedPermissionsCenterTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function user(UserSystemRoleEnum $role = UserSystemRoleEnum::USER): User
+    {
+        $user = User::factory()->create([
+            'status' => UserStatusEnum::CONFIRMED, 'system_role' => $role,
+        ]);
+        $user->createProfile([]);
+
+        return $user;
+    }
+
+    public function test_superadmin_can_manage_creation_support_and_filament_without_changing_system_role(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user();
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $this->get('/backoffice/backoffice-users')->assertOk();
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm([
+                'creation_permissions' => [
+                    Permission::CREATE_TEAM->value,
+                    Permission::CREATE_TOURNAMENT->value,
+                ],
+                'privileged_permissions' => [Permission::HANDLE_SUPPORT_TICKETS->value],
+                'backoffice_permissions' => [
+                    Permission::BACKOFFICE_ACCESS->value,
+                    Permission::BACKOFFICE_WIDGET_VIEW->value,
+                ],
+            ])
+            ->call('save')->assertHasNoFormErrors();
+
+        $checker = app(UserOperationalPermissionChecker::class);
+        $this->assertTrue($checker->allows($target, Permission::CREATE_TOURNAMENT));
+        $this->assertTrue($checker->allows($target, Permission::HANDLE_SUPPORT_TICKETS));
+        $this->assertTrue($checker->allows($target, Permission::BACKOFFICE_ACCESS));
+        $this->assertFalse($checker->allows($target, Permission::CREATE_COORDINATION));
+        $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
+    }
+
+    public function test_admin_can_manage_creation_for_lower_role_without_granting_sensitive_or_filament_permissions(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::EDITOR);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $this->get('/backoffice/backoffice-users')->assertOk();
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->fillForm([
+                'creation_permissions' => [Permission::CREATE_EVENT->value],
+                // These fields are not visible to admin. A forged Livewire
+                // request still must not grant them.
+                'privileged_permissions' => [Permission::HANDLE_SUPPORT_TICKETS->value],
+                'backoffice_permissions' => [Permission::BACKOFFICE_ACCESS->value],
+            ])
+            ->call('save')->assertHasNoFormErrors();
+
+        $checker = app(UserOperationalPermissionChecker::class);
+        $this->assertTrue($checker->allows($target, Permission::CREATE_EVENT));
+        $this->assertFalse($checker->allows($target, Permission::HANDLE_SUPPORT_TICKETS));
+        $this->assertFalse($checker->allows($target, Permission::BACKOFFICE_ACCESS));
+    }
+
+    public function test_admin_cannot_manage_equal_higher_or_system_role_accounts(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $peer = $this->user(UserSystemRoleEnum::ADMIN);
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $editor = $this->user(UserSystemRoleEnum::EDITOR);
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $this->get('/backoffice/backoffice-users/'.$peer->id.'/edit')->assertNotFound();
+        $this->get('/backoffice/backoffice-users/'.$super->id.'/edit')->assertNotFound();
+        $this->get('/backoffice/backoffice-users/'.$editor->id.'/edit')->assertOk();
+    }
+
+    public function test_critical_permissions_cannot_be_granted_by_admin_via_service(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $manager = app(GlobalOperationalPermissionManager::class);
+        $this->expectException(AuthorizationException::class);
+        $manager->sync($admin, $target, [], [Permission::HANDLE_SUPPORT_TICKETS->value]);
+    }
+
+    public function test_entity_scoped_permissions_are_not_inserted_into_global_permission_rows(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::USER);
+        $manager = app(GlobalOperationalPermissionManager::class);
+        $manager->sync($super, $target, [Permission::CREATE_TEAM->value], []);
+
+        $keys = UserOperationalPermission::query()->where('user_id', $target->id)
+            ->pluck('permission')->map(fn (Permission $p): string => $p->value)->all();
+        $this->assertNotContains('team.settings.edit', $keys);
+        $this->assertNotContains('event.update', $keys);
+        $this->assertNotContains('view', $keys);
+    }
+
+    public function test_explicit_denials_and_grants_preserve_sources_and_unrelated_filament_rights(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::EDITOR);
+        app(BackofficePermissionManager::class)->sync($super, $target, [
+            Permission::BACKOFFICE_ACCESS->value,
+        ]);
+
+        app(GlobalOperationalPermissionManager::class)->sync($super, $target, [], []);
+        $sources = app(GlobalOperationalPermissionManager::class)->sources($target);
+        $this->assertSame('Явно запрещено', $sources[Permission::CREATE_TEAM->value]);
+        $this->assertTrue(app(BackofficePermissionManager::class)->allows($target, Permission::BACKOFFICE_ACCESS));
+
+        app(GlobalOperationalPermissionManager::class)->sync($super, $target, [
+            Permission::CREATE_TEAM->value,
+        ], []);
+        $sources = app(GlobalOperationalPermissionManager::class)->sources($target);
+        $this->assertSame('Выдано индивидуально', $sources[Permission::CREATE_TEAM->value]);
+    }
+
+    public function test_unconfirmed_admin_is_denied_permissions_editor(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $admin->update(['status' => UserStatusEnum::UNCONFIRMED]);
+        $this->assertFalse(app(GlobalOperationalPermissionManager::class)->mayManage($admin));
+    }
+}
