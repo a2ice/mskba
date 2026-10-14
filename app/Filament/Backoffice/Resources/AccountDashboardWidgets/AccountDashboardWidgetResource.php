@@ -71,7 +71,7 @@ final class AccountDashboardWidgetResource extends Resource
                             ->helperText('Функциональные карточки подключены к данным портала. Реклама и информация управляются контентом.'),
                         TextInput::make('title')->label('Название')->required()->maxLength(150),
                         CodeEditor::make('body')->label('HTML-содержимое')->language(Language::Html)
-                            ->maxLength(10000)->columnSpanFull()
+                            ->columnSpanFull()
                             ->helperText('Текст, <p>, <strong>, <ul>, <li>, ссылки и кнопки: <a href="/account/roles" class="button secondary">Мои роли</a>. Для счётчика сообщений: {{ unread_count }}. Пустое поле — стандартный текст.')
                             ->visible(fn (Get $get): bool => in_array($get('kind'), [
                                 'information', 'advertisement', 'getting_started', 'message_summary',
@@ -82,13 +82,13 @@ final class AccountDashboardWidgetResource extends Resource
                             ->visible(fn (Get $get): bool => $get('kind') === 'account_status')
                             ->schema([
                                 CodeEditor::make('status_confirmed_html')->label('Аккаунт подтверждён')
-                                    ->language(Language::Html)->maxLength(10000)
+                                    ->language(Language::Html)
                                     ->helperText('По умолчанию: Аккаунт подтверждён. Теперь доступны возможности портала, для которых требуется подтверждение аккаунта.'),
                                 CodeEditor::make('status_unconfirmed_html')->label('Аккаунт не подтверждён')
-                                    ->language(Language::Html)->maxLength(10000)
+                                    ->language(Language::Html)
                                     ->helperText('По умолчанию: Подтверди аккаунт, чтобы получить доступ ко всем возможностям портала.'),
                                 CodeEditor::make('status_blocked_html')->label('Аккаунт заблокирован')
-                                    ->language(Language::Html)->maxLength(10000)
+                                    ->language(Language::Html)
                                     ->helperText('По умолчанию: Аккаунт заблокирован. Если возникли вопросы, обратись в поддержку.'),
                             ]),
                         TextInput::make('link_url')->label('Ссылка')->url()->rule('url:http,https')->maxLength(500)
@@ -173,6 +173,12 @@ final class AccountDashboardWidgetResource extends Resource
 
         if (($data['kind'] ?? null) === 'advertisement' && blank($data['link_url'] ?? null)) {
             throw \Illuminate\Validation\ValidationException::withMessages(['data.link_url' => 'Для рекламы нужна ссылка.']);
+        }
+
+        foreach (['body', 'status_confirmed_html', 'status_unconfirmed_html', 'status_blocked_html'] as $field) {
+            if (mb_strlen((string) ($data[$field] ?? '')) > 10000) {
+                throw \Illuminate\Validation\ValidationException::withMessages(["data.$field" => 'Максимальная длина HTML — 10 000 символов.']);
+            }
         }
 
         foreach (['include_user_ids', 'exclude_user_ids'] as $key) {

@@ -151,7 +151,8 @@ final class AccountDashboardTest extends TestCase
             ->assertSee('<em>подтвердите аккаунт</em>', false)
             ->assertSee('Подтвердить аккаунт')
             ->assertDontSee('Доступ ограничен.');
-        $blocked = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::BLOCKED);
+        $blocked = $this->user();
+        $blocked->update(['status' => UserStatusEnum::BLOCKED]);
         $this->actingAs($blocked)->get(route('account'))->assertOk()
             ->assertSee('Доступ ограничен.')
             ->assertDontSee('<em>подтвердите аккаунт</em>', false);
