@@ -29,11 +29,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
 use Filament\Panel;
 
 #[Fillable(['username', 'password', 'password_updated_at', 'is_temporary_password', 'first_logged_in_at', 'personal_data_distribution_required_at', 'personal_data_distribution_setup_completed_at', 'status', 'system_role', 'registration_channel'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasName
 {
     /** @use HasFactory<UserFactory> */
     use Auditable, HasFactory, Notifiable, SoftDeletes;
@@ -289,6 +290,14 @@ class User extends Authenticatable implements FilamentUser
     public function hasSystemRole(UserSystemRoleEnum|string $role): bool
     {
         return $this->system_role === $role;
+    }
+
+    public function getFilamentName(): string
+    {
+        return trim(implode(' ', array_filter([
+            $this->profile?->first_name,
+            $this->profile?->last_name,
+        ]))) ?: (string) $this->username;
     }
 
     public function canAccessPanel(Panel $panel): bool
