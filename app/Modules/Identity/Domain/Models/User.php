@@ -9,6 +9,8 @@ use App\Modules\Identity\Domain\Enums\UserParticipationRoleStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserRegistrationChannelEnum;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
 use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Exceptions\UserCannotBeChangedException;
 use App\Modules\Identity\Domain\Exceptions\UserProfileAlreadyExistsException;
 use App\Modules\Identity\Domain\Models\Participation\PlayerObjectiveAssessment;
@@ -302,7 +304,10 @@ class User extends Authenticatable implements FilamentUser, HasName
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $panel->getId() === 'backoffice' && $this->canonical()->isAdmin();
+        return $panel->getId() === 'backoffice'
+            && app(BackofficePermissionManager::class)->allows(
+                $this, UserOperationalPermissionEnum::BACKOFFICE_ACCESS,
+            );
     }
 
     public function isAdmin(bool $isConfirmed = true): bool

@@ -7,6 +7,8 @@ use App\Filament\Backoffice\Resources\DashboardButtonStyles\Pages\EditDashboardB
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\Pages\ListDashboardButtonStyles;
 use App\Modules\Dashboard\Application\Services\DashboardButtonStyleCompiler;
 use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
+use App\Modules\Identity\Application\Services\BackofficePermissionManager;
+use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CodeEditor;
@@ -53,9 +55,12 @@ final class DashboardButtonStyleResource extends Resource
 
     public static function validateStyle(array &$data): void
     {
-        abort_unless(auth('web')->user()?->canonical()->hasSystemRole(
-            \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN
-        ) && auth('web')->user()?->canonical()->isConfirmed(), 403);
+        $user = auth('web')->user();
+        $checker = app(BackofficePermissionManager::class);
+        abort_unless($user
+            && $checker->allows($user, Permission::BACKOFFICE_ACCESS)
+            && $checker->allows($user, Permission::BACKOFFICE_STYLE_VIEW)
+            && $checker->allows($user, Permission::BACKOFFICE_STYLE_MANAGE), 403);
 
         app(DashboardButtonStyleCompiler::class)->parse(
             (string) ($data['class_name'] ?? ''), (string) ($data['css_code'] ?? ''),
