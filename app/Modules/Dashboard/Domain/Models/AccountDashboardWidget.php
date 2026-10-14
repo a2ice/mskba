@@ -2,6 +2,7 @@
 namespace App\Modules\Dashboard\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardChangedBroadcast;
 
 final class AccountDashboardWidget extends Model
@@ -12,7 +13,7 @@ final class AccountDashboardWidget extends Model
     {
         $broadcast = function (): void {
             try {
-                DashboardChangedBroadcast::dispatch();
+                DB::afterCommit(fn () => DashboardChangedBroadcast::dispatch());
             } catch (\Throwable $exception) {
                 report($exception);
             }
