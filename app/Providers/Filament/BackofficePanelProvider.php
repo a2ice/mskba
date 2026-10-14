@@ -2,6 +2,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\AccountDashboardWidgetResource;
+use App\Filament\Backoffice\Resources\BackofficeUsers\BackofficeUserResource;
 use App\Filament\Backoffice\Resources\DashboardButtonStyles\DashboardButtonStyleResource;
 use App\Http\Middleware\RedirectGuestsToPortalLogin;
 use Filament\Http\Middleware\Authenticate;
@@ -31,7 +32,7 @@ final class BackofficePanelProvider extends PanelProvider
             ->unsavedChangesAlerts()
             ->databaseTransactions()
             ->colors(['primary' => Color::Orange])
-            ->resources([AccountDashboardWidgetResource::class, DashboardButtonStyleResource::class])
+            ->resources([AccountDashboardWidgetResource::class, DashboardButtonStyleResource::class, BackofficeUserResource::class])
             ->pages([Dashboard::class])
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class,
