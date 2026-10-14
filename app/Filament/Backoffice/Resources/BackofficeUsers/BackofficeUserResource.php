@@ -14,6 +14,8 @@ use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -28,8 +30,8 @@ final class BackofficeUserResource extends Resource
     protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string { return 'Пользователи и права'; }
-    public static function getModelLabel(): string { return 'права пользователя'; }
-    public static function getPluralModelLabel(): string { return 'права пользователей'; }
+    public static function getModelLabel(): string { return 'пользователь'; }
+    public static function getPluralModelLabel(): string { return 'пользователи'; }
 
     private static function permissions(): BackofficePermissionManager
     {
@@ -97,6 +99,23 @@ final class BackofficeUserResource extends Resource
         };
 
         return $schema->components([
+            Tabs::make('Управление пользователем')
+                ->persistTabInQueryString()
+                ->tabs([
+                    Tab::make('Системная роль')
+                        ->icon('heroicon-o-user-circle')
+                        ->schema([
+                            Section::make('Системная роль пользователя')
+                                ->description('Роль определяет уровень системных полномочий. Для назначения или снятия роли используйте действие «Изменить системную роль» вверху страницы. Разрешены только роли ниже вашей.')
+                                ->schema([
+                                    Placeholder::make('current_system_role')
+                                        ->label('Текущая системная роль')
+                                        ->content(fn (?User $record): string => $record?->system_role->label() ?? '—'),
+                                ]),
+                        ]),
+                    Tab::make('Глобальные права')
+                        ->icon('heroicon-o-plus-circle')
+                        ->schema([
             Section::make('Глобальные права — создание')
                 ->description('Действуют на уровне портала. Значения по умолчанию и индивидуальные запреты сохраняются. Администратор вправе делегировать эти некритичные права только пользователю с меньшей системной ролью.')
                 ->schema([
@@ -105,6 +124,10 @@ final class BackofficeUserResource extends Resource
                         ->options($optionMap($global->creationPermissions()))
                         ->columns(2)->bulkToggleable(),
                 ]),
+                        ]),
+                    Tab::make('Администрирование')
+                        ->icon('heroicon-o-shield-check')
+                        ->schema([
             Section::make('Глобальные права — администрирование и техподдержка')
                 ->description('Критичные права. Назначать и отзывать может только superadmin. Право на проверку изменения подтверждённых данных доступно исключительно пользователю с ролью admin.')
                 ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
@@ -119,6 +142,10 @@ final class BackofficeUserResource extends Resource
                         ))
                         ->columns(1)->bulkToggleable(),
                 ]),
+                        ]),
+                    Tab::make('Filament')
+                        ->icon('heroicon-o-cog-6-tooth')
+                        ->schema([
             Section::make('Filament — административный интерфейс')
                 ->description('Вход в Filament и права на его ресурсы. Только superadmin может назначать эти разрешения. Доступ к исполняемым HTML/CSS/JS-виджетам по-прежнему только у superadmin.')
                 ->visible(fn (): bool => auth('web')->user()?->canonical()->system_role === UserSystemRoleEnum::SUPERADMIN)
@@ -128,6 +155,10 @@ final class BackofficeUserResource extends Resource
                         ->options($optionMap(Permission::backofficeCases()))
                         ->columns(2)->bulkToggleable(),
                 ]),
+                        ]),
+                    Tab::make('Права сущностей')
+                        ->icon('heroicon-o-building-office-2')
+                        ->schema([
             Section::make('Права внутри сущностей')
                 ->description('Команды, площадки, мероприятия, турниры и секции: доступ назначается участникам или сотрудникам в конкретной сущности. Полный набор принадлежит владельцу/создателю/администратору самой сущности и superadmin. Глобальные флажки выше не предоставляют управление всеми чужими объектами.')
                 ->schema([
@@ -135,6 +166,10 @@ final class BackofficeUserResource extends Resource
                         ->label('Отдельный контекст доступа')
                         ->content('Настройка разрешений команды, площадки или мероприятия остаётся привязана к соответствующей сущности. Подключение их просмотра здесь — следующий этап, без выдачи глобальных объектных прав.'),
                 ]),
+                        ]),
+                    Tab::make('Источники прав')
+                        ->icon('heroicon-o-information-circle')
+                        ->schema([
             Section::make('Источники глобальных прав')
                 ->description('Показывает, почему действует значение: правило системной роли, индивидуальная выдача или явный запрет.')
                 ->collapsed()
@@ -153,6 +188,9 @@ final class BackofficeUserResource extends Resource
                             ));
                         }),
                 ]),
+                        ]),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 
@@ -168,7 +206,7 @@ final class BackofficeUserResource extends Resource
             TextColumn::make('updated_at')->label('Изменён')->dateTime('d.m.Y H:i')->sortable(),
         ])
             ->defaultSort('id', 'desc')
-            ->recordActions([EditAction::make()->label('Права')]);
+            ->recordActions([EditAction::make()->label('Роли и права')]);
     }
 
     public static function getPages(): array
