@@ -34,6 +34,6 @@ final class PermissionCatalog
     /** @return array<string, array{label:string, scope:string, permissions:array, min_role?:mixed}> */
     public function userGroups(): array
     {
-        return array_filter($this->groups(), fn ($group) => $group['scope'] === 'user');
+        return array_filter($this->groups(), fn ($group, $key) => $group['scope'] === 'user' && $key !== 'backoffice', ARRAY_FILTER_USE_BOTH);
     }
 }

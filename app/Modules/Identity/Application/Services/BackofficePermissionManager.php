@@ -37,10 +37,6 @@ final class BackofficePermissionManager
         return array_values(array_map(
             fn (Permission $p): string => $p->value,
             array_filter(Permission::backofficeCases(), static function (Permission $p) use ($user, $snapshots): bool {
-                if ($user->isBlocked() || $user->trashed() || ! $user->isConfirmed()) {
-                    // Show configured/default selections, even if temporarily
-                    // inactive due to account status.
-                }
                 return ($snapshots->get($p->value)?->is_allowed)
                     ?? $p->defaultAllowedFor($user->system_role);
             })

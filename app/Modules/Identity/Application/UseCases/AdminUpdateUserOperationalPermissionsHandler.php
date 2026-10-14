@@ -43,8 +43,10 @@ final class AdminUpdateUserOperationalPermissionsHandler
                 // Legacy admins may manage ordinary operational rights, but must
                 // never grant or revoke Filament privileges, including by omitting
                 // fields from an HTML form.
-                if ($permission->isBackoffice()
-                    && $actor->system_role !== UserSystemRoleEnum::SUPERADMIN) {
+                if ($permission->isBackoffice()) {
+                    // Backoffice rights are managed ONLY through the dedicated
+                    // Filament form. Saving old permission forms must not
+                    // accidentally revoke a previous Filament grant.
                     continue;
                 }
                 $enabled = $allowed->has($permission->value);
