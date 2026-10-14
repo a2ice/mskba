@@ -19,10 +19,12 @@ use App\Modules\Venue\Infrastructure\Providers\VenueOwnershipServiceProvider;
 use App\Modules\VenueBooking\Infrastructure\Providers\VenueBookingServiceProvider;
 use App\Modules\Vk\Infrastructure\Providers\VkServiceProvider;
 use App\Providers\AccessServiceProvider;
+use App\Providers\Filament\BackofficePanelProvider;
 use App\Providers\AppServiceProvider;
 
 return [
     AppServiceProvider::class,
+    BackofficePanelProvider::class,
     AcquisitionServiceProvider::class,
     AiServiceProvider::class,
     AccessServiceProvider::class,
