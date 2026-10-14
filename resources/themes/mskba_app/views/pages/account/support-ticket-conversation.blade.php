@@ -22,8 +22,7 @@
             <div class="app-messages__history" data-chat-history data-next-before="{{ $nextBefore }}" role="log">
                 @foreach ($messages as $message)
                     @include('theme::pages.account.partials.chat-bubble', [
-                        'entry' => ['kind' => 'message', 'id' => 'message-'.$message->id,
-                            'text' => $message->body, 'at' => $message->created_at, 'sender' => $message->sender],
+                        'entry' => app(\App\Modules\Notification\Presentation\Presenters\SupportMessagePresenter::class)->present($message),
                     ])
                 @endforeach
             </div>

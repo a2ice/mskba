@@ -318,7 +318,16 @@ if (root) {
                 headers:{ Accept:'application/json','X-Requested-With':'XMLHttpRequest' } });
             if (!response.ok) return;
             const data = await response.json();
+            // A realtime refresh must not reopen groups the viewer collapsed.
+            const expanded = new Map([...railList.querySelectorAll('[data-conversation-group]')]
+                .map(group => [group.dataset.conversationGroup, group.open]));
             railList.innerHTML = data.html;
+            railList.querySelectorAll('[data-conversation-group]').forEach(group => {
+                if (group.dataset.groupActive === 'true') group.open = true;
+                else if (expanded.has(group.dataset.conversationGroup)) {
+                    group.open = expanded.get(group.dataset.conversationGroup);
+                }
+            });
         } catch (_error) { /* Retain the last authorized list until connectivity resumes. */ }
         finally {
             railBusy = false;

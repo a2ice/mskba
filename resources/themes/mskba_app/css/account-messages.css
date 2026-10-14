@@ -371,3 +371,31 @@
 .app-messages__char-count{display:block;font-size:11px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
 .app-messages__compose-footer>.app-messages__char-count{margin-right:auto;padding-left:6px}
 .app-messages__char-count[hidden]{display:none!important}
+
+/* Visual conversation groups; conversation ownership and notification scopes stay independent. */
+.app-messages__group{min-width:0;border:1px solid var(--line);border-radius:var(--radius-card);background:var(--surface)}
+.app-messages__group-summary,
+.app-messages__rail-group-summary{display:flex;align-items:center;gap:10px;min-width:0;cursor:pointer;list-style:none;color:var(--text)}
+.app-messages__group-summary::-webkit-details-marker,
+.app-messages__rail-group-summary::-webkit-details-marker{display:none}
+.app-messages__group-summary{padding:16px 18px;font-size:15px;font-weight:700}
+.app-messages__group[open]>.app-messages__group-summary{border-bottom:1px solid var(--line)}
+.app-messages__group-label,.app-messages__rail-group-label{flex:1 1 auto;min-width:0}
+.app-messages__group-count{display:inline-block;margin-left:5px;color:var(--muted);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.app-messages__group-items{display:grid;gap:10px;padding:12px}
+.app-messages__group-items>.app-messages__conversation{box-shadow:none}
+.app-messages__group-chevron{flex:0 0 9px;height:9px;width:9px;border-bottom:2px solid var(--muted);border-right:2px solid var(--muted);transform:rotate(45deg);transition:transform .15s}
+.app-messages__group:not([open])>.app-messages__group-summary .app-messages__group-chevron,
+.app-messages__rail-group:not([open])>.app-messages__rail-group-summary .app-messages__group-chevron{transform:rotate(-45deg)}
+.app-messages__rail-group{min-width:0;flex:none}
+.app-messages__rail-group-summary{padding:10px 10px 8px;font-size:12px;font-weight:700}
+.app-messages__rail-group-summary .app-messages__unread{height:19px;min-width:19px;font-size:11px}
+.app-messages__rail-group-items{display:grid;gap:4px;padding:0 0 8px 3px}
+.app-messages__rail-group[open]+.app-messages__rail-group{border-top:1px solid var(--line)}
+.app-messages__message-source{display:grid;gap:3px;font-size:12px;color:var(--muted);line-height:1.4}
+.app-messages__message-source a{color:var(--accent);text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+.app-messages__message-source a:hover{color:var(--text)}
+@media(max-width:680px){
+    .app-messages__group-summary{padding:13px 12px;font-size:14px}
+    .app-messages__group-items{padding:9px;gap:8px}
+}

@@ -35,8 +35,20 @@
                     ]);
                 }
                 $conversationCards = $conversationCards->sortByDesc('date');
+                $conversationGroups = app(\App\Modules\Notification\Presentation\Presenters\ConversationGroupPresenter::class)
+                    ->groups($conversationCards);
             @endphp
-            @forelse ($conversationCards as $conversation)
+            @forelse ($conversationGroups as $group)
+                <details class="app-messages__group" data-conversation-group="{{ $group['key'] }}" open>
+                    <summary class="app-messages__group-summary">
+                        <span class="app-messages__group-label">{{ $group['label'] }} <span class="app-messages__group-count">{{ $group['items']->count() }}</span></span>
+                        @if ($group['unread_count'] > 0)
+                            <span class="app-messages__unread" aria-label="Непрочитанных сообщений в группе: {{ $group['unread_count'] }}">{{ $group['unread_count'] > 99 ? '99+' : $group['unread_count'] }}</span>
+                        @endif
+                        <span class="app-messages__group-chevron" aria-hidden="true"></span>
+                    </summary>
+                    <div class="app-messages__group-items">
+            @foreach ($group['items'] as $conversation)
                 <a href="{{ $conversation['url'] }}"
                    class="app-messages__conversation {{ $conversation['unread_count'] > 0 ? 'is-unread' : '' }}"
                    data-conversation="{{ $conversation['id'] }}"
@@ -61,6 +73,9 @@
                         <svg aria-hidden="true"><use href="#chevron-down"/></svg>
                     </span>
                 </a>
+            @endforeach
+                    </div>
+                </details>
             @empty
                 <section class="panel app-messages__empty">
                     <h2>Сообщений пока нет</h2>

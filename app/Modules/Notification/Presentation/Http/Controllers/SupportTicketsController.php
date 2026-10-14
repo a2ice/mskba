@@ -18,6 +18,7 @@ use App\Modules\Notification\Domain\Models\RequestThread;
 use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Notification\Domain\Models\UserNotification;
 use App\Modules\Notification\Infrastructure\Broadcasting\ConversationChangedBroadcast;
+use App\Modules\Notification\Presentation\Presenters\SupportMessagePresenter;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -84,7 +85,8 @@ final class SupportTicketsController extends Controller
         ]);
     }
 
-    public function history(Request $request, SupportTicket $ticket, SupportTicketAccess $access): JsonResponse
+    public function history(Request $request, SupportTicket $ticket, SupportTicketAccess $access,
+        SupportMessagePresenter $presenter): JsonResponse
     {
         $viewer = $request->user()->canonical();
         $thread = $ticket->thread()->firstOrFail();
@@ -95,8 +97,7 @@ final class SupportTicketsController extends Controller
 
         return response()->json([
             'html' => $page['entries']->map(fn ($message) => view('theme::pages.account.partials.chat-bubble', [
-                'entry' => ['kind' => 'message', 'id' => 'message-'.$message->id,
-                    'text' => $message->body, 'at' => $message->created_at, 'sender' => $message->sender],
+                'entry' => $presenter->present($message),
                 'viewer' => $viewer,
             ])->render())->implode(''),
             'next_before' => $page['next_before'],

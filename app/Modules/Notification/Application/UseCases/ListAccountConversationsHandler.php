@@ -11,6 +11,7 @@ use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
 use App\Modules\Notification\Domain\Models\DirectConversation;
 use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Notification\Domain\Models\UserNotification;
+use App\Modules\Notification\Presentation\Presenters\SupportMessagePresenter;
 use App\Modules\Team\Application\Services\TeamManagementAccess;
 use App\Modules\Team\Domain\Enums\TeamInvitationStatusEnum;
 use App\Modules\Team\Domain\Enums\TeamPermissionEnum;
@@ -165,7 +166,8 @@ final class ListAccountConversationsHandler
             ->whereIn('payload->support_ticket_id', $tickets->pluck('id'))
             ->get(['id', 'payload'])
             ->groupBy(fn (UserNotification $notice) => (int) ($notice->payload['support_ticket_id'] ?? 0));
-        $supportConversations = $tickets->map(function (SupportTicket $ticket) use ($user, $supportUnread): array {
+        $supportMessagePresenter = app(SupportMessagePresenter::class);
+        $supportConversations = $tickets->map(function (SupportTicket $ticket) use ($user, $supportUnread, $supportMessagePresenter): array {
             $last = $ticket->thread?->latestMessage;
             $author = $last ? ((int) $last->sender_user_id === $user->id
                 ? 'Вы' : ($last->sender?->username ?? 'Техподдержка')) : null;
@@ -173,7 +175,7 @@ final class ListAccountConversationsHandler
             return [
                 'id' => 'support-'.$ticket->id,
                 'name' => 'Техподдержка №'.$ticket->id.' — '.$ticket->subject,
-                'preview' => $last ? $author.': '.$last->body : 'Обращение в техподдержку',
+                'preview' => $last ? $author.': '.$supportMessagePresenter->preview($last->body) : 'Обращение в техподдержку',
                 'unread_count' => $supportUnread->get($ticket->id, collect())->count(),
                 'date' => $last?->created_at ?? $ticket->created_at,
                 'status' => $ticket->status === 'open' ? 'Открыто' : 'Завершено',
