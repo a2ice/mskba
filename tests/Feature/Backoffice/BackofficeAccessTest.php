@@ -5,6 +5,8 @@ namespace Tests\Feature\Backoffice;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\CreateAccountDashboardWidget;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountDashboardWidget;
+use App\Filament\Backoffice\Resources\DashboardButtonStyles\Pages\CreateDashboardButtonStyle;
+use App\Modules\Dashboard\Domain\Models\DashboardButtonStyle;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -203,6 +205,56 @@ final class BackofficeAccessTest extends TestCase
                 ->assertHasFormErrors(['link_url']);
         }
         $this->assertDatabaseMissing('account_dashboard_widgets', ['title' => 'Небезопасная ссылка']);
+    }
+
+
+    public function test_only_superadmin_can_manage_button_styles_in_filament(): void
+    {
+        $admin = $this->account(UserSystemRoleEnum::ADMIN);
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($admin)->get('/backoffice/dashboard-button-styles')->assertForbidden();
+        $this->actingAs($super)->get('/backoffice/dashboard-button-styles')->assertOk();
+
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+        Livewire::test(CreateDashboardButtonStyle::class)
+            ->fillForm([
+                'name' => 'Зелёная кнопка',
+                'class_name' => 'bg-green',
+                'css_code' => '.bg-green { background-color: green !important; }',
+                'enabled' => true,
+            ])->call('create')->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('dashboard_button_styles', [
+            'name' => 'Зелёная кнопка', 'class_name' => 'bg-green',
+        ]);
+    }
+
+    public function test_administrator_can_edit_button_list_with_registered_classes(): void
+    {
+        DashboardButtonStyle::query()->create([
+            'name' => 'Зелёный',
+            'class_name' => 'bg-green',
+            'css_code' => '.bg-green { background-color: green !important; }',
+            'enabled' => true,
+        ]);
+        $admin = $this->account(UserSystemRoleEnum::ADMIN);
+        $widget = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(EditAccountDashboardWidget::class, ['record' => $widget->getRouteKey()])
+            ->fillForm([
+                'actions' => [
+                    ['label' => 'Партнёры', 'url' => '/partners', 'appearance' => 'primary',
+                        'visibility' => 'always', 'classes' => ['bg-green']],
+                    ['label' => 'Мои роли', 'url' => '/account/roles', 'appearance' => 'secondary',
+                        'visibility' => 'confirmed', 'classes' => []],
+                ],
+            ])->call('save')->assertHasNoFormErrors();
+
+        $this->assertSame('/partners', $widget->fresh()->actions[0]['url']);
+        $this->assertSame(['bg-green'], $widget->fresh()->actions[0]['classes']);
+        $this->assertCount(2, $widget->fresh()->actions);
     }
 
 }
