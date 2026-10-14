@@ -226,5 +226,4 @@ final class UnifiedPermissionsCenterTest extends TestCase
             $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
         }
     }
-
 }
