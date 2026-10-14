@@ -109,7 +109,7 @@ final class DashboardWidgetActions
                 'appearance' => $appearance,
                 'classes' => $classes,
                 'external' => ! str_starts_with($url, '/'),
-                'confirmation' => $url === route('account.confirmation') && $state === 'unconfirmed',
+                'confirmation' => $url === route('account.confirmation', [], false) && $state === 'unconfirmed',
             ];
         }
 
