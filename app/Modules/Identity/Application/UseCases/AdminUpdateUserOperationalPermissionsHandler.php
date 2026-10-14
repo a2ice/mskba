@@ -17,11 +17,11 @@ final class AdminUpdateUserOperationalPermissionsHandler
     /**
      * @param  array<UserOperationalPermissionEnum>  $allowedPermissions
      */
-    public function handle(User $actor, int $targetUserId, array $allowedPermissions): void
+    public function handle(User $actor, int $targetUserId, array $allowedPermissions, ?array $scope = null): void
     {
         $actor = $actor->canonical();
 
-        DB::transaction(function () use ($actor, $targetUserId, $allowedPermissions): void {
+        DB::transaction(function () use ($actor, $targetUserId, $allowedPermissions, $scope): void {
             $requested = User::query()->findOrFail($targetUserId);
             $target = User::query()
                 ->whereKey($requested->canonical()->id)
@@ -35,6 +35,22 @@ final class AdminUpdateUserOperationalPermissionsHandler
                 throw new AuthorizationException('Это право доступно только администраторам.');
             }
 
+            // The historical bulk form covers all non-Filament permissions.
+            // Scoped calls from the unified editor update only the selected
+            // global groups, never unrelated rights or grant cursors.
+            if ($scope !== null) {
+                foreach ($scope as $candidate) {
+                    if (! $candidate instanceof UserOperationalPermissionEnum || $candidate->isBackoffice()) {
+                        throw new AuthorizationException('Некорректная область изменения разрешений.');
+                    }
+                }
+                foreach ($allowedPermissions as $candidate) {
+                    if (! in_array($candidate, $scope, true)) {
+                        throw new AuthorizationException('Нельзя назначить право вне выбранной области.');
+                    }
+                }
+            }
+
             $allowed = collect($allowedPermissions)
                 ->map(fn (UserOperationalPermissionEnum $permission): string => $permission->value)
                 ->flip();
@@ -43,10 +59,20 @@ final class AdminUpdateUserOperationalPermissionsHandler
                 // Legacy admins may manage ordinary operational rights, but must
                 // never grant or revoke Filament privileges, including by omitting
                 // fields from an HTML form.
-                if ($permission->isBackoffice()) {
+                if ($permission->isBackoffice() || ($scope !== null && ! in_array($permission, $scope, true))) {
                     // Backoffice rights are managed ONLY through the dedicated
                     // Filament form. Saving old permission forms must not
                     // accidentally revoke a previous Filament grant.
+                    continue;
+                }
+                if ($actor->system_role !== UserSystemRoleEnum::SUPERADMIN
+                    && in_array($permission, [
+                        UserOperationalPermissionEnum::MANAGE_SYSTEM_ROLES,
+                        UserOperationalPermissionEnum::REVIEW_PROFILE_CHANGES,
+                        UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS,
+                    ], true)) {
+                    // Ordinary admins cannot issue or withdraw critical global
+                    // rights via either the new editor or the legacy handler.
                     continue;
                 }
                 $enabled = $allowed->has($permission->value);
