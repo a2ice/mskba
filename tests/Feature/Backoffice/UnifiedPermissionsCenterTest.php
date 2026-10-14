@@ -149,4 +149,82 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $admin->update(['status' => UserStatusEnum::UNCONFIRMED]);
         $this->assertFalse(app(GlobalOperationalPermissionManager::class)->mayManage($admin));
     }
+
+    public function test_role_change_is_a_separate_action_that_preserves_individual_permission_overrides(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user();
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        app(GlobalOperationalPermissionManager::class)->sync(
+            $super, $target, [Permission::CREATE_TEAM->value], [],
+        );
+        $before = UserOperationalPermission::query()
+            ->where('user_id', $target->id)
+            ->orderBy('permission')
+            ->get(['permission', 'is_allowed'])
+            ->toArray();
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->assertActionVisible('changeSystemRole')
+            ->callAction('changeSystemRole', data: [
+                'new_system_role' => UserSystemRoleEnum::MODERATOR->value,
+            ])
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(UserSystemRoleEnum::MODERATOR, $target->fresh()->system_role);
+        $after = UserOperationalPermission::query()
+            ->where('user_id', $target->id)
+            ->orderBy('permission')
+            ->get(['permission', 'is_allowed'])
+            ->toArray();
+        $this->assertSame($before, $after);
+    }
+
+    public function test_switching_to_user_role_removes_staff_role_using_existing_handler(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user(UserSystemRoleEnum::EDITOR);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->callAction('changeSystemRole', data: [
+                'new_system_role' => UserSystemRoleEnum::USER->value,
+            ])->assertHasNoFormErrors();
+
+        $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
+    }
+
+    public function test_role_action_is_hidden_from_admin_without_explicit_role_management_right(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::ADMIN);
+        $target = $this->user();
+        $this->actingAs($admin);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+            ->assertActionHidden('changeSystemRole');
+        $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
+    }
+
+    public function test_filament_role_action_rejects_service_and_superadmin_roles(): void
+    {
+        $super = $this->user(UserSystemRoleEnum::SUPERADMIN);
+        $target = $this->user();
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        foreach ([UserSystemRoleEnum::SYSTEM, UserSystemRoleEnum::SUPERADMIN] as $forbidden) {
+            Livewire::test(EditBackofficeUser::class, ['record' => $target->getRouteKey()])
+                ->callAction('changeSystemRole', data: [
+                    'new_system_role' => $forbidden->value,
+                ])
+                ->assertHasFormErrors(['new_system_role']);
+
+            $this->assertSame(UserSystemRoleEnum::USER, $target->fresh()->system_role);
+        }
+    }
+
 }
