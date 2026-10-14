@@ -132,4 +132,57 @@ final class AccountDashboardTest extends TestCase
         ]))->assertSessionHasErrors(['include_user_ids']);
         $this->assertSame(0, AccountDashboardWidget::query()->where('kind', 'advertisement')->count());
     }
+    public function test_status_widget_renders_html_per_state_without_touching_builtin_confirmation_action(): void
+    {
+        $widget = AccountDashboardWidget::query()->where('kind', 'account_status')->firstOrFail();
+        $widget->update([
+            'status_confirmed_html' => '<p><strong>Привет!</strong></p><a href="/account/profile" class="button secondary">Профиль</a>',
+            'status_unconfirmed_html' => '<p>Пожалуйста, <em>подтвердите аккаунт</em>.</p>',
+            'status_blocked_html' => '<p>Доступ ограничен. <a href="/faq">Помощь</a></p>',
+        ]);
+
+        $confirmed = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $this->actingAs($confirmed)->get(route('account'))->assertOk()
+            ->assertSee('<strong>Привет!</strong>', false)
+            ->assertSee('class="button secondary"', false)
+            ->assertDontSee('Пожалуйста,');
+        $unconfirmed = $this->user();
+        $this->actingAs($unconfirmed)->get(route('account'))->assertOk()
+            ->assertSee('<em>подтвердите аккаунт</em>', false)
+            ->assertSee('Подтвердить аккаунт')
+            ->assertDontSee('Доступ ограничен.');
+        $blocked = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::BLOCKED);
+        $this->actingAs($blocked)->get(route('account'))->assertOk()
+            ->assertSee('Доступ ограничен.')
+            ->assertDontSee('<em>подтвердите аккаунт</em>', false);
+    }
+
+    public function test_functional_widget_html_and_dynamic_unread_placeholder_render_in_refresh(): void
+    {
+        $messages = AccountDashboardWidget::query()->where('kind', 'message_summary')->firstOrFail();
+        $messages->update(['body' => '<p>Непрочитано: <strong>{{ unread_count }}</strong></p>'.
+            '<a href="/account/notifications" class="button primary">К сообщениям</a>']);
+        $start = AccountDashboardWidget::query()->where('kind', 'getting_started')->firstOrFail();
+        $start->update(['body' => '<ul><li>Выбери роли</li><li>Участвуй в играх</li></ul>']);
+
+        $user = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $html = $this->actingAs($user)->getJson(route('account.dashboard.widgets'))
+            ->assertOk()->json('html');
+
+        $this->assertStringContainsString('Непрочитано: <strong>0</strong>', $html);
+        $this->assertStringContainsString('href="/account/notifications"', $html);
+        $this->assertStringContainsString('<li>Выбери роли</li>', $html);
+        $this->assertStringNotContainsString('{{ unread_count }}', $html);
+    }
+
+    public function test_unchanged_native_widget_content_uses_previous_defaults(): void
+    {
+        $confirmed = $this->user(UserSystemRoleEnum::USER, UserStatusEnum::CONFIRMED);
+        $this->actingAs($confirmed)->get(route('account'))->assertOk()
+            ->assertSee('Аккаунт подтверждён. Теперь доступны возможности портала');
+        $unconfirmed = $this->user();
+        $this->actingAs($unconfirmed)->get(route('account'))->assertOk()
+            ->assertSee('Подтверди аккаунт, чтобы получить доступ');
+    }
+
 }

@@ -4,6 +4,7 @@ namespace Tests\Feature\Backoffice;
 
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\CreateAccountDashboardWidget;
+use App\Filament\Backoffice\Resources\AccountDashboardWidgets\Pages\EditAccountDashboardWidget;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 use App\Modules\Identity\Domain\Enums\UserStatusEnum;
@@ -102,6 +103,29 @@ final class BackofficeAccessTest extends TestCase
         $this->assertSame(['confirmed'], $widget->account_statuses);
         $this->assertSame([10, 11], $widget->include_user_ids);
         $this->assertSame([7], $widget->exclude_user_ids);
+    }
+
+    public function test_filament_saves_editable_status_html_for_confirmed_and_unconfirmed_accounts(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        $widget = AccountDashboardWidget::query()->where('kind', 'account_status')->firstOrFail();
+
+        Livewire::test(EditAccountDashboardWidget::class, ['record' => $widget->getRouteKey()])
+            ->fillForm([
+                'status_confirmed_html' => '<p>Готово! <a href="/faq" class="button primary">FAQ</a></p>',
+                'status_unconfirmed_html' => '<p>Заполните профиль и подтвердите аккаунт.</p>',
+                'status_blocked_html' => '<p>Напишите в поддержку.</p>',
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $widget->refresh();
+        $this->assertStringContainsString('Готово!', $widget->status_confirmed_html);
+        $this->assertStringContainsString('подтвердите аккаунт', $widget->status_unconfirmed_html);
+        $this->assertStringContainsString('поддержку', $widget->status_blocked_html);
     }
 
 }
