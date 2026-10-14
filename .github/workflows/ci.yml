@@ -289,6 +289,9 @@ jobs:
               test -f "vendor.prepared.$VERIFIED_SHA/vendor/autoload.php"
             fi
 
+            MANIFEST_BACKUP="public/build/manifest.json.rollback.$VERIFIED_SHA"
+            test ! -e "$MANIFEST_BACKUP"
+            cp public/build/manifest.json "$MANIFEST_BACKUP"
             ROLLBACK_ARMED=0
             rollback_if_needed() {
               code=$?
@@ -300,6 +303,7 @@ jobs:
                   mv "vendor.rollback.$VERIFIED_SHA" vendor
                 fi
                 git reset --hard "$PREVIOUS_SHA" || true
+                if [ -f "$MANIFEST_BACKUP" ]; then mv "$MANIFEST_BACKUP" public/build/manifest.json; fi
                 $COMPOSE up -d --no-build --force-recreate phpfpm reverb nginx queue || true
               fi
               exit "$code"
@@ -349,6 +353,10 @@ jobs:
               $COMPOSE ps
               exit 1
             fi
+            # The panel must at least respond with HTTP 302 (portal login) to guests;
+            # a missing route or server error is a release failure.
+            BACKOFFICE_HTTP="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 -H 'Host: dev.mskba.ru' http://127.0.0.1:8001/backoffice)"
+            case "$BACKOFFICE_HTTP" in 200|302|303) ;; *) echo "Backoffice smoke HTTP: $BACKOFFICE_HTTP"; exit 1;; esac
             if ! $COMPOSE ps --status running --services | grep -qx queue; then
               echo 'Dev main queue worker is not running'
               $COMPOSE logs --tail=50 queue
@@ -358,6 +366,7 @@ jobs:
             if [ "$COMPOSER_CHANGED" -eq 1 ]; then
               rm -rf -- "vendor.rollback.$VERIFIED_SHA" "$VENDOR_STAGE"
             fi
+            rm -f "$MANIFEST_BACKUP"
             ROLLBACK_ARMED=0
             echo 'Dev deployment completed with verified frontend assets; production untouched'
 
