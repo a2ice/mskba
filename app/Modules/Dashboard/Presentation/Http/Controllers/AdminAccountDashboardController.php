@@ -3,6 +3,7 @@ namespace App\Modules\Dashboard\Presentation\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Dashboard\Application\Services\AccountDashboardService;
+use App\Modules\Dashboard\Application\Services\DashboardWidgetActions;
 use App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule;
 use App\Modules\Dashboard\Domain\Models\AccountDashboardWidget;
 use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardChangedBroadcast;
@@ -118,6 +119,30 @@ final class AdminAccountDashboardController extends Controller
             $data['css_code'] = null;
             $data['js_code'] = null;
         }
+        // The fallback editor still supports a single link; update only its
+        // primary button and preserve any additional actions defined in Filament.
+        $service = app(DashboardWidgetActions::class);
+        $actions = $existing?->actions ?? $service->defaults(
+            $data['kind'], $data['link_url'] ?? null, $data['link_label'] ?? null,
+        );
+        if ($existing && in_array($data['kind'], ['advertisement', 'information'], true)) {
+            if (filled($data['link_url'] ?? null)) {
+                $primary = [
+                    'label' => $data['link_label'] ?: 'Подробнее',
+                    'url' => $data['link_url'],
+                    'appearance' => $data['kind'] === 'advertisement' ? 'primary' : 'secondary',
+                    'visibility' => $actions[0]['visibility'] ?? 'always',
+                    'classes' => $actions[0]['classes'] ?? [],
+                ];
+                if ($actions === []) $actions = [$primary];
+                else $actions[0] = array_replace($actions[0], $primary);
+            } elseif ($data['kind'] === 'information') {
+                array_shift($actions);
+            }
+        }
+        $data['actions'] = $data['kind'] === 'custom_html'
+            ? [] : $service->validate($actions, $data['kind']);
+
         return $data;
     }
 

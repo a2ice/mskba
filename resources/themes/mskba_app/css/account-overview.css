@@ -78,3 +78,8 @@
 .app-dashboard-widget__richtext :is(a:not(.button)){color:var(--accent);text-decoration:underline;text-underline-offset:2px}
 .app-dashboard-widget__richtext a.button{display:inline-flex;align-items:center;margin-top:8px}
 .app-dashboard-widget__richtext blockquote{padding-inline-start:12px;border-inline-start:2px solid var(--accent)}
+
+/* Reusable widget actions: buttons share layout, styles are scoped per dashboard. */
+.app-dashboard-widget__actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;width:100%;margin-top:auto}
+.app-dashboard-widget__actions .button{margin-top:0}
+@media(max-width:639px){.app-dashboard-widget__actions{align-items:stretch}.app-dashboard-widget__actions .button{justify-content:center}}

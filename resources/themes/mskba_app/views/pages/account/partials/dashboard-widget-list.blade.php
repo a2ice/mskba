@@ -1,6 +1,14 @@
 @php
     $dashboardHtml = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetHtmlRenderer::class);
+    $dashboardActions = app(\App\Modules\Dashboard\Application\Services\DashboardWidgetActions::class);
+    $dashboardButtonStyles = \App\Modules\Dashboard\Domain\Models\DashboardButtonStyle::query()
+        ->where('enabled', true)->pluck('class_name')->all();
+    $dashboardButtonCss = app(\App\Modules\Dashboard\Application\Services\DashboardButtonStyleCompiler::class)
+        ->cssForWidgets($dashboardWidgets);
 @endphp
+@if ($dashboardButtonCss !== '')
+    <style data-dashboard-button-styles>{!! $dashboardButtonCss !!}</style>
+@endif
 @forelse ($dashboardWidgets as $widget)
     @php
         // Explicit HEX validation before writing a CSS variable prevents CSS injection.
@@ -30,22 +38,18 @@
                     };
                 @endphp
                 <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->{$statusField} ?: $statusDefault) !!}</div>
-                @if (! $dashboardUser->isConfirmed() && ! $dashboardUser->isBlocked())
-                    <a class="button secondary app-account-overview__confirmation-action" href="{{ route('account.confirmation') }}">
-                        <span class="app-account-overview__confirmation-dot" aria-hidden="true"></span>Подтвердить аккаунт
-                    </a>
-                @endif
+
                 @break
             @case('getting_started')
                 <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body ?: '<p>Добавь роли участия, следи за играми и площадками, общайся с другими участниками MSKBA.</p>') !!}</div>
-                <a class="button secondary" href="{{ route('account.roles') }}">Мои роли</a>
+
                 @break
             @case('message_summary')
                 @php
                     $messagesDefault = '<p>Непрочитанных сообщений и уведомлений: <strong>'.e($dashboardUnread).'</strong></p>';
                 @endphp
                 <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body ?: $messagesDefault, ['unread_count' => $dashboardUnread]) !!}</div>
-                <a class="button secondary" href="{{ route('account.notifications') }}">Открыть сообщения</a>
+
                 @break
             @case('custom_html')
                 @php
@@ -65,18 +69,24 @@
                 @if ($widget->body)
                     <div class="app-dashboard-widget__richtext">{!! $dashboardHtml->render($widget->body) !!}</div>
                 @endif
-                @if ($widget->link_url && \App\Modules\Dashboard\Application\Rules\DashboardWidgetLinkRule::isValid($widget->link_url))
-                    @php
-                        $widgetExternalLink = ! str_starts_with($widget->link_url, '/');
-                    @endphp
-                    <a class="button {{ $widget->kind === 'advertisement' ? 'primary' : 'secondary' }}"
-                       href="{{ $widget->link_url }}"
-                       @if ($widgetExternalLink) target="_blank" @endif
-                       rel="{{ $widget->kind === 'advertisement' ? 'sponsored noopener noreferrer' : 'noopener noreferrer' }}">
-                        {{ $widget->link_label ?: 'Подробнее' }}
-                    </a>
-                @endif
+
         @endswitch
+        @php
+            $widgetActions = $dashboardActions->forUser($widget, $dashboardUser, $dashboardButtonStyles);
+        @endphp
+        @if ($widgetActions !== [])
+            <div class="app-dashboard-widget__actions">
+                @foreach ($widgetActions as $action)
+                    <a class="button {{ $action['appearance'] }}{{ $action['confirmation'] ? ' app-account-overview__confirmation-action' : '' }}{{ $action['classes'] !== [] ? ' '.implode(' ', $action['classes']) : '' }}"
+                       href="{{ $action['url'] }}"
+                       @if ($action['external']) target="_blank" @endif
+                       rel="{{ $widget->kind === 'advertisement' ? 'sponsored noopener noreferrer' : 'noopener noreferrer' }}">
+                        @if ($action['confirmation'])<span class="app-account-overview__confirmation-dot" aria-hidden="true"></span>@endif
+                        {{ $action['label'] }}
+                    </a>
+                @endforeach
+            </div>
+        @endif
     </article>
 @empty
     <section class="panel app-dashboard-widget app-dashboard-widget--full">
