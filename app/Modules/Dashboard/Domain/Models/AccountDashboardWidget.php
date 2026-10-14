@@ -2,10 +2,25 @@
 namespace App\Modules\Dashboard\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use App\Modules\Dashboard\Infrastructure\Broadcasting\DashboardChangedBroadcast;
 
 final class AccountDashboardWidget extends Model
 {
     protected $guarded = [];
+
+    protected static function booted(): void
+    {
+        $broadcast = function (): void {
+            try {
+                DB::afterCommit(fn () => DashboardChangedBroadcast::dispatch());
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        };
+        static::saved($broadcast);
+        static::deleted($broadcast);
+    }
 
     protected function casts(): array
     {

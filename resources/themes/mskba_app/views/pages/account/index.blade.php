@@ -10,7 +10,7 @@
     <section class="panel app-account-intro" aria-label="О разделе">
         <p>Привет, {{ app(\App\Presentation\Identity\UserAddressing::class)->greetingName($user ?? auth()->user()) }}! Здесь ты можешь управлять своим профилем, сообщениями и настройками портала.</p>
         @if (auth()->user()?->canonical()->isAdmin())
-            <p class="app-dashboard-admin__shortcut"><a href="{{ route('admin.account-dashboard.index') }}">Настроить виджеты</a></p>
+            <p class="app-dashboard-admin__shortcut"><a href="{{ url('/backoffice/account-dashboard-widgets') }}">Настроить виджеты</a></p>
         @endif
     </section>
 @endpush
