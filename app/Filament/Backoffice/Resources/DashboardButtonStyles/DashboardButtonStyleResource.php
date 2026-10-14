@@ -25,12 +25,25 @@ use Filament\Tables\Table;
 final class DashboardButtonStyleResource extends Resource
 {
     protected static ?string $model = DashboardButtonStyle::class;
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-swatch';
+
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-swatch';
+
     protected static ?int $navigationSort = 2;
 
-    public static function getNavigationLabel(): string { return 'Стили кнопок'; }
-    public static function getModelLabel(): string { return 'стиль кнопки'; }
-    public static function getPluralModelLabel(): string { return 'стили кнопок'; }
+    public static function getNavigationLabel(): string
+    {
+        return 'Стили кнопок';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'стиль кнопки';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'стили кнопок';
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -47,7 +60,7 @@ final class DashboardButtonStyleResource extends Resource
                     CodeEditor::make('css_code')->label('CSS-правило')->language(Language::Css)
                         ->required()->columnSpanFull()
                         ->default('.bg-green { background-color: green !important; }')
-                        ->helperText('Допускаются несколько правил одного класса: .bg-green, .bg-green:hover, .bg-green::before, .bg-green:hover::after. Для декоративных псевдоэлементов доступны content: "", position: absolute, размеры и координаты. Глобальные селекторы, url() и @import запрещены.'),
+                        ->helperText('Допускаются несколько правил одного класса: .bg-green, .bg-green:hover, .bg-green::before, .bg-green:hover::after. Для декоративных псевдоэлементов доступны content: "", position: absolute, размеры и координаты. Можно использовать CSS-комментарии /* ... */ внутри правил. Глобальные селекторы, url() и @import запрещены.'),
                     Toggle::make('enabled')->label('Доступен для кнопок')->default(true),
                 ]),
         ]);
