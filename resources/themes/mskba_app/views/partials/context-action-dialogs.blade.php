@@ -54,6 +54,7 @@
                     </span>
                     <textarea name="message" rows="5" required minlength="10" maxlength="5000"
                               aria-label="Ваш вопрос" placeholder="Опишите ситуацию и что нужно уточнить"></textarea>
+                    <p class="app-context-help__ask-hint">Вопрос создаст обращение в разделе «Сообщения». После отправки вы перейдёте в переписку с техподдержкой.</p>
                     <p role="status" aria-live="polite" data-help-form-status></p>
                     <button type="submit" class="button primary">Отправить вопрос</button>
                 </form>

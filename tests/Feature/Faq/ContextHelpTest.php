@@ -6,12 +6,13 @@ use App\Modules\Content\Domain\Enums\ContentFormatEnum;
 use App\Modules\Content\Domain\Enums\ContentStatusEnum;
 use App\Modules\Content\Domain\Enums\ContentTypeEnum;
 use App\Modules\Content\Domain\Models\ContentItem;
-use App\Modules\Content\Infrastructure\Mail\SupportQuestionMail;
+use App\Modules\Identity\Domain\Enums\UserStatusEnum;
+use App\Modules\Identity\Domain\Enums\UserSystemRoleEnum;
+use App\Modules\Notification\Domain\Models\SupportTicket;
 use App\Modules\Identity\Domain\Models\User;
 use App\Presentation\Theming\ThemeResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Tests\TestCase;
 
@@ -110,54 +111,76 @@ final class ContextHelpTest extends TestCase
             ->assertSee('support@mskba.ru');
     }
 
-    public function test_only_authenticated_users_can_email_valid_support_questions_without_persisting_them(): void
-    {
-        config()->set('mail.default', 'smtp');
-        config()->set('support.email', 'support@example.test');
-        Mail::fake();
-        $this->postJson(route('faq.questions.store'), [
-            'topic' => 'venues', 'source_path' => '/venues/my-court', 'message' => 'Подскажите, как можно забронировать площадку?',
-        ])->assertUnauthorized();
-
-        $user = User::factory()->create();
-        $this->actingAs($user)->postJson(route('faq.questions.store'), [
-            'topic' => 'unknown', 'source_path' => '//evil.example', 'message' => 'Коротко',
-        ])->assertUnprocessable();
-        Mail::assertNothingOutgoing();
-
-        $this->postJson(route('faq.questions.store'), [
-            'topic' => 'venues', 'source_path' => '/venues/my-court', 'message' => 'Подскажите, как можно забронировать площадку?',
-        ])->assertOk()->assertJsonPath('status', 'sent');
-
-        Mail::assertSent(SupportQuestionMail::class, fn (SupportQuestionMail $mail) => $mail->hasTo('support@example.test')
-            && $mail->userId === $user->id
-            && $mail->topicLabel === 'Площадки и бронирование'
-            && $mail->sourcePath === '/venues/my-court'
-            && $mail->questionBody === 'Подскажите, как можно забронировать площадку?'
-        );
-        // Historical table remains from the already-applied migration, but no
-        // question gets stored in it (or elsewhere in the application DB).
-        $this->assertFalse(Schema::hasTable('support_questions'));
-    }
-
-    public function test_log_mailer_is_rejected_rather_than_claiming_success(): void
+    public function test_faq_creates_a_support_conversation_with_topic_and_source_page(): void
     {
         config()->set('mail.default', 'log');
         Mail::fake();
-        $this->actingAs(User::factory()->create())->postJson(route('faq.questions.store'), [
-            'topic' => 'other', 'source_path' => '/venues', 'message' => 'Уточните доступные условия бронирования.',
-        ])->assertStatus(503)->assertJsonPath('message', 'Отправка писем на этом сервере пока не настроена. Напишите на почту поддержки.');
+        $customer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $lead = User::factory()->create([
+            'system_role' => UserSystemRoleEnum::SUPERADMIN,
+            'status' => UserStatusEnum::CONFIRMED,
+        ]);
+
+        $this->postJson(route('faq.questions.store'), [
+            'topic' => 'venues',
+            'source_path' => '/venues/my-court',
+            'message' => 'Подскажите, как можно забронировать площадку?',
+        ])->assertUnauthorized();
+
+        $this->actingAs($customer)->postJson(route('faq.questions.store'), [
+            'topic' => 'unknown',
+            'source_path' => '//evil.example',
+            'message' => 'Коротко',
+        ])->assertUnprocessable();
+        $this->assertSame(0, SupportTicket::query()->count());
+
+        $response = $this->postJson(route('faq.questions.store'), [
+            'topic' => 'venues',
+            'source_path' => '/venues/my-court',
+            'message' => 'Подскажите, как можно забронировать площадку?',
+        ])->assertCreated()->assertJsonPath('status', 'created');
+
+        $ticket = SupportTicket::query()->latest('id')->firstOrFail();
+        $thread = $ticket->thread()->firstOrFail();
+        $this->assertSame($customer->id, (int) $ticket->user_id);
+        $this->assertSame('FAQ — Площадки и бронирование', $ticket->subject);
+        $this->assertSame('open', $ticket->status);
+        $this->assertSame('support', $thread->type);
+        $this->assertSame($lead->id, (int) $thread->lead_user_id);
+        $this->assertSame(1, $thread->messages()->count());
+        $this->assertDatabaseHas('request_thread_messages', [
+            'request_thread_id' => $thread->id,
+            'sender_user_id' => $customer->id,
+            'body' => "Страница обращения: /venues/my-court\n\nПодскажите, как можно забронировать площадку?",
+        ]);
+        $response->assertJsonPath('redirect_url', route('account.notifications.threads.support', $ticket));
+        $this->get(route('account.notifications.threads.support', $ticket))
+            ->assertOk()->assertSee('Подскажите, как можно забронировать площадку?');
+        $this->actingAs($lead)->get(route('account.notifications'))
+            ->assertOk()->assertSee('Техподдержка №'.$ticket->id);
         Mail::assertNothingOutgoing();
-        $this->assertFalse(Schema::hasTable('support_questions'));
     }
 
-    public function test_transport_failure_is_reported_without_database_fallback(): void
+    public function test_faq_support_requests_do_not_depend_on_mail_delivery_and_respect_account_blocking(): void
     {
-        config()->set('mail.default', 'smtp');
-        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('Transport failed'));
-        $this->actingAs(User::factory()->create())->postJson(route('faq.questions.store'), [
-            'topic' => 'other', 'source_path' => '/venues', 'message' => 'Уточните доступные условия бронирования.',
-        ])->assertStatus(503)->assertJsonPath('message', 'Не удалось отправить вопрос. Попробуйте позже или напишите на почту поддержки.');
-        $this->assertFalse(Schema::hasTable('support_questions'));
+        config()->set('mail.default', 'log');
+        Mail::fake();
+
+        $customer = User::factory()->create(['status' => UserStatusEnum::CONFIRMED]);
+        $this->actingAs($customer)->postJson(route('faq.questions.store'), [
+            'topic' => 'other',
+            'source_path' => '/venues',
+            'message' => 'Уточните доступные условия бронирования.',
+        ])->assertCreated();
+        $this->assertSame(1, SupportTicket::query()->count());
+
+        $customer->update(['status' => UserStatusEnum::BLOCKED]);
+        $this->postJson(route('faq.questions.store'), [
+            'topic' => 'other',
+            'source_path' => '/venues',
+            'message' => 'Уточните доступные условия бронирования.',
+        ])->assertForbidden();
+        $this->assertSame(1, SupportTicket::query()->count());
+        Mail::assertNothingOutgoing();
     }
 }

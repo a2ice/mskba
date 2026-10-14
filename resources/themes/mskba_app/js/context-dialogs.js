@@ -262,13 +262,19 @@ if (actions && help) {
             if (response.status === 429) throw new Error('Слишком много вопросов. Попробуйте позже.');
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(response.status === 503
-                    ? (error.message || 'Служба отправки почты временно недоступна.')
-                    : 'Не удалось отправить вопрос. Проверьте поля и попробуйте ещё раз.');
+                throw new Error(response.status === 403
+                    ? 'Создание обращения недоступно для этого аккаунта.'
+                    : (error.message || 'Не удалось отправить вопрос. Проверьте поля и попробуйте ещё раз.'));
             }
             const result = await response.json();
-            feedback.textContent = result.message;
-            form.reset();
+            if (!result.redirect_url) throw new Error('Не удалось открыть созданное обращение.');
+            const destination = new URL(result.redirect_url, location.origin);
+            if (destination.origin !== location.origin
+                || !destination.pathname.startsWith('/account/notifications/threads/support/')) {
+                throw new Error('Получена некорректная ссылка на обращение.');
+            }
+            feedback.textContent = result.message || 'Обращение создано. Открываем переписку…';
+            window.location.assign(destination.href);
         } catch (error) {
             feedback.textContent = error.message || 'Не удалось отправить вопрос.';
         } finally { submit.disabled = false; }

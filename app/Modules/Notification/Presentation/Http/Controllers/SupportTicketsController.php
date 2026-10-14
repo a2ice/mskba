@@ -8,6 +8,8 @@ use App\Modules\Identity\Domain\Models\User;
 use App\Modules\Notification\Application\DTO\CreateUserNotificationDTO;
 use App\Modules\Notification\Application\Services\AccountConversationRail;
 use App\Modules\Notification\Application\Services\SupportTicketAccess;
+use App\Modules\Notification\Application\Services\SupportTicketMessageNotifier;
+use App\Modules\Notification\Application\UseCases\CreateSupportTicketHandler;
 use App\Modules\Notification\Application\UseCases\CreateUserNotificationHandler;
 use App\Modules\Notification\Application\UseCases\MarkConversationNotificationsReadHandler;
 use App\Modules\Notification\Domain\Enums\UserNotificationStatusEnum;
@@ -35,35 +37,15 @@ final class SupportTicketsController extends Controller
         ]);
     }
 
-    public function store(Request $request, SupportTicketAccess $access, CreateUserNotificationHandler $notifications): RedirectResponse
+    public function store(Request $request, CreateSupportTicketHandler $createSupportTicket): RedirectResponse
     {
-        $user = $request->user()->canonical();
-        $this->ensureActive($user);
         $data = $request->validate([
             'subject' => ['required', 'string', 'max:150'],
             'body' => ['required', 'string', 'max:2000'],
         ]);
         abort_unless(trim($data['subject']) !== '' && trim($data['body']) !== '', 422);
 
-        [$ticket, $thread] = DB::transaction(function () use ($user, $data, $access): array {
-            $lead = User::query()->where('system_role', UserSystemRoleEnum::SUPERADMIN->value)
-                ->where('status', 'confirmed')->orderBy('id')->get()
-                ->first(fn (User $candidate) => $access->isAgent($candidate) && $access->afterId($candidate) !== null);
-            $ticket = SupportTicket::query()->create([
-                'user_id' => $user->id, 'subject' => trim($data['subject']), 'status' => 'open',
-            ]);
-            $thread = RequestThread::query()->create([
-                'type' => 'support', 'subject_id' => $ticket->id, 'lead_user_id' => $lead?->id,
-            ]);
-            if ($lead) {
-                $thread->memberships()->create(['user_id' => $lead->id, 'joined_at' => now()]);
-            }
-            $thread->messages()->create(['sender_user_id' => $user->id, 'body' => trim($data['body'])]);
-
-            return [$ticket, $thread];
-        });
-        $this->notifyOtherSide($ticket, $thread, $user, $data['body'], $notifications);
-        $this->broadcast($thread);
+        $ticket = $createSupportTicket->handle($request->user(), $data['subject'], $data['body']);
 
         return redirect()->route('account.notifications.threads.support', $ticket);
     }
@@ -131,7 +113,7 @@ final class SupportTicketsController extends Controller
     }
 
     public function message(Request $request, SupportTicket $ticket, SupportTicketAccess $access,
-        CreateUserNotificationHandler $notifications): JsonResponse
+        SupportTicketMessageNotifier $notifier): JsonResponse
     {
         $actor = $request->user()->canonical();
         $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
@@ -146,7 +128,7 @@ final class SupportTicketsController extends Controller
 
             return $thread;
         });
-        $this->notifyOtherSide($ticket, $thread, $actor, $data['body'], $notifications);
+        $notifier->notify($ticket, $thread, $actor, $data['body']);
         $this->broadcast($thread);
 
         return response()->json(['message' => 'Отправлено.'], 201);
@@ -226,29 +208,6 @@ final class SupportTicketsController extends Controller
     private function ensureActive(User $user): void
     {
         abort_if($user->canonical()->isBlocked() || $user->canonical()->trashed(), 403);
-    }
-
-    private function notifyOtherSide(SupportTicket $ticket, RequestThread $thread, User $actor,
-        string $body, CreateUserNotificationHandler $notifications): void
-    {
-        $recipients = collect([$ticket->user_id, $thread->lead_user_id])->filter()
-            ->unique()->reject(fn ($id) => (int) $id === $actor->id);
-        foreach ($recipients as $id) {
-            if ((int) $id !== (int) $ticket->user_id) {
-                $target = User::query()->find($id);
-                if ($target === null || ! app(SupportTicketAccess::class)->canRead($target, $ticket, $thread)) {
-                    continue;
-                }
-            }
-            $notifications->handle(new CreateUserNotificationDTO(
-                userId: (int) $id, type: UserNotificationTypeEnum::SYSTEM,
-                title: 'Новое сообщение техподдержки №'.$ticket->id,
-                body: mb_strimwidth(trim($body), 0, 180, '…'),
-                actionUrl: route('account.notifications.threads.support', $ticket),
-                actionText: 'Открыть переписку',
-                payload: ['source' => 'support.message', 'support_ticket_id' => $ticket->id],
-            ));
-        }
     }
 
     private function broadcast(RequestThread $thread, bool $accessChanged = false): void
