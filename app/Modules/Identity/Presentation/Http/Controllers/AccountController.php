@@ -97,6 +97,13 @@ class AccountController extends Controller
             'primaryVerifiedContact' => $wizard->primaryVerifiedContact($user),
         ];
 
+        if (app(ThemeResolver::class)->active() === 'mskba_app') {
+            $canonical = $user->canonical();
+            $data['dashboardWidgets'] = app(\App\Modules\Dashboard\Application\Services\AccountDashboardService::class)->forUser($canonical);
+            $data['dashboardUser'] = $canonical;
+            $data['dashboardUnread'] = app(\App\Modules\Notification\Application\UseCases\CountNewUserNotificationsHandler::class)->handle($canonical);
+        }
+
         return ThemeResolver::page('account.index', $data);
     }
 

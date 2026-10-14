@@ -27,3 +27,38 @@
 .app-account-overview__confirmation-action:hover .app-account-overview__confirmation-dot{animation-duration:1.5s}
 @media(max-width:639px){.app-account-overview__status{padding:18px}.app-account-overview__confirmation-action{width:100%;justify-content:center}}
 @media(prefers-reduced-motion:reduce){.app-account-overview__confirmation-dot{animation:none}}
+
+/* Personal account widget dashboard + admin authoring surface. */
+.app-dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:18px}
+.app-dashboard-widget{min-width:0;padding:22px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.app-dashboard-widget--full{grid-column:1/-1}
+.app-dashboard-widget__header{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%}
+.app-dashboard-widget h2{font-size:20px;line-height:1.3;margin:0}
+.app-dashboard-widget p{font-size:14px;line-height:1.6;margin:0;color:var(--muted)}
+.app-dashboard-widget__body{white-space:pre-wrap;overflow-wrap:anywhere}
+.app-dashboard-widget .button{margin-top:auto}
+.app-dashboard-widget__ad-label{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.app-dashboard-widget__iframe{width:100%;border:0;display:block;flex:1;min-height:120px}
+.app-dashboard-widget:has(.app-dashboard-widget__iframe){padding:16px}
+.app-dashboard-admin{display:grid;gap:18px;min-width:0}
+.app-dashboard-admin>h2{margin:10px 0 0;font-size:23px}
+.app-dashboard-admin__note,.app-dashboard-admin__sandbox-explain{font-size:13px;line-height:1.6;color:var(--muted)}
+.app-dashboard-admin__item{min-width:0;padding:18px;display:grid;gap:14px}
+.app-dashboard-admin__item>summary{cursor:pointer;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.app-dashboard-admin__item>summary strong{font-size:15px}
+.app-dashboard-admin__item>summary small{color:var(--muted);font-weight:400}
+.app-dashboard-admin__form{display:grid;gap:18px;margin:20px 0}
+.app-dashboard-admin__fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.app-dashboard-admin__fields>label{display:grid;align-content:start;gap:7px;min-width:0;font-size:13px;font-weight:650}
+.app-dashboard-admin__fields :is(input,select,textarea){width:100%;min-width:0;color:var(--text);background:var(--surface-raised);border:1px solid var(--control-line);border-radius:var(--radius-control);padding:11px}
+.app-dashboard-admin__fields fieldset{margin:0;border:1px solid var(--line);border-radius:12px;padding:14px}
+.app-dashboard-admin__fields legend{font-weight:650;font-size:13px;padding:0 6px}
+.app-dashboard-admin__fields .app-dashboard-admin__check{display:inline-flex;align-items:center;gap:7px;margin:6px 18px 6px 0;font-size:13px;font-weight:400}
+.app-dashboard-admin__check input{width:auto}
+.app-dashboard-admin__wide{grid-column:1/-1}
+.app-dashboard-admin__flash{padding:15px;color:var(--success)}
+@media(max-width:750px){
+ .app-dashboard-grid,.app-dashboard-admin__fields{grid-template-columns:minmax(0,1fr)}
+ .app-dashboard-widget--full,.app-dashboard-admin__wide{grid-column:auto}
+ .app-dashboard-widget{padding:18px}
+}

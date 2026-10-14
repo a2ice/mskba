@@ -8,6 +8,8 @@ use App\Modules\Admin\Presentation\Http\Controllers\AdminEventsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminPageSeoController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminProfileChangeRequestsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminSettingsController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AdminAccountDashboardController;
+use App\Modules\Dashboard\Presentation\Http\Controllers\AccountDashboardRefreshController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTeamsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminTelegramChatsController;
 use App\Modules\Admin\Presentation\Http\Controllers\AdminUsersController;
@@ -383,6 +385,14 @@ Route::prefix('admin')
                     ->name('admin.rewards.destroy');
             });
         Route::get('/audit', [AdminAuditController::class, 'index'])->name('admin.audit')->defaults('breadcrumb', 'Аудит');
+        Route::get('/account-dashboard', [AdminAccountDashboardController::class, 'index'])
+            ->name('admin.account-dashboard.index');
+        Route::post('/account-dashboard/widgets', [AdminAccountDashboardController::class, 'store'])
+            ->middleware('throttle:20,1')->name('admin.account-dashboard.widgets.store');
+        Route::put('/account-dashboard/widgets/{widget}', [AdminAccountDashboardController::class, 'update'])
+            ->middleware('throttle:20,1')->name('admin.account-dashboard.widgets.update');
+        Route::delete('/account-dashboard/widgets/{widget}', [AdminAccountDashboardController::class, 'destroy'])
+            ->middleware('throttle:20,1')->name('admin.account-dashboard.widgets.destroy');
         Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
         Route::get('/telegram-chats', [AdminTelegramChatsController::class, 'index'])
             ->name('admin.telegram-chats')
@@ -753,6 +763,8 @@ Route::middleware('auth')->group(function () use ($themeResolver) {
         Route::get('/', [AccountController::class, 'index'])
             ->name('account')
             ->defaults('breadcrumb', 'Аккаунт');
+        Route::get('/dashboard/widgets', AccountDashboardRefreshController::class)
+            ->middleware('throttle:30,1')->name('account.dashboard.widgets');
         Route::get('/profile', AccountProfileController::class)
             ->name('account.profile')->defaults('breadcrumb', 'Профиль');
         Route::patch('/profile', UpdateAccountProfileController::class)

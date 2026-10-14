@@ -148,6 +148,15 @@ final class AdminMenu implements MenuHandler
                 'data' => ['count' => 0],
             ],
             [
+                'label' => 'Дашборд пользователей',
+                'description' => 'Виджеты, реклама и аудитории личных кабинетов.',
+                'url' => $this->routeUrl('admin.account-dashboard.index'),
+                'active' => $this->isActiveRoute('admin.account-dashboard.*'),
+                'visible' => $isAdmin,
+                'icon' => 'ti-layout-dashboard',
+                'data' => ['count' => 0],
+            ],
+            [
                 'label' => 'Настройки',
                 'description' => 'Базовые системные параметры.',
                 'url' => $this->routeUrl('admin.settings'),
