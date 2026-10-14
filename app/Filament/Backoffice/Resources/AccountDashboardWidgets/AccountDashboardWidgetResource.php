@@ -142,7 +142,7 @@ final class AccountDashboardWidgetResource extends Resource
     {
         $ids = preg_split('/[\s,]+/', trim((string) $raw), -1, PREG_SPLIT_NO_EMPTY);
 
-        return array_values(array_unique(array_map('intval', array_slice($ids ?: [], 0, 200))));
+        return array_values(array_unique(array_map('intval', $ids ?: [])));
     }
 
     public static function assertSafeData(array &$data, ?AccountDashboardWidget $previous = null): void
