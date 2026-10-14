@@ -117,7 +117,7 @@ final class UnifiedPermissionsCenterTest extends TestCase
         $manager->sync($super, $target, [Permission::CREATE_TEAM->value], []);
 
         $keys = UserOperationalPermission::query()->where('user_id', $target->id)
-            ->pluck('permission')->map(fn (Permission $p): string => $p->value)->all();
+            ->pluck('permission')->map(fn ($p): string => $p instanceof Permission ? $p->value : (string) $p)->all();
         $this->assertNotContains('team.settings.edit', $keys);
         $this->assertNotContains('event.update', $keys);
         $this->assertNotContains('view', $keys);

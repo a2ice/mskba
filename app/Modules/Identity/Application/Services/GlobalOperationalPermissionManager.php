@@ -128,6 +128,17 @@ final class GlobalOperationalPermissionManager
             }
         }
 
+        // Delegation can never amplify the administrator's own effective
+        // creation rights, including when superadmin explicitly denied one.
+        if (! $this->canManagePrivileged($actor)) {
+            $checker = app(UserOperationalPermissionChecker::class);
+            foreach ($creation as $selected) {
+                if (! $checker->allows($actor, Permission::from($selected))) {
+                    throw new AuthorizationException('Нельзя передать право, которого нет у администратора.');
+                }
+            }
+        }
+
         $allowed = array_map(static fn (string $v): Permission => Permission::from($v),
             array_merge($creation, $privileged ?? []));
         $scope = $privileged === null
