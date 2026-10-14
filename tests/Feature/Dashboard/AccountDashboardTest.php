@@ -219,4 +219,29 @@ final class AccountDashboardTest extends TestCase
         $this->assertNull($widget->fresh()->gradient_color);
     }
 
+
+    public function test_legacy_advertising_editor_accepts_root_relative_url_and_dashboard_renders_same_tab_link(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::SUPERADMIN, UserStatusEnum::CONFIRMED);
+        $this->actingAs($admin)->post(route('admin.account-dashboard.widgets.store'), $this->payload([
+            'title' => 'Партнёры',
+            'link_url' => '/partners?source=dashboard',
+        ]))->assertRedirect()->assertSessionHasNoErrors();
+
+        $widget = AccountDashboardWidget::query()->where('title', 'Партнёры')->firstOrFail();
+        $this->assertSame('/partners?source=dashboard', $widget->link_url);
+        $html = $this->getJson(route('account.dashboard.widgets'))->assertOk()->json('html');
+        $this->assertStringContainsString('href="/partners?source=dashboard"', $html);
+        $this->assertStringNotContainsString('href="/partners?source=dashboard" target="_blank"', $html);
+    }
+
+    public function test_legacy_advertising_editor_rejects_protocol_relative_url(): void
+    {
+        $admin = $this->user(UserSystemRoleEnum::SUPERADMIN, UserStatusEnum::CONFIRMED);
+        $this->actingAs($admin)->post(route('admin.account-dashboard.widgets.store'), $this->payload([
+            'link_url' => '//evil.example/partners',
+        ]))->assertSessionHasErrors(['link_url']);
+        $this->assertSame(0, AccountDashboardWidget::query()->where('kind', 'advertisement')->count());
+    }
+
 }

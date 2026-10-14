@@ -155,4 +155,54 @@ final class BackofficeAccessTest extends TestCase
         $this->assertSame('https://example.org/image.jpg', $widget->fresh()->image_url);
     }
 
+
+    public function test_filament_accepts_internal_advertising_link(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        Livewire::test(CreateAccountDashboardWidget::class)
+            ->fillForm([
+                'kind' => 'advertisement',
+                'title' => 'Внутренний раздел партнёров',
+                'link_url' => '/partners?ref=dashboard',
+                'link_label' => 'Наши партнёры',
+                'sort_order' => 42,
+                'size' => 'half',
+                'enabled' => true,
+                'can_hide' => true,
+                'contact_filter' => 'any',
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $widget = AccountDashboardWidget::query()->where('title', 'Внутренний раздел партнёров')->firstOrFail();
+        $this->assertSame('/partners?ref=dashboard', $widget->link_url);
+    }
+
+    public function test_filament_rejects_external_protocol_relative_and_script_links(): void
+    {
+        $super = $this->account(UserSystemRoleEnum::SUPERADMIN);
+        $this->actingAs($super);
+        Filament::setCurrentPanel(Filament::getPanel('backoffice'));
+
+        foreach (['//evil.example/path', 'javascript:alert(1)'] as $unsafeUrl) {
+            Livewire::test(CreateAccountDashboardWidget::class)
+                ->fillForm([
+                    'kind' => 'advertisement',
+                    'title' => 'Небезопасная ссылка',
+                    'link_url' => $unsafeUrl,
+                    'sort_order' => 50,
+                    'size' => 'half',
+                    'enabled' => true,
+                    'can_hide' => true,
+                    'contact_filter' => 'any',
+                ])
+                ->call('create')
+                ->assertHasFormErrors(['link_url']);
+        }
+        $this->assertDatabaseMissing('account_dashboard_widgets', ['title' => 'Небезопасная ссылка']);
+    }
+
 }
