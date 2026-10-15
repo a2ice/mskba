@@ -128,3 +128,156 @@ html[data-appearance-mode="light"] .theme-preview[data-preview-gloss="off"] .the
         backdrop-filter: none;
     }
 }
+
+/* Theme-specific font choices apply to the whole site; default is Inter.
+   Selected headings in the light theme still get the premium sheen above. */
+html[data-design-theme] body {
+    font-family: var(--theme-font-family, Inter, Arial, sans-serif);
+}
+html[data-design-theme] body :is(h1, h2, h3) {
+    font-family: var(--theme-heading-font-family, var(--theme-font-family, Inter, Arial, sans-serif));
+}
+
+/* A satin-grey context rail below the white header. */
+html[data-appearance-mode="light"] .app-context-bar {
+    background: linear-gradient(180deg, #eff2f6df, #e5eaf0e6);
+    border-top: 1px solid #ffffffb9;
+    border-bottom: 1px solid #cad3de;
+    -webkit-backdrop-filter: blur(18px) saturate(1.18);
+    backdrop-filter: blur(18px) saturate(1.18);
+    box-shadow: 0 3px 12px #27384b10, inset 0 1px 0 #ffffffc7;
+}
+html[data-appearance-mode="light"] :is(
+    .app-header-dropdown,
+    .app-context-actions__menu,
+    .app-context-path__menu,
+    .app-notification-popover
+) {
+    background: linear-gradient(160deg, #ffffffef, #eef2f6e7);
+    border: 1px solid #d3dce5;
+    -webkit-backdrop-filter: blur(16px) saturate(1.12);
+    backdrop-filter: blur(16px) saturate(1.12);
+    box-shadow: 0 10px 30px #27384b1c, inset 0 1px 0 #ffffffef;
+}
+@media (prefers-reduced-transparency: reduce) {
+    html[data-appearance-mode="light"] .app-context-bar {
+        background: linear-gradient(180deg, #f0f2f5, #e5e9ef);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+    html[data-appearance-mode="light"] :is(
+        .app-header-dropdown,
+        .app-context-actions__menu,
+        .app-context-path__menu,
+        .app-notification-popover
+    ) {
+        background: linear-gradient(150deg, #ffffff, #edf1f5);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+/* Restore the accepted widget corner-glow architecture in the light palette.
+   Per-widget --surface-glow still overrides the theme's default color. */
+html[data-appearance-mode="light"] .panel.app-dashboard-widget {
+    background: var(--surface-corner-layer), var(--surface);
+    background-size: min(35%, 200px) min(35%, 100px), auto;
+    background-repeat: no-repeat;
+    background-position: 100% 100%, 0 0;
+}
+@media (forced-colors: active) {
+    html[data-appearance-mode="light"] .panel.app-dashboard-widget {
+        background: Canvas;
+        border-color: CanvasText;
+    }
+}
+
+/* Guide-aligned typography control; no native browser dropdown. */
+.theme-preview__font-select {
+    position: relative;
+    display: grid;
+    gap: 6px;
+    min-width: min(100%, 230px);
+    font-size: 14px;
+    font-weight: 600;
+}
+.theme-preview__font-trigger {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 46px;
+    padding: 11px 14px;
+    border: 1px solid var(--control-line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    box-shadow: inset 0 1px 0 #ffffffa6;
+}
+.theme-preview__font-trigger:hover {
+    border-color: var(--accent);
+    background: var(--surface-raised);
+}
+.theme-preview__font-trigger[aria-expanded="true"] {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.theme-preview__font-trigger .theme-preview__chevron {
+    width: 16px;
+    height: 16px;
+    color: var(--muted);
+    transform: rotate(0deg);
+    transition: transform 150ms ease;
+}
+.theme-preview__font-trigger[aria-expanded="true"] .theme-preview__chevron {
+    transform: rotate(180deg);
+}
+.theme-preview__font-options {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 60;
+    max-height: min(310px, 55vh);
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    box-shadow: 0 14px 28px var(--light-premium-shadow, #26364514);
+}
+.theme-preview__font-options[hidden] {
+    display: none !important;
+}
+.theme-preview__font-option {
+    display: block;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+.theme-preview__font-option:hover,
+.theme-preview__font-option:focus-visible {
+    background: var(--surface-raised);
+}
+.theme-preview__font-option[aria-selected="true"] {
+    background: var(--subtle-accent-bg);
+    color: var(--accent);
+    font-weight: 700;
+}
+@media (prefers-reduced-motion: reduce) {
+    .theme-preview__font-trigger .theme-preview__chevron {
+        transition: none;
+    }
+}
