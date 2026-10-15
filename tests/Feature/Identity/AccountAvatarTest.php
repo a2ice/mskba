@@ -106,6 +106,34 @@ class AccountAvatarTest extends TestCase
             ->assertDontSee('id="account-avatar-library-input"', false);
     }
 
+    public function test_manual_avatar_accepts_six_megabytes_and_rejects_more_than_ten(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $profile = $user->createProfile([]);
+
+        // Reported upload size tests the multipart FormRequest boundary;
+        // the GD normalization itself is verified by the existing image test.
+        $this->actingAs($user)
+            ->post(route('account.avatar.store'), [
+                'avatar' => UploadedFile::fake()->image('large-portrait.jpg', 1200, 600)->size(6144),
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('avatar_status', 'Аватар обновлён.');
+
+        $this->assertSame(1, $profile->media()->where('collection', 'avatar')->count());
+
+        $this->actingAs($user)
+            ->from(route('account'))
+            ->post(route('account.avatar.store'), [
+                'avatar' => UploadedFile::fake()->image('too-large.jpg', 1200, 600)->size(10241),
+            ])
+            ->assertRedirect(route('account'))
+            ->assertSessionHasErrors('avatar');
+
+        $this->assertSame(1, $profile->media()->where('collection', 'avatar')->count());
+    }
+
     public function test_avatar_upload_rejects_unsupported_file(): void
     {
         $user = User::factory()->create();

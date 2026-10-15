@@ -22,7 +22,7 @@ final class StoreAccountAvatarRequest extends FormRequest
                 'file',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:5120',
+                'max:10240',
                 'dimensions:max_width=6000,max_height=6000',
             ],
         ];
@@ -37,7 +37,7 @@ final class StoreAccountAvatarRequest extends FormRequest
             'avatar.required' => 'Выберите изображение.',
             'avatar.image' => 'Файл должен быть изображением.',
             'avatar.mimes' => 'Поддерживаются только JPEG, PNG и WebP.',
-            'avatar.max' => 'Изображение должно быть не больше 5 МБ.',
+            'avatar.max' => 'Изображение должно быть не больше 10 МБ.',
             'avatar.dimensions' => 'Размер изображения не должен превышать 6000×6000 пикселей.',
         ];
     }
