@@ -33,8 +33,20 @@ return new class extends Migration
                 'sidebar_active_text' => '#BD4F00',
             ];
             DB::table('design_themes')->where('id', $theme->id)->update($palette + ['updated_at' => now()]);
-            DB::table('design_theme_revisions')->where('design_theme_id', $theme->id)
-                ->orderByDesc('id')->limit(1)->update($palette);
+            DB::table('design_theme_revisions')->insert($palette + [
+                'design_theme_id' => $theme->id,
+                'name' => $theme->name,
+                'description' => $theme->description,
+                'mode' => $theme->mode,
+                'colors' => $theme->colors,
+                'css_code' => $theme->css_code,
+                'is_published' => $theme->is_published,
+                'body_font' => $theme->body_font,
+                'heading_font' => $theme->heading_font,
+                'widget_glow_color' => $theme->widget_glow_color,
+                'widget_glow_strength' => $theme->widget_glow_strength,
+                'created_at' => now(),
+            ]);
         });
     }
 
