@@ -186,7 +186,7 @@ final class DesignThemeResource extends Resource
             $value = $data[$field] ?? null;
             if ($value !== null && $value !== ''
                 && (! is_string($value) || ! preg_match('/\\A#[0-9a-fA-F]{6}\\z/D', $value))) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
                     $field => 'Выбери цвет в формате HEX.',
                 ]);
             }
