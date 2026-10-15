@@ -24,6 +24,31 @@ final class DesignThemeCssTest extends TestCase
         }
     }
 
+    public function test_fonts_and_sidebar_palette_render_with_safe_per_theme_overrides(): void
+    {
+        $theme = new DesignTheme(config('design_palettes.day'));
+        $theme->body_font = 'onest';
+        $theme->heading_font = 'commissioner';
+        $theme->widget_glow_color = '#BCDDF6';
+        $theme->widget_glow_strength = 20;
+        $theme->sidebar_background = '#FFFFFF';
+        $theme->sidebar_hover = '#E8F0F8';
+        $theme->sidebar_active_background = '#FFF4EB';
+        $theme->sidebar_active_text = '#BD4F00';
+
+        $compiler = new DesignThemeCss;
+        $css = $compiler->render($theme);
+        $this->assertStringContainsString('--theme-font-family: "Onest MSKBA"', $css);
+        $this->assertStringContainsString('--theme-heading-font-family: "Commissioner MSKBA"', $css);
+        $this->assertStringContainsString('--surface-corner-glow: #BCDDF633;', $css);
+        $this->assertStringContainsString('--sidebar-hover: #E8F0F8;', $css);
+        $this->assertStringContainsString('--sidebar-active-background: #FFF4EB;', $css);
+
+        $theme->body_font = 'malicious-css-value';
+        $this->expectException(ValidationException::class);
+        $compiler->render($theme);
+    }
+
     public function test_unsafe_css_is_rejected(): void
     {
         $compiler = new DesignThemeCss;

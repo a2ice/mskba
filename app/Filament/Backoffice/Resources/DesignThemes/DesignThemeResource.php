@@ -9,6 +9,7 @@ use App\Modules\Identity\Application\Services\BackofficePermissionManager;
 use App\Modules\Identity\Domain\Enums\UserOperationalPermissionEnum as Permission;
 use App\Presentation\Theming\DesignTheme;
 use App\Presentation\Theming\DesignThemeCss;
+use App\Presentation\Theming\DesignFontCatalog;
 use App\Presentation\Theming\DesignThemeManager;
 use App\Presentation\Theming\DesignThemeRevision;
 use App\Presentation\Theming\DesignThemeRevisionManager;
@@ -121,6 +122,37 @@ final class DesignThemeResource extends Resource
                         ->dehydrated(fn (?DesignTheme $record) => ! ($record?->is_system ?? false)),
                     Textarea::make('description')->label('Описание')->maxLength(255)->columnSpanFull(),
                 ]),
+            Section::make('Типографика')
+                ->description('Шрифты из лицензированной локальной коллекции. Каждый можно предварительно сравнить в карточке темы.')
+                ->columns(2)->schema([
+                    Select::make('body_font')->label('Шрифт основного текста')
+                        ->options(DesignFontCatalog::OPTIONS)->native(false)->required()->default('inter'),
+                    Select::make('heading_font')->label('Шрифт заголовков H1–H3')
+                        ->options(DesignFontCatalog::OPTIONS)->native(false)->required()->default('inter'),
+                ]),
+            Section::make('Боковая подсветка карточек')
+                ->description('Цвет темы используется по умолчанию. Цвет, установленный у отдельного виджета, имеет приоритет.')
+                ->columns(2)->schema([
+                    ColorPicker::make('widget_glow_color')->label('Цвет свечения по умолчанию')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    Select::make('widget_glow_strength')->label('Интенсивность')
+                        ->options([0 => 'Выключено', 8 => 'Очень слабая — 8%', 12 => 'Деликатная — 12%', 16 => 'Слабая — 16%', 20 => 'Стандартная — 20%', 28 => 'Выразительная — 28%', 36 => 'Сильная — 36%'])
+                        ->native(false)->required()->default(20),
+                ]),
+            Section::make('Палитра бокового меню')
+                ->description('Отдельные настройки сайдбара, не изменяющие фон карточек и кнопок. Действуют в обеих темах.')
+                ->columns(3)->schema([
+                    ColorPicker::make('sidebar_background')->label('Фон панели')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_text')->label('Обычные пункты')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_hover')->label('Фон при наведении')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_active_background')->label('Фон активного пункта')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_active_text')->label('Текст активного пункта')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                ]),
             Section::make('Палитра')
                 ->description('Применяется к фону, тексту, формам, кнопкам, сообщениям и статусным компонентам.')
                 ->columns(3)->schema($colors),
@@ -137,6 +169,33 @@ final class DesignThemeResource extends Resource
     {
         abort_unless(self::canCreate(), 403);
         app(DesignThemeCss::class)->validate((array) ($data['colors'] ?? []), $data['css_code'] ?? null);
+        foreach (['body_font', 'heading_font'] as $field) {
+            if (! isset(DesignFontCatalog::OPTIONS[$data[$field] ?? 'inter'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    $field => 'Выбери шрифт из коллекции MSKBA.',
+                ]);
+            }
+        }
+        $glow = $data['widget_glow_color'] ?? null;
+        if ($glow !== null && $glow !== '' && (! is_string($glow) || ! preg_match('/\\A#[0-9a-fA-F]{6}\\z/D', $glow))) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'widget_glow_color' => 'Выбери цвет в формате HEX.',
+            ]);
+        }
+        foreach (['sidebar_background', 'sidebar_text', 'sidebar_hover', 'sidebar_active_background', 'sidebar_active_text'] as $field) {
+            $value = $data[$field] ?? null;
+            if ($value !== null && $value !== ''
+                && (! is_string($value) || ! preg_match('/\\A#[0-9a-fA-F]{6}\\z/D', $value))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    $field => 'Выбери цвет в формате HEX.',
+                ]);
+            }
+        }
+        if (isset($data['widget_glow_strength']) && ! in_array((int) $data['widget_glow_strength'], [0, 8, 12, 16, 20, 28, 36], true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'widget_glow_strength' => 'Выбери допустимую интенсивность подсветки.',
+            ]);
+        }
     }
 
     public static function table(Table $table): Table

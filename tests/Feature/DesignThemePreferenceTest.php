@@ -26,6 +26,12 @@ final class DesignThemePreferenceTest extends TestCase
         $this->assertSame('#F3F4F6', $day->colors['bg']);
         $this->assertSame('#F7F8FA', $day->colors['surface-raised']);
         $this->assertStringContainsString('--light-page-top: #F7F8FA;', $day->css_code);
+        $this->assertSame('inter', $day->body_font);
+        $this->assertSame('inter', $day->heading_font);
+        $this->assertSame('#BCDDF6', $day->widget_glow_color);
+        $this->assertSame(20, $day->widget_glow_strength);
+        $this->assertSame('#FFFFFF', $day->sidebar_background);
+        $this->assertSame('#FFF4EB', $day->sidebar_active_background);
     }
 
     public function test_blue_palette_upgrade_preserves_manual_filament_edits(): void
@@ -137,6 +143,35 @@ final class DesignThemePreferenceTest extends TestCase
 
         $migration->up();
         $this->assertSame($before + 1, $day->revisions()->count());
+    }
+
+    public function test_theme_font_sidebar_and_glow_changes_are_versioned_and_reversible(): void
+    {
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $initial = $day->revisions()->count();
+        $revision = $day->revisions()->orderByDesc('id')->firstOrFail();
+
+        $day->update([
+            'body_font' => 'rubik',
+            'heading_font' => 'manrope',
+            'sidebar_hover' => '#E6EBF2',
+            'widget_glow_strength' => 8,
+        ]);
+        $this->assertSame($initial + 1, $day->revisions()->count());
+
+        $admin = \App\Modules\Identity\Domain\Models\User::factory()->create([
+            'status' => \App\Modules\Identity\Domain\Enums\UserStatusEnum::CONFIRMED,
+            'system_role' => \App\Modules\Identity\Domain\Enums\UserSystemRoleEnum::SUPERADMIN,
+        ]);
+        $this->actingAs($admin);
+        app(\App\Presentation\Theming\DesignThemeRevisionManager::class)->restore($day, $revision->id);
+
+        $day->refresh();
+        $this->assertSame('inter', $day->body_font);
+        $this->assertSame('inter', $day->heading_font);
+        $this->assertSame('#F7F8FA', $day->sidebar_hover);
+        $this->assertSame(20, $day->widget_glow_strength);
+        $this->assertSame($initial + 2, $day->revisions()->count());
     }
 
     public function test_system_themes_cannot_be_deleted_or_unpublished(): void

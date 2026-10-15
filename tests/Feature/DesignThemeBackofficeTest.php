@@ -31,7 +31,7 @@ final class DesignThemeBackofficeTest extends TestCase
             ->assertSee('theme-preview__cool-panel');
     }
 
-    public function test_light_preview_offers_three_local_fonts_and_untouched_dark_preview(): void
+    public function test_light_preview_offers_six_styled_font_choices_and_untouched_dark_preview(): void
     {
         $actor = User::factory()->create([
             'status' => UserStatusEnum::CONFIRMED,
@@ -44,9 +44,13 @@ final class DesignThemeBackofficeTest extends TestCase
             ->assertOk()
             ->assertSee('data-premium-font', false)
             ->assertSee('data-premium-gloss', false)
-            ->assertSee('Onest — вариант A')
-            ->assertSee('Manrope — вариант B')
-            ->assertSee('Inter — текущий')
+            ->assertSee('Onest — современный')
+            ->assertSee('Manrope — геометричный')
+            ->assertSee('Inter — универсальный')
+            ->assertSee('Golos Text — лаконичный')
+            ->assertSee('Commissioner — выразительный')
+            ->assertSee('Rubik — мягкая геометрия')
+            ->assertSee('role="listbox"', false)
             ->assertSee('theme-preview__display-title');
 
         $this->get(route('design-themes.preview', $night))
@@ -56,7 +60,7 @@ final class DesignThemeBackofficeTest extends TestCase
 
     public function test_premium_font_files_and_ofl_licenses_are_bundled_locally(): void
     {
-        foreach (['onest', 'manrope'] as $family) {
+        foreach (['onest', 'manrope', 'golos-text', 'commissioner', 'rubik'] as $family) {
             foreach (['latin', 'cyrillic'] as $subset) {
                 $this->assertFileExists(resource_path(
                     "themes/mskba_app/assets/fonts/premium/{$family}-{$subset}-wght-normal.woff2"
@@ -77,14 +81,15 @@ final class DesignThemeBackofficeTest extends TestCase
         $theme = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
         $original = $theme->name;
         $baseline = $theme->revisions()->firstOrFail();
+        $initialCount = $theme->revisions()->count();
 
         $this->actingAs($actor);
         $theme->update(['name' => 'Изменённое название']);
-        $this->assertSame(2, $theme->revisions()->count());
+        $this->assertSame($initialCount + 1, $theme->revisions()->count());
 
         app(DesignThemeRevisionManager::class)->restore($theme, $baseline->id);
         $this->assertSame($original, $theme->fresh()->name);
-        $this->assertSame(3, $theme->revisions()->count());
+        $this->assertSame($initialCount + 2, $theme->revisions()->count());
     }
 
     public function test_ordinary_user_cannot_edit_or_preview_themes(): void

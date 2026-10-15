@@ -23,14 +23,29 @@
     <p class="muted" style="margin-bottom:26px">{{ $theme->description }}</p>
     @if ($theme->mode === 'light')
         <aside class="theme-preview__controls" aria-label="Сравнение типографики">
-            <label for="premium-typography-choice">
-                Вариант шрифта
-                <select id="premium-typography-choice" data-premium-font>
-                    <option value="inter">Inter — текущий</option>
-                    <option value="onest">Onest — вариант A</option>
-                    <option value="manrope">Manrope — вариант B</option>
-                </select>
-            </label>
+            <div class="theme-preview__font-select" data-premium-picker>
+                <span id="premium-typography-label">Вариант шрифта</span>
+                <button id="premium-typography-choice" type="button"
+                    class="theme-preview__font-trigger" data-premium-trigger
+                    aria-labelledby="premium-typography-label premium-typography-choice"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-controls="premium-typography-options">
+                    <span data-premium-selected>Inter — универсальный</span>
+                    <svg class="theme-preview__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div id="premium-typography-options"
+                    class="theme-preview__font-options" role="listbox"
+                    aria-labelledby="premium-typography-label" data-premium-options hidden>
+                    @foreach (\App\Presentation\Theming\DesignFontCatalog::OPTIONS as $key => $name)
+                        <button type="button" role="option" class="theme-preview__font-option"
+                            data-premium-font="{{ $key }}"
+                            aria-selected="{{ $key === ($theme->body_font ?? 'inter') ? 'true' : 'false' }}"
+                            tabindex="-1">{{ $name }}</button>
+                    @endforeach
+                </div>
+            </div>
             <label class="theme-preview__check" for="premium-heading-gloss">
                 <input id="premium-heading-gloss" type="checkbox" checked data-premium-gloss>
                 Лёгкий градиент заголовков
@@ -76,27 +91,83 @@
 <script>
 (() => {
     const preview = document.querySelector('[data-theme-typography-preview]');
-    const font = preview?.querySelector('[data-premium-font]');
+    const picker = preview?.querySelector('[data-premium-picker]');
+    const trigger = picker?.querySelector('[data-premium-trigger]');
+    const menu = picker?.querySelector('[data-premium-options]');
+    const options = [...(menu?.querySelectorAll('[data-premium-font]') || [])];
+    const selectedText = trigger?.querySelector('[data-premium-selected]');
     const gloss = preview?.querySelector('[data-premium-gloss]');
     const description = preview?.querySelector('[data-premium-help]');
-    if (!font || !gloss || !description) return;
+    if (!preview || !picker || !trigger || !menu || !selectedText || !gloss || !description) return;
 
     const fonts = {
         inter: 'Inter, Arial, sans-serif',
         onest: '"Onest MSKBA", Inter, Arial, sans-serif',
         manrope: '"Manrope MSKBA", Inter, Arial, sans-serif',
+        'golos-text': '"Golos Text MSKBA", Inter, Arial, sans-serif',
+        commissioner: '"Commissioner MSKBA", Inter, Arial, sans-serif',
+        rubik: '"Rubik MSKBA", Inter, Arial, sans-serif',
     };
-    const update = () => {
-        const family = fonts[font.value] ?? fonts.inter;
-        preview.style.setProperty('--preview-font-family', family);
-        preview.dataset.previewFont = font.value in fonts ? font.value : 'inter';
+    let current = @json($theme->body_font ?? 'inter');
+    if (!(current in fonts)) current = 'inter';
+
+    function update() {
+        const selected = options.find(option => option.dataset.premiumFont === current) || options[0];
+        if (!selected) return;
+        preview.style.setProperty('--preview-font-family', fonts[current]);
+        preview.dataset.previewFont = current;
         preview.dataset.previewGloss = gloss.checked ? 'on' : 'off';
-        description.textContent =
-            'Показан ' + font.options[font.selectedIndex].text
+        selectedText.textContent = selected.textContent.trim();
+        options.forEach(option => option.setAttribute('aria-selected',
+            String(option.dataset.premiumFont === current)));
+        description.textContent = 'Показан ' + selected.textContent.trim()
             + (gloss.checked ? ' с мягким градиентом заголовков.' : ' без градиента.')
             + ' Изменения действуют только в предпросмотре, без сохранения.';
-    };
-    font.addEventListener('change', update);
+    }
+
+    function close(focusTrigger = false) {
+        menu.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        if (focusTrigger) trigger.focus();
+    }
+    function open() {
+        menu.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        (options.find(option => option.dataset.premiumFont === current) || options[0])?.focus();
+    }
+    function selectOption(option) {
+        if (!(option.dataset.premiumFont in fonts)) return;
+        current = option.dataset.premiumFont;
+        update();
+        close(true);
+    }
+    trigger.addEventListener('click', () => menu.hidden ? open() : close(true));
+    trigger.addEventListener('keydown', (event) => {
+        if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
+            event.preventDefault();
+            if (menu.hidden) open();
+        }
+    });
+    options.forEach(option => option.addEventListener('click', () => selectOption(option)));
+    menu.addEventListener('keydown', event => {
+        const index = options.indexOf(document.activeElement);
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            close(true);
+            return;
+        }
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0
+                : event.key === 'End' ? options.length - 1
+                    : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+            options[next]?.focus();
+        }
+        if (event.key === 'Tab') close();
+    });
+    document.addEventListener('pointerdown', event => {
+        if (!menu.hidden && !picker.contains(event.target)) close();
+    });
     gloss.addEventListener('change', update);
     update();
 })();
