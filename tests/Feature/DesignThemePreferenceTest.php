@@ -25,7 +25,7 @@ final class DesignThemePreferenceTest extends TestCase
         $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
         $this->assertSame('#F3F4F6', $day->colors['bg']);
         $this->assertSame('#F7F8FA', $day->colors['surface-raised']);
-        $this->assertStringContainsString('--light-page-top: #ffffff;', $day->css_code);
+        $this->assertStringContainsString('--light-page-top: #F7F8FA;', $day->css_code);
     }
 
     public function test_blue_palette_upgrade_preserves_manual_filament_edits(): void
