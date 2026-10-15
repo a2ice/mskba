@@ -54,6 +54,22 @@ final class OperatorActivityService
         }
     }
 
+    public function forget(User $actor): void
+    {
+        try {
+            $store = Cache::store((string) config('operator_activity.cache_store', 'redis'));
+            $userId = $actor->canonical()->id;
+            $currentKey = 'operator-activity:current:'.$userId;
+            $current = $store->get($currentKey);
+            if (is_array($current) && is_string($current['session'] ?? null)) {
+                $store->forget('operator-activity:history:'.$userId.':'.$current['session']);
+            }
+            $store->forget($currentKey);
+        } catch (Throwable) {
+            // Never break logout when Redis is unavailable.
+        }
+    }
+
     /** @return array{path: string, at: int, online: bool}|null */
     public function state(User $user): ?array
     {
