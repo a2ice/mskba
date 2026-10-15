@@ -10,6 +10,7 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
+                'resources/js/backoffice-support-chat.js',
                 'resources/themes/mskba_dark/css/app.css',
                 'resources/themes/mskba_dark/js/app.js',
                 'resources/themes/mskba_streetball/css/app.css',
