@@ -11,10 +11,7 @@ final class SupportTicketLifecycleText
     {
         $name = trim((string) $actor);
         $message = 'Обращение закрыл @'.($name !== '' ? $name : 'сотрудник_поддержки').'.';
-        $reasonEnum = SupportClosureReasonEnum::tryFrom((string) $reason);
-        $reasonText = $reasonEnum === SupportClosureReasonEnum::OTHER
-            ? trim((string) $description)
-            : $reasonEnum?->label();
+        $reasonText = $this->reason($reason, $description);
 
         if (filled($reasonText)) {
             $message .= ' Причина: '.$reasonText;
@@ -24,5 +21,22 @@ final class SupportTicketLifecycleText
         }
 
         return $message;
+    }
+
+    public function reopened(?string $actor): string
+    {
+        $name = trim((string) $actor);
+
+        return 'Обращение возобновил @'.($name !== '' ? $name : 'сотрудник_поддержки').'.';
+    }
+
+    public function reason(?string $reason, ?string $description): ?string
+    {
+        $reasonEnum = SupportClosureReasonEnum::tryFrom((string) $reason);
+        $reasonText = $reasonEnum === SupportClosureReasonEnum::OTHER
+            ? trim((string) $description)
+            : $reasonEnum?->label();
+
+        return filled($reasonText) ? $reasonText : null;
     }
 }
