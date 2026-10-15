@@ -139,6 +139,20 @@ final class DesignThemeResource extends Resource
                         ->options([0 => 'Выключено', 8 => 'Очень слабая — 8%', 12 => 'Деликатная — 12%', 16 => 'Слабая — 16%', 20 => 'Стандартная — 20%', 28 => 'Выразительная — 28%', 36 => 'Сильная — 36%'])
                         ->native(false)->required()->default(20),
                 ]),
+            Section::make('Палитра бокового меню')
+                ->description('Отдельные настройки сайдбара, не изменяющие фон карточек и кнопок. Действуют в обеих темах.')
+                ->columns(3)->schema([
+                    ColorPicker::make('sidebar_background')->label('Фон панели')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_text')->label('Обычные пункты')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_hover')->label('Фон при наведении')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_active_background')->label('Фон активного пункта')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                    ColorPicker::make('sidebar_active_text')->label('Текст активного пункта')
+                        ->nullable()->regex('/\\A#[0-9a-fA-F]{6}\\z/D'),
+                ]),
             Section::make('Палитра')
                 ->description('Применяется к фону, тексту, формам, кнопкам, сообщениям и статусным компонентам.')
                 ->columns(3)->schema($colors),
@@ -167,6 +181,15 @@ final class DesignThemeResource extends Resource
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'widget_glow_color' => 'Выбери цвет в формате HEX.',
             ]);
+        }
+        foreach (['sidebar_background', 'sidebar_text', 'sidebar_hover', 'sidebar_active_background', 'sidebar_active_text'] as $field) {
+            $value = $data[$field] ?? null;
+            if ($value !== null && $value !== ''
+                && (! is_string($value) || ! preg_match('/\\A#[0-9a-fA-F]{6}\\z/D', $value))) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                    $field => 'Выбери цвет в формате HEX.',
+                ]);
+            }
         }
         if (isset($data['widget_glow_strength']) && ! in_array((int) $data['widget_glow_strength'], [0, 8, 12, 16, 20, 28, 36], true)) {
             throw \Illuminate\Validation\ValidationException::withMessages([
