@@ -101,10 +101,10 @@ final class DesignThemeCss
 
         // Applied after the editable legacy CSS to ensure visual controls win
         // while retaining backwards-compatible custom properties and revisions.
-        return "/* MSKBA appearance: {$theme->slug} */\\n:root {\\n    "
-            .implode("\\n    ", $declarations)."\\n}\\n"
-            .trim((string) $theme->css_code)."\\n:root {\\n    "
-            .implode("\\n    ", $fontDeclarations)."\\n}\\n";
+        return "/* MSKBA appearance: {$theme->slug} */\n:root {\n    "
+            .implode("\n    ", $declarations)."\n}\n"
+            .trim((string) $theme->css_code)."\n:root {\n    "
+            .implode("\n    ", $fontDeclarations)."\n}\n";
     }
 
     public function revision(DesignTheme $theme): string
