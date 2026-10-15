@@ -114,6 +114,31 @@ final class DesignThemePreferenceTest extends TestCase
         $this->assertSame($before + 1, $day->revisions()->count());
     }
 
+    public function test_premium_typography_tokens_preserve_filament_choices_and_are_idempotent(): void
+    {
+        $day = DesignTheme::query()->where('slug', 'court_day')->firstOrFail();
+        $css = str_replace(
+            '--light-display-gloss-top: #435468;',
+            '--light-display-gloss-top: #556677;', // Explicit admin override.
+            $day->css_code,
+        );
+        $css = preg_replace('/^\\s*--light-premium-[a-z-]+:[^;]+;\\n?/m', '', $css);
+        $day->update(['css_code' => $css]);
+        $before = $day->revisions()->count();
+
+        $migration = require database_path('migrations/2026_10_15_233000_add_court_day_premium_tokens.php');
+        $migration->up();
+
+        $day->refresh();
+        $this->assertStringContainsString('--light-display-gloss-top: #556677;', $day->css_code);
+        $this->assertStringContainsString('--light-premium-blur: 12px;', $day->css_code);
+        $this->assertStringContainsString('--light-display-font-family: Inter, Arial, sans-serif;', $day->css_code);
+        $this->assertSame($before + 1, $day->revisions()->count());
+
+        $migration->up();
+        $this->assertSame($before + 1, $day->revisions()->count());
+    }
+
     public function test_system_themes_cannot_be_deleted_or_unpublished(): void
     {
         $night = DesignTheme::query()->where('slug', 'arena_night')->firstOrFail();
