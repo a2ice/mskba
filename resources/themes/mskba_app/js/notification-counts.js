@@ -3,6 +3,7 @@
 // notification reads in other tabs and temporarily unavailable Reverb.
 import { subscribePrivate } from '../../../js/realtime.js';
 import { createNotificationToastDock } from './notification-toasts.js';
+import { createNotificationPopover, isMessagesPage } from './notification-popover.js';
 
 const header = document.querySelector('[data-app-header][data-notification-user-id]');
 
@@ -12,9 +13,14 @@ if (header) {
     let latestCount = Math.max(0, Number(countBadge?.dataset.unreadCount || 0) || 0);
     let revision = 0;
     let syncSerial = 0;
+    const popover = createNotificationPopover(header.dataset.notificationUserId);
     const dock = createNotificationToastDock(document.querySelector('[data-message-toast-region]'), (count) => {
         render(count);
         void synchronize();
+    }, {
+        canExpand: () => !isMessagesPage(window.location.pathname),
+        onExpand: (notification) => popover?.open(notification),
+        userId: header.dataset.notificationUserId,
     });
 
     const render = (value) => {
@@ -60,6 +66,7 @@ if (header) {
             } while (true);
             if (thisSync !== syncSerial || startedAt !== revision) return;
             dock?.reconcile(notifications);
+            popover?.restore(notifications);
             render(unreadCount);
         } catch {
             // Preserve existing unread count and toasts when offline.

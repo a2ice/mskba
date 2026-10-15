@@ -118,3 +118,237 @@
     .toast:not(.app-message-toast) strong { font-size: .72rem; }
     .toast:not(.app-message-toast) p { font-size: .675rem; margin-top: 0; }
 }
+
+
+/* Shared, type-driven notification detail / conversation window. */
+.app-message-toast__expand,
+.app-message-toast__read {
+    grid-column: 1 / -1;
+    border: 0;
+    padding: 4px 2px;
+    margin: 0;
+    text-align: left;
+    color: var(--accent);
+    background: transparent;
+    font: inherit;
+    font-size: .75rem;
+    cursor: pointer;
+}
+.app-message-toast__expand { grid-column: 1 / 2; }
+.app-message-toast__read {
+    grid-column: 2 / 3;
+    text-align: right;
+    color: var(--muted);
+}
+.app-message-toast :is(.app-message-toast__expand, .app-message-toast__read):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+.app-notification-popover {
+    position: fixed;
+    z-index: 122;
+    right: max(18px, env(safe-area-inset-right, 0px));
+    bottom: max(22px, env(safe-area-inset-bottom, 0px));
+    width: min(440px, calc(100vw - 36px));
+    min-width: 290px;
+    height: min(570px, calc(100dvh - 60px));
+    min-height: 260px;
+    max-height: calc(100dvh - 24px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    resize: both;
+    border: 1px solid var(--border, var(--line, #49505b));
+    border-radius: 18px;
+    color: var(--text);
+    background: var(--surface, #161c24);
+    box-shadow: 0 22px 75px #0009;
+}
+.app-notification-popover[hidden] { display: none !important; }
+.app-notification-popover__header {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 12px 14px;
+    flex: 0 0 auto;
+    background: var(--surface-raised, var(--surface, #202530));
+    border-bottom: 1px solid var(--border, var(--line, #49505b));
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+.app-notification-popover__header strong {
+    flex: 1;
+    font-size: .89rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.app-notification-popover__grip { color: var(--muted); font-size: 1rem; }
+.app-notification-popover__header button {
+    flex: 0 0 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    border-radius: 6px;
+    font-size: 21px;
+    cursor: pointer;
+}
+.app-notification-popover__header button:hover { background: #7773; }
+.app-notification-popover__content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px;
+}
+.app-notification-popover__content > p { overflow-wrap: anywhere; }
+.app-notification-popover__history {
+    min-height: 90px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 7px;
+}
+.app-notification-popover__log {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 125px;
+    padding: 3px;
+}
+.app-notification-popover__log .app-messages__bubble {
+    position: relative;
+    width: fit-content;
+    max-width: 92%;
+    flex: 0 0 auto;
+    margin: 0;
+}
+.app-notification-popover__log .app-messages__bubble--outgoing { align-self: flex-end; }
+.app-notification-popover__log .app-messages__bubble--incoming { align-self: flex-start; }
+.app-notification-popover__log .app-messages__bubble--system { align-self: center; width: 100%; }
+.app-notification-popover__history > button {
+    align-self: center;
+    border: 0;
+    background: none;
+    text-decoration: underline;
+    font-size: .77rem;
+    color: var(--accent);
+    cursor: pointer;
+}
+.app-notification-popover__form { display: flex; flex-direction: column; gap: 6px; }
+.app-notification-popover__form[hidden] { display: none; }
+.app-notification-popover__form label { font-size: .78rem; font-weight: 650; }
+.app-notification-popover__form textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 60px;
+    max-height: 160px;
+    padding: 10px;
+    border: 1px solid var(--border, var(--line, #777));
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 9px;
+}
+.app-notification-popover__form button {
+    align-self: flex-end;
+    padding: 8px 14px;
+    border-radius: 9px;
+    color: white;
+    border: 0;
+    font-weight: 600;
+    background: var(--accent);
+    cursor: pointer;
+}
+.app-notification-popover__status, .app-notification-popover__hint {
+    font-size: .8rem;
+    color: var(--muted);
+}
+.app-notification-popover__error { font-size: .76rem; color: var(--danger); }
+.app-notification-popover__footer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--border, var(--line, #49505b));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    gap: 8px;
+}
+.app-notification-popover__footer :is(a,button) {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+.app-notification-popover :is(button, a, textarea):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+@media(max-width:767px) {
+    .app-notification-popover {
+        inset: auto 0 0 0 !important;
+        width: 100vw !important;
+        min-width: 0;
+        height: min(82dvh, 760px);
+        max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 16px);
+        border-radius: 18px 18px 0 0;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        resize: none;
+    }
+    .app-notification-popover__header { cursor: default; touch-action: auto; }
+    .app-notification-popover__grip { display: none; }
+    .app-message-toast__expand, .app-message-toast__read { font-size: .675rem; }
+}
+@media(prefers-reduced-motion:reduce) {
+    .app-message-toast-region .toast { transition: none; }
+}
+
+@media(max-width:767px) {
+    body.app-notification-popover-open { overflow: hidden; }
+}
+.app-notification-popover__header:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -3px;
+}
+
+.app-notification-popover__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.app-notification-popover__actions button {
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border, var(--line, #888));
+    background: var(--surface-raised, var(--surface));
+    color: var(--text);
+    font-size: .8rem;
+    cursor: pointer;
+}
+.app-notification-popover__actions button:first-child {
+    background: var(--accent); color: white; border-color: var(--accent);
+}
+.app-notification-popover__actions button:disabled { opacity: .5; cursor: default; }
+
+/* Keep queued toasts unobtrusive while a dialog is expanded. */
+body.app-notification-popover-open .app-message-toast-region {
+    visibility: hidden;
+    pointer-events: none;
+}
+.app-notification-popover__status { white-space: pre-line; }
+.app-notification-popover__backdrop { display: none; }
+@media(max-width:767px) {
+    .app-notification-popover__backdrop:not([hidden]) {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 121;
+        background: rgba(0,0,0,.56);
+    }
+}
