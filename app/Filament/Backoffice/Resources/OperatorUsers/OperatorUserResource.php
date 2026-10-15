@@ -130,11 +130,11 @@ final class OperatorUserResource extends Resource
                             ->required()->maxLength(2000)->rows(4),
                     ])
                     ->modalSubmitActionLabel('Отправить')
-                    ->action(function (User $record, array $data): void {
+                    ->action(function (User $record, array $data): \Illuminate\Http\RedirectResponse {
                         $actor = auth('web')->user()->canonical();
                         $conversation = app(OperatorConversationMessaging::class)
                             ->start($actor, $record, $data['body']);
-                        redirect()->to(OperatorConversationResource::getUrl('view', [
+                        return redirect()->to(OperatorConversationResource::getUrl('view', [
                             'record' => $conversation,
                         ]));
                     }),
