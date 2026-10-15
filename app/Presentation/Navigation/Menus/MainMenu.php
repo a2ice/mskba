@@ -46,8 +46,8 @@ final class MainMenu implements MenuHandler
             $moreItems[] = [
                 'divider' => true,
                 'label' => $user->isAdmin() ? 'Админка' : 'Контент',
-                'url' => $this->routeUrl($user->isAdmin() ? 'admin.dashboard' : 'admin.content'),
-                'active' => $this->isActiveRoute('admin.*'),
+                'url' => $this->routeUrl($user->isAdmin() ? '/backoffice' : 'admin.content'),
+                'active' => $this->isActiveRoute($user->isAdmin() ? 'admin.*, filament.backoffice.*' : 'admin.*'),
                 'visible' => true,
             ];
 
