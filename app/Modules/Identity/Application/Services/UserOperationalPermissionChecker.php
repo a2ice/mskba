@@ -18,6 +18,15 @@ final class UserOperationalPermissionChecker
             return false;
         }
 
+        if (in_array($permission, [
+            UserOperationalPermissionEnum::OPERATOR_PRESENCE_VIEW,
+            UserOperationalPermissionEnum::OPERATOR_SESSION_HISTORY_VIEW,
+            UserOperationalPermissionEnum::OPERATOR_CONVERSATION_HANDLE,
+            UserOperationalPermissionEnum::OPERATOR_MARKETING_SEND,
+        ], true) && ! $user->isConfirmed()) {
+            return false;
+        }
+
         if ($permission === UserOperationalPermissionEnum::HANDLE_SUPPORT_TICKETS && ! $user->isConfirmed()) {
             return false;
         }

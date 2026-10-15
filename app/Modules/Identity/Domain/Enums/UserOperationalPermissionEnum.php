@@ -11,6 +11,10 @@ enum UserOperationalPermissionEnum: string
     case MANAGE_SYSTEM_ROLES = 'user.system_role.manage';
     case REVIEW_PROFILE_CHANGES = 'identity.profile_change.review';
     case HANDLE_SUPPORT_TICKETS = 'support.ticket.handle';
+    case OPERATOR_PRESENCE_VIEW = 'operator.presence.view';
+    case OPERATOR_SESSION_HISTORY_VIEW = 'operator.session_history.view';
+    case OPERATOR_CONVERSATION_HANDLE = 'operator.conversation.handle';
+    case OPERATOR_MARKETING_SEND = 'operator.marketing.send';
 
     case BACKOFFICE_ACCESS = 'backoffice.access';
     case BACKOFFICE_WIDGET_VIEW = 'backoffice.widget.view';
@@ -53,6 +57,10 @@ enum UserOperationalPermissionEnum: string
             self::MANAGE_SYSTEM_ROLES => 'Управление системными ролями',
             self::REVIEW_PROFILE_CHANGES => 'Рассматривать изменения подтверждённых данных',
             self::HANDLE_SUPPORT_TICKETS => 'Обрабатывать обращения в техподдержку',
+            self::OPERATOR_PRESENCE_VIEW => 'Видеть текущую страницу пользователей',
+            self::OPERATOR_SESSION_HISTORY_VIEW => 'Видеть историю переходов в текущей сессии',
+            self::OPERATOR_CONVERSATION_HANDLE => 'Инициировать и вести операторские диалоги',
+            self::OPERATOR_MARKETING_SEND => 'Отправлять разрешённые рекламные обращения',
             self::BACKOFFICE_ACCESS => 'Вход в Filament /backoffice',
             self::BACKOFFICE_WIDGET_VIEW => 'Просмотр виджетов дашборда',
             self::BACKOFFICE_WIDGET_CREATE => 'Создание виджетов дашборда',
@@ -72,7 +80,9 @@ enum UserOperationalPermissionEnum: string
         }
 
         return match ($this) {
-            self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS => false,
+            self::CREATE_EVENT, self::CREATE_TOURNAMENT, self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS,
+            self::OPERATOR_PRESENCE_VIEW, self::OPERATOR_SESSION_HISTORY_VIEW,
+            self::OPERATOR_CONVERSATION_HANDLE, self::OPERATOR_MARKETING_SEND => false,
             default => true,
         };
     }
@@ -93,7 +103,9 @@ enum UserOperationalPermissionEnum: string
                 ], true);
         }
 
-        if (in_array($this, [self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS], true)) {
+        if (in_array($this, [self::MANAGE_SYSTEM_ROLES, self::REVIEW_PROFILE_CHANGES, self::HANDLE_SUPPORT_TICKETS,
+            self::OPERATOR_PRESENCE_VIEW, self::OPERATOR_SESSION_HISTORY_VIEW,
+            self::OPERATOR_CONVERSATION_HANDLE, self::OPERATOR_MARKETING_SEND], true)) {
             return $systemRole === UserSystemRoleEnum::SUPERADMIN;
         }
 
