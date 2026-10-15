@@ -52,61 +52,61 @@ CSS,
     'day' => [
         'slug' => 'court_day',
         'name' => 'Светлый паркет',
-        'description' => 'Светлый глянцевый паркет, ледяные и тёплые карточки, фирменный оранжевый.',
+        'description' => 'Светлая социальная палитра: белые карточки, мягкий серый фон и фирменный оранжевый.',
         'mode' => 'light',
         'colors' => [
-            'bg' => '#F8FAFE', 'surface' => '#FFFFFF', 'surface-raised' => '#EDF4FC',
-            'field' => '#F7FAFF', 'text' => '#1A2838', 'muted' => '#506073',
-            'faint' => '#5E7082', 'accent' => '#BD4F00', 'accent-hover' => '#A74500',
-            'accent-active' => '#8C3900', 'on-accent' => '#FFFFFF', 'line' => '#C6D8EA',
-            'control-line' => '#7D91A5', 'success' => '#176A43', 'warning' => '#865300',
+            'bg' => '#F3F4F6', 'surface' => '#FFFFFF', 'surface-raised' => '#F7F8FA',
+            'field' => '#F8F9FA', 'text' => '#18212B', 'muted' => '#59636F',
+            'faint' => '#6D7681', 'accent' => '#BD4F00', 'accent-hover' => '#A74500',
+            'accent-active' => '#8C3900', 'on-accent' => '#FFFFFF', 'line' => '#E0E3E8',
+            'control-line' => '#8994A0', 'success' => '#176A43', 'warning' => '#865300',
             'danger' => '#B02E38', 'info' => '#205F99',
         ],
         'css_code' => <<<'CSS'
 :root {
     --theme-font-family: Inter, Arial, sans-serif;
-    --header-bg: #f6fafffa;
-    --body-glow: #c5daf030;
-    --ambient-shadow: #375a791a;
-    --surface-glint: #ffffff9c;
+    --header-bg: #fffffffA;
+    --body-glow: #00000000;
+    --ambient-shadow: #18212b12;
+    --surface-glint: #ffffff00;
     --danger-bg: #fff0f1;
     --danger-hover-bg: #ffe3e6;
     --success-bg: #e3f5e9;
     --warning-bg: #fff4d9;
     --danger-badge-bg: #fff0f1;
-    --glass-bg: #f7fbffee;
-    --tile-bg: #fff0e5;
-    --tile-border: #dfb08d;
-    --avatar-bg: #fff0e5;
-    --avatar-border: #c47d47;
+    --glass-bg: #fffffff5;
+    --tile-bg: #FFF5ED;
+    --tile-border: #EFD3BF;
+    --avatar-bg: #FFF5ED;
+    --avatar-border: #D09A72;
     --backdrop-bg: #1a202b88;
     --subtle-accent-bg: #bd4f0012;
-    --subtle-white-bg: #d8e8f899;
-    --shadow-accent: 0 8px 24px #bd4f0018;
-    --shadow-menu: #27475e24;
-    --shadow-popover: #27475e26;
-    --shadow-modal: #27475e30;
-    --loader-bg: #e9f3ffde;
-    --surface-corner-glow: #b5d5f442;
+    --subtle-white-bg: #F3F4F6;
+    --shadow-accent: 0 4px 12px #bd4f0018;
+    --shadow-menu: #18212b18;
+    --shadow-popover: #18212b18;
+    --shadow-modal: #18212b40;
+    --loader-bg: #ffffffda;
+    --surface-corner-glow: #00000000;
     --surface-corner-glow-success: #176a4314;
     --surface-corner-glow-error: #b02e3814;
     --radius-control: 12px;
     --radius-card: 24px;
     --radius-hero: 32px;
-    --light-page-top: #ffffff;
-    --light-page-center: #f9fbfe;
-    --light-page-bottom: #eef5fc;
-    --light-title-top: #172332;
-    --light-title-bottom: #3a526d;
-    --light-card-blue: #e9f3ff;
-    --light-card-amber: #fff7ed;
-    --light-card-shadow: #274e7914;
-    --light-card-shadow-hover: #244d7626;
-    --light-card-line: #c9dbee;
-    --light-button-top: #c15400;
-    --light-button-bottom: #983c00;
-    --light-nav-active-top: #fff9f1;
-    --light-nav-active-bottom: #f2e7dc;
+    --light-page-top: #F7F8FA;
+    --light-page-center: #F3F4F6;
+    --light-page-bottom: #F1F2F4;
+    --light-title-top: #18212B;
+    --light-title-bottom: #18212B;
+    --light-card-blue: #FFFFFF;
+    --light-card-amber: #FFFFFF;
+    --light-card-shadow: #18212b0c;
+    --light-card-shadow-hover: #18212b16;
+    --light-card-line: #E0E3E8;
+    --light-button-top: #BD4F00;
+    --light-button-bottom: #BD4F00;
+    --light-nav-active-top: #FFF4EB;
+    --light-nav-active-bottom: #FFF4EB;
 }
 CSS,
     ],
