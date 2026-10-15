@@ -1,17 +1,91 @@
 import { initProfileInlineSave } from './profile-inline-save.js';
 
+const PROFILE_AVATAR_INPUT_MAX_BYTES = 5 * 1024 * 1024;
+const PROFILE_AVATAR_POST_MAX_BYTES = 768 * 1024;
+
+// The outer development Nginx can reject multi-megabyte multipart requests
+// before Laravel sees them. The backend stores a 200px WebP avatar, so downsize
+// large uploads client-side without changing the original 5MB input contract.
+async function prepareProfileAvatar(file) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        throw new Error('Поддерживаются только JPEG, PNG и WebP.');
+    }
+    if (file.size > PROFILE_AVATAR_INPUT_MAX_BYTES) {
+        throw new Error('Файл аватара должен быть не больше 5 МБ.');
+    }
+    if (file.size <= PROFILE_AVATAR_POST_MAX_BYTES) return file;
+
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    try {
+        await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = () => reject(new Error('Не удалось открыть изображение.'));
+            image.src = url;
+        });
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+
+    if (!image.naturalWidth || !image.naturalHeight
+        || image.naturalWidth > 6000 || image.naturalHeight > 6000) {
+        throw new Error('Размер изображения не должен превышать 6000×6000 пикселей.');
+    }
+
+    for (const [edge, quality] of [[800, 0.84], [600, 0.75], [400, 0.65]]) {
+        const scale = Math.min(1, edge / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Не удалось обработать фотографию в браузере.');
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+        canvas.width = 0;
+        canvas.height = 0;
+        if (blob?.type === 'image/webp' && blob.size <= PROFILE_AVATAR_POST_MAX_BYTES) {
+            const name = file.name.replace(/\.[^.]+$/, '') || 'avatar';
+            return new File([blob], name + '.webp', { type: 'image/webp' });
+        }
+    }
+
+    throw new Error('Не удалось уменьшить фотографию. Попробуй другое изображение.');
+}
+
+
 // Task 026: use existing avatar forms, nickname JSON endpoint and Modal 1.1 shell.
 const profileRoot = document.querySelector('[data-account-profile]');
 
 if (profileRoot) {
     const uploadForm = profileRoot.querySelector('[data-profile-avatar-upload]');
-    uploadForm?.querySelector('input[type=file]')?.addEventListener('change', event => {
-        if (!event.target.files?.length) return;
+    uploadForm?.querySelector('input[type=file]')?.addEventListener('change', async event => {
+        const input = event.target;
+        const file = input.files?.[0];
+        if (!file) return;
+
         const state = profileRoot.querySelector('[data-profile-avatar-upload-status]');
-        if (state) state.hidden = false;
+        if (state) {
+            state.hidden = false;
+            state.textContent = 'Подготавливаем фотографию…';
+        }
         uploadForm.setAttribute('aria-busy', 'true');
-        // Native multipart/form POST: server validates and processes the image.
-        uploadForm.submit();
+
+        try {
+            const upload = await prepareProfileAvatar(file);
+            if (upload !== file) {
+                // Keep the existing native POST, CSRF and server-side validation.
+                const transfer = new DataTransfer();
+                transfer.items.add(upload);
+                input.files = transfer.files;
+            }
+            if (state) state.textContent = 'Загружаем…';
+            uploadForm.submit();
+        } catch (error) {
+            input.value = '';
+            uploadForm.removeAttribute('aria-busy');
+            if (state) state.textContent = error.message || 'Не удалось подготовить изображение.';
+        }
     });
 
     const personalForm = profileRoot.querySelector('[data-profile-personal-form]');
